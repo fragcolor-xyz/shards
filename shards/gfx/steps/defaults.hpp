@@ -14,20 +14,15 @@ template <typename... TFeatures> inline std::vector<FeaturePtr> withDefaultFulls
 
 // Color output with optional clear color
 inline RenderStepOutput::Named getDefaultColorOutput(std::optional<float4> clearColor = std::nullopt) {
-  return RenderStepOutput::Named{
-      .name = "color",
-      .format = WGPUTextureFormat_BGRA8UnormSrgb,
-      .clearValues = clearColor ? std::make_optional(ClearValues::getColorValue(clearColor.value())) : std::nullopt,
-  };
+  return RenderStepOutput::Named("color", WGPUTextureFormat_BGRA8UnormSrgb,
+                                 clearColor ? std::make_optional(ClearValues::getColorValue(clearColor.value())) : std::nullopt);
 }
 
 // Depth output with optional clear
 inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = false) {
-  return RenderStepOutput::Named{
-      .name = "depth",
-      .format = WGPUTextureFormat_Depth32Float,
-      .clearValues = clearDepth ? std::make_optional(ClearValues::getDefaultDepthStencil()) : std::nullopt,
-  };
+  return RenderStepOutput::Named("depth", WGPUTextureFormat_Depth32Float,
+
+                                 clearDepth ? std::make_optional(ClearValues::getDefaultDepthStencil()) : std::nullopt);
 }
 
 // Default output color+depth with optional clear
@@ -35,12 +30,6 @@ inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = false, std:
   RenderStepOutput out;
   out.attachments.push_back(getDefaultColorOutput(clearColor));
   out.attachments.push_back(getDefaultDepthOutput(clearDepth));
-  return out;
-}
-
-template <typename... TArgs> inline RenderStepOutput makeRenderStepOutput(TArgs... args) {
-  RenderStepOutput out;
-  out.attachments.push_back(args...);
   return out;
 }
 } // namespace gfx::steps

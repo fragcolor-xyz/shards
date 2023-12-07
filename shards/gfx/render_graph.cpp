@@ -3,12 +3,12 @@
 #include "renderer_storage.hpp"
 #include "spdlog/spdlog.h"
 #include <unordered_map>
+#include <boost/container/flat_map.hpp>
 
 namespace gfx::detail {
-
-using Data = RenderGraphBuilder::NodeBuildData;
 static auto logger = gfx::getLogger();
-
+namespace graph_build_data {
+using NodeBuildData = NodeBuildData;
 void RenderGraphBuilder::addNode(const ViewData &viewData, const PipelineStepPtr &step, size_t queueDataIndex) {
   size_t stepIndex = buildingNodes.size();
   auto &buildData = buildingNodes.emplace_back(viewData, stepIndex, step, queueDataIndex);
@@ -16,7 +16,7 @@ void RenderGraphBuilder::addNode(const ViewData &viewData, const PipelineStepPtr
   needPrepare = true;
 }
 
-RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::findFrameByName(const std::string &name) {
+FrameBuildData *RenderGraphBuilder::findFrameByName(const std::string &name) {
   auto it = nameLookup.find(name);
   if (it != nameLookup.end())
     return it->second;
@@ -36,9 +36,8 @@ bool RenderGraphBuilder::isWrittenTo(const std::string &name) {
   return isWrittenTo(*frame);
 }
 
-RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const RenderStepOutput::OutputVariant &output,
-                                                                    PipelineStepPtr step, TextureOverrideRef::Binding bindingType,
-                                                                    size_t bindingIndex, bool forceNew) {
+FrameBuildData *RenderGraphBuilder::assignFrame(const RenderStepOutput::OutputVariant &output, PipelineStepPtr step,
+                                                TextureOverrideRef::Binding bindingType, size_t bindingIndex, bool forceNew) {
   // Try to find existing frame that matches output
   FrameBuildData *frame = //
       forceNew ? nullptr
@@ -171,42 +170,93 @@ void RenderGraphBuilder::attachOutputs() {
   }
 }
 
+FrameSize RenderGraphBuilder::resolveFrameSize(FrameBuildData* assignedFrame, const RenderStepOutput& output) {
+  std::visit([&](auto& arg) {
+    using T = std::decay_t<decltype(arg)>;
+    if constexpr(std::is_same_v<T, RenderStepOutput::RelativeToInputSize>) {
+    } else {
+      assert(assignedFrame->sizing);
+      return *assignedFrame->sizing;
+    }
+  }, output.outputSizing);
+
+}
+
 void RenderGraphBuilder::finalizeNodeConnections() {
-  for (auto it = buildingNodes.begin(); it != buildingNodes.end(); ++it) {
+  size_t nodeIndex{};
+  for (auto it = buildingNodes.begin(); it != buildingNodes.end(); ++it, ++nodeIndex) {
     NodeBuildData &nodeBuildData = *it;
 
     // Reset
     nodeBuildData.sizeConstraints.clear();
 
     // Assign all input sizes (if not done already), pick the first one as reference size
-    std::optional<SizeIndex> mainInputSizeId;
-    for (auto &inputFrame : nodeBuildData.readsFrom) {
-      assignInputAnySize(*inputFrame);
-      if (!mainInputSizeId.has_value()) {
-        mainInputSizeId = inputFrame->sizeId.value();
-        //   if (!inputFrame->sizeId) {
-        //     inputFrame->sizeId = sizeDefinitions.size();
-        //     sizeDefinitions.push_back(SizeBuildData{.originalFrame = inputFrame});
-        //   }
-        //   mainInputSizeId = inputFrame->sizeId;
-        // } else {
-        //   if (!inputFrame->sizeId) {
-        //     inputFrame->sizeId = mainInputSizeId;
-        //   } else {
-        // SizeConstraintBuildData c{*inputSizeId, *inputFrame->sizeId};
-        // if (c.a == c.b)
-        //   continue;
+    // std::optional<SizeIndex> mainInputSizeId;
+    // boost::container::flat_map<std::string, FrameBuildData *> inputFrameMap;
+    // for (auto &inputFrame : nodeBuildData.readsFrom) {
+    //   inputFrameMap[inputFrame->name] = inputFrame;
 
-        // if (std::find(sizeConstraints.begin(), sizeConstraints.end(), c) == sizeConstraints.end()) {
-        //   sizeConstraints.push_back(c);
-        // }
-        // }
+    // assignInputAnySize(*inputFrame);
+    // if (!mainInputSizeId.has_value()) {
+    // mainInputSizeId = inputFrame->sizeId.value();
+    //   if (!inputFrame->sizeId) {
+    //     inputFrame->sizeId = sizeDefinitions.size();
+    //     sizeDefinitions.push_back(SizeBuildData{.originalFrame = inputFrame});
+    //   }
+    //   mainInputSizeId = inputFrame->sizeId;
+    // } else {
+    //   if (!inputFrame->sizeId) {
+    //     inputFrame->sizeId = mainInputSizeId;
+    //   } else {
+    // SizeConstraintBuildData c{*inputSizeId, *inputFrame->sizeId};
+    // if (c.a == c.b)
+    //   continue;
+    // if (std::find(sizeConstraints.begin(), sizeConstraints.end(), c) == sizeConstraints.end()) {
+    //   sizeConstraints.push_back(c);
+    // }
+    // }
+    // }
+    // }
+
+    // Connect relative output sizes
+    for (size_t attachmentIdx = 0; attachmentIdx < nodeBuildData.attachments.size(); attachmentIdx++) {
+      auto &attachment = nodeBuildData.attachments[attachmentIdx];
+      auto frame = attachment.frame;
+
+      // Solve relative size
+      if (!frame->sizing) {
+        assert(frame->deferredFrameSize && "Invalid frame, unknown size");
+        std::optional<RenderStepOutput::RelativeToInputSize> size;
+        frame->deferredFrameSize.swap(size);
+
+        FrameBuildData *inputFrame{};
+        if (size->name) {
+          std::string frameKey = std::move(size->name.value());
+          inputFrame = findFrameByName(size->name.value());
+          if (!inputFrame) {
+            throw std::runtime_error(fmt::format("Invalid relative size of output {} to node {}, the input \"{}\" does not exist",
+                                                 attachmentIdx, nodeIndex, *size->name));
+          }
+        } else {
+          if (nodeBuildData.readsFrom.size() == 0) {
+            throw std::runtime_error(
+                fmt::format("Invalid relative size of output {} to node {}, no input to reference", attachmentIdx, nodeIndex));
+          }
+          inputFrame = nodeBuildData.readsFrom[0];
+        }
+
+        // This should've been assigned
+        if (!inputFrame->sizing) {
+          throw std::runtime_error(fmt::format("Invalid input \"{}\" to node {}", inputFrame->name, nodeIndex));
+        }
+
+        // Update relative frame size
+        frame->sizing = FrameSize::RelativeToFrame{.frame = inputFrame, .scale = size->scale};
       }
     }
 
     // Check written attachments
     std::optional<SizeIndex> outputSizeId;
-    // for (auto &attachment : nodeBuildData.attachments) {
     for (size_t attachmentIdx = 0; attachmentIdx < nodeBuildData.attachments.size(); attachmentIdx++) {
       auto &attachment = nodeBuildData.attachments[attachmentIdx];
       auto frame = attachment.frame;
@@ -228,26 +278,26 @@ void RenderGraphBuilder::finalizeNodeConnections() {
           attachment.output);
 
       // Assign output size
-      if (!frame->sizeId) {
-        if (frame->sizeScale) {
-          frame->sizeId = assignOutputRefSize(*frame, *nodeBuildData.readsFrom[0], frame->sizeScale.value());
-        } else {
-          // Should have been assigned during allocateOutputs
-          assert(frame->sizeId);
-        }
-      }
+      // if (!frame->sizeId) {
+      //   if (frame->sizing) {
+      //     // frame->sizeId = assignOutputRefSize(*frame, *nodeBuildData.readsFrom[0], frame->sizeScale.value());
+      //   } else {
+      //     // Should have been assigned during allocateOutputs
+      //     assert(frame->sizeId);
+      //   }
+      // }
 
       // Add size dependency
-      if (attachmentIdx > 0) {
-        auto &prevAttachment = nodeBuildData.attachments[attachmentIdx - 1];
-        assert(prevAttachment.frame->sizeId);
-        size_t prevSizeId = prevAttachment.frame->sizeId.value();
-        auto &prevBsd = buildingSizeDefinitions[prevSizeId];
-        auto &bsd = buildingSizeDefinitions[*frame->sizeId];
-        if (bsd.isDynamic || prevBsd.isDynamic) {
-          nodeBuildData.sizeConstraints.emplace_back(*frame->sizeId, prevSizeId);
-        }
-      }
+      // if (attachmentIdx > 0) {
+      //   auto &prevAttachment = nodeBuildData.attachments[attachmentIdx - 1];
+      //   assert(prevAttachment.frame->sizeId);
+      //   size_t prevSizeId = prevAttachment.frame->sizeId.value();
+      //   auto &prevBsd = buildingSizeDefinitions[prevSizeId];
+      //   auto &bsd = buildingSizeDefinitions[*frame->sizeId];
+      //   if (bsd.isDynamic || prevBsd.isDynamic) {
+      //     nodeBuildData.sizeConstraints.emplace_back(*frame->sizeId, prevSizeId);
+      //   }
+      // }
 
       // if (mainInputSizeId.has_value()) {
       // }
@@ -285,7 +335,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
         // Just duplicate the frame for now
         FrameBuildData &newFrame = buildingFrames.emplace_back();
         newFrame.name = frame->name;
-        newFrame.sizeId = *mainInputSizeId;
+        // newFrame.sizeId = *mainInputSizeId;
         // newFrame.size = attachment.targetSize;
         newFrame.format = targetFormat;
         nameLookup[frame->name] = &newFrame;
@@ -335,31 +385,32 @@ void RenderGraphBuilder::prepare() {
   needPrepare = false;
 }
 
-SizeIndex RenderGraphBuilder::assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 sizeScale) {
-  assert(referenceFrame.sizeId);
-  if (!frame.sizeId) {
-    auto sbd =
-        SizeBuildData{.originalFrame = &referenceFrame, .originalSizeId = referenceFrame.sizeId.value(), .sizeScale = sizeScale};
-    auto it = std::find(buildingSizeDefinitions.begin(), buildingSizeDefinitions.end(), sbd);
-    if (it != buildingSizeDefinitions.end()) {
-      frame.sizeId = it - buildingSizeDefinitions.begin();
-    } else {
-      frame.sizeId = buildingSizeDefinitions.size();
-      buildingSizeDefinitions.push_back(sbd);
-    }
-  }
-  return *frame.sizeId;
-}
+// SizeIndex RenderGraphBuilder::assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 sizeScale) {
+//   assert(referenceFrame.sizeId);
+//   if (!frame.sizeId) {
+//     auto sbd =
+//         SizeBuildData{.originalFrame = &referenceFrame, .originalSizeId = referenceFrame.sizeId.value(), .sizeScale =
+//         sizeScale};
+//     auto it = std::find(buildingSizeDefinitions.begin(), buildingSizeDefinitions.end(), sbd);
+//     if (it != buildingSizeDefinitions.end()) {
+//       frame.sizeId = it - buildingSizeDefinitions.begin();
+//     } else {
+//       frame.sizeId = buildingSizeDefinitions.size();
+//       buildingSizeDefinitions.push_back(sbd);
+//     }
+//   }
+//   return *frame.sizeId;
+// }
 
-SizeIndex RenderGraphBuilder::assignInputAnySize(FrameBuildData &frame) { return assignOutputDynamicSize(frame); }
+// SizeIndex RenderGraphBuilder::assignInputAnySize(FrameBuildData &frame) { return assignOutputDynamicSize(frame); }
 
-SizeIndex RenderGraphBuilder::assignOutputDynamicSize(FrameBuildData &frame) {
-  if (!frame.sizeId) {
-    frame.sizeId = buildingSizeDefinitions.size();
-    buildingSizeDefinitions.push_back(SizeBuildData{.originalFrame = &frame, .isDynamic = true});
-  }
-  return *frame.sizeId;
-}
+// SizeIndex RenderGraphBuilder::assignOutputDynamicSize(FrameBuildData &frame) {
+//   if (!frame.sizeId) {
+//     frame.sizeId = buildingSizeDefinitions.size();
+//     buildingSizeDefinitions.push_back(SizeBuildData{.originalFrame = &frame, .isDynamic = true});
+//   }
+//   return *frame.sizeId;
+// }
 
 RenderGraph RenderGraphBuilder::build() {
   prepare();
@@ -419,47 +470,123 @@ RenderGraph RenderGraphBuilder::build() {
     Constraint(SizeIndex parent) : parent(parent) {}
     Constraint(SizeIndex parent, float2 scale) : parent(parent), scale(scale) {}
   };
+
   std::unordered_map<SizeIndex, boost::container::small_vector<Constraint, 8>> sizeConstraints;
+  std::vector<boost::container::small_vector<FrameBuildData *, 8>> sizeConstraints2;
+
+  std::vector<SizeIndex> frameSizes;
+  std::map<FrameSizing, SizeIndex> frameSizeMap;
+
   for (auto &node : buildingNodes) {
-    std::optional<size_t> refSize;
-    // Try to derive size from dynamic output
-    for (auto &attachment : node.attachments) {
-      auto &frame = *attachment.frame;
-      if (frame.sizeId) {
-        refSize = frame.sizeId;
-      }
-    }
-    // Try to derive size from inputs
-    if (!refSize) {
-      for (auto &input : node.readsFrom) {
-        refSize = *input->sizeId;
-      }
-    }
-    // Fallback to using the global reference size
-    if (!refSize)
-      refSize = globalReferenceSize;
 
-    for (auto &output : node.attachments) {
-      auto &frame = output.frame;
-      assert(frame->sizeId);
-      if (frame->sizeScale) {
-        sizeConstraints[*frame->sizeId].emplace_back(*refSize, *frame->sizeScale);
-      } else {
-        sizeConstraints[*frame->sizeId].emplace_back(*refSize);
+    for (auto &in : node.readsFrom) {
+      assert(in->sizing);
+      // frameSizeMap.
+    }
+
+    auto assignFrameSize = [&](FrameBuildData *frame) {
+      assert(frame->sizing);
+      return std::visit(
+          [&](auto &arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, FrameSize::Manual>) {
+              SizeIndex newSizeIndex = frameSizes.size();
+              frameSizes.emplace_back();
+              return newSizeIndex;
+            } else if constexpr (std::is_same_v<T, FrameSize::RelativeToMain>) {
+              auto it = frameSizeMap.find(arg);
+              if (it != frameSizeMap.end()) {
+                return it->second;
+              } else {
+                SizeIndex newSizeIndex = frameSizes.size();
+                frameSizes.emplace_back();
+                frameSizeMap.insert_or_assign(arg, newSizeIndex);
+                return newSizeIndex;
+              }
+            } else if constexpr (std::is_same_v<T, FrameSize::RelativeToFrame>) {
+              // Create new relative size
+              auto it2 = frameSizeMap.find(arg);
+              if (it2 != frameSizeMap.end()) {
+                return it2->second;
+              } else {
+                assert(arg.frame->sizing);
+                auto it = frameSizeMap.find(*arg.frame->sizing);
+                if (it == frameSizeMap.end()) {
+                  throw std::logic_error("Dependent frame does not have a valid size");
+                } else {
+                  if (!arg.scale) {
+                    return it->second;
+                  } else {
+                    SizeIndex newSizeIndex = frameSizes.size();
+                    frameSizes.emplace_back();
+                    frameSizeMap.insert_or_assign(arg, newSizeIndex);
+                    return newSizeIndex;
+                  }
+                }
+              }
+            } else {
+              throw std::logic_error("");
+            }
+          },
+          *frame->sizing);
+    };
+
+    if (!node.attachments.empty()) {
+      auto firstOutputFrame = node.attachments[0].frame;
+      SizeIndex firstSize = assignFrameSize(firstOutputFrame);
+      if (node.attachments.size() > 1) {
+        auto &constraints = sizeConstraints2.emplace_back();
+        constraints.push_back(firstOutputFrame);
+
+        for (size_t i = 1; i < node.attachments.size(); i++) {
+          auto &output = node.attachments[i];
+          SizeIndex size = assignFrameSize(firstOutputFrame);
+          // if (size != firstSize) {
+          constraints.push_back(output.frame);
+          // }
+        }
       }
     }
   }
 
-  for (auto &[size, constraints] : sizeConstraints) {
-    SPDLOG_LOGGER_DEBUG(getLogger(), "Size {} has {} constraints: ", size, constraints.size());
-    for (auto &c : constraints) {
-      if (c.scale) {
-        SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {} x {}", c.parent, c.scale.value());
-      } else {
-        SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {}", c.parent);
-      }
-    }
-  }
+  // std::optional<size_t> refSize;
+  // // Try to derive size from dynamic output
+  // for (auto &attachment : node.attachments) {
+  //   auto &frame = *attachment.frame;
+  //   if (frame.sizeId) {
+  //     refSize = frame.sizeId;
+  //   }
+  // }
+  // // Try to derive size from inputs
+  // if (!refSize) {
+  //   for (auto &input : node.readsFrom) {
+  //     refSize = *input->sizeId;
+  //   }
+  // }
+  // // Fallback to using the global reference size
+  // if (!refSize)
+  //   refSize = globalReferenceSize;
+
+  // for (auto &output : node.attachments) {
+  //   auto &frame = output.frame;
+  //   assert(frame->sizeId);
+  //   if (frame->sizeScale) {
+  //     sizeConstraints[*frame->sizeId].emplace_back(*refSize, *frame->sizeScale);
+  //   } else {
+  //     sizeConstraints[*frame->sizeId].emplace_back(*refSize);
+  //   }
+  // }
+
+  // for (auto &[size, constraints] : sizeConstraints) {
+  //   SPDLOG_LOGGER_DEBUG(getLogger(), "Size {} has {} constraints: ", size, constraints.size());
+  //   for (auto &c : constraints) {
+  //     if (c.scale) {
+  //       SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {} x {}", c.parent, c.scale.value());
+  //     } else {
+  //       SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {}", c.parent);
+  //     }
+  //   }
+  // }
 
   // Add size constraints
   // auto &sizeConstraints = outputGraph.sizeConstraints;
@@ -607,13 +734,9 @@ void RenderGraphBuilder::allocateInputs(NodeBuildData &buildData, const RenderSt
             }
           } else if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
             // Allocate a new frame based on this input and assign it
-            auto frame = assignFrame(
-                RenderStepOutput::Texture{
-                    .name = arg.name,
-                    .subResource = arg.subResource,
-                },
-                buildData.step, TextureOverrideRef::Binding::Input, inputIndex);
-            assignInputAnySize(*frame);
+            auto frame = assignFrame(RenderStepOutput::Texture(arg.name, arg.subResource), buildData.step,
+                                     TextureOverrideRef::Binding::Input, inputIndex);
+            frame->sizing = FrameSize::Manual{};
             buildData.readsFrom.push_back(frame);
           } else {
             throw std::logic_error("Unknown variant");
@@ -628,6 +751,7 @@ void RenderGraphBuilder::allocateInputs(NodeBuildData &buildData, const RenderSt
 // e.g. fullscreen effect passes
 void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const RenderStepOutput &output, bool forceOverwrite) {
   nodeBuildData.forceOverwrite = forceOverwrite;
+  nodeBuildData.outputSizing = output.outputSizing;
 
   size_t outputIndex{};
   for (auto &attachment : output.attachments) {
@@ -651,20 +775,22 @@ void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const Ren
 
     // Assign this frame a fixed size if it doesn't have a relative scale
     // Relative scale is assigned later during node connection validation
-    OutputSizing expectedSizing;
+    FrameSizing expectedSizing;
     std::visit(
         [&](auto &arg) {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepOutput::RelativeToMainSize>) {
-          } else if (std::is_same_v<T, RenderStepOutput::RelativeToInputSize>) {
-            // Defer
-          } else if (std::is_same_v<T, RenderStepOutput::ManualSize>) {
-            expectedSizing = ManualSize{};
+            expectedSizing = FrameSize::RelativeToMain{.scale = arg.scale};
+          } else if constexpr (std::is_same_v<T, RenderStepOutput::RelativeToInputSize>) {
+            // Defer until node connection
+            // outputFrame->deferredFrameSize.emplace(arg);
+          } else if constexpr (std::is_same_v<T, RenderStepOutput::ManualSize>) {
+            expectedSizing = FrameSize::Manual{};
           }
 
           if (!outputFrame->sizing) {
             outputFrame->sizing = expectedSizing;
-          } else if (expectedSizing != *outputFrame->sizing) {
+          } else if (expectedSizing != outputFrame->sizing.value()) {
             SPDLOG_LOGGER_DEBUG(getLogger(), "Frame size missmatch, creating new frame");
             outputFrame = assignFrame(attachment, nodeBuildData.step, TextureOverrideRef::Binding::Output, outputIndex, true);
           }
@@ -676,7 +802,7 @@ void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const Ren
     //   outputFrame->sizeScale = output.sizeScale;
     // }
 
-    nodeBuildData.attachments.push_back(RenderGraphBuilder::Attachment{attachment, outputFrame});
+    nodeBuildData.attachments.push_back(Attachment{attachment, outputFrame});
     ++outputIndex;
   }
 }
@@ -700,6 +826,7 @@ RenderTargetLayout RenderGraphBuilder::getLayout(const NodeBuildData &node) cons
 
   return layout;
 }
+} // namespace graph_build_data
 
 RenderGraphEvaluator::RenderGraphEvaluator(allocator_type allocator, Renderer &renderer, RendererStorage &storage)
     : allocator(allocator), writtenTextures(allocator), frameTextures(allocator), renderer(renderer), storage(storage) {}

@@ -142,7 +142,8 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
   if (!step.output) {
     step.output = steps::getDefaultRenderStepOutput();
   }
-  step.output->sizeScale = toVec<float2>(input);
+  // TODO(rendergraph)
+  // step.output->sizeScale = toVec<float2>(input);
 }
 
 template <typename T>
@@ -160,7 +161,8 @@ void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamV
     shared::applyOutputScale(context, step, outputScale.get());
   } else {
     if (step.output) {
-      step.output->sizeScale.reset();
+      // TODO(rendergraph)
+      // step.output->sizeScale.reset();
     }
   }
 

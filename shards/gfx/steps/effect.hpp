@@ -27,16 +27,9 @@ struct Effect {
 
 struct Copy {
   static PipelineStepPtr create(const std::string &fieldName, WGPUTextureFormat dstFormat) {
-    RenderStepInput in;
-    in.attachments.push_back(RenderStepInput::Named{
-        .name = fieldName,
-    });
-    auto step = Effect::create(std::move(in),
-                               makeRenderStepOutput(RenderStepOutput::Named{
-                                   .name = fieldName,
-                                   .format = dstFormat,
-                               }),
-                               makeCompoundBlock(WriteOutput(fieldName, FieldTypes::Float4, SampleTexture(fieldName))));
+    auto step =
+        Effect::create(RenderStepInput::make(fieldName), RenderStepOutput::make(RenderStepOutput::Named(fieldName, dstFormat)),
+                       makeCompoundBlock(WriteOutput(fieldName, FieldTypes::Float4, SampleTexture(fieldName))));
     return step;
   }
 };

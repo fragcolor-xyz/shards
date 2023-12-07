@@ -137,7 +137,7 @@ public:
     if (mainOutput) {
       builder.referenceOutputSize = float2(mainOutput->getSize());
       for (auto &attachment : mainOutput->attachments) {
-        builder.outputs.push_back(RenderGraphBuilder::Output{
+        builder.outputs.push_back(graph_build_data::Output{
             .name = attachment.first,
             .format = attachment.second.texture->getFormat().pixelFormat,
         });
@@ -161,7 +161,7 @@ public:
           if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
             ClearStep clear;
             clear.output = RenderStepOutput{};
-            clear.output->attachments.emplace_back(RenderStepOutput::Named{.name = output.first, .format = format});
+            clear.output->attachments.emplace_back(RenderStepOutput::Named(output.first, format));
             clear.clearValues = ClearValues::getColorValue(fallbackClearColor.value());
 
             // Add a clear node, the queue index ~0 indicates that the tempView is passed during runtime

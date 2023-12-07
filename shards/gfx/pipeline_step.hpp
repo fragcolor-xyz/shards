@@ -14,7 +14,10 @@
 namespace gfx {
 
 namespace detail {
+namespace graph_build_data {
 struct RenderGraphBuilder;
+}
+using RenderGraphBuilder = graph_build_data::RenderGraphBuilder;
 struct PipelineStepContext;
 } // namespace detail
 
@@ -75,6 +78,10 @@ struct RenderStepOutput {
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
+
+    Named(const std::string &name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb,
+          std::optional<ClearValues> clearValues = std::nullopt)
+        : name(name), format(format), clearValues(clearValues) {}
   };
 
   // A preallocated texture to output to
@@ -85,6 +92,9 @@ struct RenderStepOutput {
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
+
+    Texture(const std::string &name, TextureSubResource subResource, std::optional<ClearValues> clearValues = std::nullopt)
+        : name(name), subResource(subResource), clearValues(clearValues) {}
   };
 
   typedef std::variant<Named, Texture> OutputVariant;
@@ -96,25 +106,36 @@ struct RenderStepOutput {
   // Example:
   //  (0.5, 0.5) would render at half the output resolution
   //  (2.0, 2.0) would render at double the output resolution
-  OutputSizing outputSizing;
+  OutputSizing outputSizing = RelativeToMainSize{};
 
   RenderStepOutput() = default;
   RenderStepOutput(const RenderStepOutput &) = default;
   RenderStepOutput(RenderStepOutput &&) = default;
   RenderStepOutput &operator=(const RenderStepOutput &) = default;
   RenderStepOutput &operator=(RenderStepOutput &&) = default;
+
+  void push(Named name) { attachments.emplace_back(std::move(name)); }
+  void push(Texture texture) { attachments.emplace_back(std::move(texture)); }
+  template <typename... TArgs> static inline RenderStepOutput make(TArgs... args) {
+    RenderStepOutput out;
+    ((out.push(args)), ...);
+    return out;
+  }
 };
 
 struct RenderStepInput {
   // A managed named render frame
   struct Named {
     std::string name;
+    Named(std::string name) : name(name) {}
+    Named(const char *name) : name(name) {}
   };
 
   // A preallocated texture to input
   struct Texture {
     std::string name;
     TextureSubResource subResource;
+    Texture(std::string name, TextureSubResource subResource) : name(name), subResource(subResource) {}
   };
 
   typedef std::variant<Named, Texture> InputVariant;
@@ -126,6 +147,14 @@ struct RenderStepInput {
   RenderStepInput(RenderStepInput &&) = default;
   RenderStepInput &operator=(const RenderStepInput &) = default;
   RenderStepInput &operator=(RenderStepInput &&) = default;
+
+  void push(const std::string &name) { attachments.emplace_back(Named(name)); }
+  void push(Texture texture) { attachments.emplace_back(std::move(texture)); }
+  template <typename... TArgs> static RenderStepInput make(TArgs... args) {
+    RenderStepInput input;
+    ((input.push(args)), ...);
+    return input;
+  }
 };
 
 extern UniqueIdGenerator renderStepIdGenerator;

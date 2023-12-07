@@ -377,9 +377,9 @@ void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const Rende
                   BuildPipelineOptions{.ignoreDrawableFeatures = step.ignoreDrawableFeatures});
 }
 
-using Data = RenderGraphBuilder::NodeBuildData;
+using NodeBuildData = graph_build_data::NodeBuildData;
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderFullscreenStep &step) {
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderFullscreenStep &step) {
   builder.allocateInputs(data, step.input);
 
   bool overwriteTargets = step.overlay ? false : true;
@@ -401,7 +401,7 @@ static inline TextureSampleType getDefaultTextureSampleType(WGPUTextureFormat pi
   }
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderFullscreenStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderFullscreenStep &step) {
   ZoneScoped;
 
   struct StepData {
@@ -471,11 +471,11 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   };
 }
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const ClearStep &step) {
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const ClearStep &step) {
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput, true);
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const ClearStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const ClearStep &step) {
   node.setupPass = [=](WGPURenderPassDescriptor &desc) {
     for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
       auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
@@ -490,11 +490,11 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   };
 }
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderDrawablesStep &step) {
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderDrawablesStep &step) {
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderDrawablesStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderDrawablesStep &step) {
   if (!step.drawQueue)
     throw std::runtime_error("No draw queue assigned to drawable step");
 
