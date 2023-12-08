@@ -148,7 +148,7 @@ public:
     size_t queueDataIndex{};
     for (auto &entry : entries) {
       for (auto &step : entry.steps) {
-        builder.addNode(entry.viewData, step, queueDataIndex);
+        builder.addNode(step, queueDataIndex);
       }
       queueDataIndex++;
     }
@@ -156,20 +156,21 @@ public:
     // Ensure cleared outputs
     if (fallbackClearColor && mainOutput) {
       for (auto &output : mainOutput->attachments) {
-        if (!builder.isWrittenTo(output.first)) {
-          auto format = output.second.texture->getFormat().pixelFormat;
-          auto &formatDesc = getTextureFormatDescription(format);
-          if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
-            ClearStep clear;
-            clear.output = RenderStepOutput{};
-            clear.output->attachments.emplace_back(RenderStepOutput::Named(output.first, format));
-            clear.clearValues = ClearValues::getColorValue(fallbackClearColor.value());
+        // TODO(rendergraph)
+        // if (!builder.isWrittenTo(output.first)) {
+        //   auto format = output.second.texture->getFormat().pixelFormat;
+        //   auto &formatDesc = getTextureFormatDescription(format);
+        //   if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
+        //     ClearStep clear;
+        //     clear.output = RenderStepOutput{};
+        //     clear.output->attachments.emplace_back(RenderStepOutput::Named(output.first, format));
+        //     clear.clearValues = ClearValues::getColorValue(fallbackClearColor.value());
 
-            // Add a clear node, the queue index ~0 indicates that the tempView is passed during runtime
-            auto &entry = entries.emplace_back(tempView, std::make_shared<PipelineStep>(clear));
-            builder.addNode(entry.viewData, entry.steps[0], size_t(~0));
-          }
-        }
+        //     // Add a clear node, the queue index ~0 indicates that the tempView is passed during runtime
+        //     auto &entry = entries.emplace_back(tempView, std::make_shared<PipelineStep>(clear));
+        //     builder.addNode(entry.viewData, entry.steps[0], size_t(~0));
+        //   }
+        // }
       }
     }
 

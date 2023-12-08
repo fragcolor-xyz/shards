@@ -32,7 +32,7 @@ add_library(gfx
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp
-  render_graph.cpp
+  render_graph_evaluator.cpp
   render_step_impl.cpp
   renderer_types.cpp
   pipeline_builder.cpp
@@ -62,7 +62,7 @@ target_include_directories(gfx
 target_link_libraries(gfx
   tinygltf draco-wrapper
   magic_enum nameof linalg
-  spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container
+  spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container Boost::tti
   shards-logging
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")

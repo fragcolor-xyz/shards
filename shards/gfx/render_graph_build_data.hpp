@@ -8,6 +8,7 @@
 
 namespace gfx::detail {
 namespace graph_build_data {
+
 struct RenderGraphBuilder;
 struct FrameBuildData;
 struct FrameSize {
@@ -87,29 +88,19 @@ struct SizeConstraintBuildData {
 };
 
 struct NodeBuildData {
-  ViewData viewData;
-  size_t stepIndex;
+  // Original step that created this node
   PipelineStepPtr step;
 
   // This points to which data slot to use when resolving view data
   size_t queueDataIndex;
 
-  // Queues to automatically clear after rendering
-  std::vector<DrawQueuePtr> autoClearQueues;
+  std::optional<std::reference_wrapper<const RenderStepInput>> input;
+  std::optional<std::reference_wrapper<const RenderStepOutput>> output;
 
-  std::vector<FrameBuildData *> readsFrom;
-  std::vector<Attachment> attachments;
-  bool forceOverwrite{};
+  std::vector<FrameBuildData*> inputs;
+  std::vector<FrameBuildData*> outputs;
 
-  RenderStepOutput::OutputSizing outputSizing;
-
-  PipelineStepPtr originalStep;
-
-  std::vector<SizeConstraintBuildData> sizeConstraints;
-  // std::optional<int2> outputSize;
-
-  NodeBuildData(const ViewData &viewData, size_t stepIndex, PipelineStepPtr step, size_t queueDataIndex)
-      : viewData(viewData), stepIndex(stepIndex), step(step), queueDataIndex(queueDataIndex) {}
+  NodeBuildData(PipelineStepPtr step, size_t queueDataIndex) : step(step), queueDataIndex(queueDataIndex) {}
 };
 
 struct OutputBuildData {

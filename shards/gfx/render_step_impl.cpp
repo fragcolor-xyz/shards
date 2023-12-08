@@ -438,10 +438,11 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
   }
 
   // Setup node outputs as texture slots
-  for (auto &frame : buildData.readsFrom) {
-    auto &entry = baseFeature->textureParams.emplace_back(frame->name);
-    entry.type.format = getDefaultTextureSampleType(frame->format);
-  }
+  // TODO(rendergraph)
+  // for (auto &frame : buildData.readsFrom) {
+  //   auto &entry = baseFeature->textureParams.emplace_back(frame->name);
+  //   entry.type.format = getDefaultTextureSampleType(frame->format);
+  // }
 
   node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {
     // Set parameters from step
@@ -499,8 +500,9 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
   if (!step.drawQueue)
     throw std::runtime_error("No draw queue assigned to drawable step");
 
-  if (step.drawQueue->isAutoClear())
-    buildData.autoClearQueues.push_back(step.drawQueue);
+  // TODO(rendergraph)
+  // if (step.drawQueue->isAutoClear())
+  //   buildData.autoClearQueues.push_back(step.drawQueue);
 
   node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step); };
 }

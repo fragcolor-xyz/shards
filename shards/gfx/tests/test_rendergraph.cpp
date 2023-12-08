@@ -42,11 +42,9 @@ TEST_CASE("Render graph sizes", "[RenderGraph]") {
       .output = RenderStepOutput::make(colorOutput),
   }));
 
-  detail::CachedView cv;
-  detail::ViewData vd{.cachedView = cv};
   detail::RenderGraphBuilder builder;
   for(auto& step : steps) {
-    builder.addNode(vd, step, 0);
+    builder.addNode(step, 0);
   }
   detail::RenderGraph graph = builder.build();
   SPDLOG_INFO("Test");
