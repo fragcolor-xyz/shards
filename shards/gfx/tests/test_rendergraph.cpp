@@ -5,15 +5,15 @@
 #include <catch2/catch_all.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/context.hpp>
-#include <gfx/drawables/mesh_drawable.hpp>
-#include <gfx/features/velocity.hpp>
-#include <gfx/loop.hpp>
-#include <gfx/paths.hpp>
-#include <gfx/texture.hpp>
-#include <gfx/render_target.hpp>
+// #include <gfx/drawables/mesh_drawable.hpp>
+// #include <gfx/features/velocity.hpp>
+// #include <gfx/loop.hpp>
+// #include <gfx/paths.hpp>
+// #include <gfx/texture.hpp>
+// #include <gfx/render_target.hpp>
 #include <gfx/steps/effect.hpp>
 #include <gfx/render_graph.hpp>
-#include <spdlog/fmt/fmt.h>
+#include <gfx/render_graph_builder.hpp>
 #include <spdlog/spdlog.h>
 
 using namespace gfx;

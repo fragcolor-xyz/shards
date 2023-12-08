@@ -1,6 +1,7 @@
 #include "render_step_impl.hpp"
 #include "drawables/mesh_drawable.hpp"
 #include "render_graph.hpp"
+#include "render_graph_builder.hpp"
 #include "renderer_types.hpp"
 #include "shader/log.hpp"
 #include "steps/defaults.hpp"

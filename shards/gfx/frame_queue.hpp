@@ -8,6 +8,7 @@
 #include "pmr/vector.hpp"
 #include "renderer.hpp"
 #include "render_graph.hpp"
+#include "render_graph_builder.hpp"
 #include "renderer_storage.hpp"
 #include "renderer_types.hpp"
 #include "spdlog/common.h"

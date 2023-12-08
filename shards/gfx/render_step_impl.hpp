@@ -3,7 +3,7 @@
 
 #include "renderer_cache.hpp"
 #include "texture_view_cache.hpp"
-#include "render_graph.hpp"
+#include "render_graph_build_data.hpp"
 
 namespace gfx::detail {
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data,
