@@ -90,7 +90,7 @@ struct BuiltinFeatureShard {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_feature) {
       Types::FeatureObjectVar.Release(_feature);
       _feature = nullptr;
@@ -203,7 +203,7 @@ private:
   gfx::shader::VariableMap _composedWith;
 
 public:
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     _viewGeneratorBranch.cleanup(context);
@@ -224,8 +224,7 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq,
-                            bool expectSeqOutput) {
+                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq, bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -715,13 +714,17 @@ public:
     }
 
     brancher.updateInputs(input);
-    brancher.activate();
+    try {
+      brancher.activate();
 
-    // Fetch results and insert into parameter collector
-    for (auto &wire : wires) {
-      if (wire->previousOutput.valueType != SHType::None) {
-        applyResults(ctx, wire->context, wire->previousOutput);
+      // Fetch results and insert into parameter collector
+      for (auto &wire : wires) {
+        if (wire->previousOutput.valueType != SHType::None) {
+          applyResults(ctx, wire->context, wire->previousOutput);
+        }
       }
+    } catch (...) {
+      SHLOG_ERROR("Error running GFX.Feature generator");
     }
   }
 };
