@@ -2141,7 +2141,7 @@ struct StepMany : public TryMany {
       if (shards::hasEnded(cref->wire.get())) {
         // stop the root
         if (!shards::stop(cref->wire.get())) {
-          throw ActivationError("Stepped sub-wire did not end normally.");
+          throw ActivationError(fmt::format("StepMany: errors while running wire: {}", cref->wire->name));
         }
       }
 
