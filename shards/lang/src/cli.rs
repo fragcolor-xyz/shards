@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Arg, ArgMatches, Command, Parser};
+use clap::Parser;
 use shards::core::Core;
 use shards::types::Mesh;
 use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};
@@ -20,6 +20,18 @@ extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
 }
 
+#[derive(clap::Args, Debug, Clone)]
+struct RunCmd {
+  /// The script to execute
+  #[arg(value_hint = clap::ValueHint::FilePath, default_value = "autoexec.shs")]
+  file: String,
+  /// Decompress help strings before running the script
+  #[arg(long, short = 'd', default_value = "false", action)]
+  decompress_strings: bool,
+  #[arg(num_args = 0..)]
+  args: Vec<String>,
+}
+
 #[derive(Debug, clap::Subcommand)]
 enum Commands {
   /// Formats a shards file
@@ -31,23 +43,19 @@ enum Commands {
     /// by default the output will go to stdout
     #[arg(long, short = 'i', action)]
     inline: bool,
-    /// Optinally an output file name
+    /// Optionally an output file name
     #[arg(long, short = 'o')]
     output: Option<String>,
   },
   /// Run formatter tests
   Test {},
-  /// Reads and executes a Shards file
-  New {
-    /// The script to execute
-    #[arg(value_hint = clap::ValueHint::FilePath)]
-    file: String,
-    /// Decompress help strings before running the script
-    #[arg(long, short = 'd', default_value = "false", action)]
-    decompress_strings: bool,
+  /// Run old mal/clojure parser/evaluator mode
+  Old {
     #[arg(num_args = 0..)]
-    args: Vec<String>,
+    _args: Vec<String>,
   },
+  /// Reads and executes a Shards file
+  New(RunCmd),
   /// Reads and builds a binary AST Shards file
   Build {
     /// The script to evaluate
@@ -82,18 +90,18 @@ enum Commands {
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
-
-  #[command(external_subcommand)]
-  External(Vec<String>),
 }
 
 #[derive(Debug, clap::Parser)]
 #[command(name = "Shards", version = "0.1")]
 #[command(about = "Shards command line tools and executor.")]
 #[command(author = "Fragcolor Team")]
+#[command(args_conflicts_with_subcommands = true)]
 struct Cli {
   #[command(subcommand)]
-  command: Commands,
+  command: Option<Commands>,
+  #[clap(flatten)]
+  run_cmd: RunCmd,
 }
 
 #[no_mangle]
@@ -130,39 +138,47 @@ pub extern "C" fn shards_process_args(
 
   // Init Core interface when not running external commands
   match &cli.command {
-    Commands::External(_) => {}
+    Some(Commands::Old { _args }) => {}
     _ => unsafe {
       shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
     },
   };
 
   let res: Result<_, Error> = match &cli.command {
-    Commands::Build {
+    Some(Commands::Build {
       file,
       output,
       depfile,
       json,
-    } => build(file, &output, depfile.as_deref(), *json),
-    Commands::AST { file, output } => build(file, &output, None, true),
-    Commands::Load {
+    }) => build(file, &output, depfile.as_deref(), *json),
+    Some(Commands::AST { file, output }) => build(file, &output, None, true),
+    Some(Commands::Load {
       file,
       decompress_strings,
       args,
-    } => load(file, args, *decompress_strings, cancellation_token),
-    Commands::New {
-      file,
-      decompress_strings,
-      args,
-    } => execute(file, *decompress_strings, args, cancellation_token),
-    Commands::Format {
+    }) => load(file, args, *decompress_strings, cancellation_token),
+    Some(Commands::New(run_cmd)) => execute(
+      &run_cmd.file,
+      run_cmd.decompress_strings,
+      &run_cmd.args,
+      cancellation_token,
+    ),
+    Some(Commands::Format {
       file,
       output,
       inline,
-    } => format(file, output, *inline),
-    Commands::Test {} => formatter::run_tests(),
-    Commands::External(_args) => {
+    }) => format(file, output, *inline),
+    Some(Commands::Test {}) => formatter::run_tests(),
+    Some(Commands::Old { _args }) => {
+      shlog!("Old mode is deprecated, please use the new mode");
       return 99;
     }
+    None => execute(
+      &cli.run_cmd.file,
+      cli.run_cmd.decompress_strings,
+      &cli.run_cmd.args,
+      cancellation_token,
+    ),
   };
 
   if let Err(e) = res {
@@ -213,7 +229,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
 fn load(
   file: &str,
   args: &Vec<String>,
-  decompress_strings: bool,
+  _decompress_strings: bool,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), Error> {
   shlog!("Loading file");
@@ -377,7 +393,7 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
 
 fn execute(
   file: &str,
-  decompress_strings: bool,
+  _decompress_strings: bool,
   args: &Vec<String>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), Error> {
