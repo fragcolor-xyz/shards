@@ -24,9 +24,10 @@
 namespace shards {
 namespace Math {
 struct Base {
-  static inline Types MathTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
-                                 CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::FloatType, CoreInfo::Float2Type,
-                                 CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
+  static inline Types MathTypesNoSeq{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                      CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::FloatType, CoreInfo::Float2Type,
+                                      CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::ColorType}};
+  static inline Types MathTypes{MathTypesNoSeq, {CoreInfo::AnySeqType}};
 
   SHVar _result{};
 
@@ -784,8 +785,8 @@ struct ApplyClamp final {
 };
 
 struct Clamp final {
-  static SHTypesInfo inputTypes() { return Base::MathTypes; }
-  static SHTypesInfo outputTypes() { return Base::MathTypes; }
+  static SHTypesInfo inputTypes() { return Base::MathTypesNoSeq; }
+  static SHTypesInfo outputTypes() { return Base::MathTypesNoSeq; }
 
   static SHOptionalString help() { return SHCCSTR("Clamps the input value between the Min and Max values"); }
 
@@ -841,7 +842,7 @@ struct Clamp final {
     firstType = _first.isVariable() ? findParamVarExposedTypeChecked(data, _first).exposedType.basicType : _first->valueType;
     secondType = _second.isVariable() ? findParamVarExposedTypeChecked(data, _second).exposedType.basicType : _second->valueType;
 
-    if (firstType != secondType)
+    if (firstType != secondType || firstType != data.inputType.basicType)
       throw ComposeError("Types should match");
 
     return SHTypeInfo{.basicType = firstType};
