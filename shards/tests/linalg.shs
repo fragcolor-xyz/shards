@@ -79,7 +79,7 @@
   Const(@identity) |
   Math.MatMul(vec4.1) |
   Log |
-  Assert.Is(@f4(2 3 4 5) true) | 
+  Assert.Is(@f4(2 3 4 5) true) |
   Ref(vec4.2)
 
   Const(@identity) |
@@ -151,6 +151,9 @@
 
   0.5 | Math.Lerp(0.0 4.0) | Assert.Is(2.0 true) | Log("Lerped Float Value")
   0.5 | Math.Lerp(0x00 0xff) | Assert.Is(0x7f true) | Log("Lerped Int Value")
+
+  -1 | Clamp(0 10) | Assert.Is(0 true) | Log("Clamped value")
+  22 | Clamp(0 10) | Assert.Is(10 true) | Log("Clamped value")
 
   Msg("Done!")
 })
