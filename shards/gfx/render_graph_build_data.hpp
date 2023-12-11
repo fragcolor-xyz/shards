@@ -61,6 +61,9 @@ struct FrameBuildData {
   std::optional<TextureOverrideRef> textureOverride;
   std::optional<FrameSizing> sizing;
   // std::optional<AttachmentRef> binding;
+
+  // Last node index that wrote to this frame
+  size_t lastWriteIndex;
 };
 
 struct FrameBuildData;
@@ -93,14 +96,27 @@ struct NodeBuildData {
 
   // This points to which data slot to use when resolving view data
   size_t queueDataIndex;
+  // Index in builder input
+  size_t srcIndex;
 
   std::optional<std::reference_wrapper<const RenderStepInput>> input;
   std::optional<std::reference_wrapper<const RenderStepOutput>> output;
 
-  std::vector<FrameBuildData*> inputs;
-  std::vector<FrameBuildData*> outputs;
+  std::vector<FrameBuildData *> inputs;
+  std::vector<FrameBuildData *> outputs;
+
+  struct CopyOperation {
+    enum Order {
+      Before,
+      After,
+    } order;
+    FrameBuildData *from;
+    FrameBuildData *to;
+  };
+  std::vector<CopyOperation> rquiredCopies;
 
   NodeBuildData(PipelineStepPtr step, size_t queueDataIndex) : step(step), queueDataIndex(queueDataIndex) {}
+  FrameBuildData *findInputFrame(const std::string &name) const;
 };
 
 struct OutputBuildData {
