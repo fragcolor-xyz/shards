@@ -136,12 +136,9 @@ public:
 
     RenderGraphBuilder builder;
     if (mainOutput) {
-      builder.referenceOutputSize = float2(mainOutput->getSize());
+      // builder.referenceOutputSize = float2(mainOutput->getSize());
       for (auto &attachment : mainOutput->attachments) {
-        builder.outputs.push_back(graph_build_data::Output{
-            .name = attachment.first,
-            .format = attachment.second.texture->getFormat().pixelFormat,
-        });
+        builder.outputs.emplace_back(attachment.first, attachment.second.texture->getFormat().pixelFormat);
       }
     }
 
@@ -174,13 +171,16 @@ public:
       }
     }
 
-    RenderGraph rg = builder.build();
-
-    if (logger->level() <= spdlog::level::debug) {
-      dumpRenderGraph(rg);
+    std::optional<RenderGraph> rg = builder.build();
+    if (!rg) {
+      throw std::runtime_error("Failed to build render graph");
     }
 
-    return rg;
+    if (logger->level() <= spdlog::level::debug) {
+      dumpRenderGraph(*rg);
+    }
+
+    return std::move(*rg);
   }
 
   // Renderer is passed for generator callbacks

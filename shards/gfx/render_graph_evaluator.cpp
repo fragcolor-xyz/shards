@@ -170,9 +170,10 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   context.submit(cmdBuf);
 
   // TODO: move this earlier into the process once rendering is multi-threaded
-  for (auto &queue : graph.autoClearQueues) {
-    queue->clear();
-  }
+  // TODO(rendergraph)
+  // for (auto &queue : graph.autoClearQueues) {
+  //   queue->clear();
+  // }
 }
 
 } // namespace gfx::detail

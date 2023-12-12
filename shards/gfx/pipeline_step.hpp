@@ -164,8 +164,6 @@ struct ClearStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
 
-  ClearValues clearValues;
-
   std::optional<RenderStepOutput> output;
 
   std::shared_ptr<ClearStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };

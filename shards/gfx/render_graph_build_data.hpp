@@ -12,14 +12,35 @@ namespace graph_build_data {
 struct RenderGraphBuilder;
 struct FrameBuildData;
 struct FrameSize {
+  static inline std::strong_ordering compareScale(const std::optional<float2> &a, const std::optional<float2> &b) {
+    bool noScaleA = !a || a == float2(1.0f);
+    bool noScaleB = !b || b == float2(1.0f);
+    if ((noScaleA && noScaleB) || a == b)
+      return std::strong_ordering::equal;
+    if (a < b)
+      return std::strong_ordering::less;
+    else
+      return std::strong_ordering::greater;
+  }
   struct RelativeToMain {
     std::optional<float2> scale;
-    std::strong_ordering operator<=>(const RelativeToMain &other) const = default;
+    std::strong_ordering operator<=>(const RelativeToMain &other) const { return compareScale(scale, other.scale); }
+    bool operator==(const RelativeToMain &other) const { return compareScale(scale, other.scale) == std::strong_ordering::equal; }
   };
   struct RelativeToFrame {
     FrameBuildData *frame;
     std::optional<float2> scale;
-    std::strong_ordering operator<=>(const RelativeToFrame &other) const = default;
+    std::strong_ordering operator<=>(const RelativeToFrame &other) const {
+      if (frame == other.frame) {
+        return compareScale(scale, other.scale);
+      }
+      return frame <=> other.frame;
+    }
+    bool operator==(const RelativeToFrame &other) const {
+      if (frame != other.frame)
+        return false;
+      return compareScale(scale, other.scale) == std::strong_ordering::equal;
+    }
   };
   struct Manual {
     std::strong_ordering operator<=>(const Manual &other) const { return std::strong_ordering::equal; }
@@ -41,25 +62,21 @@ inline std::strong_ordering operator<=>(const FrameSizing &a, const FrameSizing 
       a);
 }
 
-struct TextureOverrideRef {
-  // size_t stepIndex;
-  PipelineStepPtr step;
-  enum Binding {
-    Input,
-    Output,
-  } bindingType;
-  size_t bindingIndex;
-};
+using TextureOverrideRef = RenderGraph::TextureOverrideRef;
 
 struct FrameBuildData {
   std::string name;
+  size_t index;
   // int2 size;
   // int2 inputSize;
-  // std::optional<SizeIndex> sizeId;
+  std::optional<size_t> outputIndex;
   WGPUTextureFormat format;
   // TextureSubResource textureOverride;
   std::optional<TextureOverrideRef> textureOverride;
   std::optional<FrameSizing> sizing;
+
+  // (optional) The node that spawned this frame
+  NodeBuildData *creator{};
   // std::optional<AttachmentRef> binding;
 
   // Last node index that wrote to this frame
@@ -110,13 +127,22 @@ struct NodeBuildData {
       Before,
       After,
     } order;
-    FrameBuildData *from;
-    FrameBuildData *to;
+    FrameBuildData *src;
+    FrameBuildData *dst;
+    CopyOperation(Order order, FrameBuildData *from, FrameBuildData *to) : order(order), src(from), dst(to) {}
   };
-  std::vector<CopyOperation> rquiredCopies;
+  std::vector<CopyOperation> requiredCopies;
+
+  struct ClearOperation {
+    FrameBuildData *frame;
+    bool discard{};
+    ClearValues clearValues;
+  };
+  std::vector<ClearOperation> requiredClears;
 
   NodeBuildData(PipelineStepPtr step, size_t queueDataIndex) : step(step), queueDataIndex(queueDataIndex) {}
   FrameBuildData *findInputFrame(const std::string &name) const;
+  FrameBuildData *findOutputFrame(const std::string &name) const;
 };
 
 struct OutputBuildData {
@@ -129,6 +155,7 @@ struct InputBuildData {
 struct Output {
   std::string name;
   WGPUTextureFormat format;
+  Output(std::string name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb) : name(name), format(format) {}
 };
 
 struct SizeBuildData {

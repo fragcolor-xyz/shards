@@ -380,11 +380,20 @@ void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const Rende
 
 using NodeBuildData = graph_build_data::NodeBuildData;
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderFullscreenStep &step) {
-  builder.allocateInputs(data, step.input);
-
-  bool overwriteTargets = step.overlay ? false : true;
-  builder.allocateOutputs(data, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
+  builder.allocateInputs(node, step.input);
+  builder.allocateOutputs(node, step.output ? step.output.value() : defaultFullscreenOutput);
+}
+void setupNodeFrames(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
+  if (!step.overlay) {
+    for (auto &frame : node.outputs) {
+      auto &clear = node.requiredClears.emplace_back();
+      clear.frame = frame;
+      clear.discard = true;
+    }
+  } else {
+    builder.setupClears(node);
+  }
 }
 
 static inline TextureSampleType getDefaultTextureSampleType(WGPUTextureFormat pixelFormat) {
@@ -479,16 +488,17 @@ void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data,
 
 void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const ClearStep &step) {
   node.setupPass = [=](WGPURenderPassDescriptor &desc) {
-    for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
-      auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
-      double4 clearValue(step.clearValues.color);
-      memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
-    }
-    if (desc.depthStencilAttachment) {
-      auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
-      attachment.depthClearValue = step.clearValues.depth;
-      attachment.stencilClearValue = step.clearValues.stencil;
-    }
+    // TODO(rendergraph)
+    // for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
+    //   auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
+    //   double4 clearValue(step.clearValues.color);
+    //   memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
+    // }
+    // if (desc.depthStencilAttachment) {
+    //   auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
+    //   attachment.depthClearValue = step.clearValues.depth;
+    //   attachment.stencilClearValue = step.clearValues.stencil;
+    // }
   };
 }
 

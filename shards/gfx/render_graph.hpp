@@ -207,23 +207,23 @@ struct RenderGraph {
     FrameIndex frameIndex;
   };
 
-  struct SizeParent {
-    SizeIndex parentSize;
-    float2 sizeScale;
-  };
+  // struct SizeParent {
+  //   SizeIndex parentSize;
+  //   float2 sizeScale;
+  // };
 
-  struct SizeConstraint {
-    // All frames listed must have the same size
-    std::vector<FrameIndex> frames;
-    // Parent size
-    std::optional<SizeParent> parent;
-  };
+  // struct SizeConstraint {
+  //   // All frames listed must have the same size
+  //   std::vector<FrameIndex> frames;
+  //   // Parent size
+  //   std::optional<SizeParent> parent;
+  // };
 
-  std::vector<SizeConstraint> sizeConstraints;
+  // std::vector<SizeConstraint> sizeConstraints;
   std::vector<RenderGraphNode> nodes;
   std::vector<Frame> frames;
   std::vector<Output> outputs;
-  std::vector<DrawQueuePtr> autoClearQueues;
+  // std::vector<DrawQueuePtr> autoClearQueues;
 };
 
 struct DrawableProcessorCache {

@@ -9,15 +9,65 @@
 #include <variant>
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
+#include <boost/iterator/reverse_iterator.hpp>
+#include <boost/tti/has_function.hpp>
+
+template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
+    auto it = ctx.begin(), end = ctx.end();
+    if (it != end)
+      throw format_error("invalid format");
+    return it;
+  }
+
+  template <typename FormatContext>
+  auto format(const gfx::detail::graph_build_data::FrameSizing &size, FormatContext &ctx) -> decltype(ctx.out()) {
+    using namespace linalg::ostream_overloads;
+    std::stringstream ss;
+    std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, gfx::detail::graph_build_data::FrameSize::RelativeToMain>) {
+            ss << "Main";
+            if (arg.scale && *arg.scale != linalg::aliases::float2(1.0f))
+              ss << " * " << *arg.scale;
+          } else if constexpr (std::is_same_v<T, gfx::detail::graph_build_data::FrameSize::RelativeToFrame>) {
+            ss << "Frame[" << arg.frame->index << "]";
+            if (arg.scale && *arg.scale != linalg::aliases::float2(1.0f))
+              ss << " * " << *arg.scale;
+          } else if constexpr (std::is_same_v<T, gfx::detail::graph_build_data::FrameSize::Manual>) {
+            ss << "Manual";
+          } else {
+            throw std::logic_error("");
+          }
+        },
+        size);
+    return format_to(ctx.out(), "{}", ss.str());
+  }
+};
 
 namespace gfx::detail {
 namespace graph_build_data {
 static inline auto logger = gfx::getLogger();
 
+// Checks if setupNodeFrames is callable with the given step type
+template <typename T, typename = void> struct Has_setupNodeFrames : std::false_type {};
+template <typename T>
+struct Has_setupNodeFrames<T, std::void_t<decltype(setupNodeFrames(std::declval<RenderGraphBuilder &>(),
+                                                                   std::declval<NodeBuildData &>(), std::declval<T &>()))>>
+    : std::true_type {};
+
 inline FrameBuildData *NodeBuildData::findInputFrame(const std::string &name) const {
   for (auto &input : inputs) {
     if (input->name == name)
       return input;
+  }
+  return nullptr;
+}
+inline FrameBuildData *NodeBuildData::findOutputFrame(const std::string &name) const {
+  for (auto &output : outputs) {
+    if (output->name == name)
+      return output;
   }
   return nullptr;
 }
@@ -27,15 +77,11 @@ private:
   template <typename T> using VectorType = boost::container::stable_vector<T>;
   VectorType<NodeBuildData> buildingNodes;
   VectorType<FrameBuildData> buildingFrames;
-  // VectorType<AttachmentRef> buildingOutputs;
-  // VectorType<AttachmentRef> buildingInputs;
-  // VectorType<SizeBuildData> buildingSizeDefinitions;
 
   bool needPrepare = true;
   size_t writeCounter{};
 
 public:
-  float2 referenceOutputSize{};
   std::vector<Output> outputs;
 
   // Adds a node to the render graph
@@ -50,7 +96,7 @@ public:
 
   // When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
   // e.g. fullscreen effect passes
-  void allocateOutputs(NodeBuildData &nodeBuildData, const RenderStepOutput &output, bool forceOverwrite = false) {
+  void allocateOutputs(NodeBuildData &nodeBuildData, const RenderStepOutput &output, bool discardAttachments = false) {
     nodeBuildData.output.emplace(std::ref(output));
   }
 
@@ -59,15 +105,48 @@ public:
     nodeBuildData.input.emplace(std::ref(input));
   }
 
+  void setupClears(NodeBuildData &nodeBuildData) {
+    if (!nodeBuildData.output)
+      throw std::logic_error("Output was not setup during allocateNodeEdges");
+    auto &attachments = nodeBuildData.output->get().attachments;
+    for (size_t i = 0; i < attachments.size(); i++) {
+      std::visit(
+          [&](auto &output) {
+            if (output.clearValues) {
+              auto &clear = nodeBuildData.requiredClears.emplace_back();
+              clear.clearValues = *output.clearValues;
+              clear.frame = nodeBuildData.outputs[i];
+            }
+          },
+          attachments[i]);
+    }
+  }
+
   using NamedFrameLookup = std::unordered_map<std::string, FrameBuildData *>;
 
   FrameBuildData *findNamedFrame(const RenderStepOutput::Named &named, const FrameSizing &size) {
     return findNamedFrame(named, size, [](const FrameBuildData &frame) -> bool { return true; });
   }
 
+  FrameSizing simplifySize(const FrameSizing &size) {
+    return std::visit(
+        [&](auto &arg) -> FrameSizing {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, FrameSize::RelativeToFrame>) {
+            if (!arg.scale || *arg.scale == float2(1.0f))
+              return *arg.frame->sizing;
+          }
+          return arg;
+        },
+        size);
+  }
+
+  bool compareSize(const FrameSizing &a, const FrameSizing &b) { return simplifySize(a) == simplifySize(b); }
+
   template <typename T>
   std::enable_if_t<std::is_invocable_r_v<bool, T, const FrameBuildData &>, FrameBuildData *>
   findNamedFrame(const RenderStepOutput::Named &named, const FrameSizing &size, T filter) {
+    FrameBuildData *candidate{};
     for (auto &frame : buildingFrames) {
       if (frame.textureOverride) // These will always be unique
         continue;
@@ -75,13 +154,31 @@ public:
         continue;
       if (frame.format != named.format)
         continue;
-      if (*frame.sizing != size)
+      if (!compareSize(*frame.sizing, size))
         continue;
       if (!filter(frame))
         continue;
-      return &frame;
+      // Make sure to always pick the frame that was written to last
+      if (!candidate || frame.lastWriteIndex > candidate->lastWriteIndex)
+        candidate = &frame;
     }
-    return nullptr;
+    return candidate;
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_invocable_r_v<bool, T, const FrameBuildData &>, FrameBuildData *>
+  findAnyNamedOutputFrame(const std::string &name, T filter) {
+    FrameBuildData *candidate{};
+    for (auto &frame : buildingFrames) {
+      if (frame.name != name)
+        continue;
+      if (!filter(frame))
+        continue;
+      // Make sure to always pick the frame that was written to last
+      if (!candidate || frame.lastWriteIndex > candidate->lastWriteIndex)
+        candidate = &frame;
+    }
+    return candidate;
   }
 
   FrameBuildData *findNamedFrame(const RenderStepInput::Named &named) {
@@ -133,18 +230,24 @@ public:
         size);
   }
 
+  FrameBuildData &newFrame() {
+    auto &result = buildingFrames.emplace_back();
+    result.index = buildingFrames.size() - 1;
+    return result;
+  }
+
   FrameBuildData *findOrCreateInputFrame(NodeBuildData &node, const RenderStepInput::InputVariant &output) {
     FrameBuildData *frame = std::visit(
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
             assert(arg.subResource);
-            FrameBuildData &frame = buildingFrames.emplace_back();
+            FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
             frame.textureOverride = TextureOverrideRef{
                 .step = node.step,
-                .bindingType = TextureOverrideRef::Output,
+                .bindingType = TextureOverrideRef::Input,
                 .bindingIndex = 0,
             };
             frame.sizing = FrameSize::Manual{};
@@ -161,7 +264,7 @@ public:
     return frame;
   }
 
-  void fixupWriteToInputFrame(NodeBuildData &node, FrameBuildData *&outputFrame) {
+  void fixupWriteToInputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output, FrameBuildData *&outputFrame) {
     bool readsFromOutput{};
     for (auto &input : node.inputs) {
       if (input == outputFrame) {
@@ -177,8 +280,22 @@ public:
           findNamedFrame(named, *outputFrame->sizing, [&](const FrameBuildData &frame) { return &frame != outputFrame; });
       if (!replacementFrame) {
         auto &newFrame = buildingFrames.emplace_back(*outputFrame);
+        newFrame.index = buildingFrames.size() - 1;
         replacementFrame = &newFrame;
       }
+
+      bool needPrevious = std::visit(
+          [&](auto &arg) {
+            if (!arg.clearValues) {
+              return true;
+            }
+            return false;
+          },
+          output);
+      if (needPrevious) {
+        node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, outputFrame, replacementFrame);
+      }
+
       outputFrame = replacementFrame;
     }
   }
@@ -188,16 +305,40 @@ public:
     return findOrCreateOutputFrame(node, output, sizing, [](const FrameBuildData &frame) -> bool { return true; });
   }
 
-  template <typename T>
-  std::enable_if_t<std::is_invocable_r_v<bool, T, const FrameBuildData &>, FrameBuildData *>
+  void fixupOutputFrameTransitions(NodeBuildData &node) {
+    for (size_t i = 0; i < node.outputs.size(); i++) {
+      auto &output = node.outputs[i];
+      if (output->creator == &node) {
+        bool hasClear = std::find_if(node.requiredClears.begin(), node.requiredClears.end(),
+                                     [&](auto &clear) { return clear.frame == output; }) != node.requiredClears.end();
+
+        // Frame is cleared, ignore since no transition is needed
+        if (hasClear)
+          continue;
+
+        // Find an existing output frame that we need to copy from
+        FrameBuildData *transitionSrcFrame =
+            findAnyNamedOutputFrame(output->name, [&](const FrameBuildData &frame) { return &frame != output; });
+
+        // Found a frame with the same name but potentially different format/size
+        if (transitionSrcFrame) {
+          SPDLOG_LOGGER_DEBUG(logger, "Transitioning frame {} => {}", transitionSrcFrame->index, output->index);
+          node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, transitionSrcFrame, output);
+        }
+      }
+    }
+  }
+
+  template <typename TL>
+  std::enable_if_t<std::is_invocable_r_v<bool, TL, const FrameBuildData &>, FrameBuildData *>
   findOrCreateOutputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output,
-                          const RenderStepOutput::OutputSizing &sizing, T filter) {
+                          const RenderStepOutput::OutputSizing &sizing, TL filter) {
     FrameBuildData *frame = std::visit(
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
             assert(arg.subResource);
-            FrameBuildData &frame = buildingFrames.emplace_back();
+            FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
             frame.textureOverride = TextureOverrideRef{
@@ -211,7 +352,8 @@ public:
             FrameSizing frameSize = resolveSize(node, sizing);
             FrameBuildData *frame = findNamedFrame(arg, frameSize, filter);
             if (!frame) {
-              FrameBuildData &oframe = buildingFrames.emplace_back();
+              FrameBuildData &oframe = newFrame();
+              oframe.creator = &node;
               oframe.name = arg.name;
               oframe.format = arg.format;
               oframe.sizing = frameSize;
@@ -226,39 +368,7 @@ public:
 
   void assignUniqueNodeInputs(NodeBuildData &node) {
     if (node.input.has_value()) {
-      // size_t inputIndex = 0;
       for (auto &input : node.input->get().attachments) {
-        // std::visit(
-        //     [&](auto &arg) {
-        //       using T = std::decay_t<decltype(arg)>;
-        //       if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
-        //         assert(arg.subResource);
-        //         FrameBuildData &frame = buildingFrames.emplace_back();
-        //         frame.name = arg.name;
-        //         frame.format = arg.subResource.texture->getFormat().pixelFormat;
-        //         frame.textureOverride = TextureOverrideRef{
-        //             .step = node.step,
-        //             .bindingType = TextureOverrideRef::Output,
-        //             .bindingIndex = inputIndex,
-        //         };
-        //         node.inputs.emplace_back(&frame);
-        //       } else if constexpr (std::is_same_v<T, RenderStepInput::Named>) {
-        //         auto it = namedFrames.find(arg.name);
-        //         if (it == namedFrames.end())
-        //           throw std::runtime_error(
-        //               fmt::format("Error in node {}, named input {} was not found", node.srcIndex, inputIndex));
-        //         FrameBuildData &frame = *it->second;
-        //         // if (frame.format != arg.format)
-        //         //   throw std::runtime_error(fmt::format("Error in node {}, named input {} format mismatch (expected: {}, was:
-        //         //   {})",
-        //         //                                        nodeIndex, inputIndex, frame.format, arg.format));
-        //         node.inputs.emplace_back(&frame);
-        //       } else {
-        //         throw std::logic_error("");
-        //       }
-        //     },
-        //     input);
-        // ++inputIndex;
         FrameBuildData *frame = findOrCreateInputFrame(node, input);
         node.inputs.emplace_back(frame);
       }
@@ -268,99 +378,11 @@ public:
   void assignUniqueNodeOutputs(NodeBuildData &node) {
     auto &outputSizing = node.output->get().outputSizing;
     if (node.output.has_value()) {
-      // size_t outputIndex = 0;
       for (auto &output : node.output->get().attachments) {
-        // FrameBuildData *frame = std::visit(
-        //     [&](auto &arg) -> FrameBuildData * {
-        //       using T = std::decay_t<decltype(arg)>;
-        //       if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-        //         assert(arg.subResource);
-        //         FrameBuildData &frame = buildingFrames.emplace_back();
-        //         frame.name = arg.name;
-        //         frame.format = arg.subResource.texture->getFormat().pixelFormat;
-        //         frame.textureOverride = TextureOverrideRef{
-        //             .step = node.step,
-        //             .bindingType = TextureOverrideRef::Output,
-        //             .bindingIndex = outputIndex,
-        //         };
-        //         return &frame;
-        //       } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
-        //         // auto it = namedFrames.find(arg.name);
-        //         // if (it != namedFrames.end()) {
-        //         //   return it->second;
-        //         // } else {
-        //         //   auto &frame = buildingFrames.emplace_back();
-        //         //   frame.name = arg.name;
-        //         //   namedFrames.emplace(arg.name, &frame);
-        //         //   return &frame;
-        //         // }
-        //       }
-        //     },
-        //     output);
         FrameBuildData *frame = findOrCreateOutputFrame(node, output, outputSizing);
-        fixupWriteToInputFrame(node, frame);
+        fixupWriteToInputFrame(node, output, frame);
         node.outputs.emplace_back(frame);
         frame->lastWriteIndex = writeCounter;
-
-        // FrameBuildData &frame = buildingFrames.emplace_back();
-        // std::visit(
-        //     [&](auto &&arg) {
-        //       frame.name = arg.name;
-
-        //       std::visit(
-        //           [&](auto &size) {
-        //             using T = std::decay_t<decltype(size)>;
-        //             if constexpr (std::is_same_v<T, RenderStepOutput::RelativeToInputSize>) {
-        //               if (size.name) {
-        //                 auto it = namedFrames.find(*size.name);
-        //                 if (it == namedFrames.end())
-        //                   throw std::runtime_error(
-        //                       fmt::format("Error in node {}, named input {} specified in relative output size was not found",
-        //                                   nodeIndex, *size.name));
-        //                 frame.sizing = FrameSize::RelativeToFrame{
-        //                     .frame = it->second,
-        //                     .scale = size.scale,
-        //                 };
-        //               } else {
-        //                 if (node.inputs.empty())
-        //                   throw std::runtime_error(
-        //                       fmt::format("Error in node {}, relative output size specified, but no inputs", nodeIndex));
-        //                 frame.sizing = FrameSize::RelativeToFrame{
-        //                     .frame = node.inputs[0],
-        //                     .scale = size.scale,
-        //                 };
-        //               }
-        //             } else if constexpr (std::is_same_v<T, RenderStepOutput::RelativeToMainSize>) {
-        //               frame.sizing = FrameSize::RelativeToMain{
-        //                   .scale = size.scale,
-        //               };
-        //             } else if constexpr (std::is_same_v<T, RenderStepOutput::ManualSize>) {
-        //               frame.sizing = FrameSize::Manual{};
-        //             } else {
-        //               throw std::logic_error("");
-        //             }
-        //           },
-        //           outputSizing);
-
-        //       using T = std::decay_t<decltype(arg)>;
-        //       if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-        //         assert(arg.subResource);
-        //         frame.format = arg.subResource.texture->getFormat().pixelFormat;
-        //         frame.textureOverride = TextureOverrideRef{
-        //             .step = node.step,
-        //             .bindingType = TextureOverrideRef::Output,
-        //             .bindingIndex = outputIndex,
-        //         };
-        //       } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
-        //         frame.format = arg.format;
-        //         namedFrames[frame.name] = &frame;
-        //       } else {
-        //         throw std::logic_error("");
-        //       }
-        //     },
-        //     output);
-        // node.outputs.emplace_back(&frame);
-        // ++outputIndex;
       }
     }
   }
@@ -371,7 +393,103 @@ public:
     for (auto &node : buildingNodes) {
       assignUniqueNodeInputs(node);
       assignUniqueNodeOutputs(node);
+      std::visit(
+          [&](auto &arg) {
+            using NodeType = std::decay_t<decltype(arg)>;
+            if constexpr (Has_setupNodeFrames<NodeType>::value) {
+              setupNodeFrames(*this, node, arg);
+            }
+          },
+          *node.step.get());
+      fixupOutputFrameTransitions(node);
       ++writeCounter;
+    }
+  }
+
+  using RNodeIt = decltype(buildingNodes)::reverse_iterator;
+
+  // Traces back a frame to the first node that writes or clears it
+  RNodeIt traceFirstWrite(RNodeIt lastNodeUsage, FrameBuildData *frame) {
+    RNodeIt earliestWriteOrClear = lastNodeUsage;
+    for (auto it = lastNodeUsage; it != buildingNodes.rend(); ++it) {
+      auto &clears = it->requiredClears;
+      if (std::find_if(clears.begin(), clears.end(), [&](auto &clear) { return clear.frame == frame; }) != clears.end()) {
+        // This is a clear, so stop here
+        earliestWriteOrClear = it;
+        break;
+      }
+      auto &outputs = it->outputs;
+      if (std::find(outputs.begin(), outputs.end(), frame) != outputs.end()) {
+        // In case this frame is never cleared, just record the earliest write
+        earliestWriteOrClear = it;
+      }
+    }
+    return earliestWriteOrClear;
+  }
+
+  bool hasAnyReads(RNodeIt begin, RNodeIt end, FrameBuildData *frame_) const {
+    for (auto it = begin; it != end; ++it) {
+      for (auto &frame : it->inputs) {
+        if (frame == frame_) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void replaceOutputFrames(RNodeIt begin, RNodeIt end, FrameBuildData *srcFrame, FrameBuildData *dstFrame) {
+    for (auto it = begin; it != end; ++it) {
+      for (auto &frame : it->outputs) {
+        if (frame == srcFrame) {
+          SPDLOG_LOGGER_DEBUG(logger, "Replacing output frame {} => {} in node {}", srcFrame->index, dstFrame->index,
+                              it->srcIndex);
+          frame = dstFrame;
+        }
+      }
+    }
+  }
+
+  void attachOutputs() {
+    // buildingOutputs.resize(outputs.size());
+
+    std::list<size_t> outputsToAttach;
+    for (size_t i = 0; i < outputs.size(); i++) {
+      FrameBuildData &outputFrame = newFrame();
+      outputFrame.format = outputs[i].format;
+      outputFrame.name = outputs[i].name;
+      outputFrame.sizing = FrameSize::RelativeToMain{};
+      outputFrame.outputIndex = i;
+
+      // Iterate over nodes in reverse, attaching the output to the first matching frame name
+      bool outputAttached = false;
+      for (auto nodeIt = buildingNodes.rbegin(); nodeIt != buildingNodes.rend(); ++nodeIt) {
+        FrameBuildData *frame = nodeIt->findOutputFrame(outputs[i].name);
+        if (frame) {
+          // Trace back to the node that clears or first writes this frame
+          auto origin = traceFirstWrite(nodeIt, frame);
+
+          // Any reads from this frame means we can't replace it as we might not be able to bind outputs
+          bool canReplaceOutputFrame = !hasAnyReads(buildingNodes.rbegin(), origin + 1, frame);
+          if (canReplaceOutputFrame) {
+            // We can replace the usages with the output frame directly
+            replaceOutputFrames(nodeIt, origin + 1, frame, &outputFrame);
+          } else {
+            // Copy this frame into the output
+            SPDLOG_LOGGER_DEBUG(logger, "Can not replace output frame {} => {} because it is read from, copying instead",
+                                frame->index, outputFrame.index);
+            nodeIt->requiredCopies.emplace_back(NodeBuildData::CopyOperation::After, frame, &outputFrame);
+          }
+
+          outputAttached = true;
+          break;
+        }
+      }
+
+      if (!outputAttached) {
+        SPDLOG_LOGGER_WARN(logger, "Failed to attach render graph output {} ({}), possibly because no frame writes to it.", i,
+                           outputs[i].name);
+      }
     }
   }
 
@@ -385,24 +503,46 @@ public:
     throw std::logic_error("Not in target collection");
   }
 
+  size_t usageCount(const FrameBuildData &frame) {
+    size_t count{};
+    for (auto &node : buildingNodes) {
+      for (auto &input : node.inputs) {
+        if (input == &frame)
+          ++count;
+      }
+      for (auto &output : node.outputs) {
+        if (output == &frame)
+          ++count;
+      }
+    }
+    return count;
+  }
+
+  static inline size_t getStepId(PipelineStepPtr step) {
+    return std::visit([](auto &arg) { return arg.getId().getIdPart(); }, *step.get());
+  }
+
   void dumpDebugInfo() {
-    SPDLOG_LOGGER_DEBUG(logger, "- Render graph builder -");
+    SPDLOG_LOGGER_DEBUG(logger, "-- Render graph builder --");
     SPDLOG_LOGGER_DEBUG(logger, "Frames:");
 
     size_t index{};
     for (auto &frame : buildingFrames) {
       std::string outSuffix;
       if (frame.textureOverride) {
-        UniqueId stepId = std::visit([](auto &arg) { return arg.getId(); }, *frame.textureOverride->step.get());
-        outSuffix += fmt::format(" bind: {}/{}/{}", magic_enum::enum_name(frame.textureOverride->bindingType),
-                                 frame.textureOverride->bindingIndex, stepId.getTag());
+        outSuffix += fmt::format(" binding: {}/stepId:{}/idx:{}", magic_enum::enum_name(frame.textureOverride->bindingType),
+                                 getStepId(frame.textureOverride->step), frame.textureOverride->bindingIndex);
       }
-      SPDLOG_LOGGER_DEBUG(logger, " - [{}] {} fmt: {}{}", index, frame.name, magic_enum::enum_name(frame.format), outSuffix);
+      if (frame.outputIndex) {
+        outSuffix += fmt::format(" out: {}", *frame.outputIndex);
+      }
+      SPDLOG_LOGGER_DEBUG(logger, " - [{}] {} fmt: {} size: {}{}", index, frame.name, magic_enum::enum_name(frame.format),
+                          *frame.sizing, outSuffix);
       ++index;
     }
 
     index = 0;
-    SPDLOG_LOGGER_DEBUG(logger, "Nodes:");
+    SPDLOG_LOGGER_DEBUG(logger, "Output Graph:");
     for (auto &node : buildingNodes) {
       std::string writesToStr;
       for (auto &wt : node.outputs)
@@ -417,28 +557,147 @@ public:
         readsFromStr.resize(readsFromStr.size() - 2);
 
       std::string logStr;
-      if (!writesToStr.empty()) {
-        if (!logStr.empty())
-          logStr += " ";
-        logStr += fmt::format("writes: {}", writesToStr);
-      }
       if (!readsFromStr.empty()) {
         if (!logStr.empty())
           logStr += " ";
         logStr += fmt::format("reads: {}", readsFromStr);
       }
+      if (!writesToStr.empty()) {
+        if (!logStr.empty())
+          logStr += " ";
+        logStr += fmt::format("writes: {}", writesToStr);
+      }
 
-      SPDLOG_LOGGER_DEBUG(logger, " - [{}] {}", index, logStr);
+      for (auto &copy : node.requiredCopies) {
+        if (copy.order == NodeBuildData::CopyOperation::Before) {
+          SPDLOG_LOGGER_DEBUG(logger, " - copy before: {} -> {}", indexOf(buildingFrames, copy.src),
+                              indexOf(buildingFrames, copy.dst));
+        }
+      }
+
+      for (auto &clear : node.requiredClears) {
+        SPDLOG_LOGGER_DEBUG(logger, " - {} {}", clear.discard ? "discard" : "clear", indexOf(buildingFrames, clear.frame));
+      }
+
+      SPDLOG_LOGGER_DEBUG(logger, " - [stepId:{}] {}", getStepId(node.step), logStr);
+
+      for (auto &copy : node.requiredCopies) {
+        if (copy.order == NodeBuildData::CopyOperation::After) {
+          SPDLOG_LOGGER_DEBUG(logger, " - copy after: {} -> {}", indexOf(buildingFrames, copy.src),
+                              indexOf(buildingFrames, copy.dst));
+        }
+      }
       ++index;
     }
   }
 
-  void deduplicateFrames() {}
+  struct References {
+    std::vector<FrameBuildData *> usedFrames;
+    std::unordered_map<FrameBuildData *, FrameIndex> usedFrameLookup;
+  };
 
-  RenderGraph build() {
+  void collectReferences(References &outReferences) {
+    auto addUsedFrame = [&](FrameBuildData *frame) {
+      if (!outReferences.usedFrameLookup.contains(frame)) {
+        outReferences.usedFrameLookup[frame] = outReferences.usedFrames.size();
+        outReferences.usedFrames.emplace_back(frame);
+      }
+    };
+    for (auto &buildingNode : buildingNodes) {
+      for (auto &frame : buildingNode.inputs) {
+        addUsedFrame(frame);
+      }
+      for (auto &frame : buildingNode.outputs) {
+        addUsedFrame(frame);
+      }
+      for (auto &copy : buildingNode.requiredCopies) {
+        addUsedFrame(copy.src);
+        addUsedFrame(copy.dst);
+      }
+      for (auto &clear : buildingNode.requiredClears) {
+        addUsedFrame(clear.frame);
+      }
+    }
+  }
+
+  void insertForceClear(NodeBuildData &node, FrameBuildData &frame) {
+    SPDLOG_LOGGER_WARN(logger, "Frame {} is not cleared, forcing clear", frame.index);
+
+    ClearValues clearValues;
+    auto &formatDesc = getTextureFormatDescription(frame.format);
+    if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil)) {
+      clearValues = ClearValues::getDefaultDepthStencil();
+    } else {
+      clearValues = ClearValues::getDefaultColor();
+    }
+    node.requiredClears.emplace_back(NodeBuildData::ClearOperation{
+        .frame = &frame,
+        .clearValues = clearValues,
+    });
+  }
+
+  bool fixupClears() {
+    bool errors{};
+    std::set<FrameBuildData *> writtenFrames;
+    for (auto &node : buildingNodes) {
+      for (auto &input : node.inputs) {
+        assert(!input->outputIndex);
+        if (!input->textureOverride && !writtenFrames.contains(input)) {
+          SPDLOG_LOGGER_ERROR(logger, "Frame {} is read from but never written to", input->index);
+          errors = true;
+        }
+      }
+      for (auto &copy : node.requiredCopies) {
+        if (copy.order == NodeBuildData::CopyOperation::Before)
+          writtenFrames.emplace(copy.dst);
+      }
+      for (auto &clear : node.requiredClears) {
+        writtenFrames.emplace(clear.frame);
+      }
+      for (auto &output : node.outputs) {
+        if (!writtenFrames.contains(output)) {
+          insertForceClear(node, *output);
+        }
+        writtenFrames.emplace(output);
+      }
+      for (auto &copy : node.requiredCopies) {
+        if (copy.order == NodeBuildData::CopyOperation::After)
+          writtenFrames.emplace(copy.dst);
+      }
+    }
+    return !errors;
+  }
+
+  std::optional<RenderGraph> build() {
     RenderGraph result;
     assignUniqueFrames();
+
+    References references;
+    collectReferences(references);
+
+    for (auto &frame : references.usedFrames) {
+      auto &outFrame = result.frames.emplace_back();
+      outFrame.format = frame->format;
+      outFrame.name = frame->name;
+      if (frame->outputIndex) {
+        outFrame.binding = RenderGraph::OutputIndex(*frame->outputIndex);
+      } else if (frame->textureOverride) {
+        outFrame.binding = *frame->textureOverride;
+      }
+    }
+
+    if (!fixupClears())
+      return std::nullopt;
+
+    attachOutputs();
+    // for (auto &node : buildingNodes) {
+    //   for(auto&
+    //   // for(auto& clear : node.requiredClears) {
+    //   // }
+    // }
+
     dumpDebugInfo();
+
     return result;
   }
 };
