@@ -707,7 +707,9 @@ public:
 
   NodeBuildData *generateCopyNode(NodeBuildData::CopyOperation &copy) {
     auto copyStep = steps::Copy::create(RenderStepInput::make(copy.src->name),
-                                        RenderStepOutput::make(RenderStepOutput::Named("copy", copy.dst->format)));
+                                        RenderStepOutput::make(RenderStepOutput::Named(copy.dst->name, copy.dst->format)));
+    std::get<RenderFullscreenStep>(*copyStep.get()).name =
+        fmt::format("Copy {} {}=>{}", copy.src->name, copy.src->format, copy.dst->format);
     NodeBuildData &copyNode = generatedNodes.emplace_back(copyStep, size_t(~0));
     copyNode.inputs.emplace_back(copy.src);
     copyNode.outputs.emplace_back(copy.dst);

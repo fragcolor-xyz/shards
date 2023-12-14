@@ -4,11 +4,13 @@
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
 #include <boost/tti/has_member_data.hpp>
+#include <boost/core/type_name.hpp>
 
 namespace gfx::detail {
 
 BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_input, input);
 BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_output, output);
+BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_name, name);
 
 RenderGraphEvaluator::RenderGraphEvaluator(allocator_type allocator, Renderer &renderer, RendererStorage &storage)
     : allocator(allocator), writtenTextures(allocator), frameTextures(allocator), frameSizes(allocator), renderer(renderer),
@@ -286,6 +288,19 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     const ViewData &viewData = evaluationData.getViewData(node.queueDataIndex);
 
     WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node);
+    std::string nameBuffer;
+    std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          nameBuffer = boost::core::type_name<T>();
+          if constexpr (has_render_step_name<T, std::string>::type::value) {
+            if (!arg.name.empty()) {
+              nameBuffer = fmt::format("{} ({})", arg.name.c_str(), nameBuffer);
+            }
+          }
+        },
+        *node.originalStep.get());
+    renderPassDesc.label = nameBuffer.c_str();
     if (node.setupPass)
       node.setupPass(renderPassDesc);
     WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);

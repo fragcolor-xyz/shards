@@ -15,7 +15,9 @@ using shader::FieldTypes;
 struct Effect {
   static PipelineStepPtr create(RenderStepInput &&input, RenderStepOutput &&output, BlockPtr &&shader) {
     FeaturePtr feature = std::make_shared<Feature>();
-    feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
+    if (shader) {
+      feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
+    }
 
     return makePipelineStep(RenderFullscreenStep{
         .features = withDefaultFullscreenFeatures(feature),

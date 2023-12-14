@@ -164,6 +164,9 @@ struct NoopStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
 
+  // Name that shows up in the debugger
+  std::string name;
+
   std::optional<RenderStepOutput> output;
 
   std::shared_ptr<NoopStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
@@ -174,6 +177,9 @@ struct NoopStep {
 struct RenderDrawablesStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
+
+  // Name that shows up in the debugger
+  std::string name;
 
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
@@ -192,6 +198,9 @@ struct RenderDrawablesStep {
 struct RenderFullscreenStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
+
+  // Name that shows up in the debugger
+  std::string name;
 
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;

@@ -95,8 +95,8 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
     auto outputSize = testRenderer->getOutputSize();
     rt->resizeConditional(outputSize);
 
-    Rect mainViewport = viewStack.getOutput().viewport;
-    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
+    int2 mainSize = viewStack.getOutput().size;
+    Rect subViewport = Rect(int2(mainSize.x / 2, 0), mainSize / 2);
 
     renderer.pushView(ViewStack::Item{.renderTarget = rt});
     renderer.render(view, stepsRT);
