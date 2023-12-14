@@ -64,10 +64,12 @@ if(APPLE)
   if(IOS)
     target_link_libraries(shards-core
       "-framework AVFoundation"
-      "-framework CoreMotion"
       "-framework CoreGraphics"
       "-framework UIKit"
     )
+    if(NOT SKIP_CORE_MOTION)
+      target_link_libraries(shards-core "-framework CoreMotion")
+    endif()
   else()
     target_link_libraries(shards-core
       "-framework Cocoa"
