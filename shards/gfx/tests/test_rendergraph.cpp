@@ -390,3 +390,34 @@ TEST_CASE("Graph evaluate output size mismatch", "[RenderGraph]") {
 
   testRenderer.reset();
 }
+
+TEST_CASE("Read and write same texture", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
+
+  TexturePtr outputTexture = std::make_shared<Texture>("outputText");
+  outputTexture->initWithPixelFormat(WGPUTextureFormat::WGPUTextureFormat_RGBA32Float)
+      .initWithFlags(TextureFormatFlags::RenderAttachment)
+      .initWithResolution(int2(100, 100));
+
+  // write "color" & "test" target with mismatching sizes
+  {
+    blk = makeCompoundBlock();
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, SampleTexture("test"), "+", "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    auto &stepPtr = steps.emplace_back(Effect::create(RenderStepInput::make(RenderStepInput::Texture("test", outputTexture)),
+                                                      RenderStepOutput::make(RenderStepOutput::Texture("test", outputTexture)),
+                                                      std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.output->outputSizing = RenderStepOutput::ManualSize{};
+    step.overlay = true;
+  }
+
+  TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
+
+  testRenderer.reset();
+}

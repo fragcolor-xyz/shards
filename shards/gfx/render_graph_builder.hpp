@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
+#include <boost/tti/has_member_data.hpp>
 
 template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
@@ -48,6 +49,10 @@ template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
 
 namespace gfx::detail {
 namespace graph_build_data {
+
+BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_input, input);
+BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_output, output);
+
 static inline auto logger = ::gfx::getLogger();
 
 // Checks if setupNodeFrames is callable with the given step type
@@ -155,7 +160,7 @@ public:
     FrameBuildData *candidate{};
     size_t lwi{};
     for (auto &frame : buildingFrames) {
-      if (frame.textureOverride) // These will always be unique
+      if (std::get_if<TextureOverrideRef>(&frame.binding)) // These will always be unique
         continue;
       if (frame.name != named.name)
         continue;
@@ -261,7 +266,7 @@ public:
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
-            frame.textureOverride = TextureOverrideRef{
+            frame.binding = TextureOverrideRef{
                 .step = node.step,
                 .bindingType = TextureOverrideRef::Input,
                 .bindingIndex = index,
@@ -280,39 +285,84 @@ public:
     return frame;
   }
 
+  TextureSubResource resolveSubResource(const RenderGraph::TextureOverrideRef &ref) {
+    return std::visit(
+        [&](auto &step) -> TextureSubResource {
+          using T1 = std::decay_t<decltype(step)>;
+          if constexpr (has_render_step_input<T1, RenderStepInput>::type::value) {
+            RenderStepInput &input = step.input;
+            if (ref.bindingType == RenderGraph::TextureOverrideRef::Input) {
+              auto tex = std::get_if<RenderStepInput::Texture>(&input.attachments[ref.bindingIndex]);
+              if (!tex)
+                throw std::logic_error("Expected a texture binding");
+              return tex->subResource;
+            }
+          }
+          if constexpr (has_render_step_output<T1, std::optional<RenderStepOutput>>::type::value) {
+            RenderStepOutput &output = *step.output;
+            if (ref.bindingType == RenderGraph::TextureOverrideRef::Output) {
+              auto tex = std::get_if<RenderStepOutput::Texture>(&output.attachments[ref.bindingIndex]);
+              if (!tex)
+                throw std::logic_error("Expected a texture binding");
+              return tex->subResource;
+            }
+          }
+          throw std::logic_error("Invalid bindings");
+        },
+        *ref.step.get());
+  }
+
+  bool isSameBinding(RenderGraph::FrameBinding a, RenderGraph::FrameBinding b) {
+    auto outA = std::get_if<RenderGraph::OutputIndex>(&a);
+    auto outB = std::get_if<RenderGraph::OutputIndex>(&b);
+    if (outA && outB) {
+      return *outA == *outB;
+    }
+
+    // TODO: This can be compared here but whenever the textures change it might not be valid anymore
+    //       hashing should prevent this although currently not handled
+    auto texA = std::get_if<RenderGraph::TextureOverrideRef>(&a);
+    auto texB = std::get_if<RenderGraph::TextureOverrideRef>(&b);
+    if (texA && texB) {
+      return resolveSubResource(*texA).texture == resolveSubResource(*texB).texture;
+    }
+    return false;
+  }
+
   void fixupWriteToInputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output, FrameBuildData *&outputFrame) {
-    bool readsFromOutput{};
+    FrameBuildData **inputFrameConflict{};
     for (auto &input : node.inputs) {
-      if (input == outputFrame) {
-        readsFromOutput = true;
+      if (input == outputFrame || isSameBinding(input->binding, outputFrame->binding)) {
+        inputFrameConflict = &input;
         break;
       }
     }
 
-    if (readsFromOutput) {
+    if (inputFrameConflict) {
       // Find another frame to output to
       RenderStepOutput::Named named(outputFrame->name, outputFrame->format);
       FrameBuildData *replacementFrame =
           findNamedFrame(named, *outputFrame->sizing, [&](const FrameBuildData &frame) { return &frame != outputFrame; });
       if (!replacementFrame) {
         auto &newFrame = buildingFrames.emplace_back(*outputFrame);
+        newFrame.binding = std::monostate{};
         newFrame.index = buildingFrames.size() - 1;
         replacementFrame = &newFrame;
       }
 
-      bool needPrevious = std::visit(
-          [&](auto &arg) {
-            if (!arg.clearValues) {
-              return true;
-            }
-            return false;
-          },
-          output);
-      if (needPrevious) {
-        node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, outputFrame, replacementFrame);
-      }
-
-      outputFrame = replacementFrame;
+      // bool needPrevious = std::visit(
+      //     [&](auto &arg) {
+      //       if (!arg.clearValues) {
+      //         return true;
+      //       }
+      //       return false;
+      //     },
+      //     output);
+      // if (needPrevious) {
+      // }
+      node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, *inputFrameConflict, replacementFrame);
+      *inputFrameConflict = replacementFrame;
+      // outputFrame = replacementFrame;
     }
   }
 
@@ -357,7 +407,7 @@ public:
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
-            frame.textureOverride = TextureOverrideRef{
+            frame.binding = TextureOverrideRef{
                 .step = node.step,
                 .bindingType = TextureOverrideRef::Output,
                 .bindingIndex = index,
@@ -499,7 +549,7 @@ public:
       outputFrame.format = outputs[i].format;
       outputFrame.name = outputs[i].name;
       outputFrame.sizing = FrameSize::RelativeToMain{};
-      outputFrame.outputIndex = i;
+      outputFrame.binding = RenderGraph::OutputIndex(i);
 
       // Iterate over nodes in reverse, attaching the output to the first matching frame name
       bool outputAttached = false;
@@ -536,7 +586,8 @@ public:
   bool isOutputWrittenTo(size_t outputIndex) const {
     for (auto &node : buildingNodes) {
       for (auto &out : node.outputs) {
-        if (out->outputIndex && *out->outputIndex == outputIndex) {
+        auto outIndex = std::get_if<RenderGraph::OutputIndex>(&out->binding);
+        if (outIndex && *outIndex == outputIndex) {
           return true;
         }
       }
@@ -582,12 +633,12 @@ public:
       bool unused = references.usedFrameLookup.find(&frame) == references.usedFrameLookup.end();
 
       std::string outSuffix;
-      if (frame.textureOverride) {
-        outSuffix += fmt::format(" binding: {}/stepId:{}/idx:{}", magic_enum::enum_name(frame.textureOverride->bindingType),
-                                 getStepId(frame.textureOverride->step), frame.textureOverride->bindingIndex);
+      if (auto textureOverride = std::get_if<TextureOverrideRef>(&frame.binding)) {
+        outSuffix += fmt::format(" binding: {}/stepId:{}/idx:{}", magic_enum::enum_name(textureOverride->bindingType),
+                                 getStepId(textureOverride->step), textureOverride->bindingIndex);
       }
-      if (frame.outputIndex) {
-        outSuffix += fmt::format(" out: {}", *frame.outputIndex);
+      if (auto outputIndex = std::get_if<RenderGraph::OutputIndex>(&frame.binding)) {
+        outSuffix += fmt::format(" out: {}", *outputIndex);
       }
       SPDLOG_LOGGER_DEBUG(logger, " - [{}{}] {} fmt: {} size: {}{}", index, unused ? ":UNUSED" : "", frame.name,
                           magic_enum::enum_name(frame.format), *frame.sizing, outSuffix);
@@ -672,19 +723,18 @@ public:
     bool errors{};
     std::set<FrameBuildData *> writtenFrames;
     for (auto &node : buildingNodes) {
-      for (auto &input : node.inputs) {
-        assert(!input->outputIndex);
-        if (!input->textureOverride && !writtenFrames.contains(input)) {
-          SPDLOG_LOGGER_ERROR(logger, "Frame {} is read from but never written to", input->index);
-          errors = true;
-        }
-      }
       for (auto &copy : node.requiredCopies) {
         if (copy.order == NodeBuildData::CopyOperation::Before)
           writtenFrames.emplace(copy.dst);
       }
       for (auto &clear : node.requiredClears) {
         writtenFrames.emplace(clear.frame);
+      }
+      for (auto &input : node.inputs) {
+        if (input->binding.index() == 0 && !writtenFrames.contains(input)) {
+          SPDLOG_LOGGER_ERROR(logger, "Frame {} is read from but never written to", input->index);
+          errors = true;
+        }
       }
       for (auto &output : node.outputs) {
         if (!writtenFrames.contains(output)) {
@@ -723,7 +773,7 @@ public:
       outFrame.format = frame->format;
       outFrame.name = frame->name;
 
-      if (!frame->textureOverride && !frame->outputIndex) {
+      if (frame->binding.index() == 0) {
         if (std::get_if<FrameSize::Manual>(&*frame->sizing)) {
           SPDLOG_LOGGER_WARN(logger, "Frame {}/{} can not be manually sized, sizing to output", frame->index, frame->name);
           frame->sizing = FrameSize::RelativeToMain{};
@@ -740,11 +790,7 @@ public:
       sizeIndexToFrameIndex[it->second] = frameIndex;
       frameToSizeIndex[frame] = it->second;
 
-      if (frame->outputIndex) {
-        outFrame.binding = RenderGraph::OutputIndex(*frame->outputIndex);
-      } else if (frame->textureOverride) {
-        outFrame.binding = *frame->textureOverride;
-      }
+      outFrame.binding = frame->binding;
     }
 
     result.sizes.resize(sizeLookup.size());

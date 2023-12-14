@@ -67,12 +67,8 @@ using TextureOverrideRef = RenderGraph::TextureOverrideRef;
 struct FrameBuildData {
   std::string name;
   size_t index;
-  // int2 size;
-  // int2 inputSize;
-  std::optional<size_t> outputIndex;
+  RenderGraph::FrameBinding binding;
   WGPUTextureFormat format;
-  // TextureSubResource textureOverride;
-  std::optional<TextureOverrideRef> textureOverride;
   std::optional<FrameSizing> sizing;
 
   // (optional) The node that spawned this frame
