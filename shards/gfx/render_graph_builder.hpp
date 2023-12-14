@@ -350,19 +350,8 @@ public:
         replacementFrame = &newFrame;
       }
 
-      // bool needPrevious = std::visit(
-      //     [&](auto &arg) {
-      //       if (!arg.clearValues) {
-      //         return true;
-      //       }
-      //       return false;
-      //     },
-      //     output);
-      // if (needPrevious) {
-      // }
       node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, *inputFrameConflict, replacementFrame);
       *inputFrameConflict = replacementFrame;
-      // outputFrame = replacementFrame;
     }
   }
 
