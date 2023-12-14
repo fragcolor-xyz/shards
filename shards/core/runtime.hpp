@@ -356,7 +356,7 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
     if constexpr (IsCleanupContext) {
       canRun = true;
     } else {
-      canRun = isRunning(wire) && now >= wire->context->next;
+      canRun = (isRunning(wire) && now >= wire->context->next) || unlikely(wire->context && wire->context->onLastResume);
     }
 
     if (canRun) {

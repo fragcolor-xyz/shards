@@ -1900,7 +1900,11 @@ endOfWire:
   // run cleanup on all the shards
   // ensure stop state is set
   context.stopFlow(wire->previousOutput);
+
+  // Set onLastResume so tick keeps processing mesh tasks on cleanup
+  context.onLastResume = true;
   wire->cleanup(true);
+  context.onLastResume = false;
 
   // Need to take care that we might have stopped the wire very early due to
   // errors and the next eventual stop() should avoid resuming
