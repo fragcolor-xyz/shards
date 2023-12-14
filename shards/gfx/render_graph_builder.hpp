@@ -11,8 +11,6 @@
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
-// #include <boost/tti/has_function.hpp>
-// #include <boost/graph/
 
 template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
@@ -155,11 +153,13 @@ public:
   std::enable_if_t<std::is_invocable_r_v<bool, T, const FrameBuildData &>, FrameBuildData *>
   findNamedFrame(const RenderStepOutput::Named &named, const FrameSizing &size, T filter) {
     FrameBuildData *candidate{};
+    size_t lwi{};
     for (auto &frame : buildingFrames) {
       if (frame.textureOverride) // These will always be unique
         continue;
       if (frame.name != named.name)
         continue;
+      lwi = std::max(lwi, frame.lastWriteIndex);
       if (frame.format != named.format)
         continue;
       if (!compareSize(*frame.sizing, size))
@@ -170,6 +170,14 @@ public:
       if (!candidate || frame.lastWriteIndex > candidate->lastWriteIndex)
         candidate = &frame;
     }
+
+    // Validate that this is the latest frame
+    if (candidate && candidate->lastWriteIndex != lwi) {
+      // The frame that matches the conditions is not the one most recently written to
+      // return false so we can generate a transition
+      candidate = nullptr;
+    }
+
     return candidate;
   }
 
@@ -656,22 +664,6 @@ public:
     }
   }
 
-  void insertForceClear(NodeBuildData &node, FrameBuildData &frame) {
-    SPDLOG_LOGGER_WARN(logger, "Frame {} is not cleared, forcing clear", frame.index);
-
-    ClearValues clearValues;
-    auto &formatDesc = getTextureFormatDescription(frame.format);
-    if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil)) {
-      clearValues = ClearValues::getDefaultDepthStencil();
-    } else {
-      clearValues = ClearValues::getDefaultColor();
-    }
-    node.requiredClears.emplace_back(NodeBuildData::ClearOperation{
-        .frame = &frame,
-        .clearValues = clearValues,
-    });
-  }
-
   bool validateUninitializedFrames() {
     bool errors{};
     std::set<FrameBuildData *> writtenFrames;
@@ -692,8 +684,7 @@ public:
       }
       for (auto &output : node.outputs) {
         if (!writtenFrames.contains(output)) {
-          // insertForceClear(node, *output);
-          SPDLOG_LOGGER_WARN(logger, "Potentially uninitialized frame {}", output->index);
+          SPDLOG_LOGGER_DEBUG(logger, "Potentially uninitialized frame {}", output->index);
         }
         writtenFrames.emplace(output);
       }
@@ -715,8 +706,6 @@ public:
     copyNode.outputs.emplace_back(copy.dst);
     copyNode.step = copyStep;
     return &copyNode;
-    // node.originalStep = copyStep;
-    // std::visit([&](auto &arg) { setupRenderGraphNode(node, tmpCopyData, arg); }, *copyStep.get());
   }
 
   void assignFrames(RenderGraph &result, References &references) {
@@ -779,31 +768,6 @@ public:
           },
           it.first);
     }
-
-    // TODO: sizes should already be sorted because of node dependency ordering
-    // Topologically sort sizes by dependencies
-    // so they can be computed linearly
-    // std::vector<size_t> sizesSorted;
-    // graph::topologicalSort(sizeGraph, sizesSorted);
-    // std::vector<size_t> sizesReverseMap;
-    // sizesReverseMap.resize(sizesSorted.size());
-    // for (size_t i = 0; i < sizesSorted.size(); i++) {
-    //   sizesReverseMap[sizesSorted[i]] = i;
-    // }
-
-    // // Remap sizes
-    // for (auto &frame : result.frames) {
-    //   frame.size = sizesReverseMap[frame.size];
-    // }
-    // std::vector<RenderGraph::Size> unsortedSizes;
-    // std::swap(result.sizes, unsortedSizes);
-    // result.sizes.resize(sizeLookup.size());
-    // for (auto &it : sizeLookup) {
-    //   result.sizes[it.second] = it->first;
-    // }
-    // for (size_t i = 0; i < sizeLookup.size(); i++) {
-    //   result.sizes.emplace_back(sizeLookup[i]);
-    // }
   }
 
   void assignNodes(RenderGraph &result, References &references) {
