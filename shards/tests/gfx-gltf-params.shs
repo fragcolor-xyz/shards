@@ -15,10 +15,6 @@
   GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
   GFX.DrawQueue() >= queue
   GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-
-  ;; Create view
-  Math.MatIdentity >= view-transform
-  GFX.View(View: view-transform) >= view
 })
 
 @template(default-window [eye target] {
@@ -26,7 +22,8 @@
    Title: "SDL Window" Width: 1280 Height: 720 
    Contents: {
     Animation.Timer = time
-    @get-view-transform(eye target) > view-transform
+    @get-view-transform(eye target) = view-transform
+    GFX.View(View: view-transform) = view
 
     drawables | GFX.Draw(queue)
     GFX.Render(Steps: render-steps View: view)
