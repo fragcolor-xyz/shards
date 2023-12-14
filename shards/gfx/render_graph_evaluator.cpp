@@ -289,9 +289,14 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     if (node.setupPass)
       node.setupPass(renderPassDesc);
     WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
+
+    auto &outFrame = graph.frames[node.outputs[0].frameIndex];
+    int2 targetSize = frameSizes[outFrame.size].size;
+
     RenderGraphEncodeContext ctx{
         .encoder = renderPassEncoder,
         .viewData = viewData,
+        .outputSize = targetSize,
         .evaluator = *this,
         .graph = graph,
         .node = node,

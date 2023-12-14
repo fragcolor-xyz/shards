@@ -209,11 +209,11 @@ struct RendererImpl final : public ContextData {
     viewData.renderTarget = viewStackOutput.renderTarget;
     viewData.referenceOutputSize = viewStackOutput.referenceSize;
 
-    int2 viewSize = viewStackOutput.viewport.getSize();
-    if (viewSize.x == 0 || viewSize.y == 0)
+    int2 outputSize = viewStackOutput.size;
+    if (outputSize.x == 0 || outputSize.y == 0)
       return;
 
-    viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), storage.frameCounter);
+    viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(outputSize)), storage.frameCounter);
 
     getFrameQueue().enqueue(viewData, pipelineSteps);
   }
@@ -394,7 +394,6 @@ struct RendererImpl final : public ContextData {
 
     auto mainOutputResolution = mainOutput.texture->getResolution();
     pushView(ViewStack::Item{
-        .viewport = Rect(mainOutputResolution),
         .referenceSize = mainOutputResolution,
         .renderTarget = mainOutputRenderTarget,
     });

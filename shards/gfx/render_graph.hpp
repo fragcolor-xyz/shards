@@ -136,10 +136,10 @@ struct RenderGraphEvaluator;
 struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
   const ViewData &viewData;
+  int2 outputSize;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
-  int2 outputSize;
   bool ignoreInDebugger;
 };
 

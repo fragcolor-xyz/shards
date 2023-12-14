@@ -22,14 +22,12 @@ namespace gfx::detail {
 struct TempView {
   ViewPtr view = std::make_shared<View>();
   CachedView cached;
-  Rect viewport;
   std::optional<ViewData> viewData;
 
   TempView() {
     viewData.emplace(ViewData{
         .view = view,
         .cachedView = cached,
-        .viewport = viewport,
     });
   }
   TempView(const TempView &) = delete;

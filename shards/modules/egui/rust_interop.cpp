@@ -48,16 +48,6 @@ DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
   return &shDrawQueue.queue;
 }
 
-gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
-  GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
-
-  auto &viewStack = graphicsContext.renderer->getViewStack();
-  auto viewStackOutput = viewStack.getOutput();
-
-  gfx::Rect viewportRect = viewStackOutput.viewport;
-  return int4(viewportRect.x, viewportRect.y, viewportRect.getX1(), viewportRect.getY1());
-}
-
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &inputContextVar,
                                            float scalingFactor) {
   IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);

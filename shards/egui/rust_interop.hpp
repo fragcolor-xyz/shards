@@ -34,7 +34,6 @@ gfx::Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext);
 
 gfx::DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var);
 
-gfx::int4 gfx_getViewport(const SHVar &graphicsContext);
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &inputContext, float scalingFactor);
 void gfx_applyEguiIOOutput(gfx::EguiInputTranslator *translator, const egui::IOOutput &output, const SHVar &inputContext);
 }

@@ -83,6 +83,7 @@ struct RenderGraphBuilder {
 private:
   template <typename T> using VectorType = boost::container::stable_vector<T>;
   VectorType<NodeBuildData> buildingNodes;
+  VectorType<NodeBuildData> generatedNodes;
   VectorType<FrameBuildData> buildingFrames;
 
   bool needPrepare = true;
@@ -704,15 +705,16 @@ public:
     return !errors;
   }
 
-  void generateCopyNode(RenderGraphNode &node, NodeBuildData::CopyOperation &copy) {
-    NodeBuildData tmpCopyData(nullptr, 0);
-    tmpCopyData.inputs.emplace_back(copy.src);
-    tmpCopyData.outputs.emplace_back(copy.dst);
-    auto copyStep = steps::Copy::create(RenderStepInput::make("copySrc"),
-                                        RenderStepOutput::make(RenderStepOutput::Named("copyDst", copy.dst->format)));
-    tmpCopyData.step = copyStep;
-    node.originalStep = copyStep;
-    std::visit([&](auto &arg) { setupRenderGraphNode(node, tmpCopyData, arg); }, *copyStep.get());
+  NodeBuildData *generateCopyNode(NodeBuildData::CopyOperation &copy) {
+    auto copyStep = steps::Copy::create(RenderStepInput::make(copy.src->name),
+                                        RenderStepOutput::make(RenderStepOutput::Named("copy", copy.dst->format)));
+    NodeBuildData &copyNode = generatedNodes.emplace_back(copyStep, size_t(~0));
+    copyNode.inputs.emplace_back(copy.src);
+    copyNode.outputs.emplace_back(copy.dst);
+    copyNode.step = copyStep;
+    return &copyNode;
+    // node.originalStep = copyStep;
+    // std::visit([&](auto &arg) { setupRenderGraphNode(node, tmpCopyData, arg); }, *copyStep.get());
   }
 
   void assignFrames(RenderGraph &result, References &references) {
@@ -750,17 +752,13 @@ public:
       }
     }
 
-    // graph::Graph sizeGraph;
-
     result.sizes.resize(sizeLookup.size());
     for (auto &it : sizeLookup) {
       auto &outSize = result.sizes[it.second];
-      // auto &sizeGraphNode = sizeGraph.nodes.emplace_back();
       outSize = std::visit(
           [&](auto &arg) -> RenderGraph::Size {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, FrameSize::RelativeToFrame>) {
-              // sizeGraphNode.dependencies.emplace_back(frameToSizeIndex[arg.frame]);
               return RenderGraphFrameSize::RelativeToFrame{
                   .frame = references.usedFrameLookup[arg.frame],
                   .scale = arg.scale,
@@ -807,13 +805,24 @@ public:
   }
 
   void assignNodes(RenderGraph &result, References &references) {
+    // Expand node list and genrate dynamic nodes (copies)
+    std::list<NodeBuildData *> nodeQueue;
     for (auto &node : buildingNodes) {
       for (auto &copy : node.requiredCopies) {
         if (copy.order == NodeBuildData::CopyOperation::Before) {
-          auto &outNode = result.nodes.emplace_back();
-          generateCopyNode(outNode, copy);
+          nodeQueue.emplace_back(generateCopyNode(copy));
         }
       }
+      nodeQueue.emplace_back(&node);
+      for (auto &copy : node.requiredCopies) {
+        if (copy.order == NodeBuildData::CopyOperation::After) {
+          nodeQueue.emplace_back(generateCopyNode(copy));
+        }
+      }
+    }
+
+    for (auto it = nodeQueue.begin(); it != nodeQueue.end(); ++it) {
+      auto &node = **it;
 
       auto &outNode = result.nodes.emplace_back();
       for (auto &input : node.inputs) {
@@ -827,6 +836,7 @@ public:
       outNode.queueDataIndex = node.queueDataIndex;
       outNode.originalStep = node.step;
 
+      // Set clear operations
       for (auto &clear : node.requiredClears) {
         size_t outputIndex = outputLookup[clear.frame];
         if (clear.discard) {
@@ -836,23 +846,17 @@ public:
         }
       }
 
-      for (auto &input : node.outputs) {
+      // Create the render target layout
+      for (auto &output : node.outputs) {
         auto &target = outNode.renderTargetLayout.targets.emplace_back();
-        target.name = input->name;
-        target.format = input->format;
-        if (hasAnyTextureFormatUsage(getTextureFormatDescription(input->format).usage, TextureFormatUsage::Depth)) {
+        target.name = output->name;
+        target.format = output->format;
+        if (hasAnyTextureFormatUsage(getTextureFormatDescription(output->format).usage, TextureFormatUsage::Depth)) {
           outNode.renderTargetLayout.depthTargetIndex = outNode.renderTargetLayout.targets.size() - 1;
         }
       }
 
       std::visit([&](auto &step) { setupRenderGraphNode(outNode, node, step); }, *node.step.get());
-
-      for (auto &copy : node.requiredCopies) {
-        if (copy.order == NodeBuildData::CopyOperation::After) {
-          auto &outNode = result.nodes.emplace_back();
-          generateCopyNode(outNode, copy);
-        }
-      }
 
       // This value should be set by the setup callback above
       // so run it after
@@ -864,6 +868,7 @@ public:
 
   bool prepare() {
     buildingFrames.clear();
+    generatedNodes.clear();
     for (auto &node : buildingNodes) {
       node.requiredCopies.clear();
       node.requiredClears.clear();

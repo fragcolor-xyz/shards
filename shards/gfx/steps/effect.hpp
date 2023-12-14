@@ -28,12 +28,14 @@ struct Effect {
 struct Copy {
   static PipelineStepPtr create(RenderStepInput input, RenderStepOutput output) {
     auto blk = makeCompoundBlock();
-    for (auto &attachment : output.attachments) {
-      std::visit(
-          [&](auto &attachment) {
-            blk->appendLine(WriteOutput(attachment.name, FieldTypes::Float4, SampleTexture(attachment.name)));
-          },
-          attachment);
+    if (input.attachments.size() != output.attachments.size())
+      throw std::runtime_error("Copy: number of input and output attachments must match");
+    for (size_t i = 0; i < input.attachments.size(); i++) {
+      auto &src = input.attachments[i];
+      auto &dst = output.attachments[i];
+      const auto &srcName = std::visit([&](auto &arg) -> const std::string & { return arg.name; }, src);
+      const auto &dstName = std::visit([&](auto &arg) -> const std::string & { return arg.name; }, dst);
+      blk->appendLine(WriteOutput(dstName, FieldTypes::Float4, SampleTexture(srcName)));
     }
 
     return Effect::create(std::move(input), std::move(output), std::move(blk));

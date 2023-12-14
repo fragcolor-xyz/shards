@@ -310,8 +310,6 @@ struct RenderIntoShard {
       auto &v = viewportVar.payload.float4Value;
       // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
-    } else {
-      viewItem.viewport = Rect(referenceSize);
     }
 
     // Make render target fixed size
