@@ -13,9 +13,7 @@
 using namespace gfx;
 using namespace gfx::steps;
 
-static constexpr float comparisonTolerance = 0.05f;
-
-TEST_CASE("RenderGraph", "[RenderGraphHeadless]") {
+TEST_CASE("RenderGraph read from output", "[RenderGraphHeadless]") {
   auto colorOutput = RenderStepOutput::Named("color");
   auto depthOutput = RenderStepOutput::Named("depth");
 
@@ -46,8 +44,6 @@ TEST_CASE("RenderGraph", "[RenderGraphHeadless]") {
   }
   std::optional<detail::RenderGraph> graph = builder.build();
   CHECK(graph);
-  // SPDLOG_INFO("Test");
-  // CHECK(graph.nodes.size() == 3);
 }
 
 TEST_CASE("RenderGraph with texture bindings", "[RenderGraphHeadless]") {
@@ -78,8 +74,6 @@ TEST_CASE("RenderGraph with texture bindings", "[RenderGraphHeadless]") {
   }
   std::optional<detail::RenderGraph> graph = builder.build();
   CHECK(graph);
-  // SPDLOG_INFO("Test");
-  // CHECK(graph.nodes.size() == 3);
 }
 
 TEST_CASE("RenderGraph read/write chain", "[RenderGraphHeadless]") {
@@ -121,8 +115,6 @@ TEST_CASE("RenderGraph read/write chain", "[RenderGraphHeadless]") {
   }
   std::optional<detail::RenderGraph> graph = builder.build();
   CHECK(graph);
-  // SPDLOG_INFO("Test");
-  // CHECK(graph.nodes.size() == 3);
 }
 
 TEST_CASE("RenderGraph different formats", "[RenderGraphHeadless]") {
@@ -135,8 +127,6 @@ TEST_CASE("RenderGraph different formats", "[RenderGraphHeadless]") {
   texture->initWithPixelFormat(WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
 
   PipelineSteps steps;
-  // SPDLOG_INFO("Test");
-  // CHECK(graph.nodes.size() == 3);
 
   SECTION("Without transition") {
     steps.clear();
