@@ -252,7 +252,7 @@ public:
     return result;
   }
 
-  FrameBuildData *findOrCreateInputFrame(NodeBuildData &node, const RenderStepInput::InputVariant &output) {
+  FrameBuildData *findOrCreateInputFrame(NodeBuildData &node, const RenderStepInput::InputVariant &output, size_t index) {
     FrameBuildData *frame = std::visit(
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
@@ -264,7 +264,7 @@ public:
             frame.textureOverride = TextureOverrideRef{
                 .step = node.step,
                 .bindingType = TextureOverrideRef::Input,
-                .bindingIndex = 0,
+                .bindingIndex = index,
             };
             frame.sizing = FrameSize::Manual{};
             return &frame;
@@ -316,9 +316,9 @@ public:
     }
   }
 
-  FrameBuildData *findOrCreateOutputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output,
+  FrameBuildData *findOrCreateOutputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output, size_t index,
                                           const RenderStepOutput::OutputSizing &sizing) {
-    return findOrCreateOutputFrame(node, output, sizing, [](const FrameBuildData &frame) -> bool { return true; });
+    return findOrCreateOutputFrame(node, output, index, sizing, [](const FrameBuildData &frame) -> bool { return true; });
   }
 
   void fixupOutputFrameTransitions(NodeBuildData &node) {
@@ -347,7 +347,7 @@ public:
 
   template <typename TL>
   std::enable_if_t<std::is_invocable_r_v<bool, TL, const FrameBuildData &>, FrameBuildData *>
-  findOrCreateOutputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output,
+  findOrCreateOutputFrame(NodeBuildData &node, const RenderStepOutput::OutputVariant &output, size_t index,
                           const RenderStepOutput::OutputSizing &sizing, TL filter) {
     FrameBuildData *frame = std::visit(
         [&](auto &arg) -> FrameBuildData * {
@@ -360,7 +360,7 @@ public:
             frame.textureOverride = TextureOverrideRef{
                 .step = node.step,
                 .bindingType = TextureOverrideRef::Output,
-                .bindingIndex = 0,
+                .bindingIndex = index,
             };
             frame.sizing = resolveSize(node, sizing);
             return &frame;
@@ -384,8 +384,10 @@ public:
 
   void assignUniqueNodeInputs(NodeBuildData &node) {
     if (node.input.has_value()) {
-      for (auto &input : node.input->get().attachments) {
-        FrameBuildData *frame = findOrCreateInputFrame(node, input);
+      auto &inputs = node.input->get().attachments;
+      for (size_t i = 0; i < inputs.size(); i++) {
+        auto &input = inputs[i];
+        FrameBuildData *frame = findOrCreateInputFrame(node, input, i);
         node.inputs.emplace_back(frame);
       }
     }
@@ -394,8 +396,10 @@ public:
   void assignUniqueNodeOutputs(NodeBuildData &node) {
     auto &outputSizing = node.output->get().outputSizing;
     if (node.output.has_value()) {
-      for (auto &output : node.output->get().attachments) {
-        FrameBuildData *frame = findOrCreateOutputFrame(node, output, outputSizing);
+      auto &outputs = node.output->get().attachments;
+      for (size_t i = 0; i < outputs.size(); i++) {
+        auto &output = outputs[i];
+        FrameBuildData *frame = findOrCreateOutputFrame(node, output, i, outputSizing);
         fixupWriteToInputFrame(node, output, frame);
         node.outputs.emplace_back(frame);
         frame->lastWriteIndex = writeCounter;
@@ -722,8 +726,8 @@ public:
       if (!frame->textureOverride && !frame->outputIndex) {
         if (std::get_if<FrameSize::Manual>(&*frame->sizing)) {
           SPDLOG_LOGGER_WARN(logger, "Frame {}/{} can not be manually sized, sizing to output", frame->index, frame->name);
+          frame->sizing = FrameSize::RelativeToMain{};
         }
-        frame->sizing = FrameSize::RelativeToMain{};
       }
 
       auto it = sizeLookup.find(*frame->sizing);
