@@ -710,6 +710,8 @@ public:
     tmpCopyData.outputs.emplace_back(copy.dst);
     auto copyStep = steps::Copy::create(RenderStepInput::make("copySrc"),
                                         RenderStepOutput::make(RenderStepOutput::Named("copyDst", copy.dst->format)));
+    tmpCopyData.step = copyStep;
+    node.originalStep = copyStep;
     std::visit([&](auto &arg) { setupRenderGraphNode(node, tmpCopyData, arg); }, *copyStep.get());
   }
 

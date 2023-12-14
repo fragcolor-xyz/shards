@@ -1,5 +1,6 @@
 #include "render_step_impl.hpp"
 #include "drawables/mesh_drawable.hpp"
+#include "pipeline_step.hpp"
 #include "render_graph.hpp"
 #include "render_graph_builder.hpp"
 #include "renderer_types.hpp"
@@ -435,7 +436,11 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
-  node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {
+  // NOTE: Important to capture reference to the shared step pointer
+  PipelineStepPtr stepPtr = buildData.step;
+  node.encode = [data, stepPtr, drawable](RenderGraphEncodeContext &ctx) {
+    RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+
     // Set parameters from step
     drawable->parameters = step.parameters;
 
@@ -452,10 +457,10 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
     //     auto &stepAttachment = attachments[i];
     //     if (auto texture = std::get_if<RenderStepOutput::Texture>(&stepAttachment)) {
     //       auto &attachment = ctx.node.outputs[i];
-          // attachment.frameIndex
-          // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
-          // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
-          // data->drawable->parameters.set(frame.name, texture);
+    // attachment.frameIndex
+    // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
+    // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
+    // data->drawable->parameters.set(frame.name, texture);
     //     }
     //   }
     // }
