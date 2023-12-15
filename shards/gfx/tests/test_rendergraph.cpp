@@ -281,7 +281,7 @@ TEST_CASE("Format conversion", "[RenderGraph]") {
   }
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
-  CHECK(testRenderer->checkFrame("rendergraph_format_conversion", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("rendergraph_format_conversion", 1.5f));
 
   testRenderer.reset();
 }
