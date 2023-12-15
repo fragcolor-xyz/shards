@@ -142,15 +142,15 @@ enum class BindGroupId {
 
 struct NamedShaderParam {
   shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
-  std::string name;
+  FastString name;
   NumParameter defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
   BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
+  NamedShaderParam(FastString name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
                    NumParameter defaultValue = NumParameter());
-  NamedShaderParam(std::string name, NumParameter defaultValue);
+  NamedShaderParam(FastString name, NumParameter defaultValue);
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(type);
@@ -160,17 +160,17 @@ struct NamedShaderParam {
 };
 
 struct NamedTextureParam {
-  std::string name;
+  FastString name;
   shader::TextureFieldType type;
   TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
   BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedTextureParam() = default;
-  NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,
+  NamedTextureParam(FastString name, TextureDimension dimension = TextureDimension::D2,
                     ShaderParamFlags flags = ShaderParamFlags::None)
       : name(name), type(dimension), flags(flags) {}
-  NamedTextureParam(std::string name, shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None)
+  NamedTextureParam(FastString name, shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None)
       : name(name), type(type), flags(flags) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {

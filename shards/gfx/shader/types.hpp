@@ -9,7 +9,6 @@
 #include <compare>
 
 namespace gfx {
-
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
 enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
@@ -96,12 +95,12 @@ struct FieldTypes {
 };
 
 struct NamedField {
-  String name;
+  FastString name;
   NumFieldType type;
 
   NamedField() = default;
-  NamedField(String name, const NumFieldType &type) : name(name), type(type) {}
-  NamedField(String name, NumFieldType &&type) : name(name), type(type) {}
+  NamedField(FastString name, const NumFieldType &type) : name(name), type(type) {}
+  NamedField(FastString name, NumFieldType &&type) : name(name), type(type) {}
 };
 
 } // namespace shader

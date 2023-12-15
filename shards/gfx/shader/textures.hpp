@@ -13,14 +13,14 @@ namespace gfx {
 namespace shader {
 
 struct TextureBinding {
-  String name;
+  FastString name;
   size_t defaultTexcoordBinding{};
   size_t binding{};
   size_t defaultSamplerBinding{};
   TextureFieldType type;
 
   // TextureBinding() = default;
-  TextureBinding(String name, TextureFieldType type, size_t defaultTexcoordBinding = 0)
+  TextureBinding(FastString name, TextureFieldType type, size_t defaultTexcoordBinding = 0)
       : name(name), defaultTexcoordBinding(defaultTexcoordBinding), type(type) {}
 };
 
@@ -30,11 +30,11 @@ struct TextureBindingLayout {
 
 struct TextureBindingLayoutBuilder {
 private:
-  std::map<String, size_t> mapping;
+  std::map<FastString, size_t> mapping;
   TextureBindingLayout layout;
 
 public:
-  void addOrUpdateSlot(const String &name, TextureFieldType type, size_t defaultTexcoordBinding) {
+  void addOrUpdateSlot(FastString name, TextureFieldType type, size_t defaultTexcoordBinding) {
     auto it = mapping.find(name);
     TextureBinding *binding;
     if (it == mapping.end()) {
@@ -51,7 +51,7 @@ public:
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }
 
-  void tryUpdateSlot(const String &name, size_t defaultTexcoordBinding) {
+  void tryUpdateSlot(FastString name, size_t defaultTexcoordBinding) {
     auto it = mapping.find(name);
     if (it != mapping.end()) {
       auto &binding = layout.bindings[it->second];

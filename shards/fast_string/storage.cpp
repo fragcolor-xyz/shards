@@ -48,7 +48,9 @@ struct Pool {
   boost::container::vector<std::string_view, SvAllocator> reverse;
   std::shared_mutex lock;
 
-  Pool() : allocator(InitialPoolSize), countingAllocator(&allocator), map(&countingAllocator), reverse(&countingAllocator) {}
+  Pool()
+      : allocator(InitialPoolSize, boost::container::pmr::new_delete_resource()), countingAllocator(&allocator),
+        map(&countingAllocator), reverse(&countingAllocator) {}
 };
 
 struct Storage {
@@ -106,6 +108,8 @@ void init() {
 }
 uint64_t store(std::string_view sv) {
   ZoneScopedN("FastString store");
+  if (!storage)
+    init();
   return storage->store(sv);
 }
 std::string_view load(uint64_t id) {

@@ -29,6 +29,7 @@
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
+#include <shards/fast_string/fast_string.hpp>
 #include "utils.hpp"
 
 namespace fs = boost::filesystem;
@@ -1932,6 +1933,8 @@ endOfWire:
 }
 
 void parseArguments(int argc, const char **argv) {
+  shards::fast_string::init();
+
   namespace fs = boost::filesystem;
 
   auto &globals = GetGlobals();

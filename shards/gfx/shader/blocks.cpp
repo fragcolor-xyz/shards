@@ -20,10 +20,10 @@ DefaultInterpolation::DefaultInterpolation() {
 
 void DefaultInterpolation::apply(IGeneratorContext &context) const {
   for (auto &input : context.getDefinitions().inputs) {
-    const std::string &name = input.first;
+    FastString name = input.first;
     if (!context.hasOutput(name.c_str())) {
       for (auto &prefix : matchPrefixes) {
-        if (boost::algorithm::starts_with(name, prefix)) {
+        if (boost::algorithm::starts_with(name.str(), prefix)) {
           context.writeOutput(name.c_str(), input.second);
           context.write(" = ");
           context.readInput(name.c_str());

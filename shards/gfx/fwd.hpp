@@ -2,8 +2,10 @@
 #define GFX_FWD
 
 #include <memory>
+#include <shards/fast_string/fast_string.hpp>
 
 namespace gfx {
+using shards::fast_string::FastString;
 
 struct Context;
 struct Pipeline;

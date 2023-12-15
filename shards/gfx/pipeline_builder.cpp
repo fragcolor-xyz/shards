@@ -152,7 +152,7 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
 
     auto &accessedFields = it->accessedFields;
     auto &layoutBuilder = bufferBinding.layoutBuilder;
-    layoutBuilder.optimize([&](const std::string &fieldName, const UniformLayout &fieldLayout) {
+    layoutBuilder.optimize([&](FastString fieldName, const UniformLayout &fieldLayout) {
       auto it = accessedFields.find(fieldName);
       return it != accessedFields.end();
     });

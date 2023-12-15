@@ -22,7 +22,7 @@ struct UniformLayout {
 
 struct UniformBufferLayout {
   std::vector<UniformLayout> items;
-  std::vector<String> fieldNames;
+  std::vector<FastString> fieldNames;
   size_t size = ~0;
   size_t maxAlignment = 0;
 
@@ -38,7 +38,7 @@ struct UniformBufferLayout {
 
 struct UniformBufferLayoutBuilder {
 private:
-  std::map<String, size_t> mapping;
+  std::map<FastString, size_t> mapping;
   UniformBufferLayout bufferLayout;
   size_t offset = 0;
 
@@ -55,21 +55,21 @@ public:
     return result;
   }
 
-  const UniformLayout &push(const String &name, const NumFieldType &paramType) {
+  const UniformLayout &push(FastString name, const NumFieldType &paramType) {
     return pushInternal(name, generateNext(paramType));
   }
 
   // Removes fields that do not pass the filter(name, UniformLayout)
   template <typename T> void optimize(T &&filter) {
     struct QueueItem {
-      std::string name;
+      FastString name;
       NumFieldType fieldType;
     };
     std::vector<QueueItem> queue;
 
     // Collect name & type pairs to keep
     for (auto it = mapping.begin(); it != mapping.end(); it++) {
-      const std::string &name = bufferLayout.fieldNames[it->second];
+      FastString name = bufferLayout.fieldNames[it->second];
       const UniformLayout &layout = bufferLayout.items[it->second];
 
       if (filter(name, layout)) {
@@ -102,7 +102,7 @@ public:
   }
 
 private:
-  UniformLayout &pushInternal(const String &name, UniformLayout &&layout) {
+  UniformLayout &pushInternal(FastString name, UniformLayout &&layout) {
     auto itExisting = mapping.find(name);
     if (itExisting != mapping.end()) {
       auto &existingLayout = bufferLayout.items[itExisting->second];
@@ -151,7 +151,7 @@ struct Fixed {
 using Dimension = std::variant<dim::One, dim::PerInstance, dim::Dynamic, dim::Fixed>;
 
 struct BufferDefinition {
-  String variableName;
+  FastString variableName;
   UniformBufferLayout layout;
   Dimension dimension = dim::One{};
 
@@ -166,13 +166,13 @@ struct BufferDefinition {
 };
 
 struct TextureDefinition {
-  String variableName;
-  String defaultTexcoordVariableName;
-  String defaultSamplerVariableName;
+  FastString variableName;
+  FastString defaultTexcoordVariableName;
+  FastString defaultSamplerVariableName;
   TextureFieldType type;
 
-  TextureDefinition(String variableName) : variableName(variableName) {}
-  TextureDefinition(String variableName, String defaultTexcoordVariableName, String defaultSamplerVariableName,
+  TextureDefinition(FastString variableName) : variableName(variableName) {}
+  TextureDefinition(FastString variableName, FastString defaultTexcoordVariableName, FastString defaultSamplerVariableName,
                     TextureFieldType type)
       : variableName(variableName), defaultTexcoordVariableName(defaultTexcoordVariableName),
         defaultSamplerVariableName(defaultSamplerVariableName), type(type) {}

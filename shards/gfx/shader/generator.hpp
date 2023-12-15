@@ -46,11 +46,11 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 }
 
 struct GeneratorDefinitions {
-  std::map<String, BufferDefinition> buffers;
-  std::map<String, TextureDefinition> textures;
-  std::map<String, NumFieldType> inputs;
-  std::map<String, NumFieldType> globals;
-  std::map<String, NumFieldType> outputs;
+  std::map<FastString, BufferDefinition> buffers;
+  std::map<FastString, TextureDefinition> textures;
+  std::map<FastString, NumFieldType> inputs;
+  std::map<FastString, NumFieldType> globals;
+  std::map<FastString, NumFieldType> outputs;
 };
 
 struct IGeneratorContext {
@@ -161,23 +161,23 @@ struct GeneratorOutput {
 struct BufferBinding {
   size_t bindGroup{};
   size_t binding{};
-  std::string name;
+  FastString name;
   UniformBufferLayout layout;
   BufferType type = BufferType::Uniform;
   Dimension dimension;
 };
 
 struct IndexedBufferBinding {
-  std::string name;
-  std::map<std::string, NumFieldType> accessedFields;
+  FastString name;
+  std::map<FastString, NumFieldType> accessedFields;
 };
 
 struct IndexedTextureBinding {
-  std::string name;
+  FastString name;
 };
 
 struct IndexedOutput {
-  std::string name;
+  FastString name;
   NumFieldType type;
 };
 

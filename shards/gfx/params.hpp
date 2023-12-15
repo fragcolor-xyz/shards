@@ -10,7 +10,6 @@
 #include <variant>
 
 namespace gfx {
-
 /// <div rustbindgen opaque></div>
 typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t, int32_t, int2, int3, int4> NumParameter;
 
@@ -31,11 +30,11 @@ gfx::shader::NumFieldType getNumParameterType(const NumParameter &variant);
 
 /// <div rustbindgen hide></div>
 struct IParameterCollector {
-  virtual void setParam(const char *name, NumParameter &&value) = 0;
-  virtual void setTexture(const char *name, TextureParameter &&value) = 0;
+  virtual void setParam(FastString name, NumParameter &&value) = 0;
+  virtual void setTexture(FastString name, TextureParameter &&value) = 0;
 
-  void setParam(const std::string &name, const NumParameter &value) { setParam(name.c_str(), NumParameter(value)); }
-  void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name.c_str(), TextureParameter(value)); }
+  void setParam(FastString name, const NumParameter &value) { setParam(name, NumParameter(value)); }
+  void setTexture(FastString name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
 };
 
 } // namespace gfx

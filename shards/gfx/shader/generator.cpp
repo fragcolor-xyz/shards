@@ -1,5 +1,6 @@
 #include "generator.hpp"
 #include "fmt.hpp"
+#include <shards/fast_string/fmt.hpp>
 #include "log/log.hpp"
 #include "shader/uniforms.hpp"
 #include "spdlog/logger.h"
@@ -96,12 +97,12 @@ struct StructField {
   static constexpr size_t NO_LOCATION = ~0;
   NamedField base;
   size_t location = NO_LOCATION;
-  String builtinTag;
+  FastString builtinTag;
 
   StructField() = default;
   StructField(const NamedField &base) : base(base) {}
   StructField(const NamedField &base, size_t location) : base(base), location(location) {}
-  StructField(const NamedField &base, const String &builtinTag) : base(base), builtinTag(builtinTag) {}
+  StructField(const NamedField &base, FastString builtinTag) : base(base), builtinTag(builtinTag) {}
   bool hasLocation() const { return location != NO_LOCATION; }
   bool hasBuiltinTag() const { return !builtinTag.empty(); }
 };
@@ -333,7 +334,7 @@ struct PipelineIO {
     }
   }
 
-  static bool isValidFragmentInputBuiltin(const std::string &builtin) { return builtin == "position"; }
+  static bool isValidFragmentInputBuiltin(FastString builtin) { return builtin == "position"; }
 
   void interpolateVertexOutputs() {
     for (auto &outputField : vertexIO.outputStructFields) {
@@ -377,8 +378,8 @@ struct Stage {
     output += fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName);
   }
 
-  StageOutput process(PipelineIO &pipelineIO, StageIO &stageIO, const std::map<String, BufferDefinition> &buffers,
-                      const std::map<String, TextureDefinition> &textureDefinitions) {
+  StageOutput process(PipelineIO &pipelineIO, StageIO &stageIO, const std::map<FastString, BufferDefinition> &buffers,
+                      const std::map<FastString, TextureDefinition> &textureDefinitions) {
     GeneratorContext context;
     context.inputVariableName = inputVariableName;
     context.outputVariableName = outputVariableName;
@@ -500,7 +501,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   // Interpolate instance index
   stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
 
-  std::map<String, BufferDefinition> buffers;
+  std::map<FastString, BufferDefinition> buffers;
   for (auto &binding : bufferBindings) {
     String variableName = fmt::format("u_{}", binding.name);
 
@@ -516,10 +517,10 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     bufferDefinition.dimension = binding.dimension;
   }
 
-  std::map<String, TextureDefinition> textureDefinitions;
+  std::map<FastString, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
-    TextureDefinition def("t_" + texture.name, fmt::format("texCoord{}", texture.defaultTexcoordBinding), "s_" + texture.name,
-                          texture.type);
+    TextureDefinition def(fmt::format("t_{}", texture.name), fmt::format("texCoord{}", texture.defaultTexcoordBinding),
+                          fmt::format("s_{}", texture.name), texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
