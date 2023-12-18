@@ -6,14 +6,31 @@
 namespace gfx {
 
 DrawablePtr MeshTreeDrawable::clone() const {
+  CloningContext cc;
+  return clone(cc);
+}
+DrawablePtr MeshTreeDrawable::clone(CloningContext &ctx) const {
+  auto remapSkin = [&](const std::shared_ptr<Skin> &skin) -> std::shared_ptr<Skin> {
+    auto it = ctx.skinMap.find(skin);
+    if (it != ctx.skinMap.end())
+      return it->second;
+    auto newSkin = std::make_shared<Skin>(*skin.get());
+    ctx.skinMap[skin] = newSkin;
+    return newSkin;
+  };
+
   MeshTreeDrawable::Ptr result = std::make_shared<MeshTreeDrawable>();
-  result->label = label;
+  result->name = name;
   result->trs = trs;
   for (auto &drawable : drawables) {
-    result->drawables.push_back(std::static_pointer_cast<MeshDrawable>(drawable->clone()));
+    auto newDrawable = std::static_pointer_cast<MeshDrawable>(drawable->clone());
+    if (newDrawable->skin) {
+      newDrawable->skin = remapSkin(newDrawable->skin);
+    }
+    result->drawables.push_back(newDrawable);
   }
   for (auto &child : children) {
-    result->addChild(std::static_pointer_cast<MeshTreeDrawable>(child->clone()));
+    result->addChild(std::static_pointer_cast<MeshTreeDrawable>(child->clone(ctx)));
   }
   result->id = getNextDrawableId();
   return result;
@@ -21,17 +38,16 @@ DrawablePtr MeshTreeDrawable::clone() const {
 
 DrawableProcessorConstructor MeshTreeDrawable::getProcessor() const { throw std::logic_error("not implemented"); }
 
-static void updateSkin(MeshDrawable &drawable, const std::shared_ptr<Skin> &_skin) {
+static void updateSkin(const std::shared_ptr<const MeshTreeDrawable> &root, MeshDrawable &drawable,
+                       const std::shared_ptr<Skin> &_skin) {
   auto &skin = *_skin.get();
   skin.jointMatrices.resize(skin.joints.size());
   for (size_t i = 0; i < skin.joints.size(); ++i) {
-    if (auto joint = skin.joints[i].lock()) {
+    const auto &path = skin.joints[i];
+    auto node = root->resolvePath(path);
+    if (node) {
       skin.jointMatrices[i] =
-      // skin.jointMatrices[i] = linalg::mul(joint->resolvedTransform, linalg::mul(skin.inverseBindMatrices[i],
-      // linalg::inverse(drawable.transform))); 
-      linalg::mul(linalg::mul(linalg::inverse(drawable.transform), joint->resolvedTransform), skin.inverseBindMatrices[i]);
-        // linalg::mul(linalg::mul(skin.inverseBindMatrices[i], joint->resolvedTransform), linalg::inverse(drawable.transform));
-
+          linalg::mul(linalg::mul(linalg::inverse(drawable.transform), node->resolvedTransform), skin.inverseBindMatrices[i]);
     }
   }
 }
@@ -50,8 +66,9 @@ bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawabl
   };
   collector.update(const_cast<MeshTreeDrawable &>(*this));
 
+  auto rootNode = shared_from_this();
   for (auto &skin : skinsToUpdate) {
-    updateSkin(*skin, skin->skin);
+    updateSkin(rootNode, *skin, skin->skin);
   }
   return true;
 }

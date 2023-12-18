@@ -362,7 +362,7 @@ struct Loader {
     node = std::make_shared<MeshTreeDrawable>();
 
     const Node &gltfNode = model.nodes[nodeIndex];
-    node->label = gltfNode.name;
+    node->name = gltfNode.name;
 
     if (gltfNode.mesh >= 0) {
       for (auto &prim : meshMap[gltfNode.mesh].primitives) {
@@ -592,7 +592,7 @@ struct Loader {
       for (auto &jointNodeIndex : gltfSkin.joints) {
         auto &jointNode = nodeMap[jointNodeIndex];
 
-        skin->joints.push_back(jointNode);
+        skin->joints.push_back(jointNode->getPath());
         skin->inverseBindMatrices.push_back(loadInverseBindMatrix(jointIndex));
         ++jointIndex;
       }
