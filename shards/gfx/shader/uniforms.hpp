@@ -155,7 +155,7 @@ struct BufferDefinition {
   UniformBufferLayout layout;
   Dimension dimension = dim::One{};
 
-  inline const UniformLayout *findField(const char *fieldName) const {
+  inline const UniformLayout *findField(FastString fieldName) const {
     for (size_t i = 0; i < layout.fieldNames.size(); i++) {
       if (layout.fieldNames[i] == fieldName) {
         return &layout.items[i];

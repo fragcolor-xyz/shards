@@ -107,13 +107,13 @@ void init() {
   storage = &instance;
 }
 uint64_t store(std::string_view sv) {
-  ZoneScopedN("FastString store");
+  ZoneScopedN("fast_string::store");
   if (!storage)
     init();
   return storage->store(sv);
 }
 std::string_view load(uint64_t id) {
-  ZoneScopedN("FastString load");
+  ZoneScopedN("fast_string::load");
   return storage->load(id);
 }
 } // namespace shards::fast_string

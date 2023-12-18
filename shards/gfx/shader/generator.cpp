@@ -202,8 +202,8 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
 
   DynamicVertexInput(std::vector<StructField> &inputStruct) : inputStruct(inputStruct) {}
 
-  bool createDynamicInput(const char *name, NumFieldType &out) {
-    if (strcmp(name, "vertex_index") == 0) {
+  bool createDynamicInput(FastString name, NumFieldType &out) {
+    if (name == "vertex_index") {
       out = NumFieldType(ShaderFieldBaseType::UInt32);
       StructField newField = generateDynamicStructInput(name, out);
       inputStruct.push_back(newField);
@@ -212,7 +212,7 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
     return false;
   }
 
-  StructField generateDynamicStructInput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructInput(FastString name, const NumFieldType &type) {
     if (name == "vertex_index") {
       return StructField(NamedField(name, type), "vertex_index");
     } else {
@@ -226,13 +226,13 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
 
   DynamicVertexOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
+  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "position") {
       return StructField(NamedField(name, type), "position");
@@ -248,13 +248,13 @@ struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
 
   DynamicFragmentOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
+  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "depth") {
       return StructField(NamedField(name, type), "frag_depth");
@@ -577,7 +577,7 @@ IndexedBindings Generator::indexBindings(const std::vector<EntryPoint> &entryPoi
   return indexBindings(getEntryPointPtrs(entryPoints));
 }
 
-template <typename T> static auto &findOrAddIndex(T &arr, const char *name) {
+template <typename T> static auto &findOrAddIndex(T &arr, FastString name) {
   auto it = std::find_if(arr.begin(), arr.end(), [&](auto &element) { return element.name == name; });
   if (it != arr.end())
     return *it;
@@ -598,17 +598,17 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void pushHeaderScope() {}
     void popHeaderScope() {}
 
-    void readGlobal(const char *name) {}
-    void beginWriteGlobal(const char *name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
+    void readGlobal(FastString name) {}
+    void beginWriteGlobal(FastString name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
     void endWriteGlobal() {}
 
-    bool hasInput(const char *name) {
+    bool hasInput(FastString name) {
       auto it = definitions.inputs.find(name);
       return it != definitions.inputs.end();
     }
 
-    void readInput(const char *name) {}
-    const NumFieldType *getOrCreateDynamicInput(const char *name) {
+    void readInput(FastString name) {}
+    const NumFieldType *getOrCreateDynamicInput(FastString name) {
       NumFieldType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicInput(name, newField)) {
@@ -619,12 +619,12 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasOutput(const char *name) {
+    bool hasOutput(FastString name) {
       auto it = definitions.outputs.find(name);
       return it != definitions.outputs.end();
     }
 
-    void writeOutput(const char *name, const NumFieldType &type) {
+    void writeOutput(FastString name, const NumFieldType &type) {
       auto it = definitions.outputs.find(name);
       if (it == definitions.outputs.end()) {
         definitions.outputs.insert_or_assign(name, type);
@@ -635,7 +635,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       }
     }
 
-    const NumFieldType *getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) {
+    const NumFieldType *getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
       NumFieldType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicOutput(name, requestedType)) {
@@ -646,13 +646,13 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasTexture(const char *name, bool defaultTexcoordRequired = true) { return true; }
-    const TextureDefinition *getTexture(const char *name) { return nullptr; }
-    void texture(const char *name) { findOrAddIndex(result.textureBindings, name); }
-    void textureDefaultTextureCoordinate(const char *name) { findOrAddIndex(result.textureBindings, name); }
-    void textureDefaultSampler(const char *name) { findOrAddIndex(result.textureBindings, name); }
+    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return true; }
+    const TextureDefinition *getTexture(FastString name) { return nullptr; }
+    void texture(FastString name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultTextureCoordinate(FastString name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultSampler(FastString name) { findOrAddIndex(result.textureBindings, name); }
 
-    void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName,
+    void readBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName,
                     const Function<void(IGeneratorContext &ctx)> &index) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
       if (index)
