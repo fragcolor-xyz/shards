@@ -128,7 +128,7 @@ public:
   }
 
   struct Output {
-    std::string name;
+    FastString name;
     TextureSubResource subResource;
   };
   std::unordered_map<size_t, Output> outputMap;

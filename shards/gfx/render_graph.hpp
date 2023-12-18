@@ -216,7 +216,7 @@ struct RenderGraph {
   using FrameBinding = std::variant<std::monostate, OutputIndex, TextureOverrideRef>;
 
   struct Frame {
-    std::string name;
+    FastString name;
     WGPUTextureFormat format;
     // Bind this frame texture to an output or texture specified in the graph
     FrameBinding binding;
@@ -224,7 +224,7 @@ struct RenderGraph {
   };
 
   struct Output {
-    std::string name;
+    FastString name;
     FrameIndex frameIndex;
   };
 

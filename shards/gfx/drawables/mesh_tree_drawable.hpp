@@ -3,6 +3,7 @@
 
 #include "../linalg.hpp"
 #include "mesh_drawable.hpp"
+#include "../anim/path.hpp"
 #include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <memory>
@@ -69,6 +70,32 @@ public:
       return true;
     });
     return found;
+  }
+
+  // Modifies path and returns the mesh tree node found
+  // the path will contain the elements after the node that was found
+  // there can only be builtin target identifiers left in the path
+  MeshTreeDrawable::Ptr findNode(anim::Path &p) {
+    MeshTreeDrawable::Ptr node = shared_from_this();
+    while (true) {
+      if (!node)
+        return MeshTreeDrawable::Ptr();
+
+      // Stop when end of path is reached
+      // or we encounter a builtin target identifier
+      if (!p || anim::isGltfBuiltinTarget(p.getHead()))
+        return node;
+
+      for (auto &child : node->getChildren()) {
+        if (child->label == p.getHead().str()) {
+          node = child;
+          p = p.next();
+          goto _next;
+        }
+      }
+      return MeshTreeDrawable::Ptr();
+    _next:;
+    }
   }
 
   void setChildren(std::vector<Ptr> &&children) {

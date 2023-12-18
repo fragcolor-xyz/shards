@@ -117,7 +117,7 @@ bool GeneratorContext::hasTexture(FastString name, bool defaultTexcoordRequired)
   auto texture = getTexture(name);
   if (!texture)
     return false;
-  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName.c_str()))
+  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName))
     return false;
   return true;
 }
@@ -141,8 +141,8 @@ void GeneratorContext::texture(FastString name) {
 
 void GeneratorContext::textureDefaultTextureCoordinate(FastString name) {
   if (const TextureDefinition *texture = getTexture(name)) {
-    if (hasInput(texture->defaultTexcoordVariableName.c_str())) {
-      readInput(texture->defaultTexcoordVariableName.c_str());
+    if (hasInput(texture->defaultTexcoordVariableName)) {
+      readInput(texture->defaultTexcoordVariableName);
     } else {
       getOutput() += "vec2<f32>(0.0, 0.0)";
     }

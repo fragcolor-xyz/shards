@@ -65,7 +65,7 @@ inline std::strong_ordering operator<=>(const FrameSizing &a, const FrameSizing 
 using TextureOverrideRef = RenderGraph::TextureOverrideRef;
 
 struct FrameBuildData {
-  std::string name;
+  FastString name;
   size_t index;
   RenderGraph::FrameBinding binding;
   WGPUTextureFormat format;
@@ -138,8 +138,8 @@ struct NodeBuildData {
   std::vector<ClearOperation> requiredClears;
 
   NodeBuildData(PipelineStepPtr step, size_t queueDataIndex) : step(step), queueDataIndex(queueDataIndex) {}
-  FrameBuildData *findInputFrame(const std::string &name) const;
-  FrameBuildData *findOutputFrame(const std::string &name) const;
+  FrameBuildData *findInputFrame(FastString name) const;
+  FrameBuildData *findOutputFrame(FastString name) const;
 };
 
 struct OutputBuildData {
@@ -150,9 +150,9 @@ struct InputBuildData {
 };
 
 struct Output {
-  std::string name;
+  FastString name;
   WGPUTextureFormat format;
-  Output(std::string name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb) : name(name), format(format) {}
+  Output(FastString name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb) : name(name), format(format) {}
 };
 
 struct SizeBuildData {

@@ -65,7 +65,7 @@ struct TextureSubResource {
 // Group of named view textures
 /// <div rustbindgen opaque></div>
 struct RenderTarget {
-  std::map<std::string, TextureSubResource> attachments;
+  std::map<FastString, TextureSubResource> attachments;
   std::string label;
   RenderTargetSizeVariant size = RenderTargetSize::MainOutput{};
 
@@ -78,7 +78,7 @@ public:
 
   /// Configures a new named attachement
   /// <div rustbindgen hide></div>
-  void configure(const char *name, WGPUTextureFormat format);
+  void configure(FastString name, WGPUTextureFormat format);
 
   /// <div rustbindgen hide></div>
   int2 resizeConditional(int2 referenceSize);
@@ -93,9 +93,9 @@ public:
   int2 computeSize(int2 referenceSize) const;
 
   /// <div rustbindgen hide></div>
-  const TextureSubResource &getAttachment(const std::string &name) const;
+  const TextureSubResource &getAttachment(FastString name) const;
 
-  const TextureSubResource &operator[](const std::string &name) const { return getAttachment(name); }
+  const TextureSubResource &operator[](FastString name) const { return getAttachment(name); }
 };
 
 } // namespace gfx

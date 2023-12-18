@@ -49,7 +49,7 @@ struct WithInput : public Block {
   WithInput(WithInput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasInput(name.c_str())) {
+    if (context.hasInput(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -80,7 +80,7 @@ struct WithTexture : public Block {
   WithTexture(WithTexture &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasTexture(name.c_str())) {
+    if (context.hasTexture(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -109,7 +109,7 @@ struct WithOutput : public Block {
   WithOutput(WithOutput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasOutput(name.c_str())) {
+    if (context.hasOutput(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -138,7 +138,7 @@ struct WriteOutput : public Block {
   WriteOutput(WriteOutput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    context.writeOutput(name.c_str(), type);
+    context.writeOutput(name, type);
     context.write(" = ");
     inner->apply(context);
     context.write(";\n");
@@ -153,7 +153,7 @@ struct ReadInput : public Block {
   ReadInput(FastString name) : name(name) {}
   ReadInput(ReadInput &&other) = default;
 
-  void apply(IGeneratorContext &context) const { context.readInput(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readInput(name); }
 
   BlockPtr clone() { return std::make_unique<ReadInput>(name); }
 };
@@ -172,7 +172,7 @@ struct WriteGlobal : public Block {
   WriteGlobal(WriteGlobal &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    context.writeGlobal(name.c_str(), type, [&]() { inner->apply(context); });
+    context.writeGlobal(name, type, [&]() { inner->apply(context); });
   }
 
   BlockPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }
@@ -184,7 +184,7 @@ struct ReadGlobal : public Block {
   ReadGlobal(FastString name) : name(name) {}
   ReadGlobal(ReadGlobal &&other) = default;
 
-  void apply(IGeneratorContext &context) const { context.readGlobal(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readGlobal(name); }
 
   BlockPtr clone() { return std::make_unique<ReadGlobal>(name); }
 };
@@ -218,14 +218,14 @@ struct SampleTexture : public Block {
 
   void apply(IGeneratorContext &context) const {
     context.write("textureSample(");
-    context.texture(name.c_str());
+    context.texture(name);
     context.write(", ");
-    context.textureDefaultSampler(name.c_str());
+    context.textureDefaultSampler(name);
     context.write(", ");
     if (sampleCoordinate) {
       sampleCoordinate->apply(context);
     } else {
-      context.textureDefaultTextureCoordinate(name.c_str());
+      context.textureDefaultTextureCoordinate(name);
     }
     context.write(")");
   }

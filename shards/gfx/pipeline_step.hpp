@@ -61,7 +61,7 @@ struct RenderStepOutput {
   // Relative to the first input to this pass
   struct RelativeToInputSize {
     // The input name, if unset, the first input is used as reference
-    std::optional<std::string> name;
+    std::optional<FastString> name;
     // The scale, (1.0, 1.0) means same size
     std::optional<float2> scale;
   };
@@ -71,7 +71,7 @@ struct RenderStepOutput {
 
   // A managed named render frame
   struct Named {
-    std::string name;
+    FastString name;
 
     // The desired format
     WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb;
@@ -79,21 +79,21 @@ struct RenderStepOutput {
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
 
-    Named(std::string name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb,
+    Named(FastString name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb,
           std::optional<ClearValues> clearValues = std::nullopt)
         : name(name), format(format), clearValues(clearValues) {}
   };
 
   // A preallocated texture to output to
   struct Texture {
-    std::string name;
+    FastString name;
 
     TextureSubResource subResource;
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
 
-    Texture(std::string name, TextureSubResource subResource, std::optional<ClearValues> clearValues = std::nullopt)
+    Texture(FastString name, TextureSubResource subResource, std::optional<ClearValues> clearValues = std::nullopt)
         : name(name), subResource(subResource), clearValues(clearValues) {}
   };
 
@@ -126,16 +126,16 @@ struct RenderStepOutput {
 struct RenderStepInput {
   // A managed named render frame
   struct Named {
-    std::string name;
-    Named(std::string name) : name(name) {}
+    FastString name;
+    Named(FastString name) : name(name) {}
     Named(const char *name) : name(name) {}
   };
 
   // A preallocated texture to input
   struct Texture {
-    std::string name;
+    FastString name;
     TextureSubResource subResource;
-    Texture(std::string name, TextureSubResource subResource) : name(name), subResource(subResource) {}
+    Texture(FastString name, TextureSubResource subResource) : name(name), subResource(subResource) {}
   };
 
   typedef std::variant<Named, Texture> InputVariant;
@@ -148,7 +148,7 @@ struct RenderStepInput {
   RenderStepInput &operator=(const RenderStepInput &) = default;
   RenderStepInput &operator=(RenderStepInput &&) = default;
 
-  void push(const std::string &name) { attachments.emplace_back(Named(name)); }
+  void push(FastString name) { attachments.emplace_back(Named(name)); }
   void push(Texture texture) { attachments.emplace_back(std::move(texture)); }
   template <typename... TArgs> static RenderStepInput make(TArgs... args) {
     RenderStepInput input;
@@ -165,7 +165,7 @@ struct NoopStep {
   UniqueId id = renderStepIdGenerator.getNext();
 
   // Name that shows up in the debugger
-  std::string name;
+  FastString name;
 
   std::optional<RenderStepOutput> output;
 
@@ -179,7 +179,7 @@ struct RenderDrawablesStep {
   UniqueId id = renderStepIdGenerator.getNext();
 
   // Name that shows up in the debugger
-  std::string name;
+  FastString name;
 
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
@@ -200,7 +200,7 @@ struct RenderFullscreenStep {
   UniqueId id = renderStepIdGenerator.getNext();
 
   // Name that shows up in the debugger
-  std::string name;
+  FastString name;
 
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;

@@ -111,7 +111,7 @@ static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &
   }
 }
 
-BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&name) {
+BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(FastString name) {
   auto it = std::find_if(bufferBindings.begin(), bufferBindings.end(),
                          [&](const BufferBindingBuilder &builder) { return builder.name == name; });
   if (it != bufferBindings.end())

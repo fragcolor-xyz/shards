@@ -145,21 +145,21 @@ struct StageOutput {
 };
 
 static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
-  std::unordered_map<std::string, size_t> nodeNames;
+  std::unordered_map<FastString, size_t> nodeNames;
   for (size_t i = 0; i < entryPoints.size(); i++) {
     const EntryPoint &entryPoint = *entryPoints[i];
     if (!entryPoint.name.empty())
       nodeNames.insert_or_assign(entryPoint.name, i);
   }
 
-  auto resolveNodeIndex = [&](const std::string &name) -> const size_t * {
+  auto resolveNodeIndex = [&](FastString name) -> const size_t * {
     auto it = nodeNames.find(name);
     if (it != nodeNames.end())
       return &it->second;
     return nullptr;
   };
 
-  std::set<std::string> missingDependencies;
+  std::set<FastString> missingDependencies;
   graph::Graph graph;
   graph.nodes.resize(entryPoints.size());
   for (size_t i = 0; i < entryPoints.size(); i++) {

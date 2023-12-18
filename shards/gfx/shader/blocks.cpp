@@ -21,12 +21,12 @@ DefaultInterpolation::DefaultInterpolation() {
 void DefaultInterpolation::apply(IGeneratorContext &context) const {
   for (auto &input : context.getDefinitions().inputs) {
     FastString name = input.first;
-    if (!context.hasOutput(name.c_str())) {
+    if (!context.hasOutput(name)) {
       for (auto &prefix : matchPrefixes) {
         if (boost::algorithm::starts_with(name.str(), prefix)) {
-          context.writeOutput(name.c_str(), input.second);
+          context.writeOutput(name, input.second);
           context.write(" = ");
-          context.readInput(name.c_str());
+          context.readInput(name);
           context.write(";\n");
           break;
         }
