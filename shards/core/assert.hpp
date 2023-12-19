@@ -4,6 +4,7 @@
 
 #ifdef SH_RELWITHDEBINFO
 #include <cstdlib>
+#include <spdlog/spdlog.h>
 #define shassert(_expr_)                              \
   if (!(_expr_)) {                                    \
     SPDLOG_CRITICAL("Assertion failed: {}", #_expr_); \
