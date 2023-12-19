@@ -1,6 +1,7 @@
 option(SH_DEBUG "Enable context debug mode by default" OFF)
 
 add_library(gfx
+  culling.cpp
   context.cpp
   context_data.cpp
   window.cpp
