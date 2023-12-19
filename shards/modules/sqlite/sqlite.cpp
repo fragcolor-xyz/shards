@@ -122,8 +122,13 @@ struct Query : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
 
-  PARAM_VAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  void setup() {
+    _query = Var("SELECT * FROM test WHERE id = ?");
+    _dbName = Var("shards.db");
+  }
+
+  PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
   std::unique_ptr<Statement> prepared;
@@ -149,17 +154,10 @@ struct Query : public Base {
     }
   }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    Base::_dbName = SHSTRVIEW(_dbName.get());
     ensureDb(context);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
@@ -172,7 +170,8 @@ struct Query : public Base {
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           if (!prepared) {
-            prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
+            prepared.reset(
+                new Statement(_connection->get(), _query.get().payload.stringValue)); // _query is full terminated cos cloned
           }
 
           sqlite3_reset(prepared->get());
@@ -279,8 +278,10 @@ struct Transaction : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  void setup() { _dbName = Var("shards.db"); }
+
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -291,17 +292,10 @@ struct Transaction : public Base {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    Base::_dbName = SHSTRVIEW(_dbName.get());
     ensureDb(context);
 
     // avoid transaction nesting
@@ -357,8 +351,13 @@ struct LoadExtension : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_VAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  void setup() {
+    _extPath = Var("my-extension");
+    _dbName = Var("shards.db");
+  }
+
+  PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -368,17 +367,10 @@ struct LoadExtension : public Base {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    Base::_dbName = SHSTRVIEW(_dbName.get());
     ensureDb(context);
 
     return awaitne(
@@ -387,7 +379,7 @@ struct LoadExtension : public Base {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
+          std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
           _connection->loadExtension(extPath);
           return input;
         },
@@ -399,8 +391,13 @@ struct RawQuery : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_VAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.", {CoreInfo::BoolType});
+  void setup() {
+    _dbName = Var("shards.db");
+    _readOnly = Var(false);
+  }
+
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_readOnly));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -410,18 +407,11 @@ struct RawQuery : public Base {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context, _readOnly.payload.boolValue);
+    Base::_dbName = SHSTRVIEW(_dbName.get());
+    ensureDb(context, _readOnly.get().payload.boolValue);
 
     return awaitne(
         context,
@@ -448,10 +438,13 @@ struct Backup : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void setup() { _dest = Var("backup.db"); }
+  void setup() {
+    _dest = Var("backup.db");
+    _dbName = Var("shards.db");
+  }
 
   PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -461,17 +454,10 @@ struct Backup : public Base {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    Base::_dbName = SHSTRVIEW(_dbName.get());
     ensureDb(context, true);
 
     return awaitne(
