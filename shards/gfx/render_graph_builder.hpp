@@ -573,13 +573,20 @@ public:
   }
 
   bool isOutputWrittenTo(size_t outputIndex) const {
+    auto checkFrame = [&](FrameBuildData *frame) -> bool {
+      auto outIndex = std::get_if<RenderGraph::OutputIndex>(&frame->binding);
+      return (outIndex && *outIndex == outputIndex);
+    };
     for (auto &node : buildingNodes) {
-      for (auto &out : node.outputs) {
-        auto outIndex = std::get_if<RenderGraph::OutputIndex>(&out->binding);
-        if (outIndex && *outIndex == outputIndex) {
+      for (auto &out : node.outputs)
+        if (checkFrame(out))
           return true;
-        }
-      }
+      for (auto &cpy : node.requiredCopies)
+        if (checkFrame(cpy.dst))
+          return true;
+      for (auto &clr : node.requiredClears)
+        if (checkFrame(clr.frame))
+          return true;
     }
     return false;
   }
@@ -650,36 +657,36 @@ public:
         readsFromStr.resize(readsFromStr.size() - 2);
 
       std::string logStr;
-      if (!readsFromStr.empty()) {
-        if (!logStr.empty())
+      auto append = [&](auto sv) {
+        if (!logStr.empty() && logStr.back() != '[')
           logStr += " ";
-        logStr += fmt::format("reads: {}", readsFromStr);
-      }
-      if (!writesToStr.empty()) {
-        if (!logStr.empty())
-          logStr += " ";
-        logStr += fmt::format("writes: {}", writesToStr);
-      }
+        logStr += sv;
+      };
 
       for (auto &copy : node.requiredCopies) {
         if (copy.order == NodeBuildData::CopyOperation::Before) {
-          SPDLOG_LOGGER_DEBUG(logger, " - copy before: {} -> {}", indexOf(buildingFrames, copy.src),
-                              indexOf(buildingFrames, copy.dst));
+          append(fmt::format("copyBefore: {} -> {}", indexOf(buildingFrames, copy.src), indexOf(buildingFrames, copy.dst)));
         }
       }
 
-      for (auto &clear : node.requiredClears) {
-        SPDLOG_LOGGER_DEBUG(logger, " - {} {}", clear.discard ? "discard" : "clear", indexOf(buildingFrames, clear.frame));
-      }
+      for (auto &clear : node.requiredClears)
+        append(fmt::format("{}: {}", clear.discard ? "discard" : "clear", indexOf(buildingFrames, clear.frame)));
 
-      SPDLOG_LOGGER_DEBUG(logger, " - [stepId:{}] {}", getStepId(node.step), logStr);
+      append("[");
+      if (!readsFromStr.empty())
+        append(fmt::format("reads: {}", readsFromStr));
+      if (!writesToStr.empty())
+        append(fmt::format("writes: {}", writesToStr));
+      logStr += "]";
 
       for (auto &copy : node.requiredCopies) {
         if (copy.order == NodeBuildData::CopyOperation::After) {
-          SPDLOG_LOGGER_DEBUG(logger, " - copy after: {} -> {}", indexOf(buildingFrames, copy.src),
-                              indexOf(buildingFrames, copy.dst));
+          append(fmt::format("copyAfter: {} -> {}", indexOf(buildingFrames, copy.src), indexOf(buildingFrames, copy.dst)));
         }
       }
+
+      SPDLOG_LOGGER_DEBUG(logger, " - {} (step:{}/{})", logStr, getPipelineStepName(node.step), getStepId(node.step));
+
       ++index;
     }
   }
