@@ -17,22 +17,27 @@
 
 namespace gfx::detail {
 
-static auto defaultRenderStepOutput = steps::getDefaultRenderStepOutput();
-static auto defaultFullscreenOutput = []() {
-  RenderStepOutput output;
-  output.attachments.push_back(steps::getDefaultColorOutput());
+const RenderStepOutput &getDefaultFullscreenOutput() {
+  static RenderStepOutput output = []() {
+    RenderStepOutput output;
+    output.attachments.push_back(steps::getDefaultColorOutput());
+    return output;
+  }();
   return output;
-}();
+}
 
-static MeshPtr fullscreenQuad = []() {
-  geom::QuadGenerator quadGen;
-  quadGen.optimizeForFullscreen = true;
-  quadGen.generate();
-  for (auto &v : quadGen.vertices) {
-    v.position[2] = 0.5f;
-  }
-  return createMesh(quadGen.vertices, std::vector<uint16_t>{});
-}();
+MeshPtr getFullscreenQuad() {
+  static auto mesh = []() {
+    geom::QuadGenerator quadGen;
+    quadGen.optimizeForFullscreen = true;
+    quadGen.generate();
+    for (auto &v : quadGen.vertices) {
+      v.position[2] = 0.5f;
+    }
+    return createMesh(quadGen.vertices, std::vector<uint16_t>{});
+  }();
+  return mesh;
+}
 
 struct PipelineGroup {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
@@ -366,7 +371,7 @@ using NodeBuildData = graph_build_data::NodeBuildData;
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
   builder.allocateInputs(node, step.input);
-  builder.allocateOutputs(node, step.output ? step.output.value() : defaultFullscreenOutput);
+  builder.allocateOutputs(node, step.output ? step.output.value() : getDefaultFullscreenOutput());
 }
 void setupNodeFrames(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
   if (!step.overlay) {
@@ -408,7 +413,7 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 
   std::shared_ptr<StepData> data = std::make_shared<StepData>();
 
-  MeshDrawable::Ptr &drawable = data->drawable = std::make_shared<MeshDrawable>(fullscreenQuad);
+  MeshDrawable::Ptr &drawable = data->drawable = std::make_shared<MeshDrawable>(getFullscreenQuad());
   FeaturePtr &baseFeature = data->baseFeature = std::make_shared<Feature>();
 
   data->queue = std::make_shared<DrawQueue>();
@@ -470,7 +475,8 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const NoopStep &step) {
-  builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput, true);
+  static auto defaultOutput = steps::getDefaultRenderStepOutput();
+  builder.allocateOutputs(data, step.output ? step.output.value() : defaultOutput, true);
 }
 
 void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const NoopStep &step) {
@@ -490,7 +496,8 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderDrawablesStep &step) {
-  builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
+  static auto defaultOutput = steps::getDefaultRenderStepOutput();
+  builder.allocateOutputs(data, step.output ? step.output.value() : defaultOutput);
 }
 
 void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderDrawablesStep &step) {

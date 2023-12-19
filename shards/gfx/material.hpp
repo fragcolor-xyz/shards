@@ -25,6 +25,11 @@ struct MaterialParameters {
   void set(FastString key, NumParameter &&param) { basic.insert_or_assign(key, std::move(param)); }
   void set(FastString key, const TextureParameter &param) { textures.insert_or_assign(key, (param)); }
 
+  void clear() {
+    basic.clear();
+    textures.clear();
+  }
+
   template <typename THash> void getPipelineHash(THash &hash) const {
     for (auto &pair : textures) {
       hash(pair.first);

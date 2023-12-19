@@ -72,10 +72,8 @@ SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
   SeqVar result;
   auto rootNode = MeshTreeDrawable::findRoot(node);
   MeshTreeDrawable::traverseDown(rootNode, node, [&](auto &node) {
-    SHVar tmp{
-        .payload = {.stringValue = node->label.c_str(), .stringLen = uint32_t(node->label.size())},
-        .valueType = SHType::String,
-    };
+    std::string_view sv(node->name.str());
+    Var tmp(sv.data(), sv.size());
     SHVar cloned{};
     cloneVar(cloned, tmp);
     result.push_back(cloned);
@@ -257,7 +255,7 @@ struct GLTFShard {
     _dynamicsApplied = false;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context)
 
     if (_drawable) {
@@ -300,7 +298,7 @@ struct GLTFShard {
         return node;
 
       for (auto &child : node->getChildren()) {
-        if (child->label == p.getHead()) {
+        if (child->name.str() == p.getHead()) {
           node = child;
           p = p.next();
           goto _next;
