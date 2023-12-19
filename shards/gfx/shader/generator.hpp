@@ -21,6 +21,18 @@ namespace shader {
 using String = std::string;
 using StringView = std::string_view;
 
+inline String sanitizeIdentifier(StringView inName) {
+  String result;
+  for (auto c : inName) {
+    if (std::isalnum(c) || c == '_') {
+      result += c;
+    } else {
+      result += '_';
+    }
+  }
+  return result;
+}
+
 struct GeneratorError {
   std::string error;
 };

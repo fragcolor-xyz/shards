@@ -14,9 +14,10 @@ struct UIPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return gfx::Types::PipelineStep; }
 
+  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (Optional). Uses the default queue if not specified",
                  {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
-  PARAM_IMPL(PARAM_IMPL_FOR(_queue));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_name));
 
   PipelineStepPtr *_stepPtr{};
 
@@ -25,7 +26,7 @@ struct UIPassShard {
     return std::get<RenderDrawablesStep>(*_stepPtr->get());
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_stepPtr) {
       Types::PipelineStepObjectVar.Release(_stepPtr);
       _stepPtr = nullptr;
@@ -47,6 +48,10 @@ struct UIPassShard {
 
     if (!(*_stepPtr)) {
       *_stepPtr = EguiRenderPass::createPipelineStep(shDrawQueue->queue);
+
+      if (!_name.isNone()) {
+        std::get<RenderDrawablesStep>(*(*_stepPtr).get()).name = SHSTRVIEW(_name.get());
+      }
     }
     getRenderDrawablesStep().drawQueue = shDrawQueue->queue;
 
