@@ -22,6 +22,10 @@
 
 namespace gfx::detail {
 
+namespace graph_build_data {
+struct NodeBuildData;
+}
+
 struct RenderTargetFormat {
   WGPUTextureFormat format;
   int2 size;
@@ -132,30 +136,45 @@ struct RenderGraphEvaluator;
 struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
   const ViewData &viewData;
+  int2 outputSize;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
+  bool ignoreInDebugger;
 };
 
 typedef size_t FrameIndex;
+typedef size_t SizeIndex;
+
+// Either load(monostate), clear(ClearValues) or discard(Discard)
+struct Discard {};
+using LoadOp = std::variant<std::monostate, ClearValues, Discard>;
 
 struct RenderGraphNode {
   struct Attachment {
     FrameIndex frameIndex;
-    std::optional<ClearValues> clearValues;
+
+    LoadOp loadOp;
 
     Attachment(FrameIndex frameIndex) : frameIndex(frameIndex) {}
-    Attachment(FrameIndex frameIndex, const ClearValues &clearValues) : frameIndex(frameIndex), clearValues(clearValues) {}
+    Attachment(FrameIndex frameIndex, const LoadOp &loadOp) : frameIndex(frameIndex), loadOp(loadOp) {}
 
     operator FrameIndex() const { return frameIndex; }
   };
 
   RenderTargetLayout renderTargetLayout;
-  std::vector<Attachment> writesTo;
-  std::vector<FrameIndex> readsFrom;
+
+  std::vector<FrameIndex> inputs;
+  std::vector<Attachment> outputs;
+  PipelineStepPtr originalStep;
+
+  // int2 outputSize;
 
   // This points to which data slot to use when resolving view data
   size_t queueDataIndex;
+
+  // Allow updating of node outputs
+  // shards::Function<void(RenderGraphNode &)> updateOutputs;
 
   // Sets up the render pass
   shards::Function<void(WGPURenderPassDescriptor &)> setupPass;
@@ -168,14 +187,40 @@ struct RenderGraphNode {
   RenderGraphNode &operator=(RenderGraphNode &&) = default;
 };
 
+struct RenderGraphFrameSize {
+  struct RelativeToMain {
+    std::optional<float2> scale;
+  };
+  struct RelativeToFrame {
+    FrameIndex frame;
+    std::optional<float2> scale;
+  };
+  struct Manual {
+    FrameIndex frame;
+  };
+};
+
 // Keeps a list of nodes that contain GPU commands
 struct RenderGraph {
+  // References the original texture inside of the render step description
+  struct TextureOverrideRef {
+    // size_t stepIndex;
+    PipelineStepPtr step;
+    enum Binding {
+      Input,
+      Output,
+    } bindingType;
+    size_t bindingIndex;
+  };
+  using OutputIndex = size_t;
+  using FrameBinding = std::variant<std::monostate, OutputIndex, TextureOverrideRef>;
+
   struct Frame {
     std::string name;
-    int2 size;
     WGPUTextureFormat format;
-    std::optional<size_t> outputIndex;
-    TextureSubResource textureOverride;
+    // Bind this frame texture to an output or texture specified in the graph
+    FrameBinding binding;
+    SizeIndex size;
   };
 
   struct Output {
@@ -183,103 +228,14 @@ struct RenderGraph {
     FrameIndex frameIndex;
   };
 
+  using Size =
+      std::variant<RenderGraphFrameSize::RelativeToMain, RenderGraphFrameSize::RelativeToFrame, RenderGraphFrameSize::Manual>;
+
   std::vector<RenderGraphNode> nodes;
   std::vector<Frame> frames;
+  std::vector<Size> sizes;
   std::vector<Output> outputs;
   std::vector<DrawQueuePtr> autoClearQueues;
-};
-
-struct RenderGraphBuilder {
-  struct FrameBuildData;
-
-  // Temporary data about nodes
-  struct Attachment {
-    RenderStepOutput::OutputVariant output;
-    FrameBuildData *frame;
-    int2 targetSize;
-    std::optional<ClearValues> clearValues;
-  };
-
-  struct FrameBuildData {
-    std::string name;
-    int2 size;
-    WGPUTextureFormat format;
-    TextureSubResource textureOverride;
-    std::optional<size_t> outputIndex;
-  };
-
-  struct NodeBuildData {
-    ViewData viewData;
-    PipelineStepPtr step;
-
-    // This points to which data slot to use when resolving view data
-    size_t queueDataIndex;
-
-    // Queues to automatically clear after rendering
-    std::vector<DrawQueuePtr> autoClearQueues;
-
-    std::vector<FrameBuildData *> readsFrom;
-    std::vector<Attachment> attachments;
-    bool forceOverwrite{};
-
-    NodeBuildData(const ViewData &viewData, PipelineStepPtr step, size_t queueDataIndex)
-        : viewData(viewData), step(step), queueDataIndex(queueDataIndex) {}
-  };
-
-  struct OutputBuildData {
-    FrameBuildData *frame{};
-  };
-
-  struct Output {
-    std::string name;
-    WGPUTextureFormat format;
-  };
-
-private:
-  template <typename T> using VectorType = boost::container::stable_vector<T>;
-  VectorType<NodeBuildData> buildingNodes;
-  VectorType<FrameBuildData> buildingFrames;
-  VectorType<OutputBuildData> buildingOutputs;
-
-  std::map<std::string, FrameBuildData *> nameLookup;
-  std::map<TextureSubResource, FrameBuildData *> handleLookup;
-
-  bool needPrepare = true;
-
-public:
-  float2 referenceOutputSize;
-  std::vector<Output> outputs;
-
-  // Adds a node to the render graph
-  void addNode(const ViewData &viewData, const PipelineStepPtr &step, size_t queueDataIndex);
-  // Allocate outputs for a render graph node
-  void allocateOutputs(NodeBuildData &buildData, const RenderStepOutput &output, bool forceOverwrite = false);
-  // Allocate outputs for a render graph node
-  void allocateInputs(NodeBuildData &buildData, const std::vector<std::string> &inputs);
-
-  // Get or allocate a frame based on it's description
-  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize);
-
-  // Find the index of a frame
-  FrameBuildData *findFrameByName(const std::string &name);
-
-  bool isWrittenTo(const FrameBuildData &frame);
-  bool isWrittenTo(const std::string &name);
-
-  RenderGraph build();
-
-private:
-  // Validate node connections & setup output
-  // after this additional modification can be made such as inserting clear steps/resizing
-  void prepare();
-
-  void attachOutputs();
-  void finalizeNodeConnections();
-  RenderTargetLayout getLayout(const NodeBuildData &node) const;
-  bool isWrittenTo(const FrameBuildData &frame, const decltype(buildingNodes)::const_iterator &it) const;
-  void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData &newFrame);
-  void replaceWrittenFramesAfterNode(const FrameBuildData &frame, FrameBuildData &newFrame,
-                                     const decltype(buildingNodes)::iterator &it);
 };
 
 struct DrawableProcessorCache {
@@ -333,8 +289,22 @@ private:
   };
   shards::pmr::vector<ResolvedFrameTexture> frameTextures;
 
+  struct FrameSize {
+    int2 size;
+    // Should the frames referencing this size be auto sized
+    // When false, the size of the texture is taken as is
+    bool isAutoSize;
+
+    FrameSize() = default;
+    FrameSize(int2 size, bool isAutoSize) : size(size), isAutoSize(isAutoSize) {}
+  };
+  shards::pmr::vector<FrameSize> frameSizes;
+
   Renderer &renderer;
   RendererStorage &storage;
+
+public:
+  bool ignoreInDebugger{};
 
 public:
   RenderGraphEvaluator(allocator_type allocator, Renderer &renderer, RendererStorage &storage);
@@ -359,10 +329,21 @@ public:
   void reset(size_t frameCounter) {
     writtenTextures.clear();
     frameTextures.clear();
+    frameSizes.clear();
   }
 
   void getFrameTextures(shards::pmr::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
                         const RenderGraph &graph, Context &context);
+
+  struct ResolvedBinding {
+    TextureSubResource subResource;
+    bool isOutput;
+    ResolvedBinding(TextureSubResource resource, bool isOutput) : subResource(resource), isOutput(isOutput) {}
+  };
+
+  ResolvedBinding resolveBinding(RenderGraph::FrameBinding binding, const std::span<TextureSubResource> &outputs);
+  void computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs);
+  void validateOutputSizes(const RenderGraph &graph);
 
   void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs);
 };

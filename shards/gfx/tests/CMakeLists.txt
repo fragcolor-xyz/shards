@@ -13,6 +13,7 @@ add_executable(test-gfx
   test_gizmos.cpp
   test_comparison.cpp
   test_rendergraph.cpp
+  test_rendergraph_headless.cpp
   test_multithreaded.cpp
   test_caching.cpp
   test_naga.cpp

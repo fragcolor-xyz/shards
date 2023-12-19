@@ -8,11 +8,12 @@
 #include "pmr/vector.hpp"
 #include "renderer.hpp"
 #include "render_graph.hpp"
+#include "render_graph_builder.hpp"
 #include "renderer_storage.hpp"
 #include "renderer_types.hpp"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
-#include <hasherxxh128.hpp>
+#include "hasherxxh128.hpp"
 #include <initializer_list>
 
 namespace gfx::detail {
@@ -21,14 +22,12 @@ namespace gfx::detail {
 struct TempView {
   ViewPtr view = std::make_shared<View>();
   CachedView cached;
-  Rect viewport;
   std::optional<ViewData> viewData;
 
   TempView() {
     viewData.emplace(ViewData{
         .view = view,
         .cachedView = cached,
-        .viewport = viewport,
     });
   }
   TempView(const TempView &) = delete;
@@ -51,6 +50,7 @@ struct FrameQueue final : public IRenderGraphEvaluationData {
 
 private:
   shards::pmr::vector<Entry> queue;
+  shards::pmr::vector<PipelineStepPtr> steps;
   RenderTargetPtr mainOutput;
   RendererStorage &storage;
 
@@ -61,7 +61,7 @@ public:
 
 public:
   FrameQueue(RenderTargetPtr mainOutput, RendererStorage &storage, allocator_type allocator)
-      : queue(allocator), mainOutput(mainOutput), storage(storage) {}
+      : queue(allocator), steps(allocator), mainOutput(mainOutput), storage(storage) {}
 
   void enqueue(const ViewData &viewData, const PipelineSteps &steps) { queue.emplace_back(viewData, steps); }
 
@@ -75,9 +75,11 @@ public:
       auto &viewData = entry.viewData;
       hasher(viewData.cachedView.isFlipped);
       hasher(viewData.referenceOutputSize);
-      for (auto &attachment : mainOutput->attachments) {
-        hasher(attachment.first);
-        hasher(attachment.second.texture->getFormat().pixelFormat);
+      if (mainOutput) {
+        for (auto &attachment : mainOutput->attachments) {
+          hasher(attachment.first);
+          hasher(attachment.second.texture->getFormat().pixelFormat);
+        }
       }
     }
 
@@ -98,25 +100,25 @@ public:
     SPDLOG_LOGGER_DEBUG(logger, "Frames:");
     for (auto &frame : graph.frames) {
       std::string outSuffix;
-      if (frame.outputIndex.has_value())
-        outSuffix += fmt::format("out: {}", frame.outputIndex.value());
-      if (frame.textureOverride.texture)
-        outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
-                                 frame.textureOverride.texture->getLabel());
-      if (!outSuffix.empty())
-        outSuffix = fmt::format(", {}", outSuffix);
-      SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
+      // if (frame.outputIndex.has_value())
+      //   outSuffix += fmt::format("out: {}", frame.outputIndex.value());
+      // if (frame.textureOverride.texture)
+      //   outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
+      //                            frame.textureOverride.texture->getLabel());
+      // if (!outSuffix.empty())
+      //   outSuffix = fmt::format(", {}", outSuffix);
+      // SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
     }
     SPDLOG_LOGGER_DEBUG(logger, "Nodes:");
     for (auto &node : graph.nodes) {
       std::string writesToStr;
-      for (auto &wt : node.writesTo)
+      for (auto &wt : node.outputs)
         writesToStr += fmt::format("{}, ", wt.frameIndex);
       if (!writesToStr.empty())
         writesToStr.resize(writesToStr.size() - 2);
 
       std::string readsFromStr;
-      for (auto &wt : node.readsFrom)
+      for (auto &wt : node.inputs)
         readsFromStr += fmt::format("{}, ", wt);
       if (!readsFromStr.empty())
         readsFromStr.resize(readsFromStr.size() - 2);
@@ -125,65 +127,75 @@ public:
     }
   }
 
+  struct Output {
+    std::string name;
+    TextureSubResource subResource;
+  };
+  std::unordered_map<size_t, Output> outputMap;
+
   RenderGraph buildRenderGraph(shards::pmr::vector<Entry> &entries, CachedRenderGraph &out) {
-    static auto logger = gfx::getLogger();
+    static auto logger = ::gfx::getLogger();
 
     SPDLOG_LOGGER_DEBUG(logger, "Building frame queue render graph");
 
     RenderGraphBuilder builder;
-    builder.referenceOutputSize = float2(mainOutput->getSize());
-    for (auto &attachment : mainOutput->attachments) {
-      builder.outputs.push_back(RenderGraphBuilder::Output{
-          .name = attachment.first,
-          .format = attachment.second.texture->getFormat().pixelFormat,
-      });
+    outputMap.clear();
+    if (mainOutput) {
+      for (auto &attachment : mainOutput->attachments) {
+        builder.outputs.emplace_back(attachment.first, attachment.second.texture->getFormat().pixelFormat);
+        outputMap.emplace(outputMap.size(), Output{attachment.first, attachment.second});
+      }
     }
 
     size_t queueDataIndex{};
     for (auto &entry : entries) {
       for (auto &step : entry.steps) {
-        builder.addNode(entry.viewData, step, queueDataIndex);
+        builder.addNode(step, queueDataIndex);
       }
       queueDataIndex++;
     }
 
     // Ensure cleared outputs
-    if (fallbackClearColor) {
-      for (auto &output : mainOutput->attachments) {
-        if (!builder.isWrittenTo(output.first)) {
-          auto format = output.second.texture->getFormat().pixelFormat;
+    if (fallbackClearColor && mainOutput) {
+      builder.prepare();
+      for (size_t outputIndex = 0; outputIndex < outputMap.size(); outputIndex++) {
+        auto &output = outputMap[outputIndex];
+        if (!builder.isOutputWrittenTo(outputIndex)) {
+          auto format = output.subResource.texture->getFormat().pixelFormat;
           auto &formatDesc = getTextureFormatDescription(format);
           if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
-            ClearStep clear;
+            NoopStep clear;
             clear.output = RenderStepOutput{};
-            clear.output->attachments.emplace_back(RenderStepOutput::Named{.name = output.first, .format = format});
-            clear.clearValues = ClearValues::getColorValue(fallbackClearColor.value());
+            clear.output->attachments.emplace_back(
+                RenderStepOutput::Named(output.name, format, ClearValues::getColorValue(fallbackClearColor.value())));
 
             // Add a clear node, the queue index ~0 indicates that the tempView is passed during runtime
             auto &entry = entries.emplace_back(tempView, std::make_shared<PipelineStep>(clear));
-            builder.addNode(entry.viewData, entry.steps[0], size_t(~0));
+            builder.addNode(entry.steps[0], size_t(~0));
           }
         }
       }
     }
 
-    RenderGraph rg = builder.build();
-
-    if (logger->level() <= spdlog::level::debug) {
-      dumpRenderGraph(rg);
+    std::optional<RenderGraph> rg = builder.build();
+    if (!rg) {
+      throw std::runtime_error("Failed to build render graph");
     }
 
-    return rg;
+    return std::move(*rg);
   }
 
   // Renderer is passed for generator callbacks
-  void evaluate(Renderer &renderer) {
+  void evaluate(Renderer &renderer, bool ignoreInDebugger = false) {
     const RenderGraph &rg = getOrCreateRenderGraph();
+
     RenderGraphEvaluator evaluator(storage.workerMemory, renderer, storage);
 
     shards::pmr::vector<TextureSubResource> renderGraphOutputs(storage.workerMemory);
-    for (auto &attachment : mainOutput->attachments) {
-      renderGraphOutputs.push_back(attachment.second);
+    if (mainOutput) {
+      for (auto &attachment : mainOutput->attachments) {
+        renderGraphOutputs.push_back(attachment.second);
+      }
     }
 
     evaluator.evaluate(rg, *this, renderGraphOutputs);

@@ -23,6 +23,7 @@ ViewStack::Output ViewStack::getOutput(size_t offset) const {
     const Item &item = items[i];
     if (item.renderTarget) {
       result.renderTarget = item.renderTarget;
+      result.viewport.reset();
       isViewportSet = false;
     }
     if (item.viewport) {
@@ -48,7 +49,9 @@ ViewStack::Output ViewStack::getOutput(size_t offset) const {
     if (it == result.renderTarget->attachments.end())
       throw std::runtime_error("Can not derive viewport from render target");
 
-    result.viewport = Rect(result.renderTarget->computeSize(result.referenceSize));
+    result.size = result.renderTarget->computeSize(result.referenceSize);
+  } else {
+    result.size = result.viewport->getSize();
   }
 
   return result;

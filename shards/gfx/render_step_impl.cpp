@@ -1,6 +1,8 @@
 #include "render_step_impl.hpp"
 #include "drawables/mesh_drawable.hpp"
+#include "pipeline_step.hpp"
 #include "render_graph.hpp"
+#include "render_graph_builder.hpp"
 #include "renderer_types.hpp"
 #include "shader/log.hpp"
 #include "steps/defaults.hpp"
@@ -16,12 +18,11 @@
 namespace gfx::detail {
 
 static auto defaultRenderStepOutput = steps::getDefaultRenderStepOutput();
-static auto defaultFullscreenOutput = RenderStepOutput{
-    .attachments =
-        {
-            steps::getDefaultColorOutput(),
-        },
-};
+static auto defaultFullscreenOutput = []() {
+  RenderStepOutput output;
+  output.attachments.push_back(steps::getDefaultColorOutput());
+  return output;
+}();
 
 static MeshPtr fullscreenQuad = []() {
   geom::QuadGenerator quadGen;
@@ -130,8 +131,6 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   RendererStorage &storage = evaluator.getStorage();
   WorkerMemory &workerMemory = storage.workerMemory;
 
-  tf::Taskflow flow;
-
   HasherXXH128<PipelineHashVisitor> sharedHasher;
   sharedHasher(rtl);
   sharedHasher(evaluateContext.viewData.cachedView.isFlipped);
@@ -142,6 +141,10 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
 
   auto &pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
   auto &context = evaluator.getRenderer().getContext();
+
+  auto &nodeOutputSize = evaluateContext.outputSize;
+  auto &viewport = evaluateContext.viewData.viewport ? evaluateContext.viewData.viewport.value()
+                                                     : Rect::fromCorners(0, 0, nodeOutputSize.x, nodeOutputSize.y);
 
   // Compute drawable hashes
   {
@@ -273,6 +276,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
         .storage = storage,
         .cachedPipeline = cachedPipeline,
         .viewData = evaluateContext.viewData,
+        .viewport = viewport,
         .drawables = group.drawables,
         .generatorData = *group.generatorData,
         .sortMode = sortMode,
@@ -313,7 +317,6 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   {
     ZoneScopedN("encodeRenderCommands");
 
-    auto &viewport = evaluateContext.viewData.viewport;
     wgpuRenderPassEncoderSetViewport(evaluateContext.encoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
                                      (float)viewport.height, 0.0f, 1.0f);
 
@@ -327,6 +330,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
           .encoder = evaluateContext.encoder,
           .cachedPipeline = *group.pipeline.get(),
           .viewData = evaluateContext.viewData,
+          .viewport = viewport,
           .preparedData = group.prepareData,
       };
       encodeCtx.cachedPipeline.drawableProcessor->encode(encodeCtx);
@@ -358,13 +362,22 @@ void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const Rende
                   BuildPipelineOptions{.ignoreDrawableFeatures = step.ignoreDrawableFeatures});
 }
 
-using Data = RenderGraphBuilder::NodeBuildData;
+using NodeBuildData = graph_build_data::NodeBuildData;
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderFullscreenStep &step) {
-  builder.allocateInputs(data, step.inputs);
-
-  bool overwriteTargets = step.overlay ? false : true;
-  builder.allocateOutputs(data, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
+  builder.allocateInputs(node, step.input);
+  builder.allocateOutputs(node, step.output ? step.output.value() : defaultFullscreenOutput);
+}
+void setupNodeFrames(detail::RenderGraphBuilder &builder, NodeBuildData &node, const RenderFullscreenStep &step) {
+  if (!step.overlay) {
+    for (auto &frame : node.outputs) {
+      auto &clear = node.requiredClears.emplace_back();
+      clear.frame = frame;
+      clear.discard = true;
+    }
+  } else {
+    builder.setupClears(node);
+  }
 }
 
 static inline TextureSampleType getDefaultTextureSampleType(WGPUTextureFormat pixelFormat) {
@@ -382,7 +395,7 @@ static inline TextureSampleType getDefaultTextureSampleType(WGPUTextureFormat pi
   }
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderFullscreenStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderFullscreenStep &step) {
   ZoneScoped;
 
   struct StepData {
@@ -418,50 +431,69 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   }
 
   // Setup node outputs as texture slots
-  for (auto &frame : buildData.readsFrom) {
+  for (auto &frame : buildData.inputs) {
     auto &entry = baseFeature->textureParams.emplace_back(frame->name);
     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
-  node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {
+  // NOTE: Important to capture reference to the shared step pointer
+  PipelineStepPtr stepPtr = buildData.step;
+  node.encode = [data, stepPtr, drawable](RenderGraphEncodeContext &ctx) {
+    RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+
     // Set parameters from step
     drawable->parameters = step.parameters;
 
     // Connect texture inputs
-    for (auto &frameIndex : ctx.node.readsFrom) {
+    for (auto &frameIndex : ctx.node.inputs) {
       auto &texture = ctx.evaluator.getTexture(frameIndex);
       auto &frame = ctx.graph.frames[frameIndex];
       data->drawable->parameters.set(frame.name, texture);
     }
 
+    // if (step.output) {
+    //   auto &attachments = step.output->attachments;
+    //   for (size_t i = 0; i < attachments.size(); i++) {
+    //     auto &stepAttachment = attachments[i];
+    //     if (auto texture = std::get_if<RenderStepOutput::Texture>(&stepAttachment)) {
+    //       auto &attachment = ctx.node.outputs[i];
+    // attachment.frameIndex
+    // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
+    // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
+    // data->drawable->parameters.set(frame.name, texture);
+    //     }
+    //   }
+    // }
+
     renderDrawables(ctx, data->queue, data->features, SortMode::Queue, BuildPipelineOptions{});
   };
 }
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const ClearStep &step) {
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const NoopStep &step) {
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput, true);
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const ClearStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const NoopStep &step) {
   node.setupPass = [=](WGPURenderPassDescriptor &desc) {
-    for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
-      auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
-      double4 clearValue(step.clearValues.color);
-      memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
-    }
-    if (desc.depthStencilAttachment) {
-      auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
-      attachment.depthClearValue = step.clearValues.depth;
-      attachment.stencilClearValue = step.clearValues.stencil;
-    }
+    // TODO(rendergraph)
+    // for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
+    //   auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
+    //   double4 clearValue(step.clearValues.color);
+    //   memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
+    // }
+    // if (desc.depthStencilAttachment) {
+    //   auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
+    //   attachment.depthClearValue = step.clearValues.depth;
+    //   attachment.stencilClearValue = step.clearValues.stencil;
+    // }
   };
 }
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderDrawablesStep &step) {
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderDrawablesStep &step) {
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
 }
 
-void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderDrawablesStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderDrawablesStep &step) {
   if (!step.drawQueue)
     throw std::runtime_error("No draw queue assigned to drawable step");
 

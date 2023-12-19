@@ -26,8 +26,9 @@ struct ViewStack {
 
   /// <div rustbindgen hide></div>
   struct Output {
-    Rect viewport;
+    std::optional<Rect> viewport;
     RenderTargetPtr renderTarget;
+    int2 size;
     int2 referenceSize;
   };
 

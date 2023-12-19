@@ -12,7 +12,8 @@
 #include <gfx/texture.hpp>
 #include <gfx/render_target.hpp>
 #include <gfx/steps/effect.hpp>
-#include <spdlog/fmt/fmt.h>
+#include <gfx/render_graph.hpp>
+#include <gfx/render_graph_builder.hpp>
 #include <spdlog/spdlog.h>
 
 using namespace gfx;
@@ -65,10 +66,12 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
       }),
   };
 
+  auto colorOut = steps::getDefaultColorOutput();
+  colorOut.clearValues = ClearValues::getColorValue(float4(0.2, 0.2, 0.2, 1.0));
+
   PipelineSteps stepsMain{
-      makePipelineStep(ClearStep{
-          .clearValues = ClearValues::getColorValue(float4(0.2, 0.2, 0.2, 1.0)),
-          .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
+      makePipelineStep(NoopStep{
+          .output = RenderStepOutput::make(colorOut),
       }),
       makePipelineStep(RenderFullscreenStep{
           .features =
@@ -83,7 +86,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
           .parameters{
               .textures = {{"baseColorTexture", TextureParameter(rt->getAttachment("color"))}},
           },
-          .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
+          .output = RenderStepOutput::make(steps::getDefaultColorOutput()),
           .overlay = true,
       }),
   };
@@ -92,8 +95,8 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
     auto outputSize = testRenderer->getOutputSize();
     rt->resizeConditional(outputSize);
 
-    Rect mainViewport = viewStack.getOutput().viewport;
-    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
+    int2 mainSize = viewStack.getOutput().size;
+    Rect subViewport = Rect(int2(mainSize.x / 2, 0), mainSize / 2);
 
     renderer.pushView(ViewStack::Item{.renderTarget = rt});
     renderer.render(view, stepsRT);
@@ -164,10 +167,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
           .output =
               []() {
                 auto output = steps::getDefaultRenderStepOutput();
-                output.attachments.emplace_back(RenderStepOutput::Named{
-                    .name = "velocity",
-                    .format = WGPUTextureFormat_RG16Float,
-                });
+                output.attachments.emplace_back(RenderStepOutput::Named("velocity", WGPUTextureFormat_RG16Float));
                 return output;
               }(),
       }),
@@ -192,7 +192,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
           .parameters{
               .textures = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
           },
-          .output = makeRenderStepOutput(getDefaultColorOutput()),
+          .output = RenderStepOutput::make(getDefaultColorOutput()),
       }),
   };
 
@@ -227,57 +227,197 @@ TEST_CASE("Velocity", "[RenderGraph]") {
   testRenderer.reset();
 }
 
-TEST_CASE("Multiple IO", "[RenderGraph]") {
+TEST_CASE("Format conversion", "[RenderGraph]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
-  MeshPtr cubeMesh = createCubeMesh();
-
   ViewPtr view = std::make_shared<View>();
-  view->proj = ViewPerspectiveProjection{};
-  view->view = linalg::lookat_matrix(float3(1.0f, 1.0f, 1.0f) * 3.0f, float3(0, 0, 0), float3(0, 1, 0));
 
-  auto &proj = std::get<ViewPerspectiveProjection>(view->proj);
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
 
-  DrawQueuePtr queue = std::make_shared<DrawQueue>();
+  // Pass that writes a fixed color (linear)
+  {
+    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(1.0, 0.5, 0.25, 1.0)"));
+    steps.emplace_back(Effect::create(RenderStepInput{},
+                                      RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float)),
+                                      std::move(blk)));
+  }
 
-  auto transform = linalg::identity;
-  auto drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
-  drawable->parameters.set("baseColor", float4(0, 1, 0, 1));
-  queue->add(drawable);
+  // Dummy pass that doesn't write colors
+  // Convert to RGBA8UnormSrgb (srgb)
+  {
+    steps.emplace_back(Effect::create(RenderStepInput{},
+                                      RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA8UnormSrgb)),
+                                      std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
+    step.overlay = true;
+    auto &f = step.features.emplace_back(std::make_shared<Feature>());
+    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+  }
 
-  auto makeEffectShader = [&]() {
-    using namespace shader;
-    using namespace shader::blocks;
+  // Dummy pass that doesn't write colors
+  // convert to WGPUTextureFormat_RGBA16Float (linear)
+  {
+    steps.emplace_back(Effect::create(RenderStepInput{},
+                                      RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA16Float)),
+                                      std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
+    step.overlay = true;
+    auto &f = step.features.emplace_back(std::make_shared<Feature>());
+    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+  }
 
-    auto feature = std::make_shared<Feature>();
-    auto code = makeCompoundBlock();
-    code->appendLine("let depth = ", SampleTexture("depth"), ".x");
-    code->appendLine("let color = ", SampleTexture("color"), ".xyzw");
-    code->appendLine(fmt::format("let near = {:0.2}; let far = {:0.2}; let dr = far-near", proj.near, proj.far));
-    code->appendLine("let ldepth = -near*far/(dr*depth-far)");
-    code->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(color.xyz * (1.0 - (ldepth - 2.5)/4.0), 1.0)"));
-    return code;
-  };
-
-  PipelineSteps steps{
-      makePipelineStep(RenderDrawablesStep{
-          .drawQueue = queue,
-          .features =
-              {
-                  features::Transform::create(),
-                  features::BaseColor::create(),
-              },
-          .output = steps::getDefaultRenderStepOutput(),
-      }),
-      steps::Effect::create(
-          RenderStepInputs{"color", "depth", "velocity"},
-          makeRenderStepOutput(RenderStepOutput::Named{.name = "color", .format = WGPUTextureFormat_RGBA16Float}),
-          makeEffectShader()),
-  };
+  // Dummy pass that doesn't write colors
+  // convert back to default (srgb)
+  {
+    steps.emplace_back(Effect::create(RenderStepInput{},
+                                      RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA8UnormSrgb)),
+                                      std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
+    step.overlay = true;
+    auto &f = step.features.emplace_back(std::make_shared<Feature>());
+    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+  }
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
-  CHECK(testRenderer->checkFrame("rendergraph_multiple_io", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("rendergraph_format_conversion", 1.5f));
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Graph output size mismatch", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
+
+  // write "test" target
+  {
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(1.0, 0.0, 0.0, 1.0)"));
+    auto &stepPtr = steps.emplace_back(
+        Effect::create(RenderStepInput{}, RenderStepOutput::make(RenderStepOutput::Named("test", WGPUTextureFormat_RGBA32Float)),
+                       std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.output->outputSizing = RenderStepOutput::RelativeToMainSize{.scale = float2(0.5f)};
+  }
+
+  // write "color" & "test" target with mismatching sizes
+  {
+    blk = makeCompoundBlock();
+    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    auto &stepPtr =
+        steps.emplace_back(Effect::create(RenderStepInput{},
+                                          RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
+                                                                 RenderStepOutput::Named("test", WGPUTextureFormat_RGBA32Float)),
+                                          std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.overlay = true;
+  }
+
+  TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Write to texture auto-size", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
+
+  TexturePtr outputTexture = std::make_shared<Texture>("outputText");
+  outputTexture->initWithPixelFormat(WGPUTextureFormat::WGPUTextureFormat_RGBA32Float)
+      .initWithFlags(TextureFormatFlags::RenderAttachment)
+      .initWithResolution(int2(100, 100));
+
+  // write "color" & "test" target with mismatching sizes
+  {
+    blk = makeCompoundBlock();
+    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    auto &stepPtr =
+        steps.emplace_back(Effect::create(RenderStepInput{},
+                                          RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
+                                                                 RenderStepOutput::Texture("test", outputTexture)),
+                                          std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.overlay = true;
+  }
+
+  TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Graph evaluate output size mismatch", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
+
+  TexturePtr outputTexture = std::make_shared<Texture>("outputText");
+  outputTexture->initWithPixelFormat(WGPUTextureFormat::WGPUTextureFormat_RGBA32Float)
+      .initWithFlags(TextureFormatFlags::RenderAttachment)
+      .initWithResolution(int2(100, 100));
+
+  // write "color" & "test" target with mismatching sizes
+  {
+    blk = makeCompoundBlock();
+    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    auto &stepPtr =
+        steps.emplace_back(Effect::create(RenderStepInput{},
+                                          RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
+                                                                 RenderStepOutput::Texture("test", outputTexture)),
+                                          std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.output->outputSizing = RenderStepOutput::ManualSize{};
+    step.overlay = true;
+  }
+
+  CHECK_THROWS(TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); });
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Read and write same texture", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+
+  auto blk = makeCompoundBlock();
+  PipelineSteps steps;
+
+  TexturePtr outputTexture = std::make_shared<Texture>("outputText");
+  outputTexture->initWithPixelFormat(WGPUTextureFormat::WGPUTextureFormat_RGBA32Float)
+      .initWithFlags(TextureFormatFlags::RenderAttachment)
+      .initWithResolution(int2(100, 100));
+
+  // write "color" & "test" target with mismatching sizes
+  {
+    blk = makeCompoundBlock();
+    blk->appendLine(WriteOutput("test", FieldTypes::Float4, SampleTexture("test"), "+", "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    auto &stepPtr = steps.emplace_back(Effect::create(RenderStepInput::make(RenderStepInput::Texture("test", outputTexture)),
+                                                      RenderStepOutput::make(RenderStepOutput::Texture("test", outputTexture)),
+                                                      std::move(blk)));
+    auto &step = std::get<RenderFullscreenStep>(*stepPtr.get());
+    step.output->outputSizing = RenderStepOutput::ManualSize{};
+    step.overlay = true;
+  }
+
+  TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
 
   testRenderer.reset();
 }

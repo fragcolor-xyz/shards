@@ -313,7 +313,7 @@ TEST_CASE("Gizmo handles", "[Gizmos]") {
   TEST_RENDER_LOOP(testRenderer) {
     editorQueue->clear();
 
-    int2 viewportSize = renderer.getViewStack().getOutput().viewport.getSize();
+    int2 viewportSize = renderer.getViewStack().getOutput().size;
     gr.begin(view, float2(viewportSize));
     float4 colors[3] = {
         float4(1, 0, 0, 1),

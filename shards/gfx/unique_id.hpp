@@ -44,6 +44,8 @@ struct UniqueId {
     return tagPart | idPart;
   }
 
+  constexpr size_t getIdPart() { return value & UniqueIdIdMask; }
+
   constexpr UniqueIdTag getTag() {
     UniqueIdValue tagPart = value & UniqueIdTagMask;
     return UniqueIdTag(tagPart >> (UniqueIdBits - UniqueIdTagBits));

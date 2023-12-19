@@ -2,15 +2,14 @@
 #include "drawable_utils.hpp"
 #include "shader/composition.hpp"
 #include "shards_utils.hpp"
-#include "gfx/error_utils.hpp"
-#include "gfx/fwd.hpp"
-#include "gfx/hash.hpp"
-#include "gfx/hasherxxh128.hpp"
-#include "gfx/unique_id.hpp"
-#include "shards_utils.hpp"
 #include "shader/translator.hpp"
 #include <shards/linalg_shim.hpp>
 #include <shards/iterator.hpp>
+#include <gfx/error_utils.hpp>
+#include <gfx/fwd.hpp>
+#include <gfx/hash.hpp>
+#include <gfx/hasherxxh128.hpp>
+#include <gfx/unique_id.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/pipeline_step.hpp>
 #include <gfx/steps/defaults.hpp>
@@ -42,6 +41,14 @@ WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &form
   throw std::runtime_error("Output :Format required");
 }
 
+static inline const SHVar &getDefaultOutputScale() {
+  // The default output scale is to scale to the main output
+  // set using {main: None}
+  static TableVar table;
+  table["main"] = Var();
+  return table;
+}
+
 template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar &input) {
   checkType(input.valueType, SHType::Seq, "Outputs sequence");
 
@@ -66,8 +73,6 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
 
     if (hasTexture && hasFormat)
       throw std::runtime_error(":Format and :Texture are exclusive");
-
-    auto &attachment = output.attachments.emplace_back();
 
     std::string attachmentName(SHSTRVIEW(nameVar));
     WGPUTextureFormat textureFormat{};
@@ -122,19 +127,22 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
         throw std::runtime_error("Invalid output texture, it wasn't created as a render target");
       }
 
-      std::string name(SHSTRVIEW(nameVar));
-      attachment = RenderStepOutput::Texture{
-          .name = std::move(name),
-          .subResource = texture,
-          .clearValues = clearValues,
-      };
+      output.attachments.emplace_back(RenderStepOutput::Texture(std::string(SHSTRVIEW(nameVar)), texture, clearValues));
     } else {
-      attachment = RenderStepOutput::Named{
-          .name = std::move(attachmentName),
-          .format = textureFormat,
-          .clearValues = clearValues,
-      };
+      output.attachments.emplace_back(RenderStepOutput::Named(attachmentName, textureFormat, clearValues));
     }
+  }
+}
+
+std::optional<float2> toOutputScale(const SHVar &input) {
+  if (input.valueType == SHType::Float) {
+    return float2(input.payload.floatValue);
+  } else if (input.valueType == SHType::Float2) {
+    return toVec<float2>(input);
+  } else if (input.valueType == SHType::None) {
+    return std::nullopt;
+  } else {
+    throw formatException("Output scale must be a float or float2, got {} ({})", input.valueType, input);
   }
 }
 
@@ -142,7 +150,31 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
   if (!step.output) {
     step.output = steps::getDefaultRenderStepOutput();
   }
-  step.output->sizeScale = toVec<float2>(input);
+
+  ParamVar v(input);
+  v.warmup(context);
+
+  if (input.valueType == SHType::Table) {
+    SHTable &table = v.get().payload.tableValue;
+    Var mainVar;
+    if (getFromTable(context, table, Var("main"), mainVar)) {
+      step.output->outputSizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(mainVar)};
+    } else {
+      Var inputVar;
+      getFromTable(context, table, Var("input"), inputVar);
+      checkType(inputVar.valueType, SHType::String, "OutputScale input name");
+
+      std::optional<float2> scaleOpt;
+      Var scaleVar;
+      if (getFromTable(context, table, Var("scale"), scaleVar)) {
+        scaleOpt = toOutputScale(scaleVar);
+      }
+
+      step.output->outputSizing = RenderStepOutput::RelativeToInputSize{.name = inputVar.payload.stringValue, .scale = scaleOpt};
+    }
+  } else {
+    step.output->outputSizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(v.get())};
+  }
 }
 
 template <typename T>
@@ -160,7 +192,7 @@ void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamV
     shared::applyOutputScale(context, step, outputScale.get());
   } else {
     if (step.output) {
-      step.output->sizeScale.reset();
+      step.output->outputSizing = RenderStepOutput::ManualSize{};
     }
   }
 
@@ -213,6 +245,8 @@ struct DrawablePassShard {
 
   PipelineStepPtr *_step{};
   HashState _hashState;
+
+  DrawablePassShard() { _outputScale = shared::getDefaultOutputScale(); }
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -296,6 +330,18 @@ struct EffectPassShard {
   gfx::shader::VariableMap _composedWith;
   std::vector<FeaturePtr> _generatedFeatures;
 
+  EffectPassShard() {
+    static SeqVar defaultOutputs = []() {
+      SeqVar t;
+      t.resize(1);
+      auto &color = t.get<TableVar>(0);
+      color["Name"] = Var("color");
+      return t;
+    }();
+    _outputs = defaultOutputs;
+    _outputScale = shared::getDefaultOutputScale();
+  }
+
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
@@ -323,11 +369,11 @@ struct EffectPassShard {
   void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
     checkType(input.valueType, SHType::Seq, ":Inputs");
 
-    step.inputs.clear();
+    step.input.attachments.clear();
     for (size_t i = 0; i < input.payload.seqValue.len; i++) {
       auto &elem = input.payload.seqValue.elements[i];
       checkType(elem.valueType, SHType::String, "Input");
-      step.inputs.emplace_back(SHSTRVIEW(elem));
+      step.input.attachments.emplace_back(RenderStepInput::Named(std::string(SHSTRVIEW(elem))));
     }
   }
 
@@ -353,7 +399,7 @@ struct EffectPassShard {
     if (!_inputs.isNone()) {
       applyInputs(context, step, _inputs.get());
     } else {
-      step.inputs = RenderStepInputs{"color"};
+      step.input.attachments.clear();
     }
 
     if (!_params.isNone()) {
