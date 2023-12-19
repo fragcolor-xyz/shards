@@ -17,13 +17,16 @@
 
 namespace gfx::detail {
 
-static inline RenderStepOutput getDefaultFullscreenOutput() {
-  RenderStepOutput output;
-  output.attachments.push_back(steps::getDefaultColorOutput());
+const RenderStepOutput &getDefaultFullscreenOutput() {
+  static RenderStepOutput output = []() {
+    RenderStepOutput output;
+    output.attachments.push_back(steps::getDefaultColorOutput());
+    return output;
+  }();
   return output;
 }
 
-static MeshPtr getFullscreenQuad() {
+MeshPtr getFullscreenQuad() {
   static auto mesh = []() {
     geom::QuadGenerator quadGen;
     quadGen.optimizeForFullscreen = true;
@@ -472,7 +475,8 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const NoopStep &step) {
-  builder.allocateOutputs(data, step.output ? step.output.value() : steps::getDefaultRenderStepOutput(), true);
+  static auto defaultOutput = steps::getDefaultRenderStepOutput();
+  builder.allocateOutputs(data, step.output ? step.output.value() : defaultOutput, true);
 }
 
 void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const NoopStep &step) {
@@ -492,7 +496,8 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, NodeBuildData &data, const RenderDrawablesStep &step) {
-  builder.allocateOutputs(data, step.output ? step.output.value() : steps::getDefaultRenderStepOutput());
+  static auto defaultOutput = steps::getDefaultRenderStepOutput();
+  builder.allocateOutputs(data, step.output ? step.output.value() : defaultOutput);
 }
 
 void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const RenderDrawablesStep &step) {
