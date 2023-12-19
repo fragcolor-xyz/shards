@@ -432,6 +432,75 @@ struct RawQuery : public Base {
   }
 };
 
+struct Backup : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void setup() { _dest = Var("backup.db"); }
+
+  PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void warmup(SHContext *context) {
+    if (_dbName.valueType != SHType::None) {
+      Base::_dbName = SHSTRVIEW(_dbName);
+    } else {
+      Base::_dbName = "shards.db";
+    }
+
+    PARAM_WARMUP(context);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
+    return awaitne(
+        context,
+        [&] {
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::unique_lock<std::mutex> l2(_connection->mutex);
+
+          auto destPath = SHSTRVIEW(_dest.get());
+          sqlite3 *pDest;
+          auto rc = sqlite3_open(destPath.data(), &pDest);
+          if (rc != SQLITE_OK) {
+            throw ActivationError(sqlite3_errmsg(pDest));
+          }
+          DEFER({ sqlite3_close(pDest); });
+
+          auto pBackup = sqlite3_backup_init(pDest, "main", _connection->get(), "main");
+          if (!pBackup) {
+            throw ActivationError(sqlite3_errmsg(pDest));
+          }
+          DEFER({ sqlite3_backup_finish(pBackup); });
+
+          // do 5 pages, unlock, yield a bit, repeat
+          do {
+            rc = sqlite3_backup_step(pBackup, 5);
+            if (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
+              // unlock
+              l2.unlock();
+              // thread wait here 250 ms
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+              // lock again
+              l2.lock();
+            }
+          } while (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED);
+
+          return input;
+        },
+        [] {});
+  }
+};
+
 } // namespace DB
 } // namespace shards
 SHARDS_REGISTER_FN(sqlite) {
@@ -440,4 +509,5 @@ SHARDS_REGISTER_FN(sqlite) {
   REGISTER_SHARD("DB.Transaction", Transaction);
   REGISTER_SHARD("DB.LoadExtension", LoadExtension);
   REGISTER_SHARD("DB.RawQuery", RawQuery);
+  REGISTER_SHARD("DB.Backup", Backup);
 }
