@@ -400,7 +400,8 @@ struct RawQuery : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
+  PARAM_VAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_readOnly));
 
   SHTypeInfo compose(SHInstanceData &data) {
     Base::compose(data);
@@ -420,7 +421,7 @@ struct RawQuery : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    ensureDb(context, _readOnly.payload.boolValue);
 
     return awaitne(
         context,
