@@ -41,7 +41,7 @@ DrawableProcessorConstructor MeshTreeDrawable::getProcessor() const { throw std:
 static void updateSkin(const std::shared_ptr<const MeshTreeDrawable> &root, MeshDrawable &drawable,
                        const std::shared_ptr<Skin> &_skin) {
   auto &skin = *_skin.get();
-  skin.jointMatrices.resize(skin.joints.size());
+skin.jointMatrices.resize(skin.joints.size());
   for (size_t i = 0; i < skin.joints.size(); ++i) {
     const auto &path = skin.joints[i];
     auto node = root->resolvePath(path);

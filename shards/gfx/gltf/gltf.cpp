@@ -614,9 +614,9 @@ struct Loader {
     loadMaterials();
     loadMeshes();
     loadNodes();
-    loadSkins();
-    loadAnimations();
 
+    // Unify everyhing into a single node per scene
+    // needs to be done before computing animation paths in skins
     size_t numScenes = model.scenes.size();
     sceneMap.resize(numScenes);
     for (size_t i = 0; i < numScenes; i++) {
@@ -637,6 +637,9 @@ struct Loader {
         }
       }
     }
+
+    loadSkins();
+    loadAnimations();
   }
 };
 
