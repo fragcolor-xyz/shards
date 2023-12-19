@@ -73,7 +73,7 @@ struct Storage {
         return it->second;
       } else {
         readLock.unlock();
-        return write([&](auto &writeLock) {
+        return write([&](auto &writeLock) -> uint64_t {
           auto it = pool.map.find(str);
           if (it != pool.map.end()) {
             // Double check to make sure it wasn't added in the meantime
@@ -84,7 +84,7 @@ struct Storage {
             pool.reverse.emplace_back(it->first);
 
             TracyPlot("FastString memory", int64_t(pool.countingAllocator.totalRequestedBytes));
-            return index;
+            return (uint64_t)index;
           }
         });
       }
