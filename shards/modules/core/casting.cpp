@@ -307,9 +307,9 @@ struct BitSwap64 {
 // Matches input against expected type and throws if it doesn't match
 // unsafe only matches basic type
 static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash, const SHTypeInfo &expectedType, bool unsafe) {
-  if(expectedType.basicType == SHType::Any) {
+  if (expectedType.basicType == SHType::Any) {
     return;
-  } else  if (input.valueType != expectedType.basicType) {
+  } else if (input.valueType != expectedType.basicType) {
     throw ActivationError(fmt::format("Unexpected input type, value: {} expected type: {}", input, expectedType));
   } else if (input.valueType == SHType::Seq && input.payload.seqValue.len == 0) {
     // early out if seq is empty
@@ -389,7 +389,7 @@ struct Expect {
   Expect() { _unsafe = Var(false); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_type->valueType != SHType::Type) {
@@ -442,7 +442,7 @@ struct ExpectLike {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     bool haveOutputOf = _outputOf.shards().len > 0;
@@ -473,6 +473,34 @@ struct ExpectLike {
   SHVar activate(SHContext *context, const SHVar &input) {
     expectTypeCheck(input, _expectedTypeHash, _expectedType, (bool)*_unsafe);
     return input;
+  }
+};
+
+struct TypeOf {
+  SHTypeInfo _expectedType;
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::TypeType; }
+
+  PARAM(ShardsVar, _outputOf, "OutputOf",
+        "Evaluates the output type of the given expression. That type will be checked against this shard's input.",
+        {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_outputOf));
+
+  TypeOf() {}
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _expectedType = _outputOf.compose(data).outputType;
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHVar out{};
+    out.valueType = SHType::Type;
+    out.payload.typeValue = &_expectedType;
+    return out;
   }
 };
 
@@ -709,6 +737,7 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ExpectSeq", ExpectAnySeq);
 
   REGISTER_SHARD("ExpectLike", ExpectLike);
+  REGISTER_SHARD("TypeOf", TypeOf);
 
   // IsNone is implemented in Core
   using IsInt = IsX<SHType::Int>;
