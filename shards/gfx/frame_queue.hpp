@@ -93,40 +93,6 @@ public:
     return crg->renderGraph;
   }
 
-  void dumpRenderGraph(RenderGraph &graph) {
-    static auto logger = getLogger();
-
-    SPDLOG_LOGGER_DEBUG(logger, "Built frame render graph:");
-    SPDLOG_LOGGER_DEBUG(logger, "Frames:");
-    for (auto &frame : graph.frames) {
-      std::string outSuffix;
-      // if (frame.outputIndex.has_value())
-      //   outSuffix += fmt::format("out: {}", frame.outputIndex.value());
-      // if (frame.textureOverride.texture)
-      //   outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
-      //                            frame.textureOverride.texture->getLabel());
-      // if (!outSuffix.empty())
-      //   outSuffix = fmt::format(", {}", outSuffix);
-      // SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
-    }
-    SPDLOG_LOGGER_DEBUG(logger, "Nodes:");
-    for (auto &node : graph.nodes) {
-      std::string writesToStr;
-      for (auto &wt : node.outputs)
-        writesToStr += fmt::format("{}, ", wt.frameIndex);
-      if (!writesToStr.empty())
-        writesToStr.resize(writesToStr.size() - 2);
-
-      std::string readsFromStr;
-      for (auto &wt : node.inputs)
-        readsFromStr += fmt::format("{}, ", wt);
-      if (!readsFromStr.empty())
-        readsFromStr.resize(readsFromStr.size() - 2);
-
-      SPDLOG_LOGGER_DEBUG(logger, " - qdi: {}, writes: {}, reads: {}", node.queueDataIndex, writesToStr, readsFromStr);
-    }
-  }
-
   struct Output {
     FastString name;
     TextureSubResource subResource;

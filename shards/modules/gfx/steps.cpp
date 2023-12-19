@@ -17,6 +17,7 @@
 #include <gfx/features/transform.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/gfx_wgpu.hpp>
+#include <gfx/steps/effect.hpp>
 #include <magic_enum.hpp>
 #include <shards/core/params.hpp>
 #include <optional>
@@ -49,10 +50,24 @@ static inline const SHVar &getDefaultOutputScale() {
   return table;
 }
 
-template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar &input) {
+void applyInputs(SHContext *context, RenderStepInput &rsInput, const SHVar &input) {
+  checkType(input.valueType, SHType::Seq, ":Inputs");
+
+  for (size_t i = 0; i < input.payload.seqValue.len; i++) {
+    auto &elem = input.payload.seqValue.elements[i];
+    checkType(elem.valueType, SHType::String, "Input");
+    rsInput.attachments.emplace_back(RenderStepInput::Named(std::string(SHSTRVIEW(elem))));
+  }
+}
+
+template <typename T> void applyInputsToStep(SHContext *context, T &step, const SHVar &input) {
+  RenderStepInput &rsInput = step.input;
+  applyInputs(context, rsInput, input);
+}
+
+void applyOutputs(SHContext *context, RenderStepOutput &output, const SHVar &input) {
   checkType(input.valueType, SHType::Seq, "Outputs sequence");
 
-  RenderStepOutput &output = (step.output = RenderStepOutput{}).value();
   output.attachments.clear();
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
@@ -134,6 +149,11 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
   }
 }
 
+template <typename T> void applyOutputsToStep(SHContext *context, T &step, const SHVar &input) {
+  RenderStepOutput &output = (step.output = RenderStepOutput{}).value();
+  applyOutputs(context, output, input);
+}
+
 std::optional<float2> toOutputScale(const SHVar &input) {
   if (input.valueType == SHType::Float) {
     return float2(input.payload.floatValue);
@@ -146,11 +166,7 @@ std::optional<float2> toOutputScale(const SHVar &input) {
   }
 }
 
-template <typename T> void applyOutputScale(SHContext *context, T &step, const SHVar &input) {
-  if (!step.output) {
-    step.output = steps::getDefaultRenderStepOutput();
-  }
-
+void applyOutputScale(SHContext *context, RenderStepOutput::OutputSizing &sizing, const SHVar &input) {
   ParamVar v(input);
   v.warmup(context);
 
@@ -158,7 +174,7 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
     SHTable &table = v.get().payload.tableValue;
     Var mainVar;
     if (getFromTable(context, table, Var("main"), mainVar)) {
-      step.output->outputSizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(mainVar)};
+      sizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(mainVar)};
     } else {
       Var inputVar;
       getFromTable(context, table, Var("input"), inputVar);
@@ -170,18 +186,26 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
         scaleOpt = toOutputScale(scaleVar);
       }
 
-      step.output->outputSizing = RenderStepOutput::RelativeToInputSize{.name = inputVar.payload.stringValue, .scale = scaleOpt};
+      sizing = RenderStepOutput::RelativeToInputSize{.name = inputVar.payload.stringValue, .scale = scaleOpt};
     }
   } else {
-    step.output->outputSizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(v.get())};
+    sizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(v.get())};
   }
 }
 
+template <typename T> void applyOutputScaleToStep(SHContext *context, T &step, const SHVar &input) {
+  if (!step.output) {
+    step.output = steps::getDefaultRenderStepOutput();
+  }
+  applyOutputScale(context, step.output->outputSizing, input);
+}
+
 template <typename T>
-void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamVar &outputScale, const ParamVar &features) {
+void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamVar &outputScale, const ParamVar &features,
+              const ParamVar &name) {
   if (!outputs.isNone()) {
     // Type checking is done in applyOutputs
-    shared::applyOutputs(context, step, outputs.get());
+    shared::applyOutputsToStep(context, step, outputs.get());
   } else {
     if (step.output) {
       step.output.reset();
@@ -189,7 +213,7 @@ void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamV
   }
 
   if (!outputScale.isNone()) {
-    shared::applyOutputScale(context, step, outputScale.get());
+    shared::applyOutputScaleToStep(context, step, outputScale.get());
   } else {
     if (step.output) {
       step.output->outputSizing = RenderStepOutput::ManualSize{};
@@ -199,6 +223,11 @@ void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamV
   step.features.clear();
   if (!features.isNone()) {
     applyFeatures(context, step.features, features.get());
+  }
+
+  step.name.clear();
+  if (!name.isNone()) {
+    step.name = SHSTRVIEW(name.get());
   }
 }
 
@@ -229,6 +258,7 @@ struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
+  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
   PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
   PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
@@ -240,8 +270,8 @@ struct DrawablePassShard {
             "Ignore any features on drawables and only use the features specified in this pass",
             {CoreInfo::NoneType, CoreInfo::BoolType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale),
-             PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs),
+             PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
@@ -281,7 +311,7 @@ struct DrawablePassShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderDrawablesStep &step = std::get<RenderDrawablesStep>(*_step->get());
 
-    shared::applyAll(context, step, _outputs, _outputScale, _features);
+    shared::applyAll(context, step, _outputs, _outputScale, _features, _name);
 
     if (!_sort.isNone()) {
       applySorting(context, step);
@@ -313,6 +343,7 @@ struct EffectPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
+  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
   PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
@@ -322,8 +353,8 @@ struct EffectPassShard {
   PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
                  {CoreInfo::NoneType, CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs), PARAM_IMPL_FOR(_entryPoint),
-             PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_composeWith));
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs),
+             PARAM_IMPL_FOR(_entryPoint), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_composeWith));
 
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
@@ -366,17 +397,6 @@ struct EffectPassShard {
     PARAM_WARMUP(context);
   }
 
-  void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
-    checkType(input.valueType, SHType::Seq, ":Inputs");
-
-    step.input.attachments.clear();
-    for (size_t i = 0; i < input.payload.seqValue.len; i++) {
-      auto &elem = input.payload.seqValue.elements[i];
-      checkType(elem.valueType, SHType::String, "Input");
-      step.input.attachments.emplace_back(RenderStepInput::Named(std::string(SHSTRVIEW(elem))));
-    }
-  }
-
   void applyParams(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
     checkType(input.valueType, SHType::Table, ":Params");
     const SHTable &inputTable = input.payload.tableValue;
@@ -394,10 +414,10 @@ struct EffectPassShard {
       shader::applyComposeWith(context, _composedWith, _composeWith.get());
     }
 
-    shared::applyAll(context, step, _outputs, _outputScale, _features);
+    shared::applyAll(context, step, _outputs, _outputScale, _features, _name);
 
     if (!_inputs.isNone()) {
-      applyInputs(context, step, _inputs.get());
+      shared::applyInputsToStep(context, step, _inputs.get());
     } else {
       step.input.attachments.clear();
     }
@@ -430,8 +450,82 @@ struct EffectPassShard {
   }
 };
 
+struct CopyPassShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+
+  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs));
+
+  PipelineStepPtr *_step{};
+  RenderStepInput rsInput;
+  RenderStepOutput rsOutput;
+
+  CopyPassShard() { _outputScale = shared::getDefaultOutputScale(); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) {
+    if (_step) {
+      Types::PipelineStepObjectVar.Release(_step);
+      _step = nullptr;
+    }
+
+    PARAM_CLEANUP(context);
+  }
+
+  void warmup(SHContext *context) {
+    _step = Types::PipelineStepObjectVar.New();
+    PARAM_WARMUP(context);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (!*_step) {
+      if (!_inputs.isNone()) {
+        shared::applyInputs(context, rsInput, _inputs.get());
+      } else {
+        throw formatException("CopyPass requires inputs");
+      }
+
+      if (!_outputs.isNone()) {
+        // Type checking is done in applyOutputs
+        shared::applyOutputs(context, rsOutput, _outputs.get());
+      } else {
+        throw formatException("CopyPass requires outputs");
+      }
+
+      if (!_outputScale.isNone()) {
+        shared::applyOutputScale(context, rsOutput.outputSizing, _outputScale.get());
+      } else {
+        rsOutput.outputSizing = RenderStepOutput::ManualSize{};
+      }
+
+      *_step = steps::Copy::create(rsInput, rsOutput);
+
+      if (!_name.isNone()) {
+        std::get<RenderFullscreenStep>(*(*_step).get()).name = SHSTRVIEW(_name.get());
+      }
+    } else {
+      auto &step = std::get<RenderFullscreenStep>(*(*_step).get());
+      shared::applyInputsToStep(context, step, _inputs.get());
+      shared::applyOutputsToStep(context, step, _outputs.get());
+    }
+
+    return Types::PipelineStepObjectVar.Get(_step);
+  }
+};
+
 void registerRenderStepShards() {
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.EffectPass", EffectPassShard);
+  REGISTER_SHARD("GFX.CopyPass", CopyPassShard);
 }
 } // namespace gfx
