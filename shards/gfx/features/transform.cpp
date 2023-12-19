@@ -64,8 +64,9 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   auto cb = [](IGeneratorContext &ctx) {
     auto &defs = ctx.getDefinitions();
-    bool needSkinning = ctx.hasInput("joints");
-    if (needSkinning) {
+    bool hasJointsBuffer = defs.buffers.contains("joints");
+    bool hasSkinningParams = defs.inputs.contains("joints") && defs.inputs.contains("weights");
+    if (hasJointsBuffer && hasSkinningParams) {
       auto tmp = ctx.generateTempVariable();
       ctx.write(fmt::format("let {} = \n", tmp));
       for (size_t i = 0; i < 4; i++) {
