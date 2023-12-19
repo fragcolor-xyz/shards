@@ -48,7 +48,7 @@ static WGPUAddressMode convertAddressMode(int mode) {
   case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
     return WGPUAddressMode_MirrorRepeat;
   }
-  assert(false);
+  shassert(false);
   return WGPUAddressMode(~0);
 }
 
@@ -71,7 +71,7 @@ static WGPUFilterMode convertFilterMode(int mode) {
   case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
     return WGPUFilterMode_Linear;
   }
-  assert(false);
+  shassert(false);
   return WGPUFilterMode(~0);
 }
 
@@ -119,7 +119,7 @@ static TextureFormat convertTextureFormat(const tinygltf::Image &image, bool asS
 }
 
 static float4 convertFloat4Vec(const std::vector<double> &v) {
-  assert(v.size() == 4);
+  shassert(v.size() == 4);
   return float4(v[0], v[1], v[2], v[3]);
 }
 
@@ -247,7 +247,7 @@ struct Loader {
       if (numVertices == 0) {
         numVertices = gltfAccessor.count;
       } else {
-        assert(gltfAccessor.count == numVertices);
+        shassert(gltfAccessor.count == numVertices);
       }
     }
 
@@ -391,7 +391,7 @@ struct Loader {
   }
 
   void loadNodes() {
-    assert(nodeMap.size() == model.nodes.size());
+    shassert(nodeMap.size() == model.nodes.size());
     for (size_t i = 0; i < nodeMap.size(); i++) {
       if (!nodeMap[i])
         initNode(i);
@@ -505,7 +505,7 @@ struct Loader {
     size_t numValues = numFrames;
     if (result.interpolation == animation::Interpolation::Cubic)
       numValues = numFrames * 3;
-    assert(numValues == output.count);
+    shassert(numValues == output.count);
     result.data.resize(numComponents * numValues);
 
     for (size_t i = 0; i < numValues; i++) {

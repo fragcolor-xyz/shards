@@ -1,7 +1,7 @@
 #include "params.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/fmt/bundled/core.h"
-#include <cassert>
+#include "../core/assert.hpp"
 #include <nameof.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <type_traits>
@@ -15,68 +15,68 @@ struct PackParamVisitor {
   size_t operator()(const float &arg) { return packPlain(arg); }
   size_t operator()(const float2 &arg) {
     size_t len = sizeof(float) * 2;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   size_t operator()(const float3 &arg) {
     size_t len = sizeof(float) * 3;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   size_t operator()(const float4 &arg) {
     size_t len = sizeof(float) * 4;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   size_t operator()(const float2x2 &arg) {
     size_t len = getPackedMatrixSize(arg);
-    assert(len <= outLength);
+    shassert(len <= outLength);
     packMatrix(arg, (float *)outData);
     return len;
   }
   size_t operator()(const float3x3 &arg) {
     size_t len = getPackedMatrixSize(arg);
-    assert(len <= outLength);
+    shassert(len <= outLength);
     packMatrix(arg, (float *)outData);
     return len;
   }
   size_t operator()(const float4x4 &arg) {
     size_t len = getPackedMatrixSize(arg);
-    assert(len <= outLength);
+    shassert(len <= outLength);
     packMatrix(arg, (float *)outData);
     return len;
   }
   size_t operator()(const uint32_t &arg) { return packPlain(arg); }
   size_t operator()(const int32_t &arg) {
     size_t len = sizeof(int32_t);
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg, len);
     return len;
   }
   size_t operator()(const int2 &arg) {
     size_t len = sizeof(int32_t) * 2;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   size_t operator()(const int3 &arg) {
     size_t len = sizeof(int32_t) * 3;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   size_t operator()(const int4 &arg) {
     size_t len = sizeof(int32_t) * 4;
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &arg.x, len);
     return len;
   }
   template <typename T> size_t packPlain(const T &val) {
     size_t len = sizeof(T);
-    assert(len <= outLength);
+    shassert(len <= outLength);
     memcpy(outData, &val, len);
     return len;
   }

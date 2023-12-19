@@ -76,7 +76,7 @@ struct SamplerCache {
       desc.maxAnisotropy = 1;
 
       WGPUSampler sampler = wgpuDeviceCreateSampler(wgpuDevice, &desc);
-      assert(sampler);
+      shassert(sampler);
 
       mutex.lock();
       it = cache.emplace(key, sampler).first;

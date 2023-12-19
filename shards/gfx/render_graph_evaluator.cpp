@@ -48,7 +48,7 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
           int2 targetSize = resolvedBinding.subResource.getResolutionFromMipResolution(expectedSize.size);
           resolvedBinding.subResource.texture->initWithResolution(targetSize);
         } else {
-          assert(resolvedBinding.subResource.getResolution() == expectedSize.size &&
+          shassert(resolvedBinding.subResource.getResolution() == expectedSize.size &&
                  "Manually sized texture does not have it's expected size, this should not happen");
         }
       }

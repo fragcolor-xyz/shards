@@ -214,7 +214,7 @@ struct AttribBuffer {
 };
 
 MeshPtr generateMesh(std::optional<AttribBuffer> indexBuffer,
-                     const small_vector<std::tuple<AttribBuffer *, std::string>, 16> &attributes) {
+                     const small_vector<std::tuple<AttribBuffer *, FastString>, 16> &attributes) {
   MeshPtr newMesh = std::make_shared<Mesh>();
   MeshFormat format;
   format.primitiveType = PrimitiveType::TriangleList;
@@ -225,7 +225,7 @@ MeshPtr generateMesh(std::optional<AttribBuffer> indexBuffer,
   for (size_t i = 0; i < attributes.size(); i++) {
     auto &attrib = std::get<0>(attributes[i]);
     auto &name = std::get<1>(attributes[i]);
-    format.vertexAttributes.push_back(MeshVertexAttribute{name.c_str(), attrib->numComponents, attrib->type});
+    format.vertexAttributes.push_back(MeshVertexAttribute{name, attrib->numComponents, attrib->type});
 
     dstOffsets.push_back(stride);
     stride += attrib->numComponents * getStorageTypeSize(attrib->type);
@@ -397,7 +397,7 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
   context.ctx.m_pInterface = &iface;
   genTangSpaceDefault(&context.ctx);
 
-  small_vector<std::tuple<AttribBuffer *, std::string>, 16> outAttribs;
+  small_vector<std::tuple<AttribBuffer *, FastString>, 16> outAttribs;
   for (size_t i : attributesToCopy) {
     outAttribs.push_back({&srcAttributes[i], srcFormat.vertexAttributes[i].name});
   }

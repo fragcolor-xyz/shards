@@ -3,6 +3,7 @@
 
 #include "hash.hpp"
 #include "linalg.hpp"
+#include "fwd.hpp"
 #include "xxh3.h"
 #include <optional>
 #include <string>
@@ -57,6 +58,7 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
   }
 
   void operator()(const std::string &str) { (*this)(str.data(), str.size()); }
+  void operator()(const FastString &str) { (*this)(str.id); }
 
   template <typename TVal> void operator()(const std::vector<TVal> &vec) {
     for (auto &item : vec) {

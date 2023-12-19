@@ -1,5 +1,6 @@
 #include "generator.hpp"
 #include "fmt.hpp"
+#include <shards/fast_string/fmt.hpp>
 #include "log/log.hpp"
 #include "shader/uniforms.hpp"
 #include "spdlog/logger.h"
@@ -40,7 +41,7 @@ static void generateTextureVars(T &output, const TextureDefinition &def, size_t 
 // Pads a struct to array stride inside an array body
 template <typename T> static void generatePaddingForArrayStruct(T &output, const UniformBufferLayout &layout) {
   size_t alignedSize = layout.getArrayStride();
-  assert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
+  shassert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
   size_t size4ToPad = (alignedSize - layout.size) / 4;
   if (size4ToPad > 0) {
     output += fmt::format("\t_array_padding_: array<f32, {}>,\n", size4ToPad);
@@ -96,12 +97,12 @@ struct StructField {
   static constexpr size_t NO_LOCATION = ~0;
   NamedField base;
   size_t location = NO_LOCATION;
-  String builtinTag;
+  FastString builtinTag;
 
   StructField() = default;
   StructField(const NamedField &base) : base(base) {}
   StructField(const NamedField &base, size_t location) : base(base), location(location) {}
-  StructField(const NamedField &base, const String &builtinTag) : base(base), builtinTag(builtinTag) {}
+  StructField(const NamedField &base, FastString builtinTag) : base(base), builtinTag(builtinTag) {}
   bool hasLocation() const { return location != NO_LOCATION; }
   bool hasBuiltinTag() const { return !builtinTag.empty(); }
 };
@@ -144,21 +145,21 @@ struct StageOutput {
 };
 
 static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
-  std::unordered_map<std::string, size_t> nodeNames;
+  std::unordered_map<FastString, size_t> nodeNames;
   for (size_t i = 0; i < entryPoints.size(); i++) {
     const EntryPoint &entryPoint = *entryPoints[i];
     if (!entryPoint.name.empty())
       nodeNames.insert_or_assign(entryPoint.name, i);
   }
 
-  auto resolveNodeIndex = [&](const std::string &name) -> const size_t * {
+  auto resolveNodeIndex = [&](FastString name) -> const size_t * {
     auto it = nodeNames.find(name);
     if (it != nodeNames.end())
       return &it->second;
     return nullptr;
   };
 
-  std::set<std::string> missingDependencies;
+  std::set<FastString> missingDependencies;
   graph::Graph graph;
   graph.nodes.resize(entryPoints.size());
   for (size_t i = 0; i < entryPoints.size(); i++) {
@@ -201,8 +202,8 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
 
   DynamicVertexInput(std::vector<StructField> &inputStruct) : inputStruct(inputStruct) {}
 
-  bool createDynamicInput(const char *name, NumFieldType &out) {
-    if (strcmp(name, "vertex_index") == 0) {
+  bool createDynamicInput(FastString name, NumFieldType &out) {
+    if (name == "vertex_index") {
       out = NumFieldType(ShaderFieldBaseType::UInt32);
       StructField newField = generateDynamicStructInput(name, out);
       inputStruct.push_back(newField);
@@ -211,7 +212,7 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
     return false;
   }
 
-  StructField generateDynamicStructInput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructInput(FastString name, const NumFieldType &type) {
     if (name == "vertex_index") {
       return StructField(NamedField(name, type), "vertex_index");
     } else {
@@ -225,13 +226,13 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
 
   DynamicVertexOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
+  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "position") {
       return StructField(NamedField(name, type), "position");
@@ -247,13 +248,13 @@ struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
 
   DynamicFragmentOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
+  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
+  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "depth") {
       return StructField(NamedField(name, type), "frag_depth");
@@ -333,7 +334,7 @@ struct PipelineIO {
     }
   }
 
-  static bool isValidFragmentInputBuiltin(const std::string &builtin) { return builtin == "position"; }
+  static bool isValidFragmentInputBuiltin(FastString builtin) { return builtin == "position"; }
 
   void interpolateVertexOutputs() {
     for (auto &outputField : vertexIO.outputStructFields) {
@@ -377,8 +378,8 @@ struct Stage {
     output += fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName);
   }
 
-  StageOutput process(PipelineIO &pipelineIO, StageIO &stageIO, const std::map<String, BufferDefinition> &buffers,
-                      const std::map<String, TextureDefinition> &textureDefinitions) {
+  StageOutput process(PipelineIO &pipelineIO, StageIO &stageIO, const std::map<FastString, BufferDefinition> &buffers,
+                      const std::map<FastString, TextureDefinition> &textureDefinitions) {
     GeneratorContext context;
     context.inputVariableName = inputVariableName;
     context.outputVariableName = outputVariableName;
@@ -500,7 +501,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   // Interpolate instance index
   stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
 
-  std::map<String, BufferDefinition> buffers;
+  std::map<FastString, BufferDefinition> buffers;
   for (auto &binding : bufferBindings) {
     String variableName = fmt::format("u_{}", binding.name);
 
@@ -516,10 +517,10 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     bufferDefinition.dimension = binding.dimension;
   }
 
-  std::map<String, TextureDefinition> textureDefinitions;
+  std::map<FastString, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
-    TextureDefinition def("t_" + texture.name, fmt::format("texCoord{}", texture.defaultTexcoordBinding), "s_" + texture.name,
-                          texture.type);
+    TextureDefinition def(fmt::format("t_{}", texture.name), fmt::format("texCoord{}", texture.defaultTexcoordBinding),
+                          fmt::format("s_{}", texture.name), texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
@@ -532,7 +533,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     auto &stage = stages[i];
 
     bool sorted = stage.sort();
-    assert(sorted);
+    shassert(sorted);
 
     StageIO &stageIO = i == 0 ? pipelineIO.vertexIO : pipelineIO.fragmentIO;
     StageOutput stageOutput = stage.process(pipelineIO, stageIO, buffers, textureDefinitions);
@@ -576,7 +577,7 @@ IndexedBindings Generator::indexBindings(const std::vector<EntryPoint> &entryPoi
   return indexBindings(getEntryPointPtrs(entryPoints));
 }
 
-template <typename T> static auto &findOrAddIndex(T &arr, const char *name) {
+template <typename T> static auto &findOrAddIndex(T &arr, FastString name) {
   auto it = std::find_if(arr.begin(), arr.end(), [&](auto &element) { return element.name == name; });
   if (it != arr.end())
     return *it;
@@ -597,17 +598,17 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void pushHeaderScope() {}
     void popHeaderScope() {}
 
-    void readGlobal(const char *name) {}
-    void beginWriteGlobal(const char *name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
+    void readGlobal(FastString name) {}
+    void beginWriteGlobal(FastString name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
     void endWriteGlobal() {}
 
-    bool hasInput(const char *name) {
+    bool hasInput(FastString name) {
       auto it = definitions.inputs.find(name);
       return it != definitions.inputs.end();
     }
 
-    void readInput(const char *name) {}
-    const NumFieldType *getOrCreateDynamicInput(const char *name) {
+    void readInput(FastString name) {}
+    const NumFieldType *getOrCreateDynamicInput(FastString name) {
       NumFieldType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicInput(name, newField)) {
@@ -618,12 +619,12 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasOutput(const char *name) {
+    bool hasOutput(FastString name) {
       auto it = definitions.outputs.find(name);
       return it != definitions.outputs.end();
     }
 
-    void writeOutput(const char *name, const NumFieldType &type) {
+    void writeOutput(FastString name, const NumFieldType &type) {
       auto it = definitions.outputs.find(name);
       if (it == definitions.outputs.end()) {
         definitions.outputs.insert_or_assign(name, type);
@@ -634,7 +635,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       }
     }
 
-    const NumFieldType *getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) {
+    const NumFieldType *getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
       NumFieldType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicOutput(name, requestedType)) {
@@ -645,13 +646,13 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasTexture(const char *name, bool defaultTexcoordRequired = true) { return true; }
-    const TextureDefinition *getTexture(const char *name) { return nullptr; }
-    void texture(const char *name) { findOrAddIndex(result.textureBindings, name); }
-    void textureDefaultTextureCoordinate(const char *name) { findOrAddIndex(result.textureBindings, name); }
-    void textureDefaultSampler(const char *name) { findOrAddIndex(result.textureBindings, name); }
+    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return true; }
+    const TextureDefinition *getTexture(FastString name) { return nullptr; }
+    void texture(FastString name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultTextureCoordinate(FastString name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultSampler(FastString name) { findOrAddIndex(result.textureBindings, name); }
 
-    void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName,
+    void readBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName,
                     const Function<void(IGeneratorContext &ctx)> &index) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
       if (index)
@@ -691,7 +692,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     auto &stage = stages[i];
 
     bool sorted = sortEntryPoints(stage.entryPoints);
-    assert(sorted);
+    shassert(sorted);
 
     pipelineIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
 

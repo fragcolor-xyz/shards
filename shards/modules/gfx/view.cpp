@@ -233,14 +233,13 @@ struct RenderIntoShard {
     }
   }
 
-  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments) {
+  void applyAttachments(SHContext *shContext, std::map<FastString, TextureSubResource> &outAttachments) {
     auto &table = _textures.payload.tableValue;
     outAttachments.clear();
     ForEach(table, [&](SHVar &k, SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("RenderInto attachment key should be a string");
-      std::string keyStr(SHSTRVIEW(k));
-      outAttachments.emplace(std::move(keyStr), applyAttachment(shContext, v));
+      outAttachments.emplace(SHSTRVIEW(k), applyAttachment(shContext, v));
     });
 
     if (outAttachments.size() == 0) {

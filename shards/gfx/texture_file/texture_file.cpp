@@ -1,6 +1,6 @@
 #include "texture_file.hpp"
 #include "spdlog/spdlog.h"
-#include <cassert>
+#include "../../core/assert.hpp"
 #include <gfx/texture.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -49,7 +49,7 @@ TexturePtr textureFromFile(const char *path) {
       pixelSize = 4;
       break;
     default:
-      assert(false);
+      shassert(false);
     }
 
     size_t dataSize = size.x * size.y * pixelSize;

@@ -69,8 +69,6 @@ inline void allocateBuffer(SharedBufferPool &pool, PreparedBuffer &preparedBuffe
 }
 
 struct MeshDrawableProcessor final : public IDrawableProcessor {
-  struct SkinData {};
-
   struct DrawableData {
     using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
@@ -79,7 +77,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     size_t queueIndex{}; // Original index in the queue
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
-    std::optional<SkinData> skin;
     shards::pmr::vector<TextureData> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
@@ -320,8 +317,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     hasher(data.clipRect);
     for (auto &texture : data.textures)
       hasher(size_t(texture.id));
-    if (meshDrawable.skin)
+    if (meshDrawable.skin) {
       hasher(size_t(meshDrawable.skin.get())); // WARNING: by pointer
+    } else {
+      hasher(size_t(~0));
+    }
     data.groupHash = hasher.getDigest();
   }
 
@@ -401,7 +401,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (auto &data : *drawableDatas) {
         prepareData->drawableData[insertIndex++] = &data;
       }
-      assert(insertIndex == context.drawables.size());
+      shassert(insertIndex == context.drawables.size());
 
       if (context.sortMode == SortMode::Batch) {
         auto comparison = [](const DrawableData *left, const DrawableData *right) { return left->groupHash < right->groupHash; };
@@ -434,19 +434,27 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
         const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*firstDrawableData.drawable);
 
+        uint8_t *stagingBuffer{};
+        size_t bufferLen{};
+        size_t numJoints{};
         if (meshDrawable.skin) {
           auto &skin = *meshDrawable.skin.get();
-          auto numJoints = meshDrawable.skin->joints.size();
-          size_t bufferLen = jointsBinding->layout.getArrayStride() * numJoints;
-          uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(bufferLen);
+          numJoints = meshDrawable.skin->joints.size();
+          bufferLen = jointsBinding->layout.getArrayStride() * numJoints;
+          stagingBuffer = (uint8_t *)allocator->allocate(bufferLen);
           for (size_t k = 0; k < numJoints; k++) {
             float *dst = (float *)(stagingBuffer + jointsBinding->layout.getArrayStride() * k);
             packMatrix(skin.jointMatrices[k], dst);
           }
+        } else {
+          // This should not happen
+          SPDLOG_LOGGER_WARN(getLogger(), "Pipeline built with skinning but mesh doesn't have a skin");
+        }
 
-          PreparedBuffer &pb = groupData.buffers.emplace_back();
-          allocateBuffer(storageBufferPool, pb, PipelineBuilder::getDrawBindGroupIndex(), *jointsBinding, numJoints);
-
+        PreparedBuffer &pb = groupData.buffers.emplace_back();
+        allocateBuffer(storageBufferPool, pb, PipelineBuilder::getDrawBindGroupIndex(), *jointsBinding,
+                       std::max<size_t>(1, numJoints));
+        if (numJoints > 0) {
           wgpuQueueWriteBuffer(context.context.wgpuQueue, pb.buffer, 0, stagingBuffer, bufferLen);
         }
       }
@@ -461,7 +469,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Set default parameters
       for (auto &param : cachedPipeline.baseViewParameters.basic)
-        viewParameters.setParam(param.first.c_str(), param.second);
+        viewParameters.setParam(param.first, param.second);
 
       // Set builtin view paramters (transforms)
       setViewParameters(viewParameters, context.viewData, context.viewport);
@@ -470,7 +478,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       auto baseViewData = context.generatorData.viewParameters;
       if (baseViewData) {
         for (auto &pair : baseViewData->basic) {
-          viewParameters.setParam(pair.first.c_str(), pair.second);
+          viewParameters.setParam(pair.first, pair.second);
         }
         // TODO: Bind per-view textures here too once bindings are split
       }
@@ -629,7 +637,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &binding = cachedPipeline.resolveBufferBindingRef(cachedPipeline.dynamicBufferRefs[i]);
         if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
           dynamicOffsets[i] = uint32_t(group.startIndex * binding.layout.getArrayStride());
-          assert(dynamicOffsets[i] < binding.layout.getArrayStride() * prepareData.drawableData.size());
+          shassert(dynamicOffsets[i] < binding.layout.getArrayStride() * prepareData.drawableData.size());
         } else {
           dynamicOffsets[i] = 0;
         }
@@ -638,7 +646,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
                                         cachedPipeline.dynamicBufferRefs.size(), dynamicOffsets);
 
       MeshContextData *meshContextData = firstDrawable.mesh;
-      assert(meshContextData->vertexBuffer);
+      shassert(meshContextData->vertexBuffer);
       wgpuRenderPassEncoderSetVertexBuffer(encoder, 0, meshContextData->vertexBuffer, 0, meshContextData->vertexBufferLength);
 
       if (meshContextData->indexBuffer) {
@@ -684,6 +692,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           requiredAttributes = requiredAttributes | feature->requiredAttributes;
         }
       }
+
+      // Skinned (yes/no)
+      pipelineHashCollector((bool)drawable.skin);
 
       auto &meshCacheEntry = detail::getCacheEntry(meshCache, mesh->getId());
       if (!meshCacheEntry.mesh || meshCacheEntry.version != mesh->getVersion()) {

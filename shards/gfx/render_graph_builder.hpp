@@ -62,14 +62,14 @@ struct Has_setupNodeFrames<T, std::void_t<decltype(setupNodeFrames(std::declval<
                                                                    std::declval<NodeBuildData &>(), std::declval<T &>()))>>
     : std::true_type {};
 
-inline FrameBuildData *NodeBuildData::findInputFrame(const std::string &name) const {
+inline FrameBuildData *NodeBuildData::findInputFrame(FastString name) const {
   for (auto &input : inputs) {
     if (input->name == name)
       return input;
   }
   return nullptr;
 }
-inline FrameBuildData *NodeBuildData::findOutputFrame(const std::string &name) const {
+inline FrameBuildData *NodeBuildData::findOutputFrame(FastString name) const {
   for (auto &output : outputs) {
     if (output->name == name)
       return output;
@@ -133,7 +133,7 @@ public:
     }
   }
 
-  using NamedFrameLookup = std::unordered_map<std::string, FrameBuildData *>;
+  using NamedFrameLookup = std::unordered_map<FastString, FrameBuildData *>;
 
   FrameBuildData *findNamedFrame(const RenderStepOutput::Named &named, const FrameSizing &size) {
     return findNamedFrame(named, size, [](const FrameBuildData &frame) -> bool { return true; });
@@ -188,7 +188,7 @@ public:
 
   template <typename T>
   std::enable_if_t<std::is_invocable_r_v<bool, T, const FrameBuildData &>, FrameBuildData *>
-  findAnyNamedOutputFrame(const std::string &name, T filter) {
+  findAnyNamedOutputFrame(FastString name, T filter) {
     FrameBuildData *candidate{};
     for (auto &frame : buildingFrames) {
       if (frame.name != name)
@@ -262,7 +262,7 @@ public:
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
-            assert(arg.subResource);
+            shassert(arg.subResource);
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
@@ -392,7 +392,7 @@ public:
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-            assert(arg.subResource);
+            shassert(arg.subResource);
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
@@ -448,7 +448,7 @@ public:
 
   void assignUniqueFrames() {
     writeCounter = 0;
-    std::unordered_map<std::string, FrameBuildData *> namedFrames;
+    std::unordered_map<FastString, FrameBuildData *> namedFrames;
     for (auto &node : buildingNodes) {
       node.inputs.clear();
       node.outputs.clear();

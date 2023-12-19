@@ -91,7 +91,7 @@ struct RendererImpl final : public ContextData {
   WorkerMemory &getWorkerMemoryForCurrentFrame() { return storage.workerMemory; }
 
   void initializeContextData() {
-    assert(context.isReady());
+    shassert(context.isReady());
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &storage.deviceLimits);
     bindToContext(context);
   }

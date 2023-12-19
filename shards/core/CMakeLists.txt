@@ -12,7 +12,7 @@ target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/include)
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR})
 
 # Expose tracy client so all dependencies get the TRACY_ENABLE define
-target_link_libraries(shards-core Tracy::TracyClient)
+target_link_libraries(shards-core Tracy::TracyClient shards-fast-string)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(SHARDS_INLINE_EVERYTHING_DEFAULT OFF)

@@ -12,7 +12,7 @@ void GeneratorContext::pushHeaderScope() {
 }
 
 void GeneratorContext::popHeaderScope() {
-  assert(headerStack.size() > 0);
+  shassert(headerStack.size() > 0);
   headerStack.pop_back();
 }
 
@@ -24,7 +24,7 @@ std::string &GeneratorContext::getOutput() {
   }
 }
 
-void GeneratorContext::readGlobal(const char *name) {
+void GeneratorContext::readGlobal(FastString name) {
   auto it = definitions.globals.find(name);
   if (it == definitions.globals.end()) {
     pushError(formatError("Global {} does not exist", name));
@@ -32,7 +32,7 @@ void GeneratorContext::readGlobal(const char *name) {
     getOutput() += fmt::format("{}.{}", globalsVariableName, name);
   }
 }
-void GeneratorContext::beginWriteGlobal(const char *name, const NumFieldType &type) {
+void GeneratorContext::beginWriteGlobal(FastString name, const NumFieldType &type) {
   auto it = definitions.globals.find(name);
   if (it == definitions.globals.end()) {
     definitions.globals.insert_or_assign(name, type);
@@ -45,9 +45,9 @@ void GeneratorContext::beginWriteGlobal(const char *name, const NumFieldType &ty
 }
 void GeneratorContext::endWriteGlobal() { getOutput() += ";\n"; }
 
-bool GeneratorContext::hasInput(const char *name) { return definitions.inputs.find(name) != definitions.inputs.end(); }
+bool GeneratorContext::hasInput(FastString name) { return definitions.inputs.find(name) != definitions.inputs.end(); }
 
-void GeneratorContext::readInput(const char *name) {
+void GeneratorContext::readInput(FastString name) {
   auto it = definitions.inputs.find(name);
   const NumFieldType *fieldType{};
   if (it != definitions.inputs.end()) {
@@ -64,8 +64,8 @@ void GeneratorContext::readInput(const char *name) {
   getOutput() += fmt::format("{}.{}", inputVariableName, name);
 }
 
-const NumFieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
-  assert(definitions.inputs.find(name) == definitions.inputs.end());
+const NumFieldType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
+  shassert(definitions.inputs.find(name) == definitions.inputs.end());
 
   NumFieldType newField;
   for (auto &h : dynamicHandlers) {
@@ -77,9 +77,9 @@ const NumFieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) 
   return nullptr;
 }
 
-bool GeneratorContext::hasOutput(const char *name) { return definitions.outputs.find(name) != definitions.outputs.end(); }
+bool GeneratorContext::hasOutput(FastString name) { return definitions.outputs.find(name) != definitions.outputs.end(); }
 
-void GeneratorContext::writeOutput(const char *name, const NumFieldType &type) {
+void GeneratorContext::writeOutput(FastString name, const NumFieldType &type) {
   auto it = definitions.outputs.find(name);
   const NumFieldType *outputFieldType{};
   if (it != definitions.outputs.end()) {
@@ -101,8 +101,8 @@ void GeneratorContext::writeOutput(const char *name, const NumFieldType &type) {
   getOutput() += fmt::format("{}.{}", outputVariableName, name);
 }
 
-const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) {
-  assert(definitions.outputs.find(name) == definitions.outputs.end());
+const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
+  shassert(definitions.outputs.find(name) == definitions.outputs.end());
 
   for (auto &h : dynamicHandlers) {
     if (h->createDynamicOutput(name, requestedType)) {
@@ -113,16 +113,16 @@ const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name,
   return nullptr;
 }
 
-bool GeneratorContext::hasTexture(const char *name, bool defaultTexcoordRequired) {
+bool GeneratorContext::hasTexture(FastString name, bool defaultTexcoordRequired) {
   auto texture = getTexture(name);
   if (!texture)
     return false;
-  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName.c_str()))
+  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName))
     return false;
   return true;
 }
 
-const TextureDefinition *GeneratorContext::getTexture(const char *name) {
+const TextureDefinition *GeneratorContext::getTexture(FastString name) {
   auto it = definitions.textures.find(name);
   if (it == definitions.textures.end()) {
     return nullptr;
@@ -131,7 +131,7 @@ const TextureDefinition *GeneratorContext::getTexture(const char *name) {
   }
 }
 
-void GeneratorContext::texture(const char *name) {
+void GeneratorContext::texture(FastString name) {
   if (const TextureDefinition *texture = getTexture(name)) {
     getOutput() += texture->variableName;
   } else {
@@ -139,23 +139,23 @@ void GeneratorContext::texture(const char *name) {
   }
 }
 
-void GeneratorContext::textureDefaultTextureCoordinate(const char *name) {
+void GeneratorContext::textureDefaultTextureCoordinate(FastString name) {
   if (const TextureDefinition *texture = getTexture(name)) {
-    if (hasInput(texture->defaultTexcoordVariableName.c_str())) {
-      readInput(texture->defaultTexcoordVariableName.c_str());
+    if (hasInput(texture->defaultTexcoordVariableName)) {
+      readInput(texture->defaultTexcoordVariableName);
     } else {
       getOutput() += "vec2<f32>(0.0, 0.0)";
     }
   }
 }
 
-void GeneratorContext::textureDefaultSampler(const char *name) {
+void GeneratorContext::textureDefaultSampler(FastString name) {
   if (const TextureDefinition *texture = getTexture(name)) {
     getOutput() += texture->defaultSamplerVariableName;
   }
 }
 
-void GeneratorContext::readBuffer(const char *fieldName, const NumFieldType &expectedType, const char *bufferName,
+void GeneratorContext::readBuffer(FastString fieldName, const NumFieldType &expectedType, FastString bufferName,
                                   const Function<void(IGeneratorContext &ctx)> &index) {
   auto bufferIt = definitions.buffers.find(bufferName);
   if (bufferIt == definitions.buffers.end()) {

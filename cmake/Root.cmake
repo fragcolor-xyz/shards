@@ -35,6 +35,7 @@ add_subdirectory(${SHARDS_DIR}/deps deps)
 # add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
 
 # Standalone libraries
+add_subdirectory(${SHARDS_DIR}/shards/fast_string src/fast_string)
 add_subdirectory(${SHARDS_DIR}/shards/log src/log)
 add_subdirectory(${SHARDS_DIR}/shards/input src/input)
 add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)

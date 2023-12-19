@@ -36,7 +36,7 @@ void InputContext::updateHandle(Handle &handle, GizmoHit hit) {
 }
 
 void InputContext::updateHeldHandle() {
-  assert(held);
+  shassert(held);
 
   heldHandleUpdated = true;
 
@@ -45,7 +45,7 @@ void InputContext::updateHeldHandle() {
 
   // Execute movement callback
   Handle &handle = *held;
-  assert(handle.callbacks);
+  shassert(handle.callbacks);
   handle.callbacks->move(*this, handle);
 }
 
@@ -66,13 +66,13 @@ void InputContext::end() {
 
   if (held && !inputState.held) {
     Handle &handle = *held;
-    assert(handle.callbacks);
+    shassert(handle.callbacks);
     handle.callbacks->released(*this, handle);
     held = nullptr;
   } else if (!held && hovering && inputState.pressed) {
     held = hovering;
     Handle &handle = *hovering;
-    assert(handle.callbacks);
+    shassert(handle.callbacks);
     handle.callbacks->grabbed(*this, handle);
   }
 }

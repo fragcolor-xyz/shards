@@ -3,7 +3,7 @@
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {
-void RenderTarget::configure(const char *name, WGPUTextureFormat format) {
+void RenderTarget::configure(FastString name, WGPUTextureFormat format) {
   auto texture = Texture::makeRenderAttachment(format, fmt::format("{}/{}", label, name));
   attachments.emplace(name, texture);
 }
@@ -29,7 +29,7 @@ int2 RenderTarget::computeSize(int2 referenceSize) const {
   return result;
 }
 
-const TextureSubResource &RenderTarget::getAttachment(const std::string &name) const {
+const TextureSubResource &RenderTarget::getAttachment(FastString name) const {
   auto it = attachments.find(name);
   if (it != attachments.end())
     return it->second;

@@ -33,7 +33,7 @@ void TestRenderer::createRenderTarget(int2 res) {
   textureDesc.mipLevelCount = 1;
   textureDesc.dimension = WGPUTextureDimension_2D;
   rtTexture = wgpuDeviceCreateTexture(context->wgpuDevice, &textureDesc);
-  assert(rtTexture);
+  shassert(rtTexture);
 
   WGPUTextureViewDescriptor viewDesc{};
   viewDesc.arrayLayerCount = 1;

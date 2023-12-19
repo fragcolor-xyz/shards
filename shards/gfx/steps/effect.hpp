@@ -35,8 +35,8 @@ struct Copy {
     for (size_t i = 0; i < input.attachments.size(); i++) {
       auto &src = input.attachments[i];
       auto &dst = output.attachments[i];
-      const auto &srcName = std::visit([&](auto &arg) -> const std::string & { return arg.name; }, src);
-      const auto &dstName = std::visit([&](auto &arg) -> const std::string & { return arg.name; }, dst);
+      auto srcName = std::visit([&](auto &arg) -> FastString { return arg.name; }, src);
+      auto dstName = std::visit([&](auto &arg) -> FastString { return arg.name; }, dst);
       blk->appendLine(WriteOutput(dstName, FieldTypes::Float4, SampleTexture(srcName)));
     }
 

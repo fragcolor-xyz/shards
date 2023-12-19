@@ -30,7 +30,7 @@ public:
 #ifdef GFX_USER_DATA_CHECKS
     if (data) {
       if (typeName != NAMEOF_TYPE(T)) {
-        assert(false);
+        shassert(false);
         return nullptr;
       }
     }

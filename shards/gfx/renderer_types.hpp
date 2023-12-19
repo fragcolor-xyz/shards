@@ -57,7 +57,7 @@ public:
   }
 
   TInner &get(size_t frameNumber) {
-    assert(frameNumber <= MaxSize_);
+    shassert(frameNumber <= MaxSize_);
     return elems[frameNumber].value();
   }
 
@@ -80,7 +80,7 @@ struct TextureBindings {
 struct PipelineDrawables;
 
 struct BufferBinding {
-  std::string name;
+  FastString name;
   UniformBufferLayout layout;
   size_t index;
   shader::Dimension dimension;
@@ -88,7 +88,7 @@ struct BufferBinding {
 
 struct RenderTargetLayout {
   struct Target {
-    std::string name;
+    FastString name;
     WGPUTextureFormat format;
 
     std::strong_ordering operator<=>(const Target &other) const = default;
@@ -124,23 +124,8 @@ struct RenderTargetLayout {
 struct ParameterStorage final : public IParameterCollector {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-  struct KeyEqual {
-    using is_transparent = std::true_type;
-    template <typename T, typename U> bool operator()(const T &a, const U &b) const {
-      return std::string_view(a) == std::string_view(b);
-    }
-  };
-
-  struct KeyHash {
-    using is_transparent = std::true_type;
-    template <typename U> size_t operator()(const U &b) const {
-      std::hash<std::string_view> hash;
-      return hash(std::string_view(b));
-    }
-  };
-
-  shards::pmr::unordered_map<shards::pmr::string, NumParameter, KeyHash, KeyEqual> basic;
-  shards::pmr::unordered_map<shards::pmr::string, TextureParameter, KeyHash, KeyEqual> textures;
+  shards::pmr::unordered_map<FastString, NumParameter> basic;
+  shards::pmr::unordered_map<FastString, TextureParameter> textures;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
@@ -152,10 +137,10 @@ struct ParameterStorage final : public IParameterCollector {
   }
   ParameterStorage &operator=(ParameterStorage &&) = default;
 
-  void setParam(const char *name, NumParameter &&value) { basic.insert_or_assign(name, std::move(value)); }
-  void setTexture(const char *name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
+  void setParam(FastString name, NumParameter &&value) { basic.insert_or_assign(name, std::move(value)); }
+  void setTexture(FastString name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
 
-  void setParamIfUnset(const shards::pmr::string &key, const NumParameter &value) { basic.emplace(key, value); }
+  void setParamIfUnset(FastString key, const NumParameter &value) { basic.emplace(key, value); }
 
   void append(const ParameterStorage &other) {
     for (auto &it : other.basic) {
@@ -222,15 +207,15 @@ struct CachedPipeline {
 
   std::optional<CompilationError> compilationError{};
 
-  template <typename T> static const BufferBinding *findBufferBinding(const T &vec, std::string_view name) {
+  template <typename T> static const BufferBinding *findBufferBinding(const T &vec, FastString name) {
     auto it = std::find_if(vec.begin(), vec.end(), [&](const auto &binding) { return name == binding.name; });
     if (it == vec.end())
       return nullptr;
     return &*it;
   }
 
-  const BufferBinding *findDrawBufferBinding(std::string_view name) const { return findBufferBinding(drawBufferBindings, name); }
-  const BufferBinding *findViewBufferBinding(std::string_view name) const { return findBufferBinding(viewBuffersBindings, name); }
+  const BufferBinding *findDrawBufferBinding(FastString name) const { return findBufferBinding(drawBufferBindings, name); }
+  const BufferBinding *findViewBufferBinding(FastString name) const { return findBufferBinding(viewBuffersBindings, name); }
 
   const BufferBinding& resolveBufferBindingRef(BufferBindingRef ref) const;
 };
