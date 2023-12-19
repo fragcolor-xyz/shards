@@ -127,8 +127,10 @@ struct Query : public Base {
     _dbName = Var("shards.db");
   }
 
-  PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
-  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.",
+                 {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
   std::unique_ptr<Statement> prepared;
@@ -281,7 +283,8 @@ struct Transaction : public Base {
   void setup() { _dbName = Var("shards.db"); }
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
-  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -356,8 +359,9 @@ struct LoadExtension : public Base {
     _dbName = Var("shards.db");
   }
 
-  PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType});
-  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -396,8 +400,10 @@ struct RawQuery : public Base {
     _readOnly = Var(false);
   }
 
-  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.", {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_readOnly));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -444,7 +450,8 @@ struct Backup : public Base {
   }
 
   PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {

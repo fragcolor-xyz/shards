@@ -41,7 +41,6 @@ struct IterableParam {
 
   template <typename T>
   static IterableParam createWithVarInterface(void *(*resolveParamInShard)(void *), const ParameterInfo *paramInfo) {
-
     IterableParam result{
         .resolveParamInShard = resolveParamInShard,
         .paramInfo = paramInfo,
