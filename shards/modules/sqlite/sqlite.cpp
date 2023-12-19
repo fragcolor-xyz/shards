@@ -25,11 +25,17 @@ struct Connection {
   std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
 
-  Connection(const char *path) {
+  Connection(const char *path, bool readOnly) {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
 
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
-      throw ActivationError(sqlite3_errmsg(db));
+    if (readOnly) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(db));
+      }
+    } else {
+      if (sqlite3_open(path, &db) != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(db));
+      }
     }
 
     uint32_t res;
@@ -97,11 +103,16 @@ struct Base {
       throw ComposeError("Can not run on worker thread");
   }
 
-  void ensureDb(SHContext *context) {
+  void ensureDb(SHContext *context, bool readOnly = false) {
     if (!ready) {
-      auto storageKey = fmt::format("DB.Connection_{}", _dbName);
       auto mesh = context->main->mesh.lock();
-      _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
+      if (readOnly) {
+        auto storageKey = fmt::format("DB.Connection_{}", _dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data(), true); });
+      } else {
+        auto storageKey = fmt::format("DB.RWConnection_{}", _dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data(), false); });
+      }
       ready = true;
     }
   }
@@ -460,7 +471,7 @@ struct Backup : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    ensureDb(context, true);
 
     return awaitne(
         context,
