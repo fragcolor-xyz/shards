@@ -41,7 +41,7 @@ static void generateTextureVars(T &output, const TextureDefinition &def, size_t 
 // Pads a struct to array stride inside an array body
 template <typename T> static void generatePaddingForArrayStruct(T &output, const UniformBufferLayout &layout) {
   size_t alignedSize = layout.getArrayStride();
-  assert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
+  shassert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
   size_t size4ToPad = (alignedSize - layout.size) / 4;
   if (size4ToPad > 0) {
     output += fmt::format("\t_array_padding_: array<f32, {}>,\n", size4ToPad);
@@ -533,7 +533,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     auto &stage = stages[i];
 
     bool sorted = stage.sort();
-    assert(sorted);
+    shassert(sorted);
 
     StageIO &stageIO = i == 0 ? pipelineIO.vertexIO : pipelineIO.fragmentIO;
     StageOutput stageOutput = stage.process(pipelineIO, stageIO, buffers, textureDefinitions);
@@ -692,7 +692,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     auto &stage = stages[i];
 
     bool sorted = sortEntryPoints(stage.entryPoints);
-    assert(sorted);
+    shassert(sorted);
 
     pipelineIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
 

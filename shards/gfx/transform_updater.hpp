@@ -34,12 +34,12 @@ struct TransformUpdaterCollector {
       queue.pop_back();
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
-      assert(!visited.contains(node.node));
+      shassert(!visited.contains(node.node));
       visited.insert(node.node);
 #endif
 
       auto mat = node.node->trs.getMatrix();
-      assert(mat != float4x4());
+      shassert(mat != float4x4());
       node.node->resolvedTransform = linalg::mul(node.parentTransform, mat);
       for (auto &drawable : node.node->drawables) {
         drawable->transform = node.node->resolvedTransform;

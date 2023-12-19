@@ -68,7 +68,7 @@ struct FeatureDrawableGeneratorContextImpl final : FeatureDrawableGeneratorConte
   virtual size_t getSize() const override { return group.drawables.size(); }
 
   virtual IParameterCollector &getParameterCollector(size_t index) override {
-    assert(index <= drawParameters->size());
+    shassert(index <= drawParameters->size());
     return (*drawParameters)[index];
   }
 

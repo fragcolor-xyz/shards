@@ -401,7 +401,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (auto &data : *drawableDatas) {
         prepareData->drawableData[insertIndex++] = &data;
       }
-      assert(insertIndex == context.drawables.size());
+      shassert(insertIndex == context.drawables.size());
 
       if (context.sortMode == SortMode::Batch) {
         auto comparison = [](const DrawableData *left, const DrawableData *right) { return left->groupHash < right->groupHash; };
@@ -637,7 +637,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &binding = cachedPipeline.resolveBufferBindingRef(cachedPipeline.dynamicBufferRefs[i]);
         if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
           dynamicOffsets[i] = uint32_t(group.startIndex * binding.layout.getArrayStride());
-          assert(dynamicOffsets[i] < binding.layout.getArrayStride() * prepareData.drawableData.size());
+          shassert(dynamicOffsets[i] < binding.layout.getArrayStride() * prepareData.drawableData.size());
         } else {
           dynamicOffsets[i] = 0;
         }
@@ -646,7 +646,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
                                         cachedPipeline.dynamicBufferRefs.size(), dynamicOffsets);
 
       MeshContextData *meshContextData = firstDrawable.mesh;
-      assert(meshContextData->vertexBuffer);
+      shassert(meshContextData->vertexBuffer);
       wgpuRenderPassEncoderSetVertexBuffer(encoder, 0, meshContextData->vertexBuffer, 0, meshContextData->vertexBufferLength);
 
       if (meshContextData->indexBuffer) {

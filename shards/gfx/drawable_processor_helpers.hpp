@@ -8,6 +8,7 @@
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
 #include "../core/platform.hpp"
+#include "../core/assert.hpp"
 #include "unique_id.hpp"
 #include <variant>
 
@@ -86,7 +87,7 @@ struct BindGroupBuilder {
         .entries = entries.data(),
     };
     WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
-    assert(bindGroup);
+    shassert(bindGroup);
     return bindGroup;
   }
 };

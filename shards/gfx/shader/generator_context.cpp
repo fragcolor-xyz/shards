@@ -12,7 +12,7 @@ void GeneratorContext::pushHeaderScope() {
 }
 
 void GeneratorContext::popHeaderScope() {
-  assert(headerStack.size() > 0);
+  shassert(headerStack.size() > 0);
   headerStack.pop_back();
 }
 
@@ -65,7 +65,7 @@ void GeneratorContext::readInput(FastString name) {
 }
 
 const NumFieldType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
-  assert(definitions.inputs.find(name) == definitions.inputs.end());
+  shassert(definitions.inputs.find(name) == definitions.inputs.end());
 
   NumFieldType newField;
   for (auto &h : dynamicHandlers) {
@@ -102,7 +102,7 @@ void GeneratorContext::writeOutput(FastString name, const NumFieldType &type) {
 }
 
 const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
-  assert(definitions.outputs.find(name) == definitions.outputs.end());
+  shassert(definitions.outputs.find(name) == definitions.outputs.end());
 
   for (auto &h : dynamicHandlers) {
     if (h->createDynamicOutput(name, requestedType)) {

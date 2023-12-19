@@ -64,7 +64,7 @@ TEST_CASE("glTF sample models", "[glTF]") {
   for (auto &testModel : testModels) {
     DYNAMIC_SECTION("Test " << testModel.name) {
       auto gltfScene = load(testModel);
-      assert(gltfScene);
+      shassert(gltfScene);
 
       float4x4 origTransform = gltfScene->trs.getMatrix();
       gltfScene->trs = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
@@ -103,7 +103,7 @@ TEST_CASE("glTF skinning", "[glTF]") {
   for (auto &testModel : testSkinnedModels) {
     DYNAMIC_SECTION("Test " << testModel.name) {
       auto gltfScene = load(testModel);
-      assert(gltfScene);
+      shassert(gltfScene);
 
       float4x4 origTransform = gltfScene->trs.getMatrix();
       gltfScene->trs = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),

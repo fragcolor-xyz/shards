@@ -262,7 +262,7 @@ public:
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
-            assert(arg.subResource);
+            shassert(arg.subResource);
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;
@@ -392,7 +392,7 @@ public:
         [&](auto &arg) -> FrameBuildData * {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-            assert(arg.subResource);
+            shassert(arg.subResource);
             FrameBuildData &frame = newFrame();
             frame.name = arg.name;
             frame.format = arg.subResource.texture->getFormat().pixelFormat;

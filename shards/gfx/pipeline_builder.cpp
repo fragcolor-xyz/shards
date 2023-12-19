@@ -248,8 +248,8 @@ size_t PipelineBuilder::getViewBindGroupIndex() { return 1; }
 size_t PipelineBuilder::getDrawBindGroupIndex() { return 0; }
 
 void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits) {
-  assert(!output.pipelineLayout);
-  assert(output.bindGroupLayouts.empty());
+  shassert(!output.pipelineLayout);
+  shassert(output.bindGroupLayouts.empty());
 
   std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 

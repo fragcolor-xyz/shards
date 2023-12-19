@@ -408,7 +408,7 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
     extendBodyToCapCenter = true;
     break;
   }
-  assert(capMesh);
+  shassert(capMesh);
   auto geom = generateHandleGeometry(origin, direction, radius, length, 0.35f, capRatio, extendBodyToCapCenter);
 
   MeshDrawable::Ptr body = std::make_shared<MeshDrawable>(handleBodyMesh);

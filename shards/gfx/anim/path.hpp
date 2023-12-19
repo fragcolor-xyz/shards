@@ -34,7 +34,7 @@ struct Path {
 
   // Gets the head path component
   FastString getHead() const {
-    assert(path.size() > 0);
+    shassert(path.size() > 0);
     return path.front();
   }
 };

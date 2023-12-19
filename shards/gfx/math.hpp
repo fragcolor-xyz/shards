@@ -1,7 +1,7 @@
 #ifndef GFX_MATH
 #define GFX_MATH
 
-#include <cassert>
+#include "../core/assert.hpp"
 #include <cmath>
 
 namespace gfx {
@@ -29,7 +29,7 @@ inline constexpr size_t alignTo(size_t size, size_t alignment) {
 }
 
 inline constexpr size_t alignToPOT(size_t size, size_t alignment) {
-  assert(isPOT(alignment) && "alignment needs to be a power of 2");
+  shassert(isPOT(alignment) && "alignment needs to be a power of 2");
   return (size + alignment - 1) & ~(alignment - 1);
 }
 

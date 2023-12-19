@@ -57,7 +57,7 @@ public:
   }
 
   TInner &get(size_t frameNumber) {
-    assert(frameNumber <= MaxSize_);
+    shassert(frameNumber <= MaxSize_);
     return elems[frameNumber].value();
   }
 

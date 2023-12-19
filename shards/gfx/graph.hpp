@@ -1,7 +1,7 @@
 #ifndef GFX_GRAPH
 #define GFX_GRAPH
 
-#include <cassert>
+#include "../core/assert.hpp"
 #include <deque>
 #include <set>
 #include <stdint.h>
@@ -25,8 +25,8 @@ inline bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &i
   if (numNodes == 0)
     return true;
 
-  assert(incomingEdgesPerNode.size() == numNodes);
-  assert(outgoingEdgesPerNode.size() == numNodes);
+  shassert(incomingEdgesPerNode.size() == numNodes);
+  shassert(outgoingEdgesPerNode.size() == numNodes);
 
   std::deque<size_t> queue;
   for (size_t i = 0; i < numNodes; i++) {

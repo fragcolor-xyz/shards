@@ -46,7 +46,7 @@ struct TextureSubResource {
 
   // Get the resolution based on the selected mip index and references texture
   int2 getResolution() const {
-    assert(texture);
+    shassert(texture);
     int2 baseRes = texture->getResolution();
     int div = std::pow(2, mipIndex);
     return baseRes / div;
@@ -54,7 +54,7 @@ struct TextureSubResource {
 
   // Get the resolution based on the selected mip index and references texture
   int2 getResolutionFromMipResolution(int2 mipResolution) const {
-    assert(texture);
+    shassert(texture);
     int div = std::pow(2, mipIndex);
     return mipResolution * div;
   }
