@@ -41,6 +41,8 @@
   Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
   Msg("Test 4 passed")
 
+  DB.Backup("backup.db")
+
   ; test CRDT capabilities
   ; (DB.LoadExtension "./crsqlite.so")
   ; [] | DB.Query("create table foo (a primary key, b)")
@@ -53,11 +55,13 @@
   ; [] | DB.Query("select * from foo") | Log
   ; [] | DB.Query("select * from baz") | Log
   ; [] | DB.Query("select * from crsql_changes") | Log
-} StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
+})
 
-; Run cleanup before running tests
+; Run cleanup after running tests
 "shards.db" | FS.Remove
-"test-db-dir/custom.db" | FS.Remove
+"backup.db" | FS.Remove
+"custom.db" | FS.Remove
+Msg("Cleanup done")
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)
