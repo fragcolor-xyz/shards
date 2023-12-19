@@ -1,5 +1,6 @@
 #include "storage.hpp"
 #include <shared_mutex>
+#include <mutex>
 #include <boost/container/pmr/monotonic_buffer_resource.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <boost/container/flat_map.hpp>
