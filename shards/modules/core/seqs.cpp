@@ -318,11 +318,10 @@ struct Join {
 };
 
 struct Merge {
-  PARAM_PARAMVAR(_target, "Target", "The table to merge into.",
-                 {
-                     CoreInfo::AnyVarTableType,
-                 });
+  PARAM_PARAMVAR(_target, "Target", "The table to merge into.", {CoreInfo::AnyVarTableType});
   PARAM_IMPL(PARAM_IMPL_FOR(_target));
+
+  PARAM_REQUIRED_VARIABLES();
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
@@ -338,6 +337,8 @@ struct Merge {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     if (!_target.isVariable()) {
       throw ComposeError("Target must be a variable");
     }
@@ -368,21 +369,53 @@ struct Zip {
                    "the values from the input sequences at the same index.");
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::SeqOfSeqsType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::SeqOfSeqsType; }
 
+  PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_seqs));
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::SeqOfSeqsType;
+  }
+
+  void cleanup(SHContext *context) {
+    for (auto ref : _refs) {
+      releaseVariable(ref);
+    }
+    _refs.clear();
+
+    PARAM_CLEANUP(context);
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    auto &seqs = _seqs.payload.seqValue;
+    for (auto &v : seqs) {
+      if (v.valueType == SHType::ContextVar) {
+        auto name = SHSTRVIEW(v);
+        auto vp = referenceVariable(context, name);
+        _refs.emplace_back(vp);
+      }
+    }
+  }
+
   SeqVar _output{};
+  std::vector<SHVar *> _refs{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &seqs = input.payload.seqValue;
-    auto seqsLen = seqs.len;
-
     _output.clear();
+
+    auto seqsLen = _refs.size();
 
     // find the shortest sequence
     uint32_t shortestLen = 0;
     for (uint32_t i = 0; i < seqsLen; i++) {
-      auto &seq = seqs.elements[i];
+      auto &seq = *_refs[i];
       auto &innerSeq = seq.payload.seqValue;
       if (i == 0) {
         shortestLen = innerSeq.len;
@@ -404,7 +437,7 @@ struct Zip {
       auto &innerSeq = asSeq(inner);
 
       for (uint32_t y = 0; y < seqsLen; y++) {
-        auto &seq = seqs.elements[y];
+        auto &seq = *_refs[y];
         innerSeq.emplace_back(seq.payload.seqValue.elements[i]);
       }
     }
