@@ -208,7 +208,7 @@ struct IndexOf {
     }
   }
 
-  void cleanup(SHContext* context) { _item.cleanup(); }
+  void cleanup(SHContext *context) { _item.cleanup(); }
   void warmup(SHContext *context) { _item.warmup(context); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -333,7 +333,7 @@ struct Merge {
                    "different sources while keeping the priority of certain values.");
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
@@ -362,10 +362,62 @@ struct Merge {
   }
 };
 
+struct Zip {
+  SHOptionalString help() {
+    return SHCCSTR("Zip will take any number of sequences and return a sequence of sequences, where each sequence is a tuple of "
+                   "the values from the input sequences at the same index.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::SeqOfSeqsType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfSeqsType; }
+
+  SeqVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seqs = input.payload.seqValue;
+    auto seqsLen = seqs.len;
+
+    _output.clear();
+
+    // find the shortest sequence
+    uint32_t shortestLen = 0;
+    for (uint32_t i = 0; i < seqsLen; i++) {
+      auto &seq = seqs.elements[i];
+      auto &innerSeq = seq.payload.seqValue;
+      if (i == 0) {
+        shortestLen = innerSeq.len;
+      } else {
+        if (innerSeq.len < shortestLen) {
+          shortestLen = innerSeq.len;
+        }
+      }
+    }
+
+    _output.resize(shortestLen);
+
+    for (uint32_t i = 0; i < shortestLen; i++) {
+      auto &inner = _output[i];
+      if (inner.valueType != SHType::Seq) {
+        inner = SeqVar();
+      }
+
+      auto &innerSeq = asSeq(inner);
+
+      for (uint32_t y = 0; y < seqsLen; y++) {
+        auto &seq = seqs.elements[y];
+        innerSeq.emplace_back(seq.payload.seqValue.elements[i]);
+      }
+    }
+
+    return _output;
+  }
+};
+
 SHARDS_REGISTER_FN(seqs) {
   REGISTER_SHARD("Flatten", Flatten);
   REGISTER_SHARD("IndexOf", IndexOf);
   REGISTER_SHARD("Bytes.Join", Join);
   REGISTER_SHARD("Merge", Merge);
+  REGISTER_SHARD("Zip", Zip);
 }
 }; // namespace shards
