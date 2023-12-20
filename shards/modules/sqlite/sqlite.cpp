@@ -120,7 +120,10 @@ struct Base {
 
 struct Query : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() {
+    static Types types{CoreInfo::AnyTableType, CoreInfo::AnySeqType};
+    return types;
+  }
 
   void setup() {
     _query = Var("SELECT * FROM test WHERE id = ?");
@@ -131,18 +134,148 @@ struct Query : public Base {
                  {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
+  PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName),PARAM_IMPL_FOR(_asRows));
 
   std::unique_ptr<Statement> prepared;
 
-  TableVar _output[2]; // dual buffered due to awaiting
+  struct ColOutput {
+    TableVar output;
+    std::vector<SeqVar *> columns;
+  };
+
+  struct RowOutput {
+    SeqVar output;
+    std::vector<OwnedVar> keys;
+  };
+
+  // this is a trick to avoid clearing the output on every activation if empty
+  static inline TableVar emptyTableOutput;
+  static inline SeqVar emptySeqOutput;
+
+  bool _returnCols{};
+  using OutputType = std::variant<std::monostate, ColOutput, RowOutput>;
+
+  OutputType _output[2]; // dual buffered due to awaiting
   size_t _outputCount;
-  TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
-  std::vector<SeqVar *> colSeqs;
+
+  Var columnToVar(size_t index) {
+    auto type = sqlite3_column_type(prepared->get(), index);
+    switch (type) {
+    case SQLITE_INTEGER:
+      return Var((int64_t)sqlite3_column_int64(prepared->get(), index));
+    case SQLITE_FLOAT:
+      return Var(sqlite3_column_double(prepared->get(), index));
+    case SQLITE_TEXT:
+      return Var((const char *)sqlite3_column_text(prepared->get(), index));
+    case SQLITE_BLOB:
+      return Var((const uint8_t *)sqlite3_column_blob(prepared->get(), index),
+                 (uint32_t)sqlite3_column_bytes(prepared->get(), index));
+    case SQLITE_NULL:
+      return Var();
+    default:
+      throw ActivationError("Unsupported Var type for sqlite");
+    }
+  }
+
+  SHVar getOutputRows(OutputType& output_) {
+    RowOutput *ptr = std::get_if<RowOutput>(&output_);
+    if (!ptr)
+      ptr = &output_.emplace<RowOutput>();
+    RowOutput &output = *ptr;
+
+    output.keys.clear();
+    bool empty = true;
+    int rc;
+    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
+      auto numCols = sqlite3_column_count(prepared->get());
+      if (numCols == 0) {
+        continue;
+      }
+
+      empty = false;
+
+      // fill column cache on first row
+      if (output.keys.empty()) {
+        for (int i = 0; i < numCols; i++) {
+          auto colName = sqlite3_column_name(prepared->get(), i);
+          output.keys.push_back(Var(colName));
+        }
+      }
+
+      auto &outTable = (TableVar &)output.output.emplace_back();
+      if(outTable.valueType != SHType::Table) {
+        outTable = TableVar();
+      }
+      for (auto i = 0; i < numCols; i++) {
+        outTable.insert(output.keys[i], columnToVar(i));
+      }
+    }
+
+    if (rc != SQLITE_DONE) {
+      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    }
+
+    return empty ? emptySeqOutput : output.output;
+  }
+
+  SHVar getOutputCols(OutputType& output_) {
+    ColOutput *ptr = std::get_if<ColOutput>(&output_);
+    if (!ptr)
+      ptr = &output_.emplace<ColOutput>();
+    ColOutput &output = *ptr;
+
+    output.columns.clear();
+    bool empty = true;
+    int rc;
+    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
+      auto numCols = sqlite3_column_count(prepared->get());
+      if (numCols == 0) {
+        continue;
+      }
+
+      empty = false;
+
+      // fill column cache on first row
+      if (output.columns.empty()) {
+        for (int i = 0; i < numCols; i++) {
+          auto colName = sqlite3_column_name(prepared->get(), i);
+          auto colNameVar = Var(colName);
+          auto &col = output.output[colNameVar];
+          if (col.valueType == SHType::None) {
+            SeqVar seq;
+            output.output.insert(colNameVar, std::move(seq));
+            output.columns.push_back(&asSeq(output.output[colNameVar]));
+          } else {
+            auto &seq = asSeq(col);
+            seq.clear();
+            output.columns.push_back(&seq);
+          }
+        }
+      }
+
+      for (auto i = 0; i < numCols; i++) {
+        auto &col = *output.columns[i];
+        col.push_back(columnToVar(i));
+      }
+    }
+
+    if (rc != SQLITE_DONE) {
+      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    }
+
+    return empty ? emptyTableOutput : output.output;
+  }
 
   SHTypeInfo compose(SHInstanceData &data) {
     Base::compose(data);
-    return outputTypes().elements[0];
+    if (!_asRows->isNone() && (bool)*_asRows) {
+      _returnCols = false;
+      return CoreInfo::AnySeqType;
+    } else {
+      _returnCols = true;
+      return CoreInfo::AnyTableType;
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -163,7 +296,7 @@ struct Query : public Base {
     ensureDb(context);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
-    TableVar &output = _output[_outputCount++ % 2];
+    OutputType &output = _output[_outputCount++ % 2];
 
     return awaitne(
         context,
@@ -212,65 +345,7 @@ struct Query : public Base {
             }
           }
 
-          colSeqs.clear();
-          bool empty = true;
-          while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
-            auto count = sqlite3_column_count(prepared->get());
-            if (count == 0) {
-              continue;
-            }
-
-            empty = false;
-
-            // fill column cache on first row
-            if (colSeqs.empty()) {
-              for (int i = 0; i < count; i++) {
-                auto colName = sqlite3_column_name(prepared->get(), i);
-                auto colNameVar = Var(colName);
-                auto &col = output[colNameVar];
-                if (col.valueType == SHType::None) {
-                  SeqVar seq;
-                  output.insert(colNameVar, std::move(seq));
-                  colSeqs.push_back(&asSeq(output[colNameVar]));
-                } else {
-                  auto &seq = asSeq(col);
-                  seq.clear();
-                  colSeqs.push_back(&seq);
-                }
-              }
-            }
-
-            for (auto i = 0; i < count; i++) {
-              auto &col = *colSeqs[i];
-              auto type = sqlite3_column_type(prepared->get(), i);
-              switch (type) {
-              case SQLITE_INTEGER:
-                col.push_back(Var((int64_t)sqlite3_column_int64(prepared->get(), i)));
-                break;
-              case SQLITE_FLOAT:
-                col.push_back(Var(sqlite3_column_double(prepared->get(), i)));
-                break;
-              case SQLITE_TEXT:
-                col.push_back(Var((const char *)sqlite3_column_text(prepared->get(), i)));
-                break;
-              case SQLITE_BLOB:
-                col.push_back(Var((const uint8_t *)sqlite3_column_blob(prepared->get(), i),
-                                  (uint32_t)sqlite3_column_bytes(prepared->get(), i)));
-                break;
-              case SQLITE_NULL:
-                col.push_back(Var::Empty);
-                break;
-              default:
-                throw ActivationError("Unsupported Var type for sqlite");
-              }
-            }
-          }
-
-          if (rc != SQLITE_DONE) {
-            throw ActivationError(sqlite3_errmsg(_connection->get()));
-          }
-
-          return empty ? emptyOutput : output;
+          return _returnCols ? getOutputCols(output) : getOutputRows(output);
         },
         [] {});
   }
