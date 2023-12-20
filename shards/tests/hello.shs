@@ -64,7 +64,7 @@ none | When(IsNone {Msg("None")})
 Type::Int | Log
 
 @template(add-and [operation operand1 operand2] {
-   operand2 | Math.Add(operand1) | operation
+  operand2 | Math.Add(operand1) | operation
 })
 
 @add-and(Math.Multiply(2) 2 3) | Log
@@ -88,7 +88,7 @@ Type::Int | Log
 @define(my-trait @type({x: Type::Int y: Type::Int}))
 @my-trait | Log
 
-@wire(too-early {Msg("But it's") Do(wire-3)})
+@wire(too-early {Msg("But it's") | Do(wire-3)})
 @wire(wire-1 {Msg("Ok")})
 @wire(wire-2 {Do(wire-1)})
 @wire(wire-3 {Do(wire-2)})
@@ -200,3 +200,9 @@ WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 "Hello World!" | String.Starts(With: "Hello") | Assert.Is(true) | Log
 ; also test that doesn't start with
 "Hello World!" | LogType("Type logging test") | String.Starts(With: "World") | Assert.Is(false) | Log
+
+["1" "2" "3"] = zs1
+["4" "5" "6"] = zs2
+["7" "8" "9"] = zs3
+["10" "20" "30" "40"] = zs4
+Zip([zs1 zs2 zs3 zs4 [99 98]]) | Assert.Is([["1" "4" "7" "10" 99] ["2" "5" "8" "20" 98]]) | Log
