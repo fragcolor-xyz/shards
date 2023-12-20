@@ -96,3 +96,6 @@
 [submodule "deps/oneTBB"]
 	path = deps/oneTBB
 	url = https://github.com/shards-lang/oneTBB.git
+[submodule "deps/meshoptimizer"]
+	path = deps/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
