@@ -205,4 +205,4 @@ WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 ["4" "5" "6"] = zs2
 ["7" "8" "9"] = zs3
 ["10" "20" "30" "40"] = zs4
-Zip([zs1 zs2 zs3 zs4]) | Assert.Is([["1" "4" "7" "10"] ["2" "5" "8" "20"] ["3" "6" "9" "30"]]) | Log("Zipped")
+Zip([zs1 zs2 zs3 zs4 [99 98]]) | Assert.Is([["1" "4" "7" "10" 99] ["2" "5" "8" "20" 98]]) | Log

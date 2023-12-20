@@ -77,8 +77,9 @@ struct CoreInfo {
 
   static inline Type AnyEnumType = Type::Enum(0, 0);
 
-  static inline Type SeqOfSeqsType = Type::SeqOf(AnySeqType);
-  static inline Type SeqOfSeqVarType = Type::SeqOf(AnyVarSeqType);
+  static inline Type SeqOfAnySeqType = Type::SeqOf(AnySeqType);
+  static inline Types SeqOfSeqsTypes{{AnySeqType, AnyVarSeqType}};
+  static inline Type SeqOfSeqsType = Type::SeqOf(SeqOfSeqsTypes);
 
   static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = Float4Type}}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);

@@ -370,9 +370,9 @@ struct Zip {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfSeqsType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfAnySeqType; }
 
-  PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqVarType});
+  PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqsType});
   PARAM_IMPL(PARAM_IMPL_FOR(_seqs));
 
   PARAM_REQUIRED_VARIABLES();
@@ -384,7 +384,9 @@ struct Zip {
 
   void cleanup(SHContext *context) {
     for (auto ref : _refs) {
-      releaseVariable(ref);
+      if (ref != nullptr) {
+        releaseVariable(ref);
+      }
     }
     _refs.clear();
 
@@ -400,6 +402,9 @@ struct Zip {
         auto name = SHSTRVIEW(v);
         auto vp = referenceVariable(context, name);
         _refs.emplace_back(vp);
+      } else {
+        // add null to mark it's a constant!
+        _refs.emplace_back(nullptr);
       }
     }
   }
@@ -415,13 +420,19 @@ struct Zip {
     // find the shortest sequence
     uint32_t shortestLen = 0;
     for (uint32_t i = 0; i < seqsLen; i++) {
-      auto &seq = *_refs[i];
-      auto &innerSeq = seq.payload.seqValue;
-      if (i == 0) {
-        shortestLen = innerSeq.len;
+      SeqVar *innerSeq = nullptr;
+      if (_refs[i]) {
+        innerSeq = &asSeq(*_refs[i]);
       } else {
-        if (innerSeq.len < shortestLen) {
-          shortestLen = innerSeq.len;
+        // const seq case
+        innerSeq = &asSeq(_seqs.payload.seqValue.elements[i]);
+      }
+
+      if (i == 0) {
+        shortestLen = innerSeq->size();
+      } else {
+        if (innerSeq->size() < shortestLen) {
+          shortestLen = innerSeq->size();
         }
       }
     }
@@ -437,8 +448,12 @@ struct Zip {
       auto &innerSeq = asSeq(inner);
 
       for (uint32_t y = 0; y < seqsLen; y++) {
-        auto &seq = *_refs[y];
-        innerSeq.emplace_back(seq.payload.seqValue.elements[i]);
+        if (_refs[y]) {
+          innerSeq.emplace_back(_refs[y]->payload.seqValue.elements[i]);
+        } else {
+          // const seq case
+          innerSeq.emplace_back(_seqs.payload.seqValue.elements[y].payload.seqValue.elements[i]);
+        }
       }
     }
 
