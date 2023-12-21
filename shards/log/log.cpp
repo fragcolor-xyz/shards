@@ -13,6 +13,7 @@
 
 namespace shards::logging {
 void init(Logger logger) {
+  spdlog::register_logger(logger);
   initLogLevel(logger);
   initLogFormat(logger);
   initSinks(logger);
@@ -82,7 +83,7 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
 #endif
 
   // Set default log level
-  spdlog::set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
+  logger->set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
 
   // Init log level from environment variable
   initLogLevel(logger);
