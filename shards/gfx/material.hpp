@@ -25,6 +25,33 @@ struct MaterialParameters {
   void set(FastString key, NumParameter &&param) { basic.insert_or_assign(key, std::move(param)); }
   void set(FastString key, const TextureParameter &param) { textures.insert_or_assign(key, (param)); }
 
+  bool setIfChanged(FastString key, NumParameter param) {
+    auto it = basic.find(key);
+    if (it != basic.end()) {
+      if (it->second != param) {
+        it->second = param;
+        return true;
+      }
+    } else {
+      basic.insert_or_assign(key, param);
+      return true;
+    }
+    return false;
+  }
+  bool setIfChanged(FastString key, TextureParameter param) {
+    auto it = textures.find(key);
+    if (it != textures.end()) {
+      if (it->second != param) {
+        it->second = param;
+        return true;
+      }
+    } else {
+      textures.insert_or_assign(key, param);
+      return true;
+    }
+    return false;
+  }
+
   void clear() {
     basic.clear();
     textures.clear();

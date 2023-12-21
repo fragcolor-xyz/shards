@@ -4,6 +4,7 @@
 #include "../linalg.hpp"
 #include "mesh_drawable.hpp"
 #include "../anim/path.hpp"
+#include "../debug_visualize.hpp"
 #include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <memory>
@@ -26,6 +27,11 @@ struct TRS {
     return *this;
   }
 
+  bool operator==(const TRS &other) const {
+    return translation == other.translation && scale == other.scale && rotation == other.rotation;
+  }
+  bool operator!=(const TRS &other) const { return !(*this == other); }
+
   float4x4 getMatrix() const {
     float4x4 rot = linalg::rotation_matrix(this->rotation);
     float4x4 scale = linalg::scaling_matrix(this->scale);
@@ -35,8 +41,9 @@ struct TRS {
 };
 
 // Transform tree of drawable objects
-struct MeshTreeDrawable final : public IDrawable, public std::enable_shared_from_this<MeshTreeDrawable> {
+struct MeshTreeDrawable final : public IDrawable, public IDebugVisualize, public std::enable_shared_from_this<MeshTreeDrawable> {
   typedef std::shared_ptr<MeshTreeDrawable> Ptr;
+  friend struct TransformUpdaterCollector;
 
   struct CloningContext {
     std::map<std::shared_ptr<Skin>, std::shared_ptr<Skin>> skinMap;
@@ -46,6 +53,8 @@ private:
   UniqueId id = getNextDrawableId();
   friend struct gfx::UpdateUniqueId<MeshTreeDrawable>;
   std::vector<Ptr> children;
+  size_t version{};
+  size_t lastUpdateVersion = size_t(~0);
 
 public:
   std::vector<MeshDrawable::Ptr> drawables;
@@ -56,7 +65,13 @@ public:
 
   DrawablePtr clone() const override;
   DrawablePtr clone(CloningContext &ctx) const;
+
+  DrawablePtr self() const override { return const_cast<MeshTreeDrawable *>(this)->shared_from_this(); }
+
   DrawableProcessorConstructor getProcessor() const override;
+
+  size_t getVersion() const override { return version; }
+  void update() { ++version; }
 
   // Visits each MeshTreeDrawable in this tree and calls callback on it
   template <typename T> static inline void foreach (const Ptr &item, T && callback);
@@ -133,6 +148,8 @@ public:
   UniqueId getId() const override { return id; }
 
   bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const override;
+
+  void debugVisualize(ShapeRenderer &renderer) override;
 };
 
 template <typename T> void MeshTreeDrawable::foreach (const Ptr &item, T && callback) {

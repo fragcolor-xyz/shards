@@ -54,6 +54,27 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
   }
 }
 
+inline bool applyFeaturesIfChanged(SHContext *context, std::vector<FeaturePtr> &outFeatures, const SHVar &input) {
+  checkType(input.valueType, SHType::Seq, ":Features");
+  bool changed = false;
+  if (input.payload.seqValue.len != outFeatures.size()) {
+    changed = true;
+  }
+
+  outFeatures.resize(input.payload.seqValue.len);
+  for (size_t i = 0; i < input.payload.seqValue.len; i++) {
+    auto &elem = input.payload.seqValue.elements[i];
+    auto &newFeature = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
+    auto &outFeature = outFeatures[i];
+    if (outFeature != newFeature) {
+      outFeature = newFeature;
+      changed = true;
+      break;
+    }
+  }
+  return changed;
+}
+
 } // namespace gfx
 
 #endif /* AD2CA4AE_4D00_49A0_8DD6_323B82813690 */

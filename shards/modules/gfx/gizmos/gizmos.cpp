@@ -13,8 +13,7 @@
 
 namespace shards {
 namespace Gizmos {
-using linalg::aliases::float3;
-using linalg::aliases::float4x4;
+using namespace linalg::aliases;
 
 inline float getScreenSize(ParamVar &v) {
   auto &screenSizeVar = (Var &)v.get();
@@ -83,7 +82,7 @@ struct TranslationGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
   }
@@ -164,7 +163,7 @@ struct RotationGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
   }
@@ -243,7 +242,7 @@ struct ScalingGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
   }
@@ -255,10 +254,82 @@ struct ScalingGizmo : public Base {
   }
 };
 
+struct Arrow : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Shows an arrow"); }
+
+  PARAM_IMPL();
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float4x4 mat = toFloat4x4(input);
+    float3 pos = gfx::extractTranslation(mat);
+    float3x3 rot = gfx::extractRotationMatrix(mat);
+    float4 bodyColor(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 capColor(1.0f, 1.0f, 1.0f, 1.0f);
+    _gizmoContext->gfxGizmoContext.renderer.addHandle(pos, rot[2], 0.2f, 1.0f, bodyColor, gfx::GizmoRenderer::CapType::Arrow,
+                                                      capColor);
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    Base::baseCompose();
+    return outputTypes().elements[0];
+  }
+};
+
+struct Debug : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Shows the renderer debug visuals"); }
+
+  gfx::RequiredGraphicsContext _gfxContext;
+  PARAM_IMPL();
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _gfxContext->renderer->processDebugVisuals(_gizmoContext->gfxGizmoContext.renderer.getShapeRenderer());
+    return input;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _gfxContext.warmup(context);
+    baseWarmup(context);
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _gfxContext.cleanup(context);
+    baseCleanup(context);
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    Base::baseCompose();
+    _gfxContext.compose(data, _requiredVariables);
+    return data.inputType;
+  }
+};
+
 void registerGizmoShards() {
   REGISTER_SHARD("Gizmos.Translation", TranslationGizmo);
   REGISTER_SHARD("Gizmos.Rotation", RotationGizmo);
   REGISTER_SHARD("Gizmos.Scaling", ScalingGizmo);
+  REGISTER_SHARD("Gizmos.Arrow", Arrow);
+  REGISTER_SHARD("Gizmos.Debug", Debug);
 }
 } // namespace Gizmos
 } // namespace shards
