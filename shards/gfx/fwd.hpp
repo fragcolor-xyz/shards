@@ -48,6 +48,8 @@ typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
 namespace detail {
 struct IDrawableProcessor;
 typedef std::shared_ptr<IDrawableProcessor> DrawableProcessorPtr;
+struct QueueData;
+typedef std::shared_ptr<QueueData> QueueDataPtr;
 } // namespace detail
 } // namespace gfx
 

@@ -5,6 +5,7 @@
 #include "../core/function.hpp"
 #include <cassert>
 #include <set>
+#include <boost/container/small_vector.hpp>
 
 #ifndef NDEBUG
 #define GFX_TRANSFORM_UPDATER_TRACK_VISITED 1
@@ -17,8 +18,9 @@ struct TransformUpdaterCollector {
   struct Node {
     float4x4 parentTransform;
     MeshTreeDrawable *node;
+    bool updated;
   };
-  std::vector<Node> queue;
+  boost::container::small_vector<Node, 32> queue;
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
   std::set<MeshTreeDrawable *> visited;
@@ -33,21 +35,37 @@ struct TransformUpdaterCollector {
       Node node = queue.back();
       queue.pop_back();
 
+      bool nodeUpdated = {};
+      node.updated = true;
+      if (node.node->version != node.node->lastUpdateVersion) {
+        node.node->lastUpdateVersion = node.node->version;
+      }
+
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
       shassert(!visited.contains(node.node));
       visited.insert(node.node);
 #endif
 
-      auto mat = node.node->trs.getMatrix();
-      shassert(mat != float4x4());
-      node.node->resolvedTransform = linalg::mul(node.parentTransform, mat);
+      if (node.updated) {
+        auto mat = node.node->trs.getMatrix();
+        shassert(mat != float4x4());
+        node.node->resolvedTransform = linalg::mul(node.parentTransform, mat);
+      }
+
       for (auto &drawable : node.node->drawables) {
-        drawable->transform = node.node->resolvedTransform;
+        if (node.updated) {
+          drawable->transform = node.node->resolvedTransform;
+          drawable->update();
+        }
         collector(drawable);
       }
 
       for (auto &child : node.node->getChildren()) {
-        queue.push_back(Node{node.node->resolvedTransform, child.get()});
+        queue.push_back(Node{
+            node.node->resolvedTransform,
+            child.get(),
+            nodeUpdated,
+        });
       }
     }
   }

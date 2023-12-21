@@ -12,6 +12,8 @@
 #include "pmr/unordered_map.hpp"
 #include "pmr/vector.hpp"
 #include "renderer_storage.hpp"
+#include "queue_data.hpp"
+#include "debug_visualize.hpp"
 #include <tracy/Wrapper.hpp>
 #include <taskflow/taskflow.hpp>
 
@@ -124,6 +126,24 @@ GeneratorData *runGenerators(RenderGraphEvaluator &eval, PipelineGroup &group, c
   return generatorData;
 }
 
+void updateQueueData(RendererStorage &storage, const DrawQueuePtr &queue, boost::span<const IDrawable *> drawables) {
+  ZoneScoped;
+  auto &queueData =
+      getCacheEntry(storage.queueCache, queue->getId(), [&](const UniqueId &id) { return std::make_shared<QueueData>(queue); });
+
+  queueData->update(drawables);
+
+  if (queue->trace) {
+    for (auto &it : queueData->set) {
+      storage.debugVisualize([bounds = it.second.bounds](ShapeRenderer &sr) {
+        auto base = bounds.base.expand(float3(0.05f));
+        sr.addBox(bounds.transform(), base.center(), base.size(), float4(1, 0, 0, 1), 1.5f);
+      });
+    }
+  }
+  touchCacheItemPtr(queueData, storage.frameCounter);
+}
+
 void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr queue,
                      const shards::pmr::vector<Feature *> &features, SortMode sortMode,
                      const BuildPipelineOptions &buildPipelineOptions) {
@@ -158,11 +178,21 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
     {
       // Expand drawables
       ZoneScopedN("expandDrawables");
+      if (queue->trace) {
+        for (auto &drawable : drawables) {
+          auto ptr = drawable->self();
+          if (auto debug = dynamic_cast<IDebugVisualize *>(const_cast<IDrawable *>(drawable))) {
+            storage.debugVisualize([ptr, debug](auto &sr) { debug->debugVisualize(sr); });
+          }
+        }
+      }
       for (auto &drawable : drawables) {
         if (!drawable->expand(expandedDrawables))
           expandedDrawables.push_back(drawable);
       }
     }
+
+    updateQueueData(storage, queue, boost::span(expandedDrawables));
 
     // Group into processor groups
     struct ProcessorGroup {

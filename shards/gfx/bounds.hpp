@@ -19,12 +19,34 @@ struct AABounds {
     max = linalg::max(max, pt);
   }
 
-  template <typename F> std::enable_if_t<std::is_invocable_r_v<bool, F, float3>> forEachPoint(F func) {
-    if (!func(min))
+  float3 center() const { return (min + max) * 0.5f; }
+  float3 size() const { return max - min; }
+  float3 halfSize() const { return size() * 0.5f; }
+
+  AABounds expand(float3 offset) const { return AABounds(min - offset, max + offset); }
+
+  static AABounds both(const AABounds &a, const AABounds &b) {
+    return AABounds(linalg::min(a.min, b.min), linalg::max(a.max, b.max));
+  }
+
+  template <typename F> std::enable_if_t<std::is_invocable_r_v<bool, F, float3>> forEachPoint(F func) const {
+    // The first 4 points
+    if (!func(float3(min.x, min.y, max.z)))
       return;
     if (!func(float3(max.x, min.y, min.z)))
       return;
     if (!func(float3(min.x, max.y, min.z)))
+      return;
+    if (!func(float3(min.x, min.y, max.z)))
+      return;
+    // The other 4 points
+    if (!func(float3(max.x, max.y, max.z)))
+      return;
+    if (!func(float3(max.x, max.y, min.z)))
+      return;
+    if (!func(float3(max.x, min.y, max.z)))
+      return;
+    if (!func(float3(min.x, max.y, max.z)))
       return;
   }
 };
@@ -40,12 +62,25 @@ public:
   OrientedBounds() = default;
   OrientedBounds(AABounds base, float4x4 transform) : base(base), _transform(transform) {}
 
+  static OrientedBounds empty() { return OrientedBounds(AABounds::empty(), linalg::identity); }
+
+  OrientedBounds expand(float3 offset) const { return OrientedBounds(base.expand(offset), _transform); }
+
   float4x4 transform() const { return _transform; }
   float4x4 inverseTransform() const {
     if (!_inverseTransform.has_value()) {
       _inverseTransform = linalg::inverse(_transform);
     }
     return *_inverseTransform;
+  }
+
+  AABounds toAligned() const {
+    AABounds bounds = AABounds::empty();
+    base.forEachPoint([&](float3 pt) -> bool {
+      bounds.expand(linalg::mul(transform(), float4(pt, 1)).xyz());
+      return true;
+    });
+    return bounds;
   }
 };
 

@@ -8,4 +8,9 @@ UniqueId getNextDrawableId() {
   return gen.getNext();
 }
 
+UniqueId getNextDrawQueueId() {
+  static UniqueIdGenerator gen(UniqueIdTag::DrawQueue);
+  return gen.getNext();
+}
+
 } // namespace gfx
