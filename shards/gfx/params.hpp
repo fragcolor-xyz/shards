@@ -20,6 +20,8 @@ struct TextureParameter {
 
   TextureParameter(const TexturePtr &texture, uint8_t defaultTexcoordBinding = 0)
       : texture(texture), defaultTexcoordBinding(defaultTexcoordBinding) {}
+
+  std::strong_ordering operator<=>(const TextureParameter &other) const = default;
 };
 
 /// <div rustbindgen hide></div>

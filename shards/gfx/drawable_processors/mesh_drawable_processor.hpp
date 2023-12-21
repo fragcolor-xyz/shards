@@ -18,6 +18,7 @@
 #include "../pipeline_builder.hpp"
 #include "../renderer_types.hpp"
 #include "../shader/uniforms.hpp"
+#include <boost/container/flat_map.hpp>
 #include <spdlog/spdlog.h>
 #include <functional>
 #include <tracy/Wrapper.hpp>
@@ -137,14 +138,14 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     MeshPtr mesh;
     size_t lastTouched{};
   };
-  std::unordered_map<UniqueId, CachedDrawable> drawableCache;
+  boost::container::flat_map<UniqueId, CachedDrawable> drawableCache;
 
   struct CachedMesh {
     MeshPtr mesh;
     size_t version{};
     size_t lastTouched{};
   };
-  std::unordered_map<UniqueId, CachedMesh> meshCache;
+  std::map<UniqueId, CachedMesh> meshCache;
 
   MeshDrawableProcessor(Context &context)
       : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),

@@ -58,7 +58,11 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
     output += fmt::format("\t{}: {},\n", sanitizeIdentifier(layout.fieldNames[i]), getFieldWGSLTypeName(layout.items[i].type));
   }
-  generatePaddingForArrayStruct(output, layout);
+
+  // Only for buffers that use dynamic offset
+  if (type == BufferType::Storage)
+    generatePaddingForArrayStruct(output, layout);
+
   output += "};\n";
 
   // array struct wrapper
@@ -519,7 +523,8 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   std::map<FastString, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
-    TextureDefinition def(fmt::format("t_{}", sanitizeIdentifier(texture.name)), fmt::format("texCoord{}", texture.defaultTexcoordBinding),
+    TextureDefinition def(fmt::format("t_{}", sanitizeIdentifier(texture.name)),
+                          fmt::format("texCoord{}", texture.defaultTexcoordBinding),
                           fmt::format("s_{}", sanitizeIdentifier(texture.name)), texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);

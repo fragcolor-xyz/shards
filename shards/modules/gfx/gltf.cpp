@@ -271,14 +271,20 @@ struct GLTFShard {
 
     MeshTreeDrawable::foreach (meshTreeDrawable, [&](MeshTreeDrawable::Ptr item) {
       for (auto &drawable : item->drawables) {
+        bool changed{};
         if (!_params.isNone()) {
-          initShaderParams(context, _params.get().payload.tableValue, drawable->parameters);
+          if (initShaderParamsIfChanged(context, _params.get().payload.tableValue, drawable->parameters))
+            changed = true;
         }
 
         drawable->features.clear();
         if (!_features.isNone()) {
           applyFeatures(context, drawable->features, _features.get());
+          changed = true;
         }
+
+        if (changed)
+          drawable->update();
       }
     });
   }
@@ -328,6 +334,7 @@ struct GLTFShard {
       node->trs.translation = toVec<float3>(value);
       break;
     }
+    node->update();
   }
 
   void applyAnimationData(SeqVar &data) {
@@ -365,9 +372,15 @@ struct GLTFShard {
   }
 
   void applyInputTable(SHContext *context, const TableVar &table) {
+    const auto &rootNode = getMeshTreeDrawable();
+
     auto &transformVar = table["transform"];
     if (!transformVar->isNone()) {
-      getMeshTreeDrawable()->trs = toFloat4x4(transformVar);
+      TRS newTRS = toFloat4x4(transformVar);
+      if (rootNode->trs != newTRS) {
+        rootNode->trs = newTRS;
+        rootNodeUpdated = true;
+      }
     }
 
     auto &materialsTable = (TableVar &)table["materials"];
@@ -392,7 +405,9 @@ struct GLTFShard {
         if (!drawableParams->isNone()) {
           if (drawableParams.valueType != SHType::Table)
             throw std::runtime_error(fmt::format("params for key {} should be a table (v)", k, v));
-          initShaderParams(context, drawableParams.payload.tableValue, material->parameters);
+          if (initShaderParamsIfChanged(context, drawableParams.payload.tableValue, material->parameters)) {
+            updateEverything = true;
+          }
         }
       }
     }
@@ -402,6 +417,13 @@ struct GLTFShard {
         if (!isValidPath(k)) {
           throw std::runtime_error(fmt::format("Invalid path {}", k));
         }
+
+        bool nodeUpdated{};
+        auto updateVal = [&](auto &dst, const auto &src) {
+          if (src != dst)
+            dst = src;
+          nodeUpdated = true;
+        };
 
         Animations::Path path(k);
         auto node = findNode(path);
@@ -418,28 +440,28 @@ struct GLTFShard {
         if (!translation->isNone()) {
           if (translation.valueType != SHType::Float3)
             throw std::runtime_error(fmt::format("translation for key {} should be a float3", k));
-          node->trs.translation = toFloat3(translation);
+          updateVal(node->trs.translation, toFloat3(translation));
         }
 
         auto &rotation = valueTable["rotation"];
         if (!rotation->isNone()) {
           if (rotation.valueType != SHType::Float4)
             throw std::runtime_error(fmt::format("rotation for key {} should be a float3", k));
-          node->trs.rotation = toFloat4(rotation);
+          updateVal(node->trs.rotation, toFloat4(rotation));
         }
 
         auto &scale = valueTable["scale"];
         if (!scale->isNone()) {
           if (scale.valueType != SHType::Float3)
             throw std::runtime_error(fmt::format("scale for key {} should be a float3", k));
-          node->trs.scale = toFloat3(scale);
+          updateVal(node->trs.scale, toFloat3(scale));
         }
 
         auto &transform = valueTable["transform"];
         if (!transform->isNone()) {
           if (transform.valueType != SHType::Seq)
             throw std::runtime_error(fmt::format("transform for key {} should be a float4x4", k));
-          node->trs = toFloat4x4(transform);
+          updateVal(node->trs, TRS(toFloat4x4(transform)));
         }
 
         auto &drawableParams = valueTable["params"];
@@ -447,14 +469,25 @@ struct GLTFShard {
           if (drawableParams.valueType != SHType::Table)
             throw std::runtime_error(fmt::format("params for key {} should be a table", k));
           for (auto &d : node->drawables) {
-            initShaderParams(context, drawableParams.payload.tableValue, d->parameters);
+            if (initShaderParamsIfChanged(context, drawableParams.payload.tableValue, d->parameters))
+              nodeUpdated = true;
           }
+        }
+
+        if (nodeUpdated && !updateEverything /*Skip till later*/) {
+          node->update();
         }
       }
     }
   }
 
+  bool rootNodeUpdated{};
+  bool updateEverything{};
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    rootNodeUpdated = false;
+    updateEverything = false;
+
     auto &drawable = getMeshTreeDrawable();
     if (!drawable) {
       switch (_loadMode) {
@@ -503,12 +536,24 @@ struct GLTFShard {
     if (_hasInputTable) {
       applyInputTable(context, (TableVar &)input);
     } else {
-      drawable->trs = toFloat4x4(input);
+      TRS newTRS = toFloat4x4(input);
+      if (newTRS != drawable->trs) {
+        drawable->trs = newTRS;
+        rootNodeUpdated = true;
+      }
     }
 
     // Only apply recursive parameters once
     if (!_dynamicsApplied) {
       applyRecursiveParams(context);
+    }
+
+    if (updateEverything) {
+      MeshTreeDrawable::foreach (getMeshTreeDrawable(), [&](MeshTreeDrawable::Ptr node) { node->update(); });
+    } else {
+      if (rootNodeUpdated) {
+        getMeshTreeDrawable()->update();
+      }
     }
 
     return Types::DrawableObjectVar.Get(_drawable);

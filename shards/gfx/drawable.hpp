@@ -7,11 +7,11 @@
 #include "hasherxxh128.hpp"
 #include "pmr/wrapper.hpp"
 #include "pmr/vector.hpp"
+#include "bounds.hpp"
 #include <memory>
 #include <vector>
 
 namespace gfx {
-
 namespace detail {
 struct PipelineHashCollector;
 }
@@ -24,11 +24,24 @@ struct IDrawable {
   // Duplicate self
   virtual DrawablePtr clone() const = 0;
 
+  // Pointer to self
+  virtual DrawablePtr self() const = 0;
+
   // Unique Id to identify this drawable
   virtual UniqueId getId() const = 0;
 
+  virtual size_t getVersion() const {
+    throw std::logic_error("Drawable does not have a version, most likely needs to be expanded first");
+  }
+
+  virtual OrientedBounds getBounds() const {
+    throw std::logic_error("Drawable does not have bounds, most likely needs to be expanded first");
+  }
+
   // If this is a group this function should extract it's contents and return true
   virtual bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const { return false; }
+
+  // virtual void ShapeRenderer
 
   // Get the processor used to render this drawable
   virtual DrawableProcessorConstructor getProcessor() const = 0;
@@ -39,12 +52,18 @@ template <typename T> inline std::shared_ptr<T> clone(const std::shared_ptr<T> &
 }
 
 UniqueId getNextDrawableId();
+UniqueId getNextDrawQueueId();
 
 struct DrawQueue {
 private:
   std::vector<DrawablePtr> sharedDrawables;
   std::vector<const IDrawable *> drawables;
   bool autoClear{};
+  UniqueId id = getNextDrawQueueId();
+
+public:
+  // Enable to trace rendering operations on this queue
+  bool trace{};
 
 public:
   // Adds a managed drawable, automatically kept alive until the renderer is done with it
@@ -60,6 +79,8 @@ public:
     drawables.clear();
     sharedDrawables.clear();
   }
+
+  UniqueId getId() const { return id; }
 
   bool isAutoClear() const { return autoClear; }
   void setAutoClear(bool autoClear) { this->autoClear = autoClear; }
