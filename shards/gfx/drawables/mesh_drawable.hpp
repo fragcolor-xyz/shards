@@ -14,14 +14,16 @@ struct Skin {
   std::vector<anim::Path> joints;
   std::vector<float4x4> inverseBindMatrices;
   std::vector<float4x4> jointMatrices;
+  AABounds bounds;
 };
 
-struct MeshDrawable final : public IDrawable {
+struct MeshDrawable final : public IDrawable, public std::enable_shared_from_this<MeshDrawable> {
   typedef std::shared_ptr<MeshDrawable> Ptr;
 
 private:
   UniqueId id = getNextDrawableId();
   friend struct gfx::UpdateUniqueId<MeshDrawable>;
+  size_t version{};
 
 public:
   MeshPtr mesh;
@@ -44,9 +46,15 @@ public:
 
   DrawablePtr clone() const override;
 
+  DrawablePtr self() const override { return const_cast<MeshDrawable *>(this)->shared_from_this(); }
+
   UniqueId getId() const override { return id; }
 
   DrawableProcessorConstructor getProcessor() const override;
+
+  void update() { ++version; };
+  size_t getVersion() const override { return version; }
+  OrientedBounds getBounds() const override;
 };
 } // namespace gfx
 

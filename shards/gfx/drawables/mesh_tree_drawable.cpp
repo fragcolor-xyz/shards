@@ -1,5 +1,6 @@
 #include "mesh_tree_drawable.hpp"
 #include "transform_updater.hpp"
+#include "../gizmos/shapes.hpp"
 #include <stdexcept>
 #include <boost/container/small_vector.hpp>
 
@@ -41,36 +42,64 @@ DrawableProcessorConstructor MeshTreeDrawable::getProcessor() const { throw std:
 static void updateSkin(const std::shared_ptr<const MeshTreeDrawable> &root, MeshDrawable &drawable,
                        const std::shared_ptr<Skin> &_skin) {
   auto &skin = *_skin.get();
-skin.jointMatrices.resize(skin.joints.size());
+  skin.jointMatrices.resize(skin.joints.size());
+  skin.bounds = AABounds::empty();
   for (size_t i = 0; i < skin.joints.size(); ++i) {
     const auto &path = skin.joints[i];
     auto node = root->resolvePath(path);
     if (node) {
       skin.jointMatrices[i] =
           linalg::mul(linalg::mul(linalg::inverse(drawable.transform), node->resolvedTransform), skin.inverseBindMatrices[i]);
+      skin.bounds.expand(extractTranslation(node->resolvedTransform));
     }
   }
+  // drawable.update();
 }
 
 bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawables) const {
-  boost::container::small_vector<MeshDrawable *, 16> skinsToUpdate;
+  boost::container::small_vector<MeshDrawable *, 16> drawablesWithSkinsToUpdate;
 
   TransformUpdaterCollector collector;
   collector.collector = [&](const DrawablePtr &drawable) {
     outDrawables.push_back(drawable.get());
     if (MeshDrawable *md = dynamic_cast<MeshDrawable *>(drawable.get())) {
       if (md->skin) {
-        skinsToUpdate.push_back(md);
+        drawablesWithSkinsToUpdate.push_back(md);
       }
     }
   };
   collector.update(const_cast<MeshTreeDrawable &>(*this));
 
   auto rootNode = shared_from_this();
-  for (auto &skin : skinsToUpdate) {
-    updateSkin(rootNode, *skin, skin->skin);
+  for (auto &drawable : drawablesWithSkinsToUpdate) {
+    updateSkin(rootNode, *drawable, drawable->skin);
   }
   return true;
+}
+
+void MeshTreeDrawable::debugVisualize(ShapeRenderer &sr) {
+  this->foreach (this->shared_from_this(), [&](Ptr node) {
+    if (auto parent = node->parent.lock()) {
+      sr.addLine(extractTranslation(node->resolvedTransform), extractTranslation(parent->resolvedTransform), float4(0, 1, 0, 1),
+                 1);
+    }
+  });
+  // boost::container::small_vector<MeshDrawable *, 16> drawablesWithSkinsToUpdate;
+  // TransformUpdaterCollector collector;
+  // collector.collector = [&](const DrawablePtr &drawable) {
+  //   if (MeshDrawable *md = dynamic_cast<MeshDrawable *>(drawable.get())) {
+  //     if (md->skin) {
+  //       drawablesWithSkinsToUpdate.push_back(md);
+  //     }
+  //   }
+  // };
+  // collector.update(const_cast<MeshTreeDrawable &>(*this));
+
+  // auto rootNode = shared_from_this();
+  // for (auto &drawable : drawablesWithSkinsToUpdate) {
+  //   auto skin = drawable->skin;
+  //   // skin->joints
+  // }
 }
 
 } // namespace gfx

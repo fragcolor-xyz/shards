@@ -22,6 +22,11 @@ static auto logger = getLogger();
 size_t alignBufferLayout(size_t inSize, const BufferBindingBuilder &builder, const WGPULimits &deviceLimits) {
   if (builder.bufferType == BufferType::Storage)
     return alignTo(inSize, deviceLimits.minStorageBufferOffsetAlignment);
+
+  // Assuming no binding offset is applied, uniform buffers need to be aligned to 16 
+  // https://www.w3.org/TR/WGSL/#address-space-layout-constraints 
+  if (builder.bufferType == BufferType::Uniform)
+    return alignTo(inSize, 16);
   return inSize;
 }
 
@@ -433,7 +438,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   try {
     output.shaderModule = compileShaderFromWgsl(device, generatorOutput.wgslSource.c_str());
-  } catch (const std::runtime_error& ex) {
+  } catch (const std::runtime_error &ex) {
     SPDLOG_LOGGER_ERROR(logger, "Failed to compile shader code:");
     SPDLOG_LOGGER_ERROR(logger, "{}\n------------------", generatorOutput.wgslSource);
     SPDLOG_LOGGER_ERROR(logger, "{}", ex.what());

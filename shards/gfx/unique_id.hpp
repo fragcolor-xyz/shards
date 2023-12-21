@@ -14,6 +14,7 @@ enum class UniqueIdTag : uint8_t {
   Mesh,
   Feature,
   Drawable,
+  DrawQueue,
   Material,
   Step,
   Texture,
