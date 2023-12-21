@@ -277,7 +277,7 @@ struct Query : public Base {
       return CoreInfo::SeqOfAnyTableType;
     } else {
       _returnCols = true;
-      return CoreInfo::TableOfAnySeqType;
+      return CoreInfo::AnyTableType;
     }
   }
 
