@@ -69,21 +69,41 @@ struct DrawableShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &meshDrawable = getMeshDrawable();
 
-    meshDrawable->transform = toFloat4x4(input);
-    meshDrawable->mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    bool changed{};
+
+    float4x4 newTransform = toFloat4x4(input);
+    if (newTransform != meshDrawable->transform) {
+      meshDrawable->transform = newTransform;
+      changed = true;
+    }
+
+    auto mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    if (mesh != meshDrawable->mesh) {
+      meshDrawable->mesh = mesh;
+      changed = true;
+    }
 
     if (!_material.isNone()) {
-      meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
+      auto newMat = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
+      if (newMat != meshDrawable->material) {
+        meshDrawable->material = newMat;
+        changed = true;
+      }
     }
 
     if (!_params.isNone()) {
-      initShaderParams(shContext, _params.get().payload.tableValue, meshDrawable->parameters);
+      if (initShaderParamsIfChanged(shContext, _params.get().payload.tableValue, meshDrawable->parameters))
+        changed = true;
     }
 
     if (!_features.isNone()) {
-      meshDrawable->features.clear();
-      applyFeatures(shContext, meshDrawable->features, _features.get());
+      if (applyFeaturesIfChanged(shContext, meshDrawable->features, _features.get())) {
+        changed = true;
+      }
     }
+
+    if (changed)
+      meshDrawable->update();
 
     return Types::DrawableObjectVar.Get(_drawable);
   }
@@ -177,13 +197,15 @@ struct DrawQueueShard {
             {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_threaded, "Threaded", "When enabled, output uniuqe queue references to be able to use them with channels",
             {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded));
+  PARAM_VAR(_trace, "Trace", "Enables debug tracing on this queue", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded), PARAM_IMPL_FOR(_trace));
 
   std::variant<SHDrawQueue *, RefOutputPool<SHDrawQueue *>> _output;
 
   DrawQueueShard() {
     _autoClear = Var(true);
     _threaded = Var(false);
+    _trace = Var(false);
   }
 
   PARAM_REQUIRED_VARIABLES()
@@ -206,7 +228,7 @@ struct DrawQueueShard {
       assert(!queue);
       queue = Types::DrawQueueObjectVar.New();
       queue->queue = std::make_shared<DrawQueue>();
-      queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
+      initQueue(queue->queue);
     }
   }
 
@@ -222,6 +244,11 @@ struct DrawQueueShard {
     }
   }
 
+  void initQueue(const DrawQueuePtr &queue) {
+    queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
+    queue->trace = _trace->isNone() ? false : (bool)*_trace;
+  }
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
       if ((bool)*_autoClear)
@@ -230,8 +257,7 @@ struct DrawQueueShard {
     } else {
       auto &pool = std::get<RefOutputPool<SHDrawQueue *>>(_output);
       pool.recycle();
-      auto queue = pool.newValue(
-          [&](SHDrawQueue *&_queue) { _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear); });
+      auto queue = pool.newValue([&](SHDrawQueue *&_queue) { initQueue(_queue->queue); });
       queue->queue->clear();
       return Types::DrawQueueObjectVar.Get(queue);
     }
@@ -298,11 +324,40 @@ struct GetQueueDrawablesShard {
   }
 };
 
+// struct GetBoundsShard {
+//   static inline shards::Types OutputTableTypes{CoreInfo::Float3Type, CoreInfo::Float3Type};
+//   static inline std::array<SHVar, 2> OutputTableKeys{Var("min"), Var("max")};
+//   static inline const Type OutputSeqType = Type::TableOf(OutputTableTypes, OutputTableKeys);
+
+//   static SHTypesInfo inputTypes() { return Types::Drawable; }
+//   static SHTypesInfo outputTypes() { return OutputSeqType; }
+//   static SHOptionalString help() { return SHCCSTR("Retrieves the bounding box of a drawable"); }
+
+//   static SHParametersInfo parameters() {
+//     static Parameters parameters = {};
+//     return parameters;
+//   }
+//   void setParam(int index, const SHVar &value) {}
+//   SHVar getParam(int index) { return Var::Empty; }
+
+//   void warmup(SHContext *context) {}
+//   void cleanup(SHContext *context) {}
+
+//   SHVar activate(SHContext *shContext, const SHVar &input) {
+//     SHDrawable *shDrawable = reinterpret_cast<SHDrawable *>(input.payload.objectValue);
+//     std::visit([&](auto& arg) {
+//       arg->getBounds();
+//     }, shDrawable->drawable);
+//     return _outputSeq;
+//   }
+// };
+
 void registerDrawableShards() {
   REGISTER_SHARD("GFX.Drawable", DrawableShard);
   REGISTER_SHARD("GFX.Draw", DrawShard);
   REGISTER_SHARD("GFX.DrawQueue", DrawQueueShard);
   REGISTER_SHARD("GFX.ClearQueue", ClearQueueShard);
   REGISTER_SHARD("GFX.QueueDrawables", GetQueueDrawablesShard);
+  // REGISTER_SHARD("GFX.Bounds", GetBoundsShard);
 }
 } // namespace gfx

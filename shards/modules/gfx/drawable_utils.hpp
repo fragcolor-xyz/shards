@@ -176,6 +176,34 @@ inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, M
   });
 }
 
+// Same as initShaderParams but only initializes the parameters that have changed and returns true
+inline bool initShaderParamsIfChanged(SHContext *shContext, const SHTable &paramsTable, MaterialParameters &out) {
+  bool changed = false;
+  shards::ForEach(paramsTable, [&](SHVar &key, SHVar v) {
+    if (key.valueType != SHType::String) {
+      throw formatException("Invalid shader parameter key type: {}", key.valueType);
+    }
+    auto kv = SHSTRVIEW(key);
+
+    shards::ParamVar paramVar{v};
+    paramVar.warmup(shContext);
+    DEFER({ paramVar.cleanup(); });
+    SHVar value = paramVar.get();
+
+    auto param = tryVarToParam(value);
+    if (param) {
+      std::visit(
+          [&](auto arg) {
+            if (out.setIfChanged(kv, arg)) {
+              changed = true;
+            }
+          },
+          std::move(param.value()));
+    }
+  });
+  return changed;
+}
+
 } // namespace gfx
 
 #endif /* C7AA640C_1748_42BC_8772_0B8F4E136CEA */

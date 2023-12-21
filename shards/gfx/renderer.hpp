@@ -13,6 +13,7 @@
 
 namespace gfx {
 
+struct ShapeRenderer;
 struct RendererImpl;
 
 /// Instance that caches render pipelines
@@ -66,6 +67,8 @@ public:
   /// Flushes rendering and cleans up all cached data kept by the renderer
   /// <div rustbindgen hide></div>
   void cleanup();
+
+  void processDebugVisuals(ShapeRenderer& sr);
 
   // Toggle whether to ignore shader and pipeline compilation errors
   void setIgnoreCompilationErrors(bool ignore);

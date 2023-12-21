@@ -89,6 +89,7 @@ public:
   template <typename L> void reset(L &&callable) {
     constexpr size_t RequestedSize = sizeof(CallImpl<L>);
     static_assert(RequestedSize < MemSize, "Lambda is larger than maximum inlined size");
+    reset();
     new (mem) CallImpl<L>(std::forward<L>(callable));
   }
 
