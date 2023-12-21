@@ -712,8 +712,13 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     cloneVar(back(), value);
   }
 
-  TOwnedVar<SH_CORE> &emplace_back(const SHVar &value = SHVar{}) {
+  TOwnedVar<SH_CORE> &emplace_back(const SHVar &value) {
     push_back(value);
+    return (TOwnedVar<SH_CORE> &)back();
+  }
+
+  TOwnedVar<SH_CORE> &emplace_back_fast() {
+    resize(size() + 1);
     return (TOwnedVar<SH_CORE> &)back();
   }
 

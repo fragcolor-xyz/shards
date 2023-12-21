@@ -148,7 +148,7 @@ struct Query : public Base {
 
   struct RowOutput {
     SeqVar output;
-    std::vector<OwnedVar> keys;
+    SeqVar keys;
   };
 
   // this is a trick to avoid clearing the output on every activation if empty
@@ -187,6 +187,8 @@ struct Query : public Base {
     RowOutput &output = *ptr;
 
     output.keys.clear();
+    output.output.clear();
+
     bool empty = true;
     int rc;
     while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
@@ -205,7 +207,7 @@ struct Query : public Base {
         }
       }
 
-      auto &outTable = (TableVar &)output.output.emplace_back();
+      auto &outTable = (TableVar &)output.output.emplace_back_fast();
       if (outTable.valueType != SHType::Table) {
         outTable = TableVar();
       }

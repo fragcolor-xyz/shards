@@ -84,7 +84,7 @@ SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
 
 SeqVar getAnimationPath(MeshTreeDrawable::Ptr node, animation::BuiltinTarget target) {
   SeqVar result = getAnimationPath(node);
-  result.emplace_back() = getGltfBuiltinTargetPath(target);
+  result.emplace_back_fast() = getGltfBuiltinTargetPath(target);
   return result;
 };
 
@@ -229,7 +229,7 @@ struct GLTFShard {
         }
 
         trackTable.get<SeqVar>(Var("Frames")) = std::move(frames);
-        tracks.emplace_back() = std::move(trackTable.asOwned());
+        tracks.emplace_back_fast() = std::move(trackTable.asOwned());
       }
     }
   }
