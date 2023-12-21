@@ -257,7 +257,7 @@ struct PlayShard {
       outFrame.get<OwnedVar>(Var("Path")) = pathVar;
       outFrame.get<OwnedVar>(Var("Value")) = value;
 
-      (TableVar &)_output.emplace_back() = std::move(outFrame);
+      (TableVar &)_output.emplace_back_fast() = std::move(outFrame);
     }
 
     return _output;

@@ -135,7 +135,9 @@ struct Query : public Base {
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName),PARAM_IMPL_FOR(_asRows));
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows));
+
+  PARAM_REQUIRED_VARIABLES();
 
   std::unique_ptr<Statement> prepared;
 
@@ -146,7 +148,7 @@ struct Query : public Base {
 
   struct RowOutput {
     SeqVar output;
-    std::vector<OwnedVar> keys;
+    SeqVar keys;
   };
 
   // this is a trick to avoid clearing the output on every activation if empty
@@ -178,13 +180,15 @@ struct Query : public Base {
     }
   }
 
-  SHVar getOutputRows(OutputType& output_) {
+  SHVar getOutputRows(OutputType &output_) {
     RowOutput *ptr = std::get_if<RowOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<RowOutput>();
     RowOutput &output = *ptr;
 
     output.keys.clear();
+    output.output.clear();
+
     bool empty = true;
     int rc;
     while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
@@ -203,8 +207,8 @@ struct Query : public Base {
         }
       }
 
-      auto &outTable = (TableVar &)output.output.emplace_back();
-      if(outTable.valueType != SHType::Table) {
+      auto &outTable = (TableVar &)output.output.emplace_back_fast();
+      if (outTable.valueType != SHType::Table) {
         outTable = TableVar();
       }
       for (auto i = 0; i < numCols; i++) {
@@ -219,7 +223,7 @@ struct Query : public Base {
     return empty ? emptySeqOutput : output.output;
   }
 
-  SHVar getOutputCols(OutputType& output_) {
+  SHVar getOutputCols(OutputType &output_) {
     ColOutput *ptr = std::get_if<ColOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<ColOutput>();
@@ -268,10 +272,11 @@ struct Query : public Base {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     if (!_asRows->isNone() && (bool)*_asRows) {
       _returnCols = false;
-      return CoreInfo::AnySeqType;
+      return CoreInfo::SeqOfAnyTableType;
     } else {
       _returnCols = true;
       return CoreInfo::AnyTableType;
@@ -355,6 +360,8 @@ struct Transaction : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  SHComposeResult _composeResult{};
+
   void setup() { _dbName = Var("shards.db"); }
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
@@ -362,11 +369,16 @@ struct Transaction : public Base {
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
-    _queries.compose(data);
+    _composeResult = _queries.compose(data);
     return data.inputType;
   }
+
+  SHExposedTypesInfo exposedVariables() { return _composeResult.exposedInfo; }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -439,7 +451,10 @@ struct LoadExtension : public Base {
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     return data.inputType;
   }
@@ -481,7 +496,10 @@ struct RawQuery : public Base {
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_readOnly));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     return outputTypes().elements[0];
   }
@@ -529,7 +547,10 @@ struct Backup : public Base {
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     return outputTypes().elements[0];
   }
