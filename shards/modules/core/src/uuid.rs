@@ -32,6 +32,7 @@ use shards::types::Var;
 
 use core::convert::TryInto;
 use std::str::FromStr;
+use std::sync::RwLock;
 
 #[derive(Default)]
 struct UUIDCreate {}
@@ -296,6 +297,11 @@ impl LegacyShard for NanoIDCreate {
   }
 }
 
+lazy_static! {
+  static ref SNOWFLAKE_GENERATOR: RwLock<snowflake::SnowflakeIdGenerator> =
+    RwLock::new(snowflake::SnowflakeIdGenerator::new(0, 0));
+}
+
 #[derive(shards::shard)]
 #[shard_info("Snowflake", "Creates a Snowflake ID.")]
 struct SnowflakeShard {
@@ -305,7 +311,6 @@ struct SnowflakeShard {
   machine_id: ClonedVar,
   #[shard_param("NodeId", "The node ID, must be less than 32", [common_type::int])]
   node_id: ClonedVar,
-  generator: Option<snowflake::SnowflakeIdGenerator>,
 }
 
 impl Default for SnowflakeShard {
@@ -314,7 +319,6 @@ impl Default for SnowflakeShard {
       required: ExposedTypes::new(),
       machine_id: 0.into(),
       node_id: 0.into(),
-      generator: None,
     }
   }
 }
@@ -343,8 +347,6 @@ impl Shard for SnowflakeShard {
       return Err("Node ID must be less than 32.");
     }
 
-    self.generator = Some(snowflake::SnowflakeIdGenerator::new(machine_id, node_id));
-
     Ok(())
   }
 
@@ -360,7 +362,10 @@ impl Shard for SnowflakeShard {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let id = self.generator.as_mut().unwrap().real_time_generate();
+    let mut generator = SNOWFLAKE_GENERATOR.write().unwrap();
+    generator.machine_id = self.machine_id.0.as_ref().try_into().unwrap();
+    generator.node_id = self.node_id.0.as_ref().try_into().unwrap();
+    let id = generator.real_time_generate();
     Ok(id.into())
   }
 }
