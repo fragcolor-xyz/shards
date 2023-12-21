@@ -274,10 +274,10 @@ struct Query : public Base {
     Base::compose(data);
     if (!_asRows->isNone() && (bool)*_asRows) {
       _returnCols = false;
-      return CoreInfo::AnySeqType;
+      return CoreInfo::SeqOfAnyTableType;
     } else {
       _returnCols = true;
-      return CoreInfo::AnyTableType;
+      return CoreInfo::TableOfAnySeqType;
     }
   }
 
