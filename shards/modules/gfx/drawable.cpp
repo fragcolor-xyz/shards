@@ -251,8 +251,7 @@ struct DrawQueueShard {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
-      if ((bool)*_autoClear)
-        (*_queue)->queue->clear();
+      (*_queue)->queue->clear();
       return Types::DrawQueueObjectVar.Get((*_queue));
     } else {
       auto &pool = std::get<RefOutputPool<SHDrawQueue *>>(_output);

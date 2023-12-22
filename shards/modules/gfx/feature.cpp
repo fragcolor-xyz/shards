@@ -193,8 +193,8 @@ private:
   bool _branchesWarmedUp{};
 
   // Parameters derived from generators
-  std::vector<NamedShaderParam> _derivedShaderParams;
-  std::vector<NamedTextureParam> _derivedTextureParams;
+  boost::container::flat_map<FastString, NumParamDecl> _derivedShaderParams;
+  boost::container::flat_map<FastString, TextureParamDecl> _derivedTextureParams;
 
   FeaturePtr *_featurePtr{};
 
@@ -223,8 +223,10 @@ public:
     *_featurePtr = std::make_shared<Feature>();
   }
 
-  void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq, bool expectSeqOutput) {
+  void collectComposeResult(const std::shared_ptr<SHWire> &wire,
+                            boost::container::flat_map<FastString, NumParamDecl> &outBasicParams,
+                            boost::container::flat_map<FastString, TextureParamDecl> &outTextureParams, BindGroupId bindingFreq,
+                            bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -243,14 +245,14 @@ public:
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
                 std::string ks(SHSTRVIEW(k));
-                auto &param = outBasicParams.emplace_back(std::move(ks), arg);
+                auto &param = outBasicParams[ks] = NumParamDecl(arg);
                 param.bindGroupId = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
                 std::string ks(SHSTRVIEW(k));
-                auto &param = outTextureParams.emplace_back(std::move(ks), arg);
+                auto &param = outTextureParams[ks] = TextureParamDecl(arg);
                 param.bindGroupId = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
@@ -521,14 +523,26 @@ public:
   }
 
   void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
-    SHVar defaultVar;
+    SHVar tmp;
     std::optional<std::variant<NumParameter, TextureParameter>> defaultValue;
     std::optional<shader::FieldType> explicitType;
+    std::optional<gfx::BindGroupId> bindGroup;
+    std::optional<gfx::TextureSampleType> sampleType;
     if (value.valueType == SHType::Table) {
       const SHTable &inputTable = value.payload.tableValue;
 
-      if (getFromTable(context, inputTable, Var("Default"), defaultVar)) {
-        defaultValue = paramVarToShaderParameter(context, defaultVar);
+      if (getFromTable(context, inputTable, Var("Default"), tmp)) {
+        defaultValue = paramVarToShaderParameter(context, tmp);
+      }
+
+      if (getFromTable(context, inputTable, Var("BindGroup"), tmp)) {
+        checkEnumType(tmp, Types::BindGroupIdEnumInfo::Type, "BindGroup");
+        bindGroup = (BindGroupId)tmp.payload.enumValue;
+      }
+
+      if (getFromTable(context, inputTable, Var("SampleType"), tmp)) {
+        checkEnumType(tmp, Types::TextureSampleTypeEnumInfo::Type, "SampleType");
+        sampleType = (TextureSampleType)tmp.payload.enumValue;
       }
 
       explicitType = getShaderFieldType(context, inputTable);
@@ -544,11 +558,15 @@ public:
               if constexpr (std::is_same_v<T, NumParameter>) {
                 // Derive field type from given default value
                 auto fieldType = getNumParameterType(arg);
-                feature.shaderParams.emplace_back(name, fieldType, arg);
+                feature.shaderParams[name] = NumParamDecl(fieldType, arg);
               } else if constexpr (std::is_same_v<T, TextureParameter>) {
-                NamedTextureParam &param = feature.textureParams.emplace_back(name);
+                TextureParamDecl &param = feature.textureParams[name];
                 param.defaultValue = arg.texture;
                 param.type.dimension = arg.texture->getFormat().dimension;
+                if (bindGroup)
+                  param.bindGroupId = bindGroup.value();
+                if (sampleType)
+                  param.type.format = sampleType.value();
               }
             },
             defaultValue.value());
@@ -560,9 +578,14 @@ public:
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, shader::NumFieldType>) {
-              feature.shaderParams.emplace_back(name, arg);
+              feature.shaderParams[name] = NumParamDecl(arg);
             } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
-              feature.textureParams.emplace_back(name, arg);
+              auto &param = feature.textureParams[name];
+              param = TextureParamDecl(arg);
+              if (bindGroup)
+                param.bindGroupId = bindGroup.value();
+              if (sampleType)
+                param.type.format = sampleType.value();
             }
           },
           explicitType.value());

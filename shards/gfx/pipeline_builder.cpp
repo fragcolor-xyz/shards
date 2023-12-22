@@ -23,8 +23,8 @@ size_t alignBufferLayout(size_t inSize, const BufferBindingBuilder &builder, con
   if (builder.bufferType == BufferType::Storage)
     return alignTo(inSize, deviceLimits.minStorageBufferOffsetAlignment);
 
-  // Assuming no binding offset is applied, uniform buffers need to be aligned to 16 
-  // https://www.w3.org/TR/WGSL/#address-space-layout-constraints 
+  // Assuming no binding offset is applied, uniform buffers need to be aligned to 16
+  // https://www.w3.org/TR/WGSL/#address-space-layout-constraints
   if (builder.bufferType == BufferType::Uniform)
     return alignTo(inSize, 16);
   return inSize;
@@ -101,16 +101,20 @@ static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &
     return (param.bindGroupId == BindGroupId::Draw) ? drawParams : viewParams;
   };
   for (const Feature *feature : features) {
-    for (auto &param : feature->shaderParams) {
+    for (auto &it : feature->shaderParams) {
+      auto &name = it.first;
+      auto &param = it.second;
       if (param.defaultValue.index() == 0) {
         // Not set (monostate)
       } else {
-        getOutput(param).setParam(param.name, param.defaultValue);
+        getOutput(param).setParam(name, param.defaultValue);
       }
     }
-    for (auto &param : feature->textureParams) {
+    for (auto &it : feature->textureParams) {
+      auto &name = it.first;
+      auto &param = it.second;
       if (param.defaultValue) {
-        getOutput(param).setTexture(param.name, param.defaultValue);
+        getOutput(param).setTexture(name, param.defaultValue);
       }
     }
   }
@@ -179,8 +183,8 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
 
   for (const Feature *feature : features) {
     // Push parameter declarations
-    for (auto &param : feature->shaderParams) {
-      getParamBuilder(param).push(param.name, param.type);
+    for (auto &it : feature->shaderParams) {
+      getParamBuilder(it.second).push(it.first, it.second.type);
     }
 
     // Apply modifiers
@@ -525,8 +529,8 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
-    for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
+    for (auto &it : feature->textureParams) {
+      textureBindings.addOrUpdateSlot(it.first, it.second.type, 0);
     }
   }
 
