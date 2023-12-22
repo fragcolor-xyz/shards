@@ -133,7 +133,7 @@ void updateQueueData(RendererStorage &storage, const DrawQueuePtr &queue, boost:
 
   queueData->update(drawables);
 
-  if (queue->trace) {
+  if (storage.debug && queue->trace) {
     for (auto &it : queueData->set) {
       storage.debugVisualize([bounds = it.second.bounds](ShapeRenderer &sr) {
         auto base = bounds.base.expand(float3(0.05f));
@@ -175,17 +175,19 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   {
     ZoneScopedN("pipelineGrouping");
 
+    // Debug visualize drawables before expansion
+    if (storage.debug && queue->trace) {
+      for (auto &drawable : drawables) {
+        auto ptr = drawable->self();
+        if (auto debug = dynamic_cast<IDebugVisualize *>(const_cast<IDrawable *>(drawable))) {
+          storage.debugVisualize([ptr, debug](auto &sr) { debug->debugVisualize(sr); });
+        }
+      }
+    }
+
     {
       // Expand drawables
       ZoneScopedN("expandDrawables");
-      if (queue->trace) {
-        for (auto &drawable : drawables) {
-          auto ptr = drawable->self();
-          if (auto debug = dynamic_cast<IDebugVisualize *>(const_cast<IDrawable *>(drawable))) {
-            storage.debugVisualize([ptr, debug](auto &sr) { debug->debugVisualize(sr); });
-          }
-        }
-      }
       for (auto &drawable : drawables) {
         if (!drawable->expand(expandedDrawables))
           expandedDrawables.push_back(drawable);
@@ -457,17 +459,17 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 
   // Derive definitions from parameters
   for (auto &param : step.parameters.basic) {
-    baseFeature->shaderParams.emplace_back(param.first, param.second);
+    baseFeature->shaderParams.emplace(param.first, param.second);
   }
   for (auto &param : step.parameters.textures) {
     auto &textureFormat = param.second.texture->getFormat();
-    auto &entry = baseFeature->textureParams.emplace_back(param.first, textureFormat.dimension);
+    auto &entry = baseFeature->textureParams.emplace(param.first, textureFormat.dimension).first->second;
     entry.type.format = getDefaultTextureSampleType(textureFormat.pixelFormat);
   }
 
   // Setup node outputs as texture slots
   for (auto &frame : buildData.inputs) {
-    auto &entry = baseFeature->textureParams.emplace_back(frame->name);
+    auto &entry = baseFeature->textureParams.emplace(frame->name, TextureParamDecl()).first->second;
     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
