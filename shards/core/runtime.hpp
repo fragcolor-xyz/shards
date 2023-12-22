@@ -210,7 +210,7 @@ private:
 
 public:
   AnyStorage() = default;
-  AnyStorage(std::shared_ptr<entt::any> &&any) : _anyStorage(any) { _ptr = &entt::any_cast<T &>(*any.get()); }
+  AnyStorage(std::shared_ptr<entt::any> &&any) : _anyStorage(any) { _ptr = &entt::any_cast<T &>(*_anyStorage.get()); }
   operator bool() const { return _ptr; }
   T *operator->() const { return _ptr; }
   operator T &() const { return *_ptr; }

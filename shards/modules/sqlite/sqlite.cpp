@@ -36,7 +36,7 @@ struct Connection {
       if (sqlite3_open(path, &db) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
-    }
+          }
 
     uint32_t res;
     if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
@@ -51,9 +51,17 @@ struct Connection {
     other.db = nullptr;
   }
 
-  ~Connection() { sqlite3_close(db); }
+  Connection &operator=(const Connection &other) = delete;
 
-  sqlite3 *get() { return db; }
+  ~Connection() {
+    if (db) {
+      sqlite3_close(db);
+    }
+  }
+
+  sqlite3 *get() {
+    return db;
+  }
 
   void loadExtension(const std::string &path_) {
     char *errorMsg = nullptr;
@@ -95,7 +103,7 @@ struct Statement {
 
 struct Base {
   AnyStorage<Connection> _connection;
-  std::string_view _dbName{"shards.db"};
+  OwnedVar _dbNameStr{Var("shards.db")};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
   void compose(SHInstanceData &data) {
@@ -106,24 +114,24 @@ struct Base {
   void _ensureDb(SHContext *context, bool readOnly) {
     if (!ready) {
       auto mesh = context->main->mesh.lock();
+      auto dbName = SHSTRVIEW(_dbNameStr);
       if (readOnly) {
-        auto storageKey = fmt::format("DB.Connection_{}", _dbName);
-        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data(), true); });
+        auto storageKey = fmt::format("DB.Connection_{}", dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), true); });
       } else {
-        auto storageKey = fmt::format("DB.RWConnection_{}", _dbName);
-        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data(), false); });
+        auto storageKey = fmt::format("DB.RWConnection_{}", dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), false); });
       }
       ready = true;
     }
   }
 };
 
-#define ENSURE_DB(__ctx__, __ro__)        \
-  auto dbName = SHSTRVIEW(_dbName.get()); \
-  if (dbName != Base::_dbName) {          \
-    Base::_dbName = dbName;               \
-    ready = false;                        \
-  }                                       \
+#define ENSURE_DB(__ctx__, __ro__)   \
+  if (_dbName.get() != _dbNameStr) { \
+    _dbNameStr = _dbName.get();      \
+    ready = false;                   \
+  }                                  \
   _ensureDb(__ctx__, __ro__)
 
 struct Query : public Base {
@@ -305,7 +313,12 @@ struct Query : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ENSURE_DB(context, false);
+    if (_dbName.get() != _dbNameStr) {
+      _dbNameStr = _dbName.get();
+      ready = false;
+      prepared.reset();
+    }
+    _ensureDb(context, false);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
