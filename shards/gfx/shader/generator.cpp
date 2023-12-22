@@ -651,7 +651,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return true; }
+    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return definitions.textures.contains(name); }
     const TextureDefinition *getTexture(FastString name) { return nullptr; }
     void texture(FastString name) { findOrAddIndex(result.textureBindings, name); }
     void textureDefaultTextureCoordinate(FastString name) { findOrAddIndex(result.textureBindings, name); }
