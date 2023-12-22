@@ -23,12 +23,17 @@ struct TransformUpdaterCollector {
   boost::container::small_vector<Node, 32> queue;
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
-  std::set<MeshTreeDrawable *> visited;
+  static thread_local std::set<MeshTreeDrawable *> visited;
 #endif
 
   shards::Function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
 
   void update(MeshTreeDrawable &root) {
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
+    auto &visited = TransformUpdaterCollector::visited;
+    visited.clear();
+#endif
+
     queue.push_back(Node{float4x4(linalg::identity), &root});
 
     while (!queue.empty()) {
