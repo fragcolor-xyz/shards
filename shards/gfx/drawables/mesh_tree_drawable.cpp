@@ -5,6 +5,9 @@
 #include <boost/container/small_vector.hpp>
 
 namespace gfx {
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
+thread_local std::set<MeshTreeDrawable *> TransformUpdaterCollector::visited;
+#endif
 
 DrawablePtr MeshTreeDrawable::clone() const {
   CloningContext cc;
