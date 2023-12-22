@@ -37,7 +37,11 @@ struct Copy {
       auto &dst = output.attachments[i];
       auto srcName = std::visit([&](auto &arg) -> FastString { return arg.name; }, src);
       auto dstName = std::visit([&](auto &arg) -> FastString { return arg.name; }, dst);
-      blk->appendLine(WriteOutput(dstName, FieldTypes::Float4, SampleTexture(srcName)));
+      if (dstName == "depth") {
+        blk->appendLine(WriteOutput(dstName, FieldTypes::Float, SampleTexture(srcName), ".r"));
+      } else {
+        blk->appendLine(WriteOutput(dstName, FieldTypes::Float4, SampleTexture(srcName)));
+      }
     }
 
     return Effect::create(std::move(input), std::move(output), std::move(blk));

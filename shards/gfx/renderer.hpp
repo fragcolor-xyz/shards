@@ -35,8 +35,7 @@ public:
   /// <div rustbindgen hide></div>
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);
 
-  void dispatch(std::span<NumParameter> params) {
-  }
+  void dispatch(std::span<NumParameter> params) {}
 
   // Queues a  copy of texture data from gpu to cpu memory
   // it will be guaranteed to be written when starting the next frame
@@ -68,10 +67,13 @@ public:
   /// <div rustbindgen hide></div>
   void cleanup();
 
-  void processDebugVisuals(ShapeRenderer& sr);
-
   // Toggle whether to ignore shader and pipeline compilation errors
   void setIgnoreCompilationErrors(bool ignore);
+
+  // Enable debug visualization mode
+  void setDebug(bool debug);
+  // Process visuals output by debug mode
+  void processDebugVisuals(ShapeRenderer &sr);
 
   void dumpStats();
 };

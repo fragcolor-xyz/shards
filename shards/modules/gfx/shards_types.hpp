@@ -13,6 +13,8 @@
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <gfx/gltf/animation.hpp>
 #include <gfx/texture.hpp>
+#include <gfx/feature.hpp>
+#include <gfx/view.hpp>
 #include <memory>
 #include <variant>
 #include <vector>
@@ -277,6 +279,12 @@ struct Container {
   };
   DECL_ENUM_INFO(TextureFiltering_, TextureFiltering, '_e14');
 
+  DECL_ENUM_INFO(::gfx::OrthographicSizeType, OrthographicSizeType, '_e15');
+
+  DECL_ENUM_INFO(::gfx::BindGroupId, BindGroupId, '_e16');
+
+  DECL_ENUM_INFO(::gfx::TextureSampleType, TextureSampleType, '_e17');
+
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
   static inline Type FeatureVarType = Type::VariableOf(Feature);
@@ -338,14 +346,11 @@ struct Container {
   static inline ParameterInfo OutputsParameterInfo{
       "Outputs", SHCCSTR("The outputs to render into"), {CoreInfo::NoneType, OutputsType, Type::VariableOf(OutputsType)}};
 
-  static inline ParameterInfo OutputScaleParameterInfo{"OutputScale",
-                                                       SHCCSTR("The scale that the output should be rendered as"),
-                                                       {CoreInfo::NoneType, CoreInfo::AnyType}};
+  static inline ParameterInfo OutputScaleParameterInfo{
+      "OutputScale", SHCCSTR("The scale that the output should be rendered as"), {CoreInfo::NoneType, CoreInfo::AnyType}};
 
-                                                       
-  static inline ParameterInfo NameParameterInfo{"Name",
-                                                       SHCCSTR("A name for this step, to aid in debugging"),
-                                                       {CoreInfo::NoneType, CoreInfo::StringType}};
+  static inline ParameterInfo NameParameterInfo{
+      "Name", SHCCSTR("A name for this step, to aid in debugging"), {CoreInfo::NoneType, CoreInfo::StringType}};
 
 #undef ENUM
 #undef OBJECT

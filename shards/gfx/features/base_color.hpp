@@ -40,8 +40,8 @@ struct BaseColor {
     NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
     FeaturePtr feature = std::make_shared<Feature>();
-    feature->shaderParams.emplace_back("baseColor", float4(1, 1, 1, 1));
-    feature->textureParams.emplace_back("baseColorTexture");
+    feature->shaderParams["baseColor"] = NumParamDecl(float4(1, 1, 1, 1));
+    feature->textureParams["baseColorTexture"] = TextureParamDecl();
 
     feature->state.set_blend(BlendState{
         .color = BlendComponent::Alpha,
