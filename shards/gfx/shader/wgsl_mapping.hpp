@@ -116,6 +116,9 @@ inline String getFieldWGSLTypeName(const TextureFieldType &type) {
   case TextureSampleType::UInt:
     textureFormat = "u32";
     break;
+  case TextureSampleType::Depth:
+    textureFormat = "f32";
+    break;
   case TextureSampleType::Float:
   case TextureSampleType::UnfilterableFloat:
     textureFormat = "f32";

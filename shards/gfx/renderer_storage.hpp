@@ -31,6 +31,8 @@ struct RendererStorage {
   RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;
 
+  // Enable debug visualization
+  bool debug{};
   Swappable<std::vector<DebugVisualizer>, 2> debugVisualizers;
 
   FrameStats frameStats;
@@ -45,7 +47,11 @@ struct RendererStorage {
 
   RendererStorage(Context &context) : drawableProcessorCache(context) {}
 
-  template <typename F> void debugVisualize(F &&f) { debugVisualizers.get(frameCounter % 2).emplace_back(std::forward<F>(f)); }
+  template <typename F> void debugVisualize(F &&f) {
+    if (!debug)
+      return;
+    debugVisualizers.get(frameCounter % 2).emplace_back(std::forward<F>(f));
+  }
 
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     if (textureData.externalView)

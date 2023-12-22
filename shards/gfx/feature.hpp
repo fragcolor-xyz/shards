@@ -10,6 +10,7 @@
 #include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
 #include "feature_generator.hpp"
+#include <boost/container/flat_map.hpp>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -140,41 +141,38 @@ enum class BindGroupId {
   Draw,
 };
 
-struct NamedShaderParam {
+struct NumParamDecl {
   shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
-  FastString name;
   NumParameter defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
   BindGroupId bindGroupId = BindGroupId::Draw;
 
-  NamedShaderParam() = default;
-  NamedShaderParam(FastString name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
-                   NumParameter defaultValue = NumParameter());
-  NamedShaderParam(FastString name, NumParameter defaultValue);
+  NumParamDecl() = default;
+  NumParamDecl(const shader::NumFieldType &type, NumParameter defaultValue = NumParameter());
+  NumParamDecl(NumParameter defaultValue);
 
   template <typename T> void getPipelineHash(T &hasher) const {
+    assert(false); // TODO
+    // hasher(name);
     hasher(type);
-    hasher(name);
     hasher(flags);
   }
 };
 
-struct NamedTextureParam {
-  FastString name;
+struct TextureParamDecl {
   shader::TextureFieldType type;
   TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
   BindGroupId bindGroupId = BindGroupId::Draw;
 
-  NamedTextureParam() = default;
-  NamedTextureParam(FastString name, TextureDimension dimension = TextureDimension::D2,
-                    ShaderParamFlags flags = ShaderParamFlags::None)
-      : name(name), type(dimension), flags(flags) {}
-  NamedTextureParam(FastString name, shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None)
-      : name(name), type(type), flags(flags) {}
+  TextureParamDecl() = default;
+  TextureParamDecl(TextureDimension dimension, ShaderParamFlags flags = ShaderParamFlags::None)
+      : type(dimension), flags(flags) {}
+  TextureParamDecl(shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None) : type(type), flags(flags) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
-    hasher(name);
+    assert(false); // TODO
+    // hasher(name);
     hasher(type);
     hasher(flags);
   }
@@ -201,9 +199,9 @@ struct Feature : public std::enable_shared_from_this<Feature> {
   // Generated parameters and precomputed rendering
   std::vector<FeatureGenerator> generators;
   // Shader parameters read from per-instance buffer
-  std::vector<NamedShaderParam> shaderParams;
+  boost::container::flat_map<FastString, NumParamDecl> shaderParams;
   // Texture parameters
-  std::vector<NamedTextureParam> textureParams;
+  boost::container::flat_map<FastString, TextureParamDecl> textureParams;
   // Shader entry points
   std::vector<shader::EntryPoint> shaderEntryPoints;
 
