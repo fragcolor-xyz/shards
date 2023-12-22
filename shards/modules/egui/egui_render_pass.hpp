@@ -65,8 +65,8 @@ fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
     // NOTE: Override BaseColor's writeColor
     writeFragColor.dependencies.emplace_back("writeColor");
 
-    feature->textureParams.emplace_back("color");
-    feature->shaderParams.emplace_back("flags", flagsFieldType, uint32_t(0));
+    feature->textureParams.emplace("color", TextureParamDecl());
+    feature->shaderParams.emplace("flags", NumParamDecl(flagsFieldType, uint32_t(0)));
 
     feature->state.set_blend(BlendState{
         .color = BlendComponent::AlphaPremultiplied,

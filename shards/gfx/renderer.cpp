@@ -478,6 +478,9 @@ void Renderer::endFrame() { impl->endFrame(); }
 
 void Renderer::cleanup() { impl->releaseContextDataConditional(); }
 
+void Renderer::setDebug(bool debug) {
+  impl->storage.debug = debug;
+}
 void Renderer::processDebugVisuals(ShapeRenderer &sr) {
   auto &storage = impl->storage;
   auto &vec = storage.debugVisualizers.get((storage.frameCounter - 1) % 2);

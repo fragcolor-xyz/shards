@@ -87,11 +87,21 @@ struct ViewShard {
   }
 
   PARAM_PARAMVAR(_viewTransform, "View", "The view matrix.", {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)});
+  PARAM_PARAMVAR(_ortho, "OrthographicSize", "The orthographic size. (Implies orthographic projection)",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
+  PARAM_PARAMVAR(_orthoType, "OrthographicSizeType", "The type of orthographic size. (Implies orthographic projection)",
+                 {CoreInfo::NoneType, Types::OrthographicSizeTypeEnumInfo::Type});
   PARAM_PARAMVAR(_fov, "Fov", "The vertical field of view. (In radians. Implies perspective projection)",
                  {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
-  PARAM_IMPL(PARAM_IMPL_FOR(_viewTransform), PARAM_IMPL_FOR(_fov));
+  PARAM_PARAMVAR(_near, "Near", "Near clipping distance",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
+  PARAM_PARAMVAR(_far, "Far", "Far clipping distance",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_viewTransform), PARAM_IMPL_FOR(_fov), PARAM_IMPL_FOR(_orthoType), PARAM_IMPL_FOR(_ortho),
+             PARAM_IMPL_FOR(_near), PARAM_IMPL_FOR(_far));
 
   SHView *_view;
+  bool _isPerspective = false;
 
   void warmup(SHContext *context) {
     _view = Types::ViewObjectVar.New();
@@ -111,6 +121,16 @@ struct ViewShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    bool isOrtho = !_ortho.isNone() || !_orthoType.isNone();
+    _isPerspective = !_fov.isNone();
+    if (isOrtho && _isPerspective) {
+      throw formatException("View can not have both orthographic and perspective projection");
+    }
+    if (isOrtho && _ortho.isNone()) {
+      throw formatException("View is missing OrthographicSize");
+    }
+
     return outputTypes().elements[0];
   }
 
@@ -123,12 +143,44 @@ struct ViewShard {
       view->view = shards::Mat4(_viewTransform.get());
     }
 
-    // TODO: Add projection/viewport override params
-    view->proj = ViewPerspectiveProjection{};
+    float near = 0.1f;
+    float far = 10000.0f;
 
-    Var fovVar = (Var &)_fov.get();
-    if (!fovVar.isNone())
-      std::get<ViewPerspectiveProjection>(view->proj).fov = float(fovVar);
+    Var &nearVar = (Var &)_near.get();
+    if (!nearVar.isNone())
+      near = float(nearVar);
+
+    Var &farVar = (Var &)_far.get();
+    if (!farVar.isNone())
+      far = float(farVar);
+
+    if (_isPerspective) {
+      auto proj = ViewPerspectiveProjection{
+          .near = near,
+          .far = far,
+      };
+
+      Var fovVar = (Var &)_fov.get();
+      if (!fovVar.isNone())
+        proj.fov = float(fovVar);
+
+      view->proj = proj;
+    } else {
+      auto proj = ViewOrthographicProjection{
+          .size = float((Var &)_ortho.get()),
+          .sizeType = OrthographicSizeType::Horizontal,
+          .near = near,
+          .far = far,
+
+      };
+
+      Var typeVar = (Var &)_orthoType.get();
+      if (!typeVar.isNone()) {
+        proj.sizeType = OrthographicSizeType(int(typeVar));
+      }
+
+      view->proj = proj;
+    }
 
     return Types::ViewObjectVar.Get(_view);
   }
