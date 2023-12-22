@@ -2,7 +2,7 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
-use shards::shard;
+use shards::{shard, shlog_trace};
 use shards::shard::Shard;
 use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
@@ -260,7 +260,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               return Ok(FunctionValue::Const(Value::None));
             }
 
-            shlog!("Including file {:?}", file_path);
+            shlog_trace!("Including file {:?}", file_path);
             {
               // Insert this into the root map so it gets tracked globally
               let root_env = get_root_env(env);
