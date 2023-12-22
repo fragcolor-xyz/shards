@@ -11,7 +11,10 @@ static const char internalComponentIdentifier = '$';
 
 // Checks if the given name points to an internal glTF component (translation/rotation/scale)
 static inline bool isGltfBuiltinTarget(FastString path) { 
-  return path == "$t" || path == "$r" || path == "$s";
+  static FastString $t = "$t";
+  static FastString $r = "$r";
+  static FastString $s = "$s";
+  return path == $t || path == $r || path == $s;
 }
 
 struct Path {
