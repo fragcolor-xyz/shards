@@ -35,10 +35,9 @@ struct TransformUpdaterCollector {
       Node node = queue.back();
       queue.pop_back();
 
-      bool nodeUpdated = {};
-      node.updated = true;
       if (node.node->version != node.node->lastUpdateVersion) {
         node.node->lastUpdateVersion = node.node->version;
+        node.updated = true;
       }
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
@@ -64,7 +63,7 @@ struct TransformUpdaterCollector {
         queue.push_back(Node{
             node.node->resolvedTransform,
             child.get(),
-            nodeUpdated,
+            node.updated,
         });
       }
     }
