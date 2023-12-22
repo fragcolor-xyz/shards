@@ -53,7 +53,6 @@ static void updateSkin(const std::shared_ptr<const MeshTreeDrawable> &root, Mesh
       skin.bounds.expand(extractTranslation(node->resolvedTransform));
     }
   }
-  // drawable.update();
 }
 
 bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawables) const {
@@ -84,22 +83,6 @@ void MeshTreeDrawable::debugVisualize(ShapeRenderer &sr) {
                  1);
     }
   });
-  // boost::container::small_vector<MeshDrawable *, 16> drawablesWithSkinsToUpdate;
-  // TransformUpdaterCollector collector;
-  // collector.collector = [&](const DrawablePtr &drawable) {
-  //   if (MeshDrawable *md = dynamic_cast<MeshDrawable *>(drawable.get())) {
-  //     if (md->skin) {
-  //       drawablesWithSkinsToUpdate.push_back(md);
-  //     }
-  //   }
-  // };
-  // collector.update(const_cast<MeshTreeDrawable &>(*this));
-
-  // auto rootNode = shared_from_this();
-  // for (auto &drawable : drawablesWithSkinsToUpdate) {
-  //   auto skin = drawable->skin;
-  //   // skin->joints
-  // }
 }
 
 } // namespace gfx
