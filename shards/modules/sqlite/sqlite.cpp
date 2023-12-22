@@ -103,7 +103,7 @@ struct Base {
       throw ComposeError("Can not run on worker thread");
   }
 
-  void ensureDb(SHContext *context, bool readOnly = false) {
+  void _ensureDb(SHContext *context, bool readOnly) {
     if (!ready) {
       auto mesh = context->main->mesh.lock();
       if (readOnly) {
@@ -117,6 +117,14 @@ struct Base {
     }
   }
 };
+
+#define ENSURE_DB(__ctx__, __ro__)        \
+  auto dbName = SHSTRVIEW(_dbName.get()); \
+  if (dbName != Base::_dbName) {          \
+    Base::_dbName = dbName;               \
+    ready = false;                        \
+  }                                       \
+  _ensureDb(__ctx__, __ro__)
 
 struct Query : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -297,8 +305,7 @@ struct Query : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Base::_dbName = SHSTRVIEW(_dbName.get());
-    ensureDb(context);
+    ENSURE_DB(context, false);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
@@ -385,8 +392,7 @@ struct Transaction : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Base::_dbName = SHSTRVIEW(_dbName.get());
-    ensureDb(context);
+    ENSURE_DB(context, false);
 
     // avoid transaction nesting
     std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
@@ -464,8 +470,7 @@ struct LoadExtension : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Base::_dbName = SHSTRVIEW(_dbName.get());
-    ensureDb(context);
+    ENSURE_DB(context, false);
 
     return awaitne(
         context,
@@ -509,8 +514,7 @@ struct RawQuery : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Base::_dbName = SHSTRVIEW(_dbName.get());
-    ensureDb(context, _readOnly.get().payload.boolValue);
+    ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
     return awaitne(
         context,
@@ -560,8 +564,7 @@ struct Backup : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Base::_dbName = SHSTRVIEW(_dbName.get());
-    ensureDb(context, true);
+    ENSURE_DB(context, true);
 
     return awaitne(
         context,
