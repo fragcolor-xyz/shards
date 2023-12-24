@@ -58,6 +58,7 @@ if(APPLE)
     "-framework Security"
     "-framework CoreHaptics"
     "-framework GameController"
+    "-framework SystemConfiguration"
     -liconv
   )
 
