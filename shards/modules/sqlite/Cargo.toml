@@ -1,5 +1,5 @@
 [package]
-name = "shards-db"
+name = "shards-sqlite"
 description = ""
 license = "BSD-3-Clause"
 version = "0.1.0"
@@ -13,7 +13,8 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-cozo = { version = "0.7.6", default-features = false, features = ["graph-algo", "storage-sqlite"] }
+cozo = { version = "0.7.6", default-features = false, features = ["storage-sqlite"] }
 
 [features]
 default = []
+cozo-full = ["cozo/graph-algo"]
