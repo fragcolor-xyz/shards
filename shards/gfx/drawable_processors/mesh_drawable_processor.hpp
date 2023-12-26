@@ -145,7 +145,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     size_t version{};
     size_t lastTouched{};
   };
-  std::map<UniqueId, CachedMesh> meshCache;
+  boost::container::flat_map<UniqueId, CachedMesh> meshCache;
 
   MeshDrawableProcessor(Context &context)
       : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),

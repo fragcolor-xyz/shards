@@ -323,40 +323,11 @@ struct GetQueueDrawablesShard {
   }
 };
 
-// struct GetBoundsShard {
-//   static inline shards::Types OutputTableTypes{CoreInfo::Float3Type, CoreInfo::Float3Type};
-//   static inline std::array<SHVar, 2> OutputTableKeys{Var("min"), Var("max")};
-//   static inline const Type OutputSeqType = Type::TableOf(OutputTableTypes, OutputTableKeys);
-
-//   static SHTypesInfo inputTypes() { return Types::Drawable; }
-//   static SHTypesInfo outputTypes() { return OutputSeqType; }
-//   static SHOptionalString help() { return SHCCSTR("Retrieves the bounding box of a drawable"); }
-
-//   static SHParametersInfo parameters() {
-//     static Parameters parameters = {};
-//     return parameters;
-//   }
-//   void setParam(int index, const SHVar &value) {}
-//   SHVar getParam(int index) { return Var::Empty; }
-
-//   void warmup(SHContext *context) {}
-//   void cleanup(SHContext *context) {}
-
-//   SHVar activate(SHContext *shContext, const SHVar &input) {
-//     SHDrawable *shDrawable = reinterpret_cast<SHDrawable *>(input.payload.objectValue);
-//     std::visit([&](auto& arg) {
-//       arg->getBounds();
-//     }, shDrawable->drawable);
-//     return _outputSeq;
-//   }
-// };
-
 void registerDrawableShards() {
   REGISTER_SHARD("GFX.Drawable", DrawableShard);
   REGISTER_SHARD("GFX.Draw", DrawShard);
   REGISTER_SHARD("GFX.DrawQueue", DrawQueueShard);
   REGISTER_SHARD("GFX.ClearQueue", ClearQueueShard);
   REGISTER_SHARD("GFX.QueueDrawables", GetQueueDrawablesShard);
-  // REGISTER_SHARD("GFX.Bounds", GetBoundsShard);
 }
 } // namespace gfx
