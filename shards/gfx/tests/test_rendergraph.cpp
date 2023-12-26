@@ -182,7 +182,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     code->appendLine("let vel = ", SampleTexture("velocity"), ".xy");
     code->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(vel.x*0.5+0.5, vel.y*0.5+0.5, 0.0, 1.0)"));
     feature->shaderEntryPoints.emplace_back("", ProgrammableGraphicsStage::Fragment, std::move(code));
-    feature->textureParams.emplace_back("velocity");
+    feature->textureParams.emplace("velocity", TextureParamDecl());
     return feature;
   }();
 
