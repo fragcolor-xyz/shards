@@ -377,8 +377,13 @@ public:
 
         // Found a frame with the same name but potentially different format/size
         if (transitionSrcFrame) {
-          SPDLOG_LOGGER_DEBUG(logger, "Transitioning frame {} => {}", transitionSrcFrame->index, output->index);
-          node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, transitionSrcFrame, output);
+          if (transitionSrcFrame->name == "depth" && transitionSrcFrame->sizing != output->sizing) {
+            // Ignore transitions on depth buffers with different size
+            SPDLOG_LOGGER_DEBUG(logger, "Ignoring transition on depth buffer frame {} => {}", transitionSrcFrame->index, output->index);
+          } else {
+            SPDLOG_LOGGER_DEBUG(logger, "Transitioning frame {} => {}", transitionSrcFrame->index, output->index);
+            node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, transitionSrcFrame, output);
+          }
         }
       }
     }
