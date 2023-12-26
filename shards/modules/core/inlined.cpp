@@ -45,6 +45,12 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_
     shard->inlineShardId = InlineShard::CoreIsMoreEqual;
   } else if (name == "IsLessEqual") {
     shard->inlineShardId = InlineShard::CoreIsLessEqual;
+  } else if (name == "IsTrue") {
+    shard->inlineShardId = InlineShard::CoreIsTrue;
+  } else if (name == "IsFalse") {
+    shard->inlineShardId = InlineShard::CoreIsFalse;
+  } else if (name == "IsNone") {
+    shard->inlineShardId = InlineShard::CoreIsNone;
   } else if (name == "And") {
     shard->inlineShardId = InlineShard::CoreAnd;
   } else if (name == "Or") {
@@ -97,6 +103,42 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *
   case InlineShard::CoreNot: {
     auto shard = reinterpret_cast<shards::NotRuntime *>(blk);
     output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIs: {
+    auto shard = reinterpret_cast<shards::IsRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsNot: {
+    auto shard = reinterpret_cast<shards::IsNotRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsMore: {
+    auto shard = reinterpret_cast<shards::IsMoreRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsLess: {
+    auto shard = reinterpret_cast<shards::IsLessRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsMoreEqual: {
+    auto shard = reinterpret_cast<shards::IsMoreEqualRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsLessEqual: {
+    auto shard = reinterpret_cast<shards::IsLessEqualRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
+  case InlineShard::CoreIsTrue: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<IsTrue> *>(blk);
+    output = shard->shard.activate(context, input);
+  } break;
+  case InlineShard::CoreIsFalse: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<IsFalse> *>(blk);
+    output = shard->shard.activate(context, input);
+  } break;
+  case InlineShard::CoreIsNone: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<IsNone> *>(blk);
+    output = shard->shard.activate(context, input);
   } break;
   case InlineShard::CoreInput: {
     auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);

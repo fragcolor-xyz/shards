@@ -10,11 +10,11 @@ set(SOURCES
   time.cpp
 )
 
-add_rust_library(NAME shards-core 
+add_rust_library(NAME shards-core
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 add_shards_module(core SOURCES ${SOURCES}
-  REGISTER_SHARDS 
+  REGISTER_SHARDS
     core casting flow linalg math seqs
     strings wires logging serialization time
     rust cached
@@ -39,6 +39,9 @@ add_shards_module(core SOURCES ${SOURCES}
     CorePush
     CoreIs
     CoreIsNot
+    CoreIsTrue
+    CoreIsFalse
+    CoreIsNone
     CoreAnd
     CoreOr
     CoreNot
