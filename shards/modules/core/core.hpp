@@ -444,6 +444,30 @@ struct IsNotNone {
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != SHType::None); }
 };
 
+struct IsTrue {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the input is `true`."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to check against."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `true`; otherwise, `false`."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.payload.boolValue); }
+};
+
+struct IsFalse {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the input is `false`."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to check against."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `false`; otherwise, `false`."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
+};
+
 struct Restart {
   // Must ensure input is the same kind of wire root input
   SHTypeInfo compose(const SHInstanceData &data) {

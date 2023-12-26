@@ -2258,6 +2258,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("NaNTo0", NaNTo0);
   REGISTER_SHARD("IsNone", IsNone);
   REGISTER_SHARD("IsNotNone", IsNotNone);
+  REGISTER_SHARD("IsTrue", IsTrue);
+  REGISTER_SHARD("IsFalse", IsFalse);
   REGISTER_SHARD("Input", Input);
   REGISTER_SHARD("Comment", Comment);
   REGISTER_SHARD("Replace", Replace);
