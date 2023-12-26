@@ -463,13 +463,13 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
   }
   for (auto &param : step.parameters.textures) {
     auto &textureFormat = param.second.texture->getFormat();
-    auto &entry = baseFeature->textureParams.emplace(param.first, textureFormat.dimension).first->second;
+    auto &entry = baseFeature->textureParams.insert_or_assign(param.first, textureFormat.dimension).first->second;
     entry.type.format = getDefaultTextureSampleType(textureFormat.pixelFormat);
   }
 
-  // Setup node outputs as texture slots
+  // Setup node inputs as texture slots
   for (auto &frame : buildData.inputs) {
-    auto &entry = baseFeature->textureParams.emplace(frame->name, TextureParamDecl()).first->second;
+    auto &entry = baseFeature->textureParams.insert_or_assign(frame->name, TextureParamDecl()).first->second;
     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
@@ -487,20 +487,6 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
       auto &frame = ctx.graph.frames[frameIndex];
       data->drawable->parameters.set(frame.name, texture);
     }
-
-    // if (step.output) {
-    //   auto &attachments = step.output->attachments;
-    //   for (size_t i = 0; i < attachments.size(); i++) {
-    //     auto &stepAttachment = attachments[i];
-    //     if (auto texture = std::get_if<RenderStepOutput::Texture>(&stepAttachment)) {
-    //       auto &attachment = ctx.node.outputs[i];
-    // attachment.frameIndex
-    // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
-    // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
-    // data->drawable->parameters.set(frame.name, texture);
-    //     }
-    //   }
-    // }
 
     renderDrawables(ctx, data->queue, data->features, SortMode::Queue, BuildPipelineOptions{});
   };
