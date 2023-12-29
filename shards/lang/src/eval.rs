@@ -76,6 +76,12 @@ pub struct Setting {
   disallow_impure_wires: bool,
 }
 
+#[derive(Clone)]
+enum Definition {
+  Value(*const Value),
+  Constant(SVar),
+}
+
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
@@ -90,7 +96,7 @@ pub struct EvalEnv {
 
   shards_groups: HashMap<Identifier, ShardsGroup>,
   macro_groups: HashMap<Identifier, ShardsGroup>,
-  definitions: HashMap<Identifier, *const Value>,
+  definitions: HashMap<Identifier, Definition>,
 
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
@@ -189,7 +195,10 @@ fn is_compile_time_constant(v: &Value, e: &EvalEnv) -> bool {
   match v {
     Value::Func(f) => {
       if let Some(defined) = find_defined(&f.name, e) {
-        return is_compile_time_constant(unsafe { &*defined }, e);
+        match defined {
+          Definition::Value(v) => is_compile_time_constant(unsafe { &*v }, e),
+          Definition::Constant(_) => true,
+        }
       } else {
         false
       }
@@ -1484,8 +1493,13 @@ fn as_var(
         ("ast", true) => process_ast(func, line_info, e),
         _ => {
           if let Some(defined_value) = find_defined(&func.name, e) {
-            let replacement = unsafe { &*defined_value };
-            as_var(replacement, line_info, shard, e)
+            match defined_value {
+              Definition::Value(value) => {
+                let replacement = unsafe { &*value };
+                as_var(replacement, line_info, shard, e)
+              }
+              Definition::Constant(var) => Ok(var),
+            }
           } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
             // @template
             finalize_env(&mut shards_env)?; // finalize the env
@@ -2334,11 +2348,11 @@ fn find_macro_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Shar
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<*const Value> {
+fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<Definition> {
   let mut env = e;
   loop {
     if let Some(val) = env.definitions.get(name) {
-      return Some(*val);
+      return Some(val.clone());
     }
 
     if let Some(parent) = env.parent {
@@ -2736,7 +2750,16 @@ fn eval_pipeline(
                     }
                   }
 
-                  e.definitions.insert(name.clone(), &value.value);
+                  // resolve into var if value is a constant
+                  if is_compile_time_constant(&value.value, e) {
+                    let value = as_var(&value.value, block.line_info.unwrap_or_default(), None, e)?;
+                    e.definitions
+                      .insert(name.clone(), Definition::Constant(value));
+                  } else {
+                    e.definitions
+                      .insert(name.clone(), Definition::Value(&value.value));
+                  }
+
                   Ok(())
                 }
                 _ => Err(
@@ -3353,44 +3376,58 @@ fn eval_pipeline(
               }
               (Some(value), _, _, _) => {
                 // defined
-                let replacement = unsafe { &*value };
-                match replacement {
-                  Value::None
-                  | Value::Identifier(_)
-                  | Value::Boolean(_)
-                  | Value::Enum(_, _)
-                  | Value::Number(_)
-                  | Value::String(_)
-                  | Value::Bytes(_)
-                  | Value::Int2(_)
-                  | Value::Int3(_)
-                  | Value::Int4(_)
-                  | Value::Int8(_)
-                  | Value::Int16(_)
-                  | Value::Float2(_)
-                  | Value::Float3(_)
-                  | Value::Float4(_)
-                  | Value::Seq(_)
-                  | Value::Func(_)
-                  | Value::TakeTable(_, _)
-                  | Value::TakeSeq(_, _)
-                  | Value::Table(_) => {
-                    add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
-                  }
-                  Value::Shards(seq) => {
-                    // purely include the ast of the sequence
-                    for stmt in &seq.statements {
-                      eval_statement(stmt, e, cancellation_token.clone())?;
+                match value {
+                  Definition::Constant(value) => match value {
+                    SVar::Cloned(value) => {
+                      add_const_shard2(value.0, block.line_info.unwrap_or_default(), e)?
+                    }
+                    SVar::NotCloned(value) => {
+                      add_const_shard2(value, block.line_info.unwrap_or_default(), e)?
+                    }
+                  },
+                  Definition::Value(value) => {
+                    let replacement = unsafe { &*value };
+                    match replacement {
+                      Value::None
+                      | Value::Identifier(_)
+                      | Value::Boolean(_)
+                      | Value::Enum(_, _)
+                      | Value::Number(_)
+                      | Value::String(_)
+                      | Value::Bytes(_)
+                      | Value::Int2(_)
+                      | Value::Int3(_)
+                      | Value::Int4(_)
+                      | Value::Int8(_)
+                      | Value::Int16(_)
+                      | Value::Float2(_)
+                      | Value::Float3(_)
+                      | Value::Float4(_)
+                      | Value::Seq(_)
+                      | Value::Func(_)
+                      | Value::TakeTable(_, _)
+                      | Value::TakeSeq(_, _)
+                      | Value::Table(_) => {
+                        add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
+                      }
+                      Value::Shards(seq) => {
+                        // purely include the ast of the sequence
+                        for stmt in &seq.statements {
+                          eval_statement(stmt, e, cancellation_token.clone())?;
+                        }
+                      }
+                      Value::EvalExpr(seq) => {
+                        let value = eval_eval_expr(&seq, e)?;
+                        add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
+                      }
+                      Value::Expr(seq) => {
+                        eval_expr(seq, e, block, start_idx, new_cancellation_token())?
+                      }
+                      Value::Shard(shard) => {
+                        add_shard(shard, block.line_info.unwrap_or_default(), e)?
+                      }
                     }
                   }
-                  Value::EvalExpr(seq) => {
-                    let value = eval_eval_expr(&seq, e)?;
-                    add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
-                  }
-                  Value::Expr(seq) => {
-                    eval_expr(seq, e, block, start_idx, new_cancellation_token())?
-                  }
-                  Value::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e)?,
                 }
                 Ok(())
               }
@@ -3644,7 +3681,7 @@ pub fn eval(
         name: name.clone(),
         namespaces: Vec::new(),
       },
-      value,
+      Definition::Value(value),
     );
   }
 
@@ -3799,7 +3836,7 @@ impl LegacyShard for EvalShard {
           name: (*k).into(),
           namespaces: Vec::new(),
         },
-        v,
+        Definition::Value(v),
       );
     }
 
