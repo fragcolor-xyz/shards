@@ -12,6 +12,10 @@ add_library(sqlite-static STATIC ${SQLITE_SOURCES})
 target_compile_definitions(sqlite-static PUBLIC ${SQLITE_DEFINES})
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
+# cr-sqlite is setting it's own version override!
+set(ORIGINAL_RUST_TOOLCHAIN ${RUST_TOOLCHAIN_OVERRIDE})
+unset(RUST_TOOLCHAIN_OVERRIDE)
+
 add_rust_library(NAME crsql_bundle
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/cr-sqlite/core/rs/bundle
   FEATURES loadable_extension)
@@ -19,11 +23,8 @@ add_rust_library(NAME crsql_bundle
 add_library(crsqlite-extension SHARED
   cr-sqlite/core/src/sqlite/sqlite3.c
   cr-sqlite/core/src/crsqlite.c
-  cr-sqlite/core/src/util.c
-  cr-sqlite/core/src/tableinfo.c
   cr-sqlite/core/src/changes-vtab.c
-  cr-sqlite/core/src/ext-data.c
-  cr-sqlite/core/src/get-table.c)
+  cr-sqlite/core/src/ext-data.c)
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
@@ -48,3 +49,5 @@ add_custom_command(TARGET crsqlite-extension
   COMMAND ${CMAKE_COMMAND} -E copy
   "$<TARGET_FILE:crsqlite-extension>"
   "${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:crsqlite-extension>")
+
+  set(RUST_TOOLCHAIN_OVERRIDE ${ORIGINAL_RUST_TOOLCHAIN})
