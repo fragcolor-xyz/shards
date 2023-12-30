@@ -196,7 +196,7 @@ fn is_compile_time_constant(v: &Value, e: &EvalEnv) -> bool {
     Value::Func(f) => {
       if let Some(defined) = find_defined(&f.name, e) {
         match defined {
-          Definition::Value(v) => is_compile_time_constant(unsafe { &*v }, e),
+          Definition::Value(v) => is_compile_time_constant(unsafe { &**v }, e),
           Definition::Constant(_) => true,
         }
       } else {
@@ -1492,7 +1492,7 @@ fn as_var(
         ("type", true) => process_type(func, line_info, e),
         ("ast", true) => process_ast(func, line_info, e),
         _ => {
-          if let Some(defined_value) = find_defined(&func.name, e) {
+          if let Some(defined_value) = find_defined(&func.name, e).map(|x| x.clone()) {
             match defined_value {
               Definition::Value(value) => {
                 let replacement = unsafe { &*value };
@@ -2348,11 +2348,11 @@ fn find_macro_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Shar
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<Definition> {
+fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Definition> {
   let mut env = e;
   loop {
     if let Some(val) = env.definitions.get(name) {
-      return Some(val.clone());
+      return Some(val);
     }
 
     if let Some(parent) = env.parent {
@@ -3308,7 +3308,7 @@ fn eval_pipeline(
           _ => {
             match (
               // Notice, By precedence!
-              find_defined(&func.name, e),
+              find_defined(&func.name, e).map(|v| v.clone()),
               process_template(func, block.line_info.unwrap_or_default(), e)?,
               process_macro(func, block.line_info.unwrap_or_default(), e)?,
               find_extension(&func.name, e),
