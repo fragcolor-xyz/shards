@@ -996,6 +996,7 @@ struct Client : public NetworkBase {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    NetworkBase::compose(data);
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     shards::arrayPush(data.shared, endpointInfo);
