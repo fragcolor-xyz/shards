@@ -200,7 +200,9 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
                 newEvent(InputEventType::Copy);
               } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
                 auto &evt = newEvent(InputEventType::Paste);
-                evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
+                auto clipboardPtr = SDL_GetClipboardText();
+                evt.paste.str = strings.emplace_back(clipboardPtr).c_str();
+                SDL_free(clipboardPtr);
               } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
                 newEvent(InputEventType::Cut);
               }
