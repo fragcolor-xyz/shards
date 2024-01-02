@@ -124,6 +124,12 @@ struct ViewShard {
 
     bool isOrtho = !_ortho.isNone() || !_orthoType.isNone();
     _isPerspective = !_fov.isNone();
+
+    // Default to perspecitive projection if nothing is set
+    if(!isOrtho && !_isPerspective) {
+      _isPerspective = true;
+    }
+
     if (isOrtho && _isPerspective) {
       throw formatException("View can not have both orthographic and perspective projection");
     }
