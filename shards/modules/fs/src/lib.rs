@@ -46,6 +46,10 @@ lazy_static! {
   pub static ref STRING_OR_STRINGS_TYPES: Types = vec![common_type::string, common_type::strings];
   pub static ref SEQ_OF_STRINGS_TYPE: Type = Type::seq(&*STRING_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Types = vec![*SEQ_OF_STRINGS_TYPE];
+
+  pub static ref FILTER_SEQ_TYPE: Type = Type::seq(&*SEQ_OF_STRINGS_TYPES);
+  pub static ref FILTER_SEQ_TYPES: Types = vec![*FILTER_SEQ_TYPE];
+
   static ref SAVEFILEDIALOG_PARAMETERS: Parameters = vec![
     (
       cstr!("Filters"),
@@ -65,7 +69,7 @@ lazy_static! {
 #[derive(shards::shard)]
 #[shard_info("FS.FileDialog", "AddDescriptionHere")]
 struct FileDialog {
-  #[shard_param("Filters", "To filter files based on extensions.", [common_type::none, *SEQ_OF_STRINGS_TYPE, Type::context_variable(&*SEQ_OF_STRINGS_TYPES)])]
+  #[shard_param("Filters", "To filter files based on extensions.", [common_type::none, *FILTER_SEQ_TYPE, Type::context_variable(&*FILTER_SEQ_TYPES)])]
   filters: ParamVar,
   #[shard_param("FilterNames", "For each filter, gives the name to show of the filter.", [common_type::none, common_type::strings, common_type::strings_var])]
   filter_names: ParamVar,
