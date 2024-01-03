@@ -70,6 +70,8 @@
                         Gizmos.Point(Center: @f3(1.4 1.4 1) Color: @f4(0.4 0.4 1.0 1.0) Thickness: 16)
                         Gizmos.Point(Center: @f3(-2 -0.2 1) Color: @f4(1.0 0.2 1.0 1.0) Thickness: 4)
 
+                        @f3(-2.0 0.0 0.0) | Math.Translation | Gizmos.Arrow
+
                         Gizmos.ScreenXY |
                         {Take(0) = screen-x | Once({Log("Screen X")})} |
                         {Take(1) = screen-y | Once({Log("Screen Y")})}
