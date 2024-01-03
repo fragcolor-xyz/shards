@@ -84,7 +84,10 @@
 
                         Gizmos.Grid(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 1.5)
                         Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
+
+                        Gizmos.Debug
                      })
+                     
       ; Draw on top of everthing (ignore depth)
       Gizmos.Context(Queue: editor-queue-np-depth View: view
                      Contents: {
