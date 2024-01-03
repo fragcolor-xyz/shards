@@ -365,7 +365,7 @@ macro_rules! get_like {
           "Failed to send the request"
         })?;
 
-        if response.status().is_success() {
+        if self.rb.full_response || response.status().is_success() {
           self.rb._finalize(response)
         } else {
           shlog_error!("Request failed with status {}", response.status());
