@@ -1,6 +1,7 @@
 #ifndef EF9289B8_FECE_4D29_8B3F_43A88E82C83B
 #define EF9289B8_FECE_4D29_8B3F_43A88E82C83B
 
+#include "boost/container/small_vector.hpp"
 #include "render_graph.hpp"
 #include "render_graph_build_data.hpp"
 #include "render_step_impl.hpp"
@@ -379,7 +380,8 @@ public:
         if (transitionSrcFrame) {
           if (transitionSrcFrame->name == "depth" && transitionSrcFrame->sizing != output->sizing) {
             // Ignore transitions on depth buffers with different size
-            SPDLOG_LOGGER_DEBUG(logger, "Ignoring transition on depth buffer frame {} => {}", transitionSrcFrame->index, output->index);
+            SPDLOG_LOGGER_DEBUG(logger, "Ignoring transition on depth buffer frame {} => {}", transitionSrcFrame->index,
+                                output->index);
           } else {
             SPDLOG_LOGGER_DEBUG(logger, "Transitioning frame {} => {}", transitionSrcFrame->index, output->index);
             node.requiredCopies.emplace_back(NodeBuildData::CopyOperation::Before, transitionSrcFrame, output);
@@ -883,6 +885,32 @@ public:
     }
   }
 
+  bool validateConnections() {
+    boost::container::small_vector<std::string, 8> errors;
+
+    for (auto &node : buildingNodes) {
+      for (auto &out : node.outputs) {
+        auto inIt = std::find(node.inputs.begin(), node.inputs.end(), out);
+        if (inIt != node.inputs.end()) {
+          errors.emplace_back(fmt::format("Node {} has an output {} that is also an input", out->index, node.srcIndex));
+        }
+      }
+    }
+
+    if (errors.size() > 0) {
+      References references;
+      SPDLOG_LOGGER_ERROR(logger, "Render graph has invalid connections:");
+      collectReferences(references);
+      dumpDebugInfo(references);
+      for (auto &error : errors) {
+        SPDLOG_LOGGER_ERROR(logger, error);
+      }
+      return false;
+    }
+
+    return true;
+  }
+
   bool prepare() {
     buildingFrames.clear();
     generatedNodes.clear();
@@ -898,6 +926,9 @@ public:
 
     if (!validateUninitializedFrames())
       return false;
+
+    assert(validateConnections());
+
     return true;
   }
 
