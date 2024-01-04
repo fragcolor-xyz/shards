@@ -1,9 +1,12 @@
 #include "log.hpp"
+#include "spdlog/fmt/bundled/core.h"
+#include <iterator>
 #include <spdlog/spdlog.h>
 #include <vector>
 #include <SDL_stdinc.h>
 #include <magic_enum.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <spdlog/sinks/dist_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -20,8 +23,30 @@ void init(Logger logger) {
 }
 
 void initLogLevel(Logger logger) {
-  std::string varName = fmt::format("LOG_{}", logger->name());
-  if (const char *val = SDL_getenv(varName.c_str())) {
+  std::string loggerName = logger->name();
+  std::string varName;
+
+  const char *val{};
+  auto tryReadEnvVar = [&]() {
+    varName.clear();
+    fmt::format_to(std::back_inserter(varName), "LOG_{}", loggerName);
+    val = SDL_getenv(varName.c_str());
+  };
+
+  tryReadEnvVar();
+
+  if (!val) {
+    boost::algorithm::to_lower(loggerName);
+    tryReadEnvVar();
+  }
+
+  if (!val) {
+    varName.clear();
+    boost::algorithm::to_upper(loggerName);
+    tryReadEnvVar();
+  }
+
+  if (val) {
     auto enumVal = magic_enum::enum_cast<spdlog::level::level_enum>(val);
     if (enumVal.has_value()) {
       logger->set_level(enumVal.value());
