@@ -14,13 +14,15 @@ namespace gfx {
 struct RendererShard {
   static const inline Type WindowType = WindowContext::Type;
 
-  PARAM(ParamVar, _window, "Window", "The window to run the renderer on.", {Type::VariableOf(WindowType)});
+  PARAM_PARAMVAR(_window, "Window", "The window to run the renderer on.", {Type::VariableOf(WindowType)});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
-  PARAM(OwnedVar, _ignoreCompilationErrors, "IgnoreCompilationErrors",
-        "When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
-        "render at all.",
-        {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors));
+  PARAM_VAR(_ignoreCompilationErrors, "IgnoreCompilationErrors",
+            "When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
+            "render at all.",
+            {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_debug, "Debug", "Enable debug visualization mode.", {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors),
+             PARAM_IMPL_FOR(_debug));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -79,7 +81,7 @@ struct RendererShard {
     PARAM_WARMUP(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     renderer.cleanup(context);
   }
@@ -88,6 +90,11 @@ struct RendererShard {
     auto &windowContext = varAsObjectChecked<shards::WindowContext>(_window.get(), shards::WindowContext::Type);
 
     SHVar tmpOutput{};
+
+    if (renderer._graphicsContext.renderer) {
+      Var &debug = (Var &)_debug.get();
+      renderer._graphicsContext.renderer->setDebug(debug.isNone() ? false : (bool)debug);
+    }
 
     if (renderer.begin(shContext, windowContext)) {
       _contents.activate(shContext, input, tmpOutput);
@@ -122,7 +129,7 @@ struct EndFrame {
     _requiredGraphicsContext.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup();
   }
