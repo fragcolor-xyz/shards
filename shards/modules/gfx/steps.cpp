@@ -176,17 +176,20 @@ void applyOutputScale(SHContext *context, RenderStepOutput::OutputSizing &sizing
     if (getFromTable(context, table, Var("main"), mainVar)) {
       sizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(mainVar)};
     } else {
-      Var inputVar;
-      getFromTable(context, table, Var("input"), inputVar);
-      checkType(inputVar.valueType, SHType::String, "OutputScale input name");
-
       std::optional<float2> scaleOpt;
       Var scaleVar;
       if (getFromTable(context, table, Var("scale"), scaleVar)) {
         scaleOpt = toOutputScale(scaleVar);
       }
 
-      sizing = RenderStepOutput::RelativeToInputSize{.name = inputVar.payload.stringValue, .scale = scaleOpt};
+      Var inputVar;
+      std::optional<std::string> inputName;
+      if (getFromTable(context, table, Var("name"), inputVar)) {
+        checkType(inputVar.valueType, SHType::String, "OutputScale input name");
+        inputName = SHSTRVIEW(inputVar);
+      }
+
+      sizing = RenderStepOutput::RelativeToInputSize{.name = std::move(inputName), .scale = scaleOpt};
     }
   } else {
     sizing = RenderStepOutput::RelativeToMainSize{.scale = toOutputScale(v.get())};

@@ -74,7 +74,6 @@ public:
 
       auto &viewData = entry.viewData;
       hasher(viewData.cachedView.isFlipped);
-      hasher(viewData.referenceOutputSize);
       if (mainOutput) {
         for (auto &attachment : mainOutput->attachments) {
           hasher(attachment.first);
