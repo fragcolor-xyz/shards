@@ -745,7 +745,7 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck) {
   return TypeMatcher{.isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck}.match(inputType,
-                                                                                                            receiverType);
+                                                                                                                   receiverType);
 }
 
 struct ValidationContext {
@@ -846,8 +846,7 @@ void validateConnection(ValidationContext &ctx) {
       }
     } else {
       SHLOG_ERROR("Shard {} needs to implement the compose method", ctx.bottom->name(ctx.bottom));
-      throw ComposeError("Shard has multiple possible output types and is "
-                         "missing the compose method");
+      throw ComposeError("Shard has multiple possible output types and is missing the compose method");
     }
   }
 
@@ -877,7 +876,8 @@ void validateConnection(ValidationContext &ctx) {
         });
     if (!blockHasValidOutputTypes) {
       std::string blockName = ctx.bottom->name(ctx.bottom);
-      throw std::runtime_error(fmt::format("Block {} doesn't have a valid output type", blockName));
+      auto msg = fmt::format("Shard {} doesn't have a valid output type", blockName);
+      throw ComposeError(msg);
     }
   }
 #endif
@@ -1083,10 +1083,11 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       ctx.bottom = blk;
       try {
         validateConnection(ctx);
-      } catch (...) {
-        SHLOG_ERROR("Error validating shard: {}, line: {}, column: {}, wire: {}", blk->name(blk), blk->line, blk->column,
-                    ctx.wire ? ctx.wire->name : "(unwired)");
-        throw;
+      } catch (std::exception &ex) {
+        auto verboseMsg = fmt::format("Error validating shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+                                      blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+        SHLOG_ERROR("{}", verboseMsg);
+        throw ComposeError(verboseMsg);
       }
     }
   }
@@ -1532,7 +1533,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     // This only does a quick check to see if the type is roughly correct
     // ContextVariable types will be checked in validateConnection based on requiredVariables
     if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
-      return true; // we are good just exit 
+      return true; // we are good just exit
     }
   }
 
