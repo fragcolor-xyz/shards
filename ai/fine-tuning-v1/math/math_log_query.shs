@@ -1,0 +1,21 @@
+{
+  prompt: """How do I get the natural logarithm of a number?"""
+
+  solution: """
+    7.38906
+    Math.Log
+    Log("result") ;; result is 2
+  """
+
+  explicit: """
+    7.38906
+    Math.Log
+    Log(Prefix:"result") ;; result is 2
+  """
+
+  explanation: """
+    The Math.Log Shard is a Maths Shard that will take a floating point value and return that value's natrual logarithm to the base of e.
+  """
+
+  tag: "  #Maths"
+}

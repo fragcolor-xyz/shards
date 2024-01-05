@@ -1,0 +1,20 @@
+{
+  prompt: """How do I convert an integer to a float?"""
+
+  solution: """
+   5 ; integer to convert
+   ToFloat
+  """
+
+  explicit: """
+   5 ; integer to convert
+   ToFloat
+  """
+
+  explanation: """
+    The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If the
+    value has more than one dimension, only the first value will be used.
+  """
+
+  tag: "  #General"
+}

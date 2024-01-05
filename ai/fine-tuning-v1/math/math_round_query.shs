@@ -1,0 +1,21 @@
+{
+  prompt: """How do I round a float to the nearest integer?"""
+
+  solution: """
+    3.6
+    Math.Round
+    Log("Result") ;; the result will be 4
+  """
+
+  explicit: """
+    3.6
+    Math.Round
+    Log("Result") ;; the result will be 4
+  """
+
+  explanation: """
+    Math.Round is a Maths Shard which will take a float or a sequence of float and round the values to the nearest integer.
+  """
+
+  tag: "  #Maths"
+}
