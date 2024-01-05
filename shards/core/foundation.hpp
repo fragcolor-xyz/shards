@@ -16,6 +16,7 @@
 #include "ops_internal.hpp"
 
 #include "spdlog/spdlog.h"
+#include "type_matcher.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -46,8 +47,6 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
-#include "untracked_collections.hpp"
-
 #include "coro.hpp"
 
 #ifdef NDEBUG
@@ -71,13 +70,7 @@
     std::abort();                 \
   }
 
-#ifdef SH_RELWITHDEBINFO
-#undef shassert
-#define shassert(_expr_)                          \
-  if (!(_expr_)) {                                \
-    SHLOG_FATAL("Assertion failed: {}", #_expr_); \
-  }
-#endif
+#include "assert.hpp"
 
 namespace shards {
 #ifdef SH_COMPRESSED_STRINGS
@@ -182,7 +175,8 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
 };
 
 void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr);
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
+                          bool resolveContextVariables = true);
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
 
 uint64_t deriveTypeHash(const SHVar &value);
@@ -191,8 +185,9 @@ uint64_t deriveTypeHash(const SHTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr) {
-    _info = deriveTypeInfo(var, data, expInfo);
+  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
+           bool resolveContextVariables = true) {
+    _info = deriveTypeInfo(var, data, expInfo, resolveContextVariables);
   }
 
   TypeInfo(const SHTypeInfo &info) { _info = cloneTypeInfo(info); }
@@ -465,31 +460,30 @@ struct CrashHandlerBase {
 
 struct Globals {
 public:
-  ;
-  UntrackedUnorderedMap<std::string, OwnedVar> Settings;
+  std::unordered_map<std::string, OwnedVar> Settings;
 
   CrashHandlerBase *CrashHandler{nullptr};
 
   int SigIntTerm{0};
-  UntrackedUnorderedMap<std::string_view, SHShardConstructor> ShardsRegister;
-  UntrackedUnorderedMap<std::string_view, std::string_view> ShardNamesToFullTypeNames;
-  UntrackedUnorderedMap<int64_t, SHObjectInfo> ObjectTypesRegister;
-  UntrackedUnorderedMap<std::string_view, int64_t> ObjectTypesRegisterByName;
-  UntrackedUnorderedMap<int64_t, SHEnumInfo> EnumTypesRegister;
-  UntrackedUnorderedMap<std::string_view, int64_t> EnumTypesRegisterByName;
+  std::unordered_map<std::string_view, SHShardConstructor> ShardsRegister;
+  std::unordered_map<std::string_view, std::string_view> ShardNamesToFullTypeNames;
+  std::unordered_map<int64_t, SHObjectInfo> ObjectTypesRegister;
+  std::unordered_map<std::string_view, int64_t> ObjectTypesRegisterByName;
+  std::unordered_map<int64_t, SHEnumInfo> EnumTypesRegister;
+  std::unordered_map<std::string_view, int64_t> EnumTypesRegisterByName;
 
   // map = ordered! we need that for those
-  UntrackedMap<std::string_view, SHCallback> RunLoopHooks;
-  UntrackedMap<std::string_view, SHCallback> ExitHooks;
+  std::map<std::string_view, SHCallback> RunLoopHooks;
+  std::map<std::string_view, SHCallback> ExitHooks;
 
-  UntrackedUnorderedMap<std::string, std::shared_ptr<SHWire>> GlobalWires;
+  std::unordered_map<std::string, std::shared_ptr<SHWire>> GlobalWires;
 
-  UntrackedList<std::weak_ptr<RuntimeObserver>> Observers;
+  std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
-  UntrackedString RootPath;
-  UntrackedString ExePath;
+  std::string RootPath;
+  std::string ExePath;
 
-  UntrackedUnorderedMap<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+  std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
   entt::registry Registry;
 
@@ -1516,6 +1510,7 @@ inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypes
 // Collects all ContextVar references
 inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var) {
   using namespace std::literals;
+
   switch (var.valueType) {
   case SHType::ContextVar: {
     auto sv = SHSTRVIEW(var);
@@ -1539,6 +1534,25 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   default:
     break;
   }
+}
+
+inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var,
+                                     SHTypesInfo validTypes, const char *debugTag) {
+  SHInstanceData data{.shared = exposed};
+  std::vector<SHExposedTypeInfo> expInfo;
+  TypeInfo ti(var, data, &expInfo, false);
+  for (auto &type : validTypes) {
+    if (TypeMatcher{.isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}.match(ti, type)) {
+      for (auto &it : expInfo) {
+        out.push_back(it);
+      }
+      return true;
+    }
+  }
+  auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
+                         validTypes);
+  SHLOG_ERROR("{}", msg);
+  throw ComposeError(msg);
 }
 
 template <typename... TArgs>

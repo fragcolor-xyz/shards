@@ -2,6 +2,7 @@
 #include "context_data.hpp"
 #include "error_utils.hpp"
 #include "../core/platform.hpp"
+#include "../core/assert.hpp"
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
@@ -132,7 +133,7 @@ struct ContextMainOutput {
   }
 
   bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
-    assert(!currentView);
+    shassert(!currentView);
 
     int2 drawableSize = window->getDrawableSize();
     if (drawableSize != currentSize)
@@ -144,7 +145,7 @@ struct ContextMainOutput {
   }
 
   void present() {
-    assert(currentView);
+    shassert(currentView);
 
     wgpuTextureViewRelease(currentView);
     currentView = nullptr;
@@ -177,10 +178,10 @@ struct ContextMainOutput {
       swapchainFormat = preferredFormat;
     }
 
-    assert(newSize.x > 0 && newSize.y > 0);
-    assert(device);
-    assert(wgpuWindowSurface);
-    assert(swapchainFormat != WGPUTextureFormat_Undefined);
+    shassert(newSize.x > 0 && newSize.y > 0);
+    shassert(device);
+    shassert(wgpuWindowSurface);
+    shassert(swapchainFormat != WGPUTextureFormat_Undefined);
 
     SPDLOG_LOGGER_DEBUG(logger, "resized width: {} height: {}", newSize.x, newSize.y);
     currentSize = newSize;
@@ -240,7 +241,7 @@ void Context::release() {
 }
 
 Window &Context::getWindow() {
-  assert(mainOutput);
+  shassert(mainOutput);
   return *mainOutput->window;
 }
 
@@ -250,25 +251,25 @@ void Context::resizeMainOutputConditional(const int2 &newSize) {
   if (state != ContextState::Ok)
     return;
 
-  assert(mainOutput);
+  shassert(mainOutput);
   if (mainOutput->currentSize != newSize) {
     mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, newSize);
   }
 }
 
 int2 Context::getMainOutputSize() const {
-  assert(mainOutput);
+  shassert(mainOutput);
   return mainOutput->currentSize;
 }
 
 WGPUTextureView Context::getMainOutputTextureView() {
-  assert(mainOutput);
-  assert(mainOutput->wgpuSwapchain);
+  shassert(mainOutput);
+  shassert(mainOutput->wgpuSwapchain);
   return mainOutput->currentView;
 }
 
 WGPUTextureFormat Context::getMainOutputFormat() const {
-  assert(mainOutput);
+  shassert(mainOutput);
   return mainOutput->swapchainFormat;
 }
 
@@ -276,7 +277,7 @@ bool Context::isHeadless() const { return !mainOutput; }
 
 void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   ZoneScoped;
-  assert(!ptr.expired());
+  shassert(!ptr.expired());
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
   if (sharedPtr) {
@@ -314,7 +315,7 @@ void Context::releaseAllContextData() {
 
 bool Context::beginFrame() {
   ZoneScoped;
-  assert(frameState == ContextFrameState::Ok);
+  shassert(frameState == ContextFrameState::Ok);
 
   // Automatically request
   if (state == ContextState::Incomplete) {
@@ -355,7 +356,7 @@ bool Context::beginFrame() {
 
 void Context::endFrame() {
   ZoneScoped;
-  assert(frameState == ContextFrameState::WaitingForEnd);
+  shassert(frameState == ContextFrameState::WaitingForEnd);
 
   if (!isHeadless())
     present();
@@ -467,8 +468,8 @@ void Context::deviceObtained() {
 
 void Context::requestDevice() {
   ZoneScoped;
-  assert(!wgpuDevice);
-  assert(!wgpuQueue);
+  shassert(!wgpuDevice);
+  shassert(!wgpuQueue);
 
   // Request adapter first
   if (!wgpuAdapter) {
@@ -521,7 +522,7 @@ WGPUSurface Context::getOrCreateSurface() {
 
 void Context::requestAdapter() {
   ZoneScoped;
-  assert(!wgpuAdapter);
+  shassert(!wgpuAdapter);
 
   state = ContextState::Requesting;
 
@@ -569,7 +570,7 @@ void Context::initCommon() {
   ZoneScoped;
   SPDLOG_LOGGER_DEBUG(logger, "initCommon");
 
-  assert(!isInitialized());
+  shassert(!isInitialized());
 
 #ifdef WEBGPU_NATIVE
   wgpuSetLogCallback(
@@ -609,7 +610,7 @@ void Context::initCommon() {
 
 void Context::present() {
   ZoneScoped;
-  assert(mainOutput);
+  shassert(mainOutput);
   mainOutput->present();
 }
 

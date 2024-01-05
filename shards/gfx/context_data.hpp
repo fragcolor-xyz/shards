@@ -1,7 +1,7 @@
 #ifndef GFX_CONTEXT_DATA
 #define GFX_CONTEXT_DATA
 
-#include <cassert>
+#include "../core/assert.hpp"
 #include <memory>
 #include <mutex>
 
@@ -24,7 +24,7 @@ public:
 
   void releaseContextDataConditional();
   Context &getContext() {
-    assert(context);
+    shassert(context);
     return *context;
   }
   bool isBoundToContext() const { return context; }
@@ -51,7 +51,7 @@ template <typename T> struct TWithContextData {
       contextData->bindToContext(context);
       initContextData(context, *contextData.get());
     } else {
-      assert(&contextData->getContext() == &context);
+      shassert(&contextData->getContext() == &context);
     }
     updateContextData(context, *contextData.get());
 

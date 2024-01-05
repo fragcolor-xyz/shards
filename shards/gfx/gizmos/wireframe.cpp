@@ -4,6 +4,7 @@
 #include "mesh.hpp"
 #include "transform_updater.hpp"
 #include "wireframe.hpp"
+#include "mesh_utils.hpp"
 #include <stdexcept>
 
 namespace gfx {
@@ -11,88 +12,47 @@ MeshPtr WireframeMeshGenerator::generate() {
   if (!mesh)
     throw std::logic_error("Input mesh required");
 
-  auto &format = mesh->getFormat();
+  auto &srcFormat = mesh->getFormat();
   auto indicesPtr = mesh->getIndexData().data();
   auto verticesPtr = mesh->getVertexData().data();
   if (mesh->getNumIndices() == 0)
     return mesh;
 
-  size_t positionOffset = ~0;
-  for (size_t i = 0; i < format.vertexAttributes.size(); i++) {
-    auto &attr = format.vertexAttributes[i];
-    if (attr.name == "position") {
-      positionOffset = i;
-      break;
+  boost::container::small_vector<size_t, 16> attributesToCopy;
+  boost::container::small_vector<AttribBuffer, 16> attributes;
+
+  size_t srcStride = srcFormat.getVertexSize();
+
+  std::optional<size_t> positionIndex;
+  size_t offset{};
+  for (size_t i = 0; i < srcFormat.vertexAttributes.size(); i++) {
+    bool copyAttrib = true;
+    auto &attrib = srcFormat.vertexAttributes[i];
+    if (attrib.name == "position") {
+      positionIndex = i;
+    } else if (attrib.name == "normal" || attrib.name == "tangent" || attrib.name.str().starts_with("texCoord")) {
+      copyAttrib = false;
     }
+
+    if (copyAttrib) {
+      attributesToCopy.push_back(i);
+      auto &buffer = attributes.emplace_back();
+      buffer.initFromIndexedTriangleList(attrib.type, attrib.numComponents, srcFormat.indexFormat, indicesPtr,
+                                         mesh->getNumIndices(), srcStride, verticesPtr + offset);
+    }
+    offset += attrib.numComponents * getStorageTypeSize(attrib.type);
   }
 
-  size_t stride = format.getVertexSize();
-
-  if (positionOffset == size_t(~0))
-    throw std::runtime_error("Mesh has no vertex positions");
-
-  size_t numIndices = mesh->getNumIndices();
-
-  std::function<void(size_t base, size_t(&)[3])> getTriangle;
-  if (format.indexFormat == IndexFormat::UInt16) {
-    getTriangle = [&](size_t baseIndex, size_t(&indices)[3]) {
-      indices[0] = ((uint16_t *)indicesPtr)[baseIndex];
-      indices[1] = ((uint16_t *)indicesPtr)[baseIndex + 1];
-      indices[2] = ((uint16_t *)indicesPtr)[baseIndex + 2];
-    };
-  } else {
-    getTriangle = [&](size_t baseIndex, size_t(&indices)[3]) {
-      indices[0] = ((uint32_t *)indicesPtr)[baseIndex];
-      indices[1] = ((uint32_t *)indicesPtr)[baseIndex + 1];
-      indices[2] = ((uint32_t *)indicesPtr)[baseIndex + 2];
-    };
+  if (!positionIndex.has_value()) {
+    throw std::runtime_error("Mesh does not have a position attribute");
   }
 
-  struct Vert {
-    float position[3];
-    void setPosition(const float3 &pos) {
-      position[0] = pos.x;
-      position[1] = pos.y;
-      position[2] = pos.z;
-    }
-  };
-
-  auto readPositions = [&](size_t(&indices)[3], Vert *outVerts) {
-    for (size_t i = 0; i < 3; i++) {
-      const uint8_t *srcBasePtr = verticesPtr + (stride * indices[i]);
-      const float3 *srcPosPtr = (float3 *)(srcBasePtr + positionOffset);
-      outVerts[i].setPosition(*srcPosPtr);
-    }
-  };
-
-  std::vector<Vert> verts;
-
-  if (format.primitiveType == PrimitiveType::TriangleList) {
-    size_t numTriangles = numIndices / 3;
-    for (size_t i = 0; i < numTriangles; i++) {
-      size_t triangle[3];
-      getTriangle(i * 3, triangle);
-
-      size_t outIndex = verts.size();
-      verts.resize(outIndex + 3);
-      readPositions(triangle, &verts[outIndex]);
-    }
-  } else {
-    throw std::runtime_error("Unsupported primitive type");
+  boost::container::small_vector<std::tuple<AttribBuffer *, FastString>, 16> outAttributes;
+  for (size_t i = 0; i < attributesToCopy.size(); i++) {
+    size_t srcAttribIdx  = attributesToCopy[i];
+    outAttributes.push_back({&attributes[i], srcFormat.vertexAttributes[srcAttribIdx].name});
   }
-
-  MeshFormat newFormat{
-      .primitiveType = PrimitiveType::TriangleList,
-      .windingOrder = format.windingOrder,
-      .indexFormat = IndexFormat::UInt16,
-      .vertexAttributes =
-          {
-              MeshVertexAttribute("position", 3),
-          },
-  };
-  auto newMesh = std::make_shared<Mesh>();
-  newMesh->update(newFormat, std::move((std::vector<uint8_t> &)verts));
-  return newMesh;
+  return generateMesh(std::nullopt, boost::span(outAttributes));
 }
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
@@ -113,9 +73,12 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) 
     }
 
     auto clone = std::static_pointer_cast<MeshDrawable>(meshDrawable->clone());
-    WireframeMeshGenerator meshGenerator;
-    meshGenerator.mesh = meshDrawable->mesh;
+    clone->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
     clone->mesh = it->second.wireMesh;
+    clone->parameters.clear();
+    clone->material.reset();
+    clone->parameters.set("baseColor", float4(1.0f, 0.0f, 0.0f, 1.0f));
+    clone->features.clear();
     clone->features.push_back(wireframeFeature);
     queue.add(clone);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {

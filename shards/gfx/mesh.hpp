@@ -19,12 +19,12 @@ struct PipelineHashCollector;
 
 /// <div rustbindgen opaque></div>
 struct MeshVertexAttribute {
-  std::string name;
+  FastString name;
   uint8_t numComponents;
   StorageType type;
 
   MeshVertexAttribute() = default;
-  MeshVertexAttribute(const char *name, uint8_t numComponents, StorageType type = StorageType::Float32)
+  MeshVertexAttribute(FastString name, uint8_t numComponents, StorageType type = StorageType::Float32)
       : name(name), numComponents(numComponents), type(type) {}
 
   // Compares everthing except for the name

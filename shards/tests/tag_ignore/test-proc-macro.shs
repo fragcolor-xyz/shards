@@ -1,0 +1,15 @@
+[debug] [2023-12-04 17:07:40.889] [T-4072] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 17:07:40.889] [T-4072] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 17:07:40.889] [T-4072] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 17:07:40.889] [T-4072] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 17:07:40.891] [T-4072] [runtime.cpp::3211] Evaluating file: shards/tests/test-proc-macro.shs
+[trace] [2023-12-04 17:07:40.938] [T-4072] [runtime.cpp::3216] Adding deferred wire test-wire
+[trace] [2023-12-04 17:07:40.938] [T-4072] [foundation.hpp::435] Creating wire: test-wire
+[trace] [2023-12-04 17:07:40.939] [T-4072] [foundation.hpp::389] test-wire wire addRef - use_count: 2
+[trace] [2023-12-04 17:07:40.939] [T-4072] [runtime.cpp::3216] Finalizing wire test-wire
+[error] [2023-12-04 17:07:40.939] [T-4072] [runtime.cpp::3216] Fatal error: Parameter Contents not accepting this kind of variable: &Any (valid types: None Shard [Shard]), line: 59, column: 5 shard: UI
+[trace] [2023-12-04 17:07:40.940] [T-4072] [foundation.hpp::376] test-wire wire deleteRef - use_count: 2
+[trace] [2023-12-04 17:07:40.940] [T-4072] [foundation.hpp::376] test-wire wire deleteRef - use_count: 1
+[trace] [2023-12-04 17:07:40.940] [T-4072] [foundation.hpp::338] Destroying wire test-wire
+[info] [2023-12-04 17:07:40.940] [T-4072] [runtime.cpp::3211] Error: ShardsError { message: "Failed to set parameter (3), error: Set parameter validation failed", loc: LineInfo { line: 59, column: 5 } }
+[error] [2023-12-04 17:07:40.940] [T-4072] [runtime.cpp::3216] Error: Failed to evaluate file

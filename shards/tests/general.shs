@@ -767,7 +767,7 @@
   "text-copy.txt" |
   FS.Remove |
   Assert.Is(true true)
-  "text-copy2.txt" |
+  "text-copy2.txt" | FS.Absolute
   FS.Remove |
   Assert.Is(true true)
 

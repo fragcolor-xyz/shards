@@ -136,7 +136,7 @@ struct Replace : public Common {
 
   void warmup(SHContext *context) { _replacement.warmup(context); }
 
-  void cleanup(SHContext* context) { _replacement.cleanup(); }
+  void cleanup(SHContext *context) { _replacement.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _subject.assign(input.payload.stringValue, SHSTRLEN(input));
@@ -190,8 +190,9 @@ struct Join {
     _buffer.append(input.payload.seqValue.elements[0].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[0]));
 
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
-      assert(input.payload.seqValue.elements[i].valueType == SHType::String ||
-             input.payload.seqValue.elements[i].valueType == SHType::Bytes);
+      if (input.payload.seqValue.elements[i].valueType != SHType::String &&
+          input.payload.seqValue.elements[i].valueType != SHType::Bytes)
+        throw ActivationError("Join: All elements of the input sequence must be strings or bytes.");
       _buffer.append(_separator);
       _buffer.append(input.payload.seqValue.elements[i].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[i]));
     }
@@ -304,7 +305,7 @@ struct Contains {
   }
 
   void warmup(SHContext *context) { _check.warmup(context); }
-  void cleanup(SHContext* context) { _check.cleanup(); }
+  void cleanup(SHContext *context) { _check.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto sv = SHSTRVIEW(input);
@@ -319,9 +320,10 @@ struct Contains {
 };
 
 struct StartsWith : Contains {
-  static inline Parameters params{{{"With",
-                                    SHCCSTR("The string that needs to start at the beginning of the input string to output true."),
-                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+  static inline Parameters params{
+      {{"With",
+        SHCCSTR("The string that needs to start at the beginning of the input string to output true."),
+        {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 

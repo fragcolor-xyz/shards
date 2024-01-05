@@ -2,7 +2,7 @@
 #include "context.hpp"
 #include "math.hpp"
 #include "renderer_cache.hpp"
-#include <cassert>
+#include "../core/assert.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
@@ -62,13 +62,13 @@ void Mesh::update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, s
 }
 
 void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize) {
-  assert(vertexSize > 0 && "vertexSize was 0");
+  shassert(vertexSize > 0 && "vertexSize was 0");
 
   numVertices = vertexDataLength / vertexSize;
-  assert(numVertices * vertexSize == vertexDataLength);
+  shassert(numVertices * vertexSize == vertexDataLength);
 
   numIndices = indexDataLength / indexSize;
-  assert(numIndices * indexSize == indexDataLength);
+  shassert(numIndices * indexSize == indexDataLength);
 }
 
 void Mesh::update() {
@@ -94,7 +94,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
   updateData = false;
 
   WGPUDevice device = context.wgpuDevice;
-  assert(device);
+  shassert(device);
 
   contextData.format = format;
   contextData.numIndices = numIndices;
@@ -110,7 +110,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
       contextData.vertexBufferLength = desc.size;
     }
 
-    assert(contextData.vertexBuffer);
+    shassert(contextData.vertexBuffer);
     wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
   }
 
@@ -124,7 +124,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
       contextData.indexBufferLength = desc.size;
     }
 
-    assert(contextData.indexBuffer);
+    shassert(contextData.indexBuffer);
     wgpuQueueWriteBuffer(context.wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
   }
 }

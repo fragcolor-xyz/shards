@@ -1,6 +1,7 @@
 #ifndef GFX_SHADER_ENTRY_POINT
 #define GFX_SHADER_ENTRY_POINT
 
+#include "../fwd.hpp"
 #include "block.hpp"
 #include <gfx/enums.hpp>
 #include <string>
@@ -12,11 +13,11 @@ using BlockPtr = std::unique_ptr<blocks::Block>;
 
 enum class DependencyType { Before, After };
 struct NamedDependency {
-  std::string name;
+  FastString name;
   DependencyType type = DependencyType::After;
 
   NamedDependency() = default;
-  NamedDependency(std::string name, DependencyType type = DependencyType::After) : name(name), type(type) {}
+  NamedDependency(FastString name, DependencyType type = DependencyType::After) : name(name), type(type) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
@@ -26,13 +27,13 @@ struct NamedDependency {
 
 struct EntryPoint {
   ProgrammableGraphicsStage stage;
-  std::string name;
+  FastString name;
   BlockPtr code;
   std::vector<NamedDependency> dependencies;
 
   EntryPoint() = default;
   template <typename T>
-  EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment,
+  EntryPoint(FastString name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment,
              T &&code = BlockPtr())
       : stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::forward<T>(code))) {}
 

@@ -104,7 +104,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   ZoneScoped;
 
   WGPUDevice device = context.wgpuDevice;
-  assert(device);
+  shassert(device);
 
   contextData.id = id;
   contextData.version = version;
@@ -146,7 +146,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       contextData.size.depthOrArrayLayers = 6;
       break;
     default:
-      assert(false);
+      shassert(false);
     }
 
     wgpuDesc.size = contextData.size;
@@ -156,7 +156,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
 
     contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc);
-    assert(contextData.texture);
+    shassert(contextData.texture);
 
     if (desc.data)
       writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,

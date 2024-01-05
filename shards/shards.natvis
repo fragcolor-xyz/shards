@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="shards::fast_string::FastString">
+		<DisplayString Condition="id==size_t(~0)">""</DisplayString>
+		<DisplayString Condition="id!=size_t(~0)">{shards::fast_string::storage-&gt;pool.reverse[id]}</DisplayString>
+	</Type>
 	<Type Name="SHVar">
 		<DisplayString Condition="valueType == SHType::None">None</DisplayString>
 		<DisplayString Condition="valueType == SHType::String">{payload.stringValue}</DisplayString>
@@ -20,6 +24,7 @@
 		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Any">Any</DisplayString>
+		<DisplayString Condition="valueType == SHType::ContextVar">&amp;{payload.stringValue} (Var)</DisplayString>
 		<Expand>
 			<ArrayItems Condition="valueType == SHType::Seq">
 				<Direction>Forward</Direction>
@@ -27,7 +32,7 @@
 				<Size>payload.seqValue.len</Size>
 				<ValuePointer>payload.seqValue.elements</ValuePointer>
 			</ArrayItems>
-			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque->m_flat_tree.m_data.m_seq</ExpandedItem>
+			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque-&gt;m_flat_tree.m_data.m_seq</ExpandedItem>
 		</Expand>
 	</Type>
 	<Type Name="SHTypeInfo">
@@ -72,6 +77,17 @@
 	</Type>
 	<Type Name="SHExposedTypesInfo">
 		<DisplayString>{len} exposed types</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Direction>Forward</Direction>
+				<Rank>1</Rank>
+				<Size>len</Size>
+				<ValuePointer>elements</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="SHTypesInfo">
+		<DisplayString>{len} types</DisplayString>
 		<Expand>
 			<ArrayItems>
 				<Direction>Forward</Direction>

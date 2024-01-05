@@ -9,6 +9,22 @@ use crate::read::ReadEnv;
 
 const INDENT_LENGTH: usize = 2;
 
+impl Identifier {
+  fn to_string(&self) -> String {
+    if self.namespaces.is_empty() {
+      self.name.to_string()
+    } else {
+      let namespaces_str = self
+        .namespaces
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<String>>()
+        .join("/");
+      format!("{}/{}", namespaces_str, self.name)
+    }
+  }
+}
+
 impl Number {
   fn to_string(&self) -> String {
     match self {
@@ -99,7 +115,7 @@ impl Value {
       Value::TakeTable(name, path) => {
         let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
         let path = path.join(":");
-        format!("{}:{}", name, path)
+        format!("{}:{}", name.to_string(), path)
       }
       Value::TakeSeq(name, path) => {
         let path_str = path
@@ -107,7 +123,7 @@ impl Value {
           .map(|p| p.to_string())
           .collect::<Vec<String>>()
           .join(":");
-        format!("{}:{}", name, path_str)
+        format!("{}:{}", name.to_string(), path_str)
       }
       Value::Int8(arr) => format!(
         "({} {} {} {} {} {} {} {})",
@@ -167,7 +183,7 @@ impl Function {
     if params.is_empty() {
       self.name.to_string()
     } else {
-      format!("{}({})", self.name, params.join(" "))
+      format!("{}({})", self.name.to_string(), params.join(" "))
     }
   }
 }
@@ -182,7 +198,7 @@ impl BlockContent {
       BlockContent::TakeTable(name, path) => {
         let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
         let path = path.join(":");
-        format!("{}:{}", name, path)
+        format!("{}:{}", name.to_string(), path)
       }
       BlockContent::TakeSeq(name, path) => {
         let path_str = path
@@ -190,11 +206,12 @@ impl BlockContent {
           .map(|p| p.to_string())
           .collect::<Vec<String>>()
           .join(":");
-        format!("{}:{}", name, path_str)
+        format!("{}:{}", name.to_string(), path_str)
       }
       BlockContent::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
       BlockContent::Expr(seq) => format!("({})", seq.to_string(context)),
-      BlockContent::Embed(seq) => format!("{}", seq.to_string(context)),
+      BlockContent::Empty => "".to_string(),
+      BlockContent::Program(p) => p.sequence.to_string(context),
     }
   }
 }
@@ -221,16 +238,16 @@ impl Assignment {
   fn to_string(&self, context: &mut Context) -> String {
     match self {
       Assignment::AssignRef(pipeline, name) => {
-        format!("{} = {}", pipeline.to_string(context), name)
+        format!("{} = {}", pipeline.to_string(context), name.to_string())
       }
       Assignment::AssignSet(pipeline, name) => {
-        format!("{} >= {}", pipeline.to_string(context), name)
+        format!("{} >= {}", pipeline.to_string(context), name.to_string())
       }
       Assignment::AssignUpd(pipeline, name) => {
-        format!("{} > {}", pipeline.to_string(context), name)
+        format!("{} > {}", pipeline.to_string(context), name.to_string())
       }
       Assignment::AssignPush(pipeline, name) => {
-        format!("{} >> {}", pipeline.to_string(context), name)
+        format!("{} >> {}", pipeline.to_string(context), name.to_string())
       }
     }
   }
@@ -279,8 +296,9 @@ pub fn print_ast(ast: &Sequence) -> String {
 fn test_print1() {
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new(".");
+  let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+  let seq = seq.sequence;
   let s = print_ast(&seq);
   println!("{}", s);
 }
@@ -289,8 +307,9 @@ fn test_print1() {
 fn test_print2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new(".");
+  let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+  let seq = seq.sequence;
   let s = print_ast(&seq);
   println!("{}", s);
 }

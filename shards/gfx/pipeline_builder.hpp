@@ -24,7 +24,7 @@ struct BufferBindingBuilder {
   // The bind group to add this binding to
   BindGroupId bindGroupId = BindGroupId::Draw;
   // Identifier of the binding
-  std::string name;
+  FastString name;
   // The builder that is being used to define the binding's structure layout
   shader::UniformBufferLayoutBuilder layoutBuilder;
   // Set to true if the binding is not used by any shader function
@@ -69,7 +69,7 @@ struct PipelineBuilder {
 
   // Description of material texture parameters
   // During collectTextureBindings these values are collected into textureBindings
-  std::map<std::string, TextureParameter> materialTextureBindings;
+  std::map<FastString, TextureParameter> materialTextureBindings;
 
   // Cache variables
   std::vector<const shader::EntryPoint *> shaderEntryPoints;
@@ -80,7 +80,7 @@ struct PipelineBuilder {
   PipelineBuilder(detail::CachedPipeline &output, const detail::RenderTargetLayout &rtl, const IDrawable &firstDrawable)
       : output(output), renderTargetLayout(rtl), firstDrawable(firstDrawable) {}
 
-  BufferBindingBuilder &getOrCreateBufferBinding(std::string &&name);
+  BufferBindingBuilder &getOrCreateBufferBinding(FastString name);
   void build(WGPUDevice device, const WGPULimits &deviceLimits);
 
   static size_t getViewBindGroupIndex();

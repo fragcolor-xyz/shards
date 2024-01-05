@@ -216,9 +216,9 @@ struct Types {
     return *this;
   }
 
-  operator SHTypesInfo() {
+  operator SHTypesInfo() const {
     if (_types.size() > 0) {
-      return SHTypesInfo{&_types[0], (uint32_t)_types.size(), 0};
+      return SHTypesInfo{&const_cast<Types*>(this)->_types[0], (uint32_t)_types.size(), 0};
     } else {
       return SHTypesInfo{nullptr, 0, 0};
     }
@@ -925,11 +925,6 @@ struct Var : public SHVar {
   explicit Var(SHImage img) : SHVar() {
     valueType = SHType::Image;
     payload.imageValue = img;
-  }
-
-  explicit Var(uint64_t src) : SHVar() {
-    valueType = SHType::Int;
-    payload.intValue = src;
   }
 
   explicit Var(int64_t src) : SHVar() {

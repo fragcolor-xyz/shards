@@ -27,7 +27,9 @@ struct GetClipboard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
-    _output = SDL_GetClipboardText();
+    auto clipboardPtr = SDL_GetClipboardText();
+    _output = clipboardPtr;
+    SDL_free(clipboardPtr);
     return Var(_output);
   }
 };

@@ -90,7 +90,7 @@ struct BuiltinFeatureShard {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_feature) {
       Types::FeatureObjectVar.Release(_feature);
       _feature = nullptr;
@@ -147,27 +147,27 @@ struct FeatureShard {
   // The Before/After parameters are optional and can be used to specify dependencies
   // Each dependency will make sure that entry point is evaluated before or after the named dependency
   // You can give each entry point a name for this purpose using the Name parameter
-  PARAM_PARAMVAR(_shaders, "Shaders", "A list of shader entry points", {ShaderEntryPointType});
+  PARAM_PARAMVAR(_shaders, "Shaders", "A list of shader entry points", {CoreInfo::NoneType, ShaderEntryPointType});
   // Any constant undefined variables used in the shader can be injected using this parameter
   PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
-                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+                 {CoreInfo::NoneType, CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
   // A table, any key used in the applyState function can be used here (you can also check shards\gfx\pipeline_states.def for a
   // list of states) States are applied in the order that the features are references, so features that are added after this one
   // can override this feature's state Any states not in this table will inherit the parent's values
   PARAM_PARAMVAR(_state, "State", "The table of render state flags to override",
-                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+                 {CoreInfo::NoneType, CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
   // [(-> ...)]/(-> ...)/[<wire>]/<wire>
   // Any variables used in the callback will be copied during this shard's activation
   // The output should be a single parameter table
   PARAM_VAR(_viewGenerators, "ViewGenerators",
             "A collection of callbacks that will be run to generate per-view shader parameters during rendering",
-            {IntoWires::RunnableTypes});
+            {IntoWires::RunnableTypes, {CoreInfo::NoneType}});
   // [(-> ...)]/(-> ...)/[<wire>]/<wire>
   // Any variables used in the callback will be copied during this shard's activation
   // The output should be a sequence of parameter tables (each with the same type)
   PARAM_VAR(_drawableGenerators, "DrawableGenerators",
             "A collection of callbacks that will be run to generate per-drawable shader parameters during rendering",
-            {IntoWires::RunnableTypes});
+            {IntoWires::RunnableTypes, {CoreInfo::NoneType}});
   // Table of shader parameters, can be defined using any of the formats below:
   //   :<name> {:Type <ShaderFieldBaseType> :Dimension <number>}
   //   :<name> {:Default <default>}   (type will be derived from value)
@@ -203,7 +203,7 @@ private:
   gfx::shader::VariableMap _composedWith;
 
 public:
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     _viewGeneratorBranch.cleanup(context);
@@ -224,8 +224,7 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq,
-                            bool expectSeqOutput) {
+                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq, bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -715,13 +714,17 @@ public:
     }
 
     brancher.updateInputs(input);
-    brancher.activate();
+    try {
+      brancher.activate();
 
-    // Fetch results and insert into parameter collector
-    for (auto &wire : wires) {
-      if (wire->previousOutput.valueType != SHType::None) {
-        applyResults(ctx, wire->context, wire->previousOutput);
+      // Fetch results and insert into parameter collector
+      for (auto &wire : wires) {
+        if (wire->previousOutput.valueType != SHType::None) {
+          applyResults(ctx, wire->context, wire->previousOutput);
+        }
       }
+    } catch (...) {
+      SHLOG_ERROR("Error running GFX.Feature generator");
     }
   }
 };

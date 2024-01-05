@@ -90,7 +90,7 @@ struct TextureViewCache {
           .aspect = key.desc.aspect,
       };
       WGPUTextureView view = wgpuTextureCreateView(texture, &viewDesc);
-      assert(view);
+      shassert(view);
 
       mutex.lock();
       it = cache.emplace(key, view).first;

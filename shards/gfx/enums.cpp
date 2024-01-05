@@ -53,17 +53,17 @@ static const TextureFormatMap &getTextureFormatMap() {
         {WGPUTextureFormat_RGBA16Sint, {StorageType::Int16, 4, TextureSampleType::Int}},
         {WGPUTextureFormat_RGBA16Float, {StorageType::Float16, 4, TextureSampleType::Float}},
         // u32x1
-        {WGPUTextureFormat_R32Float, {StorageType::UInt32, 1, TextureSampleType::UnfilterableFloat}},
-        {WGPUTextureFormat_R32Uint, {StorageType::Int32, 1, TextureSampleType::Int}},
-        {WGPUTextureFormat_R32Sint, {StorageType::Float32, 1, TextureSampleType::UInt}},
+        {WGPUTextureFormat_R32Uint, {StorageType::UInt32, 1, TextureSampleType::UInt}},
+        {WGPUTextureFormat_R32Sint, {StorageType::Int32, 1, TextureSampleType::Int}},
+        {WGPUTextureFormat_R32Float, {StorageType::Float32, 1, TextureSampleType::UnfilterableFloat}},
         // u32x2
-        {WGPUTextureFormat_RG32Float, {StorageType::UInt32, 2, TextureSampleType::UnfilterableFloat}},
-        {WGPUTextureFormat_RG32Uint, {StorageType::Int32, 2, TextureSampleType::Int}},
-        {WGPUTextureFormat_RG32Sint, {StorageType::Float32, 2, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RG32Uint, {StorageType::UInt32, 2, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RG32Sint, {StorageType::Int32, 2, TextureSampleType::Int}},
+        {WGPUTextureFormat_RG32Float, {StorageType::Float32, 2, TextureSampleType::UnfilterableFloat}},
         // u32x4
-        {WGPUTextureFormat_RGBA32Float, {StorageType::UInt32, 4, TextureSampleType::UnfilterableFloat}},
-        {WGPUTextureFormat_RGBA32Uint, {StorageType::Int32, 4, TextureSampleType::Int}},
-        {WGPUTextureFormat_RGBA32Sint, {StorageType::Float32, 4, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RGBA32Uint, {StorageType::UInt32, 4, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RGBA32Sint, {StorageType::Int32, 4, TextureSampleType::Int}},
+        {WGPUTextureFormat_RGBA32Float, {StorageType::Float32, 4, TextureSampleType::UnfilterableFloat}},
         // Depth(+stencil) formats
         {WGPUTextureFormat_Depth32Float,
          {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
@@ -116,7 +116,6 @@ size_t getStorageTypeSize(const StorageType &type) {
   }
 }
 
-
 bool isIntegerStorageType(const StorageType &type) {
   switch (type) {
   case StorageType::UInt8:
@@ -136,7 +135,6 @@ bool isIntegerStorageType(const StorageType &type) {
   default:
     throw std::out_of_range(std::string(NAMEOF_TYPE(StorageType)));
   }
-
 }
 
 size_t getIndexFormatSize(const IndexFormat &type) {

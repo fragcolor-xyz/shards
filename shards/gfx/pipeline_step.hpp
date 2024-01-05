@@ -14,7 +14,10 @@
 namespace gfx {
 
 namespace detail {
+namespace graph_build_data {
 struct RenderGraphBuilder;
+}
+using RenderGraphBuilder = graph_build_data::RenderGraphBuilder;
 struct PipelineStepContext;
 } // namespace detail
 
@@ -50,51 +53,123 @@ union ClearValues {
 
 // Describes texture/render target connections between render steps
 struct RenderStepOutput {
+  // Relative to main output reference size
+  struct RelativeToMainSize {
+    // The scale, (1.0, 1.0) means same size
+    std::optional<float2> scale;
+  };
+  // Relative to the first input to this pass
+  struct RelativeToInputSize {
+    // The input name, if unset, the first input is used as reference
+    std::optional<FastString> name;
+    // The scale, (1.0, 1.0) means same size
+    std::optional<float2> scale;
+  };
+  // Not sized automatically, must be sized manually
+  struct ManualSize {};
+  using OutputSizing = std::variant<RelativeToMainSize, RelativeToInputSize, ManualSize>;
+
   // A managed named render frame
   struct Named {
-    std::string name;
+    FastString name;
 
     // The desired format
     WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb;
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
+
+    Named(FastString name, WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb,
+          std::optional<ClearValues> clearValues = std::nullopt)
+        : name(name), format(format), clearValues(clearValues) {}
   };
 
   // A preallocated texture to output to
   struct Texture {
-    std::string name;
+    FastString name;
 
     TextureSubResource subResource;
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;
+
+    Texture(FastString name, TextureSubResource subResource, std::optional<ClearValues> clearValues = std::nullopt)
+        : name(name), subResource(subResource), clearValues(clearValues) {}
   };
 
   typedef std::variant<Named, Texture> OutputVariant;
 
   std::vector<OutputVariant> attachments;
 
-  // When set, will automatically scale outputes relative to main output
+  // When set, will automatically scale outputs relative to main output
   // Reused buffers loaded from previous steps are upscaled/downscaled
   // Example:
   //  (0.5, 0.5) would render at half the output resolution
   //  (2.0, 2.0) would render at double the output resolution
-  std::optional<float2> sizeScale = float2(1, 1);
+  OutputSizing outputSizing = RelativeToMainSize{};
+
+  RenderStepOutput() = default;
+  RenderStepOutput(const RenderStepOutput &) = default;
+  RenderStepOutput(RenderStepOutput &&) = default;
+  RenderStepOutput &operator=(const RenderStepOutput &) = default;
+  RenderStepOutput &operator=(RenderStepOutput &&) = default;
+
+  void push(Named name) { attachments.emplace_back(std::move(name)); }
+  void push(Texture texture) { attachments.emplace_back(std::move(texture)); }
+  template <typename... TArgs> static inline RenderStepOutput make(TArgs... args) {
+    RenderStepOutput out;
+    ((out.push(args)), ...);
+    return out;
+  }
+};
+
+struct RenderStepInput {
+  // A managed named render frame
+  struct Named {
+    FastString name;
+    Named(FastString name) : name(name) {}
+    Named(const char *name) : name(name) {}
+  };
+
+  // A preallocated texture to input
+  struct Texture {
+    FastString name;
+    TextureSubResource subResource;
+    Texture(FastString name, TextureSubResource subResource) : name(name), subResource(subResource) {}
+  };
+
+  typedef std::variant<Named, Texture> InputVariant;
+
+  std::vector<InputVariant> attachments;
+
+  RenderStepInput() = default;
+  RenderStepInput(const RenderStepInput &) = default;
+  RenderStepInput(RenderStepInput &&) = default;
+  RenderStepInput &operator=(const RenderStepInput &) = default;
+  RenderStepInput &operator=(RenderStepInput &&) = default;
+
+  void push(FastString name) { attachments.emplace_back(Named(name)); }
+  void push(Texture texture) { attachments.emplace_back(std::move(texture)); }
+  template <typename... TArgs> static RenderStepInput make(TArgs... args) {
+    RenderStepInput input;
+    ((input.push(args)), ...);
+    return input;
+  }
 };
 
 extern UniqueIdGenerator renderStepIdGenerator;
 
-// Explicitly clear render targets
-struct ClearStep {
+// Step that does nothing, but can be used to clear using an empty render pass
+struct NoopStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
 
-  ClearValues clearValues;
+  // Name that shows up in the debugger
+  FastString name;
 
   std::optional<RenderStepOutput> output;
 
-  std::shared_ptr<ClearStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
+  std::shared_ptr<NoopStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
   UniqueId getId() const { return id; }
 };
 
@@ -102,6 +177,9 @@ struct ClearStep {
 struct RenderDrawablesStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
+
+  // Name that shows up in the debugger
+  FastString name;
 
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
@@ -116,17 +194,18 @@ struct RenderDrawablesStep {
   UniqueId getId() const { return id; }
 };
 
-typedef std::vector<std::string> RenderStepInputs;
-
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
   // Used to identify this feature for caching purposes
   UniqueId id = renderStepIdGenerator.getNext();
 
+  // Name that shows up in the debugger
+  FastString name;
+
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
 
-  RenderStepInputs inputs;
+  RenderStepInput input;
   std::optional<RenderStepOutput> output;
 
   // used to indicate this pass does not cover the entire output
@@ -137,7 +216,7 @@ struct RenderFullscreenStep {
   UniqueId getId() const { return id; }
 };
 
-typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;
+typedef std::variant<NoopStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;
 typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
 typedef boost::container::small_vector<PipelineStepPtr, 8> PipelineSteps;
 

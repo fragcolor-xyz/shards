@@ -1453,7 +1453,6 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
   std::deque<SHVar *> injectedVariables;
-  bool done;
   std::optional<entt::connection> onCleanupConnection;
 
   ~ManyWire() {
@@ -1648,7 +1647,7 @@ struct ParallelBase : public CapturingSpawners {
         return;
       }
 
-      SHLOG_DEBUG("ParallelBase: activating wire {}", idx);
+      SHLOG_TRACE("ParallelBase: activating wire {}", idx);
 
       auto &mesh = _meshes[idx];
       if (!mesh) {
@@ -1702,11 +1701,11 @@ struct ParallelBase : public CapturingSpawners {
       _successes[idx] = success;
 
       if (success) {
-        SHLOG_DEBUG("ParallelBase: wire {} succeeded", idx);
+        SHLOG_TRACE("ParallelBase: wire {} succeeded", idx);
         anySuccess = true;
         stop(cref->wire.get(), &_outputs[idx]);
       } else {
-        SHLOG_DEBUG("ParallelBase: wire {} failed", idx);
+        SHLOG_TRACE("ParallelBase: wire {} failed", idx);
         _outputs[idx] = Var::Empty; // flag as empty to signal failure
         // ensure it's stopped anyway
         stop(cref->wire.get());
@@ -1740,11 +1739,11 @@ struct ParallelBase : public CapturingSpawners {
         if (_policy == WaitUntil::FirstSuccess) {
           return _outputs[i]; // return the first success
         } else {
-          SHLOG_DEBUG("ParallelBase, reading succeeded wire {}", i);
+          SHLOG_TRACE("ParallelBase, reading succeeded wire {}", i);
           succeeded++;
         }
       } else {
-        SHLOG_DEBUG("ParallelBase, reading failed wire {}", i);
+        SHLOG_TRACE("ParallelBase, reading failed wire {}", i);
         failed++;
       }
     }
@@ -2008,6 +2007,7 @@ struct Spawn : public CapturingSpawners {
       c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
     }
 
+    shassert(c->injectedVariables.empty() && "Spawn: injected variables should be empty");
     for (auto &v : _vars) {
       SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
       cloneVar(*refVar, v.get());
@@ -2028,150 +2028,66 @@ struct Spawn : public CapturingSpawners {
   SHTypeInfo _inputType{};
 };
 
-struct WhenDone : CapturingSpawners {
+struct WhenDone : Spawn {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWire::RunnableTypes}};
-
-  static SHParametersInfo parameters() { return _params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      wireref = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return wireref;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    CapturingSpawners::compose(data, data.inputType);
-
-    if (!wire) {
-      throw ComposeError("WhenDone: wire not found");
-    }
-
-    return data.inputType;
-  }
-
-  std::shared_ptr<SHMesh> _mesh;
-  SHWire *_rootWire = nullptr;
-  std::deque<SHVar *> _injectedVariables;
-  entt::connection _connection;
-  entt::connection _connection2;
-  bool _scheduled = false;
-
-  void onCleanupCleanup(SHWire::OnCleanupEvent &e) {
-    // release mesh and reset variables here!
-    // as well as connection
-
-    if (_connection)
-      _connection.release();
-
-    if (_mesh)
-      _mesh.reset();
-
-    for (auto &v : _injectedVariables) {
-      releaseVariable(v);
-    }
-    _injectedVariables.clear();
-
-    SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
-  }
-
-  void onCleanup(SHWire::OnCleanupEvent &e) {
-    // this might trigger multiple times btw!
-    if (_scheduled) {
-      return;
-    }
-
-    if (!_mesh) {
-      SHLOG_TRACE("WhenDone::onCleanup, mesh is null");
-      return;
-    }
-
-    if (wire) {
-      _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
-
-      try {
-        _mesh->schedule(wire, Var::Empty, false);
-
-        _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
-            .wire = _rootWire,
-            .childWire = wire.get(),
-        });
-
-        _scheduled = true;
-
-        SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
-      } catch (std::exception &ex) {
-        // we already cleaned up on prepare failure here! _mesh will also be invalid etc
-        shassert(!_mesh && "WhenDone::onCleanup, mesh should be invalid here");
-        SHLOG_ERROR("WhenDone::onCleanup, failed to schedule wire: {}", ex.what());
-      }
-    } else {
-      SHLOG_TRACE("WhenDone::onCleanup, wire is null");
-      onCleanupCleanup(e);
-    }
-  }
+  SeqVar _cache;
+  bool _scheduled{false};
+  bool _activated{false};
 
   void warmup(SHContext *context) {
-    WireBase::warmup(context);
-
-    _connection2.release();
     _scheduled = false;
-
-    _rootWire = context->rootWire();
-
-    if (wire) {
-      _connection = context->currentWire()->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanup>(this);
-    }
-
-    _mesh = context->main->mesh.lock();
-
-    for (auto &v : _vars) {
-      SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
-      v.warmup(context);
-      auto &var = _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
-      // also do a copy here, some variables might be in context, especially protected one!
-      // we might cleanup before any activation happens!
-      cloneVar(*var, v.get());
-    }
+    _activated = false;
+    Spawn::warmup(context);
   }
 
   void cleanup(SHContext *context) {
-    // Don't disconnect, release variables or mesh here! On purpose!
+    if (context && wire && !_scheduled && _activated) {
+      _scheduled = true;
 
-    if (wire) {
-      SHLOG_TRACE("WhenDone::cleanup, will schedule wire {}", wire->name);
+      auto mesh = context->main->mesh.lock();
+      shassert(mesh && "Mesh is null");
+
+      auto c = _pool->acquire(_composer, context);
+
+      // Assume that we recycle containers so the connection might already exist!
+      if (!c->onCleanupConnection) {
+        SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
+        _wireContainers[c->wire.get()] = c;
+        c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
+      }
+
+      for (auto &v : _vars) {
+        SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
+        cloneVar(*refVar, v.get());
+      }
+
+      mesh->schedule(c->wire, Var::Empty, false);
+
+      SHWire *rootWire = context->rootWire();
+      mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+          .wire = rootWire,
+          .childWire = c->wire.get(),
+      });
     }
 
     for (auto &v : _vars) {
       v.cleanup();
     }
 
+    _composer.context = nullptr;
+
     WireBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // keep copy/clone into our wire!
+    _activated = true;
 
-    auto varsIdx = 0;
+    // keep variables captured up to date
+    _cache.clear();
     for (auto &v : _vars) {
-      SHVar *refVar = _injectedVariables[varsIdx++];
-      cloneVar(*refVar, v.get());
+      _cache.push_back(v.get());
     }
 
     return input;
@@ -2219,14 +2135,13 @@ struct StepMany : public TryMany {
       auto &cref = _wires[i];
       if (!cref) {
         cref = _pool->acquire(_composer, _meshes[0].get());
-        cref->done = false;
       }
 
       // Allow to re run wires
       if (shards::hasEnded(cref->wire.get())) {
         // stop the root
         if (!shards::stop(cref->wire.get())) {
-          throw ActivationError("Stepped sub-wire did not end normally.");
+          throw ActivationError(fmt::format("StepMany: errors while running wire: {}", cref->wire->name));
         }
       }
 
@@ -2332,7 +2247,6 @@ struct DoMany : public TryMany {
       if (!cref) {
         cref = _pool->acquire(_composer, _meshes[0].get());
         cref->wire->warmup(context);
-        cref->done = false;
       }
 
       const SHVar &inputElement = input.payload.seqValue.elements[i];

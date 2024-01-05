@@ -63,10 +63,6 @@ jobs:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
           fetch-depth: 1
-      - name: Download MobileNet v2
-        run: |
-          cd shards/tests
-          wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
       - name: Test (GPU)
         env:
           RUST_BACKTRACE: full
@@ -80,12 +76,12 @@ jobs:
 
           echo "\n"
           echo "Running graphics test scripts"
-          for i in $(find shards/tests -name 'gfx*.shs');
+          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs');
           do
             echo "Running $i"
             build/shards new "$i"
           done
-          for i in $(find shards/tests -name 'gfx*.shs');
+          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs');
           do
             echo "Running $i"
             build/shards new "$i"
@@ -93,7 +89,7 @@ jobs:
 
           echo "\n"
           echo "Running graphics test scripts"
-          for i in $(find shards/tests -name 'gfx*.edn');
+          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.edn');
           do
             echo "Running $i"
             build/shards "$i"

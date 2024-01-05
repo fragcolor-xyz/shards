@@ -111,7 +111,7 @@ static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &
   }
 }
 
-BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&name) {
+BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(FastString name) {
   auto it = std::find_if(bufferBindings.begin(), bufferBindings.end(),
                          [&](const BufferBindingBuilder &builder) { return builder.name == name; });
   if (it != bufferBindings.end())
@@ -152,7 +152,7 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
 
     auto &accessedFields = it->accessedFields;
     auto &layoutBuilder = bufferBinding.layoutBuilder;
-    layoutBuilder.optimize([&](const std::string &fieldName, const UniformLayout &fieldLayout) {
+    layoutBuilder.optimize([&](FastString fieldName, const UniformLayout &fieldLayout) {
       auto it = accessedFields.find(fieldName);
       return it != accessedFields.end();
     });
@@ -248,8 +248,8 @@ size_t PipelineBuilder::getViewBindGroupIndex() { return 1; }
 size_t PipelineBuilder::getDrawBindGroupIndex() { return 0; }
 
 void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits) {
-  assert(!output.pipelineLayout);
-  assert(output.bindGroupLayouts.empty());
+  shassert(!output.pipelineLayout);
+  shassert(output.bindGroupLayouts.empty());
 
   std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 

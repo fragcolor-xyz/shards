@@ -50,12 +50,12 @@ public:
   }
 
   template <typename T> T &get() {
-    assert(ptr);
+    shassert(ptr);
     return *static_cast<T *>(ptr);
   }
 
   template <typename T> const T &get() const {
-    assert(ptr);
+    shassert(ptr);
     return *static_cast<const T *>(ptr);
   }
 

@@ -1,0 +1,61 @@
+[debug] [2023-12-04 17:23:16.393] [T-2260] [runtime.cpp::2891] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 17:23:16.393] [T-2260] [runtime.cpp::2897] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 17:23:16.393] [T-2260] [runtime.cpp::2902] Hardware concurrency: 12
+[debug] [2023-12-04 17:23:16.393] [T-2260] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 17:23:16.395] [T-2260] [runtime.cpp::3218] Evaluating file: shards/tests/onnx.shs
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.cpp::3223] Adding deferred wire onnx-test
+[trace] [2023-12-04 17:23:16.397] [T-2260] [foundation.hpp::435] Creating wire: onnx-test
+[trace] [2023-12-04 17:23:16.397] [T-2260] [foundation.hpp::389] onnx-test wire addRef - use_count: 2
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.cpp::3223] Finalizing wire onnx-test
+[trace] [2023-12-04 17:23:16.397] [T-2260] [foundation.hpp::376] onnx-test wire deleteRef - use_count: 2
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.hpp::514] Pre-composing wire onnx-test
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.hpp::549] Wire onnx-test Pre-composing
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.hpp::564] Scheduling wire onnx-test
+[trace] [2023-12-04 17:23:16.397] [T-2260] [runtime.hpp::604] Wire onnx-test skipped compose
+[debug] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::1786] Wire onnx-test rolling
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::2765] Running warmup on wire: onnx-test
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::545] Creating a variable, wire: onnx-test name: image
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::545] Creating a variable, wire: onnx-test name: model
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::545] Creating a variable, wire: onnx-test name: tRpcbQ10hMs3Z2MZM
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::2804] Ran warmup on wire: onnx-test
+[trace] [2023-12-04 17:23:16.398] [T-2260] [runtime.hpp::624] Wire onnx-test scheduled
+[debug] [2023-12-04 17:23:16.398] [T-2260] [runtime.cpp::1831] Wire onnx-test starting
+[info] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::3218] Error: Opening "mobilenetv2-7.onnx"
+[error] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::699] Shard activation error, failed shard: ONNX.Load, error: Failed to load model from given input path, line: 6, column: 3
+[debug] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::1849] Wire onnx-test failed
+[debug] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::1892] Wire onnx-test failed with error Failed to load model from given input path
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::2812] Running cleanup on wire: onnx-test users count: 0
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::2856] Ran cleanup on wire: onnx-test
+[debug] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::1922] Wire onnx-test ended
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.hpp::396] stopping wire: onnx-test, has-coro: true, state: Failed
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::3223] Mesh is empty, exiting
+[trace] [2023-12-04 17:23:16.406] [T-2260] [runtime.cpp::3223] Mesh is done, terminating, without errors: false
+[trace] [2023-12-04 17:23:16.406] [T-2260] [foundation.hpp::435] Creating wire: root
+[trace] [2023-12-04 17:23:16.406] [T-2260] [foundation.hpp::376] onnx-test wire deleteRef - use_count: 1
+[trace] [2023-12-04 17:23:16.407] [T-2260] [foundation.hpp::338] Destroying wire onnx-test
+[trace] [2023-12-04 17:23:16.407] [T-2260] [runtime.cpp::3315] createMesh 0x28a0218e2f0
+[trace] [2023-12-04 17:23:16.407] [T-2260] [runtime.hpp::514] Pre-composing wire root
+[trace] [2023-12-04 17:23:16.407] [T-2260] [runtime.hpp::549] Wire root Pre-composing
+[trace] [2023-12-04 17:23:16.407] [T-2260] [runtime.hpp::564] Scheduling wire root
+[trace] [2023-12-04 17:23:16.407] [T-2260] [runtime.hpp::604] Wire root skipped compose
+[debug] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::1786] Wire root rolling
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::2765] Running warmup on wire: root
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::2804] Ran warmup on wire: root
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.hpp::624] Wire root scheduled
+[debug] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::1831] Wire root starting
+[error] [2023-12-04 17:23:16.408] [T-2260] [assert.cpp::62] Failed assertion Is, input: false expected: true
+[error] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::699] Shard activation error, failed shard: Assert.Is, error: Assert failed - Is, line: 11, column: 14
+[debug] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::1849] Wire root failed
+[debug] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::1892] Wire root failed with error Assert failed - Is
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::2812] Running cleanup on wire: root users count: 0
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::2856] Ran cleanup on wire: root
+[debug] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::1922] Wire root ended
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.hpp::396] stopping wire: root, has-coro: true, state: Failed
+[info] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::3218] Failed: Assert failed - Is
+[trace] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::3327] destroyMesh 0x28a0218e2f0
+[trace] [2023-12-04 17:23:16.408] [T-2260] [foundation.hpp::376] root wire deleteRef - use_count: 1
+[trace] [2023-12-04 17:23:16.408] [T-2260] [foundation.hpp::338] Destroying wire root
+[error] [2023-12-04 17:23:16.408] [T-2260] [runtime.cpp::3223] Error: Failed to execute file

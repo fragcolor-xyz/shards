@@ -444,6 +444,30 @@ struct IsNotNone {
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != SHType::None); }
 };
 
+struct IsTrue {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the input is `true`."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to check against."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `true`; otherwise, `false`."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.payload.boolValue); }
+};
+
+struct IsFalse {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the input is `false`."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to check against."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `false`; otherwise, `false`."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
+};
+
 struct Restart {
   // Must ensure input is the same kind of wire root input
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -673,14 +697,10 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    auto tablePtr = _tablePtr;
-    auto tableVersion = _tableVersion;
     if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
       _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
       _tableVersion = _target->version;
-      SHLOG_TRACE("Table {} changed, clearing cell pointer, previous ptr: {} - now {}, previous version: {} - now {}", _name,
-                  tablePtr, _tablePtr, tableVersion, _tableVersion);
     }
   }
 };
@@ -2749,10 +2769,10 @@ struct Take {
       // the following stringValue are cloned so null terminated safe
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variables."),
-                                                         _tableOutput ? CoreInfo::StringSeqType : CoreInfo::IntSeqType));
+                                                         _tableOutput ? CoreInfo::AnySeqType : CoreInfo::IntSeqType));
       else
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variable."),
-                                                         _tableOutput ? CoreInfo::StringType : CoreInfo::IntType));
+                                                         _tableOutput ? CoreInfo::AnyType : CoreInfo::IntType));
       return SHExposedTypesInfo(_exposedInfo);
     } else {
       return {};

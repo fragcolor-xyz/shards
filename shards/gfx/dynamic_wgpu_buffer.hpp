@@ -4,7 +4,7 @@
 #include "gfx_wgpu.hpp"
 #include "sized_item_pool.hpp"
 #include "wgpu_handle.hpp"
-#include <cassert>
+#include "../core/assert.hpp"
 #include <vector>
 
 namespace gfx::detail {
@@ -32,7 +32,7 @@ public:
       cleanup();
       capacity = size;
     } else {
-      assert(buffer);
+      shassert(buffer);
     }
   }
 

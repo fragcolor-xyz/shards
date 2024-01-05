@@ -42,7 +42,7 @@ inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(StorageType type) {
   case StorageType::Float32:
     return ShaderFieldBaseType::Float32;
   default:
-    assert(false);
+    shassert(false);
     return ShaderFieldBaseType(~0);
   }
 }

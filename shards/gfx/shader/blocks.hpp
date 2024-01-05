@@ -36,20 +36,20 @@ template <typename... TArgs> inline auto makeCompoundBlock(TArgs &&...args) {
 }
 
 struct WithInput : public Block {
-  String name;
+  FastString name;
   BlockPtr inner;
   BlockPtr innerElse;
 
   template <typename T>
-  WithInput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  WithInput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
-  WithInput(const String &name, T1 &&inner, T2 &&innerElse)
+  WithInput(FastString name, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithInput(WithInput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasInput(name.c_str())) {
+    if (context.hasInput(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -65,22 +65,22 @@ struct WithInput : public Block {
 };
 
 struct WithTexture : public Block {
-  String name;
+  FastString name;
   BlockPtr inner;
   BlockPtr innerElse;
   bool defaultTexcoordRequired = true;
 
   template <typename T>
-  WithTexture(const String &name, bool defaultTexcoordRequired, T &&inner)
+  WithTexture(FastString name, bool defaultTexcoordRequired, T &&inner)
       : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))), defaultTexcoordRequired(defaultTexcoordRequired) {}
   template <typename T1, typename T2>
-  WithTexture(const String &name, bool defaultTexcoordRequired, T1 &&inner, T2 &&innerElse)
+  WithTexture(FastString name, bool defaultTexcoordRequired, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))), defaultTexcoordRequired(defaultTexcoordRequired) {}
   WithTexture(WithTexture &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasTexture(name.c_str())) {
+    if (context.hasTexture(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -96,20 +96,20 @@ struct WithTexture : public Block {
 };
 
 struct WithOutput : public Block {
-  String name;
+  FastString name;
   BlockPtr inner;
   BlockPtr innerElse;
 
   template <typename T>
-  WithOutput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  WithOutput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
-  WithOutput(const String &name, T1 &&inner, T2 &&innerElse)
+  WithOutput(FastString name, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithOutput(WithOutput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    if (context.hasOutput(name.c_str())) {
+    if (context.hasOutput(name)) {
       inner->apply(context);
     } else if (innerElse) {
       innerElse->apply(context);
@@ -125,20 +125,20 @@ struct WithOutput : public Block {
 };
 
 struct WriteOutput : public Block {
-  String name;
+  FastString name;
   NumFieldType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteOutput(const String &name, NumFieldType type, T &&inner)
+  WriteOutput(FastString name, NumFieldType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteOutput(const String &name, NumFieldType type, TArgs &&...inner)
+  WriteOutput(FastString name, NumFieldType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteOutput(WriteOutput &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    context.writeOutput(name.c_str(), type);
+    context.writeOutput(name, type);
     context.write(" = ");
     inner->apply(context);
     context.write(";\n");
@@ -148,84 +148,84 @@ struct WriteOutput : public Block {
 };
 
 struct ReadInput : public Block {
-  String name;
+  FastString name;
 
-  ReadInput(const String &name) : name(name) {}
+  ReadInput(FastString name) : name(name) {}
   ReadInput(ReadInput &&other) = default;
 
-  void apply(IGeneratorContext &context) const { context.readInput(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readInput(name); }
 
   BlockPtr clone() { return std::make_unique<ReadInput>(name); }
 };
 
 struct WriteGlobal : public Block {
-  String name;
+  FastString name;
   NumFieldType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteGlobal(const String &name, NumFieldType type, T &&inner)
+  WriteGlobal(FastString name, NumFieldType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteGlobal(const String &name, NumFieldType type, TArgs &&...inner)
+  WriteGlobal(FastString name, NumFieldType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteGlobal(WriteGlobal &&other) = default;
 
   void apply(IGeneratorContext &context) const {
-    context.writeGlobal(name.c_str(), type, [&]() { inner->apply(context); });
+    context.writeGlobal(name, type, [&]() { inner->apply(context); });
   }
 
   BlockPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }
 };
 
 struct ReadGlobal : public Block {
-  String name;
+  FastString name;
 
-  ReadGlobal(const String &name) : name(name) {}
+  ReadGlobal(FastString name) : name(name) {}
   ReadGlobal(ReadGlobal &&other) = default;
 
-  void apply(IGeneratorContext &context) const { context.readGlobal(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readGlobal(name); }
 
   BlockPtr clone() { return std::make_unique<ReadGlobal>(name); }
 };
 
 struct ReadBuffer : public Block {
-  String fieldName;
+  FastString fieldName;
   NumFieldType type;
-  String bufferName;
+  FastString bufferName;
 
-  ReadBuffer(const String &fieldName, const NumFieldType &type, const String &bufferName = "object")
+  ReadBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName = "object")
       : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 
-  void apply(IGeneratorContext &context) const { context.readBuffer(fieldName.c_str(), type, bufferName.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readBuffer(fieldName, type, bufferName); }
 
   BlockPtr clone() { return std::make_unique<ReadBuffer>(fieldName, type, bufferName); }
 };
 
 struct SampleTexture : public Block {
-  String name;
+  FastString name;
   BlockPtr sampleCoordinate;
 
-  SampleTexture(const String &name) : name(name) {}
-  SampleTexture(const String &name, BlockPtr &&sampleCoordinate) : name(name), sampleCoordinate(std::move(sampleCoordinate)) {}
+  SampleTexture(FastString name) : name(name) {}
+  SampleTexture(FastString name, BlockPtr &&sampleCoordinate) : name(name), sampleCoordinate(std::move(sampleCoordinate)) {}
 
   template <typename T>
-  SampleTexture(const String &name, T &&sampleCoordinate)
+  SampleTexture(FastString name, T &&sampleCoordinate)
       : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
 
   SampleTexture(SampleTexture &&other) = default;
 
   void apply(IGeneratorContext &context) const {
     context.write("textureSample(");
-    context.texture(name.c_str());
+    context.texture(name);
     context.write(", ");
-    context.textureDefaultSampler(name.c_str());
+    context.textureDefaultSampler(name);
     context.write(", ");
     if (sampleCoordinate) {
       sampleCoordinate->apply(context);
     } else {
-      context.textureDefaultTextureCoordinate(name.c_str());
+      context.textureDefaultTextureCoordinate(name);
     }
     context.write(")");
   }

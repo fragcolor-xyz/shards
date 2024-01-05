@@ -210,7 +210,7 @@ private:
 
 public:
   AnyStorage() = default;
-  AnyStorage(std::shared_ptr<entt::any> &&any) : _anyStorage(any) { _ptr = &entt::any_cast<T &>(*any.get()); }
+  AnyStorage(std::shared_ptr<entt::any> &&any) : _anyStorage(any) { _ptr = &entt::any_cast<T &>(*_anyStorage.get()); }
   operator bool() const { return _ptr; }
   T *operator->() const { return _ptr; }
   operator T &() const { return *_ptr; }
@@ -278,7 +278,7 @@ extern GlobalTracy &GetTracy();
 #endif
 
 #ifdef TRACY_FIBERS
-UntrackedVector<SHWire *> &getCoroWireStack();
+std::vector<SHWire *> &getCoroWireStack();
 #endif
 
 #if SH_DEBUG_THREAD_NAMES
@@ -356,7 +356,7 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
     if constexpr (IsCleanupContext) {
       canRun = true;
     } else {
-      canRun = isRunning(wire) && now >= wire->context->next;
+      canRun = (isRunning(wire) && now >= wire->context->next) || unlikely(wire->context && wire->context->onLastResume);
     }
 
     if (canRun) {
@@ -668,6 +668,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           }
 
           // stop should have done the following:
+          SHLOG_TRACE("Wire {} ended while ticking", flow.wire->name);
           shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
           shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
           shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
@@ -1237,7 +1238,8 @@ struct Serialization {
         SHVar shardVar{};
         deserialize(read, shardVar);
         ShardPtr shard = shardVar.payload.shardValue;
-        shassert(shardVar.valueType == SHType::ShardRef);
+        if (shardVar.valueType != SHType::ShardRef)
+          throw shards::SHException("Expected a shard ref!");
         wire->addShard(shardVar.payload.shardValue);
         // shard's owner is now the wire, remove original reference from deserialize
         decRef(shard);
@@ -1282,7 +1284,7 @@ struct Serialization {
       deserialize(read, *output.payload.typeValue);
       break;
     default:
-      SHLOG_FATAL("Unknown SHType during deserialization.");
+      throw shards::SHException("Unknown type during deserialization!");
     }
   }
 
@@ -1474,7 +1476,7 @@ struct Serialization {
           defaultShards.emplace(name, std::shared_ptr<Shard>(createShard(name), [](Shard *shard) { shard->destroy(shard); }))
               .first->second.get();
       if (!model) {
-        SHLOG_FATAL("Could not create shard: {}.", name);
+        throw shards::SHException(fmt::format("Could not create shard: {}.", name));
       }
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
@@ -1578,7 +1580,7 @@ struct Serialization {
       total += serialize(*input.payload.typeValue, write);
       break;
     default:
-      SHLOG_FATAL("Unknown SHType during serialization");
+      throw shards::SHException("Unknown type during serialization!");
     }
     return total;
   }
@@ -1645,7 +1647,7 @@ struct Serialization {
       read((uint8_t *)&output.enumeration, sizeof(output.enumeration));
       break;
     default:
-      throw std::logic_error("Invalid type to deserialize");
+      throw shards::SHException("Invalid type to deserialize");
     }
   }
 
@@ -1709,7 +1711,7 @@ struct Serialization {
       total += sizeof(input.enumeration);
       break;
     default:
-      throw std::logic_error("Invalid type to serialize");
+      throw shards::SHException("Invalid type to serialize");
     }
     return total;
   }
@@ -1752,8 +1754,11 @@ template <typename T> struct WireDoppelgangerPool {
 
       lock.lock();
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
+      auto index = _pool.size();
+      lock.unlock();
+
       fresh->wire = wire;
-      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
+      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
       composer.compose(wire.get(), anything, false);
 
       return fresh.get();

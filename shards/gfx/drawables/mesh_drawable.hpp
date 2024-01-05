@@ -5,12 +5,13 @@
 #include "../linalg.hpp"
 #include "../material.hpp"
 #include "../drawable.hpp"
+#include "../anim/path.hpp"
 
 namespace gfx {
 
 struct MeshTreeDrawable;
 struct Skin {
-  std::vector<std::weak_ptr<MeshTreeDrawable>> joints;
+  std::vector<anim::Path> joints;
   std::vector<float4x4> inverseBindMatrices;
   std::vector<float4x4> jointMatrices;
 };

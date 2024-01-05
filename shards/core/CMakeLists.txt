@@ -12,7 +12,7 @@ target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/include)
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR})
 
 # Expose tracy client so all dependencies get the TRACY_ENABLE define
-target_link_libraries(shards-core Tracy::TracyClient)
+target_link_libraries(shards-core Tracy::TracyClient shards-fast-string)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(SHARDS_INLINE_EVERYTHING_DEFAULT OFF)
@@ -58,16 +58,19 @@ if(APPLE)
     "-framework Security"
     "-framework CoreHaptics"
     "-framework GameController"
+    "-framework SystemConfiguration"
     -liconv
   )
 
   if(IOS)
     target_link_libraries(shards-core
       "-framework AVFoundation"
-      "-framework CoreMotion"
       "-framework CoreGraphics"
       "-framework UIKit"
     )
+    if(NOT SKIP_CORE_MOTION)
+      target_link_libraries(shards-core "-framework CoreMotion")
+    endif()
   else()
     target_link_libraries(shards-core
       "-framework Cocoa"

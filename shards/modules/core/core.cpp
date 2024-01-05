@@ -1347,9 +1347,9 @@ struct UnsafeActivate {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(reinterpret_cast<uint64_t>(_func));
+      return Var(reinterpret_cast<int64_t>(_func));
     case 1:
-      return Var(reinterpret_cast<uint64_t>(_cleanup));
+      return Var(reinterpret_cast<int64_t>(_cleanup));
     default:
       return Var::Empty;
     }
@@ -2258,6 +2258,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("NaNTo0", NaNTo0);
   REGISTER_SHARD("IsNone", IsNone);
   REGISTER_SHARD("IsNotNone", IsNotNone);
+  REGISTER_SHARD("IsTrue", IsTrue);
+  REGISTER_SHARD("IsFalse", IsFalse);
   REGISTER_SHARD("Input", Input);
   REGISTER_SHARD("Comment", Comment);
   REGISTER_SHARD("Replace", Replace);

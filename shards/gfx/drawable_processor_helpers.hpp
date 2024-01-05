@@ -8,6 +8,7 @@
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
 #include "../core/platform.hpp"
+#include "../core/assert.hpp"
 #include "unique_id.hpp"
 #include <variant>
 
@@ -86,7 +87,7 @@ struct BindGroupBuilder {
         .entries = entries.data(),
     };
     WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
-    assert(bindGroup);
+    shassert(bindGroup);
     return bindGroup;
   }
 };
@@ -137,11 +138,11 @@ inline void groupDrawables(size_t numDrawables, std::vector<detail::DrawGroup, T
 inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout,
                          const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
-  for (const std::string &fieldName : layout.fieldNames) {
+  for (auto &fieldName : layout.fieldNames) {
 #if SH_ANDROID
     auto drawDataIt = parameterStorage.basic.find(fieldName.c_str());
 #else
-    auto drawDataIt = parameterStorage.basic.find<std::string>(fieldName);
+    auto drawDataIt = parameterStorage.basic.find(fieldName);
 #endif
     if (drawDataIt != parameterStorage.basic.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
@@ -157,13 +158,12 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
   }
 }
 
-inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData) {
+inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData, const Rect &viewport) {
   outDrawData.setParam("view", viewData.view->view);
   outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
   outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
-  outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y), float(viewData.viewport.width),
-                                          float(viewData.viewport.height)));
+  outDrawData.setParam("viewport", float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
 }
 
 struct TextureData {

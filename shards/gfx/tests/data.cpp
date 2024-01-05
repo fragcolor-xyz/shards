@@ -68,7 +68,7 @@ void TestFrame::set(const uint8_t *imageData, int2 size, TestFrameFormat format,
       return (uint32_t(r) << 0) | (uint32_t(0) << 8) | (uint32_t(0) << 16) | (uint32_t(255) << 24);
     });
   } else {
-    assert(false && "Unsupported format");
+    shassert(false && "Unsupported format");
   }
 }
 

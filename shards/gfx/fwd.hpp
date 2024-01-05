@@ -3,8 +3,14 @@
 
 #include <memory>
 
+#ifndef RUST_BINDGEN
+#include "../fast_string/fast_string.hpp"
 namespace gfx {
+using shards::fast_string::FastString;
+}
+#endif
 
+namespace gfx {
 struct Context;
 struct Pipeline;
 

@@ -159,8 +159,16 @@ impl RequestBase {
       1 => self.headers.set_param(value),
       2 => Ok(self.timeout = value.try_into().map_err(|x| "Failed to set timeout")?),
       3 => Ok(self.as_bytes = value.try_into().map_err(|x| "Failed to set as_bytes")?),
-      4 => Ok(self.full_response = value.try_into().map_err(|x| "Failed to set full_response")?),
-      5 => Ok(self.invalid_certs = value.try_into().map_err(|x| "Failed to set invalid_certs")?),
+      4 => Ok(
+        self.full_response = value
+          .try_into()
+          .map_err(|x| "Failed to set full_response")?,
+      ),
+      5 => Ok(
+        self.invalid_certs = value
+          .try_into()
+          .map_err(|x| "Failed to set invalid_certs")?,
+      ),
       _ => unreachable!(),
     }
   }
@@ -357,7 +365,7 @@ macro_rules! get_like {
           "Failed to send the request"
         })?;
 
-        if response.status().is_success() {
+        if self.rb.full_response || response.status().is_success() {
           self.rb._finalize(response)
         } else {
           shlog_error!("Request failed with status {}", response.status());
@@ -438,31 +446,50 @@ macro_rules! post_like {
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
         request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
+        let has_content_type = if !headers.is_none() {
+          let headers_table = headers.as_table()?;
+          let content_type_str = Var::ephemeral_string("content-type");
+          let content_type = headers_table.get(content_type_str);
+          content_type.is_some()
+        } else {
+          false
+        };
         if !input.is_none() {
           // .form ( kv table )
           let input_table: Result<Table, &str> = input.try_into();
           if let Ok(input_table) = input_table {
+            // default to this in this case but users can edit under
+            if !has_content_type {
+              request = request.header("content-type", "application/x-www-form-urlencoded");
+            }
+
             for (k, v) in input_table.iter() {
               let key: &str = k.as_ref().try_into()?;
               let value: &str = v.as_ref().try_into()?;
               request = request.form(&[(key, value)]);
             }
-            // default to this in this case but users can edit under
-            request = request.header("content-type", "application/x-www-form-urlencoded");
           } else {
             // .body ( string )
             let input_string: Result<&str, &str> = input.try_into();
             if let Ok(input_string) = input_string {
               // default to this in this case but users can edit under
-              request = request.header("content-type", "application/json");
+              if !has_content_type {
+                request = request.header("content-type", "application/json");
+              }
+
               request = request.body(input_string);
             } else {
               // .body ( bytes )
               let input_bytes: Result<&[u8], &str> = input.try_into();
               if let Ok(input_bytes) = input_bytes {
-                request = request.body(input_bytes);
                 // default to this in this case but users can edit under
-                request = request.header("content-type", "application/octet-stream");
+                if !has_content_type {
+                  request = request.header("content-type", "application/octet-stream");
+                }
+
+                request = request.body(input_bytes);
+              } else {
+                return Err("Invalid input type");
               }
             }
           }

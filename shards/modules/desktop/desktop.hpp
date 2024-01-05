@@ -13,7 +13,8 @@ constexpr uint32_t windowCC = 'hwnd';
 
 struct Globals {
   static inline shards::Type windowType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = windowCC}}}};
-  static inline shards::Types windowVarOrNone{{windowType, shards::CoreInfo::NoneType}};
+  static inline shards::Type windowVarType = shards::Type::VariableOf(windowType);
+  static inline shards::Types windowVarOrNone{{windowVarType, shards::CoreInfo::NoneType}};
 };
 
 template <typename T> class WindowBase {

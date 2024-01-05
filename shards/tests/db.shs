@@ -3,14 +3,14 @@
 @wire(db-test-1 {
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
-  [] | DB.Query("SELECT * FROM integers") | Log |
-  Assert.Is({x: [88 100 102], y: [99 101 none]})
+  [] | DB.Query("SELECT * FROM integers") | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 1 passed")
 
   [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "custom.db")
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "custom.db")
-  [] | DB.Query("SELECT * FROM integers" "custom.db") | Log |
-  Assert.Is({x: [88 100 102], y: [99 101 none]})
+  [] | DB.Query("SELECT * FROM integers" "custom.db") | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 2 passed")
 
   11 >= x
@@ -22,8 +22,8 @@
       [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
     } Times: 10)
   })
-  [] | DB.Query("SELECT * FROM integers") | Log |
-  Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
+  [] | DB.Query("SELECT * FROM integers") | Log
+  Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   Msg("Test 3 passed")
 
   Maybe({
@@ -37,9 +37,13 @@
     })
   })
 
-  [] | DB.Query("SELECT * FROM integers") | Log |
-  Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
+  Repeat({
+    [] | DB.Query("SELECT * FROM integers") | Log
+    Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
+  } Times: 10)
   Msg("Test 4 passed")
+
+  DB.Backup("backup.db")
 
   ; test CRDT capabilities
   ; (DB.LoadExtension "./crsqlite.so")
@@ -53,11 +57,20 @@
   ; [] | DB.Query("select * from foo") | Log
   ; [] | DB.Query("select * from baz") | Log
   ; [] | DB.Query("select * from crsql_changes") | Log
-} StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
-; Run cleanup before running tests
+  ; Test AsRows
+  Repeat({
+    [] | DB.Query("SELECT * FROM integers" AsRows: true) | Log
+    Assert.Is([{x: 88 y: 99} {x: 100 y: 101} {x: 102 y: none} {x: 12 y: 23} {x: 13 y: 24} {x: 14 y: 25} {x: 15 y: 26} {x: 16 y: 27} {x: 17 y: 28} {x: 18 y: 29} {x: 19 y: 30} {x: 20 y: 31} {x: 21 y: 32}])
+  } Times: 10)
+  Msg("Test 5 passed")
+})
+
+; Run cleanup after running tests
 "shards.db" | FS.Remove
-"test-db-dir/custom.db" | FS.Remove
+"backup.db" | FS.Remove
+"custom.db" | FS.Remove
+Msg("Cleanup done")
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)

@@ -4,6 +4,7 @@
 #include "stddef.h"
 #include "foundation.hpp"
 #include "self_macro.h"
+#include "exposed_type_utils.hpp"
 #include <type_traits>
 #include <shards/shardwrapper.hpp>
 
@@ -27,7 +28,8 @@ struct IterableParam {
 
   void (*setParam)(void *varPtr, SHVar var){};
   SHVar (*getParam)(void *varPtr){};
-  void (*collectRequirements)(const SHExposedTypesInfo &exposed, ExposedInfo &out, void *varPtr){};
+  void (*collectRequirements)(const shards::IterableParam &param, const SHExposedTypesInfo &exposed, ExposedInfo &out,
+                              void *varPtr){};
   void (*warmup)(void *varPtr, SHContext *ctx){};
   void (*cleanup)(void *varPtr, SHContext *ctx){};
 
@@ -39,12 +41,27 @@ struct IterableParam {
 
   template <typename T>
   static IterableParam createWithVarInterface(void *(*resolveParamInShard)(void *), const ParameterInfo *paramInfo) {
-    IterableParam result{.resolveParamInShard = resolveParamInShard,
-                         .paramInfo = paramInfo,
-                         .setParam = [](void *varPtr, SHVar var) { *((T *)varPtr) = var; },
-                         .getParam = [](void *varPtr) -> SHVar { return *((T *)varPtr); },
-                         .collectRequirements = [](const SHExposedTypesInfo &exposed, ExposedInfo &out,
-                                                   void *varPtr) { collectRequiredVariables(exposed, out, *((T *)varPtr)); }};
+    IterableParam result{
+        .resolveParamInShard = resolveParamInShard,
+        .paramInfo = paramInfo,
+        .setParam = [](void *varPtr, SHVar var) { *((T *)varPtr) = var; },
+        .getParam = [](void *varPtr) -> SHVar { return *((T *)varPtr); },
+        .collectRequirements =
+            [](const shards::IterableParam &param, const SHExposedTypesInfo &exposed, ExposedInfo &out, void *varPtr) {
+              collectRequiredVariables(exposed, out, *((T *)varPtr), SHTypesInfo(param.paramInfo->_types),
+                                       param.paramInfo->_name);
+            }};
+
+    bool canPossiblyHaveContextVariables = false;
+    for (auto &type : paramInfo->_types._types) {
+      if (hasContextVariables(type)) {
+        canPossiblyHaveContextVariables = true;
+        break;
+      }
+    }
+    if (!canPossiblyHaveContextVariables) {
+      result.collectRequirements = nullptr;
+    }
 
     if constexpr (has_warmup<T>::value) {
       result.warmup = [](void *varPtr, SHContext *ctx) { ((T *)varPtr)->warmup(ctx); };
@@ -111,13 +128,16 @@ struct IterableParam {
 //    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 //    return outputTypes().elements[0];
 //  }
-#define PARAM_COMPOSE_REQUIRED_VARIABLES(__data)                                                             \
-  {                                                                                                          \
-    size_t numParams;                                                                                        \
-    const shards::IterableParam *params = getIterableParams(numParams);                                      \
-    _requiredVariables.clear();                                                                              \
-    for (size_t i = 0; i < numParams; i++)                                                                   \
-      params[i].collectRequirements(__data.shared, _requiredVariables, params[i].resolveParamInShard(this)); \
+#define PARAM_COMPOSE_REQUIRED_VARIABLES(__data)                                                                          \
+  {                                                                                                                       \
+    size_t numParams;                                                                                                     \
+    const shards::IterableParam *params = getIterableParams(numParams);                                                   \
+    _requiredVariables.clear();                                                                                           \
+    for (size_t i = 0; i < numParams; i++) {                                                                              \
+      if (params[i].collectRequirements) {                                                                                \
+        params[i].collectRequirements(params[i], __data.shared, _requiredVariables, params[i].resolveParamInShard(this)); \
+      }                                                                                                                   \
+    }                                                                                                                     \
   }
 
 // Implements setParam()/getParam()

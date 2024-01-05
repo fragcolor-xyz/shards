@@ -43,12 +43,12 @@ using namespace shards;
 #define TEST_SERIALIZATION(_source_)            \
   Serialization ws;                             \
   std::vector<uint8_t> buffer;                  \
-  BufferRefWriter w{buffer};                             \
+  BufferRefWriter w{buffer};                    \
   ws.serialize(_source_, w);                    \
   Var serialized(buffer.data(), buffer.size()); \
   SHVar output{};                               \
   Serialization rs;                             \
-  VarReader r(serialized);                         \
+  VarReader r(serialized);                      \
   rs.reset();                                   \
   rs.deserialize(r, output);                    \
   REQUIRE(_source_ == output);                  \
@@ -1282,7 +1282,7 @@ TEST_CASE("Vector types") {
 
 TEST_CASE("UnsafeActivate-shard") {
   std::function<SHVar(SHContext *, const SHVar &)> f = [](SHContext *ctx, const SHVar &input) -> SHVar { return Var(77); };
-  auto fVar = Var(reinterpret_cast<uint64_t>(&f));
+  auto fVar = Var(reinterpret_cast<int64_t>(&f));
   auto b1 = createShard("UnsafeActivate!");
   DEFER(b1->destroy(b1));
   b1->setParam(b1, 0, &fVar);
@@ -1868,19 +1868,19 @@ TEST_CASE("meshThreadTask") {
 
   { // run 2 wires with 2 onMeshThread calls
     auto unsafeActivate1 = createShard("UnsafeActivate!");
-    auto vf1 = Var(reinterpret_cast<uint64_t>(&f1));
+    auto vf1 = Var(reinterpret_cast<int64_t>(&f1));
     unsafeActivate1->setParam(unsafeActivate1, 0, &vf1);
     testWire->addShard(unsafeActivate1);
 
     auto unsafeActivate1bis = createShard("UnsafeActivate!");
-    auto vf1bis = Var(reinterpret_cast<uint64_t>(&f1bis));
+    auto vf1bis = Var(reinterpret_cast<int64_t>(&f1bis));
     unsafeActivate1bis->setParam(unsafeActivate1bis, 0, &vf1bis);
     testWire2->addShard(unsafeActivate1bis);
   }
 
   // adds a onMeshThread call inside the following Step
   auto unsafeActivate2 = createShard("UnsafeActivate!");
-  auto vf2 = Var(reinterpret_cast<uint64_t>(&f2));
+  auto vf2 = Var(reinterpret_cast<int64_t>(&f2));
   unsafeActivate2->setParam(unsafeActivate2, 0, &vf2);
   steppedWire->addShard(unsafeActivate2);
 
@@ -1959,17 +1959,17 @@ TEST_CASE("meshThreadTask-looped") {
   };
 
   auto unsafeActivate1 = createShard("UnsafeActivate!");
-  auto vf1 = Var(reinterpret_cast<uint64_t>(&f1));
+  auto vf1 = Var(reinterpret_cast<int64_t>(&f1));
   unsafeActivate1->setParam(unsafeActivate1, 0, &vf1);
   testWire->addShard(unsafeActivate1);
 
   auto unsafeActivate1bis = createShard("UnsafeActivate!");
-  auto vf1bis = Var(reinterpret_cast<uint64_t>(&f1bis));
+  auto vf1bis = Var(reinterpret_cast<int64_t>(&f1bis));
   unsafeActivate1bis->setParam(unsafeActivate1bis, 0, &vf1bis);
   testWire2->addShard(unsafeActivate1bis);
 
   auto unsafeActivate2 = createShard("UnsafeActivate!");
-  auto vf2 = Var(reinterpret_cast<uint64_t>(&f2));
+  auto vf2 = Var(reinterpret_cast<int64_t>(&f2));
   unsafeActivate2->setParam(unsafeActivate2, 0, &vf2);
   steppedWire->addShard(unsafeActivate2);
 
@@ -2020,7 +2020,7 @@ template <> struct RefOutputPoolItemTraits<TestRefPoolItem *> {
 } // namespace shards
 
 TEST_CASE("RefOutputPool") {
-  TestRefPoolItem* t3{};
+  TestRefPoolItem *t3{};
   {
     RefOutputPool<TestRefPoolItem *> pool;
     pool.recycle();

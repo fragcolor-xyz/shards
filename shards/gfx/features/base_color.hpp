@@ -49,12 +49,12 @@ struct BaseColor {
     });
 
     const char defaultColor[] = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
-    const std::string colorAttributeName = "color";
+    const char colorAttributeName[] = "color";
 
     auto initColor = makeBlock<Custom>([=](IGeneratorContext &context) {
       context.writeGlobal("color", colorFieldType, [&]() {
         auto &inputs = context.getDefinitions().inputs;
-        if (context.hasInput(colorAttributeName.c_str())) {
+        if (context.hasInput(colorAttributeName)) {
           auto it = inputs.find(colorAttributeName);
           auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;
 

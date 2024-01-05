@@ -32,7 +32,7 @@ struct LineShard : public Base {
 
   PARAM_PARAMVAR(_a, "A", "Starting position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_b, "B", "Ending position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_color, "Color", "Linear color of the line", {CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the line", {CoreInfo::NoneType, CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
   PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
@@ -76,8 +76,8 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_center, "Center", "Center of the circle", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the circle is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the circle is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_radius, "Radius", "Radius", {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_radius, "Radius", "Radius", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
@@ -130,8 +130,8 @@ struct RectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the rectangle is on",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
-  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
@@ -180,10 +180,10 @@ struct BoxShard : public Base {
   static SHOptionalString help() { return SHCCSTR("Draws a box in 3d space"); }
 
   PARAM_PARAMVAR(_center, "Center", "Center of the box", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_size, "Size", "Size of the box", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_size, "Size", "Size of the box", {CoreInfo::NoneType, CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_transform, "Transform", "Transform applied to the box",
-                 {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
-  PARAM_PARAMVAR(_color, "Color", "Boxar color of the box", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+                 {CoreInfo::NoneType, CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
+  PARAM_PARAMVAR(_color, "Color", "Boxar color of the box", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_color),
@@ -230,7 +230,7 @@ struct PointShard : public Base {
   static SHOptionalString help() { return SHCCSTR("Draws a point in 3d space"); }
 
   PARAM_PARAMVAR(_center, "Center", "Center of the point", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_color, "Color", "Pointar color of the point", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_color, "Color", "Pointar color of the point", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
@@ -274,9 +274,9 @@ struct SolidRectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the rectangle is on",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
-  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the rectangle", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the rectangle", {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
@@ -328,11 +328,11 @@ struct DiscShard : public Base {
   PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
   PARAM_PARAMVAR(_outerRadius, "OuterRadius", "Radius of the outer circle of the disc",
-                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_innerRadius, "InnerRadius", "Radius of the inner circle of the disc",
-                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_outerRadius),
              PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
@@ -393,8 +393,8 @@ struct GridShard : public Base {
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the grid", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
   PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
-  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_size, "Size", "Number of grid lines", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_size, "Size", "Number of grid lines", {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_thickness),
@@ -469,7 +469,7 @@ struct RefSpaceGridOverlayShard : public Base {
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
-  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_thickness),

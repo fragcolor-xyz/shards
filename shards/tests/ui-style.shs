@@ -1,6 +1,6 @@
-@define(no-stroke { Color: @color(0 0 0 0) Width: 0.0 })
-@define(stroke-2 { Color: @color(255 255 255) Width: 2.0 })
-@define(stroke-4 { Color: @color(255 200 255) Width: 4.0 })
+@define(no-stroke {Color: @color(0 0 0 0) Width: 0.0})
+@define(stroke-2 {Color: @color(255 255 255) Width: 2.0})
+@define(stroke-4 {Color: @color(255 200 255) Width: 4.0})
 
 @wire(main {
   Once({
@@ -10,12 +10,11 @@
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
     UI({
       UI.Window(Contents: {
-        UI.Style(AnimationTime: 0.5)
-        UI.VisualsStyle( 
+        UI.Style(AnimationTime: 0.5
           OverrideTextColor: @color(255 100 100)
           Selection: {
-              BGFill: @color(0 255 205 255)
-              Stroke: @stroke-2
+            BGFill: @color(0 255 205 255)
+            Stroke: @stroke-2
           }
         )
         UI.WidgetStyle(
@@ -58,4 +57,4 @@
 
 @mesh(root)
 @schedule(root main)
-@run(root FPS: 60)
+@run(root FPS: 60 Iterations: 100)

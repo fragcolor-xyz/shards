@@ -25,7 +25,7 @@
 #include <ikcp.h>
 #pragma clang attribute pop
 
-#define IKCP_MAX_PKT_SIZE 0xC350 // 50000
+#define IKCP_MAX_PKT_SIZE 10000
 
 namespace shards {
 namespace Network {
@@ -189,19 +189,8 @@ struct NetworkPeer {
     }
   }
 
-  void maybeUpdate() {
-    auto now = SHClock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
-
-    if (ikcp_check(kcp, ms) <= ms) {
-      ikcp_update(kcp, ms);
-    }
-  }
-
   bool tryReceive(SHContext *context) {
-    bool isMessageReady = false;
-
-    std::unique_lock peerLock(recvMutex);
+    std::scoped_lock peerLock(mutex);
 
     if (networkError) {
       decltype(networkError) e;
@@ -209,16 +198,21 @@ struct NetworkPeer {
       throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
     }
 
-    maybeUpdate();
+    auto now = SHClock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+    ikcp_update(kcp, ms);
 
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
     auto nextChunkSize = ikcp_peeksize(kcp);
+    // if (nextChunkSize != -1)
+    //   SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}, offset: {}", nextChunkSize, endpoint->address().to_string(),
+    //               endpoint->port(), offset);
 
     // Loop to receive all available chunks.
     while (nextChunkSize > 0) {
       // Resize the buffer to hold the incoming chunk.
-      recvBuffer.resize(nextChunkSize + offset);
+      recvBuffer.resize(offset + nextChunkSize);
 
       // Receive the chunk.
       auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
@@ -233,19 +227,19 @@ struct NetworkPeer {
 
       // Check if the current buffer matches the expected size.
       if (recvBuffer.size() == expectedSize) {
-        isMessageReady = true;
-        break;
+        // SHLOG_TRACE("Received full packet, endpoint: {} port: {}, size: {}", endpoint->address().to_string(), endpoint->port(),
+        //             expectedSize);
+        return true;
       } else {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        if(nextChunkSize > 0) {
-          SHLOG_TRACE("Next large-packet chunk size: {}", nextChunkSize);
-        }
+        // SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}, offset: {}, expected: {}", nextChunkSize,
+        //             endpoint->address().to_string(), endpoint->port(), offset, expectedSize);
       }
     }
 
-    return isMessageReady;
+    return false;
   }
 
   void endReceive() {
@@ -265,7 +259,7 @@ struct NetworkPeer {
     _sendWriter.finalize();
     auto size = _sendWriter.size();
 
-    std::scoped_lock lock(sendMutex); // prevent concurrent sends
+    std::scoped_lock lock(mutex); // prevent concurrent sends
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // send in chunks
@@ -305,8 +299,13 @@ struct NetworkPeer {
 
     // set "turbo" mode
     ikcp_nodelay(kcp, 1, 10, 2, 1);
+
     _start = SHClock::now();
     _lastContact = SHClock::now();
+    disconnected = false;
+    networkError.reset();
+    recvBuffer.clear();
+    expectedSize = 0;
   }
 
   std::optional<udp::endpoint> endpoint{};
@@ -323,14 +322,14 @@ struct NetworkPeer {
   std::shared_ptr<SHWire> wire;
   std::optional<entt::connection> onStopConnection;
 
-  // this is not great but well ok for now
-  std::mutex recvMutex;
-  std::mutex sendMutex;
+  std::mutex mutex;
 
   std::vector<uint8_t> recvBuffer;
   uint32_t expectedSize = 0;
 
   std::optional<boost::system::error_code> networkError;
+
+  std::atomic_bool disconnected = false;
 };
 
 struct Server : public NetworkBase {
@@ -348,6 +347,8 @@ struct Server : public NetworkBase {
 
   float _timeoutSecs = 30.0f;
 
+  ShardsVar _disconnectionHandler{};
+
   static inline Parameters params{
       {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
       {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
@@ -356,7 +357,10 @@ struct Server : public NetworkBase {
        {CoreInfo::WireOrNone}},
       {"Timeout",
        SHCCSTR("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
-       {CoreInfo::FloatType}}};
+       {CoreInfo::FloatType}},
+      {"OnDisconnect",
+       SHCCSTR("The flow to execute when a peer disconnects, The Peer ID will be the input."),
+       {CoreInfo::ShardsOrNone}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -374,6 +378,8 @@ struct Server : public NetworkBase {
     case 3:
       _timeoutSecs = value.payload.floatValue;
       break;
+    case 4:
+      _disconnectionHandler = value;
     default:
       break;
     }
@@ -389,41 +395,47 @@ struct Server : public NetworkBase {
       return _handlerMaster;
     case 3:
       return Var(_timeoutSecs);
+    case 4:
+      return _disconnectionHandler;
     default:
       return Var::Empty;
     }
   }
 
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (_handlerMaster.valueType == SHType::Wire)
       _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
+
+    // compose first with data the _disconnectionHandler if any
+    if (_disconnectionHandler) {
+      SHInstanceData dataCopy = data;
+      dataCopy.inputType = CoreInfo::IntType;
+      _disconnectionHandler.compose(dataCopy);
+    }
 
     // inject our special context vars
     _sharedCopy = ExposedInfo(data.shared);
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     _sharedCopy.push_back(endpointInfo);
+
     return NetworkBase::compose(data);
   }
 
-  void gcWires() {
+  void gcWires(SHContext *context) {
     if (!_stopWireQueue.empty()) {
       SHWire *toStop{};
       while (_stopWireQueue.pop(toStop)) {
         SHLOG_TRACE("GC-ing wire {}", toStop->name);
         DEFER({ SHLOG_TRACE("GC-ed wire {}", toStop->name); });
 
-        // ensure cleanup is called
-        auto wireState = toStop->state.load();
-        if (wireState != SHWire::State::Failed && wireState != SHWire::State::Stopped) {
-          const_cast<SHWire *>(toStop)->cleanup();
-        } else {
-          SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
-        }
-
         // read lock this
         std::shared_lock<std::shared_mutex> lock(peersMutex);
         auto container = _wire2Peer[toStop];
         lock.unlock();
+
+        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
+
+        container->disconnected = true;
 
         if (_contextCopy) {
           OnPeerDisconnected event{
@@ -433,7 +445,20 @@ struct Server : public NetworkBase {
           (*_contextCopy)->main->dispatcher.trigger(std::move(event));
         }
 
-        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
+        if (_disconnectionHandler) {
+          Var peerId(*reinterpret_cast<int64_t *>(&toStop->id));
+          SHVar output{};
+          _disconnectionHandler.activate(context, peerId, output);
+        }
+
+        // ensure cleanup is called
+        auto wireState = toStop->state.load();
+        if (wireState != SHWire::State::Failed && wireState != SHWire::State::Stopped) {
+          // in the above cases cleanup already happened
+          const_cast<SHWire *>(toStop)->cleanup();
+        } else {
+          SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
+        }
 
         // write lock it now
         std::scoped_lock<std::shared_mutex> lock2(peersMutex);
@@ -447,6 +472,9 @@ struct Server : public NetworkBase {
     if (!_pool) {
       throw ComposeError("Peer wires pool not valid!");
     }
+
+    if (_disconnectionHandler)
+      _disconnectionHandler.warmup(context);
 
     _contextCopy = context;
 
@@ -476,7 +504,10 @@ struct Server : public NetworkBase {
 
     NetworkBase::cleanup(context);
 
-    gcWires();
+    gcWires(context);
+
+    if (_disconnectionHandler)
+      _disconnectionHandler.cleanup(context);
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
@@ -596,9 +627,11 @@ struct Server : public NetworkBase {
             }
 
             {
-              std::scoped_lock pLock(currentPeer->recvMutex);
+              std::scoped_lock pLock(currentPeer->mutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+              // SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
+              //             bytes_recvd);
               if (err < 0) {
                 SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
                 _stopWireQueue.push(currentPeer->wire.get());
@@ -608,8 +641,11 @@ struct Server : public NetworkBase {
             }
 
             // keep receiving
-            if (_socket && _running)
+            if (_socket && _running) {
               return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           } else {
             if (ec == boost::asio::error::operation_aborted) {
               // we likely have invalid data under the hood, let's just ignore it
@@ -631,8 +667,11 @@ struct Server : public NetworkBase {
             }
 
             // keep receiving
-            if (_socket && _running)
+            if (_socket && _running) {
               return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           }
         });
   }
@@ -677,7 +716,7 @@ struct Server : public NetworkBase {
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    gcWires();
+    gcWires(context);
 
     {
       std::shared_lock<std::shared_mutex> lock(peersMutex);
@@ -704,39 +743,47 @@ struct Server : public NetworkBase {
         }
 
         if (peer->tryReceive(context)) {
+          auto &peer_ = peer; // avoid c++20 ext warning
+          DEFER({
+            // we need to ensure this gets called at all times
+            peer_->endReceive();
+          });
+
           if (!context->shouldContinue())
             return input;
 
-          auto &peer_ = peer; // avoid c++20 ext warning
-          if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
-            // do this async as it's a big buffer
-            await(
-                context,
-                [peer_]() {
-                  // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-                  Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
-                  peer_->des.reset();
-                  peer_->des.deserialize(r, peer_->payload);
-                },
-                [] {});
-          } else {
-            // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-            Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
-            peer_->des.reset();
-            peer_->des.deserialize(r, peer_->payload);
-          }
+          try {
+            if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
+              // do this async as it's a big buffer
+              await(
+                  context,
+                  [peer_]() {
+                    // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+                    Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+                    peer_->des.reset();
+                    peer_->des.deserialize(r, peer_->payload);
+                  },
+                  [] {});
+            } else {
+              // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+              Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+              peer_->des.reset();
+              peer_->des.deserialize(r, peer_->payload);
+            }
 
-          // at this point we can already cleanup the buffer
-          peer->endReceive();
-
-          // Run within the root flow
-          auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-          if (unlikely(runRes.state == SHRunWireOutputState::Failed) ||
-              unlikely(runRes.state == SHRunWireOutputState::Stopped || runRes.state == SHRunWireOutputState::Returned)) {
+            // Run within the root flow
+            auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
+            if (unlikely(runRes.state == SHRunWireOutputState::Failed || runRes.state == SHRunWireOutputState::Stopped ||
+                         runRes.state == SHRunWireOutputState::Returned)) {
+              stop(peer->wire.get());
+            }
+          } catch (std::exception &e) {
+            SHLOG_ERROR("Critical errors processing peer {}: {}, disconnecting it", peer->endpoint->address().to_string(),
+                        e.what());
             stop(peer->wire.get());
-            // Always continue, on stop event will cleanup
-            context->continueFlow();
           }
+          // Always adjust the context back to continue, peer wire might have changed it
+          context->continueFlow();
         }
       }
     }
@@ -803,7 +850,7 @@ struct Broadcast {
       }
 
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->sendMutex);
+        std::scoped_lock lock(peer->mutex);
         for (auto &[chunk, chunkSize] : chunks) {
           auto err = ikcp_send(peer->kcp, chunk, chunkSize);
           if (err < 0) {
@@ -815,7 +862,7 @@ struct Broadcast {
     } else {
       // broadcast
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->sendMutex);
+        std::scoped_lock lock(peer->mutex);
         auto err = ikcp_send(peer->kcp, _sendWriter.data(), _sendWriter.size());
         if (err < 0) {
           SHLOG_ERROR("ikcp_send error: {}", err);
@@ -925,18 +972,17 @@ struct Client : public NetworkBase {
                                     if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
                                         ec == boost::asio::error::try_again) {
                                       SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
-                                      return do_receive();
+                                      return do_receive(); // continue receiving
                                     } else if (ec == boost::asio::error::operation_aborted) {
-                                      SHLOG_ERROR("Error receiving: {}", ec.message());
-                                      // we likely have invalid data under the hood, let's just ignore it
-                                      return;
+                                      SHLOG_ERROR("Socket aborted receiving: {}", ec.message());
+                                      // _peer might be invalid at this point!
                                     } else {
                                       SHLOG_ERROR("Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
                                     }
                                   } else {
                                     if (bytes_recvd > 0) {
-                                      std::scoped_lock lock(_peer.recvMutex);
+                                      std::scoped_lock lock(_peer.mutex);
 
                                       auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
                                       if (err < 0) {
@@ -950,6 +996,7 @@ struct Client : public NetworkBase {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    NetworkBase::compose(data);
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     shards::arrayPush(data.shared, endpointInfo);
@@ -1045,18 +1092,24 @@ struct PeerBase {
 
   NetworkPeer *getPeer(SHContext *context) {
     auto &fixedPeer = _peerParam.get();
+    NetworkPeer *peer = nullptr;
     if (fixedPeer.valueType == SHType::Object) {
       assert(fixedPeer.payload.objectVendorId == CoreCC);
       assert(fixedPeer.payload.objectTypeId == PeerCC);
-      return reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
+      peer = reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
     } else {
       if (!_peerVar) {
         _peerVar = referenceVariable(context, "Network.Peer");
       }
       assert(_peerVar->payload.objectVendorId == CoreCC);
       assert(_peerVar->payload.objectTypeId == PeerCC);
-      return reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
+      peer = reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
     }
+
+    if (peer->disconnected)
+      throw ActivationError("Peer is disconnected");
+
+    return peer;
   }
 
   static inline Parameters params{
@@ -1122,7 +1175,7 @@ struct PeerID : public PeerBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
-    return Var(reinterpret_cast<entt::id_type>(peer));
+    return Var(reinterpret_cast<int64_t>(peer));
   }
 };
 

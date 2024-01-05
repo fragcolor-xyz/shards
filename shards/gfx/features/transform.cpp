@@ -33,9 +33,9 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
   FeaturePtr feature = std::make_shared<Feature>();
 
   auto expandInputVec = [](const char *_name, float lastComponent = 1.0f) {
-    return std::make_unique<blocks::Custom>([=, name = std::string(_name)](shader::IGeneratorContext &ctx) {
+    return std::make_unique<blocks::Custom>([=, name = FastString(_name)](shader::IGeneratorContext &ctx) {
       ctx.write("vec4<f32>(");
-      ctx.readInput(name.c_str());
+      ctx.readInput(name);
 
       auto &stageInputs = ctx.getDefinitions().inputs;
       auto it = stageInputs.find(name);
@@ -64,8 +64,9 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   auto cb = [](IGeneratorContext &ctx) {
     auto &defs = ctx.getDefinitions();
-    bool needSkinning = ctx.hasInput("joints");
-    if (needSkinning) {
+    bool hasJointsBuffer = defs.buffers.contains("joints");
+    bool hasSkinningParams = defs.inputs.contains("joints") && defs.inputs.contains("weights");
+    if (hasJointsBuffer && hasSkinningParams) {
       auto tmp = ctx.generateTempVariable();
       ctx.write(fmt::format("let {} = \n", tmp));
       for (size_t i = 0; i < 4; i++) {

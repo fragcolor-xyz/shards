@@ -18,12 +18,17 @@ struct PipelineHashCollector;
 // Container for shader parameters (basic/texture)
 /// <div rustbindgen opaque>
 struct MaterialParameters {
-  std::map<std::string, NumParameter> basic;
-  std::map<std::string, TextureParameter> textures;
+  std::map<FastString, NumParameter> basic;
+  std::map<FastString, TextureParameter> textures;
 
-  void set(const std::string_view &key, const NumParameter &param) { basic.insert_or_assign(std::string(key), (param)); }
-  void set(const std::string_view &key, NumParameter &&param) { basic.insert_or_assign(std::string(key), std::move(param)); }
-  void set(const std::string_view &key, const TextureParameter &param) { textures.insert_or_assign(std::string(key), (param)); }
+  void set(FastString key, const NumParameter &param) { basic.insert_or_assign(key, (param)); }
+  void set(FastString key, NumParameter &&param) { basic.insert_or_assign(key, std::move(param)); }
+  void set(FastString key, const TextureParameter &param) { textures.insert_or_assign(key, (param)); }
+
+  void clear() {
+    basic.clear();
+    textures.clear();
+  }
 
   template <typename THash> void getPipelineHash(THash &hash) const {
     for (auto &pair : textures) {

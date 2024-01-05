@@ -22,14 +22,21 @@ namespace DB {
 struct Connection {
   sqlite3 *db;
   std::mutex mutex;
+  std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
 
-  Connection(const char *path) {
+  Connection(const char *path, bool readOnly) {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
 
-    if (sqlite3_open(path, &db) != SQLITE_OK) {
-      throw ActivationError(sqlite3_errmsg(db));
-    }
+    if (readOnly) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(db));
+      }
+    } else {
+      if (sqlite3_open(path, &db) != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(db));
+      }
+          }
 
     uint32_t res;
     if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
@@ -44,9 +51,17 @@ struct Connection {
     other.db = nullptr;
   }
 
-  ~Connection() { sqlite3_close(db); }
+  Connection &operator=(const Connection &other) = delete;
 
-  sqlite3 *get() { return db; }
+  ~Connection() {
+    if (db) {
+      sqlite3_close(db);
+    }
+  }
+
+  sqlite3 *get() {
+    return db;
+  }
 
   void loadExtension(const std::string &path_) {
     char *errorMsg = nullptr;
@@ -88,7 +103,7 @@ struct Statement {
 
 struct Base {
   AnyStorage<Connection> _connection;
-  std::string_view _dbName{"shards.db"};
+  OwnedVar _dbNameStr{Var("shards.db")};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
   void compose(SHInstanceData &data) {
@@ -96,34 +111,192 @@ struct Base {
       throw ComposeError("Can not run on worker thread");
   }
 
-  void ensureDb(SHContext *context) {
+  void _ensureDb(SHContext *context, bool readOnly) {
     if (!ready) {
-      auto storageKey = fmt::format("DB.Connection_{}", _dbName);
       auto mesh = context->main->mesh.lock();
-      _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
+      auto dbName = SHSTRVIEW(_dbNameStr);
+      if (readOnly) {
+        auto storageKey = fmt::format("DB.Connection_{}", dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), true); });
+      } else {
+        auto storageKey = fmt::format("DB.RWConnection_{}", dbName);
+        _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), false); });
+      }
       ready = true;
     }
   }
 };
 
+#define ENSURE_DB(__ctx__, __ro__)   \
+  if (_dbName.get() != _dbNameStr) { \
+    _dbNameStr = _dbName.get();      \
+    ready = false;                   \
+  }                                  \
+  _ensureDb(__ctx__, __ro__)
+
 struct Query : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() {
+    static Types types{CoreInfo::AnyTableType, CoreInfo::AnySeqType};
+    return types;
+  }
 
-  PARAM_VAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
+  void setup() {
+    _query = Var("SELECT * FROM test WHERE id = ?");
+    _dbName = Var("shards.db");
+  }
+
+  PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.",
+                 {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows));
+
+  PARAM_REQUIRED_VARIABLES();
 
   std::unique_ptr<Statement> prepared;
 
-  TableVar _output[2]; // dual buffered due to awaiting
+  struct ColOutput {
+    TableVar output;
+    std::vector<SeqVar *> columns;
+  };
+
+  struct RowOutput {
+    SeqVar output;
+    SeqVar keys;
+  };
+
+  // this is a trick to avoid clearing the output on every activation if empty
+  static inline TableVar emptyTableOutput;
+  static inline SeqVar emptySeqOutput;
+
+  bool _returnCols{};
+  using OutputType = std::variant<std::monostate, ColOutput, RowOutput>;
+
+  OutputType _output[2]; // dual buffered due to awaiting
   size_t _outputCount;
-  TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
-  std::vector<SeqVar *> colSeqs;
+
+  Var columnToVar(size_t index) {
+    auto type = sqlite3_column_type(prepared->get(), index);
+    switch (type) {
+    case SQLITE_INTEGER:
+      return Var((int64_t)sqlite3_column_int64(prepared->get(), index));
+    case SQLITE_FLOAT:
+      return Var(sqlite3_column_double(prepared->get(), index));
+    case SQLITE_TEXT:
+      return Var((const char *)sqlite3_column_text(prepared->get(), index));
+    case SQLITE_BLOB:
+      return Var((const uint8_t *)sqlite3_column_blob(prepared->get(), index),
+                 (uint32_t)sqlite3_column_bytes(prepared->get(), index));
+    case SQLITE_NULL:
+      return Var();
+    default:
+      throw ActivationError("Unsupported Var type for sqlite");
+    }
+  }
+
+  SHVar getOutputRows(OutputType &output_) {
+    RowOutput *ptr = std::get_if<RowOutput>(&output_);
+    if (!ptr)
+      ptr = &output_.emplace<RowOutput>();
+    RowOutput &output = *ptr;
+
+    output.keys.clear();
+    output.output.clear();
+
+    bool empty = true;
+    int rc;
+    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
+      auto numCols = sqlite3_column_count(prepared->get());
+      if (numCols == 0) {
+        continue;
+      }
+
+      empty = false;
+
+      // fill column cache on first row
+      if (output.keys.empty()) {
+        for (int i = 0; i < numCols; i++) {
+          auto colName = sqlite3_column_name(prepared->get(), i);
+          output.keys.push_back(Var(colName));
+        }
+      }
+
+      auto &outTable = (TableVar &)output.output.emplace_back_fast();
+      if (outTable.valueType != SHType::Table) {
+        outTable = TableVar();
+      }
+      for (auto i = 0; i < numCols; i++) {
+        outTable.insert(output.keys[i], columnToVar(i));
+      }
+    }
+
+    if (rc != SQLITE_DONE) {
+      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    }
+
+    return empty ? emptySeqOutput : output.output;
+  }
+
+  SHVar getOutputCols(OutputType &output_) {
+    ColOutput *ptr = std::get_if<ColOutput>(&output_);
+    if (!ptr)
+      ptr = &output_.emplace<ColOutput>();
+    ColOutput &output = *ptr;
+
+    output.columns.clear();
+    bool empty = true;
+    int rc;
+    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
+      auto numCols = sqlite3_column_count(prepared->get());
+      if (numCols == 0) {
+        continue;
+      }
+
+      empty = false;
+
+      // fill column cache on first row
+      if (output.columns.empty()) {
+        for (int i = 0; i < numCols; i++) {
+          auto colName = sqlite3_column_name(prepared->get(), i);
+          auto colNameVar = Var(colName);
+          auto &col = output.output[colNameVar];
+          if (col.valueType == SHType::None) {
+            SeqVar seq;
+            output.output.insert(colNameVar, std::move(seq));
+            output.columns.push_back(&asSeq(output.output[colNameVar]));
+          } else {
+            auto &seq = asSeq(col);
+            seq.clear();
+            output.columns.push_back(&seq);
+          }
+        }
+      }
+
+      for (auto i = 0; i < numCols; i++) {
+        auto &col = *output.columns[i];
+        col.push_back(columnToVar(i));
+      }
+    }
+
+    if (rc != SQLITE_DONE) {
+      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    }
+
+    return empty ? emptyTableOutput : output.output;
+  }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
-    return outputTypes().elements[0];
+    if (!_asRows->isNone() && (bool)*_asRows) {
+      _returnCols = false;
+      return CoreInfo::SeqOfAnyTableType;
+    } else {
+      _returnCols = true;
+      return CoreInfo::AnyTableType;
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -137,21 +310,18 @@ struct Query : public Base {
     }
   }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    if (_dbName.get() != _dbNameStr) {
+      _dbNameStr = _dbName.get();
+      ready = false;
+      prepared.reset();
+    }
+    _ensureDb(context, false);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
-    TableVar &output = _output[_outputCount++ % 2];
+    OutputType &output = _output[_outputCount++ % 2];
 
     return awaitne(
         context,
@@ -160,7 +330,8 @@ struct Query : public Base {
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           if (!prepared) {
-            prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
+            prepared.reset(
+                new Statement(_connection->get(), _query.get().payload.stringValue)); // _query is full terminated cos cloned
           }
 
           sqlite3_reset(prepared->get());
@@ -199,65 +370,7 @@ struct Query : public Base {
             }
           }
 
-          colSeqs.clear();
-          bool empty = true;
-          while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
-            auto count = sqlite3_column_count(prepared->get());
-            if (count == 0) {
-              continue;
-            }
-
-            empty = false;
-
-            // fill column cache on first row
-            if (colSeqs.empty()) {
-              for (int i = 0; i < count; i++) {
-                auto colName = sqlite3_column_name(prepared->get(), i);
-                auto colNameVar = Var(colName);
-                auto &col = output[colNameVar];
-                if (col.valueType == SHType::None) {
-                  SeqVar seq;
-                  output.insert(colNameVar, std::move(seq));
-                  colSeqs.push_back(&asSeq(output[colNameVar]));
-                } else {
-                  auto &seq = asSeq(col);
-                  seq.clear();
-                  colSeqs.push_back(&seq);
-                }
-              }
-            }
-
-            for (auto i = 0; i < count; i++) {
-              auto &col = *colSeqs[i];
-              auto type = sqlite3_column_type(prepared->get(), i);
-              switch (type) {
-              case SQLITE_INTEGER:
-                col.push_back(Var((int64_t)sqlite3_column_int64(prepared->get(), i)));
-                break;
-              case SQLITE_FLOAT:
-                col.push_back(Var(sqlite3_column_double(prepared->get(), i)));
-                break;
-              case SQLITE_TEXT:
-                col.push_back(Var((const char *)sqlite3_column_text(prepared->get(), i)));
-                break;
-              case SQLITE_BLOB:
-                col.push_back(Var((const uint8_t *)sqlite3_column_blob(prepared->get(), i),
-                                  (uint32_t)sqlite3_column_bytes(prepared->get(), i)));
-                break;
-              case SQLITE_NULL:
-                col.push_back(Var::Empty);
-                break;
-              default:
-                throw ActivationError("Unsupported Var type for sqlite");
-              }
-            }
-          }
-
-          if (rc != SQLITE_DONE) {
-            throw ActivationError(sqlite3_errmsg(_connection->get()));
-          }
-
-          return empty ? emptyOutput : output;
+          return _returnCols ? getOutputCols(output) : getOutputRows(output);
         },
         [] {});
   }
@@ -267,30 +380,39 @@ struct Transaction : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  SHComposeResult _composeResult{};
+
+  void setup() { _dbName = Var("shards.db"); }
+
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
-    _queries.compose(data);
+    _composeResult = _queries.compose(data);
     return data.inputType;
   }
 
+  SHExposedTypesInfo exposedVariables() { return _composeResult.exposedInfo; }
+
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    ENSURE_DB(context, false);
+
+    // avoid transaction nesting
+    std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
+    // try to lock, if we can't we suspend
+    while (!lock.try_lock()) {
+      SH_SUSPEND(context, 0);
+    }
 
     await(
         context,
@@ -338,29 +460,30 @@ struct LoadExtension : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_VAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType});
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  void setup() {
+    _extPath = Var("my-extension");
+    _dbName = Var("shards.db");
+  }
+
+  PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
+  PARAM_REQUIRED_VARIABLES();
+
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     return data.inputType;
   }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    ENSURE_DB(context, false);
 
     return awaitne(
         context,
@@ -368,7 +491,7 @@ struct LoadExtension : public Base {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
+          std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
           _connection->loadExtension(extPath);
           return input;
         },
@@ -380,28 +503,31 @@ struct RawQuery : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
+  void setup() {
+    _dbName = Var("shards.db");
+    _readOnly = Var(false);
+  }
+
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_readOnly));
+
+  PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
     return outputTypes().elements[0];
   }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    if (_dbName.valueType != SHType::None) {
-      Base::_dbName = SHSTRVIEW(_dbName);
-    } else {
-      Base::_dbName = "shards.db";
-    }
-
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
     return awaitne(
         context,
@@ -424,6 +550,74 @@ struct RawQuery : public Base {
   }
 };
 
+struct Backup : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void setup() {
+    _dest = Var("backup.db");
+    _dbName = Var("shards.db");
+  }
+
+  PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    Base::compose(data);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    ENSURE_DB(context, true);
+
+    return awaitne(
+        context,
+        [&] {
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::unique_lock<std::mutex> l2(_connection->mutex);
+
+          auto destPath = SHSTRVIEW(_dest.get());
+          sqlite3 *pDest;
+          auto rc = sqlite3_open(destPath.data(), &pDest);
+          if (rc != SQLITE_OK) {
+            throw ActivationError(sqlite3_errmsg(pDest));
+          }
+          DEFER({ sqlite3_close(pDest); });
+
+          auto pBackup = sqlite3_backup_init(pDest, "main", _connection->get(), "main");
+          if (!pBackup) {
+            throw ActivationError(sqlite3_errmsg(pDest));
+          }
+          DEFER({ sqlite3_backup_finish(pBackup); });
+
+          // do 5 pages, unlock, yield a bit, repeat
+          do {
+            rc = sqlite3_backup_step(pBackup, 5);
+            if (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
+              // unlock
+              l2.unlock();
+              // thread wait here 250 ms
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));
+              // lock again
+              l2.lock();
+            }
+          } while (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED);
+
+          return input;
+        },
+        [] {});
+  }
+};
+
 } // namespace DB
 } // namespace shards
 SHARDS_REGISTER_FN(sqlite) {
@@ -432,4 +626,5 @@ SHARDS_REGISTER_FN(sqlite) {
   REGISTER_SHARD("DB.Transaction", Transaction);
   REGISTER_SHARD("DB.LoadExtension", LoadExtension);
   REGISTER_SHARD("DB.RawQuery", RawQuery);
+  REGISTER_SHARD("DB.Backup", Backup);
 }

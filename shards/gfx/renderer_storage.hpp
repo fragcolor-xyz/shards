@@ -43,7 +43,7 @@ struct RendererStorage {
     if (textureData.externalView)
       return textureData.externalView;
 
-    assert(textureData.texture);
+    shassert(textureData.texture && "Invalid texture");
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
         .dimension = WGPUTextureViewDimension_2D,
@@ -54,7 +54,7 @@ struct RendererStorage {
         .aspect = WGPUTextureAspect_All,
     };
     WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData, desc);
-    assert(result);
+    shassert(result);
     return result;
   }
 };

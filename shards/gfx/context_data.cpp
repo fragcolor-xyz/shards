@@ -1,5 +1,6 @@
 #include "context_data.hpp"
 #include "context.hpp"
+#include "../core/assert.hpp"
 
 namespace gfx {
 
@@ -8,13 +9,13 @@ namespace gfx {
 std::recursive_mutex ContextData::globalMutex;
 
 void ContextData::bindToContext(Context &context) {
-  assert(!this->context);
+  shassert(!this->context);
   this->context = &context;
   this->context->addContextDataInternal(weak_from_this());
 }
 
 void ContextData::unbindFromContext() {
-  assert(context);
+  shassert(context);
   context->removeContextDataInternal(this);
   context = nullptr;
 }

@@ -3,6 +3,7 @@
 
 #include "../linalg.hpp"
 #include "mesh_drawable.hpp"
+#include "../anim/path.hpp"
 #include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <memory>
@@ -37,6 +38,10 @@ struct TRS {
 struct MeshTreeDrawable final : public IDrawable, public std::enable_shared_from_this<MeshTreeDrawable> {
   typedef std::shared_ptr<MeshTreeDrawable> Ptr;
 
+  struct CloningContext {
+    std::map<std::shared_ptr<Skin>, std::shared_ptr<Skin>> skinMap;
+  };
+
 private:
   UniqueId id = getNextDrawableId();
   friend struct gfx::UpdateUniqueId<MeshTreeDrawable>;
@@ -47,9 +52,10 @@ public:
   float4x4 resolvedTransform;
   TRS trs;
   Ptr::weak_type parent;
-  std::string label;
+  FastString name;
 
   DrawablePtr clone() const override;
+  DrawablePtr clone(CloningContext &ctx) const;
   DrawableProcessorConstructor getProcessor() const override;
 
   // Visits each MeshTreeDrawable in this tree and calls callback on it
@@ -59,16 +65,56 @@ public:
   template <typename T> static inline bool traverseDepthFirst(const Ptr &from, T &&callback);
   static inline Ptr findRoot(const Ptr &item);
 
-  Ptr findNode(std::string_view label) {
+  anim::Path getPath(Ptr rootNode = nullptr) const {
+    auto self = std::const_pointer_cast<MeshTreeDrawable>(shared_from_this());
+    if (!rootNode)
+      rootNode = findRoot(self);
+    anim::Path path;
+    MeshTreeDrawable::traverseDown(rootNode, self, [&](auto &node) { path.push_back(node->name); });
+    return path;
+  }
+
+  Ptr findNode(FastString name) {
     Ptr found;
     traverseDepthFirst(shared_from_this(), [&](Ptr node) {
-      if (node->label == label) {
+      if (node->name == name) {
         found = node;
         return false;
       }
       return true;
     });
     return found;
+  }
+
+  MeshTreeDrawable::Ptr resolvePath(const anim::Path &p_) const {
+    anim::Path p = p_;
+    return resolvePath(p);
+  }
+
+  // Modifies path and returns the mesh tree node found
+  // the path will contain the elements after the node that was found
+  // there can only be builtin target identifiers left in the path
+  MeshTreeDrawable::Ptr resolvePath(anim::Path &p) const {
+    auto node = shared_from_this();
+    while (true) {
+      if (!node)
+        return MeshTreeDrawable::Ptr();
+
+      // Stop when end of path is reached
+      // or we encounter a builtin target identifier
+      if (!p || anim::isGltfBuiltinTarget(p.getHead()))
+        return std::const_pointer_cast<MeshTreeDrawable>(node);
+
+      for (auto &child : node->getChildren()) {
+        if (child->name == p.getHead()) {
+          node = child;
+          p = p.next();
+          goto _next;
+        }
+      }
+      return MeshTreeDrawable::Ptr();
+    _next:;
+    }
   }
 
   void setChildren(std::vector<Ptr> &&children) {

@@ -208,7 +208,7 @@ struct IndexOf {
     }
   }
 
-  void cleanup(SHContext* context) { _item.cleanup(); }
+  void cleanup(SHContext *context) { _item.cleanup(); }
   void warmup(SHContext *context) { _item.warmup(context); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -318,11 +318,10 @@ struct Join {
 };
 
 struct Merge {
-  PARAM_PARAMVAR(_target, "Target", "The table to merge into.",
-                 {
-                     CoreInfo::AnyVarTableType,
-                 });
+  PARAM_PARAMVAR(_target, "Target", "The table to merge into.", {CoreInfo::AnyVarTableType});
   PARAM_IMPL(PARAM_IMPL_FOR(_target));
+
+  PARAM_REQUIRED_VARIABLES();
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
@@ -333,11 +332,13 @@ struct Merge {
                    "different sources while keeping the priority of certain values.");
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     if (!_target.isVariable()) {
       throw ComposeError("Target must be a variable");
     }
@@ -362,10 +363,109 @@ struct Merge {
   }
 };
 
+struct Zip {
+  SHOptionalString help() {
+    return SHCCSTR("Zip will take any number of sequences and return a sequence of sequences, where each sequence is a tuple of "
+                   "the values from the input sequences at the same index.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfAnySeqType; }
+
+  PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqsType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_seqs));
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::SeqOfSeqsType;
+  }
+
+  void cleanup(SHContext *context) {
+    for (auto ref : _refs) {
+      if (ref != nullptr) {
+        releaseVariable(ref);
+      }
+    }
+    _refs.clear();
+
+    PARAM_CLEANUP(context);
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    auto &seqs = _seqs.payload.seqValue;
+    for (auto &v : seqs) {
+      if (v.valueType == SHType::ContextVar) {
+        auto name = SHSTRVIEW(v);
+        auto vp = referenceVariable(context, name);
+        _refs.emplace_back(vp);
+      } else {
+        // add null to mark it's a constant!
+        _refs.emplace_back(nullptr);
+      }
+    }
+  }
+
+  SeqVar _output{};
+  std::vector<SHVar *> _refs{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
+    auto seqsLen = _refs.size();
+
+    // find the shortest sequence
+    uint32_t shortestLen = 0;
+    for (uint32_t i = 0; i < seqsLen; i++) {
+      SeqVar *innerSeq = nullptr;
+      if (_refs[i]) {
+        innerSeq = &asSeq(*_refs[i]);
+      } else {
+        // const seq case
+        innerSeq = &asSeq(_seqs.payload.seqValue.elements[i]);
+      }
+
+      if (i == 0) {
+        shortestLen = innerSeq->size();
+      } else {
+        if (innerSeq->size() < shortestLen) {
+          shortestLen = innerSeq->size();
+        }
+      }
+    }
+
+    _output.resize(shortestLen);
+
+    for (uint32_t i = 0; i < shortestLen; i++) {
+      auto &inner = _output[i];
+      if (inner.valueType != SHType::Seq) {
+        inner = SeqVar();
+      }
+
+      auto &innerSeq = asSeq(inner);
+
+      for (uint32_t y = 0; y < seqsLen; y++) {
+        if (_refs[y]) {
+          innerSeq.emplace_back(_refs[y]->payload.seqValue.elements[i]);
+        } else {
+          // const seq case
+          innerSeq.emplace_back(_seqs.payload.seqValue.elements[y].payload.seqValue.elements[i]);
+        }
+      }
+    }
+
+    return _output;
+  }
+};
+
 SHARDS_REGISTER_FN(seqs) {
   REGISTER_SHARD("Flatten", Flatten);
   REGISTER_SHARD("IndexOf", IndexOf);
   REGISTER_SHARD("Bytes.Join", Join);
   REGISTER_SHARD("Merge", Merge);
+  REGISTER_SHARD("Zip", Zip);
 }
 }; // namespace shards

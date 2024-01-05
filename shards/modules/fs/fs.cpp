@@ -566,6 +566,20 @@ struct CreateDirectories {
     return input;
   }
 };
+
+struct Absolute {
+  std::string _output;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    _output.assign(fs::absolute(p).string());
+    return Var(_output);
+  }
+};
 }; // namespace FS
 
 SHARDS_REGISTER_FN(fs) {
@@ -587,5 +601,6 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
   REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
   REGISTER_SHARD("FS.CreateDirectories", FS::CreateDirectories);
+  REGISTER_SHARD("FS.Absolute", FS::Absolute);
 }
 }; // namespace shards

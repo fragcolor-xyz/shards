@@ -19,6 +19,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 wasabi_leb128 = { version = "0.4.0" }
 uuid = { version = "1.4.1", features = ["v4", "fast-rng"] }
 nanoid = "0.4.0"
+rs-snowflake = "0.6.0"
 
 [patch.crates-io]
-chrono = { git = "https://github.com/shards-lang/chrono", rev = "b1d74aef688c27fccc738c64746535905903471a" }
+chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }

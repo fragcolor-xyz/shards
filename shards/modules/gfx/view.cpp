@@ -158,10 +158,11 @@ struct RenderIntoShard {
   PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {AttachmentTable});
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
-                 {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+                 {CoreInfo::NoneType, CoreInfo::Int2Type, CoreInfo::Int2VarType});
   PARAM_VAR(_matchOutputSize, "MatchOutputSize",
-            "When true, the texture rendered into is automatically resized to match the output size.", {CoreInfo::BoolType});
-  PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
+            "When true, the texture rendered into is automatically resized to match the output size.",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::NoneType, CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
@@ -232,14 +233,13 @@ struct RenderIntoShard {
     }
   }
 
-  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments) {
+  void applyAttachments(SHContext *shContext, std::map<FastString, TextureSubResource> &outAttachments) {
     auto &table = _textures.payload.tableValue;
     outAttachments.clear();
     ForEach(table, [&](SHVar &k, SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("RenderInto attachment key should be a string");
-      std::string keyStr(SHSTRVIEW(k));
-      outAttachments.emplace(std::move(keyStr), applyAttachment(shContext, v));
+      outAttachments.emplace(SHSTRVIEW(k), applyAttachment(shContext, v));
     });
 
     if (outAttachments.size() == 0) {
@@ -309,8 +309,6 @@ struct RenderIntoShard {
       auto &v = viewportVar.payload.float4Value;
       // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
-    } else {
-      viewItem.viewport = Rect(referenceSize);
     }
 
     // Make render target fixed size
@@ -400,7 +398,7 @@ struct ViewRangeShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CoreInfo::Float4x4Type;
+    return outputTypes().elements[0];
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }

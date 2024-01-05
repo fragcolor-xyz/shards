@@ -247,7 +247,7 @@ struct BaseRunner : public WireBase {
     if (shards::hasEnded(wire.get())) {
       // stop the root
       if (!shards::stop(wire.get())) {
-        throw ActivationError("Stepped sub-wire did not end normally.");
+        throw ActivationError(fmt::format("Step: errors while running wire {}", wire->name));
       }
     }
 

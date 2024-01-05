@@ -340,7 +340,7 @@ struct Container {
 
   static inline ParameterInfo OutputScaleParameterInfo{"OutputScale",
                                                        SHCCSTR("The scale that the output should be rendered as"),
-                                                       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}};
+                                                       {CoreInfo::NoneType, CoreInfo::AnyType}};
 
 #undef ENUM
 #undef OBJECT
