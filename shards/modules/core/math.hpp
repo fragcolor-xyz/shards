@@ -510,10 +510,10 @@ MATH_BINARY_OPERATION(Add, +, 0);
 MATH_BINARY_OPERATION(Subtract, -, 0);
 MATH_BINARY_OPERATION(Multiply, *, 0);
 MATH_BINARY_OPERATION(Divide, /, 1);
+MATH_BINARY_OPERATION(Mod, %, 0);
 MATH_BINARY_INT_OPERATION(Xor, ^);
 MATH_BINARY_INT_OPERATION(And, &);
 MATH_BINARY_INT_OPERATION(Or, |);
-MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
@@ -681,11 +681,6 @@ struct PowOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::pow(lhs, rhs); }
 };
 using Pow = BinaryOperation<BasicBinaryOperation<PowOp>>;
-
-struct FModOp final {
-  template <typename T> T apply(const T &lhs, const T &rhs) { return std::fmod(lhs, rhs); }
-};
-using FMod = BinaryOperation<BasicBinaryOperation<FModOp>>;
 
 struct LerpOp final {
   template <typename T> T apply(const T &lhs, const T &rhs, double t) { return T((double)lhs + (double(rhs) - double(lhs)) * t); }
