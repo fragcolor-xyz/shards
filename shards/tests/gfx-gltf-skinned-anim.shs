@@ -35,7 +35,7 @@
             Animation.Timer(animation Offset: 1.0
                             Action: {
                              Count(animations) = max
-                             animation-index | Math.Add(1) | Math.FMod(max) > animation-index
+                             animation-index | Math.Add(1) | Math.Mod(max) > animation-index
                             }) |
             Animation.Play(animation)
            }) | GFX.Draw(queue)

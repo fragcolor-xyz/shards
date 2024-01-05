@@ -59,7 +59,6 @@ SHARDS_REGISTER_FN(math) {
   REGISTER_SHARD("Min", Min);
   REGISTER_SHARD("Clamp", Clamp);
   REGISTER_SHARD("Math.Pow", Pow);
-  REGISTER_SHARD("Math.FMod", FMod);
 
   REGISTER_SHARD("Math.Lerp", Lerp);
 }
