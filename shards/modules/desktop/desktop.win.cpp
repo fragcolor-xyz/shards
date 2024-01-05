@@ -333,7 +333,7 @@ struct PixelBase {
   ExposedInfo exposedInfo;
   SHVar *windowVar = nullptr;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (windowVar) {
       releaseVariable(windowVar);
       windowVar = nullptr;
@@ -562,7 +562,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 
   void keyboardEvent(int state, int vkCode) { events.push_back(Var(state, vkCode)); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (attached && hookState) {
       auto selfIt = std::find(hookState->receivers.begin(), hookState->receivers.end(), this);
       hookState->receivers.erase(selfIt);
@@ -624,42 +624,75 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 struct SendKeyEvent : public SendKeyEventBase {
   SHVar *_window = nullptr;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_window) {
       releaseVariable(_window);
       _window = nullptr;
     }
   }
 
+  static bool IsExtendedKey(UINT vkCode) {
+    // List of extended key codes (this is just an example, modify as needed)
+    static const std::set<UINT> extendedKeys = {
+        VK_RCONTROL, VK_RMENU,                                       // Right Control and Alt keys
+        VK_INSERT,   VK_DELETE, VK_HOME, VK_END,  VK_PRIOR, VK_NEXT, // Insert, Delete, Home, End, Page Up, Page Down
+        VK_LEFT,     VK_RIGHT,  VK_UP,   VK_DOWN,                    // Arrow keys
+        VK_NUMLOCK,  VK_CANCEL,                                      // Num Lock, Break
+        VK_SNAPSHOT, VK_DIVIDE                                       // Print Screen, Divide (on numpad)
+                                                                     // Add other extended keys as needed
+    };
+
+    return extendedKeys.find(vkCode) != extendedKeys.end();
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto state = input.payload.int2Value[0];
     UINT vkCode = input.payload.int2Value[1];
 
-    if (_windowVarName.size() > 0 && !_window) {
-      _window = referenceVariable(context, _windowVarName.c_str());
-    }
+    // Determine if the key is an extended key
+    bool isExtendedKey = IsExtendedKey(vkCode);
 
+    // Retrieve window only if needed
     if (_windowVarName.size() > 0) {
+      if (!_window) {
+        _window = referenceVariable(context, _windowVarName.c_str());
+      }
       auto window = AsHWND(*_window);
       if (!window) {
         throw ActivationError("Input object was not a Desktop's window!");
       }
 
-      auto lparam = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC) << 16;
-      lparam = lparam | (state == 0 ? 0x00000001 : 0xC0000001);
+      // Calculate lparam for WM_KEYDOWN or WM_KEYUP
+      auto scanCode = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC);
+      auto lparam = scanCode << 16;
+      if (state == 0) {       // Key Press
+        lparam |= 0x00000001; // Repeat count
+        if (isExtendedKey) {
+          lparam |= 0x01000000; // Set the extended key flag
+        }
+      } else {                // Key Release
+        lparam |= 0xC0000001; // Release flag and repeat count
+        if (!isExtendedKey) {
+          lparam &= ~0x01000000; // Clear the extended key flag if not an extended key
+        }
+      }
+
+      // Simulate keyboard event for a specific window
       PostMessage(window, state == 0 ? WM_KEYDOWN : WM_KEYUP, vkCode, lparam);
     } else {
-      INPUT keyboardEvent;
+      // Simulate global keyboard event
+      INPUT keyboardEvent{};
       keyboardEvent.type = INPUT_KEYBOARD;
       keyboardEvent.ki.wVk = vkCode;
       keyboardEvent.ki.wScan = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC);
-      keyboardEvent.ki.dwFlags = 0;
-      if (state == 1) { // release
-        keyboardEvent.ki.dwFlags = keyboardEvent.ki.dwFlags | KEYEVENTF_KEYUP;
+      keyboardEvent.ki.dwFlags = (state == 1) ? KEYEVENTF_KEYUP : 0;
+      if (isExtendedKey) {
+        keyboardEvent.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
       }
       keyboardEvent.ki.dwExtraInfo = GetMessageExtraInfo();
       SendInput(1, &keyboardEvent, sizeof(keyboardEvent));
     }
+
     return input;
   }
 };
@@ -979,7 +1012,7 @@ struct SetTimerResolution {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     ULONG tmp;
     NtSetTimerResolution(0, FALSE, &tmp);
   }
