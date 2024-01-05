@@ -50,8 +50,8 @@
 
 @wire(download {
   none |
-  Http.Get("https://ipfs.io/ipfs/QmSsba3SLnAEVGFaEcnpUeRuAb2vrJE2wpLpmRonf6aRrm" Bytes: true Timeout: 60) = avocado
-  "avocado.glb" | FS.Write(avocado Overwrite: true)
+  Http.Get("https://github.com/fragcolor-xyz/shards/blob/devel/assets/ShardsLogo.png" Bytes: true Timeout: 60) = shards
+  "shards.png" | FS.Write(avocado Overwrite: true)
 })
 
 @schedule(root download)
