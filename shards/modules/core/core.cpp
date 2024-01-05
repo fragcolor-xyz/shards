@@ -1881,6 +1881,20 @@ SHVar blockingSleepActivation(const SHVar &input) {
   return input;
 }
 
+struct LastError {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &msg = context->getErrorMessage();
+    if (msg.empty()) {
+      return Var("");
+    } else {
+      return Var(msg);
+    }
+  }
+};
+
 struct LowestHighestShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -2267,5 +2281,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
   REGISTER_SHARD("Shards.Enumerate", GetShards);
   REGISTER_SHARD("Shards.Help", GetShardHelp);
+  REGISTER_SHARD("LastError", LastError);
 }
 }; // namespace shards
