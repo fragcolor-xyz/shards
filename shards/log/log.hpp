@@ -18,6 +18,10 @@ void initLogLevel(Logger logger);
 void initLogFormat(Logger logger);
 void redirectAll(const std::vector<spdlog::sink_ptr> &sinks);
 
+// Controls log filter level of the output sinks
+spdlog::level::level_enum getSinkLevel();
+void setSinkLevel(spdlog::level::level_enum level);
+
 // Setup the default logger if it's not setup already
 void setupDefaultLoggerConditional(std::string fileName = "shards.log");
 } // namespace shards::logging
