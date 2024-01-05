@@ -209,8 +209,6 @@ TEST_CASE("EventBuffer Ring Wrapping") { threadedTestCase(1024, 1ms, 1400, 1ms);
 int main(int argc, char *argv[]) {
   Catch::Session session;
 
-  spdlog::set_level(spdlog::level::debug);
-
   int returnCode = session.applyCommandLine(argc, argv);
   if (returnCode != 0) // Indicates a command line error
     return returnCode;

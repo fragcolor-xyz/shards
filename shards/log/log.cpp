@@ -77,6 +77,21 @@ void redirectAll(const std::vector<spdlog::sink_ptr> &sinks) {
   spdlog::apply_all([&](Logger logger) { logger->sinks() = sinks; });
 }
 
+spdlog::level::level_enum getSinkLevel() {
+  auto &sinks = spdlog::default_logger()->sinks();
+  if (sinks.empty()) {
+    return spdlog::level::off;
+  }
+  return sinks.front()->level();
+}
+
+void setSinkLevel(spdlog::level::level_enum level) {
+  auto &sinks = spdlog::default_logger()->sinks();
+  for (auto &sink : sinks) {
+    sink->set_level(level);
+  }
+}
+
 static void setupDefaultLogger(const std::string &fileName = "shards.log") {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
