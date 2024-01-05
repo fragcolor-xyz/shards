@@ -248,6 +248,18 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
       fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
 }
 
+struct ModOp final {
+  template <typename T> T apply(const T &lhs, const T &rhs) {
+    if constexpr (std::is_floating_point<T>::value) {
+      // Use std::fmod for floating-point types
+      return std::fmod(lhs, rhs);
+    } else {
+      // Use the modulo operator for integral types
+      return lhs % rhs;
+    }
+  }
+};
+
 #define MATH_BINARY_OPERATION(__name, __op)                                            \
   struct __name##Op final {                                                            \
     template <typename T> T apply(const T &lhs, const T &rhs) { return lhs __op rhs; } \
@@ -260,7 +272,6 @@ MATH_BINARY_OPERATION(Divide, /);
 MATH_BINARY_OPERATION(Xor, ^);
 MATH_BINARY_OPERATION(And, &);
 MATH_BINARY_OPERATION(Or, |);
-MATH_BINARY_OPERATION(Mod, %);
 MATH_BINARY_OPERATION(LShift, <<);
 MATH_BINARY_OPERATION(RShift, >>);
 

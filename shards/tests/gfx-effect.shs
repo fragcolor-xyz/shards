@@ -36,7 +36,7 @@
 
         ; Manipulate coordinates
         v | Math.Multiply(300.0) | Math.Cos | Math.Multiply(0.001) | Math.Add(u) > u
-        MakeFloat2(u v) | Math.Multiply(2.0) | Math.FMod(@f2(1.0 1.0)) > uv
+        MakeFloat2(u v) | Math.Multiply(2.0) | Math.Mod(@f2(1.0 1.0)) > uv
 
         ; Sample the previous pass color output
         uv | Shader.SampleTextureCoord("color") | ToFloat4 >= color
@@ -47,7 +47,7 @@
         Shader.LinearizeDepth | Math.Subtract(6.0) | Math.Divide(4.0) >= depth
 
         ; Write output to "color"
-        MakeFloat4(depth depth 1.0 1.0) | Math.Multiply(color) | 
+        MakeFloat4(depth depth 1.0 1.0) | Math.Multiply(color) |
         Shader.WriteOutput("color")
         ; End shader
       }
