@@ -51,7 +51,7 @@
 @wire(download {
   none |
   Http.Get("https://github.com/fragcolor-xyz/shards/blob/devel/assets/ShardsLogo.png" Bytes: true Timeout: 60) = shards
-  "shards.png" | FS.Write(avocado Overwrite: true)
+  "shards.png" | FS.Write(shards Overwrite: true)
 })
 
 @schedule(root download)
