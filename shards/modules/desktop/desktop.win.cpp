@@ -958,6 +958,50 @@ typedef Click<MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP> LeftClick;
 typedef Click<MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP> RightClick;
 typedef Click<MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP> MiddleClick;
 
+template <bool HORIZONTAL>
+struct Scroll : public MousePosBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    INPUT event;
+    event.type = INPUT_MOUSE;
+    event.mi.mouseData = 0;
+    event.mi.dwFlags = 0;
+    event.ki.dwExtraInfo = GetMessageExtraInfo();
+    event.mi.dwFlags = MOUSEEVENTF_ABSOLUTE;
+
+    // just get current mouse pos and pass it thru
+    event.mi.dwFlags = MOUSEEVENTF_ABSOLUTE;
+    POINT p;
+    if (!GetPhysicalCursorPos(&p)) {
+      throw ActivationError("GetPhysicalCursorPos failed.");
+    }
+    event.mi.dx = p.x;
+    event.mi.dy = p.y;
+    event.mi.dx = (event.mi.dx * 65536) / GetSystemMetrics(SM_CXSCREEN);
+    event.mi.dy = (event.mi.dy * 65536) / GetSystemMetrics(SM_CYSCREEN);
+
+    if constexpr (HORIZONTAL) {
+      event.mi.dwFlags = MOUSEEVENTF_HWHEEL;
+      event.mi.mouseData = (DWORD)floor(input.payload.floatValue * WHEEL_DELTA);
+    } else {
+      event.mi.dwFlags = MOUSEEVENTF_WHEEL;
+      event.mi.mouseData = (DWORD)floor(input.payload.floatValue * WHEEL_DELTA);
+    }
+
+    if (!SendInput(1, &event, sizeof(INPUT))) {
+      SHLOG_ERROR("SendInput (scroll) error: {0:x}", GetLastError());
+      throw ActivationError("Scroll failed.");
+    }
+
+    return input;
+  }
+};
+
+struct ScrollHorizontal : public Scroll<true> {};
+struct ScrollVertical : public Scroll<false> {};
+
 struct CursorBitmap {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
@@ -1320,4 +1364,6 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD2(Desktop, CursorBitmap);
   REGISTER_SHARD2(Desktop, SetTimerResolution);
   REGISTER_SHARD("Desktop.LastInput", LastInput);
+  REGISTER_SHARD("Desktop.ScrollHorizontal", ScrollHorizontal);
+  REGISTER_SHARD("Desktop.ScrollVertical", ScrollVertical);
 }
