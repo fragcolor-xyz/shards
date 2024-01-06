@@ -105,6 +105,10 @@ inline AABounds getMeshBounds(MeshPtr mesh) {
     throw std::runtime_error("Mesh has no position attribute");
   }
 
+  if (mesh->getNumVertices() == 0) {
+    return bounds;
+  }
+
   const uint8_t *basePtr = mesh->getVertexData().data() + *positionOffset;
   for (size_t i = 0; i < mesh->getNumVertices(); i++) {
     auto &pt = *(float3 *)(basePtr + stride * i);

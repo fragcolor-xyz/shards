@@ -1,9 +1,12 @@
 #include "log.hpp"
+#include "spdlog/fmt/bundled/core.h"
+#include <iterator>
 #include <spdlog/spdlog.h>
 #include <vector>
 #include <SDL_stdinc.h>
 #include <magic_enum.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <spdlog/sinks/dist_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -13,14 +16,37 @@
 
 namespace shards::logging {
 void init(Logger logger) {
+  spdlog::register_logger(logger);
   initLogLevel(logger);
   initLogFormat(logger);
   initSinks(logger);
 }
 
 void initLogLevel(Logger logger) {
-  std::string varName = fmt::format("LOG_{}", logger->name());
-  if (const char *val = SDL_getenv(varName.c_str())) {
+  std::string loggerName = logger->name();
+  std::string varName;
+
+  const char *val{};
+  auto tryReadEnvVar = [&]() {
+    varName.clear();
+    fmt::format_to(std::back_inserter(varName), "LOG_{}", loggerName);
+    val = SDL_getenv(varName.c_str());
+  };
+
+  tryReadEnvVar();
+
+  if (!val) {
+    boost::algorithm::to_lower(loggerName);
+    tryReadEnvVar();
+  }
+
+  if (!val) {
+    varName.clear();
+    boost::algorithm::to_upper(loggerName);
+    tryReadEnvVar();
+  }
+
+  if (val) {
     auto enumVal = magic_enum::enum_cast<spdlog::level::level_enum>(val);
     if (enumVal.has_value()) {
       logger->set_level(enumVal.value());
@@ -49,6 +75,21 @@ Logger get(const std::string &name) {
 
 void redirectAll(const std::vector<spdlog::sink_ptr> &sinks) {
   spdlog::apply_all([&](Logger logger) { logger->sinks() = sinks; });
+}
+
+spdlog::level::level_enum getSinkLevel() {
+  auto &sinks = spdlog::default_logger()->sinks();
+  if (sinks.empty()) {
+    return spdlog::level::off;
+  }
+  return sinks.front()->level();
+}
+
+void setSinkLevel(spdlog::level::level_enum level) {
+  auto &sinks = spdlog::default_logger()->sinks();
+  for (auto &sink : sinks) {
+    sink->set_level(level);
+  }
 }
 
 static void setupDefaultLogger(const std::string &fileName = "shards.log") {
@@ -82,7 +123,7 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
 #endif
 
   // Set default log level
-  spdlog::set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
+  logger->set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
 
   // Init log level from environment variable
   initLogLevel(logger);

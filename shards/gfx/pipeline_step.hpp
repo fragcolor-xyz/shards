@@ -1,6 +1,7 @@
 #ifndef D251FF97_80A2_4ACD_856B_0D3A776BB7A7
 #define D251FF97_80A2_4ACD_856B_0D3A776BB7A7
 
+#include "boost/container/vector.hpp"
 #include "fwd.hpp"
 #include "material.hpp"
 #include "gfx_wgpu.hpp"
@@ -221,7 +222,12 @@ struct RenderFullscreenStep {
 
 typedef std::variant<NoopStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;
 typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
+
+#if !defined(NDEBUG)
+typedef std::vector<PipelineStepPtr> PipelineSteps;
+#else
 typedef boost::container::small_vector<PipelineStepPtr, 8> PipelineSteps;
+#endif
 
 template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::forward<T>(step)); }
 
