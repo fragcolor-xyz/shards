@@ -17,6 +17,7 @@
 #include <gfx/window.hpp>
 #include <gfx/gfx_wgpu.hpp>
 #include <gfx/log.hpp>
+#include "../../core/pool.hpp"
 #include <spdlog/spdlog.h>
 #include <map>
 #include <vector>
@@ -27,11 +28,24 @@ namespace gfx {
 
 static auto logger = getLogger();
 
-struct MeshPoolOps {
-  size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
-  void init(MeshPtr &item, size_t size) const { item = std::make_shared<Mesh>(); }
+inline constexpr auto findMeshInPoolBySize(size_t targetSize) {
+  if (targetSize > INT64_MAX) {
+    throw std::runtime_error("targetSize too large");
+  }
+  return [targetSize](MeshPtr &item) -> int64_t {
+    size_t size = item->getNumVertices() * item->getFormat().getVertexSize();
+    if (size < targetSize) {
+      return INT64_MAX;
+    }
+    return int64_t(size) - int64_t(targetSize);
+  };
+}
+
+struct MeshPool : public shards::Pool<MeshPtr> {
+  MeshPtr &allocateBuffer(size_t size) {
+    return this->newValue([](auto &buffer) {}, findMeshInPoolBySize(size));
+  }
 };
-typedef detail::SizedItemPool<MeshPtr, MeshPoolOps> MeshPool;
 
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
@@ -195,7 +209,7 @@ struct EguiRendererImpl {
 
   void render(const egui::RenderOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
               bool clipGeometry) {
-    meshPool.reset();
+    meshPool.recycle();
 
     applyTextureUpdatesPreRender(output);
 
@@ -239,7 +253,6 @@ struct EguiRendererImpl {
 };
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
-
 
 void EguiRenderer::applyTextureUpdatesOnly(const egui::RenderOutput &output) {
   impl->applyTextureUpdatesPreRender(output);

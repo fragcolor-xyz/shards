@@ -40,7 +40,7 @@ public:
 
   void reset() {
     std::lock_guard<std::mutex> _lock(mutex);
-    bufferPool.reset();
+    bufferPool.recycle();
   }
 };
 

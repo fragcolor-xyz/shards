@@ -11,7 +11,7 @@
 #include <magic_enum.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/params.hpp>
-#include <shards/core/ref_output_pool.hpp>
+#include <shards/core/pool.hpp>
 #include <type_traits>
 #include <variant>
 
@@ -175,7 +175,7 @@ struct DrawShard {
 } // namespace gfx
 
 namespace shards {
-template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
+template <> struct PoolItemTraits<gfx::SHDrawQueue *> {
   gfx::SHDrawQueue *newItem() {
     auto queue = gfx::detail::Container::DrawQueueObjectVar.New();
     queue->queue = std::make_shared<gfx::DrawQueue>();
@@ -183,6 +183,7 @@ template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
   }
   void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
   size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
+  bool canRecycle(gfx::SHDrawQueue *&v) { return getRefCount(v) == 1; }
   void recycled(gfx::SHDrawQueue *&v) { v->queue->clear(); }
 };
 } // namespace shards
@@ -200,7 +201,7 @@ struct DrawQueueShard {
   PARAM_VAR(_trace, "Trace", "Enables debug tracing on this queue", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded), PARAM_IMPL_FOR(_trace));
 
-  std::variant<SHDrawQueue *, RefOutputPool<SHDrawQueue *>> _output;
+  std::variant<SHDrawQueue *, Pool<SHDrawQueue *>> _output;
 
   DrawQueueShard() {
     _autoClear = Var(true);
@@ -213,7 +214,7 @@ struct DrawQueueShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if ((bool)*_threaded) {
-      _output.emplace<RefOutputPool<SHDrawQueue *>>();
+      _output.emplace<Pool<SHDrawQueue *>>();
     } else {
       _output.emplace<SHDrawQueue *>();
     }
@@ -254,7 +255,7 @@ struct DrawQueueShard {
       (*_queue)->queue->clear();
       return Types::DrawQueueObjectVar.Get((*_queue));
     } else {
-      auto &pool = std::get<RefOutputPool<SHDrawQueue *>>(_output);
+      auto &pool = std::get<Pool<SHDrawQueue *>>(_output);
       pool.recycle();
       auto queue = pool.newValue([&](SHDrawQueue *&_queue) { initQueue(_queue->queue); });
       queue->queue->clear();

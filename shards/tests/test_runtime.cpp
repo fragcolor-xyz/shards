@@ -1996,9 +1996,9 @@ TEST_CASE("meshThreadTask-looped") {
   mesh.reset();
 }
 
-#include <shards/core/ref_output_pool.hpp>
+#include <shards/core/pool.hpp>
 
-struct TestRefPoolItem {
+struct TestPoolItem {
   size_t refCount{};
   std::string tag;
 
@@ -2011,23 +2011,23 @@ struct TestRefPoolItem {
 };
 
 namespace shards {
-template <> struct RefOutputPoolItemTraits<TestRefPoolItem *> {
-  TestRefPoolItem *newItem() { return new TestRefPoolItem{.refCount = 1}; }
-  void release(TestRefPoolItem *&ptr) { ptr->dec(); }
-  size_t getRefCount(TestRefPoolItem *&v) { return v->refCount; }
-  void recycled(TestRefPoolItem *&v) {}
+template <> struct PoolItemTraits<TestPoolItem *> {
+  TestPoolItem *newItem() { return new TestPoolItem{.refCount = 1}; }
+  void release(TestPoolItem *&ptr) { ptr->dec(); }
+  size_t canRecycle(TestPoolItem *&v) { return v->refCount == 1; }
+  void recycled(TestPoolItem *&v) {}
 };
 } // namespace shards
 
-TEST_CASE("RefOutputPool") {
-  TestRefPoolItem *t3{};
+TEST_CASE("Pool") {
+  TestPoolItem *t3{};
   {
-    RefOutputPool<TestRefPoolItem *> pool;
+    Pool<TestPoolItem *> pool;
     pool.recycle();
-    auto t0 = pool.newValue([&](TestRefPoolItem *item) { item->tag = "item1"; });
+    auto t0 = pool.newValue([&](TestPoolItem *item) { item->tag = "item1"; });
     t0->inc();
     pool.recycle();
-    auto t1 = pool.newValue([&](TestRefPoolItem *item) { item->tag = "item2"; });
+    auto t1 = pool.newValue([&](TestPoolItem *item) { item->tag = "item2"; });
     t1->inc();
     pool.recycle();
     CHECK(t0->tag == "item1");
@@ -2036,12 +2036,12 @@ TEST_CASE("RefOutputPool") {
     t0->dec();
 
     pool.recycle();
-    auto t2 = pool.newValue([&](TestRefPoolItem *item) {});
+    auto t2 = pool.newValue([&](TestPoolItem *item) {});
     t2->inc();
     CHECK(t2->tag == "item1"); // Check that this has been reused
 
     pool.recycle();
-    t3 = pool.newValue([&](TestRefPoolItem *item) {});
+    t3 = pool.newValue([&](TestPoolItem *item) {});
     t3->inc();
     CHECK(t3->tag.empty()); // Check that this is a new item
 
