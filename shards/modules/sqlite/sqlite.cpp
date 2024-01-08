@@ -601,7 +601,7 @@ struct Backup : public Base {
 
           // do 5 pages, unlock, yield a bit, repeat
           do {
-            rc = sqlite3_backup_step(pBackup, 5);
+            rc = sqlite3_backup_step(pBackup, 200);
             if (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
               // unlock
               l2.unlock();
