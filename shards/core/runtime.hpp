@@ -5,6 +5,7 @@
 #define SH_CORE_RUNTIME
 
 // must go first
+#include "boost/container/stable_vector.hpp"
 #include <shards/shards.h>
 #include <type_traits>
 
@@ -729,7 +730,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
     shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
-    _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
+    // Erase-Remove Idiom
+    _flowPool.erase(
+        std::remove_if(_flowPool.begin(), _flowPool.end(), [wire](const auto &flow) { return flow.wire == wire.get(); }),
+        _flowPool.end());
   }
 
   bool empty() { return _flowPool.empty(); }
@@ -835,10 +839,7 @@ private:
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar *>, 16>>
       refs;
 
-  // given that we often insert and especially remove from the middle of the list
-  // and that the underlying data is just a pointer to a wire basically ( so cache locality is not a problem )
-  // we use a list instead of a vector
-  std::list<SHFlow> _flowPool;
+  boost::container::stable_vector<SHFlow> _flowPool;
 
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
