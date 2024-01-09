@@ -19,6 +19,15 @@
 
   "fbl|pose:transform:0:rot" | String.Split(":") |
   Assert.Is(["fbl|pose" "transform" "0" "rot"])
+
+  """Something
+Something else
+
+And Again!""" | String.Split("\n\n") | Assert.Is([
+  """Something
+Something else"""
+  """And Again!"""
+])
 })
 
 @mesh(root)
