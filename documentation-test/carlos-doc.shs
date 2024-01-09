@@ -76,3 +76,1301 @@ Output: A vector of 16 integers.
 13: Vector component.
 14: Vector component.
 15: Vector component.
+
+ToBase64
+Description: Encodes the input Bytes or String into a base64 encoded String.
+Input: The input is either Bytes or String data to encode.
+Output: The output is a String containing the base64 encoded input data.
+
+IsColor
+Description: Checks if the input is a Color type and outputs a boolean indicating if it is.
+Input: The input can be any type. It is checked against the Color type.
+Output: The output is a boolean indicating if the input was a Color type.
+
+IsAnyMoreEqual
+Description: Checks if any element in a sequence is greater than or equal to a value.
+Input: A sequence and a value to compare each element against.
+Output: A boolean indicating if any element is greater than or equal to the value.
+Value: The value to compare each element in the sequence against.
+
+IsAllMoreEqual
+Description: Checks if all elements in a sequence are greater than or equal to a value.
+Input: A sequence and a value to compare each element against.
+Output: A boolean indicating if all elements are greater than or equal to the value.
+Value: The value to compare each element in the sequence against.
+
+IsAllMore
+Description: Checks if all elements in a sequence are greater than a value.
+Input: A sequence and a value to compare each element against.
+Output: A boolean indicating if all elements are greater than the value.
+Value: The value to compare each element in the sequence against.
+
+IsAnyMore
+Description: Checks if any element in a sequence is greater than a value.
+Input: A sequence and a value to compare each element against.
+Output: A boolean indicating if any element is greater than the value.
+Value: The value to compare each element in the sequence against.
+
+IsAll
+Description: Checks if all elements in a sequence match a value.
+Input: A sequence to compare each element against.
+Output: A boolean indicating if all elements match the value.
+Value: The value to compare each element in the sequence against.
+
+IsAny
+Description: Checks if any element in a sequence matches a value.
+Input: A sequence to compare each element against.
+Output: A boolean indicating if any element matches the value.
+Value: The value to compare each element in the sequence against.
+
+IsAnyNot
+Description: Checks if any element in a sequence does not match a value.
+Input: A sequence and a value to compare each element against.
+Output: A boolean indicating if any element does not match the value.
+Value: The value to compare each element in the sequence against.
+
+ToFloat
+Description: Converts the input to a float.
+Input: Accepts input of any type.
+Output: Input converted to a float.
+
+ToFloat2
+Description: Converts the input to a vector of 2 floats.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 2 floats.
+
+ToFloat3
+Description: Converts the input to a vector of 3 floats.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 3 floats.
+
+ToFloat4
+Description: Converts the input to a vector of 4 floats.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 4 floats.
+
+ToInt2
+Description: Converts the input to a vector of 2 integers.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 2 integers.
+
+ToInt3
+Description: Converts the input to a vector of 3 integers.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 3 integers.
+
+ToInt4
+Description: Converts the input to a vector of 4 integers.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 4 integers.
+
+ToInt8
+Description: Converts the input to a vector of 8 integers.
+Input: Accepts input of any type.
+Output: Enput converted to a vector of 8 integers.
+
+ToInt16
+Description: Converts the input to a vector of 16 integers.
+Input: Accepts input of any type.
+Output: Input converted to a vector of 16 integers.
+
+ToColor
+Description: Converts the input to a color.
+Input: Accepts input of any type.
+Output: Input converted to a color.
+
+ExpectSeq
+Description: Checks if the input matches a sequence type and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Unchanged if it matches the expected sequence type.
+
+ExpectColorSeq
+Description: Checks if the input matches a color sequence type and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it matches a color sequence type.
+
+ExpectTable
+Description: Checks if the input is a table and outputs the input unchanged. Throws error if not a table.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a table.
+
+ExpectWire
+Description: Checks if the input is a wire and outputs the input unchanged. Throws error if not a wire.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a wire.
+
+ExpectColor
+Description: Checks if the input is a color and outputs the input unchanged. Throws error if not a color.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a color.
+
+ExpectBytes
+Description: Checks if the input is bytes and outputs the input unchanged. Throws error if not bytes.
+Input: Accepts input of any type.
+Output: Unchanged if it is bytes.
+
+ExpectFloat4
+Description: Checks if the input is a 4 component float vector and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Unchanged if it is a vector of 4 floating point values.
+
+ExpectInt
+Description: Checks if the input is an integer and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is an integer.
+
+ExpectInt3
+Description: Checks if the input is a vector of 3 integers and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a vector of 3 integers.
+
+ExpectInt4
+Description: Checks if the input is a vector of 4 integers and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a vector of 4 integers.
+
+ExpectInt8
+Description: Checks if the input is a vector of 8 integers and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is a vector of 8 integers.
+
+ExpectAudio
+Description: Checks if the input is audio and outputs the input unchanged. Throws error if not audio.
+Input: Accepts input of any type.
+Output: Outputs the input unchanged if it is audio.
+
+IsFloat3
+Description: Checks if the input is a 3 component float vector and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was a vector of 3 floating point numbers.
+
+IsFloat4
+Description: Checks if the input is a 4 component float vector and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was a vector of 4 floating point numbers.
+
+IsInt
+Description: Checks if the input is an integer and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was an integer.
+
+IsInt2
+Description: Checks if the input is a 2 component integer vector and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was a vector of 2 integers.
+
+IsInt3
+Description: Checks if the input is a 3 component integer vector and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was a vector of 3 integers.
+
+IsInt4
+Description: Checks if the input is a 4 component integer vector and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was a vector of 4 integers.
+
+IsImage
+Description: Checks if the input is an image and outputs true or false.
+Input: Accepts input of any type.
+Output: A boolean indicating if the input was an image.
+
+ToJson
+Description: Converts the input shards data to a JSON string representation.
+Input: Can be of any type.
+Output: A JSON string representation of the input value.
+Pure: If the input string is generic pure json rather than shards flavored json.
+Indent: How many spaces to use as json prettify indent.
+
+Wasm.run
+Description: Executes WebAssembly modules by loading the provided wasm file, configuring the runtime, linking libraries, finding the entrypoint, calling it with provided arguments, and outputting the stdout/stderr output.
+Input: A string that will be passed to stdin of the wasm module.
+Output: A string containing the content written by the wasm module to stdout.
+Module: The path to the WebAssembly (.wasm) file to load and run.
+Arguments: The arguments to pass to the entrypoint function of the loaded WebAssembly module.
+EntryPoint: The name of the function that will be looked up and called as the entrypoint into the WebAssembly module. Defaults to _start.
+StackSize: The size in kilobytes to configure the stack of the wasm runtime to. Defaults to 1024 KB.
+ResetRuntime: Whether to reset/reload the runtime on every activation. Defaults to true. Can be set to false for performance reasons if there are no issues with multiple runs.
+CallConstructors: Whether to explicitly call the __wasm_call_ctors function if it exists to force calling constructors. Defaults to false, but some wasm modules produced by Rust/WASI may need this.
+
+DB.Query
+Description: Executes a SQL query against a SQLite database every time it is activated, and outputs the result.
+Input: Accepts a string containing the SQLite query to execute.
+Output: A table containing the result set of the query. If the query outputted no rows, outputs an empty table.
+Query: The SQLite query to execute each activation. This parameter specifies the actual SQL query string.
+Database: Specifies the SQLite database filename.
+
+DB.RawQuery
+Description: Executes a raw SQL query string against a SQLite database.
+Input: A string containing the full SQL query statement to execute.
+Output: The input string unchanged.
+Database: The filename of the sqlite database to connect to. Defaults to shards.db if not provided.
+
+Unpack
+Description: Unpacks the input bytes into a sequence based on the struct definition string.
+Input: A bytes array containing the binary data to unpack.
+Output: A sequence containing the unpacked data. The sequence order and types will match the struct definition string.
+Definition: A string defining the struct layout e.g. i32 f32 b i8[256] which defines the types and order of members that will be unpacked.
+
+Reflect.Name
+Description: Retrieves the name of a shard.
+Input: Takes in a shard. This is the shard whose name will be retrieved.
+Output: A string containing the name of the input shard.
+
+RandomBytes
+Description: Generates Bytes with random values.
+Input: Ignored.
+Output: Random Bytes.
+Size: The number of bytes that the shard will output. Type is Int and has a default value of 32 bytes.
+
+RandomInt
+Description: Generates a random integer value.
+Input: Ignored.
+Output: Random integer.
+Size: The maximum value to output as an integer literal or variable.
+
+Physics.CastRay
+Description: Casts a ray into the physics simulation and outputs any rigid bodies that were hit by the ray.
+Input: A float3 representing the starting point of the ray, and a second float3 representing the direction and length of the ray. This defines the ray to be cast into the physics simulation.
+Output: A sequence containing any rigid bodies that were hit by the ray, in order from closest to furthest hit point.
+
+Physics.KinematicBody
+Description: Creates a kinematic rigid body that can be moved by setting its position and rotation parameters every frame. The rigid body will interpolate between the parameter values each frame.
+Input: Ignored.
+Output: A 4x4 transform matrix representing the interpolated position and rotation of the kinematic rigid body for the current frame.
+Shapes: The shape(s) that represent the collision volume of the rigid body. Can be a single shape or a sequence of shapes.
+Position: A position that can be set every frame to move the kinematic rigid body.
+Rotation: A rotation that can be set every frame to orient the kinematic rigid body. Can be axis-angle or quaternion.
+Name: The optional variable name to expose the kinematic rigid body to the graph.
+
+Physics.StaticBody
+Description: Creates a static rigid body that does not move and has infinite mass. It collides with dynamic bodies but does not respond to forces or collisions.
+Input: Ignored.
+Output: Outputs the input unchanged.
+Shapes: The shape(s) that represent the collision volume of the static rigid body. Can be a single shape or a sequence of shapes.
+Position: The initial position of the static rigid body. This cannot be changed after creation.
+Rotation: The initial rotation of the static rigid body. This cannot be changed after creation.
+Name: The optional variable name to expose the static rigid body to the graph.
+
+Physics.Ball
+Description: Creates a ball rigid body that can be added to a physics simulation. The ball is attached to a body in the simulation.
+Input: Ignored.
+Output: Rigid ball body object that can be added to a physics simulation.
+Position: The position of the ball relative to the body it is attached to in the simulation. It is a 3D vector.
+Rotation: The rotation of the shape.
+Radius: Specifies the radius of the ball. It is a float value.
+
+ONNX.Activate
+Description: Activates an ONNX model by running inference on the input data and outputting the output. The model must be provided as a parameter.
+Input: A sequence of float values representing the input data to run through the ONNX model.
+Output: A sequence of float values representing the output from running the input through the ONNX model.
+Model: A variable containing the ONNX model object to use for running inference on the input data.
+
+WS.WriteString
+Description: Sends a string message to the connected WebSocket client. The message will be queued and sent asynchronously over the WebSocket connection.
+Input: The string message to send to the WebSocket client.
+Output: The input string unchanged.
+Client: A variable containing a WebSocket client object instance to send the message to.
+
+Network.Server
+Description: A reliable, low-latency UDP server for Shards using IKCP and Boost Asio UDP server. Accepts connections from Network.Client shards. For each new client connection, it spawns a handler wire. Provides reliable packet delivery through IKCP's mechanisms for in-order delivery, retransmission, congestion control, and connection timeout handling. Through IKCP, reduces Round Trime Time by three times compared with TCP.
+Input: Ignored.
+Output: Outputs the input unchanged.
+Address: The local IP address to bind the UDP server to.
+Port: The local port number to bind the UDP server to.
+Handler: An optional wire shard to spawn for each new client connection. The connection is closed when this wire stops.
+Timeout: The number of seconds of inactivity after which a connection is considered timed out and closed.
+
+Network.Send
+Description: Sends the input variable over the network to a peer.
+Input: The value to serialize and send over the network.
+Output: Same as the input, unchanged.
+Peer: The peer to send packets to. When not provided, can be infered from the wire context.
+
+Network.Client
+Description: Creates a client connection to a network server. Receives the data and processes it through the Handler's shard(s) flow.
+Input: Ignored.
+Output: Outputs a peer object representing the client connection to the network server.
+Address: The IP address of the network server to connect to.
+Port: The port number on the network server to connect to.
+Handler: The flow of shard(s) that will be activated when a network packet is received from the server. The deserialized payload will flow through these shard(s).
+
+Network.Peer
+Description: Outputs the peer object representing the current client network connection.
+Input: Ignored.
+Output: The peer object from the wire context.
+
+Network.PeerID
+Description: Retrieves the unique ID associated with provided peer, allowing the peer connection to be identified across any part of a program.
+Input: Ignored.
+Output: An integer representing the unique ID of the peer provided.
+Peer: Allows explicitly specifying the peer to extract the ID. If not provided, the default network peer ID from the wire context will be used instead.
+
+Network.Broadcast
+Description: Sends the input data to all peers connected to the Network.Server server in the wire context.
+Input: A value to broadcast to all peers.
+Output: Same as the input, unchanged.
+
+Physics.Cuboid
+Description: Creates a cuboid collision shape that can be attached to a rigid body. The cuboid is positioned and rotated relative to the body according to the Position and Rotation parameters.
+Input: Ignored.
+Output: A physics object representing the created cuboid shape.
+Position: The position of the cuboid relative to the body it is attached to.
+Rotation: The rotation of the cuboid relative to the body it is attached to.
+HalfExtents: The half-extents (half-size) of the cuboid along its local x, y, and z axes.
+
+Inputs.GetContext
+Description: Retrieves the WindowContext variable from the execution context. The WindowContext contains the window, input master, and other state needed to interact with window input.
+Input: None.
+Output: The WindowContext variable. This provides access to the window, input master, and other input state.
+_context: The required WindowContext variable. This provides the actual WindowContext instance that will be outputted.
+
+Inputs.KeyUp
+Description: Detects keyboard key release events and runs the specified Shards when the key is released.
+Input: Ignored.
+Output: Outputs the input unchanged.
+Key: The name of the key to detect release events for.
+Action: The Shards to run when the key is released.
+Repeat: Whether to trigger on repeated key release events or only on the first release.
+
+Inputs.KeyDown
+Description: Detects keyboard key press events and runs a shard or sequence of shards when the key is pressed.
+Input: Ignored.
+Output: Any type. Outputs the input unchanged.
+Key: The name of the key to detect press events for.
+Action: The Shard or sequence of shards to run when the key is pressed.
+Repeat: Whether to trigger on repeated key press events (true) or only on the first press (false).
+
+Inputs.MouseUp
+Description: Detects mouse button release events and runs the specified Shards when a button is released.
+Input: Ignored.
+Output: Any type. Outputs the input unchanged.
+Left: The shard or sequence of shards to run when the left mouse button is released.
+Right: The shard or sequence of shards to run when the right mouse button is released.
+Middle: The shard or sequence of shards to run when the middle mouse button is released.
+
+Inputs.HandleURL
+Description: Handles URL/file drop events on the application window by running specified Shards.
+Input: Ignored.
+Output: Outputs the input value unchanged.
+Action: The Shards to execute when a URL/file is dropped on the window. The dropped URL string is passed as input to these Shards.
+
+Inputs.IsKeyDown
+Description: Checks if a specific keyboard key is currently held down.
+Input: Ignored.
+Output: Outputs true if the specified key is currently held down, false otherwise.
+Key: The name of the key to check the state of.
+
+Inputs.Mouse
+Description: Configures mouse settings like visibility, confinement, and relative mode.
+Input: Any type. The input is passed through unchanged.
+Output: Any type. Outputs the input unchanged.
+Hidden: Whether to hide the mouse cursor.
+Capture: Whether to confine mouse movement to the application window.
+Relative: Whether to use relative mouse movement reporting.
+
+Inputs.Size
+Description: Gets the size of the input region in pixels.
+Input: None. No input is used.
+Output: Outputs a 2D integer vector containing the width and height of the input region in pixels.
+
+ResizeImage
+Description: Resizes an input image to a target width and height. Uses a high quality resampling algorithm.
+Input: An image to resize.
+Output: The resized image.
+Width: The target width to resize the image, contained in a variable or integer literal.
+Height: The target height to resize the image, contained in a variable or integer literal.
+
+FillAlpha
+Description: Takes a 3-channel image as input and adds an alpha channel filled with a maximum alpha value (255 for 8-bit images, 65535 for 16-bit images, 1.0 for float images) to produce a 4-channel output image.
+Input: An image with 3 channels (typically RGB). The image pixels can be 8-bit unsigned integers, 16-bit unsigned integers, or 32-bit floats.
+Output: An image with 4 channels, with the 4th channel being the alpha channel filled with the maximum alpha value based on the pixel type. The pixel type (8-bit, 16-bit, float) matches the input image.
+
+StripAlpha
+Description: Removes the alpha channel from the input image, making it fully opaque.
+Input: An image that may or may not have transparency (alpha channel).
+Output: The input image with its alpha channel removed, making it fully opaque.
+
+Convolve
+Description: Performs a convolution filter on the input image using a kernel of specified radius. It slides the kernel over the image, extracting a tile of pixels under the kernel, multiplying each pixel by the kernel value, and summing the result into an output pixel. This has the effect of applying a filter that can blur, sharpen or otherwise transform the image.
+Input: An image to apply the convolution to. It can be of any pixel type and channel count.
+Output: The convolved image, with the same type, channels, and size as the input image.
+Radius: The radius of the convolution kernel, controlling the size of the area sampled. Kernel size will be (radius2 + 1) x (radius2 + 1). Larger radius results in more blurring/smoothing.
+Step: Controls how many pixels to advance after each convolution calculation. Higher step skips more pixels, meaning less of the image will actually be convolved.
+
+GetImagePixel
+Description: Takes an image and a 2D integer coordinate as input and outputs the pixel color at that location as an RGBA vector. This allows sampling pixel colors from images.
+Input: A 2D integer coordinate representing the position of the pixel to retrieve from the image.
+Output: An RGBA vector of float or integer pixel values.
+Position: A 2D coordinate of the pixel to retrieve. An Image in variable or as a literal.
+AsInteger: Controls whether to read the pixel as an integer (true) or a float value (false).
+Default: Allows specifying a default RGBA vector of floats or integer values to output if the read fails instead of erroring.
+
+Http.Delete
+Description: Sends an HTTP request using the DELETE method to the given URL. Uses Boost.Beast behind the scenes. Refer to Boost.Beast documentation for more details.
+Input: Request payload: if string or byte array, encoded as body, else if table encoded as form data.
+Output: Response body. If FullResponse is true, outputs a table with status, headers, and body.
+URL: The URL to send the DELETE request to.
+Headers: Custom headers to add to the request. Default content-type header depends on input: if input is string, uses application/json, else if table uses application/x-www-form-urlencoded header, else if byte array uses application/octet-stream.
+Timeout: How many seconds to wait for the request to complete. Throws an error if timeout is exceeded.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+HTTP.Put
+Description: Sends an HTTP request using the PUT method to the given URL. Uses Boost.Beast behind the scenes. Refer to Boost.Beast documentation for more details.
+Input: The body to send in the PUT request. Can be a string, bytes, or a table that will be form-encoded.
+Output: Outputs the response body as a string or bytes. If FullResponse is true, outputs a table with status, headers, and body.
+URL: The URL to send the PUT request to.
+Headers: Custom headers to add to the request. Default content-type header depends on input: if input is string, uses application/json, else if table uses application/x-www-form-urlencoded header, else if byte array uses application/octet-stream.
+Timeout: The timeout in seconds for the request. Throws an error if timeout is exceeded.
+Bytes: Whether to output the response as bytes instead of a string.
+FullResponse: Whether to output the full response object instead of just the body.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Http.Post
+Description: Sends an HTTP request using the POST method to the given URL. Uses Boost.Beast behind the scenes. Refer to Boost.Beast documentation for more details.
+Input: The body to send in the POST request. Can be a string, bytes, or a table that will be form-encoded.
+Output: Outputs the response body as a string or bytes. If FullResponse is true, outputs a table with status, headers, and body.
+URL: The URL to send the POST request to.
+Headers: Custom headers to add to the request. Default content-type header depends on input: if input is string, uses application/json, else if table uses application/x-www-form-urlencoded header, else if byte array uses application/octet-stream.
+Timeout: The timeout in seconds for the request. Throws an error if timeout is exceeded.
+Bytes: Whether to output the response as bytes instead of a string.
+FullResponse: Whether to output the full response object instead of just the body.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Http.Get
+Description: Sends an HTTP request using the POST method to the given URL. Uses Boost.Beast behind the scenes. Refer to Boost.Beast documentation for more details.
+Input: The body to send in the POST request. Can be a string, bytes, or a table that will be form-encoded.
+Output: Outputs the response body as a string or bytes. If FullResponse is true, outputs a table with status, headers, and body.
+URL: The URL to send the POST request to.
+Headers: Custom headers to add to the request. Default content-type header depends on input: if input is string, uses application/json, else if table uses application/x-www-form-urlencoded header, else if byte array uses application/octet-stream.
+Timeout: The timeout in seconds for the request. Throws an error if timeout is exceeded.
+Bytes: Whether to output the response as bytes instead of a string.
+FullResponse: Whether to output the full response object instead of just the body.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+HTTP.Patch
+Description: Sends an HTTP request using the PATCH method to the given URL. Uses Boost.Beast behind the scenes. Refer to Boost.Beast documentation for more details.
+Input: The body to send in the PATCH request. Can be a string, bytes, or a table that will be form-encoded.
+Output: Outputs the response body as a string or bytes. If FullResponse is true, outputs a table with status, headers, and body.
+URL: The URL to send the PATCH request to.
+Headers: Custom headers to add to the request. Default content-type header depends on input: if input is string, uses application/json, else if table uses application/x-www-form-urlencoded header, else if byte array uses application/octet-stream.
+Timeout: The timeout in seconds for the request. Throws an error if timeout is exceeded.
+Bytes: Whether to output the response as bytes instead of a string.
+FullResponse: Whether to output the full response object instead of just the body.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Http.Response
+Description: Sends an HTTP response for a request being handled by an Http.Server shard.
+Input: The response body, either as a string or bytes.
+Output: Outputs the input unchanged.
+Status: The HTTP status code to output.
+Headers: Custom headers to attach to the response. The Status parameter sets the HTTP status code of the response. The Input is used as the response body. Any custom Headers can be added. The shard sends the response back over the socket being handled by the Http.Server and outputs the input unchanged.
+
+Http.Server
+Description: Starts an HTTP server that listens for requests and handles them by spawning a handler wire.
+Input: Ignored.
+Output: Outputs the input unchanged.
+Handler: The wire to spawn for each new request.
+Endpoint: The IP to listen on.
+Port: The port number to listen on.
+
+String.DecodeURI
+Description: Decodes a URI encoded string by replacing each escape sequence with the corresponding character.
+Input: A string potentially containing URI encoded characters.
+Output: A decoded string with all URI escape sequences converted back to normal characters.
+
+Mutant
+Description: Allows mutating parameters of an inner shard by calling mutation shards on those parameters. It indexes parameters of the inner shard and optionally allows specifying mutation shards per parameter index. When mutating, it will either call the mutation shards if provided, or perform a default mutation operation on the parameter value.
+Input: The input to the Mutant shard is passed through to the inner shard. Its purpose is to provide the input for the inner shard to operate on.
+Output: The output of the Mutant shard is the output of the inner shard after mutating its parameters. Its purpose is to output the result of running the inner shard with mutated parameters.
+Shard: The inner shard to mutate the parameters of.
+Indices: The indices of the parameters to mutate in the inner shard. This selects which parameters will be mutated.
+Mutations: Optional mutation shards per indexed parameter of the inner shard. If provided, these will be called to mutate the respective parameter instead of the default mutation.
+Options: A table of options to control mutation behavior. Passed through to the inner shard's mutate method if it has one.
+
+Evolve
+Description: Evolves and optimizes a subject wire by mutating it over generations and selecting the fittest individuals.
+Input: Ignored.
+Output: Produces a wire with the evolved result.
+Wire: The wire to optimize and evolve. This is the subject that will be mutated and evolved over generations.
+Fitness: The fitness wire to evaluate individuals and determine their fitness score. This is used to select the fittest individuals.
+Population: The number of individuals in each generation.
+Mutation: The chance of mutating an individual's genes when reproducing.
+Crossover: The chance that genes will be crossed over between parents when reproducing.
+Extinction: The chance an individual will go extinct each generation.
+Elitism: The chance an individual will be kept as-is for the next generation.
+Threads: The number of threads to use for parallel execution.
+Coroutines: The number of coroutines to run on each thread.
+
+FS.LastWriteTime
+Description: Gets the last write time of the file path provided and outputs it as a unix timestamp integer of seconds since the Epoch.
+Input: A string containing the file path to get its last write time.
+Output: An integer containing the last write time of the file path in unix timestamp format of seconds since the Epoch.
+
+FS.Parent
+Description: Outputs the parent directory path for the given path input. The path doesn't need to exist in the filesystem.
+Input: A string representing an absolute filesystem path. It can be a path to a file, or a path to a directory.
+Output: A string representing the parent directory path of the input path.
+
+FS.RelativeTo
+Description: Converts an absolute file path to a path relative to a specified base directory. The path doesn't need to exist in the filesystem.
+Input: The absolute file path to convert. This is the path that will be made relative to the base directory.
+Output: The input path converted to be relative to the base directory specified with BasePath.
+BasePath: The base directory to make the input path relative to. This will be prepended to the output path.
+
+FS.Iterate
+Description: Recursively iterates over the files and directories within a provided absolute path.
+Input: A string representing an absolute filesystem path that will be iterated over.
+Output: The output is a sequence of strings, representing the files found by iterating the input path.
+Recursive: Boolean value controling whether the iteration is recursive into subdirectories.
+
+FS.Join
+Description: Joins the string paths provided in the input sequence into a single path string.
+Input: A sequence of string paths to join together.
+Output: A string containing the joined paths.
+
+ChaChaPoly.Encrypt
+Description: Encrypts the input bytes using the ChaCha20-Poly1305 authenticated encryption algorithm and the provided encryption key.
+Input: The bytes to encrypt. Can be a String or Bytes value.
+Output: The encrypted bytes outputted as a Bytes value.
+Key: The encryption key to use. This can be a Bytes value, a String value, or a reference to either of those.
+
+ChaChaPoly.Decrypt
+Description: Decrypts the input payload using ChaCha20-Poly1305 authenticated encryption algorithm with the provided private key.
+Input: The payload to be decrypted, previously encrypted using ChaChaPoly.Encrypt.
+Output: The decrypted plaintext payload.
+Key: The private key to use for decryption. Must match the key used during encryption using ChaChaPoly.Encrypt.
+
+FS.SaveFileDialog
+Description: Opens a file save dialog to allow the user to select a file path and name to save to. Outputs the selected file path as a string.
+Input: None
+Output: The selected file path as a string.
+Filters: Allows filtering files in the dialog by extension. Takes a sequence of strings with valid file extensions.
+CurrentDir: Allows setting the initial directory opened in the dialog. Takes a string with a valid directory path.
+
+Ed25519.Seed
+Description: Generates a random 32 bytes Ed25519 private key that can be used for signing messages using Ed25519.Sign shard.
+Input: Seed value string encoded as a 64 characters hexadecimal (32 bytes) to be used as entropy when generating the random private key. Can be generated e.g., using `RandomBytes | ToHex`.
+Output: A 32 byte array containing the generated Ed25519 private key.
+
+Ed25519.PublicKey
+Description: Extracts the 32 bytes Ed25519 public key from a 32 bytes Ed25519 private key.
+Input: A 32 bytes Ed25519 private key. Can be generated using Ed25519.Seed.
+Output: The 32 bytes Ed25519 public key corresponding to the input Ed25519 private key.
+
+Ed25519.Sign
+Description: An elliptic curve digital signature algorithm. Signs the input message bytes using the provided 32 bytes Ed25519 private key and outputs the 64 bytes signature. Some key advantages of Ed25519 include high speed, small signatures, resistance to side-channel attacks, and avoidance of nonce bias that exists in some alternatives like ECDSA.
+Input: The message to sign.
+Output: The 64 bytes Ed25519 signature derived from the private key and input message.
+Key: The 32 bytes Ed25519 private key to use in signing the input message. Can be generated using Ed25519.Seed.
+
+Ed25519.Verify
+Description: Verifies a signature against a message using a Ed25519 public key. Outputs true if the signature is valid for the given public key and message.
+Input: The signature to verify.
+Output: A boolean indicating if the signature is valid for the provided public key and input signature.
+Key: Used to verify that the input signature was produced by the private key corresponding to this public key. Can be generated using Ed25519.PublicKe`.
+Message: The message that was signed to produce the signature in the input.
+
+Eth.DecodeCall
+Description: Decodes the input or output of an Ethereum contract function call based on the provided ABI and function name.
+Input: This is the data that will be decoded. It's either the hex encoded input data or output data from an Ethereum contract function call.
+Output: A sequence containing the decoded values outputted by the function call. Each element in the sequence corresponds to an output parameter of the function.
+ABI: Specifies the Application Binary Interface (ABI) of the contract as a JSON string. This provides information about the contract's functions required to decode the call data.
+Name: Specifies the name of the contract function to decode the call data for.
+Input: A boolean indicating whether the input data is the raw function call input rather than the output. This changes how the data is decoded.
+
+Hash.XXH-64
+Description: Implements the 64-bit variant of the extremely fast XXHash hashing algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 8 byte array containing the 64-bit XXH64 hash value.
+
+Hash.Blake2-256
+Description: Implements the 256-bit variant of the extremely fast BLAKE2 cryptographic hashing algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 32 byte array containing the 256-bit BLAKE2-256 hash value.
+
+Hash.Blake2-128
+Description: Implements the 128-bit variant of the extremely fast BLAKE2 cryptographic hashing algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 16 byte array containing the 128-bit BLAKE2-128 hash value.
+
+Hash.Sha2-512
+Description: Implements the 512-bit SHA-2 cryptographic hash algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 64 byte array containing the 512-bit SHA-2 hash value.
+
+Hash.Sha3-512
+Description: Implements the 512-bit SHA-3 cryptographic hash algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 64 byte array containing the 512-bit SHA-2 hash value.
+
+Hash.Keccak-512
+Description: Implements the 512-bit Keccak cryptographic hash algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 64 byte array containing the 512-bit Keccak-512 hash value.
+
+Hash.Keccak-256
+Description: Implements the 256-bit Keccak cryptographic hash algorithm.
+Input: A (sequence of) byte array or string to be hashed.
+Output: A fixed-length 64 byte array containing the 256-bit Keccak-256 hash value.
+
+ECDSA.Seed
+Description: Generates a random 32 bytes ECDSA private key that can be used for signing messages using the ECDSA.Sign shard.
+Input: Seed value string encoded as a 64 characters hexadecimal (32 bytes) to be used as entropy when generating the random private key. Can be generated i.e., using `RandomBytes | ToHex`.
+Output: A 32 byte array containing the generated ECDSA private key.
+Compressed: If the output public key should use the compressed format.
+
+ECDSA.PublicKey
+Description: Extracts the 32 bytes ECDSA public key from a 32 bytes ECDSA private key.
+Input: A 32 bytes ECDSA private key. Can be generated using ECDSA.Seed.
+Output: The 64 bytes ECDSA public key corresponding to the input ECDSA private key.
+
+ECDSA.Sign
+Description: An elliptic curve digital signature algorithm. Signs the input message bytes using the provided 32 bytes ECDSA private key and outputs the 32 bytes signature. Provides fast signature generation and small signature sizes with strong security guarantees.
+Input: The message to sign.
+Output: The 64 bytes ECDSA signature derived from the private key and input message.
+Key: The 32 bytes ECDSA private key to use in signing the input message. Can be generated using ECDSA.Seed.
+
+ECDSA.Verify
+Description: Verifies a signature against a message using a ECDSA public key. Outputs true if the signature is valid for the given public key and message.
+Input: The signature to verify.
+Output: A boolean indicating if the signature is valid for the provided public key and input signature.
+Key: Used to verify that the input signature was produced by the private key corresponding to this public key. Can be generated using ECDSA.PublicKey.
+Message: The message that was signed to produce the signature in the input.
+
+Physics.Impulse
+Description: Applies an impulse force to a rigid body in the physics simulation.
+Input: A 3D vector representing the impulse force to apply.
+Output: The same 3D impulse force vector that was provided as input.
+RigidBody: Specifies the rigid body that the impulse force should be applied to. It can be passed a reference to a rigid body object or None.
+
+FromLEB128
+Description: Decodes a variable length integer encoded in Little Endian Base 128 (LEB128) code compression format into a native integer.
+Input: Bytes containing the LEB128 encoded integer.
+Output: The decoded native integer value.
+Signed: A boolean indicating whether the encoded integer is signed (can be negative) or unsigned.
+
+ToBase58
+Description: Encodes the input bytes or string into a base58-encoded string. Typically used to encode a large integer as alphanumeric text.
+Input: Can be either bytes or a string. It is the data that will be encoded into a base58 string.
+Output: A string containing the base58-encoded input data.
+
+Time.Epoch
+Description: Outputs the current time in seconds since the Unix epoch.
+Input: Ignored.
+Output: An integer representing the current time in seconds since the Unix epoch (January 1, 1970).
+
+Time.EpochMs
+Description: Outputs the current time in milliseconds since the Unix epoch.
+Input: Ignored.
+Output: An integer representing the current time in milliseconds since the Unix epoch (January 1, 1970).
+
+Time.NowMs
+Description: Outputs the elapsed time in milliseconds since initialization of the last shard.
+Input: Ignored.
+Output: A float representing the elapsed time in milliseconds since initialization of the last shard.
+
+Time.Now
+Description: Outputs the elapsed time in seconds since intialization of the last shard.
+Input: Ignored.
+Output: A float representing the elapsed time in seconds since initialization of the last shard.
+
+ToBytes
+Description: Serializes the input value into a byte array.
+Input: Can take any value. The value will be serialized to bytes.
+Output: A byte array containing the serialized input value.
+
+Inputs.MousePixelPos
+Description: Gets the current mouse position in pixel coordinates.
+Input: Ignored.
+Output: A 2D integer vector containing the x and y pixel coordinates of the mouse cursor.
+
+WriteFile
+Description: Writes data to a file.
+Input: The data to write to the file. It can be any type.
+Output: Output is the same as the input.
+File: The path of the file to write to.
+Append: Whether to append to the file if it already exists instead of overwriting it. Default is false.
+Flush: Whether to flush the file to disk after every write. Default is false.
+
+CaptureLog
+Description: Captures logs into a sequence of strings representing the logs.
+Input: Ignored.
+Output: A sequence of strings representing the logs.
+Size: The maximum number of logs to retain.
+MinLevel: The minimum log level to capture. Levels by inclusiveness: trace > debug > info > warn > error > fatal.
+Pattern: String format for the logs, similar to PatternLayout of log4j.
+Suspend: TODO.
+
+Inputs.MouseDown
+Description: Detects when the left, right or middle mouse buttons are pressed down and activates the corresponding parameter shard.
+Input: Any input is passed through
+Output: Outputs the input unchanged.
+Left: A shard to activate when the left mouse button is pressed.
+Right: A shard to activate when the right mouse button is pressed
+Middle: A shard to activate when the middle mouse button is pressed.
+
+Sr25519.Seed
+Description: Generates a random 64 bytes Sr25519 private key that can be used for signing messages using the Sr25519.Sign shard.
+Input: Seed value string encoded as a 128 characters hexadecimal (64 bytes) to be used as entropy when generating the random private key. Can be generated i.e., using `RandomBytes(64) | ToHex`.
+Output: A 64 byte array containing the generated Sr25519 private key.
+
+Sr25519.PublicKey
+Description: Extracts the 32 bytes Sr25519 public key from a 64 bytes Sr25519 private key.
+Input: A 64 bytes Sr25519 private key. Can be generated using Sr25519.Seed.
+Output: The 32 bytes Sr25519 public key corresponding to the input Sr25519 private key.
+
+Sr25519.Sign
+Description: An elliptic curve digital signature algorithm. Signs the input message bytes using the provided 64 bytes Sr25519 private key and outputs the 64 bytes signature. Provides fast, compact, quantum-resistant signatures through a simple deterministic algorithm with strong security guarantees.
+Input: The message to sign.
+Output: The 64 bytes Sr25519 signature derived from the private key and input message.
+Key: The 64 bytes Sr25519 private key to use in signing the input message. Can be generated using Ed25519.Seed.
+
+Sr25519.Verify
+Description: Verifies a signature against a message using a Sr25519 public key. Outputs true if the signature is valid for the given public key and message.
+Input: The signature to verify.
+Output: A boolean indicating if the signature is valid for the provided public key and input signature.
+Key: Used to verify that the input signature was produced by the private key corresponding to this public key. Can be generated using Sr25519.PublicKey.
+Message: The message that was signed to produce the signature in the input.
+
+String.Split
+Description: Splits the input string into a sequence of strings separated by the given separator character.
+Input: The string to split.
+Output: A sequence of strings resulting from splitting the input string on the separator character.
+Separator: The character to use to split the input string.
+
+String.Contains
+Description: Checks if the input string contains the given substring.
+Input: The string to search within
+Output: True if the input string contains the given substring, false otherwise.
+String: The substring to search for within the input string.
+
+String.Trim
+Description: Removes leading and trailing whitespace from the input string.
+Input: The string to trim.
+Output: The input string with leading and trailing whitespace removed.
+
+Regex.Match
+Description: Searches for matches to the given regular expression in the input string.
+Input: A string to search for matches.
+Output: A sequence containing the matched capture groups.
+Regex: The regular expression to match against the input string. It needs to match the whole input string. To capture more than one group, use ().
+
+Regex.Search
+Description: Searches for all matches of the given regular expression in the input string.
+Input: A string to search for matches. It serves as the text to apply the regular expression to.
+Output: A sequence of strings, containing all the matches of the regular expression in the input string. It contains the search results.
+Regex: The regular expression pattern to search for. It only needs to match part of the input string.
+
+Regex.Replace
+Description: Replaces matches of the given regular expression in the input string with the provided replacement expression.
+Input: A string input that will be searched for matches to the provided regular expression.
+Output: A new string with all matches of the regular expression replaced by the provided replacement expression.
+Regex: The regular expression to search for in the input string.
+Replacement: The replacement expression. Can be a string or variable containing the text to replace each match with.
+
+IndexOf
+Description: Searches for the first index of a given item in a sequence input.
+Input: A sequence to search through.
+Output: The index of the first occurrence of the item parameter in the input sequence. If All parameter is true, outputs a sequence containing all indices where the item occurs or [] if not found. If Al is set to false and item is not found, outputs -1.
+Item: The item to search for in the input sequence.
+All: Whether to output all indices where the item occurs, or just the first one.
+
+PremultiplyAlpha
+Description: Premultiplies the alpha channel of images with transparency. This is often required for blending and compositing images correctly.
+Input: An image with transparency (alpha channel). The alpha channel should not be premultiplied prior to this shard.
+Output: The input image with its alpha channel premultiplied.
+
+FS.CreateDirectories
+Description: Creates any missing directories in the provided path. If a directory already exists, it does not attempt to create it.
+Input: A string representing the path to create directories for. Path can be relative or absolute.
+Output: Outputs the path in the input unchanged.
+
+Process.StackTrace
+Description: Generates a stack trace for the current execution context and outputs it as a string. The stack trace shows the call stack of the shards flow that lead to the current point of execution. This can be useful for debugging and understanding the flow of execution.
+Input: Ignored.
+Output: A string with the stack trace generated for the current execution context.
+
+Pack
+Description: Packs the input sequence into a contiguous bytes array based on the struct definition string.
+Input: A sequence containing the data to pack. The sequence order and types must match the struct definition string.
+Output: A byte array containing the packed binary data. Can be later unpacked using Unpack.
+Definition: A string defining the struct layout e.g. i32 f32 which defines the types and order of data members.
+
+Math.Project
+Description: Projects a 3D point using a given view-projection matrix, adjusting for screen space coordinates.
+Input: A 3D point represented as a vector of 3 floats. This is the point to project.
+Output: The projected 2D point represented as a vector of 3 floats.
+Matrix: The 4x4 projection matrix to use. Can be a constant matrix value or a matrix variable.
+ScreenSize: The width and height of the viewport. Used to convert to screen space coordinates. Can be a literal or variable.
+FlipY: Whether to flip the Y axis when converting to screen space. Can be a literal or variable.
+
+Math.Project
+Description: Projects a 3D point to 2D screen space using a view-projection matrix.
+Input: A 3D point as a vector of 3 floats.
+Output: A 2D projected point as a vector of 3 floats, with XY mapped to screen space and Z for depth.
+Matrix: The 4x4 view-projection matrix to use. Can be a literal or variable.
+ScreenSize: The viewport width and height. Used to map XY to screen coordinates.
+FlipY: Whether to flip the Y axis coordinate when converting to screen space.
+
+Math.AxisAngleY
+Description: Creates a rotation matrix from an angle in degrees around the Y axis.
+Input: This is the angle to rotate around the Y axis. A float representing the angle in degrees. 
+Output: A Float4 representing a quaternion that encodes the rotation around the Y axis by the input angle.
+
+Math.Rotation
+Description: Creates a rotation matrix from the given quaternion. The rotation matrix can then be used to rotate vectors and transform coordinate systems.
+Input: A quaternion representing the desired rotation. Quaternions are a compact way to represent rotations.
+Output: A 4x4 rotation matrix encoding the same rotation as the input quaternion. The matrix can be applied to vectors to rotate them according to the quaternion.
+Angle: The angle of rotation in radians.
+
+Events.Update
+Description: Triggers an update on the referenced event dispatcher.
+Input: Ignored.
+Output: The original input unchanged.
+Name: The name of the event dispatcher to update. This associates the shard instance with a specific event dispatcher.
+ID: An optional integer ID used to differentiate events with the same name.
+
+Math.MatMul
+Description: Performs a matrix multiplication or product between the input matrix and the operand matrix. The matrices must have compatible dimensions.
+Input: A matrix represented as a sequence of float vectors of 2, 3, or 4 elements. This is the first matrix to multiply.
+Output: A matrix resulting from multiplying the input matrix by the operand matrix. The output matrix has the same dimensions as the input matrix.
+Operand: The second matrix to multiply. The number of columns in the operand matrix must match the number of rows in the input matrix.
+
+Inputs.MouseDelta
+Description: Retrieves the mouse cursor delta movement since the last frame. The delta movement is in pixels.
+Input: Ignored.
+Output: Outputs a 2D float vector representing the delta mouse movement since the last frame, in pixels. This can be used to implement mouse-based control of visuals, particles, etc.
+
+IsSeq
+Description: Checks if the input is a sequence type, outputing a boolean indicating if it is a sequence or not.
+Input: The value that is checked to determine if it is a sequence type.
+Output: A boolean value indicating if the input is a sequence or not.
+
+UnsafeActivate!
+Description: Allows executing a custom function pointer, taking in a context and variable pointer as arguments. This enables calling into unsafe code from a shards graph.
+Input: Any variable that will be passed to the unsafe function. It has no restrictions on the type.
+Output: Whatever is outputted by the function pointer, so it can be any type.
+Pointer: Takes a function pointer that will be called with the Context and input variable when the shard is activated.
+
+Assert.Break
+Description: Triggers a breakpoint to interrupt execution. Can be used for debugging purposes.
+Input: Can accept any input type. The input is passed through unchanged to the output
+Output: Outputs the original input unchanged.
+
+HexToBytes
+Description: Converts an hexadecimal string to bytes.
+Input: A string containing hexadecimal digits.
+Output: Bytes representing the hexadecimal string provided as input.
+
+IsAllNot
+Description: Checks if all elements of a sequence or a vector do not match the value passed to the Value parameter. Outputs true if all elements do not match the value, false otherwise.
+Input: Any input is valid. If input is a sequence or a vector, that will be checked to see if all elements do not match the value, otherwise for other types, the input will be treated as a single value to compare.
+Output: A boolean indicating if all elements did not match the value.
+Value: The value to compare each element of the sequence against for inequality.
+
+StringToBytes
+Description: Converts a string input to bytes.
+Input: A string value that will be converted to bytes.
+Output: Bytes representing the input string.
+
+BytesToInts
+Description: Converts bytes into a sequence of integers by interpreting each byte as an integer value ranging 0-255.
+Input: The data that will be converted to integers.
+Output: Each integer represents each byte from the input, interpreted as an integer value ranging 0-255 (amounting to the number of combinations a byte can have).
+
+IntsToBytes
+Description: Converts a sequence of integers into a byte array. Throws error if integer value is outside the range 0-255 (amounting to the number of combinations a byte can have).
+Input: A sequence of integer values.
+Output: A byte array containing the integer sequence data clipped to 0-255.
+
+ExpectFloat3
+Description: Asserts that the input is a vector composed of 3 floats, and outputs the input unchanged. If the input is not a vector of 3 floats, it will throw an error.
+Input: The value that will be checked as a vector composed of 3 floats.
+Output: The input unchanged.
+
+FloatsToImage
+Description: Convert a sequence of float values into a bitmap image.
+Input: Provides the data points that will be converted into an image representation. Each float value in the sequence represents a pixel intensity or color value, ranging between 0-1.
+Output: An image constructed from the input sequence of float values.
+Width: Determines how many column pixels the output image will have.
+Height: Determines the number of row pixels the output image will have.
+Channels: Represents the channels of the output image, ranging between 1-4 channels. like grayscale (1 channel), RGB (3 channels), etc. Intended The purpose of this parameter is to determine the color format of the resulting image.
+
+IsAudio
+Description: Outputs true if input is an audio stream, otherwise outputs false.
+Input: Accepts any input. The input is checked to determine if it is an audio stream.
+Output: Outputs a boolean indicating if the input is an audio stream.
+
+IsTable
+Description: Takes any input, and outputs a boolean indicating if the input is a table or not.
+Input: Can be any type. It is the value that needs to be checked whether it is a table type or not.
+Output: A boolean indicating if the input is a table type or not.
+
+Math.Orthographic
+Description: Creates an orthographic projection matrix.
+Input: Ignored.
+Output: A 4x4 float matrix representing the orthographic projection.
+Width: The horizontal extent of the view volume.
+Height: The vertical extent of the view volume.
+Near: The distance to the near clipping plane from the camera.
+Far: The distance to the far clipping plane from the camera.
+
+WritePNG
+Description: Encodes the input image as a PNG file and writes it to the path provided by the File parameter.
+Input: An image to be encoded as PNG.
+Output: The raw bytes representing the encoded PNG image. This can be written to a file to get the actual image file.
+File: The path to write the PNG file to.
+
+SleepBlocking!
+Description: The SleepBlocking shard pauses the execution of the shards graph for a specified amount of time. It blocks the calling thread during the sleep.
+Input: The input can be either an integer representing the sleep time in milliseconds or a float representing the sleep time in seconds. This controls how long the shard will pause the execution for.
+Output: The output is the same as the input. The input is simply passed through unchanged.
+Amount: The amount of time to pause execution for, specified in either milliseconds (int) or seconds (float). This parameter controls the duration of the blocking sleep.
+
+IsFloat
+Description: Checks if the input is of floating point type and outputs true or false.
+Input: Accepts a value of any type. This is the value that will be checked if it is of floating point type.
+Output: Outputs a boolean indicating if the input value is of floating point type or not.
+
+Physics.DynamicBody
+Description: Creates a dynamic rigid body that is driven by the physics simulation. The position and rotation will be initialized based on the given parameters, but after that will be controlled by physics forces and integration.
+Input: None. This shard does not take any input.
+Output: A 4x4 transform matrix representing the interpolated position and orientation of the rigid body for the current frame. Outputs a single matrix if one rigid body, or a sequence of matrices if multiple rigid bodies were created.
+Shapes: TheCollision shape or compound shapes that represent the collision geometry of this rigid body.
+Position: The initial position to create the rigid body at. For multiple rigid bodies this can be a sequence.
+Rotation: The initial rotation to orient the rigid body. Can be axis-angle or quaternion. For multiple rigid bodies this can be a sequence.
+Name: An optional variable name to expose the rigid body object to the graph. This allows applying forces and reading transforms.
+
+Profile
+Description: Executes the given Shards parameter and profiles their execution time. It prints the execution time along with the given Label parameter.
+Input: Ignored.
+Output: The output of Profile is the same as the output of the last Shard given in the Shards parameter.
+Shards: Takes a sequence of Shards to execute and profile.
+Label: Takes a string that will be printed along with the profiling information.
+
+ExpectBool
+Description: Checks that the input is a boolean value and fails otherwise.
+Input: Can be any type. It is the value that will be checked to see if it is a boolean.
+Output: It will be the input value if the check succeeds, otherwise it will fail.
+
+ExpectStringSeq
+Description: Passes through the input to the outputs if input is a sequence of strings, otherwise throws an error.
+Input: It is the value that needs to be validated as a sequence of strings.
+Output: The same sequence of strings that was passed as input.
+
+ExpectBytesSeq
+Description: Validates that the input is a sequence of bytes, throwing an error if not. Here bytes reads as each element of the sequence is bytes.
+Input: The value that needs to be validated as a sequence of bytes.
+Output: Outputs the input unchanged if it is a valid sequence of bytes.
+
+GFX.MainWindow
+Description: Creates and manages a graphics window that can be used for rendering and receiving input events. Handles creating the OS window, managing input events, and cleaning up resources when closed.
+Input: Ignored.
+Output: Outputs a WindowContext object that can be used to access the created window.
+Title: The title of the window to create.
+Width: The width of the window to create in pixels. Uses OS DPI scaling.
+Height: The height of the window to create in pixels. Uses OS DPI scaling
+Contents: The shards wire to run that will have access to the created window.
+DetachRenderer: When enabled, no default graphics renderer will be available to the contents wire.
+HandleCloseEvent: When false, the close event will not be handled and abort the wire the window is running in. True by default.
+UseDisplayScaling: When enabled, the window size will be scaled using the OS's provided scaling value. True by default.
+
+Math.LookAt
+Description: Generates a view matrix from a position and a target in world space. The matrix transforms world space to view space.
+Input: A table with keys Position and Target, each containing a 3D float vector. Position is the location of the camera in world space. Target is the point in world space the camera should look at.
+Output: A 4x4 float matrix representing the view transform from world space to view space based on the input position and target.
+Position: The position of the camera in world space.
+Target: The point in world space the camera should look at.
+
+WireRunner
+Description: Runs and activates a wire inline, detached, or stepped based on the Mode parameter. It executes the wire's flow and outputs the wire's output.
+Input: Can be any type and is passed through to the wire to use as its initial input.
+Output: Output of the wire after it has been run. Can be any type depending on the wire.
+Mode: An enum that controls how the wire is run - either Inline, Async, or Stepped. Inline runs the wire inline and coupled to the parent wire. Async runs the wire detached in parallel. Stepped runs the wire as a child and ticks it each activation.
+
+FromJson
+Description: Converts a JSON string into its corresponding data structure.
+Input: Accepts a JSON-formatted string.
+Output: A data structure derived from the JSON string.
+Pure: A boolean value indicating if the input string is standard JSON (true by default) or shards-specific JSON.
+
+IsAnyLess
+Description: Checks if any element in the input sequence is less than the value specified by the Value parameter.
+Input: This sequence will be iterated and each element compared to the Value parameter.
+Output: A boolean indicating if any of the elements in the input sequence are less than the Value.
+Value: The value to compare each element of the input sequence against to check if it is less than.
+
+Math.Decompose
+Description: Decomposes a 4x4 transformation matrix into its translation, rotation and scale components.
+Input: A 4x4 transformation matrix encoded as a Float4x4. This matrix represents a transformation in 3D space that combines translation, rotation and scaling.
+Output: A Table containing the translation, rotation and scale components of the input matrix. translation: The translation component as a Float3. rotation: The rotation component as a quaternion Float4. scale: The scale component as a Float3.
+
+ExpectFloat
+Description: Validates that the input is a float value and throws an error if it is not. This allows enforcing that a value has the expected type at runtime.
+Input: It is the value that needs to be validated as a float.
+Output: Outputs the input float value unchanged if validation succeeds.
+
+Shader.LinearizeDepth
+Description: Converts depth from project space to a linear 0-1 range based on the near and far plane distances.
+Input: A depth value in projection space represented as a float number. This is used as the input to the linearization calculation.
+Output: The linearized depth value in a 0-1 range, represented as a float number. This is the result of the linearization calculation on the input.
+
+Expect
+Description: Validates that the input matches the expected type specified by the Type parameter. If the types don't match, an error is thrown.
+Input: The value to validate.
+Output: The input unchanged.
+Type: The expected type for the input. Represented as @type(Type::<type>).
+Unsafe: If true, performs a faster but less robust validation, skipping the slower deep comparison between more complex types like tables.
+
+BitSwap64
+Description: Reverses the byte order of a 64-bit integer input. Also known in a broader sense for the swapping of Endianness of a number - useful when the sender and receiver computer have different Endianness.
+Input: A 64-bit integer value. This is the number that will have its byte order reversed.
+Output: A 64-bit integer with its bytes in reversed order compared to the input.
+
+VarAddr
+Description: Takes a variable name as input and outputs the memory address of that variable as output.
+Input: A String containing the name of a variable. This is used to look up the variable to get its memory address.
+Output: An Int containing the memory address of the input variable. This allows the variable's memory location to be accessed directly.
+
+ToHex
+Description: Converts the input integer, bytes or string value to its hexadecimal string representation.
+Input: Can be an integer, bytes or string value that needs to be converted to an hexadecimal string representation.
+Output: A string containing the hexadecimal representation of the input value.
+
+ToString
+Description: Converts the input value to its string representation.
+Input: The value to convert to a string. Can be any type.
+Output: The string representation of the input value.
+
+Inputs.MousePos
+Description: Gets the current mouse position in pixels.
+Input: None. This shard does not take any input.
+Output: A 2D float vector containing the x and y pixel coordinates of the mouse cursor. This provides the mouse position that can be used for tracking cursor location and movement.
+
+FS.Read
+Description: Reads the contents of the file at the provided path and outputs it as either a string or bytes.
+Input: A string containing the path of the file to read.
+Output: Either a string or bytes containing the contents of the file, depending on the Bytes parameter.
+Bytes: A boolean parameter that specifies whether to output the file contents as a byte array instead of a string.
+
+OnCleanup
+Description: Executes the provided shard(s) when the owning wire is cleaned up, after the wire has finished executing.
+Input: Ignored.
+Output: Same as the input, unchanged.
+Shards: The shard(s) to execute on the wire's cleanup. The shard(s) provided cannot suspend wire execution.
+
+Replace
+Description: Finds and replaces matching patterns in the input sequence.
+Input: A sequence with data that will be searched for matches to replace.
+Output: Similar to the input after replacements have been made.
+Patterns: The patterns to find matches for in the input.
+Replacements: The replacement values to use when a match is found. Can be a single value to replace all matches, or multiple values to replace with respective matches.
+
+Input
+Description: Passes through the input value as the output. It allows accessing an input value explicitly in cases such as a wire input.
+Input: Ignored.
+Output: The same as the original input value.
+
+NaNTo0
+Description: Takes a float or sequence of floats as input. If the input float is NaN (not a number), it will convert it to 0. Otherwise, it will pass through the input unchanged.
+Input: Can be a single float or a sequence of floats. The input is not used other than to check if it contains NaN values that need to be converted to 0.
+Output: The same as the input, except any NaN values are converted to 0.
+
+Events.Emit
+Description: Sends an event to the event dispatcher specified by the Name parameter. Can optionally specify an ID parameter to differentiate between multiple events with the same name.
+Input: Ignored.
+Output: Outputs the input value unchanged.
+Name: The name of the event dispatcher to send the event to.
+
+Fail
+Description: Causes the current shard sequence execution to fail and stop with an error.
+Input: A string that will be used as the error message when failing. It allows customizing the error message.
+Output: None. Does not produce any output.
+Message: An optional string parameter that overrides the input error message. It allows setting a static error message instead of using the input.
+
+Return
+Description: Immediately ends execution of the current flow or wire, and returns the given value as output. Any shards after Return are not executed.
+Input: The input to Return is the value that would be outputted from the current flow or wire. This allows outputting a value computed earlier in the flow/wire.
+Output: Does not produce any output. It ends execution early.
+
+Exit
+Description: Immediately terminates the execution of the current flow or wire. No further shards are executed after Exit.
+Input: The input to Exit is ignored and not used. It can be any value.
+Output: Exit does not produce any output.
+
+Pass
+Description: Passes its input through as its output without modifying it. It serves as a no-op placeholder where a shard would be expected.
+Input: Serves no purpose other than being passed through to the output.
+Output: Outputs the same value that was provided as its input without modification.
+
+Map
+Description: Applies a shard or sequence of shards to each element in a sequence and outputs the new sequence.
+Input: The sequence that will have the function applied to each of its elements.
+Output: A new sequence with the result of applying the shard or sequence of shards to each element of the input sequence.
+Apply: The function to apply to each element of the input sequence. It can be a shard or a shard sequence. The element will be passed to this as input and its output will become the new element.
+
+ExpectLike
+Description: Checks that its input matches the type of the example value provided in the TypeOf parameter or the output type of the shard provided in the OutputOf parameter.
+Input: The value that will be compared against the expected type provided through the parameters.
+Output: Same as the input.
+TypeOf: The example value to expect. The type of the constant given here will be checked against this shard's input.
+OutputOf: Evaluates the output type of the given expression. That type will be checked against this shard's input.
+Unsafe: If we should skip performing deep type hashing and comparison. (generally fast but this might improve performance).
+
+IsAllLessEqual
+Description: Checks if all elements in a sequence or a vector are less than or equal to a given value. Outputs true if so, false otherwise.
+Input: A sequence or a vector of any type that will be checked against the given value.
+Output: Boolean indicating if all elements in the input sequence or vector are less than or equal to the given value.
+Value: The value to test against for less than or equal. This can be any type, but must match the type of elements in the input sequence.
+
+FS.Copy
+Description: Copies the file or directory specified in the input to the destination path provided. Allows specifying behavior when the destination already exists.
+Input: A string containing the source path to copy from.
+Output: The input string unchanged.
+Destination: The destination path to copy the source to. Can be a file or directory.
+Behavior: What to do if the destination already exists. Possible values: IfExists:fail, IfExists:skip, IfExists:overwrite or IfExists:update.
+
+FromBytes
+Description: Deserializes bytes into shards data.
+Input: Bytes representing serialized or raw data.
+Output: Deserialized shards data.
+
+IsLessEqual
+Description: Checks if the input value is less than or equal to the value specified in the Value parameter. Outputs true if the input is less than or equal to the Value, false otherwise.
+Input: Any comparable value such as number, string, etc. One of the values to check if it is less than or equal to the other.
+Output: A boolean indicating if the input value is less than or equal to the Value.
+Value: The value to compare the input value against to check if the input is less than or equal to it.
+
+GFX.Renderer
+Description: Sets up and runs the graphics renderer for a window. Renders the contents shard provided in the window.
+Input: The input to this shard is not used.
+Output: None
+Window: The window context to run the renderer on.
+Contents: The shard that will be run each frame to render the window contents.
+IgnoreCompilationErrors: Whether shader and pipeline compilation errors should be ignored. If true, fallback rendering will be used in case of errors.
+
+IsMoreEqual
+Description: Checks if the input value is greater than or equal to the value specified in the Value parameter. Outputs true if the input is greater than or equal to the Value, false otherwise.
+Input: Any comparable value such as number, string, etc. One of the values to check if it is greater than or equal to the Value parameter.
+Output: A boolean indicating if the input value is greater than or equal to the Value.
+Value: The value to compare the input value against to check if the input is greater than or equal to it.
+
+Pause
+Description: Pauses execution of the wire for a specified amount of time before passing through the input unchanged.
+Input: Any input value that will be passed through after the pause.
+Output: The original input value, unchanged after the pause.
+Time: A variable or literal with the amount of time in seconds (can be fractional) to pause before passing through the input. Defaults to no pause.
+
+IsNot
+Description: Checks if two values are not equal. Outputs true if they are not equal, false otherwise. Inequality is determined by comparing the two values.
+Input: One of the values to check for inequality.
+Output: A boolean indicating if the input value is not equal to the value specified in the Value parameter.
+Value: The value to compare against the input value for inequality.
+
+GFX.Draw
+Description: Adds draw commands for one or more drawables to a draw queue.
+Input: One or more GFX.Drawable objects that should be drawn.
+Output: None.
+Queue: The draw queue to add the draw commands to. If not specified, uses the default draw queue.
+
+Limit
+Description: Limits the number of elements in a sequence to the amount specified by the Max parameter.
+Input: The sequence that will be limited.
+Output: A new sequence with a limited number of elements as specified by Max. Elements are preserved counting from the start of the input sequence. Max must be an integer greater than or equal to 0.
+Max: The maximum number of elements the output sequence can have.
+
+Shards.Help
+Description: Outputs the help text for a given shard in JSON format. The help text describes what the shard does.
+Input: A shard's name. This specifies which shard's help text should be outputted.
+Output: A JSON string containing the help text for the shard name in the input.
+
+DB.LoadExtension
+Description: Loads a SQLite extension library.
+Input: Ignored.
+Output: The input unchanged.
+Path: The filesystem path to the shared library containing the sqlite extension to load.
+Database: The database name to connect to.
+
+Math.RadiansToDegrees
+Description: Converts an angle value from radians to degrees.
+Input: An angle in radians.
+Output: The input angle converted to degrees.
+
+FS.FileDialog
+Description: Designed to provide a file dialog interface, enabling users to choose files or directories from their filesystem. Its behavior can be adjusted by setting its parameters, such as whether to select a single file, multiple files, or a folder, and to filter the visible files based on their extensions.
+Input: No input
+Output: Depending on the set parameters, the output can be either a single string representing the path to a selected file, or folder, or a sequence of strings representing the paths to multiple selected files.
+Filters: Allows users to filter visible files based on their extensions. It can take a sequence of strings, or a single string as input (either directly or by reference). Setting this parameter can restrict the dialog to display only files with specific extensions.
+CurrentDir: Sets the current directory for the file dialog. It allows users to specify the directory in which the file dialog will open initially. This parameter can take a single string value, either directly or a variable.
+Multiple: Determines whether users can select multiple files instead of just one. When set to true, users can choose multiple files.
+Folder: Decides whether the dialog should allow users to select a folder instead of a file. When set to true, the file dialog changes to a folder dialog.
+
+Is
+Description: Checks if two values are equal. Outputs true if they are equal, false otherwise. Note that for two sequences to be considered equal or identical they must both contain the same elements and in the same order. For two tables to be considered equal/identical they must both contain the same key/value pairs but the order of these pairs is irrelevant.
+Input: One of the values to check for equality.
+Output: Indicates if the input value is equal to the value specified in the Value parameter.
+Value: The value to compare against the input value for equality.
+
+Snappy.Compress
+Description: Compresses the input bytes using the Snappy compression algorithm.
+Input: Bytes containing the data to be compressed.
+Output: Bytes containing the compressed data.
+
+Events.Check
+Description: Designed to monitor and indicate the reception of events from the specified event dispatcher. When activated, it checks if an event of the specified name (and optional ID) has been dispatched since the last check. Instead of collecting the actual events like the Events.Receive shard, it simply outputs a boolean indicating the presence of such an event.
+Input: Accepts an input type of None, meaning it acts independently of incoming values and focuses solely on the presence of dispatched events.
+Output: If an event with the specified name (and optional ID) was dispatched since the last check, it will output true. If no such event was dispatched, it will output false.
+Name: Specifies the name of the event dispatcher to monitor. It's a required parameter that can accept values of type String or a variable of type String. The shard will listen to the events dispatched by the specified dispatcher.
+ID: Can be used to further narrow down the event checking based on a specific ID, especially useful when multiple events share the same name. If no ID is provided, a default mechanism will be used to search for events in the given context.
+
+UI.GetClipboard
+Description: Retrieves the current text in Operating System's clipboard.
+Input: Ignored.
+Output: The text currently stored in the Operating System's clipboard.
+
+DSP.FFT
+Description: The Fast Fourier Transform is an algorithm to compute the Discrete Fourier Transform. Converts a signal from its original domain (time or space) to a representation in the frequency domain.
+Input: Accepts sequences of float values, complex numbers (sequence of 2 floats), or single-channel audio. Multi-channel audio buffers will throw an error.
+Output: Produces a sequence of complex numbers (sequence of 2 floats) representing the frequency domain of the input sequence.
+
+Events.Receive
+Description: Allows users to receive events that are dispatched. It listens for events dispatched through the provided event dispatcher name and optional ID, collecting them into a sequence, and outputting them when activated. The shard can be used to differentiate events based on their names and optionally an ID.
+Input: Does not expect any input and the type of input it accepts is NoneType. This means it doesn't act upon any specific incoming value, but rather listens for dispatched events.
+Output: A sequence (AnySeqType) of events it has received since the last time it was activated. Each event in the sequence is of the type which has been previously set for the associated event dispatcher.
+Name: Specifies the name of the event dispatcher to use. It is a required parameter that accepts a String or a variable of type String.
+ID: Used to differentiate events that share the same name. It can be of type Int, a variable of type Int, or NoneType if an ID is not provided. If not provided, a default ID will be used to search for events based on the context.
+
+FS.Write
+Description: Writes the given string or bytes to the specified file path, optionally appending or overwriting the file if it already exists.
+Input: Absolute or relative path to the file.
+Output: The file path written to.
+Contents: A variable containing the string or bytes to write as the file's content.
+Overwrite: If true, overwrites the file if it already exists.
+Append: If true, appends the contents to the end of the file if it already exists.
+
+IsMore
+Description: Checks if the input value is greater than the value specified in the Value parameter. Outputs true if the input is greater, false otherwise.
+Input: Any comparable value such as numbers, strings, etc. One of the values to check if it is greater than the other.
+Output: A boolean indicating if the input value is greater than the Value.
+Value: The value to compare the input value against to check if the input is greater. Must be of a comparable type to the input value.
+
+Listen
+Description: A consumer component designed to listen to broadcast channels. It fetches data from its subscribed channel and outputs them either singularly or as a sequence based on the buffer size. If the broadcast channel is closed, the shard checks if there's any stored data in its buffer and outputs it. If the buffer is empty, it signals the flow to stop and outputs an empty value.
+Input: The primary function of the input is to trigger the shard's activation.
+Output: If the buffer size is greater than one, the output will be a sequence containing the buffered values. Otherwise, it will output individual values.
+Name: Specifies the name of the channel the shard should listen to.
+Type: Defines the expected type of data the shard will receive. It is essential and should match the data type being broadcasted in the channel.
+Buffer: Dictates how many values the shard should buffer before outputting them. If set to 1, the shard will output values immediately upon receipt. If set to a value greater than one, the shard will buffer the values and output them as a sequence once the buffer limit is reached.
+
+FS.IsDirectory
+Description: Checks if the given path refers to an existing directory.
+Input: A string representing a filesystem path. This is the path that will be checked.
+Output: A boolean indicating if the given path exists and is a directory.
+
+BigInt.Is
+Description: Compares two big integers represented as bytes and outputs a boolean indicating if they are equal.
+Input: A big integer represented as bytes to compare. This is one of the two operands.
+Output: A boolean value indicating if the two operands are equal.
+Operand: The second big integer represented as bytes to compare. This is the second of the two operands as is passed as a variable.
