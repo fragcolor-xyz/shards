@@ -426,7 +426,7 @@ struct Split {
     switch (index) {
     case 0:
       _separator.clear();
-      _separator.append(SHSTRVIEW(value));
+      _separator.append(SHSTRVIEW(value)); // Accept a string of separators
       break;
     default:
       throw InvalidParameterIndex();
@@ -447,12 +447,21 @@ struct Split {
     _inputStr.clear();
     _inputStr.append(input_string);
     std::vector<std::string> components;
-    std::string component;
-    std::istringstream input_stream(_inputStr);
-    const auto sep = _separator[0];
+    size_t start = 0;
+    size_t end = 0;
 
     _lines.clear();
-    while (std::getline(input_stream, component, sep)) {
+    while ((end = _inputStr.find(_separator, start)) != std::string::npos) {
+      if (end != start) { // Ignore empty tokens
+        components.push_back(_inputStr.substr(start, end - start));
+      }
+      start = end + _separator.length();
+    }
+    if (start < _inputStr.length()) {
+      components.push_back(_inputStr.substr(start));
+    }
+
+    for (const auto &component : components) {
       _lines.push_back(Var(component));
     }
 
