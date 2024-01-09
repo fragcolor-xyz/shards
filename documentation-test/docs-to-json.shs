@@ -1,0 +1,55 @@
+; Read the input text file
+"input_text_file" = filePath
+filePath | File.Read = inputText
+
+; Split the input text into sections based on double newlines
+inputText | String.Split("\n\n") = sections
+
+; Initialize an empty sequence for the JSON output
+[] >= jsonOutput
+
+; Iterate over each section
+0 >= idx
+Count(sections) = sectionCount
+ForRange(0 (sectionCount | Math.Subtract(1)) {
+  sections | Take(idx) = section
+
+  ; Split each section by newline
+  section | String.Split("\n") = lines
+
+  ; Extract the name and initialize a table for this entry
+  lines | Take(0) = name
+  {"name": name, "input": "", "output": "", "parameters": []} = entry
+
+  ; Process each line
+  1 >= lineIdx
+  Count(lines) = lineCount
+  ForRange(1 (lineCount | Math.Subtract(1)) {
+    lines | Take(lineIdx) = line
+
+    ; Check and assign the appropriate field in the entry
+    line | String.StartsWith("Description:") | When({IsTrue} {
+      line | String.Split(": ", 2) | Take(1) | entry | Set("description")
+    })
+    line | String.StartsWith("Input:") | When({IsTrue} {
+      line | String.Split(": ", 2) | Take(1) | entry | Set("input")
+    })
+    line | String.StartsWith("Output:") | When({IsTrue} {
+      line | String.Split(": ", 2) | Take(1) | entry | Set("output")
+    })
+    line | String.Contains(":") | When({IsTrue} {
+      line | String.Split(": ", 2) = paramParts
+      entry | Take("parameters") | Seq.Push({"name": paramParts | Take(0), "description": paramParts | Take(1)})
+    })
+
+    lineIdx | Math.Inc
+  }
+
+  ; Add the entry to the output sequence
+  jsonOutput | Seq.Push(entry)
+  idx | Math.Inc
+})
+
+; Convert the output sequence to JSON
+jsonOutput | ToJson = outputJson
+outputJson | Log
