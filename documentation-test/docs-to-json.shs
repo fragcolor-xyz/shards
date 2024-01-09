@@ -1,0 +1,164 @@
+@wire(prepare-to-json{
+  ; Read the input text file
+  "C:/Projects/shards/documentation-test/carlos-doc.shs" = filePath
+  filePath | FS.Read = inputText
+  ;Log("result")
+
+  ; Split the input text into sections based on double newlines
+  inputText | Regex.Replace("\\r\\n" "\n") | String.Split("\n\n") = sections
+  ;Log("result sections")
+
+  ; Initialize an empty sequence for the JSON output
+  [] >= jsonOutput
+
+  ; Initialize table for each entry
+  {
+    name:""
+    description: ""
+    input: "" 
+    output: "" 
+    parameters: []
+  } >= entry
+
+  sections
+  ForEach({
+    String.Split("\n") = lines
+    {Take(0) | ToString | Set(entry "name")}
+    {Take(1) | ToString | String.Split("Description: ") | Take(0) | Set(entry "description")}
+    {Take(2) | ToString | String.Split("Input: ") | Take(0)  | Set(entry "input")}
+    {Take(3) | ToString | String.Split("Output: ") | Take(0)  | Set(entry "output")}
+
+    Count(lines) = total-elements
+    total-elements Math.Subtract(1) = final-index
+    [] >= parameter-seq
+
+    total-elements
+    When(Predicate: IsMore(4) Action: {
+      ForRange(From: 4 To: final-index Action:{
+        >= index-to-take
+        lines
+        Take(index-to-take) | Push(parameter-seq)
+      })
+    })
+
+    parameter-seq | Set(entry "parameters")
+    
+
+    
+    entry | Push(jsonOutput)
+  })
+    
+  jsonOutput
+  Take(1)
+  Log("result")
+
+  ; ; Iterate over each section
+  ; 0 >= idx
+  ; Count(sections) = sectionCount
+
+  ; ForRange(0 (sectionCount | Math.Subtract(1)) {
+  ;   sections | Take(idx) = section
+
+  ;   ; Split each section by newline
+  ;   section | String.Split("\n") = lines
+
+  ;   ; Extract the name and initialize a table for this entry
+  ;   lines | Take(0) = name
+  ;   {"name": name, "input": "", "output": "", "parameters": []} = entry
+
+  ;   ; Process each line
+  ;   1 >= lineIdx
+    ; Count(lines) = lineCount
+    ; ForRange(1 (lineCount | Math.Subtract(1)) {
+    ;   lines | Take(lineIdx) = line
+    ;   Check and assign the appropriate field in the entry
+    ;   line | String.StartsWith("Description:") | When({IsTrue} {
+    ;     line | String.Split(": ", 2) | Take(1) | entry | Set("description")
+    ;   })
+    ;   line | String.StartsWith("Input:") | When({IsTrue} {
+    ;     line | String.Split(": ", 2) | Take(1) | entry | Set("input")
+    ;   })
+    ;   line | String.StartsWith("Output:") | When({IsTrue} {
+    ;     line | String.Split(": ", 2) | Take(1) | entry | Set("output")
+    ;   })
+    ;   line | String.Contains(":") | When({IsTrue} {
+    ;     line | String.Split(": ", 2) = paramParts
+    ;     entry | Take("parameters") | Push({"name": paramParts | Take(0), "description": paramParts | Take(1)})
+    ;   })
+    
+
+      ; lineIdx | Math.Inc
+    ; })
+
+    ; Add the entry to the output sequence
+    ; jsonOutput | Push(entry)
+    ; idx | Math.Inc
+
+  ; })
+
+  ; Convert the output sequence to JSON
+  ; jsonOutput | ToJson = outputJson
+  ; | Log
+
+  ;Log("result")
+})
+
+; ; Read the input text file
+; "input_text_file" = filePath
+; filePath | File.Read = inputText
+
+; ; Split the input text into sections based on double newlines
+; inputText | String.Split("\n\n") = sections
+
+; ; Initialize an empty sequence for the JSON output
+; [] >= jsonOutput
+
+; ; Iterate over each section
+; 0 >= idx
+; Count(sections) = sectionCount
+; ForRange(0 (sectionCount | Math.Subtract(1)) {
+;   sections | Take(idx) = section
+
+;   ; Split each section by newline
+;   section | String.Split("\n") = lines
+
+;   ; Extract the name and initialize a table for this entry
+;   lines | Take(0) = name
+;   {"name": name, "input": "", "output": "", "parameters": []} = entry
+
+;   ; Process each line
+;   1 >= lineIdx
+;   Count(lines) = lineCount
+;   ForRange(1 (lineCount | Math.Subtract(1)) {
+;     lines | Take(lineIdx) = line
+
+;     ; Check and assign the appropriate field in the entry
+;     line | String.StartsWith("Description:") | When({IsTrue} {
+;       line | String.Split(": ", 2) | Take(1) | entry | Set("description")
+;     })
+;     line | String.StartsWith("Input:") | When({IsTrue} {
+;       line | String.Split(": ", 2) | Take(1) | entry | Set("input")
+;     })
+;     line | String.StartsWith("Output:") | When({IsTrue} {
+;       line | String.Split(": ", 2) | Take(1) | entry | Set("output")
+;     })
+;     line | String.Contains(":") | When({IsTrue} {
+;       line | String.Split(": ", 2) = paramParts
+;       entry | Take("parameters") | Seq.Push({"name": paramParts | Take(0), "description": paramParts | Take(1)})
+;     })
+
+;     lineIdx | Math.Inc
+;   }
+
+;   ; Add the entry to the output sequence
+;   jsonOutput | Seq.Push(entry)
+;   idx | Math.Inc
+; })
+
+; ; Convert the output sequence to JSON
+; jsonOutput | ToJson = outputJson
+; outputJson | Log
+
+@mesh(main)
+@schedule(main prepare-to-json)
+@run(main)

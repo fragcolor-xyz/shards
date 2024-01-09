@@ -1,0 +1,78 @@
+ReadFile
+Description: The purpose of ReadFile and WriteFile shards is to enable saving and loading of workflow state to and from files. WriteFile serializes the input data and writes it to a file. This allows saving the state of a workflow to disk, so it can be resumed later. ReadFile reads data from a file and deserializes it. This allows loading previously saved workflow state from disk, so the workflow can resume from where it left off. Together, ReadFile and WriteFile provide persistence for Shard workflows. Complex workflows with many steps and branches can be paused, saved to disk with WriteFile, and later loaded and resumed with ReadFile. This is useful for long running workflows that need to survive restarts of the workflow runner.
+Input: Ignored.
+Output: Any
+
+Shards.Enumerate
+Description: Outputs a sequence containing the names of all registered shards.
+Input: Ignored.
+Output: A sequence containing the names of all registered shards.
+
+ExpectIntSeq
+Description: Asserts that the input is a sequence of integers. It fails if the input is not a sequence or contains non-integer elements.
+Input: The input can be any type. It is the value that needs to be validated as a sequence of integers.
+Output: Same as the input, passed through unchanged if validation succeeds.
+
+ExpectFloatSeq
+Description: Validates that the input is a sequence of floats. If not, it will error.
+Input: The input can be any type. It is the value that needs to be validated as a sequence of floats.
+Output: The output is the same as the input, if the validation passes.
+
+ExpectInt2Seq
+Description: Checks if the input matches a sequence of vectors of 2 integers and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Unchanged if it matches the expected sequence of vectors of 2 integers.
+
+ExpectInt8Seq
+Description: Checks if the input matches a sequence of vectors of 8 integers and outputs the input unchanged. Throws error if mismatch.
+Input: Accepts input of any type.
+Output: Unchanged if it matches the expected sequence of vectors of 8 integers.
+
+BigInt.IsNot
+Description: Compares two big integer values represented as bytes and outputs a boolean indicating if they are not equal.
+Input: A big integer represented as bytes. This is the main input value to compare against the operand.
+Output: A boolean value indicating if the input value is not equal to the operand value. 
+Operand: The bytes variable or scalar representing the other big integer value to compare against. This allows comparing the input value against a variable operand.
+
+MakeFloat2
+Description: Constructs a 2 component floating point vector from the given scalar values.
+Input: None.
+Output: A vector of 2 floating point values.
+0: Vector component.
+1: Vector component.
+
+MakeFloat3
+Description: Constructs a 3 component floating point vector from the given scalar values.
+Input: None.
+Output: A vector of 3 floating point values.
+0: Vector component.
+1: Vector component.
+2: Vector component.
+
+MakeInt2
+Description: Constructs a 2 component integer vector from the given scalar values.
+Input: None.
+Output: A vector of 16 integers.
+0: Vector component.
+1: Vector component.
+
+MakeInt16
+Description: Constructs a 16 component integer vector from the given scalar values.
+Input: None.
+Output: A vector of 16 integers.
+0: Vector component.
+1: Vector component.
+2: Vector component.
+3: Vector component.
+4: Vector component.
+5: Vector component.
+6: Vector component.
+7: Vector component.
+8: Vector component.
+9: Vector component.
+10: Vector component.
+11: Vector component.
+12: Vector component.
+13: Vector component.
+14: Vector component.
+15: Vector component.
