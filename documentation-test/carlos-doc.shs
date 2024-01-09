@@ -1,8 +1,7 @@
 ReadFile
-The purpose of ReadFile and WriteFile shards is to enable saving and loading of workflow state to and from files.
-WriteFile serializes the input data and writes it to a file. This allows saving the state of a workflow to disk, so it can be resumed later.
-ReadFile reads data from a file and deserializes it. This allows loading previously saved workflow state from disk, so the workflow can resume from where it left off.
-Together, ReadFile and WriteFile provide persistence for Shard workflows. Complex workflows with many steps and branches can be paused, saved to disk with WriteFile, and later loaded and resumed with ReadFile. This is useful for long running workflows that need to survive restarts of the workflow runner.
+Description: The purpose of ReadFile and WriteFile shards is to enable saving and loading of workflow state to and from files. WriteFile serializes the input data and writes it to a file. This allows saving the state of a workflow to disk, so it can be resumed later. ReadFile reads data from a file and deserializes it. This allows loading previously saved workflow state from disk, so the workflow can resume from where it left off. Together, ReadFile and WriteFile provide persistence for Shard workflows. Complex workflows with many steps and branches can be paused, saved to disk with WriteFile, and later loaded and resumed with ReadFile. This is useful for long running workflows that need to survive restarts of the workflow runner.
+Input: Ignored.
+Output: Any
 
 Shards.Enumerate
 Description: Outputs a sequence containing the names of all registered shards.

@@ -1,7 +1,0 @@
-@wire(main-wire({
-  Msg("test test test")
-}))
-
-@mesh(main)
-@schedule(main main-wire)
-@run(main)
