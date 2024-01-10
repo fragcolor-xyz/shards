@@ -5,7 +5,6 @@
 #define SH_CORE_RUNTIME
 
 // must go first
-#include "boost/container/stable_vector.hpp"
 #include <shards/shards.h>
 #include <type_traits>
 
