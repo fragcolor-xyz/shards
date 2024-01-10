@@ -1,0 +1,30 @@
+"" >= shard-docs
+
+Shards.Enumerate | ForEach({
+  = shard-name
+
+  Shards.Help
+  {Take("help") | ExpectString = shard-help}
+  {Take("inputHelp") | ExpectString = input-help}
+  {Take("outputHelp") | ExpectString = output-help}
+  {Take("parameters") | ExpectSeq = parameters}
+
+  [shard-name "\nDescription: " shard-help "\nInput: " input-help "\nOutput: " output-help "\n"] | String.Join >= shard-doc
+
+  0 >= idx
+  parameters | ForEach({
+    ExpectTable
+    {Take("help") | ExpectString = param-help-text}
+    {Take("name") | ExpectString = param-name}
+
+    [param-name ": " param-help-text "\n"] | String.Join | AppendTo(shard-doc)
+
+    Math.Inc(idx)
+  })
+
+  "\n" | AppendTo(shard-doc)
+
+  shard-doc | AppendTo(shard-docs)
+})
+
+"shard-docs.md" | FS.Write(shard-docs)

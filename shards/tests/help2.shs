@@ -1,0 +1,41 @@
+Sequence(shard-docs)
+
+Shards.Enumerate | ForEach({
+  Set(shard-doc "name")
+  Shards.Help
+  {Take("help") | Set(shard-doc "help")}
+
+  {Take("inputHelp") | Set(shard-doc "input-help")}
+  {Take("outputHelp") | Set(shard-doc "output-help")}
+
+  {Take("inputTypes") | ExpectSeq | Set(shard-doc "input-types")}
+  {Take("outputTypes") | ExpectSeq | Set(shard-doc "output-types")}
+
+  {Take("parameters") | ExpectSeq = parameters}
+  Sequence(parameters-seq Type: @type([{none: Type::String}]))
+  0 >= idx
+  parameters | ForEach({
+    ExpectTable
+    {Take("default") | ToString | Set(param-doc "default")}
+    {Take("help") | Set(param-doc "help")}
+    {Take("name") | Set(param-doc "name")}
+    {Take("types") = types}
+    Sequence(param-types Type: @type([{none: Type::String}]))
+    types | When(IsNotNone {ExpectSeq | ForEach({
+        ExpectTable
+        {Take("name") | Set(param-type "name")}
+        {Take("type") | Set(param-type "type")}
+        param-type >> param-types
+      })
+    })
+    param-types | Set(param-doc "types")
+    param-doc >> parameters-seq
+    Math.Inc(idx)
+  })
+  parameters-seq | Set(shard-doc "parameters")
+
+  shard-doc >> shard-docs
+})
+
+shard-docs | ToJson = shard-docs-json
+"share-docs.json" | FS.Write(shard-docs-json)
