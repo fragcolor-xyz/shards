@@ -1,0 +1,4510 @@
+Wasm.Run
+Description: 
+Input: 
+Output: 
+Module: The wasm module to run.
+Arguments: The arguments to pass to the module entrypoint function.
+EntryPoint: The entry point function to call when activating.
+StackSize: The stack size in kilobytes to use.
+ResetRuntime: If the runtime should be reset every activation, altho slow this might be useful if certain modules fail to execute properly or leak on multiple activations.
+CallConstructors: Use if it might be necessary to force a call to `__wasm_call_dtors`, modules generated with WASI rust might need this.
+
+Unpack
+Description: 
+Input: 
+Output: 
+Definition: A string defining the struct e.g. "i32 f32 b i8[256]".
+
+Reflect.Name
+Description: 
+Input: 
+Output: 
+
+DB.Query
+Description: 
+Input: 
+Output: 
+Query: The database query to execute every activation.
+Database: The optional sqlite database filename.
+AsRows: Return the result as rows.
+
+Random.Name
+Description: Generate a random name (Petname)
+Input: 
+Output: 
+Words: How many words to generate and concatenate
+Separator: A separator character to use between generated words
+
+RandomInt
+Description: 
+Input: 
+Output: 
+Max: The maximum (if integer, not including) value to output.
+
+Physics.Torque
+Description: Adds a torque to a rigid body
+Input: 
+Output: 
+RigidBody: The rigidbody to apply the torque to.
+
+Physics.AngularImpulse
+Description: Adds an angular impulse to a rigid body
+Input: 
+Output: 
+RigidBody: The rigidbody to apply the impulse to.
+
+Physics.CastRay
+Description: 
+Input: 
+Output: 
+
+Physics.KinematicBody
+Description: 
+Input: 
+Output: 
+Shapes: The shape or shapes of this rigid body.
+Position: The initial position of this rigid body. Can be updated in the case of a kinematic rigid body.
+Rotation: The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body.
+Collision: Handle collisions with this object.
+SolverGroup: Solver group (Membership, Filter) pair for contact forces.
+CollisionGroup: Collision group (Membership, Filter) pair for collision events.
+Tag: Tag attached to this collider
+Name: The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.
+
+Physics.StaticBody
+Description: 
+Input: 
+Output: 
+Shapes: The shape or shapes of this rigid body.
+Position: The initial position of this rigid body. Can be updated in the case of a kinematic rigid body.
+Rotation: The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body.
+Collision: Handle collisions with this object.
+SolverGroup: Solver group (Membership, Filter) pair for contact forces.
+CollisionGroup: Collision group (Membership, Filter) pair for collision events.
+Tag: Tag attached to this collider
+Name: The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.
+
+Physics.Ball
+Description: Physics shape
+Input: 
+Output: 
+Position: The position of the shape.
+Rotation: The rotation of the shape.
+Radius: The radius of the sphere.
+Mass: The mass of the shape.
+
+ONNX.Activate
+Description: 
+Input: 
+Output: 
+Model: The ONNX model to use to perform the activation.
+
+WS.WriteString
+Description: 
+Input: 
+Output: 
+Client: The WebSocket client instance.
+
+Network.Send
+Description: 
+Input: 
+Output: 
+Peer: The optional explicit peer to send packets to.
+
+Network.Client
+Description: 
+Input: 
+Output: 
+Address: The local bind address or the remote address.
+Port: The port to bind if server or to connect to if client.
+Handler: The flow to execute when a packet is received.
+
+Network.Server
+Description: 
+Input: 
+Output: 
+Address: The local bind address or the remote address.
+Port: The port to bind if server or to connect to if client.
+Handler: The wire to spawn for each new peer that connects, stopping that wire will break the connection.
+Timeout: The timeout in seconds after which a peer will be disconnected if there is no network activity.
+OnDisconnect: The flow to execute when a peer disconnects, The Peer ID will be the input.
+
+Inputs.GetContext
+Description: 
+Input: 
+Output: 
+
+Inputs.KeyUp
+Description: 
+Input: 
+Output: 
+Key: The key to check.
+Action: The Shards to run if a key event happened.
+Repeat: If the key event should be repeated.
+Modifiers: Modifier keys to check.
+
+Inputs.KeyDown
+Description: 
+Input: 
+Output: 
+Key: The key to check.
+Action: The Shards to run if a key event happened.
+Repeat: If the key event should be repeated.
+Modifiers: Modifier keys to check.
+
+Inputs.MouseUp
+Description: 
+Input: 
+Output: 
+Left: The action to perform when the left mouse button is pressed down.
+Right: The action to perform when the right mouse button is pressed down.
+Middle: The action to perform when the middle mouse button is pressed down.
+Consume: Consume events.
+
+Inputs.HandleURL
+Description: 
+Input: 
+Output: 
+Action: The Shards to run if a text/file drop event happened.
+
+Inputs.IsKeyDown
+Description: 
+Input: 
+Output: 
+Key: The name of the key to check.
+
+Inputs.Mouse
+Description: 
+Input: 
+Output: 
+Hidden: If the cursor should be hidden.
+Capture: If the mouse should be confined to the application window.
+Relative: If the mouse should only report relative movements.
+
+Inputs.Size
+Description: 
+Input: 
+Output: 
+
+ResizeImage
+Description: 
+Input: 
+Output: 
+Width: The target width.
+Height: The target height.
+
+FillAlpha
+Description: 
+Input: 
+Output: 
+
+StripAlpha
+Description: 
+Input: 
+Output: 
+
+Convolve
+Description: 
+Input: 
+Output: 
+Radius: The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on.
+Step: How many pixels to advance each activation.
+
+GetImagePixel
+Description: 
+Input: 
+Output: 
+Position: The position of the pixel to retrieve
+AsInteger: Read the pixel as an integer
+Default: When specified, out of bounds or otherwise failed reads will returns this value instead of failing
+
+Http.Delete
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Http.Put
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Network.Peer
+Description: 
+Input: 
+Output: 
+
+Http.Post
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Http.Get
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+String.DecodeURI
+Description: 
+Input: 
+Output: 
+
+Http.Response
+Description: 
+Input: 
+Output: 
+Status: The HTTP status code to return.
+Headers: The headers to attach to this response.
+
+Mutant
+Description: 
+Input: 
+Output: 
+Shard: The shard to mutate.
+Indices: The parameter indices to mutate of the inner shard.
+Mutations: Optional wires of shards (or Nones) to call when mutating one of the parameters, if empty a default operator will be used.
+Options: Mutation options table - a table with mutation options.
+
+Evolve
+Description: 
+Input: 
+Output: 
+Wire: The wire to optimize and evolve.
+Fitness: The fitness wire to run at the end of the main wire evaluation and using its last output; should output a Float fitness value.
+Population: The population size.
+Mutation: The rate of mutation, 0.1 = 10%.
+Crossover: The rate of crossover, 0.1 = 10%.
+Extinction: The rate of extinction, 0.1 = 10%.
+Elitism: The rate of elitism, 0.1 = 10%.
+Threads: The number of cpu threads to use.
+Coroutines: The number of coroutines to run on each thread.
+
+FS.LastWriteTime
+Description: 
+Input: 
+Output: 
+
+FS.Read
+Description: 
+Input: 
+Output: 
+Bytes: If the output should be SHType::Bytes instead of SHType::String.
+
+FS.Parent
+Description: 
+Input: 
+Output: 
+
+FS.RelativeTo
+Description: 
+Input: 
+Output: 
+BasePath: The base path to make the input path relative to
+
+FS.Iterate
+Description: 
+Input: 
+Output: 
+Recursive: If the iteration should be recursive, following sub-directories.
+
+FS.Join
+Description: 
+Input: 
+Output: 
+
+Debug.Noop
+Description: A shard that can be set to break in the debugger at a specific location
+Input: 
+Output: 
+Tag: Any tag to identify this debug shard
+Inspect: Anything to visualize
+
+CSV.Read
+Description: Reads a CSV string and outputs the data as a sequence of strings in a sequence of rows.
+Input: A multiline string in CSV format.
+Output: A sequence of rows, with each row being a sequence of strings.
+NoHeader: Whether the shard should parse the first row as data, instead of header.
+Separator: The character to use as fields separator.
+
+ChaChaPoly.Encrypt
+Description: 
+Input: 
+Output: 
+Key: The private key to be used to encrypt/decrypt the input payload.
+
+Sr25519.Verify
+Description: 
+Input: 
+Output: 
+Key: The public key of the keypair that signed the message. This will be used to verify the signature.
+Message: The message string that was signed to produce the signature. This is the original plaintext message that the signature was created for. When verifying the signature, this message will be hashed and the resulting digest compared to the signature to validate it was produced by signing this exact message.
+
+FS.SaveFileDialog
+Description: 
+Input: 
+Output: 
+Filters: To filter files based on extensions.
+CurrentDir: Set the current directory
+
+Ed25519.PublicKey
+Description: 
+Input: 
+Output: 
+
+Ed25519.Sign
+Description: 
+Input: 
+Output: 
+Key: The private key to be used to sign the hashed message input.
+
+Substrate.Encode
+Description: Encode values into a byte array in SCALE format
+Input: A sequence of values to SCALE encode.
+Output: The encoded SCALE bytes.
+Hints: The hints of types to encode, either "i8"/"u8", "i16"/"u16" etc... for int types, "c" for Compact int, "a" for AccountId or nil for other types.
+
+Substrate.StorageMap
+Description: Returns the encoded storage map corresponding to the input strings.
+Input: A sequence of three strings representing the map we want to encode, the last one being SCALE encoded data of the key.
+Output: The encoded storage map.
+PreHashed: If the keys are already hashed.
+
+Substrate.StorageKey
+Description: Returns the encoded storage key corresponding to the input strings.
+Input: A sequence of two strings representing the key we want to encode.
+Output: The encoded storage key.
+
+Eth.DecodeCall
+Description: 
+Input: 
+Output: 
+ABI: The contract's json ABI.
+Name: The name of the method to call.
+Input: If the input is the actual function call transaction input rather than the result of the call.
+
+Hash.XXH-64
+Description: 
+Input: 
+Output: 
+
+Hash.Blake2-256
+Description: 
+Input: 
+Output: 
+
+Hash.Blake2-128
+Description: 
+Input: 
+Output: 
+
+Hash.Sha2-512
+Description: 
+Input: 
+Output: 
+
+Hash.Sha3-512
+Description: 
+Input: 
+Output: 
+
+Hash.Keccak-512
+Description: 
+Input: 
+Output: 
+
+Hash.Keccak-256
+Description: 
+Input: 
+Output: 
+
+ECDSA.Seed
+Description: 
+Input: 
+Output: 
+Compressed: If the output PublicKey should use the compressed format.
+
+ECDSA.PublicKey
+Description: 
+Input: 
+Output: 
+Compressed: If the output PublicKey should use the compressed format.
+
+ECDSA.Sign
+Description: 
+Input: 
+Output: 
+Key: The private key to be used to sign the hashed message input.
+
+UUID.Convert
+Description: Outputs a UUID (Universally Unique Identifier) as Int16.
+Input: 
+Output: 
+
+Physics.Impulse
+Description: Adds an impulse to a rigid body
+Input: 
+Output: 
+RigidBody: The rigidbody to apply the impulse to.
+
+UUID.ToBytes
+Description: Reads an UUID and formats it into bytes.
+Input: 
+Output: 
+
+FromLEB128
+Description: 
+Input: 
+Output: 
+Signed: If the integer to encode/decode is signed and can be negative.
+
+Sr25519.Seed
+Description: 
+Input: 
+Output: 
+
+ToBase58
+Description: 
+Input: 
+Output: 
+
+Time.MovingAverage
+Description: Computes a moving average of a single floating point number.
+Input: 
+Output: 
+Window: The moving average window length (in frames)
+
+Time.ToString
+Description: Converts time into a human readable string.
+Input: The time to convert.
+Output: A string representation of the time.
+Millis: True if the input is given in milliseconds, False if given in seconds.
+
+Time.Pop
+Description: This shards delays its output until one of the values of the sequence parameter expires.
+Input: 
+Output: 
+Sequence: A variables sequence of pairs [value pop-epoch-time-ms] with types [Any SHType::Int]
+
+Time.Epoch
+Description: 
+Input: 
+Output: 
+
+Time.EpochMs
+Description: 
+Input: 
+Output: 
+
+Time.Delta
+Description: Gives the time between the last activation of this shard and the current, capped to a limit
+Input: 
+Output: 
+
+Time.NowMs
+Description: 
+Input: 
+Output: 
+
+Time.Now
+Description: 
+Input: 
+Output: 
+
+ToBytes
+Description: 
+Input: 
+Output: 
+
+ReadFile
+Description: 
+Input: 
+Output: 
+File: The file to read/write from.
+
+Inputs.MousePixelPos
+Description: 
+Input: 
+Output: 
+
+WriteFile
+Description: 
+Input: 
+Output: 
+File: The file to read/write from.
+Append: If we should append to the file if existed already or truncate. (default: false).
+Flush: If the file should be flushed to disk after every write.
+
+FlushLog
+Description: 
+Input: 
+Output: 
+
+Msg
+Description: Displays the passed message string or the passed variable's value to the user via standard output.
+Input: 
+Output: 
+Message: The message to display on the user's screen or console.
+Level: The level of logging.
+
+LogType
+Description: Logs the type of the passed variable to the console (along with an optional prefix string).
+Input: 
+Output: 
+Prefix: The message to prefix to the logged output.
+Level: The level of logging.
+
+WhenDone
+Description: 
+Input: 
+Output: 
+Wire: The wire to spawn and try to run many times concurrently.
+
+Suspend
+Description: Pauses another wire. If no wire is given, pauses the current wire.
+Input: 
+Output: 
+Wire: The wire to suspend.
+
+IsRunning
+Description: Checks if a wire is running and outputs true if that is the case, false if not.
+Input: 
+Output: 
+Wire: The wire to run.
+
+DoMany
+Description: 
+Input: 
+Output: 
+Wire: The wire to run many times sequentially.
+
+Spawn
+Description: 
+Input: 
+Output: 
+Wire: The wire to spawn and try to run many times concurrently.
+
+TryMany
+Description: 
+Input: 
+Output: 
+Wire: The wire to spawn and try to run many times concurrently.
+Policy: The execution policy in terms of wires success.
+Threads: The number of cpu threads to use.
+
+Step
+Description: 
+Input: 
+Output: 
+Wire: The wire to run.
+
+Detach
+Description: 
+Input: 
+Output: 
+Wire: The wire to run.
+Restart: If on activation the wire should be restarted from scratch even if it was still running.
+
+FS.Watch
+Description: A directory watcher
+Input: 
+Output: 
+
+UUID.ToString
+Description: Reads an UUID and formats it into a readable string.
+Input: 
+Output: 
+Hyphenated: Whether to use hyphens in the output.
+
+Stop
+Description: Stops another wire. If no wire is given, stops the current wire.
+Input: 
+Output: 
+Wire: The wire to stop.
+Passthrough: The output of this shard will be its input.
+
+Wait
+Description: Waits for another wire to complete before resuming execution of the current wire.
+Input: 
+Output: 
+Wire: The wire to wait.
+Passthrough: The output of this shard will be its input.
+Timeout: The optional amount of time in seconds to wait for the wire to complete, if the time elapses the wire will be stopped and the flow will fail with a timeout error.
+
+String.Starts
+Description: 
+Input: 
+Output: 
+With: The string that needs to start at the beginning of the input string to output true.
+
+String.Split
+Description: 
+Input: 
+Output: 
+Separator: The separator character to split the string on.
+
+String.Contains
+Description: 
+Input: 
+Output: 
+String: The string that needs to be contained by the input string to output true.
+
+String.Trim
+Description: 
+Input: 
+Output: 
+
+String.ToLower
+Description: Converts a string to lowercase
+Input: A string.
+Output: A string in lowercase.
+
+Regex.Match
+Description: 
+Input: 
+Output: 
+Regex: The regular expression.
+
+Regex.Search
+Description: 
+Input: 
+Output: 
+Regex: The regular expression.
+
+Regex.Replace
+Description: 
+Input: 
+Output: 
+Regex: The regular expression.
+Replacement: The replacement expression.
+
+Zip
+Description: Zip will take any number of sequences and return a sequence of sequences, where each sequence is a tuple of the values from the input sequences at the same index.
+Input: 
+Output: 
+Sequences: The sequences to zip together.
+
+IndexOf
+Description: 
+Input: 
+Output: 
+Item: The item to find the index of from the input, if it's a sequence it will try to match all the items in the sequence, in sequence.
+All: If true will return a sequence with all the indices of Item, empty sequence if not found.
+
+Math.Lerp
+Description: Linearly interpolate between two values based on input
+Input: 
+Output: 
+First: The first value
+Second: The second value
+
+Math.Pow
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Clamp
+Description: Clamps the input value between the Min and Max values
+Input: 
+Output: 
+Min: The first value
+Max: The second value
+
+PremultiplyAlpha
+Description: Applies the premultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been premultiplied in Shards. This mainly applies to PNG images.
+Input: The image to apply the premultiplication of alpha channels to.
+Output: The image as a result of the application of the premultiplication of alpha channels.
+
+Math.Dec
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Value: The value to apply the operation to.
+
+Math.Round
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Trunc
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Floor
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Tracy.Message
+Description: 
+Input: 
+Output: 
+Color: 
+
+Math.Ceil
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.LGamma
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Asinh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+FS.CreateDirectories
+Description: 
+Input: 
+Output: 
+
+Math.Tanh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Process.StackTrace
+Description: 
+Input: 
+Output: 
+
+Math.Sinh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Acos
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Asin
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Sr25519.PublicKey
+Description: 
+Input: 
+Output: 
+
+Math.Tan
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Cos
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Sin
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.FastInvSqrt
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.FastSqrt
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+DShard
+Description: A dynamic shard.
+Input: 
+Output: 
+Name: The name of the shard to wrap.
+Parameters: The parameters to pass to the wrapped shard.
+
+Math.Exp2
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Exp
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Pack
+Description: 
+Input: 
+Output: 
+Definition: A string defining the struct e.g. "i32 f32 b i8[256]".
+
+Ed25519.Verify
+Description: 
+Input: 
+Output: 
+Key: The public key of the keypair that signed the message. This will be used to verify the signature.
+Message: The message string that was signed to produce the signature. This is the original plaintext message that the signature was created for. When verifying the signature, this message will be hashed and the resulting digest compared to the signature to validate it was produced by signing this exact message.
+
+Math.Abs
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.RShift
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Math.LShift
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Math.And
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Math.Divide
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Math.QuatRotate
+Description: Rotate a vector by a quaternion
+Input: 
+Output: 
+Operand: 
+
+Inputs.MouseDown
+Description: 
+Input: 
+Output: 
+Left: The action to perform when the left mouse button is pressed down.
+Right: The action to perform when the right mouse button is pressed down.
+Middle: The action to perform when the middle mouse button is pressed down.
+Consume: Consume events.
+
+Sr25519.Sign
+Description: 
+Input: 
+Output: 
+Key: The private key to be used to sign the hashed message input.
+
+Resume
+Description: Resumes another wire (previously suspending using Suspend).
+Input: 
+Output: 
+Wire: The wire to resume.
+
+Math.Unproject
+Description: 
+Input: 
+Output: 
+Matrix: The combined view-projection matrix to use
+ScreenSize: The combined view-projection matrix to use
+DepthRange: The combined view-projection matrix to use
+FlipY: Flip Y coordinate (on by default)
+
+Math.Project
+Description: 
+Input: 
+Output: 
+Matrix: The combined view-projection matrix to use
+ScreenSize: The combined view-projection matrix to use
+FlipY: Flip Y coordinate (on by default)
+
+Math.MatIdentity
+Description: Gives identity values for square matrix types
+Input: 
+Output: 
+Type: The matrix row type of the corresponding matrix
+
+Math.DegreesToRadians
+Description: 
+Input: 
+Output: 
+
+SVG.ToImage
+Description: Converts an SVG string or bytes to an image.
+Input: 
+Output: 
+Size: The desired output size, if (0, 0) will default to the size defined in the svg data.
+Offset: A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.
+Padding: Pixels of padding to add
+
+Math.AxisAngleZ
+Description: 
+Input: 
+Output: 
+
+Math.AxisAngleY
+Description: 
+Input: 
+Output: 
+
+Math.Rotation
+Description: 
+Input: 
+Output: 
+
+RandomFloat
+Description: 
+Input: 
+Output: 
+Max: The maximum (if integer, not including) value to output.
+
+Math.Scaling
+Description: 
+Input: 
+Output: 
+
+Math.Inverse
+Description: 
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Transpose
+Description: 
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Length
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.LengthSquared
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Math.Normalize
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Positive: If the output should be in the range 0.0~1.0 instead of -1.0~1.0.
+
+Math.Dot
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand.
+
+Math.Log2
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI
+Description: Initializes a UI context
+Input: The value that will be passed to the Contents shards of the UI.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Scale: The UI scale
+Queue: The draw queue.
+
+Cond
+Description: Takes a sequence of conditions and predicates. Evaluates each condition one by one and if one matches, executes the associated action.
+Input: The value that will be passed to each predicate and action to execute.
+Output: The input of the shard if `Passthrough` is `true`; otherwise, the output of the action of the first matching condition.
+Wires: A sequence of shards, interleaving condition test predicate and action to execute if the condition matches.
+Passthrough: The output of this shard will be its input.
+Threading: Will not short circuit after the first true test expression. The threaded value gets used in only the action and not the test part of the clause.
+
+UnsafeActivate!
+Description: 
+Input: 
+Output: 
+Activate: The function address, must be of type std::function<SHVar(SHContext *, const SHVar &)>.
+Cleanup: The function address, must be of type std::function<void(SHContext *)>.
+
+UI.Combo
+Description: A drop-down selection menu with a label.
+Input: A sequence of values.
+Output: The selected value.
+Label: The text label of this combobox.
+Index: The index of the selected item.
+Width: The width of the button and menu.
+Style: The text style.
+
+Assert.Break
+Description: 
+Input: The input can be of any type.
+Output: The output will be the input (passthrough).
+
+HexToBytes
+Description: 
+Input: 
+Output: 
+
+Math.Slerp
+Description: Rotate a quaternion by another quaternion
+Input: 
+Output: 
+First: The first value
+Second: The second value
+
+IsAllNot
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+StringToBytes
+Description: 
+Input: 
+Output: 
+
+ChaChaPoly.Decrypt
+Description: 
+Input: 
+Output: 
+Key: The private key to be used to encrypt/decrypt the input payload.
+
+BytesToInts
+Description: 
+Input: 
+Output: 
+
+ExpectFloat3
+Description: 
+Input: 
+Output: 
+
+FloatsToImage
+Description: 
+Input: 
+Output: 
+Width: The width of the output image.
+Height: The height of the output image.
+Channels: The channels of the output image.
+
+UI.PlotLine
+Description: Line-connected points on a plot.
+Input: A sequence of point coordinates.
+Output: The output of this shard will be its input.
+Color: Stroke color.
+Name: Name of this chart, displayed in the plot legend.
+
+ToInt4
+Description: 
+Input: 
+Output: 
+
+IsAudio
+Description: 
+Input: 
+Output: 
+
+Math.Cbrt
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+IsTable
+Description: 
+Input: 
+Output: 
+
+Math.Orthographic
+Description: 
+Input: 
+Output: 
+Width: Width size.
+Height: Height size.
+Near: Near plane.
+Far: Far plane.
+
+UI.Plot
+Description: A 2D plot area.
+Input: The value that will be passed to the Contents shards of the plot.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+ViewAspect: Width / height ratio of the plot region.
+DataAspect: Width / height ratio of the data.
+Legend: Whether to display the legend.
+
+IsColor
+Description: 
+Input: 
+Output: 
+
+WritePNG
+Description: 
+Input: 
+Output: 
+File: The file to read/write from.
+
+SleepBlocking!
+Description: 
+Input: 
+Output: 
+
+Animation.Duration
+Description: Outputs the duration of an animation, in seconds
+Input: 
+Output: 
+
+IsImage
+Description: 
+Input: 
+Output: 
+
+IsFloat4
+Description: 
+Input: 
+Output: 
+
+IsFloat3
+Description: 
+Input: 
+Output: 
+
+IsFloat
+Description: 
+Input: 
+Output: 
+
+IsInt3
+Description: 
+Input: 
+Output: 
+
+Physics.DynamicBody
+Description: 
+Input: 
+Output: 
+Shapes: The shape or shapes of this rigid body.
+Position: The initial position of this rigid body. Can be updated in the case of a kinematic rigid body.
+Rotation: The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body.
+Collision: Handle collisions with this object.
+SolverGroup: Solver group (Membership, Filter) pair for contact forces.
+CollisionGroup: Collision group (Membership, Filter) pair for collision events.
+Tag: Tag attached to this collider
+Name: The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.
+AllowTranslation: Translation contraints for this object [x y z].
+AllowRotation: Rotation contraints for this object [x y z].
+
+IsInt2
+Description: 
+Input: 
+Output: 
+
+ExpectColorSeq
+Description: 
+Input: 
+Output: 
+
+GFX.MainWindow
+Description: 
+Input: 
+Output: 
+Title: The title of the window to create.
+Width: The width of the window to create. In pixels and DPI aware.
+Height: The height of the window to create. In pixels and DPI aware.
+Contents: The main input loop of this window.
+DetachRenderer: When enabled, no default graphics renderer will be available in the contents wire.
+HandleCloseEvent: When set to false; the close event will not be handled and abort the wire the window is running in. True by default.
+UseDisplayScaling: When enabled, the window size will be scaled using the OS's provided scaling value. True by default.
+
+ExpectStringSeq
+Description: 
+Input: 
+Output: 
+
+ExpectBytesSeq
+Description: 
+Input: 
+Output: 
+
+ExpectInt8Seq
+Description: 
+Input: 
+Output: 
+
+ExpectIntSeq
+Description: 
+Input: 
+Output: 
+
+ExpectFloat4Seq
+Description: 
+Input: 
+Output: 
+
+ExpectFloatSeq
+Description: 
+Input: 
+Output: 
+
+ExpectTable
+Description: 
+Input: 
+Output: 
+
+WireRunner
+Description: 
+Input: 
+Output: 
+Wire: The wire variable to compose and run.
+Mode: The way to run the wire. Inline: will run the sub wire inline within the root wire, a pause in the child wire will pause the root too; Detached: will run the wire separately in the same mesh, a pause in this wire will not pause the root; Stepped: the wire will run as a child, the root will tick the wire every activation of this shard and so a child pause won't pause the root.
+
+ExpectWire
+Description: 
+Input: 
+Output: 
+
+FromJson
+Description: 
+Input: 
+Output: 
+Pure: If the input string is generic pure json rather then shards flavored json.
+
+Expand
+Description: 
+Input: 
+Output: 
+Size: The expansion size.
+Wire: The wire to spawn and try to run many times concurrently.
+Policy: The execution policy in terms of wires success.
+Threads: The number of cpu threads to use.
+
+ExpectColor
+Description: 
+Input: 
+Output: 
+
+FreeCamera
+Description: Provides editor free camera controls
+Input: 
+Output: 
+FlySpeed: Controls fly speed with the keyboard
+ScrollSpeed: Controls middle mouse movement speed
+PanSpeed: Controls middle mouse pan speed
+LookSpeed: Controls right mouse look speed
+
+ExpectBytes
+Description: 
+Input: 
+Output: 
+
+ExpectFloat4
+Description: 
+Input: 
+Output: 
+
+ExpectFloat
+Description: 
+Input: 
+Output: 
+
+Math.Cosh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Space
+Description: Inserts an empty space before the next widget. The direction will depend on the layout.
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+Amount: The amount of space to insert.
+
+ExpectInt8
+Description: 
+Input: 
+Output: 
+
+Http.Server
+Description: 
+Input: 
+Output: 
+Handler: The wire that will be spawned and handle a remote request.
+Endpoint: The URL from where your service can be accessed by a client.
+Port: The port this service will use.
+
+ExpectInt4
+Description: 
+Input: 
+Output: 
+
+CSV.Write
+Description: Reads a sequence of strings in a sequence of rows and outputs the data as a CSV string.
+Input: A sequence of rows, with each row being a sequence of strings.
+Output: A multiline string in CSV format.
+NoHeader: Whether the shard should parse the first row as data, instead of header.
+Separator: The character to use as fields separator.
+
+ExpectInt
+Description: 
+Input: 
+Output: 
+
+Math.Erfc
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Shader.LinearizeDepth
+Description: 
+Input: 
+Output: 
+
+Expect
+Description: 
+Input: 
+Output: 
+Type: The type to expect
+Unsafe: If we should skip performing deep type hashing and comparison. (generally fast but this might improve performance)
+
+ExpectSeq
+Description: 
+Input: 
+Output: 
+
+Profile
+Description: 
+Input: 
+Output: 
+Action: The action shards to profile.
+Label: The label to print when outputting time data.
+
+Clear
+Description: Removes all the elements of the sequence passed to it in the `:Name` parameter. Applicable only to sequences.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+ExpectBool
+Description: 
+Input: 
+Output: 
+
+Math.Log1p
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+BitSwap64
+Description: 
+Input: 
+Output: 
+
+UI.Group
+Description: Visually groups the contents together.
+Input: The value that will be passed to the Contents shards of the group.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+
+VarAddr
+Description: 
+Input: 
+Output: 
+
+ToHex
+Description: 
+Input: 
+Output: 
+
+IsInt4
+Description: 
+Input: 
+Output: 
+
+BigInt.IsNot
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+Lowest
+Description: 
+Input: 
+Output: 
+
+ToString
+Description: 
+Input: 
+Output: 
+
+MakeFloat3
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+
+Inputs.MousePos
+Description: 
+Input: 
+Output: 
+
+MakeInt16
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+3: Vector component
+4: Vector component
+5: Vector component
+6: Vector component
+7: Vector component
+8: Vector component
+9: Vector component
+10: Vector component
+11: Vector component
+12: Vector component
+13: Vector component
+14: Vector component
+15: Vector component
+
+ToBase64
+Description: 
+Input: 
+Output: 
+
+MakeInt2
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+
+BigInt.And
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+ToFloat3
+Description: 
+Input: 
+Output: 
+
+UI.LeftPanel
+Description: Layout UI elements into the panel.
+Input: The value that will be passed to the Contents shards of the panel.
+Output: The output of this shard will be its input.
+Resizable: Whether the panel can be resized.
+DefaultSize: The initial size of the panel.
+MinSize: The minimum allowable size of the panel.
+MaxSize: The maximum allowable size of the panel.
+Contents: The UI contents.
+
+ToFloat2
+Description: 
+Input: 
+Output: 
+
+ToInt16
+Description: 
+Input: 
+Output: 
+
+ToInt8
+Description: 
+Input: 
+Output: 
+
+Await
+Description: Executes a shard or a sequence of shards asynchronously and awaits their completion.
+Input: Must match the input types of the first shard in the sequence.
+Output: Will match the output types of the first shard of the sequence.
+Shards: The shards to activate.
+
+ToInt3
+Description: 
+Input: 
+Output: 
+
+ToInt2
+Description: 
+Input: 
+Output: 
+
+LastError
+Description: 
+Input: 
+Output: 
+
+UI.Reset
+Description: Forgets UI scroll, position, size changes, etc.
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+
+Assert.IsVariable
+Description: Asserts that a value is a variable at run-time
+Input: 
+Output: 
+Value: Any value to check for being a variable
+
+ExpectAudio
+Description: 
+Input: 
+Output: 
+
+ParseFloat
+Description: Converts the string representation of a number to a floating-point number equivalent.
+Input: A string representing a number.
+Output: A floating-point number equivalent to the number contained in the string input.
+
+BigInt.Max
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+Replace
+Description: 
+Input: 
+Output: 
+Patterns: The patterns to find.
+Replacements: The replacements to apply to the input, if a single value is provided every match will be replaced with that single value.
+
+Input
+Description: 
+Input: 
+Output: 
+
+BigInt.Add
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+IsFalse
+Description: Gets whether the input is `false`.
+Input: The value to check against.
+Output: `true` if the input is `false`; otherwise, `false`.
+
+NaNTo0
+Description: 
+Input: 
+Output: 
+
+Events.Emit
+Description: 
+Input: 
+Output: 
+Name: The name of the event dispatcher to use.
+ID: The optional ID to use to differentiate events with the same name.
+
+Fail
+Description: 
+Input: 
+Output: 
+
+UI.Window
+Description: Creates a floating window which can be dragged, closed, collapsed, and resized.
+Input: The value that will be passed to the Contents shards of the rendered window.
+Output: The output of this shard will be its input.
+Title: The window title displayed on the titlebar.
+Position: Absolute position; or when anchor is set, relative offset.
+Anchor: Corner or center of the screen.
+Width: The width of the rendered window.
+Height: The height of the rendered window.
+Closed: When provided with a callback, this window will have a close button and call this when pressed.
+Flags: Window flags.
+ID: An optional ID value to make the window unique if the title name collides.
+Contents: The UI contents.
+
+Remove
+Description: Removes all elements from a sequence that match the given condition. Can also take these matched indices and remove corresponding elements from a joined sequence.
+Input: Any input is ignored.
+Output: Output is the filtered sequence.
+From: The name of the sequence variable to edit in place.
+Join: Other columns to join sort/filter using the input (they must be of the same length).
+Predicate: The shards to use as predicate, if true the item will be popped from the sequence.
+Unordered: Turn on to remove items very quickly but will not preserve the sequence items order.
+
+Return
+Description: 
+Input: 
+Output: 
+
+Exit
+Description: 
+Input: 
+Output: 
+
+ToJson
+Description: 
+Input: 
+Output: 
+Pure: If the input string is generic pure json rather then shards flavored json.
+Indent: How many spaces to use as json prettify indent.
+
+Math.Atanh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Pass
+Description: 
+Input: 
+Output: 
+
+Once
+Description: Executes the shard or sequence of shards with the desired frequency in a wire flow execution.
+Input: 
+Output: 
+Action: The shard or sequence of shards to execute.
+Every: The number of seconds to wait until repeating the action, if 0 the action will happen only once per wire flow execution.
+
+DB.RawQuery
+Description: 
+Input: 
+Output: 
+Database: The optional sqlite database filename.
+ReadOnly: If true, the database will be opened in read only mode.
+
+Map
+Description: 
+Input: 
+Output: 
+Apply: The function to apply to each item of the sequence.
+
+ExpectLike
+Description: 
+Input: 
+Output: 
+TypeOf: The example value to expect. The type of the constant given here will be checked against this shard's input.
+OutputOf: Evaluates the output type of the given expression. That type will be checked against this shard's input.
+Unsafe: If we should skip performing deep type hashing and comparison. (generally fast but this might improve performance)
+
+IsAllLessEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+DropFront
+Description: Drops the first element of the sequence variable passed in the `:Name` parameter. Works only on sequences.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+MakeFloat2
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+
+GFX.ClearQueue
+Description: Clears a draw queue
+Input: 
+Output: 
+
+ToFloat
+Description: 
+Input: 
+Output: 
+
+String.Join
+Description: Concatenates all the elements of a string sequence, using the specified separator between each element.
+Input: A sequence of string values that will be joined together.
+Output: A string consisting of all the elements of the sequence delimited by the separator.
+Separator: The string to use as a separator.
+
+IsAnyLessEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+FS.Copy
+Description: 
+Input: 
+Output: 
+Destination: The destination path, can be a file or a directory.
+Behavior: What to do when the destination already exists.
+
+IsAllMoreEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+Log
+Description: Logs the output of a shard or the value of a variable to the console (along with an optional prefix string).
+Input: 
+Output: 
+Prefix: The message to prefix to the logged output.
+Level: The level of logging.
+
+UI.CodeEditor
+Description: A TextField with support for highlighting.
+Input: The value is ignored.
+Output: The value produced when changed.
+Code: The variable that holds the code to edit.
+Language: The name of the programming language for syntax highlighting.
+
+IsAnyMoreEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+IsAllMore
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+IsAnyMore
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+NanoID
+Description: Creates a random NanoID.
+Input: 
+Output: 
+Hyphenated: Whether to use hyphens in the output.
+
+Or
+Description: Computes the logical OR between the input of this shard and the output of the next shard.
+Input: The first operand to be evaluated.
+Output: The output of this shard will be its input.
+
+IsInt
+Description: 
+Input: 
+Output: 
+
+IsAll
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+FS.RemoveAll
+Description: 
+Input: 
+Output: 
+
+FromBytes
+Description: 
+Input: 
+Output: 
+
+ToColor
+Description: 
+Input: 
+Output: 
+
+And
+Description: Computes the logical AND between the input of this shard and the output of the next shard.
+Input: The first operand to be evaluated.
+Output: The output of this shard will be its input.
+
+IsAny
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+IsLessEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+IsAnyNot
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+GFX.Renderer
+Description: 
+Input: 
+Output: 
+Window: The window to run the renderer on.
+Contents: The main input loop of this window.
+IgnoreCompilationErrors: When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not render at all.
+Debug: Enable debug visualization mode.
+
+IsMoreEqual
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+Pause
+Description: 
+Input: 
+Output: 
+Time: The amount of time in seconds (can be fractional) to pause this wire.
+
+IsNot
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+IsNone
+Description: Gets whether the type of the input is `None`.
+Input: The value which type to check against.
+Output: `true` is the type of input is `None`; otherwise, `false`.
+
+IsAlmost
+Description: Checks whether the input is almost equal to a given value.
+Input: The input can be of any number type or a sequence of such types.
+Output: true if the input is almost equal to the given value; otherwise, false.
+Value: The value to test against for almost equality.
+Threshold: The smallest difference to be considered equal. Should be greater than zero.
+
+Sub
+Description: Activates a shard or a sequence of shards independently, without consuming the input. I.e. the input of the Sub flow will also be its output regardless of the shards activated in this Sub flow.
+Input: The input value passed to this Sub flow (and hence to the shard or sequence of shards in this Sub flow).
+Output: The output of this Sub flow (which is the same as its input).
+Shards: The shard or sequence of shards to execute in the Sub flow.
+
+Maybe
+Description: Attempts to activate a shard or a sequence of shards. Upon failure, activate another shard or sequence of shards.
+Input: Must match the input types of the first shard in the sequence.
+Output: Will match the output types of the first shard of the sequence.
+Shards: The shards to activate.
+Else: The shards to activate on failure.
+Silent: If logging should be disabled while running the shards (this will also disable (Log) and (Msg) shards) and no warning message should be printed on failure.
+
+GFX.Draw
+Description: 
+Input: 
+Output: 
+Queue: The queue to add the draw command to (Optional). Uses the default queue if not specified
+
+Sort
+Description: Sorts the elements of a sequence. Can also move around the elements of a joined sequence in alignment with the sorted sequence.
+Input: Any input is ignored.
+Output: Output is the sorted sequence.
+From: The name of the sequence variable to edit in place.
+Join: Other columns to join sort/filter using the input (they must be of the same length).
+Desc: If sorting should be in descending order, defaults ascending.
+Key: The shards to use to transform the collection's items before they are compared. Can be None.
+
+Update
+Description: Modifies the value of an existing mutable variable.
+Input: Input is the new value of the variable being updated.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+Repeat
+Description: Repeat an action a given number of times or until a condition is no longer `true`.
+Input: The input will be passed to both the action and the `:Until` condition if used.
+Output: The output of this shard will be its input.
+Action: The shards to repeat.
+Times: How many times we should repeat the action.
+Forever: If we should repeat the action forever.
+Until: Optional shards to use as predicate to continue repeating until it's true
+
+Limit
+Description: 
+Input: 
+Output: 
+Max: How many maximum elements to take from the input sequence.
+
+Gizmos.RefspaceGridOverlay
+Description: Draws a grid
+Input: 
+Output: 
+Center: Center of the disc
+XBase: X direction of the plane the disc is on
+YBase: Y direction of the plane the disc is on
+Thickness: Width of the line in screen space
+StepSize: Step size of the grid lines
+Color: Linear color of the grid lines
+
+Take
+Description: Extracts one or more elements/key-values from a sequence or a table by using the provided sequence index/indices or table key(s). Operation is non-destructive; doesn't modify target sequence/table.
+Input: The sequence or table from which elements/key-values have to be extracted.
+Output: The extracted elements/key-values.
+Indices/Keys: One or more indices/keys to extract from a sequence/table.
+
+Http.Patch
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+Not
+Description: Computes the logical negation of the input.
+Input: The value to be negated.
+Output: The negation of the input.
+
+Math.Multiply
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Shards.Help
+Description: 
+Input: 
+Output: 
+
+Gizmos.Rotation
+Description: Shows a rotation gizmo
+Input: 
+Output: 
+ScreenSize: Size of the gizmo on screen (UI size)
+
+Get
+Description: Reads the value of the variable passed to it.
+Input: Any input is ignored.
+Output: The output is the value read from the variable.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Default: The default value to use to infer types and output if the variable is not set, key is not there and/or type mismatches.
+
+Count
+Description: Parses the value in passed to in the `:Name` parameter and returns the count of characters (if string passed), elements (if sequence passed), or key-value pairs (if table passed).
+Input: Any input is ignored.
+Output: Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+DB.LoadExtension
+Description: 
+Input: 
+Output: 
+Path: The path to the extension to load.
+Database: The optional sqlite database filename.
+
+Math.RadiansToDegrees
+Description: 
+Input: 
+Output: 
+
+UI.Menu
+Description: Creates a menu button that when clicked will show the given menu.
+
+If called from within a menu this will instead create a button for a sub-menu.
+Input: The value that will be passed to the Contents shards of the menu.
+Output: A boolean value indicating whether the menu is active.
+Title: The title of the menu.
+Contents: The UI contents.
+
+Drop
+Description: Drops the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+Math.Acosh
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Match
+Description: Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case.
+Input: The value that's compared with the declared cases.
+Output: Same value as input if `:Passthrough` is `true` else the output of the matched case's shard if `:Passthrough` is `false`.
+Cases: Values to match against the input. A `nil` case will match anything.
+Passthrough: Parameter to control the shard's output. `true` allows the `Match` shard's input itself to appear as its output; `false` allows the matched shard's output to appear as `Match` shard's output.
+
+PopFront
+Description: Pops (drops as well as passes as output) the first element of the sequence variable passed in the `:Name` parameter. Works only on sequences.
+Input: Any input is ignored.
+Output: Element popped from the sequence.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+FS.FileDialog
+Description: AddDescriptionHere
+Input: 
+Output: 
+Filters: To filter files based on extensions.
+FilterNames: For each filter, gives the name to show of the filter.
+CurrentDir: Set the current directory
+Multiple: To select multiple files instead of just one.
+Folder: To select a folder instead of a file.
+
+Is
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+Sequence
+Description: Creates an empty sequence (or table if a key is passed).
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to write in the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Clear: If we should clear this sequence at every wire iteration; works only if this is the first push; default: true.
+Type: The sequence type to forward declare.
+
+Ref
+Description: Creates an immutable variable with a constant value. Once created this variable cannot be changed.
+Input: Input becomes the value of the variable being created.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Overwrite: If the variable should be overwritten if it already exists.
+
+Math.Mean
+Description: Calculates the mean of a sequence of floating point numbers.
+Input: A sequence of floating point numbers.
+Output: The calculated mean.
+Kind: The kind of Pythagorean means.
+
+TargetCamera
+Description: Provides editor free camera controls
+Input: 
+Output: 
+FlySpeed: Controls fly speed with the keyboard
+ScrollSpeed: Controls middle mouse movement speed
+PanSpeed: Controls middle mouse pan speed
+LookSpeed: Controls right mouse look speed
+PivotDistance: Controls distance to the point being looked at
+
+BytesToString
+Description: 
+Input: 
+Output: 
+
+IsString
+Description: 
+Input: 
+Output: 
+
+Set
+Description: Creates a mutable variable and assigns a value to it.
+Input: Input becomes the value of the variable being created.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to write in the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Exposed: If the variable should be marked as exposed.
+
+Http.Read
+Description: 
+Input: 
+Output: 
+
+UI.HexViewer
+Description: Displays an hexadecimal viewer of data.
+Input: The data to visualize. Supports primitive types only (floats, ints, string and bytes).
+Output: The output of this shard will be its input.
+
+Const
+Description: Declares an un-named constant value (of any data type).
+Input: Any input is ignored.
+Output: The declared constant value.
+Value: The constant value to insert in the wire.
+
+UI.GetClipboard
+Description: 
+Input: 
+Output: 
+
+UI.SetClipboard
+Description: 
+Input: 
+Output: 
+
+Math.MatMul
+Description: 
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Events.Update
+Description: 
+Input: 
+Output: 
+Name: The name of the event dispatcher to use.
+ID: The optional ID to use to differentiate events with the same name.
+
+Math.Decompose
+Description: 
+Input: 
+Output: 
+
+IsAnyLess
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+UI.IntSlider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The text label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+Events.Check
+Description: 
+Input: 
+Output: 
+Name: The name of the event dispatcher to use.
+ID: The optional ID to use to differentiate events with the same name.
+
+DSP.FFT
+Description: 
+Input: 
+Output: 
+
+Events.Receive
+Description: 
+Input: 
+Output: 
+Name: The name of the event dispatcher to use.
+ID: The optional ID to use to differentiate events with the same name.
+
+Complete
+Description: 
+Input: 
+Output: 
+Name: The name of the channel.
+
+Listen
+Description: 
+Input: 
+Output: 
+Name: The name of the channel.
+Type: The expected type to receive.
+Buffer: The amount of values to buffer before outputting them.
+
+Hash.Sha2-256
+Description: 
+Input: 
+Output: 
+
+Brotli.Decompress
+Description: 
+Input: 
+Output: 
+
+BigInt.Sqrt
+Description: 
+Input: Big integer represented as bytes.
+Output: Big integer represented as bytes.
+
+ToFloat4
+Description: 
+Input: 
+Output: 
+
+BigInt.Abs
+Description: Computes the absolute value of a big integer.
+Input: Big integer represented as bytes.
+Output: Big integer represented as bytes.
+
+ParseInt
+Description: Converts the string representation of a number to a signed integer equivalent.
+Input: A string representing a number.
+Output: A signed integer equivalent to the number contained in the string input.
+Base: Numerical base (radix) that determines the valid characters and their interpretation.
+
+Audio.WriteFile
+Description: 
+Input: 
+Output: 
+File: The audio file to read from (wav,ogg,mp3,flac).
+Channels: The number of desired output audio channels.
+SampleRate: The desired output sampling rate.
+
+IntsToBytes
+Description: 
+Input: 
+Output: 
+
+Math.Xor
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+BigInt.Shift
+Description: 
+Input: Big integer represented as bytes.
+Output: Big integer represented as bytes.
+By: The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive.
+
+Assoc
+Description: Updates a sequence (array) or a table (associative array/ dictionary) on the basis of an input sequence.
+Input: Input sequence that defines which element in the target sequence or table needs to be updated and with what value. Should have even number of elements.
+Output: Modified array or table. Has the same type as the array or table on which Assoc was applied.
+Name: The name of the sequence or table to be updated.
+Key: Table key for the value that is to be updated. Parameter applicable if target is table.
+Global: If the variable is or should be available to all the wires in the same mesh. The default value (false) makes the variable local to the wire.
+
+UI.Int4Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+BigInt.IsLessEqual
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+IsBool
+Description: 
+Input: 
+Output: 
+
+BigInt.IsLess
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+Math.Translation
+Description: 
+Input: 
+Output: 
+
+UI.ImageButton
+Description: Clickable button with image.
+Input: The value that will be passed to the Action shards of the button.
+Output: Indicates whether the button was clicked during this frame.
+Action: The shards to execute when the button is pressed.
+Scale: Scaling to apply to the source image.
+Size: The size to render the image at.
+ScalingAware: When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.
+Selected: Indicates whether the button is selected.
+
+BigInt.Is
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+UUID
+Description: Outputs a UUID (Universally Unique Identifier).
+Input: 
+Output: 
+
+BigInt.ToBytes
+Description: 
+Input: Big integer represented as bytes.
+Output: 
+Bits: The desired amount of bits for the output or 0 for automatic packing.
+
+UI.Table
+Description: Table layout.
+Input: The value that will be passed to the Columns and Rows shards of the table.
+Output: The output of this shard will be its input.
+Builder: Sequence of shards to build each column, repeated for each row.
+Columns: Configuration of the columns.
+Striped: Whether to alternate a subtle background color to every other row.
+Resizable: Whether columns can be resized within their specified range.
+RowIndex: Variable to hold the row index, to be used within Rows.
+
+BigInt.ToString
+Description: Converts the value to a string representation.
+Input: Big integer represented as bytes.
+Output: String representation of the big integer value.
+
+BigInt.FromFloat
+Description: Converts a floating point number to a big integer.
+Input: Floating point number.
+Output: Big integer represented as bytes.
+ShiftedBy: The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive.
+
+ExpectInt4Seq
+Description: 
+Input: 
+Output: 
+
+UI.AddFonts
+Description: Adds custom fonts to the UI system, the input should a seq of a pair (name, bytes).
+Input: 
+Output: 
+
+SetLogLevel
+Description: 
+Input: 
+Output: 
+
+BigInt.Or
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+Substrate.Decode
+Description: Decode SCALE encoded bytes into values
+Input: The encoded SCALE bytes.
+Output: The decoded values.
+Types: The list of types expected to decode.
+Hints: The hints of the types to decode, either "i8"/"u8", "i16"/"u16" etc... for int types, "c" for Compact int, "a" for AccountId or nil for other types.
+Version: The substrate version prefix.
+
+GFX.BuiltinMesh
+Description: 
+Input: 
+Output: 
+Type: The type of object to make.
+
+SwitchTo
+Description: Switches to a given wire and suspends the current one. In other words, switches flow execution to another wire, useful to create state machines.
+Input: 
+Output: 
+Wire: The name of the wire to switch to, or none to switch to the previous state.
+Restart: If the wire should always (re)start from the beginning instead of resuming to whatever state was left.
+
+Bytes.Join
+Description: 
+Input: 
+Output: 
+
+Reduce
+Description: 
+Input: 
+Output: 
+Apply: The function to apply to each item of the sequence.
+
+BigInt.Divide
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+ExpectFloat3Seq
+Description: 
+Input: 
+Output: 
+
+Http.SendFile
+Description: 
+Input: 
+Output: 
+Headers: The headers to attach to this response.
+
+BigInt.Xor
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+UI.BottomPanel
+Description: Layout UI elements into the panel.
+Input: The value that will be passed to the Contents shards of the panel.
+Output: The output of this shard will be its input.
+Resizable: Whether the panel can be resized.
+DefaultSize: The initial size of the panel.
+MinSize: The minimum allowable size of the panel.
+MaxSize: The maximum allowable size of the panel.
+Contents: The UI contents.
+
+BigInt.Multiply
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+ForRange
+Description: Executes a shard while an iteration value is within a range.
+Input: The input value is not used and will pass through.
+Output: The output of this shard will be its input.
+From: The initial iteration value (inclusive).
+To: The final iteration value (inclusive).
+Action: The action to perform at each iteration. The current iteration value will be passed as input.
+
+IsAllLess
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+UI.Scope
+Description: Creates a scoped child UI.
+Input: The value that will be passed to the Contents shards of the scope.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+
+BigInt.Min
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+Produce
+Description: 
+Input: 
+Output: 
+Name: The name of the channel.
+Type: The optional explicit (and unsafe because of that) we produce.
+NoCopy!!: Unsafe flag that will improve performance by not copying values when sending them thru the channel.
+
+Gizmos.Highlight
+Description: Queues a draw operation to highlight a drawable
+Input: 
+Output: 
+
+BigInt.IsMore
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+Reflect.Shards
+Description: Given a wire as input it will recurse deep inside it and gather all shards in the wire, its sub-wires and sub-flows.
+Input: 
+Output: 
+
+Gizmos.Line
+Description: Draws a line in 3d space
+Input: 
+Output: 
+A: Starting position of the line
+B: Ending position of the line
+Color: Linear color of the line
+Thickness: Width of the line in screen space
+
+DSP.IFFT
+Description: 
+Input: 
+Output: 
+Audio: If the output should be an Audio chunk.
+Complex: If the output should be complex numbers (only if not Audio).
+
+Cached
+Description: Computes a value
+Input: 
+Output: 
+Evaluate: The shards to evaluate the cached value based on input
+
+BigInt.Subtract
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+GFX.Render
+Description: 
+Input: 
+Output: 
+Steps: Render steps to follow.
+View: The view to render. (Optional)
+
+Shards.Distill
+Description: 
+Input: 
+Output: 
+Name: The optional output wire name.
+Defines: The optional initial injected defines.
+Namespace: The optional namespace name.
+
+Audio.Channel
+Description: 
+Input: 
+Output: 
+InputBus: The input bus number, 0 is the audio device ADC.
+InputChannels: The list of input channels to pass as input to Shards.
+OutputBus: The output bus number, 0 is the audio device DAC.
+OutputChannels: The list of output channels to write from Shards's output.
+Volume: The volume of this channel.
+Shards: The shards that will process audio data.
+
+ToLEB128
+Description: 
+Input: 
+Output: 
+Signed: If the integer to encode/decode is signed and can be negative.
+
+Comment
+Description: 
+Input: 
+Output: 
+Text: The comment's text.
+
+Audio.Device
+Description: 
+Input: 
+Output: 
+InputChannels: The number of input channels.
+OutputChannels: The number of output channels.
+SampleRate: The sample rate of the device.
+BufferSize: The buffer size of the device.
+
+Inputs.MouseDelta
+Description: 
+Input: 
+Output: 
+
+IsSeq
+Description: 
+Input: 
+Output: 
+
+WhenNot
+Description: Conditional shard that only executes the action if the predicate is false.
+Input: The value that will be passed to the predicate.
+Output: The input of the shard if `Passthrough` is `true`, or the `Predicate` is `true`; otherwise, the output of the `Action`.
+Predicate: The predicate to evaluate in order to trigger Action.
+Action: The shards to activate on when Predicate is true for When and false for WhenNot.
+Passthrough: The output of this shard will be its input.
+
+Assert.IsStatic
+Description: Asserts that a value is static at run-time
+Input: 
+Output: 
+Value: Any value to check for being static (non-var)
+
+MakeInt4
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+3: Vector component
+
+Hashed
+Description: Hashes the output of a shard or of a sequence of shards.
+Input: The value passed to the first shard in the hashed sequence.
+Output: The hash of the output of the last shard in the hashed sequence.
+Shards: The shards to execute in the hashed flow.
+
+Hash.Sha3-256
+Description: 
+Input: 
+Output: 
+
+ExpectFloat2Seq
+Description: 
+Input: 
+Output: 
+
+Assert.Is
+Description: This assertion is used to check whether the input is equal to a given value.
+Input: The input can be of any type.
+Output: The output will be the input (passthrough).
+Value: The value to test against for equality.
+Break: If we should trigger a debug breakpoint on failure.
+
+Restart
+Description: 
+Input: 
+Output: 
+
+WS.ReadString
+Description: 
+Input: 
+Output: 
+Client: The WebSocket client instance.
+
+UI.Columns
+Description: Splits the contents into several columns.
+Input: The value that will be passed to the Contents shards (each column).
+Output: The output of this shard will be its input.
+Contents: A sequence of UI contents.
+
+Substrate.AccountId
+Description: Returns the account id of the input public key.
+Input: The public key bytes, must be a valid Sr25519 or Ed25519 public key.
+Output: The Substrate account id in SS58 format.
+ECDSA: If the input public key is an ECDSA and not the default Sr25519/Ed25519.
+Version: The substrate version prefix.
+
+Animation.Timer
+Description: Keeps track of an animation timer, based on the given animation
+Input: 
+Output: 
+Animation: The to take the duration from
+Duration: The duration of the timer, the timer will loop or stop after reaching this value
+Looped: Loop the timer after reaching the target time
+Rate: The playback rate
+Offset: Timer offset
+Action: The action to evaluate after the given Duration
+
+UI.RestoreState
+Description: 
+Input: 
+Output: 
+
+BigInt.Mod
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid big integer(s) represented as bytes supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The bytes variable representing the operand
+
+Shader.WriteGlobal
+Description: 
+Input: 
+Output: 
+Name: The name of the field to read/write
+
+Reverse
+Description: 
+Input: 
+Output: 
+
+BigInt.ToFloat
+Description: Converts a big integer value to a floating point number.
+Input: Big integer represented as bytes.
+Output: Floating point number representation of the big integer value.
+ShiftedBy: The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive.
+
+Gizmos.ScreenXY
+Description: Outputs an X and Y direction that are aligned with the current view
+Input: 
+Output: 
+
+ExpectFloat2
+Description: 
+Input: 
+Output: 
+
+StepMany
+Description: 
+Input: 
+Output: 
+Wire: The wire to spawn and try to run many times concurrently.
+
+GFX.WindowSize
+Description: 
+Input: 
+Output: 
+Window: The window to get the size of.
+
+DB.Transaction
+Description: 
+Input: 
+Output: 
+Queries: The Shards logic executing various DB queries.
+Database: The optional sqlite database filename.
+
+Inputs.Detached
+Description: Runs the contents on the input thread, and it's continuation on the current thread with the last data from the input thread
+Input: 
+Output: 
+Context: The window context to attach to
+Input: Runs detached on the input loop
+Then: Runs inline after data has been output from the Input callback
+Priority: The order in which this input handler is run
+Name: Name used for logging/debugging purposes
+
+Shader.WriteOutput
+Description: 
+Input: 
+Output: 
+Name: The name of the field to read/write
+
+UI.WireVariable
+Description: 
+Input: 
+Output: 
+
+UI.Variable
+Description: 
+Input: 
+Output: 
+Variable: The variable that holds the value.
+Labeled: If the name of the variable should be visible as a label.
+
+IsValidNumber
+Description: 
+Input: 
+Output: 
+
+UI.TextField
+Description: A widget where text can be entered.
+Input: The value is ignored.
+Output: The value produced when changed.
+Variable: The variable that holds the input value.
+JustifyWidth: Whether to take up all available space for its desired width.
+Multiline: Support multiple lines.
+Password: Support multiple lines.
+Hint: Hint to show in the text field.
+
+Gizmos.Circle
+Description: Draws a line in 3d space
+Input: 
+Output: 
+Center: Center of the circle
+XBase: X direction of the plane the circle is on
+YBase: Y direction of the plane the circle is on
+Radius: Radius
+Color: Linear color of the circle
+Thickness: Width of the circle in screen space
+
+Math.Cross
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand.
+
+UI.MarkdownViewer
+Description: Renders a markdown text.
+Input: The markdown text to render.
+Output: The output of this shard will be its input.
+
+UI.Tooltip
+Description: Display a tooltip when the Contents is hovered over.
+Input: The value that will be passed to both the Contents and OnHover shards of the tooltip.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+OnHover: The tooltip contents.
+
+UI.PlotPoints
+Description: Scattered points on a plot.
+Input: A sequence of point coordinates.
+Output: The output of this shard will be its input.
+Name: Name of this chart, displayed in the plot legend.
+Color: Stroke color.
+Shape: Shape of the marker.
+Radius: Radius of the marker.
+
+Math.TGamma
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Frame
+Description: Visually groups the contents together.
+Input: The value that will be passed to the Contents shards of the frame.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+InnerMargin: The margin inside the frame, between the outline and the contents.
+OuterMargin: The margin outside the frame.
+Rounding: Rounding radiuses for the corners.
+FillColor: The color filling the background of the frame.
+StrokeColor: The color for the frame outline.
+StrokeWidth: The width of the frame outline.
+
+Isolate
+Description: Isolates the inner shards' environment by only allowing certain variables
+Input: 
+Output: 
+Contents: 
+Include: Includes only the listed variables
+Exclude: Ignores all the listed variables
+
+IsLess
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+UI.Int2Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+UI.Float4Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+Snappy.Compress
+Description: 
+Input: 
+Output: 
+
+Math.Erf
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Float3Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+Math.Log10
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Gizmos.Translation
+Description: Shows a translation gizmo
+Input: 
+Output: 
+ScreenSize: Size of the gizmo on screen (UI size)
+
+MakeInt3
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+
+UI.NextRow
+Description: Moves to the next row in a grid layout.
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+
+BigInt
+Description: 
+Input: 
+Output: Big integer represented as bytes.
+
+UI.FloatSlider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The text label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+UI.RenderTarget
+Description: Display the contents of a render target. Consumes input on the region.
+Input: The image to display.
+Output: The output of this shard will be its input.
+Scale: Scaling to apply to the source texture.
+
+UI.Tab
+Description: Represents a tab inside a DockArea.
+Input: The value that will be passed to the Contents shards of the tab.
+Output: The output of this shard will be its input.
+Title: The title of the tab.
+Contents: The UI contents.
+
+UI.TopPanel
+Description: Layout UI elements into the panel.
+Input: The value that will be passed to the Contents shards of the panel.
+Output: The output of this shard will be its input.
+Resizable: Whether the panel can be resized.
+DefaultSize: The initial size of the panel.
+MinSize: The minimum allowable size of the panel.
+MaxSize: The maximum allowable size of the panel.
+Contents: The UI contents.
+
+UI.Int4Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+UI.Image
+Description: Display an image in the UI.
+Input: The image to display.
+Output: The output of this shard will be its input.
+Scale: Scaling to apply to the source image.
+Size: The size to render the image at.
+ScalingAware: When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.
+
+Audio.ReadFile
+Description: 
+Input: 
+Output: 
+File: The audio file to read from (wav,ogg,mp3,flac).
+Channels: The number of desired output audio channels.
+SampleRate: The desired output sampling rate. Ignored if inside an Audio.Channel.
+Samples: The desired number of samples in the output. Ignored if inside an Audio.Channel.
+Looped: If the file should be played in loop or should stop the wire when it ends.
+From: The starting time in seconds.
+To: The end time in seconds.
+
+FromBase64
+Description: 
+Input: 
+Output: 
+
+Shards.Enumerate
+Description: 
+Input: 
+Output: 
+
+UI.Int3Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+UI.Int2Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+Merge
+Description: Combine two tables into one, with the input table taking priority over the operand table, which will be written and returned as output. This shard is useful in scenarios where you need to merge data from different sources while keeping the priority of certain values.
+Input: 
+Output: 
+Target: The table to merge into.
+
+UI.IntInput
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+Prefix: Display a prefix before the number.
+
+UI.Float2Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+FS.IsFile
+Description: 
+Input: 
+Output: 
+
+Math.Inc
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Value: The value to apply the operation to.
+
+UI.ListBox
+Description: A list selection.
+Input: A sequence of values.
+Output: The selected value.
+Index: The index of the selected item.
+IsSelected: Predicate that should return selection state of an item, receives the index in the list, should return true/false.
+Clicked: Action to perform if an element of the list is being clicked.
+Template: Custom rendering
+
+UI.Label
+Description: Static text.
+Input: The text to display.
+Output: The output of this shard will be its input.
+Wrap: Wrap the text depending on the layout.
+Style: The text style.
+
+GFX.View
+Description: Defines a viewer (or camera) for a rendered frame based on a view transform matrix
+Input: 
+Output: 
+View: The view matrix.
+Fov: The vertical field of view. (In radians. Implies perspective projection)
+OrthographicSizeType: The type of orthographic size. (Implies orthographic projection)
+OrthographicSize: The orthographic size. (Implies orthographic projection)
+Near: Near clipping distance
+Far: Far clipping distance
+
+UI.CloseMenu
+Description: Closes the currently opened menu.
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+
+UI.Float4Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+GFX.ResizeWindow
+Description: 
+Input: 
+Output: 
+Window: The window to resize
+
+UI.Canvas
+Description: desc
+Input: 
+Output: 
+Contents: 
+Rect: The target UI position (X/Y/W/H)
+Order: The order this UI is drawn in
+
+UI.Hyperlink
+Description: A clickable hyperlink.
+Input: The URL.
+Output: The output of this shard will be its input.
+Label: Optional label for the hyperlink.
+Style: The text style.
+
+Math.Atan
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Console
+Description: A console with formatted logs.
+Input: The raw logs.
+Output: The output of this shard will be its input.
+ShowFilters: Whether to display filter controls.
+Style: The console style.
+
+ImageToBytes
+Description: 
+Input: 
+Output: 
+
+Math.Add
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+BigInt.ToInt
+Description: Converts a big integer value to an integer.
+Input: Big integer represented as bytes.
+Output: Integer representation of the big integer value.
+
+UI.Button
+Description: Clickable button with text.
+Input: The value that will be passed to the Action shards of the button.
+Output: Indicates whether the button was clicked during this frame.
+Label: The text label of this button.
+Action: The shards to execute when the button is pressed.
+Style: The text style.
+Wrap: Wrap the text depending on the layout.
+
+Inputs.DebugUI
+Description: Shows the input system debug UI
+Input: 
+Output: 
+
+GFX.Mesh
+Description: 
+Input: 
+Output: 
+Layout: The names for each vertex attribute.
+WindingOrder: Front facing winding order for this mesh.
+
+UI.ColorInput
+Description: A widget where a color can be selected.
+Input: The value is ignored.
+Output: The selected color.
+Variable: The variable that holds the input value.
+
+Hash
+Description: 
+Input: 
+Output: 
+
+Events.Send
+Description: 
+Input: 
+Output: 
+Name: The name of the event dispatcher to use.
+ID: The optional ID to use to differentiate events with the same name.
+
+UI.Checkbox
+Description: Boolean on/off widget with text label.
+Input: The value is ignored.
+Output: Indicates whether the checkbox state changed during this frame.
+Label: The text label of this checkbox.
+Variable: The variable that holds the input value.
+Style: The text style.
+
+WireLoader
+Description: 
+Input: 
+Output: 
+Provider: The shards wire provider.
+Mode: The way to run the wire. Inline: will run the sub wire inline within the root wire, a pause in the child wire will pause the root too; Detached: will run the wire separately in the same mesh, a pause in this wire will not pause the root; Stepped: the wire will run as a child, the root will tick the wire every activation of this shard and so a child pause won't pause the root.
+OnReload: Shards to execute when the wire is reloaded, the input of this flow will be the reloaded wire.
+OnError: Shards to execute when a wire reload failed, the input of this flow will be the error message.
+
+IsBytes
+Description: 
+Input: 
+Output: 
+
+FS.SetWriteTime
+Description: 
+Input: 
+Output: 
+Time: The new time to set as last write time
+
+Shader.RefSampler
+Description: Returns a reference to the default sampler object for a named texture.
+Input: 
+Output: 
+Name: Name of the texture
+
+ExpectBoolSeq
+Description: 
+Input: 
+Output: 
+
+UI.PaintCircle
+Description: desc
+Input: The value is ignored.
+Output: 
+Center: Center of the circle
+Radius: Radius of the circle
+StrokeWidth: Width of circle outline
+StrokeColor: Color of circle outline
+
+ImageToFloats
+Description: 
+Input: 
+Output: 
+
+ExpectInt16Seq
+Description: 
+Input: 
+Output: 
+
+IsNotNone
+Description: Gets whether the type of the input is different from `None`.
+Input: The value which type to check against.
+Output: `true` is the type of input different from `None`; otherwise, `false`.
+
+LoadImage
+Description: 
+Input: 
+Output: 
+File: The file to read/write from.
+BPP: bits per pixel (HDR images loading and such!)
+PremultiplyAlpha: Toggle premultiplication of alpha channels (E.g. To support PNG images)
+
+GFX.UIPass
+Description: 
+Input: 
+Output: 
+Queue: The queue to draw from (Optional). Uses the default queue if not specified
+Name: A name for this step, to aid in debugging
+
+DB.Backup
+Description: 
+Input: 
+Output: 
+Destination: The destination database filename.
+Database: The optional sqlite database filename.
+
+ExpectInt2
+Description: 
+Input: 
+Output: 
+
+ExpectInt16
+Description: 
+Input: 
+Output: 
+
+UI.Sized
+Description: Layout the contents sizedly.
+Input: The value that will be passed to the Contents shards of the layout.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Width: 
+Height: 
+FillWidth: 
+FillHeight: 
+
+BigInt.ToHex
+Description: Converts the value to a hexadecimal representation.
+Input: 
+Output: Hexadecimal representation of the integer value.
+
+MakeFloat4
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+3: Vector component
+
+UI.Separator
+Description: A visual separator. A horizontal or vertical line (depending on the layout).
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+
+Snappy.Decompress
+Description: 
+Input: 
+Output: 
+
+Process.Run
+Description: 
+Input: 
+Output: 
+Executable: The executable to run.
+Arguments: The arguments to pass to the executable.
+Timeout: The maximum time to wait for the executable to finish in seconds.
+
+ExpectAudioSeq
+Description: 
+Input: 
+Output: 
+
+Http.Head
+Description: 
+Input: 
+Output: 
+URL: The url to request to.
+Headers: The headers to use for the request.
+Timeout: How many seconds to wait for the request to complete.
+Bytes: If instead of a string the shard should output bytes.
+FullResponse: If the output should be a table with the full response, including headers and status.
+AcceptInvalidCerts: If we should ignore invalid certificates. This is useful for testing but should not be used in production.
+
+UI.FloatInput
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+Prefix: Display a prefix before the number.
+
+PauseMs
+Description: 
+Input: 
+Output: 
+Time: The amount of time in milliseconds to pause this wire.
+
+GFX.EffectPass
+Description: 
+Input: 
+Output: 
+Name: A name for this step, to aid in debugging
+Outputs: The outputs to render into
+OutputScale: The scale that the output should be rendered as
+Inputs: 
+EntryPoint: 
+Params: Shader parameters for this drawable
+Features: Features to attach to this drawable
+ComposeWith: Any table of values that need to be injected into this feature's shaders
+
+UI.ScrollArea
+Description: Add vertical and/or horizontal scrolling to a contained UI.
+Input: The value that will be passed to the Contents shards of the scroll area.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Horizontal: Enable horizontal scrolling.
+Vertical: Enable vertical scrolling.
+AlwaysShow: Always show the enabled scroll bars even if not needed.
+
+Branch
+Description: A branch is a child mesh that runs and is ticked when this shard is activated, wires on this mesh will inherit all of the available exposed variables in the activator wire.
+Input: 
+Output: 
+Wires: The wires to schedule and run on this branch.
+FailureBehavior: The behavior to take when some of the wires running on this branch mesh fail.
+CaptureAll: If all of the existing context variables should be captured, no matter if being used or not.
+Mesh: Optional external mesh to use for this branch. If not provided, a new one will be created.
+
+UI.Link
+Description: A clickable link.
+Input: The value that will be passed to the Action shards of the link.
+Output: Indicates whether the link was clicked during this frame.
+Label: Optional label for the link.
+Action: The shards to execute when the link is clicked.
+Style: The text style.
+
+UI.Layout
+Description: Versatile layout with many options for customizing the desired UI.
+Input: The value that will be passed to the Contents shards of the layout.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Class: The Layout class describing all of the options relating to the layout of this UI.
+MinSize: The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight.
+MaxSize: The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight.
+FillWidth: Whether the Layout should take up the full width of the available space.
+FillHeight: Whether the Layout should take up the full height of the available space.
+
+GFX.ViewMatrix
+Description: Returns the view matrix of the view
+Input: 
+Output: 
+
+AppendTo
+Description: Appends the input to the context variable passed to `:Collection`.
+Input: The value to append to the collection.
+Output: The input to this shard is passed through as its output.
+Collection: The collection to add the input to.
+
+FS.Write
+Description: 
+Input: 
+Output: 
+Contents: The string or bytes to write as the file's contents.
+Overwrite: Overwrite the file if it already exists.
+Append: If we should append Contents to an existing file.
+
+Time.DeltaMs
+Description: Gives the time between the last activation of this shard and the current, capped to a limit
+Input: 
+Output: 
+
+Peek
+Description: Verifies if another wire has finished processing. Returns the wire's output if complete, or None if still in progress.
+Input: 
+Output: 
+Wire: The wire to run.
+
+Math.QuatMultiply
+Description: Rotate a quaternion by another quaternion
+Input: 
+Output: 
+Operand: 
+
+IsMore
+Description: 
+Input: 
+Output: 
+Value: The value to test against for equality.
+
+Swap
+Description: Swaps the values of the two variables passed to it via `:NameA` and `:NameB` parameters.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+NameA: The name of first variable.
+NameB: The name of second variable.
+
+WS.Client
+Description: 
+Input: 
+Output: 
+
+Shader.SampleTextureCoord
+Description: Samples a named texture with the passed in texture coordinates
+Input: 
+Output: 
+Name: Name of the texture
+
+Max
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+When
+Description: Conditional shard that only executes the action if the predicate is true.
+Input: The value that will be passed to the predicate.
+Output: The input of the shard if `Passthrough` is `true`, or the `Predicate` is `false`; otherwise, the output of the `Action`.
+Predicate: The predicate to evaluate in order to trigger Action.
+Action: The shards to activate on when Predicate is true for When and false for WhenNot.
+Passthrough: The output of this shard will be its input.
+
+DemultiplyAlpha
+Description: Applies the demultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been demultiplied or never been premultiplied in Shards. This mainly applies to PNG images.
+Input: The image to apply the demultiplication of alpha channels to.
+Output: The image as a result of the application of the demultiplication of alpha channels.
+
+Gizmos.SolidRect
+Description: Draws a filled rectangle in 3d space
+Input: 
+Output: 
+Center: Starting position of the rectangle
+XBase: X direction of the plane the rectangle is on
+YBase: Y direction of the plane the rectangle is on
+Size: Size of the rectange
+Color: Rectanglear color of the rectangle
+Culling: Back-face culling of the rectangle
+
+UI.Horizontal
+Description: Layout the contents horizontally.
+Input: The value that will be passed to the Contents shards of the layout.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Wrap: Wrap the content once it reaches the right edge.
+Centered: Center the contents horizontally.
+
+ExpectImage
+Description: 
+Input: 
+Output: 
+
+IsTrue
+Description: Gets whether the input is `true`.
+Input: The value to check against.
+Output: `true` if the input is `true`; otherwise, `false`.
+
+ONNX.Load
+Description: 
+Input: 
+Output: 
+Path: The path to the onnx model to load.
+Input Shape: The shape of the input tensor.
+
+Shader.Literal
+Description: 
+Input: 
+Output: 
+Source: The WGSL source code to insert
+Type: Where to insert the code.
+OutputType: The type that this code is expected to output. (default: none)
+OutputDimension: The dimension that this code is expected to output. (default: 4)
+OutputMatrixDimension: The matrix dimension that this code is expected to output. (default: 1)
+
+PrependTo
+Description: Prepends the input to the context variable passed to `Collection`.
+Input: The value to prepend to the collection.
+Output: The input to this shard is passed through as its output.
+Collection: The collection to add the input to.
+
+UI.Indent
+Description: Creates a child UI which is indented to the right.
+Input: The value that will be passed to the Contents shards.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+
+GFX.Material
+Description: 
+Input: 
+Output: 
+Params: Shader parameters for this drawable
+Features: Features to attach to this drawable
+
+UI.Grid
+Description: Simple grid layout.
+Input: The value that will be passed to the Contents shards of the grid.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Striped: Whether to alternate a subtle background color to every other row.
+NumColumns: The number of columns in the grid. Setting this will allow the last column to expand to take up the rest of the space of the parent UI.
+MinWidth: Minimum column width.
+MaxWidth: Maximum column width.
+Spacing: Spacing between columns/rows.
+
+CaptureLog
+Description: 
+Input: 
+Output: 
+Size: The maximum number of logs to retain.
+MinLevel: The minimum level of logs to capture.
+Pattern: The pattern used to format the logs.
+Suspend: TODO.
+
+UI.AutoGrid
+Description: Works like UI.Grid, but given a Sequence, it will, it each object in the Sequence, execute the Shard provided in its Contents and automatically wrap the generated contents when it exceeds the grid's width.
+Input: 
+Output: 
+Contents: The UI contents to be generated and inserted in each column for each element in the given sequence.
+Striped: Whether to alternate a subtle background color to every other row.
+MaxGridWidth: Maximum grid width.
+ItemWidth: The width of each item.
+ColumnSpacing: Spacing between columns.
+RowSpacing: Spacing between rows.
+
+Slice
+Description: Extracts characters from a string or elements from a sequence based on the start and end positions/indices and an increment parameter. Operation is non-destructive; the target string/sequence is not modified.
+Input: The string or sequence from which characters/elements have to be extracted.
+Output: The extracted characters/elements.
+From: The position/index of the first character or element that is to be extracted (including). Negative position/indices simply loop over the target string/sequence counting backwards.
+To: The position/index of the last character or element that is to be extracted (excluding). Negative position/indices simply loop over the target string/sequence counting backwards.
+Step: The increment between each position/index. Chooses every nth sample to extract, where n is the increment. Value has to be greater than zero.
+
+GFX.Feature
+Description: 
+Input: 
+Output: 
+Shaders: A list of shader entry points
+ComposeWith: Any table of values that need to be injected into this feature's shaders
+State: The table of render state flags to override
+ViewGenerators: A collection of callbacks that will be run to generate per-view shader parameters during rendering
+DrawableGenerators: A collection of callbacks that will be run to generate per-drawable shader parameters during rendering
+Params: The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params
+RequiredAttributes: The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params
+
+UI.RightPanel
+Description: Layout UI elements into the panel.
+Input: The value that will be passed to the Contents shards of the panel.
+Output: The output of this shard will be its input.
+Resizable: Whether the panel can be resized.
+DefaultSize: The initial size of the panel.
+MinSize: The minimum allowable size of the panel.
+MaxSize: The maximum allowable size of the panel.
+Contents: The UI contents.
+
+GFX.ViewRange
+Description: Returns the view near/far range
+Input: 
+Output: 
+
+Broadcast
+Description: 
+Input: 
+Output: 
+Name: The name of the channel.
+Type: The optional explicit (and unsafe because of that) we produce.
+NoCopy!!: Unsafe flag that will improve performance by not copying values when sending them thru the channel.
+
+RandomBytes
+Description: 
+Input: 
+Output: 
+Size: The amount of bytes to output.
+
+TargetCamera.FromLookAt
+Description: Provides editor free camera controls
+Input: 
+Output: 
+Target: 
+Position: 
+
+FS.Remove
+Description: 
+Input: 
+Output: 
+
+Gizmos.Disc
+Description: Draws a filled disc in 3d space
+Input: 
+Output: 
+Center: Center of the disc
+XBase: X direction of the plane the disc is on
+YBase: Y direction of the plane the disc is on
+OuterRadius: Radius of the outer circle of the disc
+InnerRadius: Radius of the inner circle of the disc
+Color: Linear color of the disc
+Culling: Back-face culling of the disc
+
+UI.PopupWrapper
+Description: Wraps a button with a popup that can act as a drop-down menu or suggestion menu.
+Input: The value that will be passed to the Widget shard(s) of the popup.
+Output: The output of this shard will be its input.
+MinWidth: The minimum width of the popup that should appear below or above the button. By default, it is always at least as wide as the button.
+AboveOrBelow: Whether the location of the popup should be above or below the button.
+ID: An optional ID value to make the popup unique if the label text collides.
+Widget: The shard(s) to execute that should contain a widget that supports having this popup generated for it upon being clicked.
+Contents: The shards to execute and render inside the popup ui when the button is pressed.
+
+Assert.IsAlmost
+Description: This assertion is used to check whether the input is almost equal to a given value.
+Input: The input can be of any number type or a sequence of such types.
+Output: The output will be the input (passthrough).
+Value: The value to test against for almost equality.
+Abort: If we should abort the process on failure.
+Threshold: The smallest difference to be considered equal. Should be greater than zero.
+
+Snowflake
+Description: Creates a Snowflake ID.
+Input: 
+Output: 
+MachineId: The machine ID, must be less than 32
+NodeId: The node ID, must be less than 32
+
+Math.AxisAngleX
+Description: 
+Input: 
+Output: 
+
+Shader.ReadBuffer
+Description: 
+Input: 
+Output: 
+Name: The name of the field to read/write
+BufferName: The name of the buffer to read from (object/view) (default: object)
+
+Math.Or
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+GFX.Drawable
+Description: Drawable help text
+Input: The drawable's transform
+Output: 
+Mesh: The mesh to use for this drawable.
+Material: The material
+Params: Shader parameters for this drawable
+Features: Features to attach to this drawable
+
+GFX.DrawQueue
+Description: Creates a new drawable queue to record Draw commands into
+Input: 
+Output: 
+AutoClear: When enabled, automatically clears the queue after items have been rendered
+Threaded: When enabled, output uniuqe queue references to be able to use them with channels
+Trace: Enables debug tracing on this queue
+
+ECDSA.Recover
+Description: 
+Input: 
+Output: 
+Signature: The signature generated signing the input message with the private key.
+Compressed: If the output PublicKey should use the compressed format.
+
+ExpectNone
+Description: 
+Input: 
+Output: 
+
+MakeInt8
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+3: Vector component
+4: Vector component
+5: Vector component
+6: Vector component
+7: Vector component
+
+Highest
+Description: 
+Input: 
+Output: 
+
+FS.Extension
+Description: 
+Input: 
+Output: 
+
+Math.Subtract
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+Gizmos.Grid
+Description: Draws a grid
+Input: 
+Output: 
+Center: Center of the disc
+XBase: X direction of the grid
+YBase: Y direction of the grid
+Thickness: Width of the line in screen space
+StepSize: Step size of the grid lines
+Size: Number of grid lines
+Color: Linear color of the grid lines
+
+GFX.RenderInto
+Description: Renders within a region of the screen and/or to a render target
+Input: 
+Output: 
+Textures: The textures to render into to create.
+Contents: The shards that will render into the given textures.
+Size: The reference size. This will control the size of the render targets.
+MatchOutputSize: When true, the texture rendered into is automatically resized to match the output size.
+Viewport: The viewport.
+WindowRegion: Sets the window region for input handling.
+
+UI.Disable
+Description: Creates a scoped child UI.
+Input: The value that will be passed to the Contents shards of the scope.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Disable: Whether the contents should be disabled.
+
+UI.PlotBar
+Description: Points represented as vertical or horizontal bars on a plot.
+Input: A sequence of point coordinates.
+Output: The output of this shard will be its input.
+Color: Stroke color.
+Width: Width of a bar.
+Horizontal: Display the bars horizontally.
+Name: Name of this chart, displayed in the plot legend.
+
+Gizmos.Point
+Description: Draws a point in 3d space
+Input: 
+Output: 
+Center: Center of the point
+Color: Pointar color of the point
+Thickness: Size of the point in screen space
+
+Math.Sqrt
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Collapsing
+Description: A header which can be collapsed/expanded, revealing a contained UI region.
+Input: The value that will be passed to the Contents shards of the collapsing header.
+Output: The output of this shard will be its input.
+Heading: The heading text or widgets for this collapsing header.
+Contents: The UI contents.
+DefaultOpen: Whether the collapsing header is opened by default.
+
+Gizmos.Debug
+Description: Shows the renderer debug visuals
+Input: 
+Output: 
+
+Gizmos.Scaling
+Description: Shows a scaling gizmo
+Input: 
+Output: 
+ScreenSize: Size of the gizmo on screen (UI size)
+
+GFX.Texture
+Description: Creates a texture from an image. Or as a render target
+Input: 
+Output: 
+InterpretAs: Type to interpret image data as. (From image only, Default: UNormSRGB for RGBA8 images, UNorm for other formats)
+Format: The format to use to create the texture. The texture will be usable as a render target. (Render target only)
+Resolution: The resolution of the texture to create. (Render target only)
+MipLevels: The number of mip levels to create. (Render target only)
+Dimension: The type of texture to create. (Render target only)
+Addressing: For sampling, sets the address modes.
+Filtering: For sampling, sets the filter mode.
+
+IsFloat2
+Description: 
+Input: 
+Output: 
+
+UI.Float3Input
+Description: A numeric input.
+Input: The value is ignored.
+Output: The value produced.
+Variable: The variable that holds the input value.
+
+Ed25519.Seed
+Description: 
+Input: 
+Output: 
+
+ExpectString
+Description: 
+Input: 
+Output: 
+
+Gizmos.Context
+Description: Provides a context for rendering gizmos
+Input: 
+Output: 
+View: The view used to render the gizmos.When drawing over a scene, the view should be the same.
+Queue: The queue to draw into.
+Contents: Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is being pressed and so edited.
+Scaling: The scaling factor for gizmo elements.
+Interactive: Used to togle gizmo interactions on/off.
+
+BigInt.Pow
+Description: 
+Input: Big integer represented as bytes.
+Output: Big integer represented as bytes.
+Operand: The integer operand, can be a variable
+
+String.EncodeURI
+Description: 
+Input: 
+Output: 
+
+Math.Log
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Shader.WithInput
+Description: 
+Input: 
+Output: 
+Name: The name of the input
+Then: The shards to execute if the input exists
+Else: The shards to execute if the input does not exist
+
+Shader.ReadInput
+Description: 
+Input: 
+Output: 
+Name: The name of the field to read/write
+
+Physics.Cuboid
+Description: Physics shape
+Input: 
+Output: 
+Position: The position of the shape.
+Rotation: The rotation of the shape.
+HalfExtents: The half-extents of the cuboid shape.
+Mass: The mass of the shape.
+
+Network.Broadcast
+Description: 
+Input: 
+Output: 
+
+UI.DragAndDrop
+Description: Drag and drop source & target.
+Input: 
+Output: 
+Contents: The property to retrieve from the UI context.
+Hover: Callback function for checking if this is a valid drop target.
+Drop: Callback function for when something is dropped. When set, this element will act as a drop target. When unset, it will act as a drag source.
+ID: An optional ID value in case of ID conflicts.
+Visualize: Visualize valid drop targets
+
+UI.DockArea
+Description: TODO.
+Input: TODO.
+Output: TODO.
+Contents: The UI contents containing tabs.
+
+Gizmos.Box
+Description: Draws a box in 3d space
+Input: 
+Output: 
+Center: Center of the box
+Size: Size of the box
+Transform: Transform applied to the box
+Color: Boxar color of the box
+Thickness: Width of the box in screen space
+
+Math.Mod
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+TypeOf
+Description: 
+Input: 
+Output: 
+OutputOf: Evaluates the output type of the given expression. That type will be checked against this shard's input.
+
+Animation.Play
+Description: Outputs the duration of an animation, in seconds
+Input: The position in the animation to play
+Output: The interpolated frame data
+Animation: The animation to play
+
+BitSwap32
+Description: 
+Input: 
+Output: 
+
+UI.Overlay
+Description: AddDescriptionHere
+Input: 
+Output: 
+Items: A list of UI's to overlay on top of each other in order
+
+GFX.ViewProjectionMatrix
+Description: Returns the combined view projection matrix of the view
+Input: 
+Output: 
+ViewSize: The size of the screen this view is being used with
+
+If
+Description: Evaluates a predicate and executes an action.
+Input: The value that will be passed to the predicate.
+Output: The input of the shard if `Passthrough` is `true`; otherwise, the output of the action that was performed (i.e. `Then` or `Else`).
+Predicate: The predicate to evaluate in order to trigger `Then` (when `true`) or `Else` (when `false`).
+Then: The shards to activate when `Predicate` is `true`.
+Else: The shards to activate when `Predicate` is `false`.
+Passthrough: The output of this shard will be its input.
+
+Assert.IsNot
+Description: This assertion is used to check whether the input is different from a given value.
+Input: The input can be of any type.
+Output: The output will be the input (passthrough).
+Value: The value to test against for equality.
+Break: If we should trigger a debug breakpoint on failure.
+
+Shader.SampleTexture
+Description: Samples a named texture with default texture coordinates
+Input: 
+Output: 
+Name: Name of the texture
+
+Shader.RefTexture
+Description: Returns a reference to the texture object for a named texture.
+Input: 
+Output: 
+Name: Name of the texture
+
+UI.Int3Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+Recur
+Description: 
+Input: 
+Output: 
+
+Min
+Description: Applies the binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+Operand: The operand for this operation.
+
+GFX.RenderTargetTexture
+Description: Retrieve a named attachment from a render target
+Input: 
+Output: 
+Name: Name of the attachment to retrieve
+
+Audio.Oscillator
+Description: 
+Input: 
+Output: 
+Type: The waveform type to oscillate.
+Amplitude: The waveform amplitude.
+Channels: The number of desired output audio channels.
+SampleRate: The desired output sampling rate. Ignored if inside an Audio.Channel.
+Samples: The desired number of samples in the output. Ignored if inside an Audio.Channel.
+
+UI.RadioButton
+Description: A radio button for selecting a value amongst multiple choices.
+Input: The value is ignored.
+Output: Indicates whether the radio button was clicked during this frame.
+Label: The text label of this radio button.
+Variable: The variable that holds the input value.
+Value: The value to compare with.
+Style: The text style.
+
+Erase
+Description: Deletes an index or indices from a sequence or a key or keys from a table.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Indices: One or multiple indices to filter from a sequence.
+Name: The name of the variable.
+Key: The key of the value to erase from the table (this variable will become a table).
+Global: If the variable is or should be available to all of the wires in the same mesh.
+
+ExpectImageSeq
+Description: 
+Input: 
+Output: 
+
+Shader.ReadGlobal
+Description: 
+Input: 
+Output: 
+Name: The name of the field to read/write
+
+MakeColor
+Description: 
+Input: 
+Output: 
+0: Vector component
+1: Vector component
+2: Vector component
+3: Vector component
+
+UI.WidgetStyle
+Description: 
+Input: 
+Output: 
+NonInteractive: The style of a widget that you cannot interact with.
+Inactive: The style of an interactive widget, such as a button, at rest.
+Hovered: The style of an interactive widget while you hover it, or when it is highlighted.
+Active: The style of an interactive widget as you are clicking or dragging it.
+Open: The style of a button that has an open menu beneath it (e.g. a combo-box)
+
+Math.LookAt
+Description: 
+Input: 
+Output: 
+
+UI.MenuBar
+Description: The menu bar goes well in a `UI.TopPanel`.
+Input: The value that will be passed to the Contents shards of the menu bar.
+Output: A boolean value indicating whether the menu bar is active.
+Contents: The UI contents.
+
+ExpectInt3Seq
+Description: 
+Input: 
+Output: 
+
+Pop
+Description: Pops (drops as well as passes as output) the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.
+Input: Any input is ignored.
+Output: Element popped from the sequence.
+Name: The name of the variable.
+Key: The key of the value to read from the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+
+Date.Format
+Description: Reads an epoch timestamps and formats it into a readable string.
+Input: An epoch timestamp (seconds after epoch).
+Output: A formatted readable string.
+Format: The actual formatting string, see full docs: https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html#specifiers
+
+UI.LayoutClass
+Description: 
+Input: 
+Output: 
+Parent: The parent Layout class to inherit parameters from.
+MainDirection: The main direction of the UI element layout.
+MainWrap: Whether the UI elements in the layout should wrap around when reaching the end of the direction of the cursor.
+MainAlign: How the UI elements in the layout should be aligned on the main axis.
+MainJustify: Whether the UI elements in the layout should be justified along the main axis.
+CrossAlign: How the UI elements in the layout should be aligned on the cross axis.
+CrossJustify: Whether the UI elements in the layout should be justified along the across axis.
+MinSize: The minimum size of the space to be reserved by this UI for its contents. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight.
+MaxSize: The maximum size of the space to be reserved by this UI for its contents. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight.
+FillWidth: Whether the Layout should take up the full width of the available space.
+FillHeight: Whether the Layout should take up the full height of the available space.
+Disabled: Whether the drawn layout should be disabled or not.
+Frame: The frame to be drawn around the layout.
+EnableHorizontalScrollBar: Enable the horizontal scroll bar. If either this or EnableVerticalScrollBar is true, a ScrollArea will be created within the layout.
+EnableVerticalScrollBar: Enable the vertical scroll bar. If either this or EnableHorizontalScrollBar is true, a ScrollArea will be created within the layout.
+ScrollBarVisibility: Whether the scroll bars of the scroll area should be AlwaysVisible, VisibleWhenNeeded, or Always Hidden. Default: AlwaysVisible
+ScrollAreaMinWidth: The minimum width of the scroll area to be drawn. Note: This is not the minimum width of the contents of the scroll area.
+ScrollAreaMinHeight: The minimum height of the scroll area to be drawn. Note: This is not the minimum height of the contents of the scroll area.
+ScrollAreaMaxWidth: The maximum width of the scroll area to be drawn. Note: This is not the maximum width of the contents of the scroll area.
+ScrollAreaMaxHeight: The maximum height of the scroll area to be drawn. Note: This is not the maximum height of the contents of the scroll area.
+ScrollAreaAutoShrinkWidth: Whether the scroll area's width should automatically shrink to fit the size of its contents.
+ScrollAreaAutoShrinkHeight: Whether the scroll area's height should automatically shrink to fit the size of its contents.
+ScrollAreaEnableScrolling: Whether the scroll area's scrolling should be enabled. This is akin to the disable setting for UI elements.
+
+GFX.DrawablePass
+Description: 
+Input: 
+Output: 
+Name: A name for this step, to aid in debugging
+Queue: The queue that this pass should render
+Features: Features to attach to this drawable
+Outputs: The outputs to render into
+OutputScale: The scale that the output should be rendered as
+Sort: The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching
+IgnoreDrawableFeatures: Ignore any features on drawables and only use the features specified in this pass
+
+FS.Filename
+Description: 
+Input: 
+Output: 
+NoExtension: If the extension should be stripped from the result.
+
+Brotli.Compress
+Description: 
+Input: 
+Output: 
+Quality: Compression quality, higher is better but slower, valid values from 1 to 11.
+
+Math.Negate
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+Table
+Description: Creates an empty table.
+Input: Any input is ignored.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to write in the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Type: The table type to forward declare.
+
+ForEach
+Description: Processes every element or key-value pair of a sequence/table with a given shard or sequence of shards.
+Input: Sequence/table whose elements or key-value pairs need to be processed.
+Output: The output from processing the sequence/table elements or key-value pairs.
+Apply: The processing logic (in the form of a shard or sequence of shards) to apply to the input sequence/table.
+
+UI.SaveState
+Description: 
+Input: 
+Output: 
+
+UI.ProgressBar
+Description: A progress bar with an optional overlay text.
+Input: The progress amount ranging from 0.0 (no progress) to 1.0 (completed).
+Output: The output of this shard will be its input.
+Overlay: The text displayed inside the progress bar.
+Width: The desired width of the progress bar. Will use all horizontal space if not set.
+
+GFX.CopyPass
+Description: 
+Input: 
+Output: 
+Name: A name for this step, to aid in debugging
+Outputs: The outputs to render into
+OutputScale: The scale that the output should be rendered as
+Inputs: 
+
+IsWire
+Description: 
+Input: 
+Output: 
+
+UI.Property
+Description: Retrieves values from the current state of the UI.
+Input: 
+Output: 
+Property: The property to retrieve from the UI context
+
+Do
+Description: 
+Input: 
+Output: 
+Wire: The wire to run.
+
+TargetCamera.Matrix
+Description: Turns the target camera state into a view matrix
+Input: 
+Output: 
+
+Eth.EncodeCall
+Description: 
+Input: 
+Output: 
+ABI: The contract's json ABI.
+Name: The name of the method to call.
+
+UI.CentralPanel
+Description: Layout UI elements into the central panel.
+Input: The value that will be passed to the Contents shards of the panel.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+
+FS.IsDirectory
+Description: 
+Input: 
+Output: 
+
+UI.Float2Slider
+Description: A numeric slider.
+Input: The value is ignored.
+Output: The value produced.
+Label: The label for this widget.
+Style: The text style.
+Variable: The variable that holds the input value.
+Min: The minimum value.
+Max: The maximum value.
+
+ExpectInt3
+Description: 
+Input: 
+Output: 
+
+Physics.Force
+Description: Adds a force to a rigid body
+Input: 
+Output: 
+RigidBody: The rigidbody to apply the force to.
+
+Consume
+Description: 
+Input: 
+Output: 
+Name: The name of the channel.
+Type: The expected type to receive.
+Buffer: The amount of values to buffer before outputting them.
+
+Network.PeerID
+Description: 
+Input: 
+Output: 
+Peer: The optional explicit peer to identify.
+
+BigInt.IsMoreEqual
+Description: 
+Input: Big integer represented as bytes.
+Output: A boolean value repesenting the result of the logic operation.
+Operand: The bytes variable representing the operand
+
+GFX.EndFrame
+Description: Explicitly end frame rendering, this is done automatically inside MainWindow. This shards is only needed when you want to end a frame earlier inside MainWindow
+Input: 
+Output: The input to this shard is passed through as its output.
+
+Gizmos.Arrow
+Description: Shows an arrow
+Input: 
+Output: 
+
+FromBase58
+Description: 
+Input: 
+Output: 
+
+UI.Style
+Description: Apply style changes to the current UI scope.
+Input: 
+Output: 
+OverrideTextStyle: If set this will change the default TextStyle for all widgets.
+FontId: If set this will change the font family and size for all widgets.
+TextStyles: The FontFamily and size you want to use for a specific TextStyle.
+DragValueTextStyle: The style to use for DragValue text.
+Wrap: If set, labels buttons wtc will use this to determine whether or not to wrap the text at the right edge of the Ui they are in.
+AnimationTime: How many seconds a typical animation should last.
+ExplanationTooltips: Show tooltips explaining DragValues etc when hovered.
+ResizeGrabRadiusSide: Mouse must be this close to the side of a window to resize
+ResizeGrabRadiusCorner: Mouse must be this close to the corner of a window to resize
+ShowTooltipsOnlyWhenStill: If `false`, tooltips will show up anytime you hover anything, even is mouse is still moving
+ItemSpacing: Horizontal and vertical spacing between widgets.
+WindowMargin: Horizontal and vertical margins within a window frame.
+ButtonPadding: Button size is text size plus this on each side
+MenuMargin: Horizontal and vertical margins within a menu frame.
+Indent: Indent collapsing regions etc by this much.
+InteractSize: Minimum size of a DragValue, color picker button, and other small widgets. interact_size.y is the default height of button, slider, etc. Anything clickable should be (at least) this size.
+SliderWidth: Default width of a Slider.
+ComboWidth: Default (minimum) width of a ComboBox.
+TextEditWidth: Default width of a TextEdit.
+IconWidth: Checkboxes, radio button and collapsing headers have an icon at the start. This is the width/height of the outer part of this icon (e.g. the BOX of the checkbox).
+IconWidthInner: Checkboxes, radio button and collapsing headers have an icon at the start. This is the width/height of the inner part of this icon (e.g. the check of the checkbox).
+IconSpacing: Checkboxes, radio button and collapsing headers have an icon at the start. This is the spacing between the icon and the text
+TooltipWidth: Width of a tooltip (on_hover_ui, on_hover_text etc).
+IndentEndsWithHorizontalLine: End indented regions with a horizontal line
+ComboHeight: Height of a combo-box before showing scroll bars.
+ScrollBarWidth: Width of a scroll bar.
+ScrollHandleMinLength: Make sure the scroll handle is at least this big
+ScrollBarInnerMargin: Margin between contents and scroll bar.
+ScrollBarOuterMargin: Margin between scroll bar and the outer container (e.g. right of a vertical scroll bar).
+DarkMode: If true, the visuals are overall dark with light text. If false, the visuals are overall light with dark text.
+OverrideTextColor: Override default text color for all text.
+Selection: 
+HyperlinkColor: The color used for Hyperlink
+FaintBgColor: Something just barely different from the background color. Used for Grid::striped.
+ExtremeBgColor: Very dark or light color (for corresponding theme). Used as the background of text edits, scroll bars and others things that needs to look different from other interactive stuff.
+CodeBgColor: Background color behind code-styled monospaced labels.
+WarnFgColor: A good color for warning text (e.g. orange).
+ErrorFgColor: A good color for error text (e.g. red).
+WindowRounding: Window corner rounding.
+WindowShadow: Window shadow size.
+WindowFill: Window background color.
+WindowStroke: Window stroke (border) color and thickness.
+MenuRounding: Menu corner rounding.
+PanelFill: Panel background color.
+PopupShadow: Popup shadow size.
+ResizeCornerSize: Corner rounding for resize handle rects.
+TextCursorWidth: Width of the line cursor when hovering over InputText etc.
+TextCursorPreview: Show where the text cursor would be if you clicked.
+ClipRectMargin: Allow child widgets to be just on the border and still have a stroke with some thickness
+ButtonFrame: Show a background behind buttons.
+CollapsingHeaderFrame: Show a background behind collapsing headers.
+IndentHasLeftVLine: Draw a vertical lien left of indented region, in e.g. CollapsingHeader.
+Striped: Whether or not Grids and Tables should be striped by default (have alternating rows differently colored).
+SliderTrailingFill: Show trailing color behind the circle of a Slider. Default is OFF. Enabling this will affect ALL sliders, and can be enabled/disabled per slider with Slider::trailing_fill.
+
+UI.Area
+Description: Places UI element at a specific position.
+Input: 
+Output: 
+Contents: The UI contents.
+Position: Absolute UI position; or when anchor is set, relative offset. (X/Y)
+Pivot: The pivot for the inner UI
+Anchor: Side of the screen to anchor the UI to.
+Order: Paint layer to be used for this UI. Default is background
+
+GFX.ReadTexture
+Description: Adds a render step that reads back the rendered textures into a images, the returned images 
+Input: 
+Output: 
+Wait: Wait for read to complete
+
+Hash.XXH-128
+Description: 
+Input: 
+Output: 
+
+Flatten
+Description: 
+Input: 
+Output: 
+
+Shards.Read
+Description: Reads a Shards program and outputs a binary or json AST.
+Input: 
+Output: 
+Json: If the output should be a json AST string instead of binary.
+BasePath: The base path to use when interpreting file references.
+
+Gizmos.Rect
+Description: Draws a rectangle in 3d space
+Input: 
+Output: 
+Center: Starting position of the rectangle
+XBase: X direction of the plane the rectangle is on
+YBase: Y direction of the plane the rectangle is on
+Size: Size of the rectange
+Color: Rectanglear color of the rectangle
+Thickness: Width of the rectangle in screen space
+
+GFX.RenderTarget
+Description: Groups a collection of textures into a render target that can be rendered into
+Input: 
+Output: 
+Attachments: The list of attachements to create.
+
+GFX.glTF
+Description: 
+Input: 
+Output: 
+Path: The path to load the model from
+Bytes: The bytes to load the model from
+Copy: Reference to another glTF model to copy
+Params: Shader parameters for this drawable
+Features: Features to attach to this drawable
+AnimationController: The animation controller
+
+FS.Absolute
+Description: 
+Input: 
+Output: 
+
+GFX.QueueDrawables
+Description: Retrieves the individual drawables in a draw queue
+Input: 
+Output: 
+
+ExpectInt2Seq
+Description: 
+Input: 
+Output: 
+
+RTake
+Description: Works exactly like `Take` except that the selection indices are counted backwards from the last element in the target sequence. Also, `RTake` works only on sequences, not on tables.
+Input: The sequence from which elements have to be extracted.
+Output: The extracted elements.
+Indices: One or more indices (counted backwards from the last element) to extract from a sequence.
+
+Gizmos.ScreenScale
+Description: Outputs a scaling factor to give an object a uniform size on the screen
+Input: 
+Output: 
+Position: The point in space at which the object is rendered
+
+UI.Selectable
+Description: A wrapper that detects selection over the provided contents.
+Input: 
+Output: 
+Contents: The UI contents to wrap, contain, and detect for selection.
+IsSelected: Callback function for checking if the contents are currently selected.
+Clicked: Callback function for the contents of this shard is clicked.
+
+ToInt
+Description: 
+Input: 
+Output: 
+
+Math.Expm1
+Description: Applies the unary operation on the input value and returns the result (or a sequence of results if the input and the operand are sequences).
+Input: Any valid float(s) or a sequence of such entities supported by this operation.
+Output: The result of the operation, usually in the same type as the input value.
+
+UI.Render
+Description: Render given UI
+Input: 
+Output: 
+Queue: The draw queue.
+
+GFX.WindowPosition
+Description: 
+Input: 
+Output: 
+Window: The window to get the size of.
+
+GFX.MoveWindow
+Description: 
+Input: 
+Output: 
+Window: The window to get the size of.
+
+String.ToUpper
+Description: Converts a string to uppercase
+Input: A string.
+Output: A string in uppercase.
+
+GFX.BuiltinFeature
+Description: 
+Input: 
+Output: 
+Id: Builtin feature id.
+
+Physics.Simulation
+Description: 
+Input: 
+Output: 
+Gravity: The gravity force vector.
+
+ExpectWireSeq
+Description: 
+Input: 
+Output: 
+
+GFX.UIScaleFactor
+Description: Outputs the scaling factor for UI as determined by the operating system.
+Input: 
+Output: 
+Window: The window to get the scaling factor of.
+
+UI.Vertical
+Description: Layout the contents vertically.
+Input: The value that will be passed to the Contents shards of the layout.
+Output: The output of this shard will be its input.
+Contents: The UI contents.
+Centered: Center the contents horizontally.
+
+Push
+Description: Updates sequences and tables by pushing elements and/or sequences into them.
+Input: Input is the update value to be pushed into the variables.
+Output: The input to this shard is passed through as its output.
+Name: The name of the variable.
+Key: The key of the value to write in the table (parameter applicable only if the target variable is a table).
+Global: If the variable is available to all of the wires in the same mesh.
+Clear: If we should clear this sequence at every wire iteration; works only if this is the first push; default: true.
+
+UI.Spinner
+Description: A spinner widget used to indicate loading.
+Input: The value is ignored.
+Output: The output of this shard will be its input.
+Size: Overrides the size of the spinner. This sets both the height and width, as the spinner is always square.
+
+Shader.WithTexture
+Description: 
+Input: 
+Output: 
+Name: The name of the texture
+Then: The shards to execute if the texture exists
+Else: The shards to execute if the texture does not exist
+
