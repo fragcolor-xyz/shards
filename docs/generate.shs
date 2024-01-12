@@ -1,0 +1,238 @@
+@define(shards-path "docs/reference/shards/shards/")
+@define(enums-path "docs/reference/shards/enums/")
+@define(shards-details-path "details/shards/")
+@define(shards-sample-path "samples/shards/")
+
+@template(get-filename [path extension fallback-general] {
+  = f
+  Regex.Match("""(\w+)\.(.*)""") = match
+  Count(match) | If(Is(3) {
+      match
+      {Take(1) = first}
+      {Take(2) = second}
+      [path first "/" second extension] | String.Join
+    } {
+      [path (If({fallback-general} {"General/"} {""})) f extension] | String.Join
+    }
+  )
+})
+
+@template(print-type-info [buffer] {
+  ExpectTable
+  {Take("name") | ExpectString = p-type-name}
+  {Take("type") | ExpectInt = p-type-type}
+
+  "[`" >> buffer
+  p-type-name >> buffer
+  "`](" >> buffer
+
+  p-type-type
+  Match([
+    2 ; Enum
+    {
+      "../../../enums/" >> buffer
+      p-type-name >> buffer
+    }
+    15 ; ShardRef
+    {
+      "../../types/#shard" >> buffer
+    }
+    54 ; ContextVar
+    {
+      "../../types/#contextvar" >> buffer
+    }
+    56 ; Seq
+    {
+      "../../types/#seq" >> buffer
+    }
+    57 ; Table
+    {
+      "../../types/#table" >> buffer
+    }
+    59 ; Object
+    {
+      "../../types/#object" >> buffer
+    }
+    61 ; Set
+    {
+      "../../types/#set" >> buffer
+    }
+    none
+    {
+      "../../types/#" >> buffer
+      p-type-name | String.ToLower >> buffer
+    }
+  ])
+  ")" >> buffer
+})
+
+@wire(document-shard {
+  Set(shard-doc "name")
+  Shards.Help
+  {Take("help") | Set(shard-doc "help")}
+
+  {Take("inputHelp") | Set(shard-doc "input-help")}
+  {Take("outputHelp") | Set(shard-doc "output-help")}
+
+  {Take("inputTypes") | ExpectSeq | Set(shard-doc "input-types")}
+  {Take("outputTypes") | ExpectSeq | Set(shard-doc "output-types")}
+
+  {Take("parameters") | ExpectSeq = parameters}
+
+  {Take("properties") = properties}
+
+  Sequence(parameters-seq Type: @type([{none: Type::String}]))
+  0 >= idx
+  parameters | ForEach({
+    ExpectTable
+    {Take("default") | ToString | Set(param-doc "default")}
+    {Take("help") | Set(param-doc "help")}
+    {Take("name") | Set(param-doc "name")}
+    {Take("types") = types}
+    false | Set(param-doc "optional")
+    Sequence(param-types Type: @type([{none: Type::String}]))
+    types | When(IsNotNone {ExpectSeq | ForEach({
+        ExpectTable
+        {Take("name") | Set(param-type "name")}
+        {Take("type") | Set(param-type "type") | When(Is("None") {
+            true | Update(param-doc "optional")
+          })
+        }
+        param-type >> param-types
+      })
+    })
+    param-types | Set(param-doc "types")
+    param-doc >> parameters-seq
+    Math.Inc(idx)
+  })
+
+  shard-doc:name | @get-filename(@shards-path ".md" true) = file
+  [""] >= o
+
+  ; metadata (front matter)
+  "---\r\n" >> o
+  "authors: Fragcolor & contributors\r\n" >> o
+  "license: CC-BY-SA-4.0\r\n" >> o
+  "---\r\n" >> o
+  "\r\n\r\n" >> o
+
+  ; title
+  "# " >> o
+  shard-doc:name >> o
+  "\r\n\r\n" >> o
+
+  ; ; Combined table showing the input/outpus and parameters
+  "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> o
+  "| Name | - {: #sh-flags-row} | Description | Default | Type |\r\n" >> o
+  "|------|---------------------|-------------|---------|------|\r\n" >> o
+
+  "| `<input>` ||" >> o
+  shard-doc:input-help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
+  " | " >> o
+  "| " >> o
+  shard-doc:input-types | ForEach(@print-type-info(o))
+  " |\r\n" >> o
+
+  "| `<output>` ||" >> o
+  shard-doc:output-help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
+  " | " >> o
+  "| " >> o
+  shard-doc:output-types | ForEach(@print-type-info(o))
+  " |\r\n" >> o
+
+  parameters-seq | ForEach({
+    ExpectTable
+    {Take("name") | ExpectString = p-name}
+    {Take("types") | ExpectSeq = p-types}
+    {Take("help") | ExpectString = p-help}
+    {Take("default") | ExpectString = p-default}
+    {Take("optional") | ExpectBool = p-optional}
+    "| `" >> o
+    p-name >> o
+    p-optional | If(IsTrue {
+        "` | :fontawesome-solid-circle-plus:{title=\"Optional\"} " >> o
+      } {
+        "` | " >> o
+      }
+    )
+    " | " >> o
+    p-help >> o
+    " | `" >> o
+    p-default >> o
+    "` | " >> o
+    p-types | ForEach(@print-type-info(o))
+    " |\r\n" >> o
+  })
+
+  "\r\n</div>\r\n" >> o
+  "\r\n" >> o
+
+  properties | When(IsNotNone {
+    ExpectTable
+    {
+      Take("deprecated") | When({IsNotNone | And | ExpectBool | IsTrue} {
+        "--8<-- \"includes/deprecated.md\"\r\n\r\n" >> o
+      })
+    }
+    {
+      Take("experimental") | When({IsNotNone | And | ExpectBool | IsTrue} {
+        "--8<-- \"includes/experimental.md\"\r\n\r\n" >> o
+      })
+    }
+  })
+
+  ; Help text
+  shard-doc:help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
+  "\r\n\r\n" >> o
+
+  When({shard-doc:name | @get-filename(@shards-details-path "" true) | FS.IsFile} {
+    "## Details\r\n\r\n" >> o
+    "--8<-- \"" >> o
+    shard-doc:name | @get-filename(@shards-details-path "" true) >> o
+    "\"\r\n" >> o
+    "\r\n\r\n" >> o
+  })
+
+  When({shard-doc:name | @get-filename(@shards-sample-path "" true) | FS.IsDirectory} {
+    "## Examples\r\n\r\n" >> o
+    shard-doc:name | @get-filename(@shards-sample-path "" true) | FS.Iterate | ForEach({
+      When({FS.Extension | Is(".shs")} {
+        FS.Filename(NoExtension: true) = sample-filename
+        [shard-doc:name "/" sample-filename ".shs"] | String.Join = sample-script-fname
+        [shard-doc:name "/" sample-filename ".shs.log"] | String.Join = sample-log-fname
+        [shard-doc:name "/" sample-filename ".out.md"] | String.Join = sample-out-md-fname
+
+        "=== \"Code\"\r\n\r\n" >> o
+        "  ```x86asm linenums=\"1\"\r\n" >> o
+        "  --8<-- \"" >> o
+        sample-script-fname | @get-filename(@shards-sample-path "" true) >> o
+        "\"\r\n" >> o
+        "  ```\r\n\r\n" >> o
+
+        sample-out-md-fname | @get-filename(@shards-sample-path "" true) | FS.IsFile | When(IsTrue {
+          "=== \"Output\"\r\n\r\n" >> o
+          "  --8<-- \"" >> o
+          sample-out-md-fname | @get-filename(@shards-sample-path "" true) >> o
+          "\"\r\n\r\n" >> o
+        })
+
+        "  ```\r\n" >> o
+        "  --8<-- \"" >> o
+        sample-log-fname | @get-filename(@shards-sample-path "" true) >> o
+        "\"\r\n" >> o
+        "  ```\r\n" >> o
+
+        "&nbsp;\r\n" >> o
+      })
+    })
+  })
+
+  "--8<-- \"includes/license.md\"\r\n\r\n" >> o
+
+  o | String.Join = content
+  file | FS.Write(content Overwrite: true)
+  Log("Documented shard")
+})
+
+; process documentation in parallel
+Shards.Enumerate | TryMany(document-shard Threads: 4)
