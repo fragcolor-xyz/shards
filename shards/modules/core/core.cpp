@@ -1419,6 +1419,8 @@ struct GetShardHelp {
     }
     DEFER(shard->destroy(shard));
 
+    _output.clear();
+
     auto help = shard->help(shard);
     _output.insert(Var("help"), ostr(help));
 
