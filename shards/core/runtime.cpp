@@ -119,7 +119,7 @@ void decompressStrings() {
     auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue), str.payload.stringValue);
     auto &s = emplaced.first->second;
     SHOptionalString ls{s.c_str(), uint32_t(crc.payload.intValue)};
-    (*shards::GetGlobals().CompressedStrings).emplace(uint32_t(crc.payload.intValue), ls)
+    (*shards::GetGlobals().CompressedStrings).emplace(uint32_t(crc.payload.intValue), ls);
   }
 }
 #else
