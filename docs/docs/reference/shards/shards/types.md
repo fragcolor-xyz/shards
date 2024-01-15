@@ -22,45 +22,45 @@ Valid data types for every shard are listed under the `Type` column of their Par
 
 Type **Any** indicates that all data types are allowed.
 
-For example, **Any** as the allowed data type for input and `:Value` parameter of shard [`(All)`](../General/All/) means that `(All)` accepts and compares across all data types.
+For example, **Any** as the allowed data type for input and `Value:` parameter of shard [`(All)`](../General/All/) means that `(All)` accepts and compares across all data types.
 
 ```clojure linenums="1"
 [1]
-(All :Value [(Any)])
+All( Value: [(Any)])
 ```
 
-`(All)` compares the input and`:Value` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
+`All` compares the input and`Value:` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
 
 === "Code"
 
-    ```clojure linenums="1"
-    [4 5 6] (All :Value [4 5 6])
-    (Log)   ;; value and type match => true
+```clojure linenums="1"
+[4 5 6] | All( Value: [4 5 6])
+Log   ;; value and type match => true
 
-    "I'm a string" >= .var1
-    "I'm a string" >= .var2
-    .var1 (All :Value .var2)
-    (Log)   ;; value and type match => true
+"I'm a string" >= .var1
+"I'm a string" >= .var2
+.var1 (All Value: .var2)
+(Log)   ;; value and type match => true
 
-    "I'm a string" >= .var3
-    "I'm a different string" >= .var4
-    .var3 (All :Value .var4)
-    (Log)   ;; value mismatch => false
+"I'm a string" >= .var3
+"I'm a different string" >= .var4
+.var3 (All Value: .var4)
+(Log)   ;; value mismatch => false
 
-    (Float 4.0) >= .var5
-    (Int 4) >= .var6
-    .var5 (All :Value .var6)
-    (Log)   ;; type mismatch => false
-    ```
+(Float 4.0) >= .var5
+(Int 4) >= .var6
+.var5 (All Value: .var6)
+(Log)   ;; type mismatch => false
+```
 
 === "Output"
 
-    ```
-    [info] [2022-07-22 13:05:25.848] [T-18072] [logging.cpp::55] [mywire] true
-    [info] [2022-07-22 13:05:25.861] [T-18072] [logging.cpp::55] [mywire] true
-    [info] [2022-07-22 13:05:25.862] [T-18072] [logging.cpp::55] [mywire] false
-    [info] [2022-07-22 13:05:25.864] [T-18072] [logging.cpp::55] [mywire] false
-    ```
+```
+[info] [2022-07-22 13:05:25.848] [T-18072] [logging.cpp::55] [mywire] true
+[info] [2022-07-22 13:05:25.861] [T-18072] [logging.cpp::55] [mywire] true
+[info] [2022-07-22 13:05:25.862] [T-18072] [logging.cpp::55] [mywire] false
+[info] [2022-07-22 13:05:25.864] [T-18072] [logging.cpp::55] [mywire] false
+```
 
 ## Sequence
 
@@ -82,15 +82,15 @@ Examples of shards that use this type are [`(Audio.Oscillator)`](../Audio/Oscill
 Type **Bool** allows only two values - `true` or `false`.
 In that sense, it can be thought of as a special case of an [**Enum**](#enum) data type.
 
-Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `:Value` parameter for equality and returns `true` if values are equal, otherwise `false` if values are not equal. Examples:
+Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `Value:` parameter for equality and returns `true` if values are equal, otherwise `false` if values are not equal. Examples:
 
 === "Code"
 
     ```clojure linenums="1"
-    100 (Is :Value (* 10 10))
+    100 (Is Value: (* 10 10))
     (Log)   ;; Is equal => true
 
-    [20] (Is :Value 20)
+    [20] (Is Value: 20)
     (Log)   ;; Is not equal => false
     ```
 
@@ -154,7 +154,7 @@ Type **ContextVar** represents a contextual variable (i.e., a variable that is i
 !!! note
     Has keyword [`context-var`](../../lisp/values/#context-var) and alias `ContextVar`.
 
-The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
+The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric data (i.e., a variable that holds numeric data) into its `Value:` parameter, and increments it by 1.
 
 === "Code"
 

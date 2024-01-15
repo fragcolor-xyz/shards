@@ -1,19 +1,13 @@
-{
-  prompt: """
-    How to add a new element to an existing Shards sequence?
-  """
+@wire(main-wire {
+  [1 2 3 4 5]
+  ForEach({
+    Math.Add(1)
+    Math.Multiply(2)
+    Math.Subtract(3)
+    Log("Result")
+  })
+})
 
-  solution: {
-    element >> sequence
-  }
-
-  explicit: {
-    Get(element) | Push(sequence)
-  }
-
-  explaination: """
-    The Push method is used to add a new element to the end of a sequence.
-    The Get method is used to get an element from a sequence.
-    Remember, there might be type issues during composition if a sequence is bound to a certain type.
-  """
-}
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

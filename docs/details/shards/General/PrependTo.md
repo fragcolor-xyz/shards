@@ -1,4 +1,4 @@
-`PrependTo` prepends (i.e., adds to the start) its input to the variable it receives in its `:Collection` parameter. 
+`PrependTo` prepends (i.e., adds to the start) its input to the variable it receives in its `Collection:` parameter. 
 
 This shard works on string and sequence variables.
 
