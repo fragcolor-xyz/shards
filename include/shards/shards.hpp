@@ -218,7 +218,7 @@ struct Types {
 
   operator SHTypesInfo() const {
     if (_types.size() > 0) {
-      return SHTypesInfo{&const_cast<Types*>(this)->_types[0], (uint32_t)_types.size(), 0};
+      return SHTypesInfo{&const_cast<Types *>(this)->_types[0], (uint32_t)_types.size(), 0};
     } else {
       return SHTypesInfo{nullptr, 0, 0};
     }
@@ -933,6 +933,7 @@ struct Var : public SHVar {
   }
 
   explicit Var(const std::string &src) : Var(std::string_view(src)) {}
+  template <std::size_t N> explicit constexpr Var(const char (&src)[N]) : Var(std::string_view(src, N - 1)) {}
   explicit Var(const char *src) : Var(std::string_view(src)) {}
   explicit Var(const char *src, size_t len) : SHVar() {
     valueType = SHType::String;

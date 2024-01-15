@@ -47,6 +47,8 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#include "oneapi/tbb/concurrent_unordered_map.h"
+
 #include "coro.hpp"
 
 #ifdef NDEBUG
@@ -483,7 +485,7 @@ public:
   std::string RootPath;
   std::string ExePath;
 
-  std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+  oneapi::tbb::concurrent_unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
   entt::registry Registry;
 
