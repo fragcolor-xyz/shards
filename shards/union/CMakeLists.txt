@@ -1,6 +1,6 @@
 shards_generate_union(shards-cpp-union)
 shards_generate_rust_union(shards-rust-union
-  RUST_TARGETS shards-rust 
+  RUST_TARGETS shards-rust
 )
 
 add_library(shards-union INTERFACE)

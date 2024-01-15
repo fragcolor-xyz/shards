@@ -77,7 +77,6 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
 
-  // we only read so should be thread safe!
   auto it = CompiledCompressedStrings.find(id);
   if (it != CompiledCompressedStrings.end()) {
     auto val = it->second;
@@ -90,15 +89,13 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
 
 #include <shards/core/shccstrings.hpp>
 
-static std::unordered_map<uint32_t, std::string> strings_storage;
+static oneapi::tbb::concurrent_unordered_map<uint32_t, std::string> strings_storage;
 
 void decompressStrings() {
-  static std::mutex decompressMutex;
-  std::scoped_lock _lock(decompressMutex);
-
   if (!shards::GetGlobals().CompressedStrings) {
     throw shards::SHException("String storage was null");
   }
+
   // run the script to populate compressed strings
   auto bytes = Var(__shards_compressed_strings);
   auto wire = ::shards::Wire("decompress strings").let(bytes).shard("Brotli.Decompress").shard("FromBytes");
@@ -121,22 +118,18 @@ void decompressStrings() {
     }
     auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue), str.payload.stringValue);
     auto &s = emplaced.first->second;
-    auto &val = (*shards::GetGlobals().CompressedStrings)[uint32_t(crc.payload.intValue)];
-    val.string = s.c_str();
-    val.crc = uint32_t(crc.payload.intValue);
+    SHOptionalString ls{s.c_str(), uint32_t(crc.payload.intValue)};
+    (*shards::GetGlobals().CompressedStrings).emplace(uint32_t(crc.payload.intValue), ls)
   }
 }
 #else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
-  static std::mutex decompressMutex;
-  std::scoped_lock _lock(decompressMutex); // this is not great but happens only in DEBUG so it's fine
-
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
 
   SHOptionalString ls{str, id};
-  CompiledCompressedStrings[id] = ls;
+  CompiledCompressedStrings.emplace(id, ls);
   return ls;
 }
 #endif
@@ -2697,14 +2690,14 @@ void hash_update(const SHVar &var, void *state) {
 
 SHString getString(uint32_t crc) {
   shassert(shards::GetGlobals().CompressedStrings);
-  auto s = (*shards::GetGlobals().CompressedStrings)[crc].string;
-  return s != nullptr ? s : "";
+  auto it = (*shards::GetGlobals().CompressedStrings).find(crc);
+  return it != (*shards::GetGlobals().CompressedStrings).end() ? it->second.string : "";
 }
 
 void setString(uint32_t crc, SHString str) {
   shassert(shards::GetGlobals().CompressedStrings);
-  (*shards::GetGlobals().CompressedStrings)[crc].string = str;
-  (*shards::GetGlobals().CompressedStrings)[crc].crc = crc;
+  SHOptionalString ls{str, crc};
+  (*shards::GetGlobals().CompressedStrings).emplace(crc, ls);
 }
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }

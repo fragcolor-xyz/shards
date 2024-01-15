@@ -5,13 +5,13 @@ extern crate pest_derive;
 extern crate clap;
 
 mod ast;
-mod cli;
-mod eval;
-mod read;
-mod error;
 mod ast_visitor;
+mod cli;
+mod error;
+mod eval;
 mod formatter;
 mod print;
+mod read;
 
 use crate::ast::*;
 
@@ -320,6 +320,16 @@ pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv 
     let namespace: &str = namespace.into();
     Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
   }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) {
+  let env = unsafe { &mut *env };
+  let name: &str = name.into();
+  env.forbidden_funcs.insert(Identifier {
+    name: RcStrWrapper::from(name),
+    namespaces: Vec::new(),
+  });
 }
 
 #[no_mangle]
