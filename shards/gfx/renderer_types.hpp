@@ -31,7 +31,6 @@
 #include <compare>
 #include <optional>
 #include <spdlog/spdlog.h>
-#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
