@@ -1,11 +1,6 @@
 @wire(main-wire {
-  [1 2 3 4 5]
-  ForEach({
-    Math.Add(1)
-    Math.Multiply(2)
-    Math.Subtract(3)
-    Log("Result")
-  })
+  5.0 >= floatvar
+  Log
 })
 
 @mesh(main)
