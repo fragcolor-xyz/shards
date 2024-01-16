@@ -1353,6 +1353,7 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD2(Desktop, UnsetTopmost);
   REGISTER_SHARD2(Desktop, SetTitle);
   REGISTER_SHARD2(Desktop, Pixel);
+  REGISTER_SHARD2(Desktop, Pixels);
   REGISTER_SHARD2(Desktop, WaitKeyEvent);
   REGISTER_SHARD2(Desktop, SendKeyEvent);
   REGISTER_SHARD2(Desktop, GetMousePos);
