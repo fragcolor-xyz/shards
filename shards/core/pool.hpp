@@ -12,7 +12,7 @@ namespace shards {
 template <typename T> struct PoolItemTraits {
   T newItem() { assert("not implemented"); }
   void release(T &) { assert("not implemented"); }
-  bool canRecyle(T &v) { assert("not implemented"); }
+  bool canRecycle(T &v) { assert("not implemented"); }
   void recycled(T &v) { assert("not implemented"); }
 };
 

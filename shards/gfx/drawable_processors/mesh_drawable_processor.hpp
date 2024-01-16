@@ -327,6 +327,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   TransientPtr prepare(DrawablePrepareContext &context) override {
+    ZoneScoped;
+
     auto &allocator = context.storage.workerMemory;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
 
@@ -334,37 +336,44 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     PrepareData *prepareData = allocator->new_object<PrepareData>();
     prepareData->drawableData.resize(context.drawables.size());
 
-    // Init placeholder texture
-    for (size_t i = 0; i < std::size(placeholderTextures); i++) {
-      placeholderTextures[i]->createContextDataConditional(context.context);
+    {
+      ZoneScopedN("Prepare resources");
+      // Init placeholder texture
+      for (size_t i = 0; i < std::size(placeholderTextures); i++) {
+        placeholderTextures[i]->createContextDataConditional(context.context);
+      }
+
+      // Prepare mesh & texture buffers
+      for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
+        if (baseParam.second.texture) {
+          baseParam.second.texture->createContextDataConditional(context.context);
+        }
+      }
+
+      for (auto &drawable : context.drawables) {
+        const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
+        auto &cached = drawableCache[meshDrawable.getId()];
+        cached.mesh->createContextDataConditional(context.context);
+      }
     }
 
     // Allocate per instance buffers
-    size_t numDrawables = context.drawables.size();
-    for (auto &binding : cachedPipeline.drawBufferBindings) {
-      if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
+    size_t numDrawables{};
+    {
+      ZoneScopedN("allocateBuffers");
+      numDrawables = context.drawables.size();
+      for (auto &binding : cachedPipeline.drawBufferBindings) {
+        if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
+          auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
+          allocateBuffer(storageBufferPool, preparedBuffer, PipelineBuilder::getDrawBindGroupIndex(), binding, numDrawables);
+        }
+      }
+
+      // Allocate global(view) buffers
+      for (auto &binding : cachedPipeline.viewBuffersBindings) {
         auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
-        allocateBuffer(storageBufferPool, preparedBuffer, PipelineBuilder::getDrawBindGroupIndex(), binding, numDrawables);
+        allocateBuffer(uniformBufferPool, preparedBuffer, PipelineBuilder::getViewBindGroupIndex(), binding, 1);
       }
-    }
-
-    // Allocate global(view) buffers
-    for (auto &binding : cachedPipeline.viewBuffersBindings) {
-      auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
-      allocateBuffer(uniformBufferPool, preparedBuffer, PipelineBuilder::getViewBindGroupIndex(), binding, 1);
-    }
-
-    // Prepare mesh & texture buffers
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
-      if (baseParam.second.texture) {
-        baseParam.second.texture->createContextDataConditional(context.context);
-      }
-    }
-
-    for (auto &drawable : context.drawables) {
-      const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-      auto &cached = drawableCache[meshDrawable.getId()];
-      cached.mesh->createContextDataConditional(context.context);
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
@@ -427,6 +436,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     // Allocate additional data (skinning matrices)
     auto jointsBinding = cachedPipeline.findDrawBufferBinding("joints");
     if (jointsBinding) {
+      ZoneScopedN("packJointsBuffer");
+
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       for (size_t index = 0; index < preparedGroupData.groups.size(); ++index) {
         auto &group = preparedGroupData.groups[index];

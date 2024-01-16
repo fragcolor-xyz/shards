@@ -28,22 +28,36 @@ namespace gfx {
 
 static auto logger = getLogger();
 
-inline constexpr auto findMeshInPoolBySize(size_t targetSize) {
+inline constexpr auto findDrawableInPoolByMeshSize(size_t targetSize) {
   if (targetSize > INT64_MAX) {
     throw std::runtime_error("targetSize too large");
   }
-  return [targetSize](MeshPtr &item) -> int64_t {
-    size_t size = item->getNumVertices() * item->getFormat().getVertexSize();
+  return [targetSize](std::shared_ptr<MeshDrawable> &item) -> int64_t {
+    auto &mesh = item->mesh;
+    size_t size = mesh->getNumVertices() * mesh->getFormat().getVertexSize();
     if (size < targetSize) {
       return INT64_MAX;
     }
-    return int64_t(size) - int64_t(targetSize);
+    // Negate so the smallest buffer will be picked first
+    return -(int64_t(size) - int64_t(targetSize));
   };
 }
 
-struct MeshPool : public shards::Pool<MeshPtr> {
-  MeshPtr &allocateBuffer(size_t size) {
-    return this->newValue([](auto &buffer) {}, findMeshInPoolBySize(size));
+struct PoolTraits {
+  using T = std::shared_ptr<MeshDrawable>;
+  T newItem() {
+    auto drawable = std::make_shared<MeshDrawable>();
+    drawable->mesh = std::make_shared<Mesh>();
+    return drawable;
+  }
+  void release(T &) {}
+  bool canRecycle(T &v) { return v.use_count() == 1; }
+  void recycled(T &v) {}
+};
+
+struct MeshDrawablePool : public shards::Pool<std::shared_ptr<MeshDrawable>, PoolTraits> {
+  std::shared_ptr<MeshDrawable> &allocateBuffer(size_t size) {
+    return this->newValue([](auto &buffer) {}, findDrawableInPoolByMeshSize(size));
   }
 };
 
@@ -157,10 +171,9 @@ struct TextureManager {
 };
 
 struct EguiRendererImpl {
-  MeshPool meshPool;
+  MeshDrawablePool meshPool;
   TextureManager textures;
   std::vector<egui::TextureId> pendingTextureFrees;
-  std::vector<MeshDrawable> drawables;
   std::vector<FeaturePtr> uiFeatures;
 
   MeshFormat meshFormat;
@@ -214,15 +227,15 @@ struct EguiRendererImpl {
     applyTextureUpdatesPreRender(output);
 
     // Update meshes & generate drawables
-    drawables.resize(output.numPrimitives);
     for (size_t i = 0; i < output.numPrimitives; i++) {
       auto &prim = output.primitives[i];
 
-      MeshPtr mesh = meshPool.allocateBuffer(prim.numVertices * sizeof(egui::Vertex));
+      auto drawablePtr = meshPool.allocateBuffer(prim.numVertices * sizeof(egui::Vertex));
+      auto &drawable = *drawablePtr.get();
+      auto &mesh = drawablePtr->mesh;
       mesh->update(meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                    prim.numIndices * sizeof(uint32_t));
 
-      MeshDrawable &drawable = drawables[i];
       drawable.mesh = mesh;
       drawable.transform = rootTransform;
       drawable.features = uiFeatures;

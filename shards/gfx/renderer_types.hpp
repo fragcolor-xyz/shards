@@ -326,7 +326,9 @@ inline constexpr auto findBufferInPoolBySize(size_t targetSize) {
     if (buffer.capacity < targetSize) {
       return INT64_MAX;
     }
-    return int64_t(buffer.capacity) - int64_t(targetSize);
+
+    // Negate so the smallest buffer will be picked first
+    return -(int64_t(buffer.capacity) - int64_t(targetSize));
   };
 }
 
