@@ -706,14 +706,17 @@ struct Server : public NetworkBase {
 
     if (!_socket) {
       // first activation, let's init
-      _socket.emplace(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
-      boost::asio::socket_base::send_buffer_size option_send(65536);
-      boost::asio::socket_base::receive_buffer_size option_recv(65536);
-      _socket->set_option(option_send);
-      _socket->set_option(option_recv);
+      _socket.emplace(io_context);
+      _socket->open(udp::v4());
+      _socket->set_option(boost::asio::ip::udp::socket::reuse_address(true));
+      _socket->set_option(boost::asio::socket_base::send_buffer_size(65536));
+      _socket->set_option(boost::asio::socket_base::receive_buffer_size(65536));
+      _socket->bind(udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
       boost::asio::post(io_context, [this]() { do_receive(); });
+
+      SHLOG_TRACE("Network.Server listening on port {}", _port.get().payload.intValue);
     }
 
     gcWires(context);
