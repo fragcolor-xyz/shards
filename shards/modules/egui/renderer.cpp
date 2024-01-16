@@ -241,13 +241,15 @@ struct EguiRendererImpl {
       drawable.features = uiFeatures;
       uint32_t flags = 0;
       TexturePtr texture = textures.get(prim.textureId);
+      static FastString fs_color = "color";
+      static FastString fs_flags = "flags";
       if (texture) {
-        drawable.parameters.set("color", texture);
+        drawable.parameters.set(fs_color, texture);
         if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
           flags |= uint32_t(0x1);
         }
       }
-      drawable.parameters.set("flags", flags);
+      drawable.parameters.set(fs_flags, flags);
 
       drawable.clipRect.reset();
       if (clipGeometry) {

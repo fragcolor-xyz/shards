@@ -140,7 +140,7 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
   size_t layoutIndex = 0;
   for (auto &fieldName : layout.fieldNames) {
 #if SH_ANDROID
-    auto drawDataIt = parameterStorage.basic.find(fieldName.c_str());
+    auto drawDataIt = parameterStorage.basic.find(fieldName);
 #else
     auto drawDataIt = parameterStorage.basic.find(fieldName);
 #endif
@@ -159,11 +159,16 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 }
 
 inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData, const Rect &viewport) {
-  outDrawData.setParam("view", viewData.view->view);
-  outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
-  outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
-  outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
-  outDrawData.setParam("viewport", float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
+  static FastString fs_view = "view";
+  static FastString fs_invView = "invView";
+  static FastString fs_proj = "proj";
+  static FastString fs_invProj = "invProj";
+  static FastString fs_viewport = "viewport";
+  outDrawData.setParam(fs_view, viewData.view->view);
+  outDrawData.setParam(fs_invView, viewData.cachedView.invViewTransform);
+  outDrawData.setParam(fs_proj, viewData.cachedView.projectionTransform);
+  outDrawData.setParam(fs_invProj, viewData.cachedView.invProjectionTransform);
+  outDrawData.setParam(fs_viewport, float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
 }
 
 struct TextureData {
@@ -174,8 +179,7 @@ struct TextureData {
   operator bool() const { return data != nullptr; }
 };
 
-template <typename TTextureBindings>
-auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name) -> int32_t {
+template <typename TTextureBindings> auto mapTextureBinding(const TTextureBindings &textureBindings, FastString name) -> int32_t {
   auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
   if (it != textureBindings.end())
     return int32_t(it - textureBindings.begin());
@@ -184,7 +188,7 @@ auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name
 
 template <typename TTextureBindings, typename TOutTextures>
 auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
-                         SamplerCache &samplerCache, size_t frameCounter, const char *name, const TexturePtr &texture) {
+                         SamplerCache &samplerCache, size_t frameCounter, FastString name, const TexturePtr &texture) {
   int32_t targetSlot = mapTextureBinding(textureBindings, name);
   if (targetSlot >= 0) {
     bool isFilterable = textureBindings[targetSlot].type.format == TextureSampleType::Float;
@@ -198,10 +202,9 @@ template <typename TTextureBindings, typename TOutTextures, typename TSrc>
 auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
                      SamplerCache &samplerCache, size_t frameCounter, ParameterStorage &dstParams, const TSrc &srcParam) {
   for (auto &param : srcParam.basic)
-    dstParams.setParam(param.first.c_str(), param.second);
+    dstParams.setParam(param.first, param.second);
   for (auto &param : srcParam.textures)
-    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first.c_str(),
-                        param.second.texture);
+    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first, param.second.texture);
 };
 
 } // namespace gfx::detail

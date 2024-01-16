@@ -248,16 +248,19 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     ParameterStorage &parameters = data.parameters;
 
-    parameters.setParam("world", meshDrawable.transform);
+    static FastString fs_world = "world";
+    parameters.setParam(fs_world, meshDrawable.transform);
 
     float4x4 worldInverse = linalg::inverse(meshDrawable.transform);
-    parameters.setParam("invWorld", worldInverse);
-    parameters.setParam("invTransWorld", linalg::transpose(worldInverse));
+    static FastString fs_invWorld = "invWorld";
+    static FastString fs_invTransWorld = "invTransWorld";
+    parameters.setParam(fs_invWorld, worldInverse);
+    parameters.setParam(fs_invTransWorld, linalg::transpose(worldInverse));
 
     auto &textureBindings = cachedPipeline.textureBindingLayout.bindings;
     data.textures.resize(textureBindings.size());
 
-    auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
+    auto setTextureParameter = [&](FastString name, const TexturePtr &texture) {
       gfx::detail::setTextureParameter(textureBindings, data.textures, context, samplerCache, frameCounter, name, texture);
     };
 
@@ -283,7 +286,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     //    Need to split the binding logic so that they can be on the view buffer as well
     if (baseViewData) {
       for (auto &pair : baseViewData->textures) {
-        setTextureParameter(pair.first.c_str(), pair.second.texture);
+        setTextureParameter(pair.first, pair.second.texture);
       }
     }
 
@@ -434,7 +437,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     // Allocate additional data (skinning matrices)
-    auto jointsBinding = cachedPipeline.findDrawBufferBinding("joints");
+    static FastString fs_joints = "joints";
+    auto jointsBinding = cachedPipeline.findDrawBufferBinding(fs_joints);
     if (jointsBinding) {
       ZoneScopedN("packJointsBuffer");
 

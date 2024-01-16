@@ -621,10 +621,12 @@ public:
     }
 
     Feature &feature = *_featurePtr->get();
-    feature.shaderEntryPoints.clear();
 
     if (!_shaders.isNone()) {
-      applyShaders(context, feature, _shaders);
+      if (feature.shaderEntryPoints.empty()) {
+        // These are static so can be initialized only once
+        applyShaders(context, feature, _shaders);
+      }
     }
 
     if (!_state.isNone()) {
