@@ -131,7 +131,8 @@ void updateQueueData(RendererStorage &storage, const DrawQueuePtr &queue, boost:
   auto &queueData =
       getCacheEntry(storage.queueCache, queue->getId(), [&](const UniqueId &id) { return std::make_shared<QueueData>(queue); });
 
-  queueData->update(drawables);
+  // Disabled until required for culling, distance field, etc.
+  // queueData->update(drawables);
 
   if (storage.debug && queue->trace) {
     for (auto &it : queueData->set) {
