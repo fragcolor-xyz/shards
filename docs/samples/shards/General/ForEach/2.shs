@@ -1,0 +1,9 @@
+  
+  {value1: 10 value2: 20 value3: 30} ;;Takes each key-value pair as a sequence
+  ForEach({
+    Log
+    Take(1)
+    ToInt
+    Math.Multiply(10)
+    Log
+  })

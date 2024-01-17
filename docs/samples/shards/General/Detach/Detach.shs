@@ -1,0 +1,24 @@
+@wire(hello {
+  Pause(2.0)
+  Msg("Hello")
+})
+
+@wire(hello-2 {
+  Pause(2.0)
+  Msg("Hello-2")
+})
+
+@wire(main-wire {
+  Msg("Start")
+  Detach(hello) ; ;hello is run in parallel. Start End and then Hello will be logged
+  Msg("End")
+  
+  ; Msg("Start")
+  ; Do(hello-2) ;;hello-2 is run in inline. Start will be logged, then 2s will pass, and Hello and then End will be logged
+  ; Msg("End")
+})
+
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

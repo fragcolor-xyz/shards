@@ -1,4 +1,1 @@
-(defwire hello
-   (Msg "Hello"))
-
-(SwitchTo hello)
+;; Nolonger exists

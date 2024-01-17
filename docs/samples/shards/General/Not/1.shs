@@ -1,0 +1,8 @@
+
+false | Not
+Log("Result 1")
+Assert.Is(true Break: true)
+
+true | Not
+Log("Result 2")
+Assert.Is(false Break: true)

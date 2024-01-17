@@ -1,0 +1,15 @@
+@wire(main-wire {
+  
+  Once({
+    0 >= counter
+    counter | Log("counter set to 0 only once")
+    ; ; => 0
+  })
+  Math.Inc(counter)
+  counter | Log("counter incremented every time wire executes")
+  ; ; => 1, 2, 3, 4, 5
+} Looped: true)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

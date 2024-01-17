@@ -1,0 +1,14 @@
+; ; string comparison
+"z" | IsMoreEqual("a")
+Log("'z' is more or equal than 'a' numerically")
+Assert.Is(true Break: true)
+
+; ; integer comparison
+5 | IsMoreEqual(2)
+Log("5 is more or equal to 2")
+Assert.Is(true Break: true)
+
+; ; float comparison
+9.0 | IsMoreEqual((1.0 | Math.Add(2.0)))
+Log("9.0 is more or equal to 2.0")
+Assert.Is(true Break: true)

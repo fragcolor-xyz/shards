@@ -1,0 +1,42 @@
+; ; create and update sequence with `| Push`; value available only to current wire
+1 | Push(Name: seq1) ; ; create a sequence by | Pushing the first element
+seq1 | Log("seq1") ; ; sequence created => [1]
+2 | Push(Name: seq1) ; ; | Push one more element into sequence
+seq1 | Log("seq1") ; ; sequence updated => [1, 2]
+
+; ; Update an existing sequence  with `| Push`; value available to all wires on mesh
+[10 20] | Set(Name: seq2 Global: true) ; ; create sequence with two elements
+seq2 | Log("seq2") ; ; sequence created => [10, 20]
+30 | Push(Name: seq2 Global: true) ; ; | Push one more element into sequence
+seq2 | Log("seq2") ; ; sequence updated => [10, 20, 30]
+
+; ; create empty sequence with `Sequence`; add elements with `| Push`
+Sequence(Name: seq3) ; ; create empty sequence
+seq3 | Log("seq3") ; ; empty sequence created => []
+1 | Push(Name: seq3 Clear: false) ; ; | Push an element into sequence
+seq3 | Log("seq3") ; ; sequence updated => [1]               
+2 | Push(Name: seq3 Clear: false) ; ; | Push another element into sequence
+seq3 | Log("seq3") ; ; sequence updated => [1, 2]    
+
+; ; create empty table with `Table`; add/update key sequence values with `| Push`
+Table(Name: table1) ; ; created an empty table (one key, no value)
+table1 | Log ; ; table with one key (no value) created => {A: []}
+1 | Push(table1 "A") ; ; | Push new key "A" with sequence value "[1]"
+table1 | Log ; ; table key/value updated => {A: [1]}
+2 | Push(table1 "A") ; ; | Push new element into key "A" existing sequence
+table1 | Log ; ; table key/value updated => {A: [1, 2]}
+
+; ; Using a `| Push` alias: `>>` is alias for `| Push(Clear: true)` 
+"Hello" >> seq4 ; ; create sequence by | Pushing the first element
+seq4 | Log("seq4") ; ; sequence created => [Hello]
+"World" >> seq4 ; ; update the sequence by | Pushing one more element
+seq4 | Log("seq4") ; ; sequence updated with second element => [Hello, World]
+
+; ; Technique to update a non-| Push created Table's sequence values with `| Push`
+{k1: [1 2 3]} >= table2 ; ; table is created using `Set`
+table2 | Log ; ; table with key/value pair created => {k1: [1 2 3]}
+Get(table2 "k1") >= seqvar ; ; target value offloaded into a sequence variable
+4 | Push(seqvar) ; ; update sequence variable using `| Push`
+seqvar | Log ; ; sequence variable updated => [1, 2, 3, 4] 
+{k1: seqvar} >= table2 ; ; update table key sequence value with modified sequence variable                      
+table2 | Log

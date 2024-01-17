@@ -1,0 +1,15 @@
+
+; ; string comparison
+"a" | IsLess("z")
+Log("a is less than z numerically")
+Assert.Is(true Break: true)
+
+; ; integer comparison
+2 | IsLess(5)
+Log("2 is less than 5")
+Assert.Is(true Break: true)
+
+; ; float comparison
+2.0 | IsLess((2.0 | Math.Add(2.0)))
+Log("2.0 is less than 4.0")
+Assert.Is(true Break: true)

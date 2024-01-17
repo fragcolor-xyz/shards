@@ -1,0 +1,21 @@
+@wire(main-wire {
+  
+  "Hello World, every 1.5s during a wire flow execution" = string1
+  "Hello World, once during every wire flow execution" = string2
+  
+  string1
+  Once(
+    Action: Log
+    Every: 1.5
+  )
+  
+  string2
+  Once(
+    Action: Log
+  )
+  
+} Looped: true)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

@@ -1,4 +1,4 @@
-@wire(print{
+@wire(print {
   "Ok"
   Log
 })

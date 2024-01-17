@@ -1,0 +1,5 @@
+; ; drop first element from a local sequence
+[10 20 30 40] >= seq ; ; create a local sequence
+Get(seq) | Log ; ; local sequence => [10, 20, 30, 40]
+DropFront(Name: seq) ; ; drops the first element i.e., 10
+Get(seq) | Log

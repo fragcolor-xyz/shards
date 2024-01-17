@@ -1,0 +1,22 @@
+
+@wire(step-1 {
+  value-1 | Math.Subtract(1.0) > value-1
+})
+
+@wire(main-wire {
+  
+  Once({; ; initialize variables and detach the add-progress wire
+    100.0 | Set(value-1)
+    100.0 | Set(value-2)
+  })
+  
+  Once({
+    Step(step-1)
+    value-1
+    Log("value-1")
+  }1.0)
+} Looped: true)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

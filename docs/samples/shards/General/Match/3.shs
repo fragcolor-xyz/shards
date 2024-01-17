@@ -1,0 +1,9 @@
+; ; multiple matches + nil match at start + with passthrough
+1
+Match([
+  none {Msg("Case 0")}
+  1 {Msg("Case 1")}
+  2 {Msg("Case 2")}
+] Passthrough: true)
+Log("Match Passthrough Value")
+Assert.Is(1 true)

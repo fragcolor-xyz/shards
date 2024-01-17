@@ -1,0 +1,16 @@
+@template(msgshard [a b] {
+  Msg(a LogLevel::Warning) ; ; print value of 1st arg passed
+  Msg(b LogLevel::Error)
+})
+; ; print value of 2nd arg passed
+
+@wire(main-wire {
+  
+Msg("Hello World" LogLevel::Info) ; ; prints string
+@msgshard("Bye" "Universe")
+  
+})
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

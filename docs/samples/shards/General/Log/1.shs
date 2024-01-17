@@ -1,0 +1,4 @@
+"I am a var" = var
+2 | Math.Multiply(4) | Log ;; log previous shard output
+var | Log  ;; log a variable value
+3 | Math.Add(4) | Log(Prefix: "String") ;; prefix a string to the logged output

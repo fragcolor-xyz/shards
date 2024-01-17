@@ -1,0 +1,42 @@
+
+@wire(add-progress {
+  
+  Once({
+    progress-stat | Math.Add(1.0) > progress-stat
+  } 1.0)
+  
+  
+  
+  progress-stat
+  When(Predicate: Is(5.0) Action: {; ; add progress will suspend once progress-stat reaches 5
+    Once({
+      Suspend
+    })
+  })
+} Looped: true)
+
+@wire(main-wire {
+  
+  Once({; ; initialize variables and detach the add-progress wire
+    0.0 | Set(progress-stat Global: true)
+    0.0 | Set(resume-timer)
+    Detach(add-progress)
+  })
+  
+  Once({
+    progress-stat
+    Log("Progress")
+    
+    resume-timer | Math.Add(1.0) > resume-timer
+    Log("Resume Timer")
+  } 1.0)
+  
+  resume-timer
+  When(Predicate: Is(10.0) Action: {
+    Resume(add-progress) ; ;When resume-timer reaches 10, it will Resume add-progress wire which was previously suspended
+  })
+} Looped: true)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

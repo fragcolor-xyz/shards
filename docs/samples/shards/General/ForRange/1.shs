@@ -1,0 +1,13 @@
+;; Sum all positive integers below 1000
+0 >= sum
+
+ForRange(
+  From: 1
+  To: 999
+  Action: {
+    Math.Add(sum) > sum ; ; 1 then 2 then 3 then .... 999 is passsed as input
+    Log
+  }
+)
+
+sum | Assert.Is(499500 true)

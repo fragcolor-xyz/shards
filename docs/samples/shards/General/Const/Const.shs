@@ -1,0 +1,20 @@
+; ; declare an int with `Const` and consume in `Math.Multiply`
+Const(Value: 2)
+Math.Multiply(4) | Log ; ; => 8
+
+; ; declare an int without `Const` and consume in `Math.Multiply`
+2 | Math.Multiply(4) | Log ; ; => 8
+
+; ; declare a string with `Const`
+Const("Hello World!") | Log ; ; => "Hello World!"
+
+; ; declare a sequence with `Const`
+Const(["A" "B" "C"]) | Log ; ; => ["A" "B" "C"]
+
+; ; declare a Float4 with `Const`
+Const(@f4(1.0 2.0 3.0 4.0)) | Log ; ; => @f4(1 2 3 4)
+
+; ; nullifying the input to a shard with Const(nil)
+"Hello World" ; ; string input for Log
+Const(none) ; ; nulls the string input
+Log

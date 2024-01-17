@@ -1,0 +1,11 @@
+; ; multiple matches + nil match at end + no passthrough
+1
+Match([
+  (0 | Math.Add(1)) {"Matched 1a"} ; ; case processed, match found
+  1 {"Matched 1"} ; ; case ignored
+  2 {"Matched 2"} ; ; case ignored
+  none {"Matched nil"}
+] ; ; case ignored 
+Passthrough: false) ; ; no passthrough --
+Log("Result")
+Assert.Is("Matched 1a" true)

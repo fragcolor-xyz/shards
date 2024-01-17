@@ -1,0 +1,29 @@
+; ; string comparison
+"hello" | String.ToUpper | Is("HELLO")
+Log("String is identical")
+Assert.Is(true Break: true)
+
+; ; integer comparison
+2 | Math.Add(3) | Is(5)
+Log("Int is identical")
+Assert.Is(true Break: true)
+
+; ; float comparison
+4.0 | Is((3.0 | Math.Add(1.0)))
+Log("Float is identical")
+Assert.Is(true Break: true)
+
+; ; sequence comparison
+[1 2 3] | Is([1 2 3])
+Log("Sequence is identical")
+Assert.Is(true Break: true)
+
+; ; table comparison 1
+{key1: [10 20] key2: [30]} | Is({key1: [10 20] key2: [30]})
+Log("Table is  identical")
+Assert.Is(true Break: true)
+
+; ; table comparison 2
+{key2: [30] key1: [10 20]} | Is({key1: [10 20] key2: [30]})
+Log("Table is identical")
+Assert.Is(true Break: true)

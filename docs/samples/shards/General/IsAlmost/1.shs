@@ -1,0 +1,9 @@
+; ; integer comparison
+199 | Math.Add(300) | IsAlmost(500 Threshold: 1)
+Log("Input is almost 500")
+Assert.Is(true Break: true)
+
+; ; float comparison
+3.95 | IsAlmost(4.0 Threshold: 0.1)
+Log("Input is almost 4.0")
+Assert.Is(true Break: true)

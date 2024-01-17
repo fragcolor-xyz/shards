@@ -1,0 +1,8 @@
+  [5 10 15 20]
+  ForEach({
+    Cond([
+    {IsMore(15)} {Msg("This number is more than 15")}
+    {IsMore(10)} {Msg("This number is more than 10")}
+    {IsMore(5)} {Msg("This number is more than 5")}
+    {IsMore(0)} {Msg("This number is more than 0")}])
+  })

@@ -1,0 +1,5 @@
+; ; pop first element from a local sequence
+[10 20 30 40] >= seq ; ; create a local sequence
+Get(seq) | Log ; ; local sequence => [10, 20, 30, 40]
+PopFront(Name: seq) | Log ; ; pops the first element as output => 10
+Get(seq) | Log

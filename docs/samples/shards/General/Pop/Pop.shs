@@ -1,0 +1,5 @@
+; ; pop last element from a local sequence
+[10 20 30 40] >= seq ; ; create a local sequence
+Get(seq) | Log ; ; local sequence => [10, 20, 30, 40]
+Pop(Name: seq) | Log ; ; pops the last element as output => 40
+Get(seq) | Log

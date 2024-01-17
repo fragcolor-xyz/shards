@@ -7,7 +7,7 @@ Loads a glTF model from a file. Outputs a `GFX.DrawableHierarchy` that can be pa
 Loaded when the Wire containing it is warmed up.
 
 ```clojure
-{:Transform ...} (GFX.glTF :Path "pathToModel.glb") >= .drawable
+{Transform: ...} | GFX.glTF(Path: "pathToModel.glb") >= drawable
 ```
 
 ## Dynamic file
@@ -16,7 +16,7 @@ Loaded when activated.
 You should cache the result inside a [Setup](../../General/Once) shard.
 
 ```clojure
-{:Transform ... :Path .path} (GFX.glTF) >= .drawable
+{Transform: ... Path: path} | GFX.glTF >= drawable
 ```
 
 ## Raw bytes
@@ -25,7 +25,7 @@ Loaded when activated.
 You should cache the result inside a [Setup](../../General/Once) shard.
 
 ```clojure
-{:Transform ... :Bytes .gltf-data} (GFX.glTF) >= .drawable
+{Transform: ... Bytes: gltf-data} | GFX.glTF >= drawable
 ```
 
 ## Duplicate existing model
@@ -35,7 +35,7 @@ You should cache the result inside a [Setup](../../General/Once) shard.
 Generate another `GFX.DrawableHierarchy` from an existing `GFX.DrawableHierarchy`
 
 ```clojure
-... (GFX.glTF ...) >= .other-gltf-drawable
-{:Transform ... :Copy .other-gltf-drawable} (GFX.glTF) >= .drawable
+... GFX.glTF( ..) >= other-gltf-drawable
+{Transform: ... Copy: other-gltf-drawable} | GFX.glTF >= drawable
 ```
 

@@ -1,0 +1,20 @@
+; ; erase single element from sequence
+[100 200 300 400] >= seq1
+Erase([1] Name: seq1)
+Log("output") ; ; => output: [100 200 300 400]      
+seq1 | Log("seq1") ; ; => seq1: [100, 300, 400]
+
+; ; erase multiple elements from sequence
+[100 200 300 400] >= seq2
+Erase([2 0] Name: seq2)
+seq2 | Log ; ; => [200, 400]
+
+; ; erase single key-value pair from table        
+{k1: 10 k2: 20 k3: 30} >= tab1
+Erase("k2" Name: tab1)
+tab1 | Log ; ; => {k3: 30, k1: 10}
+
+; ; erase multiple key-value pairs from table
+{k1: 100 k2: 200 k3: 300} >= tab2
+Erase(["k3" "k1"] tab2)
+tab2 | Log

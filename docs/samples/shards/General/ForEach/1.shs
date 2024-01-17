@@ -1,0 +1,8 @@
+;; ForEach on a sequence: processes every element in seq order
+[2 4 8 10]
+ForEach(
+   Math.Multiply(10)
+   Log
+   Math.Multiply(100)
+   Log
+)

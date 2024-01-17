@@ -1,0 +1,18 @@
+@wire(c1 {
+  msg1 (Log)
+})
+
+@wire(c2 {
+  msg2 (Log)
+})
+
+@wire(main-wire {
+  "Hello" = msg1
+  "World" = msg2
+  Branch([c1 c2])
+})
+
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

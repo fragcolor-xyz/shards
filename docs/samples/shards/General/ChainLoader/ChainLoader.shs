@@ -1,0 +1,11 @@
+;; loadme.shs
+;; Msg("Hello World from loadme.shs!")
+;; Stop
+
+@wire(loader{
+  WireLoader(
+   Provider: (Wire* "data/loadme.shs")
+   Mode:RunWireMode::Inline)
+})
+
+SwitchTo(loader)

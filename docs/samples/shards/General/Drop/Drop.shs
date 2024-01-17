@@ -1,0 +1,5 @@
+; ; drop last element from a local sequence
+[10 20 30 40] >= seq ; ; create a local sequence
+Get(seq) | Log ; ; local sequence => [10, 20, 30, 40]
+Drop(Name: seq) ; ; drops the last element i.e., 40
+Get(seq) | Log

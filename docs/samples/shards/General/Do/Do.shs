@@ -1,0 +1,15 @@
+@wire(hello {
+  Pause(2.0)
+  Msg("Hello")
+})
+
+@wire(main-wire {
+  Msg("Start")
+  Do(hello) ; ;hello is run inline. Start is logged, then 2s passes, and then Hello followed by End is logged.
+  Msg("End")
+})
+
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

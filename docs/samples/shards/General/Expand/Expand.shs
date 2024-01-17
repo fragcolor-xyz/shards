@@ -1,0 +1,17 @@
+@wire(expand-test {
+  Math.Multiply(2)
+})
+
+@wire(main-wire {
+  21
+  Expand(
+    Size: 10
+    Wire: expand-test
+    Threads: 5
+  )
+  Log ; ; Logs: [42 42 42 42 42 42 42 42 42 42]
+})
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

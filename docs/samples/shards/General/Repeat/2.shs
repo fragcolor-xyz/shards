@@ -1,0 +1,8 @@
+0 >= n
+Repeat({
+    n | Log("Counting")
+    Math.Inc(n)
+  }
+  Forever: true
+  Until: {n | IsMore(9)}
+)

@@ -1,0 +1,11 @@
+[1 2 3] >= seq ; ; create local sequence
+seq | Log ; ; read local sequence  => [1, 2, 3]
+
+Clear(Name: seq) ; ; clear local sequence
+seq | Log ; ; local sequence cleared => []
+
+100 | AppendTo(seq) ; ; append something to local sequence
+seq | Log ; ; local sequence no more empty => [100]
+
+Clear(Name: seq) ; ; clear
+seq | Log

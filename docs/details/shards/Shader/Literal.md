@@ -34,8 +34,8 @@ When a Literal shard is expected to output a value, you need to specify the outp
 For example, returning the value from calling the function defined in the previous section:
 
 ```clojure
-  Shader.Literal(Source: "scale(1.0)" :OutputType ShaderFieldBaseType.Float32 :OutputDimension 1)
-  >= .result ; This will now contain the Float scalar result
+  Shader.Literal(Source: "scale(1.0)" OutputType: ShaderFieldBaseType::Float32 OutputDimension: 1)
+  >= result ; This will now contain the Float scalar result
 ```
 
 `OutputMatrixDimension` can also be specified when returning matrix types, a value of 1 (default) indicates that the type is not a matrix. `mat4x3` would be represented by an `OutputDimension` of 4 and `MatrixDimension` of 3.
@@ -47,8 +47,8 @@ The default value for `OutputDimension` is 4, so it can be left unspecified when
 To pass existing variables into WGSL code, use the folowing structure:
 
 ```clojure
-  1.0 >= .my-value
-  (Shader.Literal :Source ["scale(" .my-value ")"])
+  1.0 >= my-value
+  Shader.Literal(Source: ["scale(" my-value ")"])
 ```
 
 When the source is a sequence, any variable references inside this sequence will be inserted into the genereted WGSL code.
