@@ -5,6 +5,7 @@
 #include <vector>
 #include <SDL_stdinc.h>
 #include <magic_enum.hpp>
+#include <shared_mutex>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <spdlog/sinks/dist_sink.h>
@@ -15,6 +16,52 @@
 #endif
 
 namespace shards::logging {
+
+struct Sinks {
+  std::shared_mutex lock;
+
+  std::shared_ptr<spdlog::sinks::dist_sink_mt> distSink;
+  std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> stdErrSink;
+  std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logFileSink;
+#ifdef __ANDROID__
+  std::shared_ptr<spdlog::sinks::android_sink_mt> androidSink;
+#endif
+
+  Sinks() {
+    distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+
+    stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+    distSink->add_sink(stdErrSink);
+
+    auto logger = std::make_shared<spdlog::logger>("shards", distSink);
+    logger->flush_on(spdlog::level::err);
+    spdlog::set_default_logger(logger);
+
+    // Setup android logcat output
+#ifdef __ANDROID__
+    androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
+    distSink->add_sink(androidSink);
+#endif
+  }
+
+  std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }
+  std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
+
+  void initLogFile(std::string fileName) {
+    std::string logFilePath = boost::filesystem::absolute(fileName).string();
+    if (logFileSink)
+      distSink->remove_sink(logFileSink);
+
+    logFileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
+    distSink->add_sink(logFileSink);
+  }
+};
+
+Sinks &globalSinks() {
+  static Sinks sinks;
+  return sinks;
+}
+
 void init(Logger logger) {
   spdlog::register_logger(logger);
   initLogLevel(logger);
@@ -22,35 +69,44 @@ void init(Logger logger) {
   initSinks(logger);
 }
 
-void initLogLevel(Logger logger) {
-  std::string loggerName = logger->name();
+std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inName) {
   std::string varName;
-
   const char *val{};
   auto tryReadEnvVar = [&]() {
-    varName.clear();
-    fmt::format_to(std::back_inserter(varName), "LOG_{}", loggerName);
+    varName = inName;
     val = SDL_getenv(varName.c_str());
   };
 
   tryReadEnvVar();
 
   if (!val) {
-    boost::algorithm::to_lower(loggerName);
+    boost::algorithm::to_lower(inName);
     tryReadEnvVar();
   }
 
   if (!val) {
     varName.clear();
-    boost::algorithm::to_upper(loggerName);
+    boost::algorithm::to_upper(inName);
     tryReadEnvVar();
   }
 
   if (val) {
-    auto enumVal = magic_enum::enum_cast<spdlog::level::level_enum>(val);
-    if (enumVal.has_value()) {
-      logger->set_level(enumVal.value());
-    }
+    return magic_enum::enum_cast<spdlog::level::level_enum>(val);
+  }
+  return std::nullopt;
+}
+
+void initLogLevel(Logger logger) {
+  auto level = getLogLevelFromEnvVar(fmt::format("LOG_{}", logger->name()));
+  if (level) {
+    logger->set_level(level.value());
+    return;
+  }
+
+  // Use "LOG" var to set global log level
+  auto globalLevel = getLogLevelFromEnvVar(fmt::format("LOG"));
+  if (globalLevel) {
+    logger->set_level(globalLevel.value());
   }
 }
 
@@ -58,10 +114,20 @@ void initLogFormat(Logger logger) {
   std::string varName = fmt::format("LOG_{}_FORMAT", logger->name());
   if (const char *val = SDL_getenv(varName.c_str())) {
     logger->set_pattern(val);
+  } else {
+#ifdef __ANDROID
+    // Logcat already countains timestamps & log level
+    logger->set_pattern("[T-%t] [%s::%#] %v");
+#else
+    logger->set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+#endif
   }
 }
 
-void initSinks(Logger logger) { logger->sinks() = spdlog::default_logger()->sinks(); }
+void initSinks(Logger logger) {
+  logger->sinks().clear();
+  logger->sinks().push_back(globalSinks().distSink);
+}
 
 Logger get(const std::string &name) {
   auto logger = spdlog::get(name);
@@ -73,65 +139,34 @@ Logger get(const std::string &name) {
   return logger;
 }
 
-void redirectAll(const std::vector<spdlog::sink_ptr> &sinks) {
-  spdlog::apply_all([&](Logger logger) { logger->sinks() = sinks; });
+void initAllSinks() {
+  spdlog::apply_all([&](Logger logger) { initSinks(logger); });
 }
 
-spdlog::level::level_enum getSinkLevel() {
-  auto &sinks = spdlog::default_logger()->sinks();
-  if (sinks.empty()) {
-    return spdlog::level::off;
-  }
-  return sinks.front()->level();
-}
+spdlog::level::level_enum getSinkLevel() { return globalSinks().distSink->level(); }
 
-void setSinkLevel(spdlog::level::level_enum level) {
-  auto &sinks = spdlog::default_logger()->sinks();
-  for (auto &sink : sinks) {
-    sink->set_level(level);
-  }
-}
+void setSinkLevel(spdlog::level::level_enum level) { globalSinks().distSink->set_level(level); }
 
 static void setupDefaultLogger(const std::string &fileName = "shards.log") {
-  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+  auto &sinks = globalSinks();
 
-  auto sink1 = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
-  dist_sink->add_sink(sink1);
+  {
+    auto l = sinks.lockUnique();
+    sinks.initLogFile(fileName);
+  }
 
-  // Setup log file
-#ifdef SHARDS_LOG_FILE
-  std::string logFilePath = boost::filesystem::absolute(fileName).string();
-  auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
-  dist_sink->add_sink(sink2);
-#endif
-
-  auto logger = std::make_shared<spdlog::logger>("shards", dist_sink);
+  auto logger = std::make_shared<spdlog::logger>("shards", sinks.distSink);
   logger->flush_on(spdlog::level::err);
-  spdlog::set_default_logger(logger);
-
-  // Setup android logcat output
-#ifdef __ANDROID__
-  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
-  logger->sinks().push_back(android_sink);
-#endif
-
-#ifdef __ANDROID
-  // Logcat already countains timestamps & log level
-  spdlog::set_pattern("[T-%t] [%s::%#] %v");
-#else
-  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
-#endif
-
-  // Set default log level
   logger->set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
-
-  // Init log level from environment variable
+  spdlog::set_default_logger(logger);
   initLogLevel(logger);
-  // Init log format from environment variable
   initLogFormat(logger);
 
-  // Redirect all existing loggers to the default sink
-  redirectAll(logger->sinks());
+  // Sink acts like a filter for all loggers
+  setSinkLevel(spdlog::level::trace);
+
+  // Redirect all existing loggers to the global dist sink
+  initAllSinks();
 }
 
 void setupDefaultLoggerConditional(std::string fileName) {
