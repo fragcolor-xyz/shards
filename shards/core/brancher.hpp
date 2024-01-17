@@ -58,7 +58,7 @@ public:
 
   // Provides information about this type:
   // - if it doesn't contain objects it can be shared between threads by cloning (sharable = true)
-  // - if it contains objects but they can be serialized and deserialized, 
+  // - if it contains objects but they can be serialized and deserialized,
   //   it can be shared by serializing, then deserializing (copyBySerialize = true, sharable = true)
   ShareableObjectFlags getSharableObjectFlags(const SHTypeInfo &type, bool shareObjectVariables) const {
     _cachedObjectTypes.clear();
@@ -132,6 +132,10 @@ public:
 
   // Calls initVariableReferences, then schedule (in that order)
   void warmup(SHContext *context, const SHVar &input = Var::Empty) {
+    auto parentMesh = context->main->mesh.lock();
+    if(parentMesh) {
+      mesh->parent = parentMesh.get();
+    }
     initVariableReferences(context);
     schedule(input);
   }
@@ -158,6 +162,7 @@ public:
   void cleanup(SHContext* context = nullptr) {
     mesh->releaseAllRefs();
     mesh->terminate();
+    mesh->parent = nullptr;
   }
 
   // Update the that the branched wires read
