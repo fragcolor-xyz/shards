@@ -267,7 +267,7 @@ egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
 }
 
 void EguiInputTranslator::applyOutput(const egui::IOOutput &output) {
-  updateTextCursorPosition(output.textCursorPosition);
+  updateTextCursorPosition(output.validCursorPosition ? &output.textCursorPosition : nullptr);
 
   if (output.copiedText)
     copyText(output.copiedText);

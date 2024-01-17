@@ -168,7 +168,7 @@ impl LegacyShard for PlotPoints {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let plot_ui: &mut egui::plot::PlotUi =
+    let plot_ui: &mut egui_plot::PlotUi =
       Var::from_object_ptr_mut_ref(self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
 
     let seq: Seq = input.try_into()?;
@@ -176,7 +176,7 @@ impl LegacyShard for PlotPoints {
       let v: (f64, f64) = x.as_ref().try_into().unwrap();
       [v.0, v.1]
     });
-    let mut chart = egui::plot::Points::new(egui::plot::PlotPoints::from_iter(points));
+    let mut chart = egui_plot::Points::new(egui_plot::PlotPoints::from_iter(points));
 
     let name = self.name.get();
     if !name.is_none() {
@@ -214,21 +214,21 @@ impl LegacyShard for PlotPoints {
   }
 }
 
-impl From<MarkerShape> for egui::plot::MarkerShape {
+impl From<MarkerShape> for egui_plot::MarkerShape {
   fn from(value: MarkerShape) -> Self {
     match value {
-      MarkerShape::Circle => egui::plot::MarkerShape::Circle,
-      MarkerShape::Diamond => egui::plot::MarkerShape::Diamond,
-      MarkerShape::Square => egui::plot::MarkerShape::Square,
-      MarkerShape::Cross => egui::plot::MarkerShape::Cross,
-      MarkerShape::Plus => egui::plot::MarkerShape::Plus,
-      MarkerShape::Up => egui::plot::MarkerShape::Up,
-      MarkerShape::Down => egui::plot::MarkerShape::Down,
-      MarkerShape::Left => egui::plot::MarkerShape::Left,
-      MarkerShape::Right => egui::plot::MarkerShape::Right,
-      MarkerShape::Asterisk => egui::plot::MarkerShape::Asterisk,
+      MarkerShape::Circle => egui_plot::MarkerShape::Circle,
+      MarkerShape::Diamond => egui_plot::MarkerShape::Diamond,
+      MarkerShape::Square => egui_plot::MarkerShape::Square,
+      MarkerShape::Cross => egui_plot::MarkerShape::Cross,
+      MarkerShape::Plus => egui_plot::MarkerShape::Plus,
+      MarkerShape::Up => egui_plot::MarkerShape::Up,
+      MarkerShape::Down => egui_plot::MarkerShape::Down,
+      MarkerShape::Left => egui_plot::MarkerShape::Left,
+      MarkerShape::Right => egui_plot::MarkerShape::Right,
+      MarkerShape::Asterisk => egui_plot::MarkerShape::Asterisk,
       // default
-      _ => egui::plot::MarkerShape::Circle,
+      _ => egui_plot::MarkerShape::Circle,
     }
   }
 }

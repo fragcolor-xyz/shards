@@ -47,7 +47,7 @@ pub fn drag_source<R>(
     if response.dragged() {
       let delta = ui.input(|i| {
         if let Some(origin) = i.pointer.press_origin() {
-          let b= i.pointer.interact_pos().unwrap_or_default();
+          let b = i.pointer.interact_pos().unwrap_or_default();
           Some(b - origin)
         } else {
           None
@@ -148,6 +148,8 @@ pub fn drop_target<R>(
           rounding: style.rounding,
           stroke,
           fill: fill.into(),
+          fill_texture_id: egui::TextureId::Managed(0),
+          uv: Rect::ZERO,
         },
       );
     }

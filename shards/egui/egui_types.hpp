@@ -262,7 +262,8 @@ struct IOOutput {
   const char *openUrl;
   const char *copiedText;
   bool mutableTextUnderCursor;
-  const egui::Pos2 *textCursorPosition;
+  bool validCursorPosition;
+  const egui::Pos2 textCursorPosition;
   bool wantsPointerInput;
   bool wantsKeyboardInput;
 };

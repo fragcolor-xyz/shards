@@ -6,12 +6,12 @@ use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use egui::load::SizedTexture;
 use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -20,6 +20,7 @@ use shards::types::ParamVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 
 #[derive(shard)]
 #[shard_info("UI.Image", "Display an image in the UI.")]
@@ -125,16 +126,15 @@ impl Image {
         .cached_ui_image
         .get_egui_texture_from_image(input, ui)?;
 
-      ui.image(
-        texture,
-        image_util::resolve_image_size(
-          ui,
-          &self.size,
-          &self.scale,
-          &self.scaling_aware,
-          texture.size_vec2(),
-        ),
+      let size = image_util::resolve_image_size(
+        ui,
+        &self.size,
+        &self.scale,
+        &self.scaling_aware,
+        texture.size_vec2(),
       );
+      let img = SizedTexture { id: texture.id(), size };
+      ui.image(img);
 
       Ok(*input)
     } else {
@@ -148,7 +148,11 @@ impl Image {
 
       let scale = image_util::into_vec2(&self.scale)?;
       let global_scale = 1.0 / ui.ctx().pixels_per_point();
-      ui.image(texture_id, texture_size * scale * global_scale);
+      let img = SizedTexture {
+        id: texture_id,
+        size: texture_size * scale * global_scale,
+      };
+      ui.image(img);
 
       Ok(*input)
     } else {
