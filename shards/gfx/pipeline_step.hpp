@@ -1,6 +1,7 @@
 #ifndef D251FF97_80A2_4ACD_856B_0D3A776BB7A7
 #define D251FF97_80A2_4ACD_856B_0D3A776BB7A7
 
+#include "boost/container/vector.hpp"
 #include "fwd.hpp"
 #include "material.hpp"
 #include "gfx_wgpu.hpp"
@@ -10,6 +11,9 @@
 #include <vector>
 #include <memory>
 #include <boost/container/small_vector.hpp>
+#include <boost/tti/has_member_data.hpp>
+#include <boost/core/type_name.hpp>
+#include <spdlog/fmt/fmt.h>
 
 namespace gfx {
 
@@ -218,9 +222,31 @@ struct RenderFullscreenStep {
 
 typedef std::variant<NoopStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;
 typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
+
+#if !defined(NDEBUG)
+typedef std::vector<PipelineStepPtr> PipelineSteps;
+#else
 typedef boost::container::small_vector<PipelineStepPtr, 8> PipelineSteps;
+#endif
 
 template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::forward<T>(step)); }
+
+BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_name, name);
+inline std::string getPipelineStepName(const PipelineStepPtr &step) {
+  std::string nameBuffer;
+  std::visit(
+      [&](auto &arg) {
+        using T = std::decay_t<decltype(arg)>;
+        nameBuffer = boost::core::type_name<T>();
+        if constexpr (has_render_step_name<T, FastString>::type::value) {
+          if (!arg.name.empty()) {
+            nameBuffer = fmt::format("{} ({})", arg.name.c_str(), nameBuffer);
+          }
+        }
+      },
+      *step.get());
+  return nameBuffer;
+}
 } // namespace gfx
 
 #endif /* D251FF97_80A2_4ACD_856B_0D3A776BB7A7 */

@@ -241,7 +241,7 @@ struct Literal {
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -566,7 +566,7 @@ struct SampleTexture {
   SHVar getParam(int index) { return _name; }
 
   void warmup(SHContext *shContext) {}
-  void cleanup(SHContext* context) {}
+  void cleanup(SHContext *context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -728,7 +728,7 @@ struct LinearizeDepth {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   void warmup(SHContext *shContext) {}
-  void cleanup(SHContext* context) {}
+  void cleanup(SHContext *context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -757,13 +757,18 @@ struct WithInput {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _then.compose(data);
-    _else.compose(data);
+    ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
+    bool hasInput = shaderCompositionContext.generatorContext.hasInput(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
+    if (hasInput) {
+      _then.compose(data);
+    } else {
+      _else.compose(data);
+    }
     return CoreInfo::NoneType;
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -796,13 +801,18 @@ struct WithTexture {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _then.compose(data);
-    _else.compose(data);
+    ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
+    bool hasTexture = shaderCompositionContext.generatorContext.hasTexture(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
+    if (hasTexture) {
+      _then.compose(data);
+    } else {
+      _else.compose(data);
+    }
     return CoreInfo::NoneType;
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 

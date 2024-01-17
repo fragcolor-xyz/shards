@@ -4,6 +4,7 @@
 #include "context_data.hpp"
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
+#include "wgpu_handle.hpp"
 #include "linalg/linalg.h"
 #include "fwd.hpp"
 #include "unique_id.hpp"
@@ -61,15 +62,15 @@ struct MeshContextData : public ContextData {
   MeshFormat format;
   size_t numVertices = 0;
   size_t numIndices = 0;
-  WGPUBuffer vertexBuffer = nullptr;
+  WgpuHandle<WGPUBuffer> vertexBuffer;
   size_t vertexBufferLength = 0;
-  WGPUBuffer indexBuffer = nullptr;
+  WgpuHandle<WGPUBuffer> indexBuffer;
   size_t indexBufferLength = 0;
 
   ~MeshContextData() { releaseContextDataConditional(); }
   void releaseContextData() override {
-    WGPU_SAFE_RELEASE(wgpuBufferRelease, vertexBuffer);
-    WGPU_SAFE_RELEASE(wgpuBufferRelease, indexBuffer);
+    vertexBuffer.release();
+    indexBuffer.release();
   }
 };
 

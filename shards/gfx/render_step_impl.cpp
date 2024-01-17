@@ -12,6 +12,8 @@
 #include "pmr/unordered_map.hpp"
 #include "pmr/vector.hpp"
 #include "renderer_storage.hpp"
+#include "queue_data.hpp"
+#include "debug_visualize.hpp"
 #include <tracy/Wrapper.hpp>
 #include <taskflow/taskflow.hpp>
 
@@ -124,6 +126,25 @@ GeneratorData *runGenerators(RenderGraphEvaluator &eval, PipelineGroup &group, c
   return generatorData;
 }
 
+void updateQueueData(RendererStorage &storage, const DrawQueuePtr &queue, boost::span<const IDrawable *> drawables) {
+  ZoneScoped;
+  auto &queueData =
+      getCacheEntry(storage.queueCache, queue->getId(), [&](const UniqueId &id) { return std::make_shared<QueueData>(queue); });
+
+  // Disabled until required for culling, distance field, etc.
+  // queueData->update(drawables);
+
+  if (storage.debug && queue->trace) {
+    for (auto &it : queueData->set) {
+      storage.debugVisualize([bounds = it.second.bounds](ShapeRenderer &sr) {
+        auto base = bounds.base.expand(float3(0.05f));
+        sr.addBox(bounds.transform(), base.center(), base.size(), float4(1, 0, 0, 1), 1.5f);
+      });
+    }
+  }
+  touchCacheItemPtr(queueData, storage.frameCounter);
+}
+
 void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr queue,
                      const shards::pmr::vector<Feature *> &features, SortMode sortMode,
                      const BuildPipelineOptions &buildPipelineOptions) {
@@ -155,6 +176,16 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   {
     ZoneScopedN("pipelineGrouping");
 
+    // Debug visualize drawables before expansion
+    if (storage.debug && queue->trace) {
+      for (auto &drawable : drawables) {
+        auto ptr = drawable->self();
+        if (auto debug = dynamic_cast<IDebugVisualize *>(const_cast<IDrawable *>(drawable))) {
+          storage.debugVisualize([ptr, debug](auto &sr) { debug->debugVisualize(sr); });
+        }
+      }
+    }
+
     {
       // Expand drawables
       ZoneScopedN("expandDrawables");
@@ -163,6 +194,8 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
           expandedDrawables.push_back(drawable);
       }
     }
+
+    updateQueueData(storage, queue, boost::span(expandedDrawables));
 
     // Group into processor groups
     struct ProcessorGroup {
@@ -427,17 +460,17 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 
   // Derive definitions from parameters
   for (auto &param : step.parameters.basic) {
-    baseFeature->shaderParams.emplace_back(param.first, param.second);
+    baseFeature->shaderParams.emplace(param.first, param.second);
   }
   for (auto &param : step.parameters.textures) {
     auto &textureFormat = param.second.texture->getFormat();
-    auto &entry = baseFeature->textureParams.emplace_back(param.first, textureFormat.dimension);
+    auto &entry = baseFeature->textureParams.insert_or_assign(param.first, textureFormat.dimension).first->second;
     entry.type.format = getDefaultTextureSampleType(textureFormat.pixelFormat);
   }
 
-  // Setup node outputs as texture slots
+  // Setup node inputs as texture slots
   for (auto &frame : buildData.inputs) {
-    auto &entry = baseFeature->textureParams.emplace_back(frame->name);
+    auto &entry = baseFeature->textureParams.insert_or_assign(frame->name, TextureParamDecl()).first->second;
     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
@@ -455,20 +488,6 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
       auto &frame = ctx.graph.frames[frameIndex];
       data->drawable->parameters.set(frame.name, texture);
     }
-
-    // if (step.output) {
-    //   auto &attachments = step.output->attachments;
-    //   for (size_t i = 0; i < attachments.size(); i++) {
-    //     auto &stepAttachment = attachments[i];
-    //     if (auto texture = std::get_if<RenderStepOutput::Texture>(&stepAttachment)) {
-    //       auto &attachment = ctx.node.outputs[i];
-    // attachment.frameIndex
-    // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
-    // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
-    // data->drawable->parameters.set(frame.name, texture);
-    //     }
-    //   }
-    // }
 
     renderDrawables(ctx, data->queue, data->features, SortMode::Queue, BuildPipelineOptions{});
   };

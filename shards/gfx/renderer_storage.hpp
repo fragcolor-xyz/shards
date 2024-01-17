@@ -6,6 +6,7 @@
 #include "render_graph.hpp"
 #include "texture_view_cache.hpp"
 #include "drawable_processor.hpp"
+#include "gizmos/shapes.hpp"
 
 namespace gfx::detail {
 
@@ -15,6 +16,8 @@ struct FrameStats {
   void reset() { numDrawables = 0; }
 };
 
+using DebugVisualizer = shards::FunctionBase<512, void(gfx::ShapeRenderer &sr)>;
+
 // Storage container for all renderer data
 struct RendererStorage {
   WorkerMemory workerMemory;
@@ -23,9 +26,14 @@ struct RendererStorage {
   std::list<TransientPtr> transientPtrCleanupQueue;
   RenderGraphCache renderGraphCache;
   std::unordered_map<UniqueId, CachedViewDataPtr> viewCache;
+  std::unordered_map<UniqueId, QueueDataPtr> queueCache;
   PipelineCache pipelineCache;
   RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;
+
+  // Enable debug visualization
+  bool debug{};
+  Swappable<std::vector<DebugVisualizer>, 2> debugVisualizers;
 
   FrameStats frameStats;
 
@@ -38,6 +46,12 @@ struct RendererStorage {
   size_t frameCounter = 0;
 
   RendererStorage(Context &context) : drawableProcessorCache(context) {}
+
+  template <typename F> void debugVisualize(F &&f) {
+    if (!debug)
+      return;
+    debugVisualizers.get(frameCounter % 2).emplace_back(std::forward<F>(f));
+  }
 
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     if (textureData.externalView)

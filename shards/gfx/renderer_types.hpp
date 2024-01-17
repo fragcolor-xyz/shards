@@ -17,7 +17,7 @@
 #include "log.hpp"
 #include "graph.hpp"
 #include "hasherxxh128.hpp"
-#include "sized_item_pool.hpp"
+#include "../core/pool.hpp"
 #include "worker_memory.hpp"
 #include "pmr/wrapper.hpp"
 #include "pmr/unordered_map.hpp"
@@ -217,7 +217,7 @@ struct CachedPipeline {
   const BufferBinding *findDrawBufferBinding(FastString name) const { return findBufferBinding(drawBufferBindings, name); }
   const BufferBinding *findViewBufferBinding(FastString name) const { return findBufferBinding(viewBuffersBindings, name); }
 
-  const BufferBinding& resolveBufferBindingRef(BufferBindingRef ref) const;
+  const BufferBinding &resolveBufferBindingRef(BufferBindingRef ref) const;
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
@@ -311,24 +311,44 @@ struct PooledWGPUBuffer {
   operator WGPUBuffer() const { return buffer; }
 };
 
-template <> struct SizedItemOps<PooledWGPUBuffer> {
+struct PooledWGPUBufferTraits {
+  PooledWGPUBuffer newItem() { return PooledWGPUBuffer(); }
+  void release(PooledWGPUBuffer &) {}
+  bool canRecycle(PooledWGPUBuffer &v) { return true; }
+  void recycled(PooledWGPUBuffer &v) {}
+};
+
+inline constexpr auto findBufferInPoolBySize(size_t targetSize) {
+  if (targetSize > INT64_MAX) {
+    throw std::runtime_error("targetSize too large");
+  }
+  return [targetSize](PooledWGPUBuffer &buffer) -> int64_t {
+    if (buffer.capacity < targetSize) {
+      return INT64_MAX;
+    }
+
+    // Negate so the smallest buffer will be picked first
+    return -(int64_t(buffer.capacity) - int64_t(targetSize));
+  };
+}
+
+// Pool of WGPUBuffers with custom initializer
+struct WGPUBufferPool : public shards::Pool<PooledWGPUBuffer, PooledWGPUBufferTraits> {
   using InitFunction = std::function<WGPUBuffer(size_t)>;
   InitFunction initFn;
 
   static WGPUBuffer defaultInitializer(size_t) { throw std::runtime_error("invalid buffer initializer"); }
+  WGPUBufferPool(InitFunction &&init_ = &defaultInitializer) : initFn(std::move(init_)) {}
 
-  SizedItemOps(InitFunction &&init_ = &defaultInitializer) : initFn(std::move(init_)) {}
-
-  size_t getCapacity(PooledWGPUBuffer &item) const { return item.capacity; }
-
-  void init(PooledWGPUBuffer &item, size_t size) {
-    item.capacity = alignTo(size, 512);
-    item.buffer.reset(initFn(item.capacity));
+  PooledWGPUBuffer& allocateBuffer(size_t size) {
+    return this->newValue(
+        [=](PooledWGPUBuffer &buffer) {
+          buffer.capacity = alignTo(size, 512);
+          buffer.buffer.reset(initFn(buffer.capacity));
+        },
+        findBufferInPoolBySize(size));
   }
 };
-
-// Pool of WGPUBuffers with custom initializer
-using WGPUBufferPool = SizedItemPool<PooledWGPUBuffer>;
 
 // Data from generators
 struct GeneratorData {

@@ -6,17 +6,7 @@
 #include "../linalg.hpp"
 #include "../mesh.hpp"
 #include "../shader/blocks.hpp"
-#include "../../core/ref_output_pool.hpp"
-#include <memory>
-
-namespace shards {
-template <typename J> struct RefOutputPoolItemTraits<std::shared_ptr<J>> {
-  std::shared_ptr<J> newItem() { return std::make_shared<J>(); }
-  void release(std::shared_ptr<J> &v) { v.reset(); }
-  size_t getRefCount(std::shared_ptr<J> &v) { return v.use_count(); }
-  void recycled(std::shared_ptr<J> &v) {}
-};
-} // namespace shards
+#include "../../core/pool.hpp"
 
 namespace gfx {
 
@@ -66,9 +56,9 @@ private:
   std::vector<LineVertex> lineVertices;
   std::vector<SolidVertex> solidVertices;
   std::vector<SolidVertex> unculledSolidVertices;
-  shards::RefOutputPool<MeshPtr> lineMeshPool;
-  shards::RefOutputPool<MeshPtr> solidMeshPool;
-  shards::RefOutputPool<MeshPtr> unculledSolidMeshPool;
+  shards::Pool<MeshPtr> lineMeshPool;
+  shards::Pool<MeshPtr> solidMeshPool;
+  shards::Pool<MeshPtr> unculledSolidMeshPool;
 
 public:
   void addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness);

@@ -5,6 +5,7 @@
 #include "../core/function.hpp"
 #include <cassert>
 #include <set>
+#include <boost/container/small_vector.hpp>
 
 #ifndef NDEBUG
 #define GFX_TRANSFORM_UPDATER_TRACK_VISITED 1
@@ -17,37 +18,58 @@ struct TransformUpdaterCollector {
   struct Node {
     float4x4 parentTransform;
     MeshTreeDrawable *node;
+    bool updated;
   };
-  std::vector<Node> queue;
+  boost::container::small_vector<Node, 32> queue;
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
-  std::set<MeshTreeDrawable *> visited;
+  static thread_local std::set<MeshTreeDrawable *> visited;
 #endif
 
   shards::Function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
 
   void update(MeshTreeDrawable &root) {
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
+    auto &visited = TransformUpdaterCollector::visited;
+    visited.clear();
+#endif
+
     queue.push_back(Node{float4x4(linalg::identity), &root});
 
     while (!queue.empty()) {
       Node node = queue.back();
       queue.pop_back();
 
+      if (node.node->version != node.node->lastUpdateVersion) {
+        node.node->lastUpdateVersion = node.node->version;
+        node.updated = true;
+      }
+
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
       shassert(!visited.contains(node.node));
       visited.insert(node.node);
 #endif
 
-      auto mat = node.node->trs.getMatrix();
-      shassert(mat != float4x4());
-      node.node->resolvedTransform = linalg::mul(node.parentTransform, mat);
+      if (node.updated) {
+        auto mat = node.node->trs.getMatrix();
+        shassert(mat != float4x4());
+        node.node->resolvedTransform = linalg::mul(node.parentTransform, mat);
+      }
+
       for (auto &drawable : node.node->drawables) {
-        drawable->transform = node.node->resolvedTransform;
+        if (node.updated) {
+          drawable->transform = node.node->resolvedTransform;
+          drawable->update();
+        }
         collector(drawable);
       }
 
       for (auto &child : node.node->getChildren()) {
-        queue.push_back(Node{node.node->resolvedTransform, child.get()});
+        queue.push_back(Node{
+            node.node->resolvedTransform,
+            child.get(),
+            node.updated,
+        });
       }
     }
   }

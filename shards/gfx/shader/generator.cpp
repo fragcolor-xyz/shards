@@ -56,9 +56,13 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
-    output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getFieldWGSLTypeName(layout.items[i].type));
+    output += fmt::format("\t{}: {},\n", sanitizeIdentifier(layout.fieldNames[i]), getFieldWGSLTypeName(layout.items[i].type));
   }
-  generatePaddingForArrayStruct(output, layout);
+
+  // Only for buffers that use dynamic offset
+  if (type == BufferType::Storage)
+    generatePaddingForArrayStruct(output, layout);
+
   output += "};\n";
 
   // array struct wrapper
@@ -124,7 +128,7 @@ static void generateStruct(T &output, const String &typeName, const std::vector<
     } else if (field.hasLocation()) {
       output += fmt::format("\t@location({}) {}", field.location, extraTags);
     }
-    output += fmt::format("{}: {},\n", field.base.name, typeName);
+    output += fmt::format("{}: {},\n", sanitizeIdentifier(field.base.name), typeName);
   }
   output += "};\n";
 }
@@ -519,8 +523,9 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   std::map<FastString, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
-    TextureDefinition def(fmt::format("t_{}", texture.name), fmt::format("texCoord{}", texture.defaultTexcoordBinding),
-                          fmt::format("s_{}", texture.name), texture.type);
+    TextureDefinition def(fmt::format("t_{}", sanitizeIdentifier(texture.name)),
+                          fmt::format("texCoord{}", texture.defaultTexcoordBinding),
+                          fmt::format("s_{}", sanitizeIdentifier(texture.name)), texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
@@ -646,7 +651,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return nullptr;
     }
 
-    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return true; }
+    bool hasTexture(FastString name, bool defaultTexcoordRequired = true) { return definitions.textures.contains(name); }
     const TextureDefinition *getTexture(FastString name) { return nullptr; }
     void texture(FastString name) { findOrAddIndex(result.textureBindings, name); }
     void textureDefaultTextureCoordinate(FastString name) { findOrAddIndex(result.textureBindings, name); }

@@ -17,6 +17,7 @@
 #include <gfx/window.hpp>
 #include <gfx/gfx_wgpu.hpp>
 #include <gfx/log.hpp>
+#include "../../core/pool.hpp"
 #include <spdlog/spdlog.h>
 #include <map>
 #include <vector>
@@ -27,11 +28,38 @@ namespace gfx {
 
 static auto logger = getLogger();
 
-struct MeshPoolOps {
-  size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
-  void init(MeshPtr &item, size_t size) const { item = std::make_shared<Mesh>(); }
+inline constexpr auto findDrawableInPoolByMeshSize(size_t targetSize) {
+  if (targetSize > INT64_MAX) {
+    throw std::runtime_error("targetSize too large");
+  }
+  return [targetSize](std::shared_ptr<MeshDrawable> &item) -> int64_t {
+    auto &mesh = item->mesh;
+    size_t size = mesh->getNumVertices() * mesh->getFormat().getVertexSize();
+    if (size < targetSize) {
+      return INT64_MAX;
+    }
+    // Negate so the smallest buffer will be picked first
+    return -(int64_t(size) - int64_t(targetSize));
+  };
+}
+
+struct PoolTraits {
+  using T = std::shared_ptr<MeshDrawable>;
+  T newItem() {
+    auto drawable = std::make_shared<MeshDrawable>();
+    drawable->mesh = std::make_shared<Mesh>();
+    return drawable;
+  }
+  void release(T &) {}
+  bool canRecycle(T &v) { return v.use_count() == 1; }
+  void recycled(T &v) {}
 };
-typedef detail::SizedItemPool<MeshPtr, MeshPoolOps> MeshPool;
+
+struct MeshDrawablePool : public shards::Pool<std::shared_ptr<MeshDrawable>, PoolTraits> {
+  std::shared_ptr<MeshDrawable> &allocateBuffer(size_t size) {
+    return this->newValue([](auto &buffer) {}, findDrawableInPoolByMeshSize(size));
+  }
+};
 
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
@@ -143,10 +171,9 @@ struct TextureManager {
 };
 
 struct EguiRendererImpl {
-  MeshPool meshPool;
+  MeshDrawablePool meshPool;
   TextureManager textures;
   std::vector<egui::TextureId> pendingTextureFrees;
-  std::vector<MeshDrawable> drawables;
   std::vector<FeaturePtr> uiFeatures;
 
   MeshFormat meshFormat;
@@ -195,32 +222,34 @@ struct EguiRendererImpl {
 
   void render(const egui::RenderOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
               bool clipGeometry) {
-    meshPool.reset();
+    meshPool.recycle();
 
     applyTextureUpdatesPreRender(output);
 
     // Update meshes & generate drawables
-    drawables.resize(output.numPrimitives);
     for (size_t i = 0; i < output.numPrimitives; i++) {
       auto &prim = output.primitives[i];
 
-      MeshPtr mesh = meshPool.allocateBuffer(prim.numVertices * sizeof(egui::Vertex));
+      auto drawablePtr = meshPool.allocateBuffer(prim.numVertices * sizeof(egui::Vertex));
+      auto &drawable = *drawablePtr.get();
+      auto &mesh = drawablePtr->mesh;
       mesh->update(meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                    prim.numIndices * sizeof(uint32_t));
 
-      MeshDrawable &drawable = drawables[i];
       drawable.mesh = mesh;
       drawable.transform = rootTransform;
       drawable.features = uiFeatures;
       uint32_t flags = 0;
       TexturePtr texture = textures.get(prim.textureId);
+      static FastString fs_color = "color";
+      static FastString fs_flags = "flags";
       if (texture) {
-        drawable.parameters.set("color", texture);
+        drawable.parameters.set(fs_color, texture);
         if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
           flags |= uint32_t(0x1);
         }
       }
-      drawable.parameters.set("flags", flags);
+      drawable.parameters.set(fs_flags, flags);
 
       drawable.clipRect.reset();
       if (clipGeometry) {
@@ -239,7 +268,6 @@ struct EguiRendererImpl {
 };
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
-
 
 void EguiRenderer::applyTextureUpdatesOnly(const egui::RenderOutput &output) {
   impl->applyTextureUpdatesPreRender(output);

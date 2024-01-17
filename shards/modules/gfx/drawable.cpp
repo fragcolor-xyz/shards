@@ -11,7 +11,7 @@
 #include <magic_enum.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/params.hpp>
-#include <shards/core/ref_output_pool.hpp>
+#include <shards/core/pool.hpp>
 #include <type_traits>
 #include <variant>
 
@@ -69,21 +69,41 @@ struct DrawableShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &meshDrawable = getMeshDrawable();
 
-    meshDrawable->transform = toFloat4x4(input);
-    meshDrawable->mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    bool changed{};
+
+    float4x4 newTransform = toFloat4x4(input);
+    if (newTransform != meshDrawable->transform) {
+      meshDrawable->transform = newTransform;
+      changed = true;
+    }
+
+    auto mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    if (mesh != meshDrawable->mesh) {
+      meshDrawable->mesh = mesh;
+      changed = true;
+    }
 
     if (!_material.isNone()) {
-      meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
+      auto newMat = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
+      if (newMat != meshDrawable->material) {
+        meshDrawable->material = newMat;
+        changed = true;
+      }
     }
 
     if (!_params.isNone()) {
-      initShaderParams(shContext, _params.get().payload.tableValue, meshDrawable->parameters);
+      if (initShaderParamsIfChanged(shContext, _params.get().payload.tableValue, meshDrawable->parameters))
+        changed = true;
     }
 
     if (!_features.isNone()) {
-      meshDrawable->features.clear();
-      applyFeatures(shContext, meshDrawable->features, _features.get());
+      if (applyFeaturesIfChanged(shContext, meshDrawable->features, _features.get())) {
+        changed = true;
+      }
     }
+
+    if (changed)
+      meshDrawable->update();
 
     return Types::DrawableObjectVar.Get(_drawable);
   }
@@ -155,7 +175,7 @@ struct DrawShard {
 } // namespace gfx
 
 namespace shards {
-template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
+template <> struct PoolItemTraits<gfx::SHDrawQueue *> {
   gfx::SHDrawQueue *newItem() {
     auto queue = gfx::detail::Container::DrawQueueObjectVar.New();
     queue->queue = std::make_shared<gfx::DrawQueue>();
@@ -163,6 +183,7 @@ template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
   }
   void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
   size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
+  bool canRecycle(gfx::SHDrawQueue *&v) { return getRefCount(v) == 1; }
   void recycled(gfx::SHDrawQueue *&v) { v->queue->clear(); }
 };
 } // namespace shards
@@ -177,13 +198,15 @@ struct DrawQueueShard {
             {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_threaded, "Threaded", "When enabled, output uniuqe queue references to be able to use them with channels",
             {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded));
+  PARAM_VAR(_trace, "Trace", "Enables debug tracing on this queue", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded), PARAM_IMPL_FOR(_trace));
 
-  std::variant<SHDrawQueue *, RefOutputPool<SHDrawQueue *>> _output;
+  std::variant<SHDrawQueue *, Pool<SHDrawQueue *>> _output;
 
   DrawQueueShard() {
     _autoClear = Var(true);
     _threaded = Var(false);
+    _trace = Var(false);
   }
 
   PARAM_REQUIRED_VARIABLES()
@@ -191,7 +214,7 @@ struct DrawQueueShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if ((bool)*_threaded) {
-      _output.emplace<RefOutputPool<SHDrawQueue *>>();
+      _output.emplace<Pool<SHDrawQueue *>>();
     } else {
       _output.emplace<SHDrawQueue *>();
     }
@@ -206,7 +229,7 @@ struct DrawQueueShard {
       assert(!queue);
       queue = Types::DrawQueueObjectVar.New();
       queue->queue = std::make_shared<DrawQueue>();
-      queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
+      initQueue(queue->queue);
     }
   }
 
@@ -222,16 +245,19 @@ struct DrawQueueShard {
     }
   }
 
+  void initQueue(const DrawQueuePtr &queue) {
+    queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
+    queue->trace = _trace->isNone() ? false : (bool)*_trace;
+  }
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
-      if ((bool)*_autoClear)
-        (*_queue)->queue->clear();
+      (*_queue)->queue->clear();
       return Types::DrawQueueObjectVar.Get((*_queue));
     } else {
-      auto &pool = std::get<RefOutputPool<SHDrawQueue *>>(_output);
+      auto &pool = std::get<Pool<SHDrawQueue *>>(_output);
       pool.recycle();
-      auto queue = pool.newValue(
-          [&](SHDrawQueue *&_queue) { _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear); });
+      auto queue = pool.newValue([&](SHDrawQueue *&_queue) { initQueue(_queue->queue); });
       queue->queue->clear();
       return Types::DrawQueueObjectVar.Get(queue);
     }

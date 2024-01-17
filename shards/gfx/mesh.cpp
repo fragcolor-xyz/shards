@@ -100,13 +100,13 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
   contextData.numIndices = numIndices;
   contextData.numVertices = numVertices;
 
-  // Grow/create vertex buffer
   if (vertexData.size() > 0) {
+    // Grow/create vertex buffer
     if (contextData.vertexBufferLength < vertexData.size()) {
       WGPUBufferDescriptor desc = {};
       desc.size = vertexData.size();
       desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
-      contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+      contextData.vertexBuffer.reset(wgpuDeviceCreateBuffer(device, &desc));
       contextData.vertexBufferLength = desc.size;
     }
 
@@ -120,7 +120,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
       WGPUBufferDescriptor desc = {};
       desc.size = indexData.size();
       desc.usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst;
-      contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+      contextData.indexBuffer.reset(wgpuDeviceCreateBuffer(device, &desc));
       contextData.indexBufferLength = desc.size;
     }
 

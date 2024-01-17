@@ -27,9 +27,9 @@ BlendComponent BlendComponent::AlphaPremultiplied = BlendComponent{
     .dstFactor = WGPUBlendFactor::WGPUBlendFactor_OneMinusSrcAlpha,
 };
 
-NamedShaderParam::NamedShaderParam(FastString name, const NumFieldType &type, NumParameter defaultValue)
-    : type(type), name(name), defaultValue(defaultValue) {}
-NamedShaderParam::NamedShaderParam(FastString name, NumParameter defaultValue)
-    : type(getNumParameterType(defaultValue)), name(name), defaultValue(defaultValue) {}
+NumParamDecl::NumParamDecl(const NumFieldType &type, NumParameter defaultValue)
+    : type(type), defaultValue(defaultValue) {}
+NumParamDecl::NumParamDecl(NumParameter defaultValue)
+    : type(getNumParameterType(defaultValue)), defaultValue(defaultValue) {}
 
 } // namespace gfx

@@ -334,7 +334,7 @@ struct RendererImpl final : public ContextData {
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
         if (queueTextureReadCommand(encoder, *it)) {
-        buffersToMap.push_back(&*it);
+          buffersToMap.push_back(&*it);
         } else {
           // Invalid texture, remove from queue
           it = deferredTextureReadCommands.erase(it);
@@ -434,6 +434,9 @@ struct RendererImpl final : public ContextData {
   void swapBuffers() {
     ++storage.frameCounter;
     storage.frameIndex = (storage.frameIndex + 1) % maxBufferedFrames;
+
+    auto &debugVisualizers = storage.debugVisualizers.get(storage.frameCounter % 2);
+    debugVisualizers.clear();
   }
 };
 
@@ -474,6 +477,18 @@ void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }
 
 void Renderer::cleanup() { impl->releaseContextDataConditional(); }
+
+void Renderer::setDebug(bool debug) {
+  impl->storage.debug = debug;
+}
+void Renderer::processDebugVisuals(ShapeRenderer &sr) {
+  auto &storage = impl->storage;
+  auto &vec = storage.debugVisualizers.get((storage.frameCounter - 1) % 2);
+  for (auto &v : vec) {
+    v(sr);
+  }
+  vec.clear();
+}
 
 void Renderer::setIgnoreCompilationErrors(bool ignore) { impl->storage.ignoreCompilationErrors = ignore; }
 

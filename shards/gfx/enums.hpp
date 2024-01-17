@@ -16,6 +16,7 @@ enum class TextureSampleType {
   UInt = 1 << 1,
   Float = 1 << 2,
   UnfilterableFloat = 1 << 3,
+  Depth = 1 << 4,
 };
 
 enum class TextureFormatFlags : uint8_t {

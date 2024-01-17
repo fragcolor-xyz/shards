@@ -8,6 +8,7 @@ set(SOURCES
   logging.cpp
   serialization.cpp
   time.cpp
+  exposed.cpp
 )
 
 add_rust_library(NAME shards-core
@@ -17,7 +18,7 @@ add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS
     core casting flow linalg math seqs
     strings wires logging serialization time
-    rust cached
+    rust cached exposed
   RUST_TARGETS shards-core-rust
   INLINE_SOURCES core.cpp math.cpp inlined.cpp cached.cpp
   INLINE_SHARDS

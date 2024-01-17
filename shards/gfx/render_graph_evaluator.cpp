@@ -4,13 +4,11 @@
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
 #include <boost/tti/has_member_data.hpp>
-#include <boost/core/type_name.hpp>
 
 namespace gfx::detail {
 
 BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_input, input);
 BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_output, output);
-BOOST_TTI_TRAIT_HAS_MEMBER_DATA(has_render_step_name, name);
 
 RenderGraphEvaluator::RenderGraphEvaluator(allocator_type allocator, Renderer &renderer, RendererStorage &storage)
     : allocator(allocator), writtenTextures(allocator), frameTextures(allocator), frameSizes(allocator), renderer(renderer),
@@ -59,35 +57,6 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
           RenderTargetFormat{.format = frame.format, .size = expectedSize.size}, storage.frameCounter);
       outFrameTextures.push_back(resolve(texture));
     }
-
-    // std::visit(
-    //     [&](auto &binding) {
-    //       using T = std::decay_t<decltype(binding)>;
-    //       if constexpr (std::is_same_v<T, RenderGraph::OutputIndex>) {
-    //         outFrameTextures.push_back(resolveSubResourceView(outputs[binding]));
-    //       } else if constexpr (std::is_same_v<T, RenderGraph::TextureOverrideRef>) {
-    //         // outFrameTextures.push_back(resolveSubResourceView(outputs[binding]));
-    //       }
-    //     },
-    //     frame.binding);
-    // if (frame.outputIndex.has_value()) {
-    //   size_t outputIndex = frame.outputIndex.value();
-    //   if (outputIndex >= outputs.size())
-    //     throw std::logic_error("Missing output");
-
-    //   outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
-    // } else if (frame.textureOverride) {
-    //   // Update the texture size/format
-    //   auto desc = frame.textureOverride.texture->getDesc();
-    //   desc.resolution = frame.size;
-    //   desc.format.pixelFormat = frame.format;
-    //   frame.textureOverride.texture->init(desc);
-    //   outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
-    // } else {
-    //   TexturePtr texture = storage.renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size},
-    //                                                            storage.frameCounter);
-    //   outFrameTextures.push_back(resolve(texture));
-    // }
   }
 }
 
@@ -288,18 +257,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     const ViewData &viewData = evaluationData.getViewData(node.queueDataIndex);
 
     WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node);
-    std::string nameBuffer;
-    std::visit(
-        [&](auto &arg) {
-          using T = std::decay_t<decltype(arg)>;
-          nameBuffer = boost::core::type_name<T>();
-          if constexpr (has_render_step_name<T, std::string>::type::value) {
-            if (!arg.name.empty()) {
-              nameBuffer = fmt::format("{} ({})", arg.name.c_str(), nameBuffer);
-            }
-          }
-        },
-        *node.originalStep.get());
+    std::string nameBuffer = getPipelineStepName(node.originalStep);
     renderPassDesc.label = nameBuffer.c_str();
     if (node.setupPass)
       node.setupPass(renderPassDesc);

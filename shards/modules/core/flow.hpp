@@ -1,6 +1,7 @@
 #ifndef BA2BD435_CBCD_42CF_BCA0_DEB072B8CDCC
 #define BA2BD435_CBCD_42CF_BCA0_DEB072B8CDCC
 
+#include "log/log.hpp"
 #include <shards/shardwrapper.hpp>
 #include <shards/shards.h>
 #include <shards/core/foundation.hpp>
@@ -430,13 +431,13 @@ struct Maybe : public BaseSubFlow {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output = input;
     if (likely(_shards)) {
-      auto prev_level = spdlog::get_level();
+      auto prev_level = logging::getSinkLevel();
       if (_silent) {
-        spdlog::set_level(spdlog::level::off);
+        logging::setSinkLevel(spdlog::level::off);
       }
       auto state = _shards.activate(context, input, output);
       if (_silent) {
-        spdlog::set_level(prev_level);
+        logging::setSinkLevel(prev_level);
       }
       if (state == SHWireState::Error) {
         if (!_silent) {

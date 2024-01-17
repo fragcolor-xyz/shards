@@ -29,7 +29,7 @@ void GeneratorContext::readGlobal(FastString name) {
   if (it == definitions.globals.end()) {
     pushError(formatError("Global {} does not exist", name));
   } else {
-    getOutput() += fmt::format("{}.{}", globalsVariableName, name);
+    getOutput() += fmt::format("{}.{}", globalsVariableName, sanitizeIdentifier(name));
   }
 }
 void GeneratorContext::beginWriteGlobal(FastString name, const NumFieldType &type) {
@@ -41,7 +41,7 @@ void GeneratorContext::beginWriteGlobal(FastString name, const NumFieldType &typ
       pushError(formatError("Global type doesn't match previously expected type"));
     }
   }
-  getOutput() += fmt::format("{}.{} = ", globalsVariableName, name);
+  getOutput() += fmt::format("{}.{} = ", globalsVariableName, sanitizeIdentifier(name));
 }
 void GeneratorContext::endWriteGlobal() { getOutput() += ";\n"; }
 
@@ -61,7 +61,7 @@ void GeneratorContext::readInput(FastString name) {
     return;
   }
 
-  getOutput() += fmt::format("{}.{}", inputVariableName, name);
+  getOutput() += fmt::format("{}.{}", inputVariableName, sanitizeIdentifier(name));
 }
 
 const NumFieldType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
@@ -98,7 +98,7 @@ void GeneratorContext::writeOutput(FastString name, const NumFieldType &type) {
     return;
   }
 
-  getOutput() += fmt::format("{}.{}", outputVariableName, name);
+  getOutput() += fmt::format("{}.{}", outputVariableName, sanitizeIdentifier(name));
 }
 
 const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
@@ -180,16 +180,16 @@ void GeneratorContext::readBuffer(FastString fieldName, const NumFieldType &expe
       [&](auto &&arg) {
         using T1 = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T1, dim::One>) {
-          getOutput() += fmt::format("{}.{}", buffer.variableName, fieldName);
+          getOutput() += fmt::format("{}.{}", buffer.variableName, sanitizeIdentifier(fieldName));
         } else if constexpr (std::is_same_v<T1, dim::PerInstance>) {
-          getOutput() += fmt::format("{}.elements[{}].{}", buffer.variableName, "u_instanceIndex", fieldName);
+          getOutput() += fmt::format("{}.elements[{}].{}", buffer.variableName, "u_instanceIndex", sanitizeIdentifier(fieldName));
         } else {
           if (!index)
             pushError(formatError("Can not access buffer \"{}\" without index since it's an array, which requires an index",
                                   bufferName));
           getOutput() += fmt::format("{}.elements[", buffer.variableName);
           index(*this);
-          getOutput() += fmt::format("].{}", fieldName);
+          getOutput() += fmt::format("].{}", sanitizeIdentifier(fieldName));
         }
       },
       buffer.dimension);
