@@ -220,9 +220,14 @@ template <typename TInit, typename T = decltype((*(TInit *)0)()), typename C>
 AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, TInit init) {
   auto ptr = context->anyStorage[storageKey];
   if (!ptr) {
-    ptr = std::make_shared<entt::any>(init());
-    context->anyStorage[storageKey] = ptr;
-    return ptr;
+    // recurse into parent if we have one
+    if (context->parent) {
+      return getOrCreateAnyStorage<TInit, T>(context->parent, storageKey, init);
+    } else {
+      ptr = std::make_shared<entt::any>(init());
+      context->anyStorage[storageKey] = ptr;
+      return ptr;
+    }
   } else {
     return ptr;
   }
@@ -749,6 +754,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   SHInstanceData instanceData{};
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
+  SHMesh *parent{nullptr};
 
   // up to the users to call .update on this, we internally use just "trigger", which is instant
   mutable entt::dispatcher dispatcher{};
