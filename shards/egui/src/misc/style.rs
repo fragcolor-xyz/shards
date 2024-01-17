@@ -518,19 +518,19 @@ impl Shard for StyleShard {
     })?;
 
     when_set(&self.scroll_bar_width, |v| {
-      Ok(spacing.scroll_bar_width = v.try_into()?)
+      Ok(spacing.scroll.bar_width = v.try_into()?)
     })?;
 
     when_set(&self.scroll_handle_min_length, |v| {
-      Ok(spacing.scroll_handle_min_length = v.try_into()?)
+      Ok(spacing.scroll.handle_min_length = v.try_into()?)
     })?;
 
     when_set(&self.scroll_bar_inner_margin, |v| {
-      Ok(spacing.scroll_bar_inner_margin = v.try_into()?)
+      Ok(spacing.scroll.bar_inner_margin = v.try_into()?)
     })?;
 
     when_set(&self.scroll_bar_outer_margin, |v| {
-      Ok(spacing.scroll_bar_outer_margin = v.try_into()?)
+      Ok(spacing.scroll.bar_outer_margin = v.try_into()?)
     })?;
 
     // Visuals stuff
@@ -592,7 +592,7 @@ impl Shard for StyleShard {
     })?;
 
     when_set(&self.text_cursor_width, |v| {
-      Ok(visuals.text_cursor_width = v.try_into()?)
+      Ok(visuals.text_cursor.width = v.try_into()?)
     })?;
 
     when_set(&self.text_cursor_preview, |v| {

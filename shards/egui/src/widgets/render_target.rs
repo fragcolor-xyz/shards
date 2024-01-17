@@ -7,6 +7,7 @@ use crate::widgets::image_util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use egui::load::SizedTexture;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Object;
 use shards::types::Context;
@@ -158,7 +159,11 @@ impl RenderTarget {
         ui.allocate_exact_size(texture_size * scale, egui::Sense::click_and_drag());
 
       // Draw texture at this rectangle
-      let image = egui::widgets::Image::new(texture_id, rect.size());
+      let img = SizedTexture {
+        id: texture_id,
+        size: texture_size,
+      };
+      let image = egui::widgets::Image::new(img);
       image.paint_at(ui, rect);
 
       Ok(*input)

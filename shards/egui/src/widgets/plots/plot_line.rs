@@ -141,7 +141,7 @@ impl LegacyShard for PlotLine {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let plot_ui: &mut egui::plot::PlotUi =
+    let plot_ui: &mut egui_plot::PlotUi =
       Var::from_object_ptr_mut_ref(self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
 
     let seq: Seq = input.try_into()?;
@@ -149,7 +149,7 @@ impl LegacyShard for PlotLine {
       let v: (f64, f64) = x.as_ref().try_into().unwrap();
       [v.0, v.1]
     });
-    let mut chart = egui::plot::Line::new(egui::plot::PlotPoints::from_iter(points));
+    let mut chart = egui_plot::Line::new(egui_plot::PlotPoints::from_iter(points));
 
     let color = self.color.get();
     if !color.is_none() {

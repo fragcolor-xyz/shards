@@ -286,7 +286,7 @@ impl RenderShard {
 
     // Only render the most recent output
     if full_render {
-      let draw_scale = ui_output.ctx.pixels_per_point();
+      let draw_scale = ui_output.full_output.pixels_per_point;
       let queue = unsafe {
         bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
           as *const bindings::gfx_DrawQueuePtr
