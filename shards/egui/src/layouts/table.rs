@@ -12,7 +12,6 @@ use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;
 use shards::shardsc::SHType_String;
-use shards::types::SEQ_OF_ANY_TABLE_TYPES;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -29,6 +28,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
+use shards::types::SEQ_OF_ANY_TABLE_TYPES;
 use shards::types::SEQ_OF_SHARDS_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -429,15 +429,15 @@ impl LegacyShard for Table {
 
         // populate rows
         table.body(|body| {
-          body.rows(text_height, seq.len(), |row_index, mut row| {
+          body.rows(text_height, seq.len(), |mut row| {
+            let index = row.index();
             if self.row_index.is_variable() {
               let var: &mut i64 = self.row_index.get_mut().try_into().unwrap(); // row_index is set int during warmup, qed
-              *var = row_index as i64;
+              *var = index as i64;
             }
             for s in &mut self.shards {
               row.col(|ui| {
-                let _ =
-                  util::activate_ui_contents(context, &seq[row_index], ui, &mut self.parents, s);
+                let _ = util::activate_ui_contents(context, &seq[index], ui, &mut self.parents, s);
               });
             }
           })

@@ -5,6 +5,7 @@ use super::ListBox;
 use crate::util;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
+use egui::Rect;
 use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::shardsc::SHType_Bool;
@@ -351,6 +352,8 @@ impl LegacyShard for ListBox {
                   rounding: visuals.rounding,
                   fill: visuals.bg_fill,
                   stroke: visuals.bg_stroke,
+                  fill_texture_id: egui::TextureId::Managed(0),
+                  uv: Rect::ZERO,
                 });
                 ui.painter().set(background_id, shape);
               }

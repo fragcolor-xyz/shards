@@ -4,6 +4,8 @@ use egui::Event;
 use egui::Modifiers;
 use egui::TouchDeviceId;
 use egui::TouchId;
+use egui::ViewportInfo;
+use egui::ahash::HashMapExt;
 use std::ffi::CStr;
 use std::slice::from_raw_parts;
 
@@ -206,6 +208,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
               pressed: event.pressed,
               repeat: event.repeat,
               modifiers: event.modifiers.into(),
+              physical_key: None,
             }),
             Err(_) => None,
           }
@@ -236,7 +239,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
             id: TouchId(event.id.id),
             phase: to_egui_touch_phase(event.phase),
             pos: event.pos.into(),
-            force: event.force,
+            force: Some(event.force),
           })
         }
         _ => {
@@ -250,6 +253,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
     }
   }
 
+  let vp_id = egui::ViewportId(egui::Id::new("vp"));
   Ok(egui::RawInput {
     dropped_files: Vec::new(),
     hovered_files: Vec::new(),
@@ -258,9 +262,18 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
     time: Some(input.time),
     predicted_dt: input.predictedDeltaTime,
     screen_rect: Some(input.screenRect.into()),
-    pixels_per_point: Some(input.pixelsPerPoint),
     max_texture_side: None,
     focused: true, // FIXME
+    viewport_id: vp_id,
+    viewports: {
+      let info = ViewportInfo {
+        native_pixels_per_point: Some(input.pixelsPerPoint),
+        ..Default::default()
+      };
+      let mut map = egui::ViewportIdMap::new();
+      map.insert(vp_id, info);
+      map
+    },
   })
 }
 

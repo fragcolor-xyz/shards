@@ -162,7 +162,7 @@ impl LegacyShard for PlotBar {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let plot_ui: &mut egui::plot::PlotUi =
+    let plot_ui: &mut egui_plot::PlotUi =
       Var::from_object_ptr_mut_ref(self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
 
     let seq: Seq = input.try_into()?;
@@ -179,10 +179,10 @@ impl LegacyShard for PlotBar {
       None
     };
 
-    let mut chart = egui::plot::BarChart::new(
+    let mut chart = egui_plot::BarChart::new(
       points
         .map(|(x, y)| {
-          let mut bar = egui::plot::Bar::new(x, y);
+          let mut bar = egui_plot::Bar::new(x, y);
           if let Some(bar_width) = bar_width {
             bar = bar.width(bar_width);
           }

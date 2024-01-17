@@ -6,6 +6,7 @@ use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
+use egui::load::SizedTexture;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Bool;
@@ -234,7 +235,11 @@ impl ImageButton {
     texture_id: egui::TextureId,
     size: egui::Vec2,
   ) -> Result<Var, &str> {
-    let mut button = egui::ImageButton::new(texture_id, size);
+    let img = SizedTexture {
+      id: texture_id,
+      size,
+    };
+    let mut button = egui::ImageButton::new(img);
 
     let selected = self.selected.get();
     if !selected.is_none() {

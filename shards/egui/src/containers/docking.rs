@@ -1,6 +1,6 @@
 use super::DockArea;
-use super::EXPERIMENTAL_TRUE;
 use super::Tab;
+use super::EXPERIMENTAL_TRUE;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
@@ -68,7 +68,7 @@ impl Default for Tab {
 
 impl LegacyShard for Tab {
   fn properties(&mut self) -> Option<&Table> {
-      Some(&EXPERIMENTAL_TRUE)
+    Some(&EXPERIMENTAL_TRUE)
   }
 
   fn registerName() -> &'static str
@@ -214,7 +214,7 @@ impl Default for DockArea {
       exposing: Vec::new(),
       headers: Vec::new(),
       shards: Vec::new(),
-      tabs: egui_dock::Tree::new(Vec::new()),
+      tabs: egui_dock::DockState::new(Vec::new()),
     }
   }
 }
@@ -378,8 +378,8 @@ impl LegacyShard for DockArea {
     }
 
     // Focus on first tab
-    if !self.tabs.is_empty() {
-      self.tabs.set_active_tab(0.into(), 0.into());
+    if !self.tabs.surfaces_count() == 0 {
+      self.tabs.set_active_tab((0.into(), 0.into(), 0.into()));
     }
 
     Ok(())
@@ -388,17 +388,8 @@ impl LegacyShard for DockArea {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self
       .tabs
-      .iter_mut()
-      .filter_map(|node| match node {
-        egui_dock::Node::Leaf {
-          rect: _,
-          viewport: _,
-          tabs,
-          active: _,
-          scroll: _,
-        } => Some(tabs),
-        _ => None,
-      })
+      .iter_surfaces_mut()
+      .map(|node| node.iter_all_tabs_mut().map(|tab| tab.1))
       .flatten()
       .for_each(|(title, contents)| {
         title.cleanup(ctx);
@@ -413,7 +404,7 @@ impl LegacyShard for DockArea {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if self.tabs.is_empty() {
+    if self.tabs.surfaces_count() == 0 {
       return Ok(*input);
     }
 

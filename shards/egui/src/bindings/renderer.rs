@@ -2,6 +2,7 @@ use super::*;
 use egui::epaint;
 use egui::ClippedPrimitive;
 use egui::Context;
+use egui::FullOutput;
 use std::ffi::CString;
 use std::marker::PhantomData;
 use std::ptr;
@@ -16,7 +17,7 @@ unsafe impl Sync for Renderer {}
 pub struct NativeIOOutput {
   pub open_url: Option<CString>,
   pub copied_text: Option<CString>,
-  pub text_cursor_position: Option<Box<egui_Pos2>>,
+  pub text_cursor_position: Option<egui_Pos2>,
   pub cursor_icon: egui_CursorIcon,
   pub mutable_text_under_cursor: bool,
   pub wants_pointer_input: bool,
@@ -31,10 +32,10 @@ impl NativeIOOutput {
         .copied_text
         .as_ref()
         .map_or(ptr::null(), |x| x.as_ptr()),
+      validCursorPosition: self.text_cursor_position.is_some(),
       textCursorPosition: self
         .text_cursor_position
-        .as_ref()
-        .map_or(ptr::null(), |x| x.as_ref()),
+        .unwrap_or(egui_Pos2 { x: 0.0, y: 0.0 }),
       cursorIcon: self.cursor_icon,
       mutableTextUnderCursor: self.mutable_text_under_cursor,
       wantsPointerInput: self.wants_pointer_input,
@@ -181,7 +182,7 @@ pub fn make_native_render_output<'a>(
 ) -> Result<NativeRenderOutput<'a>, &'static str> {
   // Sad clone here, might be able to remove upstream
   let primitives: Vec<ClippedPrimitive> = if input.shapes.len() > 0 {
-    ctx.tessellate(input.shapes.clone())
+    ctx.tessellate(input.shapes.clone(), input.pixels_per_point)
   } else {
     Vec::new()
   };
@@ -231,10 +232,10 @@ pub fn make_native_io_output(
     None
   };
 
-  let text_cursor_position = match &platform_output.text_cursor_pos {
-    Some(pos) => Some(Box::new(egui_Pos2 { x: pos.x, y: pos.y })),
-    None => None,
-  };
+  let text_cursor_position = platform_output.ime.map(|ime| egui_Pos2 {
+    x: ime.cursor_rect.min.x,
+    y: ime.cursor_rect.min.y,
+  });
 
   Ok(NativeIOOutput {
     open_url,
