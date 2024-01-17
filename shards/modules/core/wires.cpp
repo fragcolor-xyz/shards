@@ -1652,6 +1652,8 @@ struct ParallelBase : public CapturingSpawners {
       auto &mesh = _meshes[idx];
       if (!mesh) {
         mesh = SHMesh::make();
+        auto mesh = context->main->mesh.lock();
+        mesh->parent = bool(mesh) ? mesh.get() : nullptr; // we need this for any storage
       }
 
       ManyWire *cref;
