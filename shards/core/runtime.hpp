@@ -750,6 +750,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   SHInstanceData instanceData{};
 
+  std::mutex anyStorageLock;
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
   SHMesh *parent{nullptr};
 
