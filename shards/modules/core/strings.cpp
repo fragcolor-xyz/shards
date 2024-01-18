@@ -146,6 +146,35 @@ struct Replace : public Common {
   }
 };
 
+struct Format {
+  static inline Type InputType = Type::SeqOf(CoreInfo::AnyType);
+
+  static SHOptionalString help() { return SHCCSTR("Concatenates all the elements of a sequence into a string"); }
+
+  static SHTypesInfo inputTypes() { return InputType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of values that will be converted to string and joined together.");
+  }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A string consisting of all the elements of the sequence."); }
+
+  CachedStreamBuf _buffer;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.payload.seqValue.len == 0)
+      return Var("");
+
+    std::ostream stream(&_buffer);
+    _buffer.reset();
+    for (auto &v : input.payload.seqValue) {
+      stream << v;
+    }
+    _buffer.done();
+    return Var(_buffer.str());
+  }
+};
+
 struct Join {
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
 
@@ -476,6 +505,7 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("Regex.Replace", Replace);
   REGISTER_SHARD("Regex.Search", Search);
   REGISTER_SHARD("Regex.Match", Match);
+  REGISTER_SHARD("String.Format", Format);
   REGISTER_SHARD("String.Join", Join);
   REGISTER_SHARD("String.ToUpper", ToUpper);
   REGISTER_SHARD("String.ToLower", ToLower);

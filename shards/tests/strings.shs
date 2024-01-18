@@ -19,7 +19,7 @@
   
   "fbl|pose:transform:0:rot" | String.Split(":")
   Assert.Is(["fbl|pose" "transform" "0" "rot"])
-  
+
   """Something
 Something else
 
@@ -28,6 +28,9 @@ And Again!""" | String.Split("\n\n") | Assert.Is([
 Something else"""
     """And Again!"""
   ])
+  
+  [hello " " world] | String.Format | Log("fmt 1") | Assert.Is("hello world")
+  [hello " " 4 "!"] | String.Format | Log("fmt 2") | Assert.Is("hello 4!")
 })
 
 @mesh(root)
