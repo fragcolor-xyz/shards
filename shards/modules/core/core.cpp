@@ -2029,19 +2029,36 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 }
 #endif
 
+#define SH_ONCE_TIMER_DEBUG 0
+
+struct LogIntervalTimer {
+  const double interval = 1.0f;
+  SHTimeDiff nextLog;
+
+  template <typename T> void tick(SHClock::time_point now, T cb) {
+    if (now >= nextLog) {
+      nextLog = now + SHDuration(interval);
+      cb();
+    }
+  }
+};
+
 struct Once {
   SHTimeDiff _next;
-  int _logCounter;
+
+#if SH_ONCE_TIMER_DEBUG
+  LogIntervalTimer _logIntervalTimer;
+  SHTime _lastInnerActivation;
+  SHTime _lastTick;
+  gfx::MovingAverage<double> _granularityBuffer{32};
+  gfx::MovingAverage<double> _avgRate{32};
+#endif
 
   ShardsVar _blks;
   ExposedInfo _requiredInfo{};
   SHComposeResult _validation{};
   ParamVar _repeat{};
   Shard *self{nullptr};
-
-  bool _didActivateLastTick{};
-  SHTimeDiff _lastActivation;
-  gfx::MovingAverage<double> _averageSleepTime{20};
 
   void cleanup(SHContext *context) {
     _repeat.cleanup(context);
@@ -2054,8 +2071,6 @@ struct Once {
   void warmup(SHContext *ctx) {
     _repeat.warmup(ctx);
     _blks.warmup(ctx);
-    _logCounter = 0;
-    _didActivateLastTick = true;
     _next = SHClock::now();
   }
 
@@ -2128,47 +2143,36 @@ struct Once {
     SHDuration dsleep = getRepeatTime();
 
     // Get the current time
-    auto start = SHClock::now();
+    SHTime start = SHClock::now();
 
-    SHDuration timeSinceLastActivation = start - _lastActivation;
-    _lastActivation = start;
+#if SH_ONCE_TIMER_DEBUG
+    SHDuration timeSinceLastTick = start - _lastTick;
+    _lastTick = start;
+    _granularityBuffer.add(timeSinceLastTick.count());
+#endif
 
-    // Keep track of average sleep time so we can schedule activations earlier if we know they might not run in time
-    if (!_didActivateLastTick)
-      _averageSleepTime.add(timeSinceLastActivation.count());
-    _didActivateLastTick = false;
+    if (start >= (_next)) {
+#if SH_ONCE_TIMER_DEBUG
+      _avgRate.add(SHDuration(start - _lastInnerActivation).count());
+      _lastInnerActivation = start;
+#endif
+      _next = _next + dsleep;
 
-    // If the timer has not been initialized or has expired, reset it
-    SHDuration bias{_averageSleepTime.getAverage()};
-    if (start >= (_next - bias)) {
       // Call the activation function
       SHVar output{};
       _blks.activate(context, input, output);
-      _didActivateLastTick = true;
-
-      // Update the next activation time based on how long the activation function took
-      auto now = SHClock::now();
-      SHDuration elapsed = now - start;
-
-      if (unlikely(elapsed > dsleep)) {
-        _next = start + dsleep;
-
-        // tick took too long!!!
-        if (++_logCounter >= 1000) {
-          _logCounter = 0;
-          auto wire = context->currentWire();
-          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
-        }
-      } else {
-        // Avoid overflow
-        if (_next < now) {
-          _next = now + dsleep;
-        } else {
-          _next = _next + dsleep;
-        }
-        ++_logCounter;
-      }
     }
+
+#if SH_ONCE_TIMER_DEBUG
+    _logIntervalTimer.tick(start, [&]() {
+      double granularity = _granularityBuffer.getAverage();
+      double rate = _avgRate.getAverage();
+      SHDuration errorDur = SHDuration(rate) - dsleep;
+      double error = errorDur.count();
+      SHLOG_INFO("Once(Rate: {:.4f} / {:.2f}/s Error: {:.8f} Granularity: {:.4f} / {:.2f}/s)", rate, 1.0 / rate, error,
+                 granularity, 1.0 / granularity);
+    });
+#endif
   }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {

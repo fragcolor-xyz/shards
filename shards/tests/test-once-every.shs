@@ -1,14 +1,13 @@
 @define(cube-layout ["position" "color"])
 @define(cube {"Vertices": [
-    @f3(-1.0  1.0  1.0) @color(0x000000)
-    @f3( 1.0  1.0  1.0) @color(0x0000ff)
-    @f3(-1.0 -1.0  1.0) @color(0x00ff00)
-    @f3( 1.0 -1.0  1.0) @color(0x00ffff)
-    @f3(-1.0  1.0 -1.0) @color(0xff0000)
-    @f3( 1.0  1.0 -1.0) @color(0xff00ff)
+    @f3(-1.0 1.0 1.0) @color(0x000000)
+    @f3(1.0 1.0 1.0) @color(0x0000ff)
+    @f3(-1.0 -1.0 1.0) @color(0x00ff00)
+    @f3(1.0 -1.0 1.0) @color(0x00ffff)
+    @f3(-1.0 1.0 -1.0) @color(0xff0000)
+    @f3(1.0 1.0 -1.0) @color(0xff00ff)
     @f3(-1.0 -1.0 -1.0) @color(0xffff00)
-    @f3( 1.0 -1.0 -1.0) @color(0xffffff)
-  ] "Indices": [
+    @f3(1.0 -1.0 -1.0) @color(0xffffff)] "Indices": [
     0 1 2
     1 3 2
     4 6 5
@@ -21,7 +20,7 @@
     4 5 1
     2 3 6
     6 3 7
-  ]})
+              ]})
 
 @define(timestep #(1.0 | Math.Divide(60.0)))
 
@@ -29,64 +28,65 @@
   Once({
     0.0 >= time
     @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder::CW) = mesh
-
+    
     ; Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-
+    
     ; Create view
     {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     GFX.View(View: view-transform) = view
-
+    
     Once({
       GFX.DrawQueue = ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps})
-
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    
     48.0 >= fps
     0.001 >= chopper
     0.001 >= delay
   })
-
+  
   Once({
     GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
       time | Math.Add(@timestep) > time ; | Log
-
+      
       time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
-      | Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y
-      | Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
-      | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
-
+      Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y
+      Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
+      GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
+      
       UI({
-          UI.Window(Contents: {
-            UI.Horizontal({
-              "FPS:" | UI.Label | UI.FloatSlider(Variable: fps Min: 5.0 Max: 240.0)
-            })
-            UI.Horizontal({
-              "Chopper:" | UI.Label | UI.FloatSlider(Variable: chopper Min: 0.0 Max: 0.1)
-            })
-            UI.Horizontal({
-              "Fixed delay:" | UI.Label | UI.FloatSlider(Variable: delay Min: 0.0 Max: 0.1)
-            })
-            UI.Horizontal({
-              "FPS:" | UI.Label 
-              1.0 | Math.Divide((Time.Delta | Time.MovingAverage(100))) | ToString | UI.Label
-            })
-            
+        UI.Window(Contents: {
+          UI.Horizontal({
+            "FPS:" | UI.Label | UI.FloatSlider(Variable: fps Min: 5.0 Max: 240.0)
           })
+          UI.Horizontal({
+            "Chopper:" | UI.Label | UI.FloatSlider(Variable: chopper Min: 0.0 Max: 0.1)
+          })
+          UI.Horizontal({
+            "Fixed delay:" | UI.Label | UI.FloatSlider(Variable: delay Min: 0.0 Max: 0.1)
+          })
+          UI.Horizontal({
+            "FPS:" | UI.Label
+            1.0 | Math.Divide((Time.Delta | Time.MovingAverage(100))) | ToString | UI.Label
+          })
+          
+        })
       }) | UI.Render(ui-draw-queue)
-
+      
       GFX.Render(Steps: render-steps View: view)
     })
-  } Every: (1.0 Math.Divide(fps)))
-
-  Once({ "ping" | Log } Every: 2.0)
-
+  } Every: (1.0 | Math.Divide(fps)))
+  
+  Once({"ping" | Log} Every: 2.0)
+  
   RandomFloat(chopper) | Math.Add(delay) = f1
   Pause(f1)
 } Looped: true)
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root Iterations: 100) | Assert.Is(true)
+@run(root) | Assert.Is(true)
