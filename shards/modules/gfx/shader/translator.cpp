@@ -32,6 +32,14 @@ void TranslationContext::processShard(ShardPtr shard) {
   handler->translate(shard, *this);
 }
 
+void TranslationContext::finalize() {
+  auto top = takeWGSLTop();
+  if(top) {
+    const std::string &varName = getUniqueVariableName("unused");
+    addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), top->toBlock(), ";\n"));
+  }
+}
+
 const TranslatedFunction &TranslationContext::processWire(const std::shared_ptr<SHWire> &wire,
                                                           const std::optional<FieldType> &inputType) {
   SHWire *wirePtr = wire.get();

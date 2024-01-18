@@ -92,6 +92,7 @@ struct DynamicBlockFromShards : public blocks::Block {
       for (ShardPtr shard : shards) {
         shaderCtx.processShard(shard);
       }
+      shaderCtx.finalize();
 
       auto compiledBlock = std::move(shaderCtx.root);
       compiledBlock->apply(context);

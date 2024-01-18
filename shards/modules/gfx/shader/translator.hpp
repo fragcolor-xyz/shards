@@ -206,6 +206,9 @@ public:
   // Enter a shard and translate it recursively
   void processShard(ShardPtr shard);
 
+  // Makes sure that all floating stack variables are generated into shader blocks
+  void finalize();
+
   // Translates a wire into a function
   const TranslatedFunction &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<FieldType> &inputType);
 

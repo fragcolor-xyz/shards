@@ -122,7 +122,8 @@ public:
 
     // Ensure cleared outputs
     if (fallbackClearColor && mainOutput) {
-      builder.prepare();
+      if (!builder.prepare())
+        throw std::runtime_error("Failed to prepare render graph builder");
       for (size_t outputIndex = 0; outputIndex < outputMap.size(); outputIndex++) {
         auto &output = outputMap[outputIndex];
         if (!builder.isOutputWrittenTo(outputIndex)) {
@@ -151,7 +152,7 @@ public:
   }
 
   // Renderer is passed for generator callbacks
-  void evaluate(Renderer &renderer, bool ignoreInDebugger = false) {
+  void evaluate(Renderer &renderer, int2 fallbackSize, bool ignoreInDebugger = false) {
     const RenderGraph &rg = getOrCreateRenderGraph();
 
     RenderGraphEvaluator evaluator(storage.workerMemory, renderer, storage);
@@ -163,7 +164,7 @@ public:
       }
     }
 
-    evaluator.evaluate(rg, *this, renderGraphOutputs);
+    evaluator.evaluate(rg, *this, renderGraphOutputs, fallbackSize);
   }
 
 protected:

@@ -179,7 +179,8 @@ struct RendererImpl final : public ContextData {
 
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
-      frameQueue->evaluate(outer);
+      auto fallbackSize = viewStack.getOutput().size;
+      frameQueue->evaluate(outer, fallbackSize);
     }
 
     frameQueues.pop_back();

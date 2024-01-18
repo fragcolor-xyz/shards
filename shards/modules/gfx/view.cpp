@@ -126,7 +126,7 @@ struct ViewShard {
     _isPerspective = !_fov.isNone();
 
     // Default to perspecitive projection if nothing is set
-    if(!isOrtho && !_isPerspective) {
+    if (!isOrtho && !_isPerspective) {
       _isPerspective = true;
     }
 
@@ -213,7 +213,7 @@ struct RenderIntoShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
 
-  PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {AttachmentTable});
+  PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {CoreInfo::NoneType, AttachmentTable});
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
                  {CoreInfo::NoneType, CoreInfo::Int2Type, CoreInfo::Int2VarType});
@@ -292,16 +292,14 @@ struct RenderIntoShard {
   }
 
   void applyAttachments(SHContext *shContext, std::map<FastString, TextureSubResource> &outAttachments) {
-    auto &table = _textures.payload.tableValue;
     outAttachments.clear();
-    ForEach(table, [&](SHVar &k, SHVar &v) {
-      if (k.valueType != SHType::String)
-        throw formatException("RenderInto attachment key should be a string");
-      outAttachments.emplace(SHSTRVIEW(k), applyAttachment(shContext, v));
-    });
-
-    if (outAttachments.size() == 0) {
-      throw formatException("RenderInto is missing at least one output texture");
+    if (!_textures->isNone()) {
+      auto &table = _textures.payload.tableValue;
+      ForEach(table, [&](SHVar &k, SHVar &v) {
+        if (k.valueType != SHType::String)
+          throw formatException("RenderInto attachment key should be a string");
+        outAttachments.emplace(SHSTRVIEW(k), applyAttachment(shContext, v));
+      });
     }
   }
 
@@ -364,7 +362,7 @@ struct RenderIntoShard {
     // (optional) set viewport rectangle
     Var viewportVar = (Var &)_viewport.get();
     if (!viewportVar.isNone()) {
-      auto &v = viewportVar.payload.float4Value;
+      auto &v = viewportVar.payload.int4Value;
       // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
     }
