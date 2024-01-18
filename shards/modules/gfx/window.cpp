@@ -55,21 +55,8 @@ struct InlineInputContext : public IInputContext {
   float getTime() const override { return time; }
   float getDeltaTime() const override { return deltaTime; }
 
-  bool requestFocus() override {
-    if (auto ptr = getHandler().lock()) {
-      auto &focusTracker = getMaster().getFocusTracker();
-      return focusTracker.requestFocus(ptr.get());
-    }
-    return false;
-  }
-
-  bool canReceiveInput() const override {
-    if (auto ptr = getHandler().lock()) {
-      auto &focusTracker = getMaster().getFocusTracker();
-      return focusTracker.canReceiveInput(ptr.get());
-    }
-    return false;
-  }
+  bool requestFocus() override { return true; }
+  bool canReceiveInput() const override { return true; }
 };
 
 struct MainWindow final {
