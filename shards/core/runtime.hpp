@@ -238,7 +238,8 @@ AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, T
 }
 
 template <typename T, typename C> AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey) {
-  return getOrCreateAnyStorage(context, storageKey, []() { return std::in_place_type_t<T>{}; });
+  auto v = []() { return std::in_place_type_t<T>(); };
+  return getOrCreateAnyStorage<decltype(v), T>(context, storageKey, v);
 }
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
