@@ -67,3 +67,6 @@ shards/rust/Cargo.lock
 shards/tests/subwires.wire
 
 .clangd
+
+cmake-variants.yaml
+cmake-variants.json
