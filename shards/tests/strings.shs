@@ -31,6 +31,7 @@ Something else"""
   
   [hello " " world] | String.Format | Log("fmt 1") | Assert.Is("hello world")
   [hello " " 4 "!"] | String.Format | Log("fmt 2") | Assert.Is("hello 4!")
+  [] | String.Format | Log("fmt 3") | Assert.Is("")
 })
 
 @mesh(root)
