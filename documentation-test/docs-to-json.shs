@@ -1,0 +1,69 @@
+@wire(prepare-to-json{
+  ; Read the input text file
+  "C:/Projects/shards/documentation-test/carlos-doc.shs" = filePath
+  filePath | FS.Read = inputText
+  ;Log("result")
+
+  ; Split the input text into sections based on double newlines
+  inputText | Regex.Replace("\\r\\n" "\n") | String.Split("\n\n") = sections
+  ;Log("result sections")
+
+  ; Initialize an empty sequence for the JSON output
+  [] >= jsonOutput
+
+  ; Initialize table for each entry
+  {
+    name:""
+    description: ""
+    input: "" 
+    output: "" 
+    parameters: {} ;; parameter needs to be in table form
+  } >= entry
+
+  sections
+  ForEach({
+    String.Split("\n") = lines
+    {Take(0) | ToString | Set(entry "name")}
+    {Take(1) | ToString | String.Split("Description: ") | Take(0) | Set(entry "description")}
+    {Take(2) | ToString | String.Split("Input: ") | Take(0)  | Set(entry "input")}
+    {Take(3) | ToString | String.Split("Output: ") | Take(0)  | Set(entry "output")}
+
+    Count(lines) = total-elements
+    total-elements Math.Subtract(1) = final-index
+    {} >= parameter-table
+
+    total-elements
+    When(Predicate: IsMore(4) Action: {
+      ForRange(From: 4 To: final-index Action:{
+        >= index-to-take
+        lines
+        Take(index-to-take) | String.Split(": ") ;; splitting parameters to their key and element
+        {Take(0) = key}
+        {Take(1) = element}
+
+        element | Set(Name:parameter-table Key:key)
+        parameter-table
+        Log("parameter-table")
+        
+      })
+    })
+
+    parameter-table | Set(entry "parameters") ;; updating the entry table
+    entry | Push(jsonOutput)
+  })
+
+  "" >= final-json
+  Clear(final-json)
+    
+  jsonOutput
+  ForEach({
+    ToJson | AppendTo(final-json)
+    "\n" | AppendTo(final-json)
+  })
+
+  "docs-json-translated.jsonl" | FS.Write(final-json)
+})
+
+@mesh(main)
+@schedule(main prepare-to-json)
+@run(main)
