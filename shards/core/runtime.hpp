@@ -221,6 +221,7 @@ AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, T
   auto ptr = context->anyStorage[storageKey];
   if (!ptr) {
     // recurse into parent if we have one
+    shassert(context->parent != context);
     if (context->parent) {
       return getOrCreateAnyStorage<TInit, T>(context->parent, storageKey, init);
     } else {

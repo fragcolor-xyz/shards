@@ -135,6 +135,7 @@ public:
     auto parentMesh = context->main->mesh.lock();
     if(parentMesh) {
       mesh->parent = parentMesh.get();
+      shassert(mesh->parent != mesh.get());
     }
     initVariableReferences(context);
     schedule(input);
