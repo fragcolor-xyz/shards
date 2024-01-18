@@ -1,33 +1,33 @@
 @wire(main-wire {
-  ["Hello" "world!" "How" "are" "we" "today?"] |
-  String.Join(Separator: " ") | Log |
+  ["Hello" "world!" "How" "are" "we" "today?"]
+  String.Join(Separator: " ") | Log
   Assert.Is("Hello world! How are we today?" true)
-
+  
   "0x7777" | HexToBytes | Log | BigInt | BigInt.ToString | Assert.Is("30583") | Log
-
-  ["Hello" "world!" "How" "are" "we" "today?"] |
-  Bytes.Join |
+  
+  ["Hello" "world!" "How" "are" "we" "today?"]
+  Bytes.Join
   Assert.Is(("Helloworld!Howarewetoday?" | StringToBytes))
-
-  [("Hello" | StringToBytes) "world!"] |
-  Bytes.Join |
+  
+  [("Hello" | StringToBytes) "world!"]
+  Bytes.Join
   Assert.Is(("Helloworld!" | StringToBytes))
-
+  
   "hello" = hello
   "world" = world
   [hello " " world] | Bytes.Join | Assert.Is(("hello world" | StringToBytes))
-
-  "fbl|pose:transform:0:rot" | String.Split(":") |
+  
+  "fbl|pose:transform:0:rot" | String.Split(":")
   Assert.Is(["fbl|pose" "transform" "0" "rot"])
-
+  
   """Something
 Something else
 
 And Again!""" | String.Split("\n\n") | Assert.Is([
-  """Something
+    """Something
 Something else"""
-  """And Again!"""
-])
+    """And Again!"""
+  ])
 })
 
 @mesh(root)
