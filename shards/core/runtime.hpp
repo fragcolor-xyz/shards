@@ -113,6 +113,7 @@ struct SHContext {
   bool onLastResume{false};
   bool onWorkerThread{false};
 
+  std::mutex anyStorageLock;
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
   // Used within the coro& stack! (suspend, etc)
@@ -218,11 +219,13 @@ public:
 
 template <typename TInit, typename T = decltype((*(TInit *)0)()), typename C>
 AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, TInit init) {
+  std::unique_lock<std::mutex> l(context->anyStorageLock);
   auto ptr = context->anyStorage[storageKey];
   if (!ptr) {
     // recurse into parent if we have one
     shassert(context->parent != context);
     if (context->parent) {
+      l.unlock();
       return getOrCreateAnyStorage<TInit, T>(context->parent, storageKey, init);
     } else {
       ptr = std::make_shared<entt::any>(init());
@@ -235,14 +238,8 @@ AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, T
 }
 
 template <typename T, typename C> AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey) {
-  auto ptr = context->anyStorage[storageKey];
-  if (!ptr) {
-    ptr = std::make_shared<entt::any>(std::in_place_type_t<T>{});
-    context->anyStorage[storageKey] = ptr;
-    return ptr;
-  } else {
-    return ptr;
-  }
+  auto v = []() { return std::in_place_type_t<T>(); };
+  return getOrCreateAnyStorage<decltype(v), T>(context, storageKey, v);
 }
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
@@ -754,6 +751,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   SHInstanceData instanceData{};
 
+  std::mutex anyStorageLock;
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
   SHMesh *parent{nullptr};
 
