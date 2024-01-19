@@ -80,7 +80,7 @@ SHView SHView::deserialize(const std::string_view &data) {
 
 struct ViewShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::View; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::View; }
 
   static SHOptionalString help() {
     return SHCCSTR("Defines a viewer (or camera) for a rendered frame based on a view transform matrix");
@@ -90,7 +90,7 @@ struct ViewShard {
   PARAM_PARAMVAR(_ortho, "OrthographicSize", "The orthographic size. (Implies orthographic projection)",
                  {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
   PARAM_PARAMVAR(_orthoType, "OrthographicSizeType", "The type of orthographic size. (Implies orthographic projection)",
-                 {CoreInfo::NoneType, Types::OrthographicSizeTypeEnumInfo::Type});
+                 {CoreInfo::NoneType, ShardsTypes::OrthographicSizeTypeEnumInfo::Type});
   PARAM_PARAMVAR(_fov, "Fov", "The vertical field of view. (In radians. Implies perspective projection)",
                  {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
   PARAM_PARAMVAR(_near, "Near", "Near clipping distance",
@@ -104,7 +104,7 @@ struct ViewShard {
   bool _isPerspective = false;
 
   void warmup(SHContext *context) {
-    _view = Types::ViewObjectVar.New();
+    _view = ShardsTypes::ViewObjectVar.New();
 
     PARAM_WARMUP(context);
   }
@@ -113,7 +113,7 @@ struct ViewShard {
     PARAM_CLEANUP(context);
 
     if (_view) {
-      Types::ViewObjectVar.Release(_view);
+      ShardsTypes::ViewObjectVar.Release(_view);
       _view = nullptr;
     }
   }
@@ -188,7 +188,7 @@ struct ViewShard {
       view->proj = proj;
     }
 
-    return Types::ViewObjectVar.Get(_view);
+    return ShardsTypes::ViewObjectVar.Get(_view);
   }
 };
 
@@ -199,14 +199,14 @@ struct ViewShard {
 // :Textures {:outputName {:Texture .textureVar :Mip 1 :Face 0}}
 struct RenderIntoShard {
   // static inline std::array<SHString, 4> TextureSubresourceTableKeys{"Texture", "Face", "Mip", ""};
-  // static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType,
+  // static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(ShardsTypes::Texture), CoreInfo::IntType,
   //                                                          Type::VariableOf(CoreInfo::IntType)};
   // static inline shards::Type TextureSubresourceTable = Type::TableOf(TextureSubresourceTableTypes,
   // TextureSubresourceTableKeys);
   // Can not check, support any table for now
   static inline shards::Type TextureSubresourceTable = CoreInfo::AnyTableType;
 
-  static inline shards::Types AttachmentTableTypes{TextureSubresourceTable, Type::VariableOf(Types::Texture)};
+  static inline shards::Types AttachmentTableTypes{TextureSubresourceTable, Type::VariableOf(ShardsTypes::Texture)};
   static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -261,7 +261,7 @@ struct RenderIntoShard {
     if (input.valueType == SHType::ContextVar) {
       ParamVar var{input};
       var.warmup(shContext);
-      return varAsObjectChecked<TexturePtr>(var.get(), Types::Texture);
+      return varAsObjectChecked<TexturePtr>(var.get(), ShardsTypes::Texture);
     } else {
       checkType(input.valueType, SHType::Table, "Attachment");
       auto &table = input.payload.tableValue;
@@ -391,7 +391,7 @@ struct RenderIntoShard {
 };
 
 struct ViewProjectionMatrixShard {
-  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Returns the combined view projection matrix of the view"); }
 
@@ -411,7 +411,7 @@ struct ViewProjectionMatrixShard {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    SHView &shView = varAsObjectChecked<SHView>(input, ShardsTypes::View);
     auto &view = shView.view;
     auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
     _result = linalg::mul(projMatrix, view->view);
@@ -420,7 +420,7 @@ struct ViewProjectionMatrixShard {
 };
 
 struct ViewMatrixShard {
-  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Returns the view matrix of the view"); }
 
@@ -437,7 +437,7 @@ struct ViewMatrixShard {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    SHView &shView = varAsObjectChecked<SHView>(input, ShardsTypes::View);
     auto &view = shView.view;
     _result = view->view;
     return _result;
@@ -445,7 +445,7 @@ struct ViewMatrixShard {
 };
 
 struct ViewRangeShard {
-  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
   static SHOptionalString help() { return SHCCSTR("Returns the view near/far range"); }
 
@@ -460,7 +460,7 @@ struct ViewRangeShard {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    SHView &shView = varAsObjectChecked<SHView>(input, ShardsTypes::View);
     auto &view = shView.view;
     float4x4 mat = view->getProjectionMatrix(float2(1.0f, 1.0f));
     float a = mat[2][2];

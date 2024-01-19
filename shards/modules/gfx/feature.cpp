@@ -65,7 +65,7 @@ struct BuiltinFeatureShard {
   DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, 'feid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::Feature; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Feature; }
 
   static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {BuiltinFeatureIdEnumInfo::Type}}};
   static SHParametersInfo parameters() { return params; }
@@ -92,13 +92,13 @@ struct BuiltinFeatureShard {
 
   void cleanup(SHContext *context) {
     if (_feature) {
-      Types::FeatureObjectVar.Release(_feature);
+      ShardsTypes::FeatureObjectVar.Release(_feature);
       _feature = nullptr;
     }
   }
 
   void warmup(SHContext *context) {
-    _feature = Types::FeatureObjectVar.New();
+    _feature = ShardsTypes::FeatureObjectVar.New();
     switch (_id) {
     case BuiltinFeatureId::Transform:
       *_feature = features::Transform::create();
@@ -118,29 +118,29 @@ struct BuiltinFeatureShard {
     }
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return Types::FeatureObjectVar.Get(_feature); }
+  SHVar activate(SHContext *context, const SHVar &input) { return ShardsTypes::FeatureObjectVar.Get(_feature); }
 };
 
 struct FeatureShard {
-  static inline shards::Types GeneratedViewInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
+  static inline shards::Types GeneratedViewInputTableTypes{{ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq}};
   static inline std::array<SHVar, 3> GeneratedViewInputTableKeys{Var("Queue"), Var("View"), Var("Features")};
   static inline Type GeneratedViewInputTableType = Type::TableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
 
   static inline shards::Type DrawableDataSeqType = Type::SeqOf(CoreInfo::IntType);
   static inline shards::Types GeneratedDrawInputTableTypes{
-      {Types::DrawQueue, Types::View, Types::FeatureSeq, DrawableDataSeqType}};
+      {ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq, DrawableDataSeqType}};
   static inline std::array<SHVar, 4> GeneratedDrawInputTableKeys{Var("Queue"), Var("View"), Var("Features"), Var("Drawables")};
   static inline Type GeneratedDrawInputTableType = Type::TableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
   static inline Type ShaderEntryPointType = Type::SeqOf(CoreInfo::AnyTableType);
 
-  static inline shards::Types ParamSpecEntryTypes{Types::ShaderParamOrVarTypes, {CoreInfo::AnyTableType}};
+  static inline shards::Types ParamSpecEntryTypes{ShardsTypes::ShaderParamOrVarTypes, {CoreInfo::AnyTableType}};
   static inline Type ParameterSpecType = Type::TableOf(ParamSpecEntryTypes);
 
   static inline Type RequiredAttributesSeqType = Type::SeqOf(RequiredAttributesEnumInfo::Type);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::Feature; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Feature; }
 
   // A shader entry point looks like the following
   //   {:Name <string> :Stage <ProgrammableGraphicsStage> :Before [...] :After [...] :EntryPoint (-> ...)}
@@ -211,7 +211,7 @@ public:
     _branchesWarmedUp = false;
 
     if (_featurePtr) {
-      Types::FeatureObjectVar.Release(_featurePtr);
+      ShardsTypes::FeatureObjectVar.Release(_featurePtr);
       _featurePtr = nullptr;
     }
   }
@@ -219,7 +219,7 @@ public:
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _featurePtr = Types::FeatureObjectVar.New();
+    _featurePtr = ShardsTypes::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
   }
 
@@ -240,14 +240,14 @@ public:
         std::visit(
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
-              if constexpr (std::is_same_v<T, shader::NumFieldType>) {
+              if constexpr (std::is_same_v<T, shader::NumType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
                 std::string ks(SHSTRVIEW(k));
                 auto &param = outBasicParams[ks] = NumParamDecl(arg);
                 param.bindGroupId = bindingFreq;
-              } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
+              } else if constexpr (std::is_same_v<T, shader::TextureType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
@@ -318,7 +318,7 @@ public:
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     composeGeneratorWires(data);
-    return Types::Feature;
+    return ShardsTypes::Feature;
   }
 
   void applyBlendComponent(SHContext *context, BlendComponent &blendComponent, const SHVar &input) {
@@ -364,7 +364,7 @@ public:
 
     SHVar depthCompareVar;
     if (getFromTable(context, inputTable, Var("DepthCompare"), depthCompareVar)) {
-      checkEnumType(depthCompareVar, Types::CompareFunctionEnumInfo::Type, ":Shaders DepthCompare");
+      checkEnumType(depthCompareVar, ShardsTypes::CompareFunctionEnumInfo::Type, ":Shaders DepthCompare");
       state.set_depthCompare(WGPUCompareFunction(depthCompareVar.payload.enumValue));
     }
 
@@ -377,7 +377,7 @@ public:
     if (getFromTable(context, inputTable, Var("ColorWrite"), colorWriteVar)) {
       WGPUColorWriteMask mask{};
       auto apply = [&mask](SHVar &var) {
-        checkEnumType(var, Types::ColorMaskEnumInfo::Type, ":ColorWrite");
+        checkEnumType(var, ShardsTypes::ColorMaskEnumInfo::Type, ":ColorWrite");
         (uint8_t &)mask |= WGPUColorWriteMask(var.payload.enumValue);
       };
 
@@ -433,7 +433,7 @@ public:
 
     SHVar stageVar;
     if (getFromTable(context, inputTable, Var("Stage"), stageVar)) {
-      checkEnumType(stageVar, Types::ProgrammableGraphicsStageEnumInfo::Type, ":Shaders Stage");
+      checkEnumType(stageVar, ShardsTypes::ProgrammableGraphicsStageEnumInfo::Type, ":Shaders Stage");
       entryPoint.stage = ProgrammableGraphicsStage(stageVar.payload.enumValue);
     } else
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
@@ -493,16 +493,16 @@ public:
   }
 
   // Returns the field type, or std::monostate if not specified
-  std::optional<shader::FieldType> getShaderFieldType(SHContext *context, const SHTable &inputTable) {
-    std::optional<shader::FieldType> fieldType;
+  std::optional<shader::Type> getShaderFieldType(SHContext *context, const SHTable &inputTable) {
+    std::optional<shader::Type> fieldType;
 
     SHVar typeVar;
     if (getFromTable(context, inputTable, Var("Type"), typeVar)) {
       auto enumType = Type::Enum(typeVar.payload.enumVendorId, typeVar.payload.enumTypeId);
-      if (enumType == Types::ShaderFieldBaseTypeEnumInfo::Type) {
-        checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
+      if (enumType == ShardsTypes::ShaderFieldBaseTypeEnumInfo::Type) {
+        checkEnumType(typeVar, ShardsTypes::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
         fieldType = ShaderFieldBaseType(typeVar.payload.enumValue);
-      } else if (enumType == Types::TextureDimensionEnumInfo::Type) {
+      } else if (enumType == ShardsTypes::TextureDimensionEnumInfo::Type) {
         return TextureDimension(typeVar.payload.enumValue);
       } else {
         throw formatException("Invalid Type for shader Param, should be either TextureDimension... or ShaderFieldBaseType...");
@@ -513,10 +513,10 @@ public:
     if (getFromTable(context, inputTable, Var("Dimension"), dimVar)) {
       checkType(dimVar.valueType, SHType::Int, ":Dimension");
       if (!fieldType)
-        fieldType = shader::NumFieldType();
-      shader::NumFieldType &numFieldType = std::get<shader::NumFieldType>(fieldType.value());
+        fieldType = shader::NumType();
+      shader::NumType &NumType = std::get<shader::NumType>(fieldType.value());
 
-      numFieldType.numComponents = size_t(typeVar.payload.intValue);
+      NumType.numComponents = size_t(typeVar.payload.intValue);
     }
 
     return fieldType;
@@ -525,7 +525,7 @@ public:
   void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
     SHVar tmp;
     std::optional<std::variant<NumParameter, TextureParameter>> defaultValue;
-    std::optional<shader::FieldType> explicitType;
+    std::optional<shader::Type> explicitType;
     std::optional<gfx::BindGroupId> bindGroup;
     std::optional<gfx::TextureSampleType> sampleType;
     if (value.valueType == SHType::Table) {
@@ -536,12 +536,12 @@ public:
       }
 
       if (getFromTable(context, inputTable, Var("BindGroup"), tmp)) {
-        checkEnumType(tmp, Types::BindGroupIdEnumInfo::Type, "BindGroup");
+        checkEnumType(tmp, ShardsTypes::BindGroupIdEnumInfo::Type, "BindGroup");
         bindGroup = (BindGroupId)tmp.payload.enumValue;
       }
 
       if (getFromTable(context, inputTable, Var("SampleType"), tmp)) {
-        checkEnumType(tmp, Types::TextureSampleTypeEnumInfo::Type, "SampleType");
+        checkEnumType(tmp, ShardsTypes::TextureSampleTypeEnumInfo::Type, "SampleType");
         sampleType = (TextureSampleType)tmp.payload.enumValue;
       }
 
@@ -577,9 +577,9 @@ public:
       std::visit(
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, shader::NumFieldType>) {
+            if constexpr (std::is_same_v<T, shader::NumType>) {
               feature.shaderParams[name] = NumParamDecl(arg);
-            } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
+            } else if constexpr (std::is_same_v<T, shader::TextureType>) {
               auto &param = feature.textureParams[name];
               param = TextureParamDecl(arg);
               if (bindGroup)
@@ -680,7 +680,7 @@ public:
       });
     }
 
-    return Types::FeatureObjectVar.Get(_featurePtr);
+    return ShardsTypes::FeatureObjectVar.Get(_featurePtr);
   }
 
   static void collectParameters(IParameterCollector &collector, SHContext *context, const SHTable &table) {
@@ -717,8 +717,8 @@ public:
     SHDrawQueue queue{ctx.queue};
     SHView view{.view = ctx.view};
     TableVar input;
-    input.get<Var>(Var("Queue")) = Var::Object(&queue, Types::DrawQueue);
-    input.get<Var>(Var("View")) = Var::Object(&view, Types::View);
+    input.get<Var>(Var("Queue")) = Var::Object(&queue, ShardsTypes::DrawQueue);
+    input.get<Var>(Var("View")) = Var::Object(&view, ShardsTypes::View);
 
     if constexpr (PerDrawable) {
       FeatureDrawableGeneratorContext &drawableCtx = ctx;
@@ -734,7 +734,7 @@ public:
       FeaturePtr feature = weakFeature.lock();
       if (feature) {
         _featurePtrsTemp.push_back(feature);
-        features.push_back(Var::Object(&_featurePtrsTemp.back(), Types::Feature));
+        features.push_back(Var::Object(&_featurePtrsTemp.back(), ShardsTypes::Feature));
       }
     }
 

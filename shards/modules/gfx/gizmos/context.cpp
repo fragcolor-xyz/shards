@@ -24,8 +24,8 @@ struct GizmosContextShard {
   PARAM_PARAMVAR(_view, "View",
                  "The view used to render the gizmos."
                  "When drawing over a scene, the view should be the same.",
-                 {Type::VariableOf(gfx::Types::View)});
-  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::Types::DrawQueue)});
+                 {Type::VariableOf(gfx::ShardsTypes::View)});
+  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::ShardsTypes::DrawQueue)});
   PARAM_PARAMVAR(_scaling, "Scaling", "The scaling factor for gizmo elements.",
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_interactive, "Interactive", "Used to togle gizmo interactions on/off.",

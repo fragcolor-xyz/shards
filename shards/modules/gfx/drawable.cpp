@@ -18,13 +18,13 @@
 using namespace shards;
 namespace gfx {
 struct DrawableShard {
-  static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
+  static inline Type MeshVarType = Type::VariableOf(ShardsTypes::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   PARAM_PARAMVAR(_mesh, "Mesh", "The mesh to use for this drawable.", {MeshVarType});
-  PARAM_EXT(ParamVar, _material, Types::MaterialParameterInfo);
-  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
-  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_EXT(ParamVar, _material, ShardsTypes::MaterialParameterInfo);
+  PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
 
   PARAM_IMPL(PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
@@ -32,7 +32,7 @@ struct DrawableShard {
   static SHOptionalString inputHelp() { return SHCCSTR("The drawable's transform"); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
-  static SHTypesInfo outputTypes() { return Types::Drawable; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Drawable; }
 
   SHDrawable *_drawable{};
 
@@ -43,7 +43,7 @@ struct DrawableShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _drawable = Types::DrawableObjectVar.New();
+    _drawable = ShardsTypes::DrawableObjectVar.New();
     _drawable->drawable = std::make_shared<MeshDrawable>();
   }
 
@@ -51,7 +51,7 @@ struct DrawableShard {
     PARAM_CLEANUP(context);
 
     if (_drawable) {
-      Types::DrawableObjectVar.Release(_drawable);
+      ShardsTypes::DrawableObjectVar.Release(_drawable);
       _drawable = {};
     }
   }
@@ -63,7 +63,7 @@ struct DrawableShard {
     if (_mesh.isNone())
       throw formatException("Mesh is required");
 
-    return Types::Drawable;
+    return ShardsTypes::Drawable;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -77,14 +77,14 @@ struct DrawableShard {
       changed = true;
     }
 
-    auto mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    auto mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), ShardsTypes::Mesh);
     if (mesh != meshDrawable->mesh) {
       meshDrawable->mesh = mesh;
       changed = true;
     }
 
     if (!_material.isNone()) {
-      auto newMat = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
+      auto newMat = varAsObjectChecked<SHMaterial>(_material.get(), ShardsTypes::Material).material;
       if (newMat != meshDrawable->material) {
         meshDrawable->material = newMat;
         changed = true;
@@ -105,18 +105,18 @@ struct DrawableShard {
     if (changed)
       meshDrawable->update();
 
-    return Types::DrawableObjectVar.Get(_drawable);
+    return ShardsTypes::DrawableObjectVar.Get(_drawable);
   }
 };
 
 // MainWindow is only required if Queue is not specified
 struct DrawShard {
-  static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable};
+  static inline shards::Types SingleDrawableTypes = shards::Types{ShardsTypes::Drawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
-  static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
+  static inline shards::Types DrawableTypes{ShardsTypes::Drawable, DrawableSeqType};
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
-                 {Type::VariableOf(Types::DrawQueue)});
+                 {Type::VariableOf(ShardsTypes::DrawQueue)});
   PARAM_IMPL(PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
@@ -144,7 +144,7 @@ struct DrawShard {
     return CoreInfo::NoneType;
   }
 
-  DrawQueue &getDrawQueue() { return *varAsObjectChecked<SHDrawQueue>(_queue.get(), Types::DrawQueue).queue.get(); }
+  DrawQueue &getDrawQueue() { return *varAsObjectChecked<SHDrawQueue>(_queue.get(), ShardsTypes::DrawQueue).queue.get(); }
 
   template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
@@ -157,7 +157,7 @@ struct DrawShard {
             addDrawableToQueue(drawable); //
           }
         },
-        varAsObjectChecked<SHDrawable>(input, Types::Drawable).drawable);
+        varAsObjectChecked<SHDrawable>(input, ShardsTypes::Drawable).drawable);
     return SHVar{};
   }
 
@@ -181,8 +181,8 @@ template <> struct PoolItemTraits<gfx::SHDrawQueue *> {
     queue->queue = std::make_shared<gfx::DrawQueue>();
     return queue;
   }
-  void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
-  size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
+  void release(gfx::SHDrawQueue *&v) { gfx::ShardsTypes::DrawQueueObjectVar.Release(v); }
+  size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::ShardsTypes::DrawQueueObjectVar.GetRefCount(v); }
   bool canRecycle(gfx::SHDrawQueue *&v) { return getRefCount(v) == 1; }
   void recycled(gfx::SHDrawQueue *&v) { v->queue->clear(); }
 };
@@ -191,7 +191,7 @@ template <> struct PoolItemTraits<gfx::SHDrawQueue *> {
 namespace gfx {
 struct DrawQueueShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::DrawQueue; }
   static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
 
   PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
@@ -218,7 +218,7 @@ struct DrawQueueShard {
     } else {
       _output.emplace<SHDrawQueue *>();
     }
-    return Types::DrawQueue;
+    return ShardsTypes::DrawQueue;
   }
 
   void warmup(SHContext *context) {
@@ -227,7 +227,7 @@ struct DrawQueueShard {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
       auto &queue = *_queue;
       assert(!queue);
-      queue = Types::DrawQueueObjectVar.New();
+      queue = ShardsTypes::DrawQueueObjectVar.New();
       queue->queue = std::make_shared<DrawQueue>();
       initQueue(queue->queue);
     }
@@ -239,7 +239,7 @@ struct DrawQueueShard {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
       auto &queue = *_queue;
       if (queue) {
-        Types::DrawQueueObjectVar.Release(queue);
+        ShardsTypes::DrawQueueObjectVar.Release(queue);
         queue = nullptr;
       }
     }
@@ -253,19 +253,19 @@ struct DrawQueueShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
       (*_queue)->queue->clear();
-      return Types::DrawQueueObjectVar.Get((*_queue));
+      return ShardsTypes::DrawQueueObjectVar.Get((*_queue));
     } else {
       auto &pool = std::get<Pool<SHDrawQueue *>>(_output);
       pool.recycle();
       auto queue = pool.newValue([&](SHDrawQueue *&_queue) { initQueue(_queue->queue); });
       queue->queue->clear();
-      return Types::DrawQueueObjectVar.Get(queue);
+      return ShardsTypes::DrawQueueObjectVar.Get(queue);
     }
   }
 };
 
 struct ClearQueueShard {
-  static SHTypesInfo inputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::DrawQueue; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Clears a draw queue"); }
 
@@ -288,9 +288,9 @@ struct ClearQueueShard {
 };
 
 struct GetQueueDrawablesShard {
-  static inline const Type OutputSeqType = Type::SeqOf(Types::Drawable);
+  static inline const Type OutputSeqType = Type::SeqOf(ShardsTypes::Drawable);
 
-  static SHTypesInfo inputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::DrawQueue; }
   static SHTypesInfo outputTypes() { return OutputSeqType; }
   static SHOptionalString help() { return SHCCSTR("Retrieves the individual drawables in a draw queue"); }
 
@@ -314,10 +314,10 @@ struct GetQueueDrawablesShard {
     _outputSeq.clear();
     _objects.reserve(drawables.size());
     for (auto &drawable : drawables) {
-      SHDrawable *ptr = _objects.emplace_back(Types::DrawableObjectVar.New());
+      SHDrawable *ptr = _objects.emplace_back(ShardsTypes::DrawableObjectVar.New());
       ptr->assign(drawable->clone());
-      _outputSeq.push_back(Types::DrawableObjectVar.Get(ptr));
-      Types::DrawableObjectVar.Release(ptr);
+      _outputSeq.push_back(ShardsTypes::DrawableObjectVar.Get(ptr));
+      ShardsTypes::DrawableObjectVar.Release(ptr);
     }
 
     return _outputSeq;

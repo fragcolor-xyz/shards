@@ -2,7 +2,7 @@
 #define E3C5828A_F272_4897_B1E6_1A4364B4D5D3
 
 #include <string>
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "shader/generator.hpp"
 #include "shader/entry_point.hpp"
 #include "shader/textures.hpp"
@@ -26,11 +26,15 @@ struct BufferBindingBuilder {
   // Identifier of the binding
   FastString name;
   // The builder that is being used to define the binding's structure layout
-  shader::UniformBufferLayoutBuilder layoutBuilder;
+  shader::StructType structType;
+  // The optimized version of the struct type, once built
+  std::optional<shader::StructType> optimizedStructType;
+  // Computed layout of the struct type
+  std::optional<shader::StructLayout> optimizedStructLayout;
   // Set to true if the binding is not used by any shader function
   bool unused = false;
   // The type of storage to use
-  shader::BufferType bufferType = shader::BufferType::Uniform;
+  shader::AddressSpace addressSpace = shader::AddressSpace::Uniform;
   // Specifies if the binding is a single structure or a fixed/dynamic array of structures
   shader::Dimension dimension;
   // Specifies that this binding accepts a dynamic offset during the setting of the bind group
@@ -38,6 +42,7 @@ struct BufferBindingBuilder {
   // Bind group index
   size_t bindGroup{};
   // Binding index in the bind group
+  // Don't set manually, this value is computed
   size_t binding{};
 };
 
@@ -92,7 +97,7 @@ private:
   void buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits);
 
   // Setup buffer/texture definitions in the shader generator
-  void setupShaderDefinitions(const WGPULimits &deviceLimits, bool final);
+  void setupShaderDefinitions(const WGPULimits &deviceLimits);
 
   void setupShaderOutputFields();
 
@@ -101,7 +106,7 @@ private:
   void finalize(WGPUDevice device);
 
   // Strip unused fields from bindings
-  void optimizeBufferLayouts(const shader::IndexedBindings &indexedShaderDindings);
+  void buildOptimalBufferLayouts(const WGPULimits &deviceLimits, const shader::IndexedBindings &indexedShaderDindings);
 };
 
 // Low-level entry-point for modifying render pipelines

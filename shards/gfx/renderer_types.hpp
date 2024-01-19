@@ -10,7 +10,7 @@
 #include "feature.hpp"
 #include "params.hpp"
 #include "render_target.hpp"
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "shader/textures.hpp"
 #include "shader/fmt.hpp"
 #include "renderer.hpp"
@@ -34,10 +34,10 @@
 
 namespace gfx::detail {
 
-using shader::NumFieldType;
+using shader::NumType;
 using shader::TextureBindingLayout;
-using shader::UniformBufferLayout;
-using shader::UniformLayout;
+using shader::StructLayout;
+using shader::StructLayoutItem;
 
 inline auto getLogger() {
   static auto logger = gfx::getLogger();
@@ -81,7 +81,7 @@ struct PipelineDrawables;
 
 struct BufferBinding {
   FastString name;
-  UniformBufferLayout layout;
+  StructLayout layout;
   size_t index;
   shader::Dimension dimension;
 };

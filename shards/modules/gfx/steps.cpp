@@ -35,7 +35,7 @@ WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &form
       return WGPUTextureFormat_Depth32Float;
     }
   } else {
-    checkEnumType(formatVar, Types::TextureFormatEnumInfo::Type, "Attachment format");
+    checkEnumType(formatVar, ShardsTypes::TextureFormatEnumInfo::Type, "Attachment format");
     return WGPUTextureFormat(formatVar.payload.enumValue);
   }
 
@@ -93,7 +93,7 @@ void applyOutputs(SHContext *context, RenderStepOutput &output, const SHVar &inp
     WGPUTextureFormat textureFormat{};
     TexturePtr texture;
     if (hasTexture) {
-      texture = varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
+      texture = varAsObjectChecked<TexturePtr>(textureVar, ShardsTypes::Texture);
       textureFormat = texture->getFormat().pixelFormat;
     } else {
       textureFormat = getAttachmentFormat(attachmentName, formatVar);
@@ -136,7 +136,7 @@ void applyOutputs(SHContext *context, RenderStepOutput &output, const SHVar &inp
     }
 
     if (hasTexture) {
-      const TexturePtr &texture = varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
+      const TexturePtr &texture = varAsObjectChecked<TexturePtr>(textureVar, ShardsTypes::Texture);
       auto textureFormatFlags = texture->getFormat().flags;
       if (!textureFormatFlagsContains(textureFormatFlags, TextureFormatFlags::RenderAttachment)) {
         throw std::runtime_error("Invalid output texture, it wasn't created as a render target");
@@ -256,19 +256,19 @@ struct HashState {
 };
 
 struct DrawablePassShard {
-  static inline Type DrawQueueVarType = Type::VariableOf(Types::DrawQueue);
+  static inline Type DrawQueueVarType = Type::VariableOf(ShardsTypes::DrawQueue);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
-  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
+  PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
   PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
-  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
-  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
-  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
+  PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_sort, "Sort",
                  "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
-                 {CoreInfo::NoneType, Types::SortModeEnumInfo::Type, Type::VariableOf(Types::SortModeEnumInfo::Type)});
+                 {CoreInfo::NoneType, ShardsTypes::SortModeEnumInfo::Type, Type::VariableOf(ShardsTypes::SortModeEnumInfo::Type)});
   PARAM_VAR(_ignoreDrawableFeatures, "IgnoreDrawableFeatures",
             "Ignore any features on drawables and only use the features specified in this pass",
             {CoreInfo::NoneType, CoreInfo::BoolType});
@@ -289,7 +289,7 @@ struct DrawablePassShard {
 
   void cleanup(SHContext *context) {
     if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
+      ShardsTypes::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
 
@@ -297,14 +297,14 @@ struct DrawablePassShard {
   }
 
   void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
+    _step = ShardsTypes::PipelineStepObjectVar.New();
     *_step = makePipelineStep(RenderDrawablesStep());
 
     PARAM_WARMUP(context);
   }
 
   void applyQueue(SHContext *context, RenderDrawablesStep &step) {
-    step.drawQueue = varAsObjectChecked<DrawQueuePtr>(_queue.get(), Types::DrawQueue);
+    step.drawQueue = varAsObjectChecked<DrawQueuePtr>(_queue.get(), ShardsTypes::DrawQueue);
   }
 
   void applySorting(SHContext *context, RenderDrawablesStep &step) {
@@ -338,21 +338,21 @@ struct DrawablePassShard {
       step.id = renderStepIdGenerator.getNext();
     }
 
-    return Types::PipelineStepObjectVar.Get(_step);
+    return ShardsTypes::PipelineStepObjectVar.Get(_step);
   }
 };
 
 struct EffectPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
-  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
-  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
-  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
+  PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
   PARAM_PARAMVAR(_entryPoint, "EntryPoint", "", {CoreInfo::NoneType, CoreInfo::ShardRefSeqType, CoreInfo::ShardRefVarSeqType});
-  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
-  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
                  {CoreInfo::NoneType, CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
 
@@ -384,7 +384,7 @@ struct EffectPassShard {
 
   void cleanup(SHContext *context) {
     if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
+      ShardsTypes::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
 
@@ -392,7 +392,7 @@ struct EffectPassShard {
   }
 
   void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
+    _step = ShardsTypes::PipelineStepObjectVar.New();
     *_step = makePipelineStep(RenderFullscreenStep());
 
     wrapperFeature = std::make_shared<Feature>();
@@ -449,17 +449,17 @@ struct EffectPassShard {
       step.features.push_back(feature);
     }
 
-    return Types::PipelineStepObjectVar.Get(_step);
+    return ShardsTypes::PipelineStepObjectVar.Get(_step);
   }
 };
 
 struct CopyPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
-  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
-  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
-  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
+  PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs));
@@ -478,7 +478,7 @@ struct CopyPassShard {
 
   void cleanup(SHContext *context) {
     if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
+      ShardsTypes::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
 
@@ -486,7 +486,7 @@ struct CopyPassShard {
   }
 
   void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
+    _step = ShardsTypes::PipelineStepObjectVar.New();
     PARAM_WARMUP(context);
   }
 
@@ -522,7 +522,7 @@ struct CopyPassShard {
       shared::applyOutputsToStep(context, step, _outputs.get());
     }
 
-    return Types::PipelineStepObjectVar.Get(_step);
+    return ShardsTypes::PipelineStepObjectVar.Get(_step);
   }
 };
 

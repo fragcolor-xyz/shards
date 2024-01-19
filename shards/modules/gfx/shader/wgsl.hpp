@@ -15,28 +15,28 @@ namespace shader {
 struct IWGSLGenerated {
   virtual ~IWGSLGenerated() = default;
 
-  virtual const FieldType &getType() const = 0;
+  virtual const Type &getType() const = 0;
   virtual blocks::BlockPtr toBlock() const = 0;
 };
 
 struct WGSLSource : public IWGSLGenerated {
-  FieldType fieldType;
+  Type fieldType;
   std::string source;
 
-  WGSLSource(FieldType fieldType, std::string &&source) : fieldType(fieldType), source(std::move(source)) {}
+  WGSLSource(Type fieldType, std::string &&source) : fieldType(fieldType), source(std::move(source)) {}
 
-  const FieldType &getType() const { return fieldType; }
+  const Type &getType() const { return fieldType; }
   blocks::BlockPtr toBlock() const { return blocks::makeBlock<blocks::Direct>(source); }
 };
 
 struct WGSLBlock : public IWGSLGenerated {
-  FieldType fieldType;
+  Type fieldType;
   blocks::BlockPtr block;
 
   WGSLBlock(WGSLBlock &&) = default;
-  WGSLBlock(FieldType fieldType, blocks::BlockPtr &&block) : fieldType(fieldType), block(std::move(block)) {}
+  WGSLBlock(Type fieldType, blocks::BlockPtr &&block) : fieldType(fieldType), block(std::move(block)) {}
 
-  const FieldType &getType() const { return fieldType; }
+  const Type &getType() const { return fieldType; }
   blocks::BlockPtr toBlock() const { return block->clone(); }
 };
 

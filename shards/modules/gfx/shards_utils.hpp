@@ -50,7 +50,7 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
   checkType(input.valueType, SHType::Seq, ":Features");
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
-    outFeatures.push_back(varAsObjectChecked<FeaturePtr>(elem, Types::Feature));
+    outFeatures.push_back(varAsObjectChecked<FeaturePtr>(elem, ShardsTypes::Feature));
   }
 }
 
@@ -64,7 +64,7 @@ inline bool applyFeaturesIfChanged(SHContext *context, std::vector<FeaturePtr> &
   outFeatures.resize(input.payload.seqValue.len);
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
-    auto &newFeature = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
+    auto &newFeature = varAsObjectChecked<FeaturePtr>(elem, ShardsTypes::Feature);
     auto &outFeature = outFeatures[i];
     if (outFeature != newFeature) {
       outFeature = newFeature;

@@ -22,7 +22,7 @@
 #include "shader/fmt.hpp"
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "drawable_processor.hpp"
 #include "texture.hpp"
 #include "texture_placeholder.hpp"

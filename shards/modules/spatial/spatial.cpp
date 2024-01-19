@@ -32,8 +32,8 @@ struct SpatialUIContextShard {
 
   std::shared_ptr<gfx::GizmoRenderer> _debugRenderer;
 
-  PARAM_PARAMVAR(_queue, "Queue", "The draw queue to insert draw commands into.", {Type::VariableOf(gfx::Types::DrawQueue)});
-  PARAM_PARAMVAR(_view, "View", "The view that is being used to render.", {Type::VariableOf(gfx::Types::View)});
+  PARAM_PARAMVAR(_queue, "Queue", "The draw queue to insert draw commands into.", {Type::VariableOf(gfx::ShardsTypes::DrawQueue)});
+  PARAM_PARAMVAR(_view, "View", "The view that is being used to render.", {Type::VariableOf(gfx::ShardsTypes::View)});
   PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_scale, "Scale", "The scale of how many UI units per world unit.", {CoreInfo::FloatType});
   PARAM_VAR(_debug, "Debug", "Visualize panel outlines and pointer input being sent to panels.", {CoreInfo::BoolType});
@@ -96,8 +96,8 @@ struct SpatialUIContextShard {
     auto &viewStack = _graphicsContext->renderer->getViewStack();
     auto viewStackTop = viewStack.getOutput();
 
-    auto &queue = varAsObjectChecked<gfx::SHDrawQueue>(_queue.get(), gfx::Types::DrawQueue);
-    auto &view = varAsObjectChecked<gfx::SHView>(_view.get(), gfx::Types::View);
+    auto &queue = varAsObjectChecked<gfx::SHDrawQueue>(_queue.get(), gfx::ShardsTypes::DrawQueue);
+    auto &view = varAsObjectChecked<gfx::SHView>(_view.get(), gfx::ShardsTypes::View);
 
     // TODO: Move to input context
     // _inputBuffer.clear();

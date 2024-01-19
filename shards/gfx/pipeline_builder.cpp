@@ -1,7 +1,7 @@
 #include "pipeline_builder.hpp"
 #include "enums.hpp"
 #include "renderer_types.hpp"
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "log.hpp"
 #include "shader/textures.hpp"
 #include "shader/generator.hpp"
@@ -19,37 +19,22 @@ namespace gfx {
 
 static auto logger = getLogger();
 
-size_t alignBufferLayout(size_t inSize, const BufferBindingBuilder &builder, const WGPULimits &deviceLimits) {
-  if (builder.bufferType == BufferType::Storage)
-    return alignTo(inSize, deviceLimits.minStorageBufferOffsetAlignment);
-
-  // Assuming no binding offset is applied, uniform buffers need to be aligned to 16
-  // https://www.w3.org/TR/WGSL/#address-space-layout-constraints
-  if (builder.bufferType == BufferType::Uniform)
-    return alignTo(inSize, 16);
-  return inSize;
-}
-
-static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bindings, bool isFinal,
+static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bindings,
                                    std::vector<shader::BufferBinding> &outShaderBindings, size_t &bindingCounter,
                                    size_t bindGroup, const WGPULimits &deviceLimits) {
   for (auto &builder : bindings) {
     builder->bindGroup = bindGroup;
     builder->binding = bindingCounter++;
 
-    auto &shaderBinding = outShaderBindings.emplace_back(shader::BufferBinding{
+    outShaderBindings.emplace_back(shader::BufferBinding{
         .bindGroup = builder->bindGroup,
         .binding = builder->binding,
         .name = builder->name,
-        .layout = !isFinal ? builder->layoutBuilder.getCurrentFinalLayout() : builder->layoutBuilder.finalize(),
+        // Use the optimized type when available, original type as a fallback
+        .layout = builder->optimizedStructType.value_or(builder->structType),
+        .addressSpace = builder->addressSpace,
+        .dimension = builder->dimension,
     });
-
-    // Align the struct to storage buffer offset requriements
-    UniformBufferLayout &layout = shaderBinding.layout;
-    layout.maxAlignment = alignBufferLayout(layout.maxAlignment, *builder, deviceLimits);
-
-    shaderBinding.type = builder->bufferType;
-    shaderBinding.dimension = builder->dimension;
   }
 }
 
@@ -58,6 +43,9 @@ static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builder
                               std::vector<BufferBindingRef> &outDynamicBufferRefs, const WGPULimits &limits) {
   size_t index = 0;
   for (auto &builder : builders) {
+    if (builder->unused)
+      continue;
+
     if (builder->bindGroup != bindGroupIndex)
       continue;
 
@@ -68,20 +56,22 @@ static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builder
     auto &bufferBinding = bglEntry.buffer;
     bufferBinding.hasDynamicOffset = builder->hasDynamicOffset;
 
-    switch (builder->bufferType) {
-    case shader::BufferType::Uniform:
+    switch (builder->addressSpace) {
+    case shader::AddressSpace::Uniform:
       bufferBinding.type = WGPUBufferBindingType_Uniform;
       break;
-    case shader::BufferType::Storage:
+    case shader::AddressSpace::Storage:
       bufferBinding.type = WGPUBufferBindingType_ReadOnlyStorage;
+      break;
+    case shader::AddressSpace::StorageRW:
+      bufferBinding.type = WGPUBufferBindingType_Storage;
       break;
     }
 
     if (builder->hasDynamicOffset)
       outDynamicBufferRefs.push_back(BufferBindingRef{.bindGroup = bindGroupIndex, .bufferIndex = index});
 
-    bufferBinding.minBindingSize = builder->layoutBuilder.getCurrentFinalLayout().size;
-    bufferBinding.minBindingSize = uint64_t(alignBufferLayout(size_t(bufferBinding.minBindingSize), *builder, limits));
+    bufferBinding.minBindingSize = builder->optimizedStructLayout->size;
 
     ++index;
   }
@@ -149,7 +139,8 @@ void PipelineBuilder::collectShaderEntryPoints() {
   }
 }
 
-void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &indexedShaderDindings) {
+void PipelineBuilder::buildOptimalBufferLayouts(const WGPULimits &deviceLimits,
+                                                const shader::IndexedBindings &indexedShaderDindings) {
   auto &usedBufferBindings = indexedShaderDindings.bufferBindings;
   for (auto &bufferBinding : bufferBindings) {
     auto it = std::find_if(usedBufferBindings.begin(), usedBufferBindings.end(),
@@ -159,12 +150,41 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
       continue;
     }
 
+    StructType &optimalStruct = bufferBinding.optimizedStructType.emplace();
     auto &accessedFields = it->accessedFields;
-    auto &layoutBuilder = bufferBinding.layoutBuilder;
-    layoutBuilder.optimize([&](FastString fieldName, const UniformLayout &fieldLayout) {
-      auto it = accessedFields.find(fieldName);
-      return it != accessedFields.end();
-    });
+    StructLayoutBuilder builder(bufferBinding.addressSpace);
+    for (auto &f : bufferBinding.structType->entries) {
+      auto it = accessedFields.find(f.name);
+      if (it != accessedFields.end()) {
+        builder.push(f.name, f.type);
+        optimalStruct->addField(f.name, f.type);
+      }
+    }
+
+    // Update alignment requirements
+    {
+      size_t maxAlign = builder.getCurrentFinalLayout().maxAlignment;
+
+      // Assuming no binding offset is applied, uniform buffers need to be aligned to 16
+      // https://www.w3.org/TR/WGSL/#address-space-layout-constraints
+      if (bufferBinding.addressSpace == AddressSpace::Uniform)
+        maxAlign = alignTo(maxAlign, 16);
+
+      if (bufferBinding.hasDynamicOffset) {
+        if (bufferBinding.addressSpace == AddressSpace::Storage)
+          maxAlign = alignTo(maxAlign, deviceLimits.minStorageBufferOffsetAlignment);
+        else
+          maxAlign = alignTo(maxAlign, deviceLimits.minUniformBufferOffsetAlignment);
+      }
+
+      auto alignItemOpt = builder.forceAlignmentTo(maxAlign);
+      if (alignItemOpt) {
+        const StructLayoutItem &item = alignItemOpt->get();
+        optimalStruct->addField("_struct_padding_", item.type);
+      }
+    }
+
+    bufferBinding.optimizedStructLayout = builder.finalize();
   }
 }
 
@@ -175,16 +195,16 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   auto &objectBinding = getOrCreateBufferBinding("object");
   objectBinding.bindGroupId = BindGroupId::Draw;
 
-  auto &objectLayoutBuilder = objectBinding.layoutBuilder;
-  auto &viewLayoutBuilder = viewBinding.layoutBuilder;
-  auto getParamBuilder = [&](auto &param) -> decltype(objectLayoutBuilder) & {
-    return (param.bindGroupId == BindGroupId::Draw) ? objectLayoutBuilder : viewLayoutBuilder;
+  auto &objectStruct = objectBinding.structType;
+  auto &viewStruct = viewBinding.structType;
+  auto getStructType = [&](auto &param) -> decltype(objectStruct) & {
+    return (param.bindGroupId == BindGroupId::Draw) ? objectStruct : viewStruct;
   };
 
   for (const Feature *feature : features) {
     // Push parameter declarations
     for (auto &it : feature->shaderParams) {
-      getParamBuilder(it.second).push(it.first, it.second.type);
+      getStructType(it.second)->addField(it.first, it.second.type);
     }
 
     // Apply modifiers
@@ -233,17 +253,17 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   collectTextureBindings();
 
   // Setup temporary shader definitions for indexing
-  setupShaderDefinitions(deviceLimits, false);
+  setupShaderDefinitions(deviceLimits);
 
   // Scan shader for accessed buffer/texture bindings
   shader::IndexedBindings indexedShaderBindings = generator.indexBindings(shaderEntryPoints);
   indexedShaderBindings.dump();
 
   // Remove unused fields from buffer layouts
-  optimizeBufferLayouts(indexedShaderBindings);
+  buildOptimalBufferLayouts(deviceLimits, indexedShaderBindings);
 
   // Update shader definitions with optimized layouts
-  setupShaderDefinitions(deviceLimits, true);
+  setupShaderDefinitions(deviceLimits);
 
   buildPipelineLayout(device, deviceLimits);
 
@@ -323,7 +343,12 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
   // Store run-time binding info
   output.drawBufferBindings.reserve(drawBindings.size());
   output.viewBuffersBindings.reserve(viewBindings.size());
-  for (auto &binding : generator.bufferBindings) {
+
+  // for (auto &binding : generator.bufferBindings) {
+  for (auto &binding : bufferBindings) {
+    if (binding.unused)
+      continue;
+
     std::vector<gfx::detail::BufferBinding> *outArray{};
     if (binding.bindGroup == getDrawBindGroupIndex()) {
       outArray = &output.drawBufferBindings;
@@ -332,7 +357,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
     }
 
     auto &outBinding = (*outArray).emplace_back();
-    outBinding.layout = binding.layout;
+    outBinding.layout = binding.optimizedStructLayout.value();
     outBinding.index = binding.binding;
     outBinding.dimension = binding.dimension;
     outBinding.name = binding.name;
@@ -342,7 +367,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
 // This sets up the buffer/texture definitions for the shader generator
 // NOTE: This logic is tied to buildPipelineLayout which  generates the bind group layouts based on the same rules as this
 // function
-void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, bool isFinal) {
+void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits) {
   drawBindings.clear();
   viewBindings.clear();
   generator.bufferBindings.clear();
@@ -364,11 +389,10 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
     size_t bindGroup = getDrawBindGroupIndex();
     size_t bindingCounter = 0;
 
-    describeShaderBindings(drawBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
+    describeShaderBindings(drawBindings, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
 
     // Append texture to draw bind group
-    generator.textureBindingLayout = !isFinal ? textureBindings.getCurrentFinalLayout(bindingCounter, &bindingCounter)
-                                              : textureBindings.finalize(bindingCounter, &bindingCounter);
+    generator.textureBindingLayout = textureBindings.getCurrentFinalLayout(bindingCounter, &bindingCounter);
     generator.textureBindGroup = bindGroup;
   }
 
@@ -377,12 +401,12 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
     size_t bindGroup = getViewBindGroupIndex();
     size_t bindingCounter = 0;
 
-    describeShaderBindings(viewBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
+    describeShaderBindings(viewBindings, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
   }
 }
 
 void PipelineBuilder::setupShaderOutputFields() {
-  NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+  NumType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
   size_t index = 0;
   size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
@@ -390,7 +414,7 @@ void PipelineBuilder::setupShaderOutputFields() {
     // Ignore depth target, it's implicitly bound to z depth
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
-      NumFieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      NumType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
       switch (formatDesc.storageType) {
       case StorageType::UInt8:
         fieldType.baseType = ShaderFieldBaseType::UInt8;
@@ -448,6 +472,11 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     SPDLOG_LOGGER_ERROR(logger, "{}", ex.what());
     output.compilationError.emplace(ex.what());
     return;
+  }
+
+  auto shaderLogger = shader::getLogger();
+  if (shaderLogger->should_log(spdlog::level::trace)) {
+    shaderLogger->trace("Shader WGSL:\n{}", generatorOutput.wgslSource);
   }
 
   WGPURenderPipelineDescriptor desc = {};
@@ -523,8 +552,10 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   }
 
   output.pipeline.reset(wgpuDeviceCreateRenderPipeline(device, &desc));
-  if (!output.pipeline)
+  if (!output.pipeline) {
     output.compilationError.emplace("Failed to build pipeline");
+    SPDLOG_LOGGER_DEBUG(logger, "Shader WGSL: \n{}", generatorOutput.wgslSource);
+  }
 }
 
 void PipelineBuilder::collectTextureBindings() {

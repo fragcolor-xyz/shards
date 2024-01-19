@@ -92,7 +92,7 @@ struct GLTFShard {
   static inline Type PathInputType = CoreInfo::StringType;
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
-  static inline Type AnimationTable = Type::TableOf(Animations::Types::Animation);
+  static inline Type AnimationTable = Type::TableOf(Animations::ShardsTypes::Animation);
 
   static inline shards::Types InputTableTypes{CoreInfo::Float4x4Type, CoreInfo::AnyType};
   static inline std::array<SHVar, 2> InputTableKeys{Var("transform"), Var()};
@@ -101,16 +101,16 @@ struct GLTFShard {
   static inline shards::Types InputTypes{CoreInfo::Float4x4Type, InputTable};
 
   static SHTypesInfo inputTypes() { return InputTypes; }
-  static SHTypesInfo outputTypes() { return Types::Drawable; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Drawable; }
 
   PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_bytes, "Bytes", "The bytes to load the model from",
                  {CoreInfo::NoneType, CoreInfo::BytesType, CoreInfo::BytesVarType});
   PARAM_PARAMVAR(_copy, "Copy", "Reference to another glTF model to copy",
-                 {CoreInfo::NoneType, Type::VariableOf(Types::Drawable)});
-  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
-  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+                 {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::Drawable)});
+  PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM(ShardsVar, _animController, "AnimationController", "The animation controller", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
              PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController));
@@ -167,12 +167,12 @@ struct GLTFShard {
       childData.inputType = AnimationTable;
       _animController.compose(childData);
       SHLOG_TRACE("Checking animation frame data {}: {}", data.wire->name, _animController.composeResult().outputType);
-      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::Types::AnimationValues, false, true, false))
+      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::ShardsTypes::AnimationValues, false, true, false))
         throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
-                                             _animController.composeResult().outputType, Animations::Types::AnimationValues));
+                                             _animController.composeResult().outputType, Animations::ShardsTypes::AnimationValues));
     }
 
-    return Types::Drawable;
+    return ShardsTypes::Drawable;
   }
 
   void shardifyAnimationData() {
@@ -185,7 +185,7 @@ struct GLTFShard {
 
         std::optional<Var> interpolationValue;
         if (track.interpolation != animation::Interpolation::Linear) {
-          auto &enumType = Animations::Types::InterpolationEnumInfo::Type;
+          auto &enumType = Animations::ShardsTypes::InterpolationEnumInfo::Type;
           switch (track.interpolation) {
           case animation::Interpolation::Step:
             interpolationValue = Var::Enum(Animations::Interpolation::Step, enumType);
@@ -237,7 +237,7 @@ struct GLTFShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _drawable = Types::DrawableObjectVar.New();
+    _drawable = ShardsTypes::DrawableObjectVar.New();
     _drawable->drawable = MeshTreeDrawable::Ptr();
 
     switch (_loadMode) {
@@ -259,7 +259,7 @@ struct GLTFShard {
     PARAM_CLEANUP(context)
 
     if (_drawable) {
-      Types::DrawableObjectVar.Release(_drawable);
+      ShardsTypes::DrawableObjectVar.Release(_drawable);
       _drawable = {};
     }
 
@@ -498,7 +498,7 @@ struct GLTFShard {
         _model.emplace(loadGltfFromMemory(_bytes.get().payload.bytesValue, _bytes.get().payload.bytesSize));
         break;
       case LoadCopy: {
-        auto &shOther = varAsObjectChecked<SHDrawable>(_copy.get(), Types::Drawable);
+        auto &shOther = varAsObjectChecked<SHDrawable>(_copy.get(), ShardsTypes::Drawable);
         MeshTreeDrawable::Ptr &other = *std::get_if<MeshTreeDrawable::Ptr>(&shOther.drawable);
         _model.emplace();
         _model->root = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
@@ -556,7 +556,7 @@ struct GLTFShard {
       }
     }
 
-    return Types::DrawableObjectVar.Get(_drawable);
+    return ShardsTypes::DrawableObjectVar.Get(_drawable);
   }
 };
 

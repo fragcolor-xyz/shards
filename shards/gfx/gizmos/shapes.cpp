@@ -51,11 +51,11 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   code->appendLine("var length = ", ReadInput("directionLen"), ".w");
   code->appendLine("var color = ", ReadInput("color"));
   code->appendLine("var posWS = ", ReadInput("position"));
-  code->appendLine("var world = ", ReadBuffer("world", FieldTypes::Float4x4));
-  code->appendLine("var view = ", ReadBuffer("view", FieldTypes::Float4x4, "view"));
-  code->appendLine("var invView = ", ReadBuffer("invView", FieldTypes::Float4x4, "view"));
-  code->appendLine("var proj = ", ReadBuffer("proj", FieldTypes::Float4x4, "view"));
-  code->appendLine("var viewport = ", ReadBuffer("viewport", FieldTypes::Float4, "view"));
+  code->appendLine("var world = ", ReadBuffer("world", Types::Float4x4));
+  code->appendLine("var view = ", ReadBuffer("view", Types::Float4x4, "view"));
+  code->appendLine("var invView = ", ReadBuffer("invView", Types::Float4x4, "view"));
+  code->appendLine("var proj = ", ReadBuffer("proj", Types::Float4x4, "view"));
+  code->appendLine("var viewport = ", ReadBuffer("viewport", Types::Float4, "view"));
   code->appendLine("var cameraPosition = invView[3].xyz");
   code->appendLine("var nextWS = posWS + dir * length");
   code->appendLine("var nextProj = proj* view * world * vec4<f32>(nextWS, 1.0)");
@@ -68,7 +68,7 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
                    "(1.0/viewport.z)) * posProj.w");
   code->appendLine("posProj.y = (posNDC.y + tangentSS.y * offsetSS.y * (1.0/viewport.w) + directionSS.y * offsetSS.x *"
                    "(1.0/viewport.w)) * posProj.w");
-  code->append(WriteOutput("position", FieldTypes::Float4, "posProj"));
+  code->append(WriteOutput("position", Types::Float4, "posProj"));
   entry.code = std::move(code);
 
   // Apply after & overwrite any base transform
@@ -97,13 +97,13 @@ FeaturePtr GizmoLightingFeature::create() {
   using namespace gfx::shader;
   std::unique_ptr<Compound> code = makeCompoundBlock();
   code->appendLine(fmt::format("var lightDirVS = vec3<f32>({:f}, {:f}, {:f})", baseLightDir.x, baseLightDir.y, baseLightDir.z));
-  code->appendLine("var invTransposeView = transpose(", ReadBuffer("invView", FieldTypes::Float4x4, "view"), ")");
+  code->appendLine("var invTransposeView = transpose(", ReadBuffer("invView", Types::Float4x4, "view"), ")");
   code->appendLine("var normalVS = (invTransposeView * vec4<f32>(", ReadInput("worldNormal"), ", 0.0)).xyz");
   code->appendLine("var normalWS = ", ReadInput("worldNormal"));
   code->appendLine("var nDotL = dot(normalVS, -lightDirVS)");
   code->appendLine("var baseColor = ", ReadGlobal("color"));
   code->appendLine("var lighting = baseColor * mix(0.5, 1.0, max(0.0, nDotL))");
-  code->append(WriteGlobal("color", FieldTypes::Float4, "vec4<f32>(lighting.xyz, baseColor.a)"));
+  code->append(WriteGlobal("color", Types::Float4, "vec4<f32>(lighting.xyz, baseColor.a)"));
   entry.code = std::move(code);
 
   // Apply after normal/baseColor

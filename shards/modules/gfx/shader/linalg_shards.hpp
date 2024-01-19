@@ -11,7 +11,7 @@ namespace shader {
 
 struct OperatorMatMul {
   static inline const char *op = "*";
-  static NumFieldType validateTypes(NumFieldType a, NumFieldType b) {
+  static NumType validateTypes(NumType a, NumType b) {
     if (a.matrixDimension <= 1) {
       throw ShaderComposeError(fmt::format("Left hand side should be a matrix"));
     }
@@ -36,20 +36,20 @@ struct OperatorMatMul {
 
 struct OperatorDot {
   static inline const char *call = "dot";
-  static NumFieldType validateTypes(NumFieldType a, NumFieldType b) {
+  static NumType validateTypes(NumType a, NumType b) {
     if (a != b) {
       throw ShaderComposeError(fmt::format("Operand mismatch lhs!=rhs, left:{}, right:{}", a, b));
     }
     if (!isFloatType(a.baseType)) {
       throw ShaderComposeError(fmt::format("Dot product only supported on floating point types"));
     }
-    return NumFieldType(a.baseType, 1);
+    return NumType(a.baseType, 1);
   }
 };
 
 struct OperatorCross {
   static inline const char *call = "cross";
-  static NumFieldType validateTypes(NumFieldType a, NumFieldType b) {
+  static NumType validateTypes(NumType a, NumType b) {
     if (a != b) {
       throw ShaderComposeError(fmt::format("Operand mismatch lhs!=rhs, left:{}, right:{}", a, b));
     }
@@ -66,7 +66,7 @@ struct OperatorNormalize {
 
 struct OperatorLength {
   static inline const char *call = "length";
-  static NumFieldType validateTypes(NumFieldType a) { return NumFieldType(a.baseType, 1); }
+  static NumType validateTypes(NumType a) { return NumType(a.baseType, 1); }
 };
 
 } // namespace shader

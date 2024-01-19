@@ -10,7 +10,7 @@
 
 namespace gfx::steps {
 using namespace shader::blocks;
-using shader::FieldTypes;
+using shader::Types;
 
 struct Effect {
   static PipelineStepPtr create(RenderStepInput &&input, RenderStepOutput &&output, BlockPtr &&shader) {
@@ -38,9 +38,9 @@ struct Copy {
       auto srcName = std::visit([&](auto &arg) -> FastString { return arg.name; }, src);
       auto dstName = std::visit([&](auto &arg) -> FastString { return arg.name; }, dst);
       if (dstName == "depth") {
-        blk->appendLine(WriteOutput(dstName, FieldTypes::Float, SampleTexture(srcName), ".r"));
+        blk->appendLine(WriteOutput(dstName, Types::Float, SampleTexture(srcName), ".r"));
       } else {
-        blk->appendLine(WriteOutput(dstName, FieldTypes::Float4, SampleTexture(srcName)));
+        blk->appendLine(WriteOutput(dstName, Types::Float4, SampleTexture(srcName)));
       }
     }
 

@@ -24,7 +24,7 @@ static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyfra
 static auto getKeyframeInterpolation(const SHVar &keyframe) {
   Var &v = ((TableVar &)keyframe).get<Var>(Var("Interpolation"));
   if (v.valueType == SHType::Enum) {
-    gfx::checkEnumType(v, Types::InterpolationEnumInfo::Type, "Interpolation");
+    gfx::checkEnumType(v, ShardsTypes::InterpolationEnumInfo::Type, "Interpolation");
     return (Interpolation)v.payload.enumValue;
   }
   return Interpolation::Linear;
@@ -47,7 +47,7 @@ struct TimerShard {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   PARAM_PARAMVAR(_animation, "Animation", "The to take the duration from",
-                 {Types::AnimationOrAnimationVar, {CoreInfo::NoneType}});
+                 {ShardsTypes::AnimationOrAnimationVar, {CoreInfo::NoneType}});
   PARAM_PARAMVAR(_duration, "Duration", "The duration of the timer, the timer will loop or stop after reaching this value",
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_looped, "Looped", "Loop the timer after reaching the target time",
@@ -163,7 +163,7 @@ struct TimerShard {
 struct PlayShard {
   static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
 
-  static inline shards::Types OutputTypes{{Type::SeqOf(Types::ValueTable)}};
+  static inline shards::Types OutputTypes{{Type::SeqOf(ShardsTypes::ValueTable)}};
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return SHTypesInfo(OutputTypes); }
@@ -171,7 +171,7 @@ struct PlayShard {
   static SHOptionalString inputHelp() { return SHCCSTR(R"(The position in the animation to play)"); }
   static SHOptionalString outputHelp() { return SHCCSTR(R"(The interpolated frame data)"); }
 
-  PARAM_PARAMVAR(_animation, "Animation", "The animation to play", Types::AnimationOrAnimationVar);
+  PARAM_PARAMVAR(_animation, "Animation", "The animation to play", ShardsTypes::AnimationOrAnimationVar);
   PARAM_IMPL(PARAM_IMPL_FOR(_animation));
 
   SeqVar _output;
@@ -266,7 +266,7 @@ struct PlayShard {
 
 struct DurationShard {
   static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
-  static SHTypesInfo inputTypes() { return Types::Animation; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::Animation; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   PARAM_IMPL();
@@ -287,7 +287,7 @@ extern void registerTypes();
 
 SHARDS_REGISTER_FN(anim) {
   using namespace shards::Animations;
-  REGISTER_ENUM(Types::InterpolationEnumInfo);
+  REGISTER_ENUM(ShardsTypes::InterpolationEnumInfo);
   REGISTER_SHARD("Animation.Timer", TimerShard);
   REGISTER_SHARD("Animation.Play", PlayShard);
   REGISTER_SHARD("Animation.Duration", DurationShard);

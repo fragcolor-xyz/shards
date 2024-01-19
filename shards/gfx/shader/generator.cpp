@@ -2,9 +2,10 @@
 #include "fmt.hpp"
 #include <shards/fast_string/fmt.hpp>
 #include "log/log.hpp"
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "spdlog/logger.h"
 #include "wgsl_mapping.hpp"
+#include "type_builder.hpp"
 #include "../enums.hpp"
 #include "../log.hpp"
 #include "../error_utils.hpp"
@@ -31,15 +32,15 @@ static std::vector<const EntryPoint *> getEntryPointPtrs(const std::vector<Entry
 template <typename T>
 static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
   output += fmt::format("@group({}) @binding({})\n", group, binding);
-  output += fmt::format("var {}: {};\n", def.variableName, getFieldWGSLTypeName(def.type));
+  output += fmt::format("var {}: {};\n", def.variableName, getWGSLTypeName(def.type));
 
-  SamplerFieldType samplerFieldType{};
+  SamplerType SamplerType{};
   output += fmt::format("@group({}) @binding({})\n", group, samplerBinding);
-  output += fmt::format("var {}: {};\n", def.defaultSamplerVariableName, getFieldWGSLTypeName(samplerFieldType));
+  output += fmt::format("var {}: {};\n", def.defaultSamplerVariableName, getWGSLTypeName(SamplerType));
 }
 
 // Pads a struct to array stride inside an array body
-template <typename T> static void generatePaddingForArrayStruct(T &output, const UniformBufferLayout &layout) {
+template <typename T> static void generatePaddingForArrayStruct(T &output, const StructLayout &layout) {
   size_t alignedSize = layout.getArrayStride();
   shassert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
   size_t size4ToPad = (alignedSize - layout.size) / 4;
@@ -50,46 +51,46 @@ template <typename T> static void generatePaddingForArrayStruct(T &output, const
 
 // Generate buffer struct and binding definitions in shader source
 template <typename T>
-static void generateBuffer(T &output, const String &name, BufferType type, size_t group, size_t binding,
-                           const UniformBufferLayout &layout, const Dimension &dimension) {
-
-  String structName = name + "_t";
-  output += fmt::format("struct {} {{\n", structName);
-  for (size_t i = 0; i < layout.fieldNames.size(); i++) {
-    output += fmt::format("\t{}: {},\n", sanitizeIdentifier(layout.fieldNames[i]), getFieldWGSLTypeName(layout.items[i].type));
-  }
+static void generateBuffer(T &output, TypeBuilder &tb, const std::string &name, const Type &type, AddressSpace addressSpace,
+                           size_t group, size_t binding, const Dimension &dimension) {
+  // String structName = name + "_t";
+  // output += fmt::format("struct {} {{\n", structName);
+  // for (size_t i = 0; i < layout.fieldNames.size(); i++) {
+  //   output += fmt::format("\t{}: {},\n", sanitizeIdentifier(layout.fieldNames[i]), getWGSLTypeName(layout.items[i].type));
+  // }
 
   // Only for buffers that use dynamic offset
-  if (type == BufferType::Storage)
-    generatePaddingForArrayStruct(output, layout);
+  // if (type == AddressSpace::Storage)
+  //   generatePaddingForArrayStruct(output, layout);
 
-  output += "};\n";
+  // output += "};\n";
 
-  // array struct wrapper
-  const char *varType = structName.c_str();
+  String typeName = tb.resolveTypeName(type);
+
+  // Container struct
   String containerTypeName = name + "_container";
-  varType = containerTypeName.c_str();
+  const char *varType = containerTypeName.c_str();
 
   std::visit(
       [&](auto &&arg) {
         using T1 = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T1, dim::One>) {
-          varType = structName.c_str();
+          varType = typeName.c_str();
         } else if constexpr (std::is_same_v<T1, dim::Fixed>) {
-          output += fmt::format("struct {} {{ elements: array<{}, {}> }};\n", containerTypeName, structName, arg.length);
+          output += fmt::format("struct {} {{ elements: array<{}, {}> }};\n", containerTypeName, typeName, arg.length);
         } else {
-          output += fmt::format("struct {} {{ elements: array<{}> }};\n", containerTypeName, structName);
+          output += fmt::format("struct {} {{ elements: array<{}> }};\n", containerTypeName, typeName);
         }
       },
       dimension);
 
   // global storage/uniform variable
   const char *varStorageType = nullptr;
-  switch (type) {
-  case BufferType::Uniform:
+  switch (addressSpace) {
+  case AddressSpace::Uniform:
     varStorageType = "uniform";
     break;
-  case BufferType::Storage:
+  case AddressSpace::Storage:
     varStorageType = "storage";
     break;
   }
@@ -97,25 +98,25 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   output += fmt::format("var<{}> {}: {};\n", varStorageType, name, varType);
 }
 
-struct StructField {
+struct InternalStructField {
   static constexpr size_t NO_LOCATION = ~0;
-  NamedField base;
+  NamedNumType base;
   size_t location = NO_LOCATION;
   FastString builtinTag;
 
-  StructField() = default;
-  StructField(const NamedField &base) : base(base) {}
-  StructField(const NamedField &base, size_t location) : base(base), location(location) {}
-  StructField(const NamedField &base, FastString builtinTag) : base(base), builtinTag(builtinTag) {}
+  InternalStructField() = default;
+  InternalStructField(const NamedNumType &base) : base(base) {}
+  InternalStructField(const NamedNumType &base, size_t location) : base(base), location(location) {}
+  InternalStructField(const NamedNumType &base, FastString builtinTag) : base(base), builtinTag(builtinTag) {}
   bool hasLocation() const { return location != NO_LOCATION; }
   bool hasBuiltinTag() const { return !builtinTag.empty(); }
 };
 
 template <typename T>
-static void generateStruct(T &output, const String &typeName, const std::vector<StructField> &fields, bool interpolated = true) {
+static void generateStruct(T &output, const String &typeName, const std::vector<InternalStructField> &fields, bool interpolated = true) {
   output += fmt::format("struct {} {{\n", typeName);
   for (auto &field : fields) {
-    std::string typeName = getFieldWGSLTypeName(field.base.type);
+    std::string typeName = getWGSLTypeName(field.base.type);
 
     String extraTags;
     if (interpolated && isIntegerType(field.base.type.baseType)) {
@@ -133,7 +134,7 @@ static void generateStruct(T &output, const String &typeName, const std::vector<
   output += "};\n";
 }
 
-static size_t getNextStructLocation(const std::vector<StructField> &_struct) {
+static size_t getNextStructLocation(const std::vector<InternalStructField> &_struct) {
   size_t loc = 0;
   for (auto &field : _struct) {
     if (field.hasLocation()) {
@@ -202,23 +203,23 @@ static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool i
 }
 
 struct DynamicVertexInput : public IGeneratorDynamicHandler {
-  std::vector<StructField> &inputStruct;
+  std::vector<InternalStructField> &inputStruct;
 
-  DynamicVertexInput(std::vector<StructField> &inputStruct) : inputStruct(inputStruct) {}
+  DynamicVertexInput(std::vector<InternalStructField> &inputStruct) : inputStruct(inputStruct) {}
 
-  bool createDynamicInput(FastString name, NumFieldType &out) {
+  bool createDynamicInput(FastString name, NumType &out) {
     if (name == "vertex_index") {
-      out = NumFieldType(ShaderFieldBaseType::UInt32);
-      StructField newField = generateDynamicStructInput(name, out);
+      out = NumType(ShaderFieldBaseType::UInt32);
+      InternalStructField newField = generateDynamicStructInput(name, out);
       inputStruct.push_back(newField);
       return true;
     }
     return false;
   }
 
-  StructField generateDynamicStructInput(FastString name, const NumFieldType &type) {
+  InternalStructField generateDynamicStructInput(FastString name, const NumType &type) {
     if (name == "vertex_index") {
-      return StructField(NamedField(name, type), "vertex_index");
+      return InternalStructField(NamedNumType(name, type), "vertex_index");
     } else {
       throw std::logic_error("Unknown dynamic vertex input");
     }
@@ -226,68 +227,68 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
 };
 
 struct DynamicVertexOutput : public IGeneratorDynamicHandler {
-  std::vector<StructField> &outputStruct;
+  std::vector<InternalStructField> &outputStruct;
 
-  DynamicVertexOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
+  DynamicVertexOutput(std::vector<InternalStructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
-    StructField newField = generateDynamicStructOutput(name, requestedType);
+  bool createDynamicOutput(FastString name, NumType requestedType) {
+    InternalStructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
+  InternalStructField generateDynamicStructOutput(FastString name, const NumType &type) {
     // Handle builtin outputs here
     if (name == "position") {
-      return StructField(NamedField(name, type), "position");
+      return InternalStructField(NamedNumType(name, type), "position");
     } else {
       size_t location = getNextStructLocation(outputStruct);
-      return StructField(NamedField(name, type), location);
+      return InternalStructField(NamedNumType(name, type), location);
     }
   }
 };
 
 struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
-  std::vector<StructField> &outputStruct;
+  std::vector<InternalStructField> &outputStruct;
 
-  DynamicFragmentOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
+  DynamicFragmentOutput(std::vector<InternalStructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(FastString name, NumFieldType requestedType) {
-    StructField newField = generateDynamicStructOutput(name, requestedType);
+  bool createDynamicOutput(FastString name, NumType requestedType) {
+    InternalStructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(FastString name, const NumFieldType &type) {
+  InternalStructField generateDynamicStructOutput(FastString name, const NumType &type) {
     // Handle builtin outputs here
     if (name == "depth") {
-      return StructField(NamedField(name, type), "frag_depth");
+      return InternalStructField(NamedNumType(name, type), "frag_depth");
     } else {
       size_t location = getNextStructLocation(outputStruct);
-      return StructField(NamedField(name, type), location);
+      return InternalStructField(NamedNumType(name, type), location);
     }
   }
 };
 
 struct StageIO {
-  std::vector<StructField> inputStructFields;
-  std::vector<StructField> outputStructFields;
+  std::vector<InternalStructField> inputStructFields;
+  std::vector<InternalStructField> outputStructFields;
 };
 
 struct PipelineIO {
-  const std::vector<NamedField> &outputFields;
-  std::vector<NamedField> vertexInputFields;
+  const std::vector<NamedNumType> &outputFields;
+  std::vector<NamedNumType> vertexInputFields;
   StageIO vertexIO;
   StageIO fragmentIO;
-  std::vector<NamedField> fragmentInputFields;
+  std::vector<NamedNumType> fragmentInputFields;
 
   std::optional<DynamicVertexInput> dynamicVertexInputHandler;
   std::optional<DynamicVertexOutput> dynamicVertexOutputHandler;
   std::optional<DynamicFragmentOutput> dynamicFragmentOutputHandler;
 
-  PipelineIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
+  PipelineIO(const MeshFormat &meshFormat, const std::vector<NamedNumType> &outputFields) : outputFields(outputFields) {
     for (auto &attr : meshFormat.vertexAttributes) {
-      vertexInputFields.emplace_back(attr.name, NumFieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
+      vertexInputFields.emplace_back(attr.name, NumType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
     }
 
     for (size_t i = 0; i < vertexInputFields.size(); i++) {
@@ -298,7 +299,7 @@ struct PipelineIO {
       fragmentIO.outputStructFields.emplace_back(outputFields[i], i);
     }
 
-    vertexIO.outputStructFields.emplace_back(NamedField("instanceIndex", NumFieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+    vertexIO.outputStructFields.emplace_back(NamedNumType("instanceIndex", NumType(ShaderFieldBaseType::UInt32, 1)), 0);
 
     dynamicVertexInputHandler.emplace(vertexIO.inputStructFields);
     dynamicVertexOutputHandler.emplace(vertexIO.outputStructFields);
@@ -307,9 +308,9 @@ struct PipelineIO {
 
   void setupDefinitions(GeneratorDefinitions &outDefinitions, std::vector<IGeneratorDynamicHandler *> &outDynamics,
                         ProgrammableGraphicsStage stage) {
-    static std::vector<NamedField> emptyStruct;
-    const std::vector<NamedField> *inputs{};
-    const std::vector<NamedField> *outputs{};
+    static std::vector<NamedNumType> emptyStruct;
+    const std::vector<NamedNumType> *inputs{};
+    const std::vector<NamedNumType> *outputs{};
 
     outDynamics.clear();
 
@@ -451,9 +452,9 @@ struct Stage {
 
     String globalsHeader;
     if (!context.definitions.globals.empty()) {
-      std::vector<StructField> globalsStructFields;
+      std::vector<InternalStructField> globalsStructFields;
       for (auto &field : context.definitions.globals) {
-        globalsStructFields.emplace_back(NamedField(field.first, field.second));
+        globalsStructFields.emplace_back(NamedNumType(field.first, field.second));
       }
       generateStruct(globalsHeader, globalsStructName, globalsStructFields, false);
       globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
@@ -487,6 +488,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   auto &vertexStage = stages[0];
 
   GeneratorOutput output;
+  TypeBuilder typeBuilder;
 
   for (const auto &entryPoint : entryPoints) {
     stages[size_t(entryPoint->stage)].entryPoints.push_back(entryPoint);
@@ -509,10 +511,8 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   for (auto &binding : bufferBindings) {
     String variableName = fmt::format("u_{}", binding.name);
 
-    if (!binding.layout.fieldNames.empty()) {
-      generateBuffer(headerCode, variableName, binding.type, binding.bindGroup, binding.binding, binding.layout,
-                     binding.dimension);
-    }
+    generateBuffer(headerCode, typeBuilder, variableName, binding.layout, binding.addressSpace, binding.bindGroup,
+                   binding.binding, binding.dimension);
 
     auto &bufferDefinition =
         buffers.insert(std::make_pair(binding.name, BufferDefinition{.variableName = variableName, .layout = binding.layout}))
@@ -573,7 +573,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     stages[1].writeOutputStructHeader(headerCode);
   }
 
-  output.wgslSource = headerCode + stagesCode;
+  output.wgslSource = typeBuilder.generatedCode + headerCode + stagesCode;
 
   return output;
 }
@@ -604,7 +604,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void popHeaderScope() {}
 
     void readGlobal(FastString name) {}
-    void beginWriteGlobal(FastString name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
+    void beginWriteGlobal(FastString name, const NumType &type) { definitions.globals.insert_or_assign(name, type); }
     void endWriteGlobal() {}
 
     bool hasInput(FastString name) {
@@ -613,8 +613,8 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     }
 
     void readInput(FastString name) {}
-    const NumFieldType *getOrCreateDynamicInput(FastString name) {
-      NumFieldType newField;
+    const NumType *getOrCreateDynamicInput(FastString name) {
+      NumType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicInput(name, newField)) {
           return &definitions.inputs.insert_or_assign(name, newField).first->second;
@@ -629,7 +629,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return it != definitions.outputs.end();
     }
 
-    void writeOutput(FastString name, const NumFieldType &type) {
+    void writeOutput(FastString name, const NumType &type) {
       auto it = definitions.outputs.find(name);
       if (it == definitions.outputs.end()) {
         definitions.outputs.insert_or_assign(name, type);
@@ -640,8 +640,8 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       }
     }
 
-    const NumFieldType *getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
-      NumFieldType newField;
+    const NumType *getOrCreateDynamicOutput(FastString name, NumType requestedType) {
+      NumType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicOutput(name, requestedType)) {
           return &definitions.outputs.insert_or_assign(name, newField).first->second;
@@ -657,7 +657,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void textureDefaultTextureCoordinate(FastString name) { findOrAddIndex(result.textureBindings, name); }
     void textureDefaultSampler(FastString name) { findOrAddIndex(result.textureBindings, name); }
 
-    void readBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName,
+    void readBuffer(FastString fieldName, const NumType &type, FastString bufferName,
                     const Function<void(IGeneratorContext &ctx)> &index) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
       if (index)

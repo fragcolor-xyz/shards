@@ -39,13 +39,13 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
       operandB = translateConst(varB, context);
     }
 
-    NumFieldType typeA = std::get<NumFieldType>(operandA->getType());
-    NumFieldType typeB = std::get<NumFieldType>(operandB->getType());
+    NumType typeA = std::get<NumType>(operandA->getType());
+    NumType typeB = std::get<NumType>(operandB->getType());
 
     if constexpr (has_generate<TOp>::value) {
       TOp::generate(std::move(operandA), std::move(operandB), context);
     } else {
-      NumFieldType resultType;
+      NumType resultType;
       if constexpr (has_validateTypes<TOp>::value) {
         resultType = TOp::validateTypes(typeA, typeB);
       } else {
@@ -77,9 +77,9 @@ template <typename TShard, typename TOp> struct UnaryOperatorTranslator {
       throw ShaderComposeError(fmt::format("Can not apply unary operator without input"));
 
     std::unique_ptr<IWGSLGenerated> operandA = context.takeWGSLTop();
-    NumFieldType typeA = std::get<NumFieldType>(operandA->getType());
+    NumType typeA = std::get<NumType>(operandA->getType());
 
-    NumFieldType resultType;
+    NumType resultType;
     if constexpr (has_validateTypes<TOp>::value) {
       resultType = TOp::validateTypes(typeA);
     } else {
@@ -101,10 +101,10 @@ template <typename TShard, typename TOp> struct UnaryOperatorTranslator {
   }
 };
 
-inline NumFieldType validateTypesVectorBroadcast(NumFieldType a, NumFieldType b) {
+inline NumType validateTypesVectorBroadcast(NumType a, NumType b) {
   if (a.baseType == b.baseType) {
     if (a.numComponents == 1 || b.numComponents == 1) {
-      NumFieldType vecType = a.numComponents == 1 ? b : a;
+      NumType vecType = a.numComponents == 1 ? b : a;
       return vecType;
     } else if (a.numComponents == b.numComponents) {
       return a;
@@ -116,33 +116,33 @@ inline NumFieldType validateTypesVectorBroadcast(NumFieldType a, NumFieldType b)
 
 struct OperatorAdd {
   static inline const char *op = "+";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorSubtract {
   static inline const char *op = "-";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorMultiply {
   static inline const char *op = "*";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorDivide {
   static inline const char *op = "/";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorMod {
   static inline const char *op = "%";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 template <const char *Op>
 inline void generateShift(std::unique_ptr<IWGSLGenerated> &&a, std::unique_ptr<IWGSLGenerated> &&b, TranslationContext &context) {
-  auto typeA = std::get<NumFieldType>(a->getType());
-  auto typeB = std::get<NumFieldType>(b->getType());
+  auto typeA = std::get<NumType>(a->getType());
+  auto typeB = std::get<NumType>(b->getType());
   std::string prefix;
   std::string suffix;
 
@@ -150,7 +150,7 @@ inline void generateShift(std::unique_ptr<IWGSLGenerated> &&a, std::unique_ptr<I
   // If a is a scalar, b needs to be u32
   // If a is a vector, b needs to be vec<u32> of that same dimension
   if (typeB.numComponents != typeA.numComponents) {
-    prefix = fmt::format("{}(u32(", getFieldWGSLTypeName(NumFieldType(ShaderFieldBaseType::UInt32, typeA.numComponents)));
+    prefix = fmt::format("{}(u32(", getWGSLTypeName(NumType(ShaderFieldBaseType::UInt32, typeA.numComponents)));
     suffix = "))";
   } else {
     prefix = "u32(";
@@ -179,17 +179,17 @@ struct OperatorRShift {
 
 struct OperatorXor {
   static inline const char *op = "^";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorAnd {
   static inline const char *op = "&";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorOr {
   static inline const char *op = "|";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesVectorBroadcast(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorCos {
@@ -245,40 +245,40 @@ struct OperatorAbs {
   static inline const char *call = "abs";
 };
 
-inline NumFieldType validateTypesComparison(NumFieldType a, NumFieldType b) {
+inline NumType validateTypesComparison(NumType a, NumType b) {
   if (a != b)
     throw ShaderComposeError(fmt::format("Invalid types to compare: {} & {}", a, b));
-  return FieldTypes::Bool;
+  return Types::Bool;
 }
 
 struct OperatorIs {
   static inline const char *op = "==";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorIsNot {
   static inline const char *op = "!=";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorIsMore {
   static inline const char *op = ">";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorIsLess {
   static inline const char *op = "<";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorIsMoreEqual {
   static inline const char *op = ">=";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorIsLessEqual {
   static inline const char *op = "<=";
-  static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesComparison(a, b); }
 };
 
 struct OperatorExp2 {

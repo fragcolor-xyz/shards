@@ -15,7 +15,7 @@
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/generator.hpp>
 #include <gfx/shader/types.hpp>
-#include <gfx/shader/uniforms.hpp>
+#include <gfx/shader/struct_layout.hpp>
 #include "magic_enum.hpp"
 #include <shards/number_types.hpp>
 #include <shards/core/runtime.hpp>
@@ -70,7 +70,7 @@ template <typename TShard> struct SetTranslator {
     if constexpr (std::is_same_v<TShard, shards::Ref>) {
       storeMutable = false;
     } else {
-      if (!std::get_if<NumFieldType>(&wgslValue->getType())) {
+      if (!std::get_if<NumType>(&wgslValue->getType())) {
         throw ShaderComposeError(fmt::format("Type {} can not be stored as a mutable variable", wgslValue->getType()));
       }
       storeMutable = true;
@@ -154,7 +154,7 @@ struct TakeTranslator {
     std::string swizzle = generateSwizzle(shard);
 
     auto &outVectorType = *shard->_vectorOutputType;
-    NumFieldType outFieldType = getShaderBaseType(outVectorType.numberType);
+    NumType outFieldType = getShaderBaseType(outVectorType.numberType);
     outFieldType.numComponents = outVectorType.dimension;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(take)> {}", swizzle);
@@ -176,7 +176,7 @@ struct Literal {
   PARAM(shards::OwnedVar, _source, "Source", "The WGSL source code to insert", {CoreInfo::StringOrStringVar, {FormatSeqType}});
   PARAM_VAR(_type, "Type", "Where to insert the code.", {ShaderLiteralTypeEnumInfo::Type});
   PARAM_VAR(_outType, "OutputType", "The type that this code is expected to output. (default: none)",
-            {Types::ShaderFieldBaseTypeEnumInfo::Type});
+            {ShardsTypes::ShaderFieldBaseTypeEnumInfo::Type});
   PARAM_VAR(_outDimension, "OutputDimension", "The dimension that this code is expected to output. (default: 4)",
             {CoreInfo::IntType});
   PARAM_VAR(_outMatrixDimension, "OutputMatrixDimension",
@@ -195,7 +195,7 @@ struct Literal {
     _outMatrixDimension.payload.intValue = 1;
   }
 
-  std::optional<FieldType> getOutputType() const {
+  std::optional<Type> getOutputType() const {
     int dimension = 4;
     int matrixDimension = 1;
     ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
@@ -215,7 +215,7 @@ struct Literal {
     }
 
     if (isSet) {
-      return NumFieldType(baseType, dimension, matrixDimension);
+      return NumType(baseType, dimension, matrixDimension);
     }
     return std::nullopt;
   }
@@ -324,7 +324,7 @@ struct Literal {
 struct IOBase {
   struct Type {
     shards::Types shardsTypes;
-    FieldType shaderType;
+    shader::Type shaderType;
   };
 
   std::string _name;
@@ -435,7 +435,7 @@ struct ReadBuffer final : public IOBase {
     }
 
     // Find field in buffer
-    const UniformLayout *field = buffer->findField(_name.c_str());
+    const StructField *field = buffer->findField(_name.c_str());
     if (!field)
       throw shards::ComposeError(fmt::format("Shader parameter \"{}\" does not exist in buffer \"{}\"", _name, _bufferName));
 
@@ -474,18 +474,18 @@ struct ReadBuffer final : public IOBase {
   void translate(TranslationContext &context) {
     SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName, _name);
 
-    NumFieldType fieldType = std::get<NumFieldType>(_type.shaderType);
+    NumType fieldType = std::get<NumType>(_type.shaderType);
     context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _resolvedBufferName));
   }
 };
 
 template <typename TShard> struct Write : public IOBase {
-  std::optional<NumFieldType> _castIntoType;
+  std::optional<NumType> _castIntoType;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  static inline bool isCompatibleOutputType(NumFieldType dstType, NumFieldType srcType, bool &needCast) {
+  static inline bool isCompatibleOutputType(NumType dstType, NumType srcType, bool &needCast) {
     // Allow implicit integer type conversions
     // for example when attachment is uint8/int8 but shader only uses shards types (int32)
     if (isIntegerType(dstType.baseType) && isIntegerType(srcType.baseType)) {
@@ -503,7 +503,7 @@ template <typename TShard> struct Write : public IOBase {
       if (!inTypeOpt)
         throw formatException("Invalid output type {}", data.inputType);
 
-      const NumFieldType *outputType{};
+      const NumType *outputType{};
       {
         auto &outputs = shaderCtx.generatorContext.getDefinitions().outputs;
         auto outputIt = outputs.find(_name);
@@ -511,14 +511,14 @@ template <typename TShard> struct Write : public IOBase {
           outputType = &outputIt->second;
         } else {
           outputType =
-              shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumFieldType>(inTypeOpt.value()));
+              shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumType>(inTypeOpt.value()));
           if (!outputType) {
             throw formatException("Output \"{}\" does not exist", _name);
           }
         }
       }
 
-      NumFieldType inType = std::get<NumFieldType>(inTypeOpt.value());
+      NumType inType = std::get<NumType>(inTypeOpt.value());
 
       bool needCast{};
       if (!isCompatibleOutputType(*outputType, inType, needCast))
@@ -542,9 +542,9 @@ template <typename TShard> struct Write : public IOBase {
     if (_castIntoType) {
       context.addNew(blocks::makeBlock<TShard>(
           _name, _castIntoType.value(),
-          blocks::makeCompoundBlock(getFieldWGSLTypeName(_castIntoType.value()), "(", wgslValue->toBlock(), ")")));
+          blocks::makeCompoundBlock(getWGSLTypeName(_castIntoType.value()), "(", wgslValue->toBlock(), ")")));
     } else {
-      NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
+      NumType fieldType = std::get<NumType>(wgslValue->getType());
       context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
     }
   }
@@ -590,7 +590,7 @@ struct SampleTexture {
     const SHString &textureName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(sample)> {}", textureName);
 
-    context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
+    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
   }
 };
 
@@ -644,20 +644,20 @@ struct SampleTextureCoord : public SampleTexture {
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
     auto &varName = context.assignTempVar(wgslValue->toBlock());
-    context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
+    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
   }
 };
 
 struct RefTexture {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return Types::TextureTypes; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::TextureTypes; }
 
   static SHOptionalString help() { return SHCCSTR("Returns a reference to the texture object for a named texture."); }
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
   shards::OwnedVar _name;
-  TextureFieldType _textureType;
+  TextureType _textureType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
@@ -688,14 +688,14 @@ struct RefTexture {
 
 struct RefSampler {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return Types::Sampler; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Sampler; }
 
   static SHOptionalString help() { return SHCCSTR("Returns a reference to the default sampler object for a named texture."); }
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
   shards::OwnedVar _name;
-  SamplerFieldType _samplerType;
+  SamplerType _samplerType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
@@ -708,8 +708,8 @@ struct RefSampler {
     if (it == textures.end()) {
       throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
     }
-    _samplerType = SamplerFieldType{};
-    return Types::Sampler;
+    _samplerType = SamplerType{};
+    return ShardsTypes::Sampler;
   }
 
   void translate(TranslationContext &context) {
@@ -738,7 +738,7 @@ struct LinearizeDepth {
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
-    context.setWGSLTopVar(FieldTypes::Float, blocks::makeBlock<blocks::LinearizeDepth>(wgslValue->toBlock()));
+    context.setWGSLTopVar(Types::Float, blocks::makeBlock<blocks::LinearizeDepth>(wgslValue->toBlock()));
   }
 };
 

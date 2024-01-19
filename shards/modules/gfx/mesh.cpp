@@ -21,10 +21,10 @@ struct MeshShard {
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static SHTypesInfo inputTypes() { return InputTable; }
-  static SHTypesInfo outputTypes() { return Types::Mesh; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
 
   PARAM_VAR(_layoutParam, "Layout", "The names for each vertex attribute.", {VertexAttributeSeqType});
-  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {Types::WindingOrderEnumInfo::Type});
+  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {ShardsTypes::WindingOrderEnumInfo::Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
 
   MeshPtr *_mesh = {};
@@ -32,14 +32,14 @@ struct MeshShard {
   void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     if (_mesh) {
-      Types::MeshObjectVar.Release(_mesh);
+      ShardsTypes::MeshObjectVar.Release(_mesh);
       _mesh = nullptr;
     }
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _mesh = Types::MeshObjectVar.New();
+    _mesh = ShardsTypes::MeshObjectVar.New();
     MeshPtr mesh = (*_mesh) = std::make_shared<Mesh>();
   }
 
@@ -90,7 +90,7 @@ struct MeshShard {
 
     mesh->update(meshFormat, std::move(vertexData), std::move(indexData));
 
-    return Types::MeshObjectVar.Get(_mesh);
+    return ShardsTypes::MeshObjectVar.Get(_mesh);
   }
 };
 
@@ -114,7 +114,7 @@ struct BuiltinMeshShard {
   DECL_ENUM_INFO(Type, BuiltinMeshType, 'bmid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::Mesh; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
 
   PARAM_VAR(_type, "Type", "The type of object to make.", {BuiltinMeshTypeEnumInfo::Type})
   PARAM_IMPL(PARAM_IMPL_FOR(_type));
@@ -125,7 +125,7 @@ struct BuiltinMeshShard {
   void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    MeshPtr *meshVar = Types::MeshObjectVar.New();
+    MeshPtr *meshVar = ShardsTypes::MeshObjectVar.New();
 
     switch (Type(_type.payload.enumValue)) {
     case Type::Cube: {
@@ -145,7 +145,7 @@ struct BuiltinMeshShard {
     } break;
     }
 
-    return Types::MeshObjectVar.Get(meshVar);
+    return ShardsTypes::MeshObjectVar.Get(meshVar);
   }
 };
 

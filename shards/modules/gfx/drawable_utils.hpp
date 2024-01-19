@@ -20,10 +20,10 @@
 namespace gfx {
 inline TexturePtr varToTexture(const SHVar &var) {
   TexturePtr result;
-  if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
-    result = varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
-  } else if (var.payload.objectTypeId == Types::TextureTypeId) {
-    result = varAsObjectChecked<TexturePtr>(var, Types::Texture);
+  if (var.payload.objectTypeId == ShardsTypes::TextureCubeTypeId) {
+    result = varAsObjectChecked<TexturePtr>(var, ShardsTypes::TextureCube);
+  } else if (var.payload.objectTypeId == ShardsTypes::TextureTypeId) {
+    result = varAsObjectChecked<TexturePtr>(var, ShardsTypes::Texture);
   } else {
     SHInstanceData data{};
     auto varType = shards::deriveTypeInfo(var, data);
@@ -110,37 +110,37 @@ inline std::variant<NumParameter, TextureParameter> varToShaderParameter(const S
   }
 }
 
-inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
+inline std::optional<shader::Type> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
   using namespace shader;
   switch (typeInfo.basicType) {
   case SHType::Float:
-    return FieldTypes::Float;
+    return Types::Float;
   case SHType::Float2:
-    return FieldTypes::Float2;
+    return Types::Float2;
   case SHType::Float3:
-    return FieldTypes::Float3;
+    return Types::Float3;
   case SHType::Float4:
-    return FieldTypes::Float4;
+    return Types::Float4;
   case SHType::Int:
-    return FieldTypes::Int32;
+    return Types::Int32;
   case SHType::Int2:
-    return FieldTypes::Int2;
+    return Types::Int2;
   case SHType::Int3:
-    return FieldTypes::Int3;
+    return Types::Int3;
   case SHType::Int4:
-    return FieldTypes::Int4;
+    return Types::Int4;
   case SHType::Seq:
     if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
-      return FieldTypes::Float4x4;
+      return Types::Float4x4;
     }
     break;
   case SHType::Object: {
-    if (typeInfo == Types::Sampler)
-      return SamplerFieldType{};
-    else if (typeInfo == Types::Texture)
-      return TextureFieldType(TextureDimension::D2);
-    else if (typeInfo == Types::TextureCube)
-      return TextureFieldType(TextureDimension::Cube);
+    if (typeInfo == ShardsTypes::Sampler)
+      return SamplerType{};
+    else if (typeInfo == ShardsTypes::Texture)
+      return TextureType(TextureDimension::D2);
+    else if (typeInfo == ShardsTypes::TextureCube)
+      return TextureType(TextureDimension::Cube);
   }
   default:
     break;

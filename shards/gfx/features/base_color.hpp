@@ -34,10 +34,10 @@ struct BaseColor {
   static inline FeaturePtr create() {
     using namespace shader;
     using namespace shader::blocks;
-    using shader::FieldTypes;
-    using shader::NumFieldType;
+    using shader::Types;
+    using shader::NumType;
 
-    NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+    NumType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
     FeaturePtr feature = std::make_shared<Feature>();
     feature->shaderParams["baseColor"] = NumParamDecl(float4(1, 1, 1, 1));
@@ -56,7 +56,7 @@ struct BaseColor {
         auto &inputs = context.getDefinitions().inputs;
         if (context.hasInput(colorAttributeName)) {
           auto it = inputs.find(colorAttributeName);
-          auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;
+          auto colorInputType = it != inputs.end() ? it->second : Types::Float4;
 
           // Convert value to color or use float type directly
           if (isFloatType(colorInputType.baseType)) {
@@ -64,7 +64,7 @@ struct BaseColor {
           } else {
             uint64_t maxValue = getShaderFieldMaxValue(colorInputType.baseType);
             auto colorFieldTypeName =
-                getFieldWGSLTypeName(NumFieldType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
+                getWGSLTypeName(NumType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
             context.write(fmt::format("({}(", colorFieldTypeName));
             context.readInput("color");
             context.write(fmt::format(") / {}(f32({:e}))", colorFieldTypeName, double(maxValue)));
@@ -75,7 +75,7 @@ struct BaseColor {
         }
 
         context.write(" * ");
-        context.readBuffer("baseColor", FieldTypes::Float4, "object");
+        context.readBuffer("baseColor", Types::Float4, "object");
       });
     });
     feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex, std::move(initColor));

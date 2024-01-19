@@ -22,7 +22,7 @@ inline float getScreenSize(ParamVar &v) {
 
 struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::ShardsTypes::Drawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -96,7 +96,7 @@ struct TranslationGizmo : public Base {
 
 struct RotationGizmo : public Base {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::ShardsTypes::Drawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -177,7 +177,7 @@ struct RotationGizmo : public Base {
 
 struct ScalingGizmo : public Base {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::ShardsTypes::Drawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }

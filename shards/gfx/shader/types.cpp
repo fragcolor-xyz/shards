@@ -60,19 +60,19 @@ size_t getWGSLAlignment(const ShaderFieldBaseType &type) {
 }
 
 namespace shader {
-size_t NumFieldType::getByteSize() const {
+size_t NumType::getByteSize() const {
   size_t vecSize = gfx::getByteSize(baseType) * numComponents;
 
   if (matrixDimension > 1) {
     // Matrix size is based on array of vector elements
     // https://www.w3.org/TR/WGSL/#alignment-and-size
-    size_t vecAlignment = NumFieldType(baseType, numComponents).getWGSLAlignment();
+    size_t vecAlignment = NumType(baseType, numComponents).getWGSLAlignment();
     return matrixDimension * alignToPOT(vecSize, vecAlignment);
   } else {
     return vecSize;
   }
 }
-size_t NumFieldType::getWGSLAlignment() const {
+size_t NumType::getWGSLAlignment() const {
   // https://www.w3.org/TR/WGSL/#alignment-and-size
   size_t componentAlignment = gfx::getWGSLAlignment(baseType);
   switch (numComponents) {

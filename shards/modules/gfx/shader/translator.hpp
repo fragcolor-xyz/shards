@@ -42,11 +42,11 @@ template <> struct Appender<blocks::Compound> : public IAppender {
 };
 
 struct VariableInfo {
-  FieldType type;
+  Type type;
   bool isReadOnly = false;
 
   VariableInfo() = default;
-  VariableInfo(FieldType type, bool isReadOnly = false) : type(type), isReadOnly(isReadOnly) {}
+  VariableInfo(Type type, bool isReadOnly = false) : type(type), isReadOnly(isReadOnly) {}
 };
 
 typedef std::map<std::string, VariableInfo> VariableInfoMap;
@@ -89,7 +89,7 @@ struct VariableStorage {
 // Keeps track of pushes into sequences
 // used to resolve them as matrix types
 struct VirtualSeq {
-  NumFieldType elementType;
+  NumType elementType;
   std::vector<std::unique_ptr<IWGSLGenerated>> elements;
 
   VirtualSeq() = default;
@@ -108,7 +108,7 @@ struct VirtualTableOnStack : public IWGSLGenerated {
   VirtualTable table;
 
   VirtualTableOnStack(VirtualTable &&table) : table(std::move(table)) {}
-  const FieldType &getType() const { throw std::logic_error("Can not generate table in wgsl"); }
+  const Type &getType() const { throw std::logic_error("Can not generate table in wgsl"); }
   blocks::BlockPtr toBlock() const { throw std::logic_error("Can not generate table in wgsl"); }
 };
 
@@ -135,15 +135,15 @@ struct TranslationBlockRef {
 struct TranslationRegistry;
 
 struct TranslatedFunctionArgument {
-  FieldType type;
+  Type type;
   std::string wgslName;
   std::string shardsName;
 };
 
 struct TranslatedFunction {
   std::string functionName;
-  std::optional<FieldType> outputType;
-  std::optional<FieldType> inputType;
+  std::optional<Type> outputType;
+  std::optional<Type> inputType;
   std::vector<TranslatedFunctionArgument> arguments;
 
   TranslatedFunction() = default;
@@ -210,13 +210,13 @@ public:
   void finalize();
 
   // Translates a wire into a function
-  const TranslatedFunction &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<FieldType> &inputType);
+  const TranslatedFunction &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<Type> &inputType);
 
   // Translates shards into a function
   TranslatedFunction processShards(const std::vector<ShardPtr> &shards, const SHComposeResult &composeResult,
-                                   const std::optional<FieldType> &inputType, const std::string &name = "anonymous");
+                                   const std::optional<Type> &inputType, const std::string &name = "anonymous");
   TranslatedFunction processShards(const Shards &shardsSeq, const SHComposeResult &composeResult,
-                                   const std::optional<FieldType> &inputType, const std::string &name = "anonymous") {
+                                   const std::optional<Type> &inputType, const std::string &name = "anonymous") {
     std::vector<ShardPtr> shards;
     for (size_t i = 0; i < shardsSeq.len; i++)
       shards.push_back(shardsSeq.elements[i]);
@@ -237,7 +237,7 @@ public:
 
   // Set the intermediate wgsl source but reference it as a single variable
   // use to avoide duplicating function calls when setting the result as a stack value
-  template <typename T> const std::string &setWGSLTopVar(FieldType type, std::unique_ptr<T> &&ptr) {
+  template <typename T> const std::string &setWGSLTopVar(Type type, std::unique_ptr<T> &&ptr) {
     const std::string &varName = assignTempVar(std::move(ptr));
     setWGSLTop<WGSLSource>(type, varName);
     return varName;
@@ -259,11 +259,11 @@ public:
   }
 
   // Tries to find a global variable
-  bool findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const;
+  bool findVariableGlobal(const std::string &varName, const Type *&outFieldType) const;
 
   // Tries to find a variable in all scopes & globally
   // outParent will be null in case of global variables
-  bool findVariable(const std::string &varName, const FieldType *&outFieldType, const TranslationBlockRef *&outParent) const;
+  bool findVariable(const std::string &varName, const Type *&outFieldType, const TranslationBlockRef *&outParent) const;
 
   // Tries to expand sequences in the current scope into their respective matrix types
   // returns true if it did so, the variable can be acessed using findVariable

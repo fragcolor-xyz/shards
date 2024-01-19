@@ -132,52 +132,6 @@ public:
   }
 };
 
-enum class ShaderParamFlags {
-  None = 0,
-};
-
-enum class BindGroupId {
-  View,
-  Draw,
-};
-
-struct NumParamDecl {
-  shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
-  NumParameter defaultValue;
-  ShaderParamFlags flags = ShaderParamFlags::None;
-  BindGroupId bindGroupId = BindGroupId::Draw;
-
-  NumParamDecl() = default;
-  NumParamDecl(const shader::NumFieldType &type, NumParameter defaultValue = NumParameter());
-  NumParamDecl(NumParameter defaultValue);
-
-  template <typename T> void getPipelineHash(T &hasher) const {
-    assert(false); // TODO
-    // hasher(name);
-    hasher(type);
-    hasher(flags);
-  }
-};
-
-struct TextureParamDecl {
-  shader::TextureFieldType type;
-  TexturePtr defaultValue;
-  ShaderParamFlags flags = ShaderParamFlags::None;
-  BindGroupId bindGroupId = BindGroupId::Draw;
-
-  TextureParamDecl() = default;
-  TextureParamDecl(TextureDimension dimension, ShaderParamFlags flags = ShaderParamFlags::None)
-      : type(dimension), flags(flags) {}
-  TextureParamDecl(shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None) : type(type), flags(flags) {}
-
-  template <typename T> void getPipelineHash(T &hasher) const {
-    assert(false); // TODO
-    // hasher(name);
-    hasher(type);
-    hasher(flags);
-  }
-};
-
 struct RequiredAttributes {
   // When enabled, each vertex will be guaranteed to have a local basis encoded as a quaternion
   bool requirePerVertexLocalBasis{};
@@ -188,6 +142,7 @@ inline RequiredAttributes operator|(const RequiredAttributes &a, const RequiredA
       .requirePerVertexLocalBasis = a.requirePerVertexLocalBasis || other.requirePerVertexLocalBasis,
   };
 }
+
 
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature : public std::enable_shared_from_this<Feature> {
@@ -202,6 +157,8 @@ struct Feature : public std::enable_shared_from_this<Feature> {
   boost::container::flat_map<FastString, NumParamDecl> shaderParams;
   // Texture parameters
   boost::container::flat_map<FastString, TextureParamDecl> textureParams;
+  // Storage params such as buffers and read-write textures
+  boost::container::flat_map<FastString, StorageParamDecl> storageParams;
   // Shader entry points
   std::vector<shader::EntryPoint> shaderEntryPoints;
 

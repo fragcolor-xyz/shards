@@ -60,7 +60,7 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
   feature->shaderEntryPoints.emplace_back("transformLib", ProgrammableGraphicsStage::Vertex, Header(transformLibWgsl));
 
   feature->shaderEntryPoints.emplace_back("initLocalPosition", ProgrammableGraphicsStage::Vertex,
-                                          WriteGlobal("localPosition", FieldTypes::Float4, expandInputVec("position")));
+                                          WriteGlobal("localPosition", Types::Float4, expandInputVec("position")));
 
   auto cb = [](IGeneratorContext &ctx) {
     auto &defs = ctx.getDefinitions();
@@ -70,7 +70,7 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
       auto tmp = ctx.generateTempVariable();
       ctx.write(fmt::format("let {} = \n", tmp));
       for (size_t i = 0; i < 4; i++) {
-        ctx.readBuffer("transform", FieldTypes::Float4x4, "joints", [&](IGeneratorContext &ctx) {
+        ctx.readBuffer("transform", Types::Float4x4, "joints", [&](IGeneratorContext &ctx) {
           ctx.readInput("joints");
           ctx.write(fmt::format(".{}", getComponentName(i)));
         });
@@ -84,14 +84,14 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
       }
       ctx.write(";\n");
 
-      ctx.writeGlobal("worldPosition", FieldTypes::Float4, [&]() {
-        ctx.readBuffer("world", FieldTypes::Float4x4, "object");
+      ctx.writeGlobal("worldPosition", Types::Float4, [&]() {
+        ctx.readBuffer("world", Types::Float4x4, "object");
         ctx.write(fmt::format(" * {} * ", tmp));
         ctx.readGlobal("localPosition");
       });
     } else {
-      ctx.writeGlobal("worldPosition", FieldTypes::Float4, [&]() {
-        ctx.readBuffer("world", FieldTypes::Float4x4, "object");
+      ctx.writeGlobal("worldPosition", Types::Float4, [&]() {
+        ctx.readBuffer("world", Types::Float4x4, "object");
         ctx.write(" * ");
         ctx.readGlobal("localPosition");
       });
@@ -102,32 +102,32 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   auto screenPosition = makeCompoundBlock();
   if (applyProjection) {
-    screenPosition->append(ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*");
+    screenPosition->append(ReadBuffer("proj", Types::Float4x4, "view"), "*");
   }
   if (applyView) {
-    screenPosition->append(ReadBuffer("view", FieldTypes::Float4x4, "view"), "*");
+    screenPosition->append(ReadBuffer("view", Types::Float4x4, "view"), "*");
   }
   screenPosition->append(ReadGlobal("worldPosition"));
 
   auto &initScreenPosition =
       feature->shaderEntryPoints.emplace_back("initScreenPosition", ProgrammableGraphicsStage::Vertex,
-                                              WriteGlobal("screenPosition", FieldTypes::Float4, std::move(screenPosition)));
+                                              WriteGlobal("screenPosition", Types::Float4, std::move(screenPosition)));
 
   initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
   BlockPtr localNormal = std::make_unique<WithInput>("normal", ReadInput("normal"), "vec3<f32>(0.0, 0.0, 1.0)");
 
   auto transformDirection = [](auto &&in, const char *matName) {
-    return blocks::makeCompoundBlock("normalize((", ReadBuffer(matName, FieldTypes::Float4x4), "*", "vec4<f32>(", std::move(in),
+    return blocks::makeCompoundBlock("normalize((", ReadBuffer(matName, Types::Float4x4), "*", "vec4<f32>(", std::move(in),
                                      ".xyz, 0.0)", ").xyz)");
   };
 
   auto applyTBNTransform = blocks::makeCompoundBlock(
-      WriteGlobal("worldNormal", FieldTypes::Float3, transformDirection(std::move(localNormal), "invTransWorld")),
+      WriteGlobal("worldNormal", Types::Float3, transformDirection(std::move(localNormal), "invTransWorld")),
       WithInput("tangent",
                 makeCompoundBlock( //
-                    WriteGlobal("worldTangent", FieldTypes::Float3, transformDirection(ReadInput("tangent"), "world")),
-                    WriteGlobal("biTangentSign", FieldTypes::Float, ReadInput("tangent"), ".w"))));
+                    WriteGlobal("worldTangent", Types::Float3, transformDirection(ReadInput("tangent"), "world")),
+                    WriteGlobal("biTangentSign", Types::Float, ReadInput("tangent"), ".w"))));
 
   auto &initWorldNormal =
       feature->shaderEntryPoints.emplace_back("initWorldNormal", ProgrammableGraphicsStage::Vertex, std::move(applyTBNTransform));
@@ -135,21 +135,21 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   auto &writePosition =
       feature->shaderEntryPoints.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex,
-                                              WriteOutput("position", FieldTypes::Float4, ReadGlobal("screenPosition")));
+                                              WriteOutput("position", Types::Float4, ReadGlobal("screenPosition")));
   writePosition.dependencies.emplace_back("initScreenPosition");
 
   auto &writeNormal = feature->shaderEntryPoints.emplace_back(
       "writeNormal", ProgrammableGraphicsStage::Vertex,
-      makeCompoundBlock(WriteOutput("worldNormal", FieldTypes::Float3, ReadGlobal("worldNormal")),
+      makeCompoundBlock(WriteOutput("worldNormal", Types::Float3, ReadGlobal("worldNormal")),
                         WithInput("tangent", makeCompoundBlock( //
-                                                 WriteOutput("worldTangent", FieldTypes::Float3, ReadGlobal("worldTangent")),
-                                                 WriteOutput("biTangentSign", FieldTypes::Float, ReadGlobal("biTangentSign"))))));
+                                                 WriteOutput("worldTangent", Types::Float3, ReadGlobal("worldTangent")),
+                                                 WriteOutput("biTangentSign", Types::Float, ReadGlobal("biTangentSign"))))));
   ;
   writeNormal.dependencies.emplace_back("initWorldNormal");
 
   auto &writeWorldPosition = feature->shaderEntryPoints.emplace_back(
       "writeWorldPosition", ProgrammableGraphicsStage::Vertex,
-      WriteOutput("worldPosition", FieldTypes::Float3, ReadGlobal("worldPosition"), ".xyz"));
+      WriteOutput("worldPosition", Types::Float3, ReadGlobal("worldPosition"), ".xyz"));
   writeWorldPosition.dependencies.emplace_back("initWorldPosition");
 
   return feature;

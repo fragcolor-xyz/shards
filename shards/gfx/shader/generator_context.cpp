@@ -32,7 +32,7 @@ void GeneratorContext::readGlobal(FastString name) {
     getOutput() += fmt::format("{}.{}", globalsVariableName, sanitizeIdentifier(name));
   }
 }
-void GeneratorContext::beginWriteGlobal(FastString name, const NumFieldType &type) {
+void GeneratorContext::beginWriteGlobal(FastString name, const NumType &type) {
   auto it = definitions.globals.find(name);
   if (it == definitions.globals.end()) {
     definitions.globals.insert_or_assign(name, type);
@@ -49,7 +49,7 @@ bool GeneratorContext::hasInput(FastString name) { return definitions.inputs.fin
 
 void GeneratorContext::readInput(FastString name) {
   auto it = definitions.inputs.find(name);
-  const NumFieldType *fieldType{};
+  const NumType *fieldType{};
   if (it != definitions.inputs.end()) {
     fieldType = &it->second;
   } else {
@@ -64,10 +64,10 @@ void GeneratorContext::readInput(FastString name) {
   getOutput() += fmt::format("{}.{}", inputVariableName, sanitizeIdentifier(name));
 }
 
-const NumFieldType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
+const NumType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
   shassert(definitions.inputs.find(name) == definitions.inputs.end());
 
-  NumFieldType newField;
+  NumType newField;
   for (auto &h : dynamicHandlers) {
     if (h->createDynamicInput(name, newField)) {
       return &definitions.inputs.insert_or_assign(name, newField).first->second;
@@ -79,9 +79,9 @@ const NumFieldType *GeneratorContext::getOrCreateDynamicInput(FastString name) {
 
 bool GeneratorContext::hasOutput(FastString name) { return definitions.outputs.find(name) != definitions.outputs.end(); }
 
-void GeneratorContext::writeOutput(FastString name, const NumFieldType &type) {
+void GeneratorContext::writeOutput(FastString name, const NumType &type) {
   auto it = definitions.outputs.find(name);
-  const NumFieldType *outputFieldType{};
+  const NumType *outputFieldType{};
   if (it != definitions.outputs.end()) {
     outputFieldType = &it->second;
   } else {
@@ -101,7 +101,7 @@ void GeneratorContext::writeOutput(FastString name, const NumFieldType &type) {
   getOutput() += fmt::format("{}.{}", outputVariableName, sanitizeIdentifier(name));
 }
 
-const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) {
+const NumType *GeneratorContext::getOrCreateDynamicOutput(FastString name, NumType requestedType) {
   shassert(definitions.outputs.find(name) == definitions.outputs.end());
 
   for (auto &h : dynamicHandlers) {
@@ -155,7 +155,7 @@ void GeneratorContext::textureDefaultSampler(FastString name) {
   }
 }
 
-void GeneratorContext::readBuffer(FastString fieldName, const NumFieldType &expectedType, FastString bufferName,
+void GeneratorContext::readBuffer(FastString fieldName, const NumType &expectedType, FastString bufferName,
                                   const Function<void(IGeneratorContext &ctx)> &index) {
   auto bufferIt = definitions.buffers.find(bufferName);
   if (bufferIt == definitions.buffers.end()) {
@@ -165,13 +165,13 @@ void GeneratorContext::readBuffer(FastString fieldName, const NumFieldType &expe
 
   const BufferDefinition &buffer = bufferIt->second;
 
-  const UniformLayout *field = buffer.findField(fieldName);
+  const StructField *field = buffer.findField(fieldName);
   if (!field) {
     pushError(formatError("Field \"{}\" not found in buffer \"{}\"", fieldName, bufferName));
     return;
   }
 
-  if (expectedType != field->type) {
+  if (field->type != expectedType) {
     pushError(formatError("Field \"{}\", shader expected type {} but provided was {}", fieldName, expectedType, field->type));
     return;
   }

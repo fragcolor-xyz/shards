@@ -13,12 +13,12 @@ struct EguiTransformFeature {
     auto feature = std::make_shared<Feature>();
     auto code = makeCompoundBlock();
 
-    code->appendLine("var vp = ", ReadBuffer("viewport", shader::FieldTypes::Float4, "view"));
+    code->appendLine("var vp = ", ReadBuffer("viewport", shader::Types::Float4, "view"));
     code->appendLine("var p1 = ", ReadInput("position"), " * (1.0 / vp.zw)");
     code->appendLine("p1.y = -p1.y;");
     code->appendLine("p1 = p1 * 2.0 + vec2<f32>(-1.0, 1.0)");
     code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
-    code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
+    code->appendLine(WriteOutput("position", shader::Types::Float4, "p4"));
 
     auto &transform =
         feature->shaderEntryPoints.emplace_back("writeUiTransform", ProgrammableGraphicsStage::Vertex, std::move(code));
@@ -45,20 +45,20 @@ fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
 })"));
 
     code->appendLine("var color = ", ReadInput("color"));
-    code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "vec4<f32>(egui_linear_from_srgb(color.xyz), color.a)"));
+    code->appendLine(WriteOutput("color", shader::Types::Float4, "vec4<f32>(egui_linear_from_srgb(color.xyz), color.a)"));
 
     auto &writeVertColor =
         feature->shaderEntryPoints.emplace_back("writeUiColor", ProgrammableGraphicsStage::Vertex, std::move(code));
     // NOTE: Override BaseColor's writeColor
     writeVertColor.dependencies.emplace_back("writeColor");
 
-    shader::NumFieldType flagsFieldType = shader::NumFieldType(ShaderFieldBaseType::UInt32, 1);
+    shader::NumType flagsFieldType = shader::NumType(ShaderFieldBaseType::UInt32, 1);
     code = makeCompoundBlock();
     code->appendLine("var color = ", ReadInput("color"));
     code->appendLine("var texColor = ", SampleTexture("color"));
     code->appendLine("var isFont = ", ReadBuffer("flags", flagsFieldType), " & 1u");
     code->append("if(isFont != 0u) { texColor = vec4<f32>(texColor.xxx, texColor.x); }\n");
-    code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "color * texColor"));
+    code->appendLine(WriteOutput("color", shader::Types::Float4, "color * texColor"));
 
     auto &writeFragColor =
         feature->shaderEntryPoints.emplace_back("writeUiColor", ProgrammableGraphicsStage::Fragment, std::move(code));

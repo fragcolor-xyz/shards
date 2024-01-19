@@ -13,7 +13,7 @@ struct PushTranslator {
     if (!value)
       throw std::runtime_error("Missing value to push");
 
-    NumFieldType elementType = std::get<NumFieldType>(value->getType());
+    NumType elementType = std::get<NumType>(value->getType());
 
     auto it = scope.virtualSequences.find(shard->_name);
     if (it == scope.virtualSequences.end()) {
