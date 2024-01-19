@@ -33,10 +33,6 @@ struct Sinks {
     stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     distSink->add_sink(stdErrSink);
 
-    auto logger = std::make_shared<spdlog::logger>("shards", distSink);
-    logger->flush_on(spdlog::level::err);
-    spdlog::set_default_logger(logger);
-
     // Setup android logcat output
 #ifdef __ANDROID__
     androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
