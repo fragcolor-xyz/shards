@@ -1367,9 +1367,15 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto wireVar = _wire.get();
-    wire = SHWire::sharedFromRef(wireVar.payload.wireValue);
-    if (unlikely(!wire))
+    auto newWire = SHWire::sharedFromRef(wireVar.payload.wireValue);
+    if (unlikely(!newWire))
       return input;
+
+    if(wire && wire != newWire) {
+      // if current wire is different, we need to cleanup
+      stop(wire.get());
+    }
+    wire = newWire;
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
