@@ -1,0 +1,5 @@
+@f3(-1.0 0.0 1.0)
+Math.Atan | Log
+
+Math.Subtract(@f3(-0.78539816 0.0 0.78539816)) | Math.Abs
+Log

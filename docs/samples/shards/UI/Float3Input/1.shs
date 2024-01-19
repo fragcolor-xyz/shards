@@ -1,0 +1,17 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Disable"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      {
+        UI.Float3Input(Variable: float3)
+        ExpectFloat3
+      }
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

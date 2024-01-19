@@ -1,0 +1,8 @@
+
+
+@wire(ui-wire {
+  UI.CentralPanel(
+  UI.ColorInput(Variable: color))
+} Looped: true)
+
+{ui-behavior: ui-wire}

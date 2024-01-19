@@ -1,0 +1,20 @@
+
+
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Disable"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.Disable(
+        Disable: true
+        Contents:
+        UI.Button("Can't be clicked")
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

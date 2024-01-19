@@ -1,0 +1,6 @@
+;; Multiply integers
+5 ;; :Input
+Log ;; prints input => 5
+Math.Multiply(2) ;; :Operand
+Log ;; prints input * operand => 10
+Assert.Is(10 true) ;; expect: (5 * 2) => 10

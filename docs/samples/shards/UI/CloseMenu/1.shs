@@ -1,0 +1,14 @@
+@wire(ui-wire {
+  UI.TopPanel(
+    Contents:
+    UI.MenuBar({
+      UI.Menu(
+        Title: "Menu"
+        Contents:
+        UI.Button("Close" UI.CloseMenu)
+      )
+    })
+  )
+} Looped:true)
+
+{ui-behavior: ui-wire}

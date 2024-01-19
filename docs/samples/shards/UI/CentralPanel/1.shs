@@ -1,0 +1,7 @@
+@wire(ui-wire {
+  UI.CentralPanel(
+    Contents: {
+      "Central Panel" | UI.Label
+    }
+  )
+} Looped:  true)

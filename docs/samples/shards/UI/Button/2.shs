@@ -1,0 +1,11 @@
+@wire(ui-wire {
+  UI.CentralPanel(
+    UI.Button(
+      Label: "Click me!"
+      Style: {color: @color(255 255 0)}
+      Action: Msg("Clicked")
+    )
+  )
+} Looped:  true)
+
+{ui-behavior: ui-wire}

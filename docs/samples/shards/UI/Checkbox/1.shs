@@ -1,0 +1,8 @@
+@wire(ui-wire {
+  UI.CentralPanel(
+    UI.Checkbox(
+      Label: "Checked"
+      Variable: checked
+    )
+  )
+} Looped:  true)

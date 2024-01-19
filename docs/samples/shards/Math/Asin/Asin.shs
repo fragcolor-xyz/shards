@@ -1,0 +1,5 @@
+@f4(1.0 0.0 0.5 1.0)
+Math.Asin | Log
+
+Math.Subtract(@f4(-1.5707963 0.0 0.52359878 1.5707963)) | Math.Abs
+Log

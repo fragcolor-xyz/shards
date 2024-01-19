@@ -1,0 +1,17 @@
+
+
+@wire(ui-wire {
+  UI.CentralPanel(
+    {UI.Button("Say Hello" Msg("Hello!"))
+      CaptureLog(
+        Size: 24
+        MinLevel: "info"
+        Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+      )
+      String.Join
+      UI.Console
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

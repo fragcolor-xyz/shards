@@ -1,0 +1,13 @@
+@wire(ui-wire {
+  UI.CentralPanel(
+    Contents:
+    UI.Collapsing(
+      Heading: "Heading"
+      DefaultOpen: true
+      Contents: {
+        "Content" | UI.Label}
+    )
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

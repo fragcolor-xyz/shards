@@ -1,31 +1,23 @@
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
-      UI.Window(
-        Title: "Greetings"
-        Width: 200 ; Makes window resizable but with a minimum width of 200, allowing resizing window to manipulate number of rows in autogrid
+@wire(ui-wire {
+  UI.Window(
+    Title: "Greetings"
+    Width: 200 ; Makes window resizable but with a minimum width of 200, allowing resizing window to manipulate number of rows in autogrid
+    Contents: {
+      [
+        "Hello" "World" "Please" "Sort" "Me"
+        "Hello" 2 "Please" 4 5.5
+      ]
+      UI.AutoGrid(
+        ItemWidth: 300.0
         Contents: {
-          [
-            "Hello" "World" "Please" "Sort" "Me"
-            "Hello" 2 "Please" 4 5.5
-          ]
-          | UI.AutoGrid(
-            ItemWidth: 300.0
-            Contents: {
-              UI.Button(Label: "Test" Action: {
-                | Log ; Logs the given sequence element
-              })
-            }
-          ) 
-          ; | Log ; Passthrough
+          UI.Button(Label: "Test" Action: {
+            Log ; Logs the given sequence element
+          })
         }
       )
-    ) | UI.Render(ui-draw-queue)
+      ; | Log ; Passthrough
+    }
+  )
+} Looped:  true)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+{ui-behavior: ui-wire}

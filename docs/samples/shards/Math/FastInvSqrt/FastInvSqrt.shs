@@ -1,0 +1,5 @@
+4.0
+Math.FastInvSqrt | Log
+
+Math.Subtract(0.4999978) | Math.Abs
+Log

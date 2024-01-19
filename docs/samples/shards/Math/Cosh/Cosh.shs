@@ -1,0 +1,5 @@
+@f3(-1.0 0.0 1.0)
+Math.Cosh | Log
+
+Math.Subtract(@f3(1.5430806 1.0 1.5430806)) | Math.Abs
+Log

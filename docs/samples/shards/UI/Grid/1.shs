@@ -1,0 +1,31 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Disable"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      {
+        UI.Grid(
+          Striped: true
+          Contents:
+          {"Col 1" | UI.Label
+            "Col 2" | UI.Label
+            "Col 3" | UI.Label
+            UI.NextRow
+            "Hello" | UI.Label
+            "shards" | UI.Label
+            "!" | UI.Label
+            UI.NextRow
+            "Lorem ipsum dolor sit amet" | UI.Label
+            "consectetur adipiscing elit" | UI.Label
+            "sed do eiusmod tempor" | UI.Label
+          }
+        )
+      }
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

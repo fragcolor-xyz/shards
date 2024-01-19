@@ -1,0 +1,11 @@
+@wire(ui-wire {
+  UI.CentralPanel(
+    UI.Columns(
+      Contents:
+      [{"Column 1" | UI.Label}
+        {"Column 2" | UI.Label}]
+    )
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

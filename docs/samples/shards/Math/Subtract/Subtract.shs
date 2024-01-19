@@ -1,0 +1,4 @@
+7
+Math.Subtract(Operand:2) | Log
+
+Assert.Is(5 true)

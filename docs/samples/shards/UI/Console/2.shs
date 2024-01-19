@@ -1,0 +1,34 @@
+@wire(capture {
+  CaptureLog(
+    Size: 24
+    MinLevel: "info"
+    Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+    Suspend: true
+  )
+  String.Join > logs
+  Math.Inc(generation)
+} Looped: true)
+
+@wire(ui-wire {
+  Once {
+    "" | Set(logs Global: true)
+    0 | Set(generation Global: true)
+    Detach(capture)
+  }
+  
+  UI.BottomPanel(
+    Contents:
+    {Get(generation Global: true)
+      ToString | UI.Label
+    }
+  )
+  UI.CentralPanel(
+    Contents:
+    {UI.Button("Say Hello" Msg("Hello!"))
+      Get(logs Global: true)
+      UI.Console(ShowFilters: true)
+    }
+  )
+}Looped: true)
+
+{ui-behavior: ui-wire}

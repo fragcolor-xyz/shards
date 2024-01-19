@@ -1,0 +1,5 @@
+@f3(1.0 2.0 2.5)
+Math.Acosh | Log
+
+Math.Subtract(@f3(0 1.3169578 1.5667992)) | Math.Abs |
+Log

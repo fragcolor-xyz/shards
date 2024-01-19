@@ -1,0 +1,5 @@
+@f3(-1.0 0.0 1.0)
+Math.Sinh | Log
+
+Math.Subtract(@f3(-1.1752012 0.0 1.1752012)) | Math.Abs
+Log

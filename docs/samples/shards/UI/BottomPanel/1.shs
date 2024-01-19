@@ -1,0 +1,6 @@
+@wire(ui-wire{
+  UI.BottomPanel(
+      Contents: {"Bottom Panel" | UI.Label})
+} Looped:  true)
+
+{ui-behavior: ui-wire}
