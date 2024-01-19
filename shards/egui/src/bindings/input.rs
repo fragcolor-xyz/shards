@@ -4,6 +4,7 @@ use egui::Event;
 use egui::Modifiers;
 use egui::TouchDeviceId;
 use egui::TouchId;
+use egui::ViewportId;
 use egui::ViewportInfo;
 use egui::ahash::HashMapExt;
 use std::ffi::CStr;
@@ -253,7 +254,6 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
     }
   }
 
-  let vp_id = egui::ViewportId(egui::Id::new("vp"));
   Ok(egui::RawInput {
     dropped_files: Vec::new(),
     hovered_files: Vec::new(),
@@ -264,14 +264,14 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
     screen_rect: Some(input.screenRect.into()),
     max_texture_side: None,
     focused: true, // FIXME
-    viewport_id: vp_id,
+    viewport_id: ViewportId::default(),
     viewports: {
       let info = ViewportInfo {
         native_pixels_per_point: Some(input.pixelsPerPoint),
         ..Default::default()
       };
       let mut map = egui::ViewportIdMap::new();
-      map.insert(vp_id, info);
+      map.insert(ViewportId::default(), info);
       map
     },
   })
