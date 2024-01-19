@@ -275,5 +275,5 @@ SHARDS_REGISTER_FN(assert) {
   REGISTER_SHARD("Assert.IsVariable", IsVariable);
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
-  REGISTER_SHARD("Assert.Break", Break);
+  REGISTER_SHARD("Debug.Break", Break);
 }
