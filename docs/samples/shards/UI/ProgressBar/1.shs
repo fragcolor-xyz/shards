@@ -1,0 +1,19 @@
+@wire(ui-wire {
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.CentralPanel({
+      Once({
+        0.0 >= progress
+      })
+     progress | UI.ProgressBar(Overlay: "Progress")
+     Math.Add(0.01) > progress
+      })
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

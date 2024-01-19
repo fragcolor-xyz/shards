@@ -1,0 +1,38 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI PlotBar"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      Once({
+        32.0 >= n
+        [] >= sin
+        n | Math.Divide(3.1415926535) = divide-factor
+      })
+      
+      UI.Plot(
+        Legend: true
+        Contents: {
+          ForRange(
+            From: -32
+            To: 32
+            Action: {
+              ToFloat | Math.Divide(divide-factor) >= x
+              x | Math.Sin >= y
+              [x y] | ToFloat2 >> sin
+            }
+          )
+          sin | ExpectLike([@f2(0)])
+          UI.PlotPoints(
+            Color: @color(200 100 100)
+            Name: "sin"
+          )
+        }
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

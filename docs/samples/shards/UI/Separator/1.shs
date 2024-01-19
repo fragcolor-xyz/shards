@@ -1,0 +1,19 @@
+
+@wire(ui-wire {
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.CentralPanel({
+        "Hello" | UI.Label
+        UI.Separator
+        "World" | UI.Label
+      })
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

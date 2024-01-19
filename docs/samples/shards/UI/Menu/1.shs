@@ -1,0 +1,27 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.TopPanel(
+        Contents: {
+          UI.TopPanel(
+            Contents:
+            UI.MenuBar(
+              UI.Menu(
+                Title: "File"
+                Contents:
+                UI.Button("Exit")
+              )
+            )
+          )
+        }
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

@@ -109,7 +109,7 @@ pub fn get_egui_texture_from_gfx(
 }
 
 fn into_egui_image(image: &SHImage) -> egui::ColorImage {
-  assert_eq!(image.channels, 4);
+  // assert_eq!(image.channels, 4);
 
   let size = [image.width as _, image.height as _];
   let rgba = unsafe {

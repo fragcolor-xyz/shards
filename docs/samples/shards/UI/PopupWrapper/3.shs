@@ -1,14 +1,14 @@
-; Double PopupWrapper with mix of Button and ImageButton widget and contents
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Popup"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
       UI.CentralPanel({
         Once({
-          LoadImage("../../assets/ShardsLogo.png") = image
+          asset/r0 | GFX.Texture = image
         })
         UI.PopupWrapper(
           MinWidth: 200.0
@@ -56,8 +56,8 @@ GFX.MainWindow(
           }
         )
       })
-    ) | UI.Render(ui-draw-queue)
+    }
+  )
+} Looped: true)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+{ui-behavior: ui-wire}

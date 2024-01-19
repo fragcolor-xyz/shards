@@ -1,15 +1,15 @@
-; Single PopupWrapper with Button widget and contents
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI PlotBar"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
       UI.CentralPanel({
         UI.PopupWrapper(
           Widget: {
-             UI.Button(
+            UI.Button(
               Label: "Send message"
               Action: {
                 "Message sent!" | Log
@@ -27,7 +27,7 @@ GFX.MainWindow(
         )
         UI.PopupWrapper(
           Widget: {
-             UI.Button(
+            UI.Button(
               Label: "Send message"
               Action: {
                 "Message sent!" | Log
@@ -44,8 +44,8 @@ GFX.MainWindow(
           }
         )
       })
-    ) | UI.Render(ui-draw-queue)
+    }
+  )
+} Looped: true)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+{ui-behavior: ui-wire}

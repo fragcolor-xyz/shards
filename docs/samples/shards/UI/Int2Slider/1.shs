@@ -1,0 +1,18 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "Int Slider"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.Int2Slider(
+        Variable: int2
+        Min: @i2(1) Max: @i2(100)
+      )
+      ExpectInt2
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

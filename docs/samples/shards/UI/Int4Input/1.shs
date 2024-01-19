@@ -1,0 +1,16 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.Int4Input(
+      Variable: int4)
+      ExpectInt4
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

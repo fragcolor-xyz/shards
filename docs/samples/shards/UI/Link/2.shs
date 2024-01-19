@@ -1,0 +1,21 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.CentralPanel(
+        {UI.Link(
+            Label: "Click here"
+            Style: {italics: true}
+            Action: Msg("Hello")
+          )
+        }
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

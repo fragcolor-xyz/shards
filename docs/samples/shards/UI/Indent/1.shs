@@ -1,0 +1,26 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      "Part A" | UI.Label
+     UI.Indent(
+      Contents:
+      {
+       "1." | UI.Label
+       UI.Indent(
+        Contents:
+        {
+         "1.1." | UI.Label
+         "1.2." | UI.Label})
+       "2." | UI.Label})
+     UI.Separator
+     "Part B" | UI.Label
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

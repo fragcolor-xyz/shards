@@ -1,0 +1,19 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      Once({
+        asset/aekOJk0VA| GFX.Texture = uiImage1 ;; replace with whatever image you have as references
+
+      })
+
+      uiImage1 | UI.Image
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

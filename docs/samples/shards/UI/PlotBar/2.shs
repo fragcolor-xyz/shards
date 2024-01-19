@@ -1,0 +1,41 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI PlotBar"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.TopPanel(
+      Contents:
+      UI.Checkbox("Horizontal" horizontal))
+      UI.CentralPanel(
+        Contents: {
+          UI.Plot({
+            [] >= hist
+            ForRange(
+              -40 39
+              {
+                Once({
+                  0.02 | Math.Multiply(3.1415926535) | Math.Sqrt = f
+                })
+                ToFloat | Math.Divide(10.0) | Math.Add(0.05) >= x
+                x | Math.Multiply(x) | Math.Divide(-2.0) | Math.Exp | Math.Divide(f) >= y
+                [x y] | ToFloat2 >> hist
+              }
+            )
+            
+            hist | ExpectLike([@f2(0)])
+            UI.PlotBar(
+              Horizontal: horizontal
+              Width: 0.095
+              Color: @color(173 216 230)
+            )
+          })
+        }
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

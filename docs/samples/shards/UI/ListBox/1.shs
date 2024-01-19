@@ -1,0 +1,24 @@
+@wire(ui-wire {
+  UI.Window(
+    Title: "UI Image"
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 700
+    Height: 400
+    Contents: {
+      UI.CentralPanel (
+        ["α Α" "ω Ω"]
+        UI.ListBox(Index: index)
+        ExpectString >= value
+        
+        UI.Horizontal(
+          {"Selected index: " | UI.Label
+            index | ToString | UI.Label
+          }
+        )
+      )
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}
