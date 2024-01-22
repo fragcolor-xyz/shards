@@ -1,0 +1,28 @@
+@wire(main-wire-graphics {
+  Once({
+    {State: {Culling: false}
+     Shaders: [{Name: "z-discard"
+                After: ["readColor"]
+                Stage: ProgrammableGraphicsStage::Fragment
+                EntryPoint: {
+            Shader.ReadGlobal("color") | Take(3)
+            When(Predicate: IsLess(0.2) Action: {
+              Shader.Literal("discard;")
+            })
+          }}]}
+    GFX.Feature >> features
+    
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
+  })
+  fbl/translation | Math.Translation = translation-matrix
+  fbl/rotation | Math.Rotation = rotation-matrix
+  fbl/scale | Math.Scaling = scale-matrix
+  ; matmul them
+  translation-matrix | Math.MatMul(rotation-matrix) | Math.MatMul(scale-matrix) >= transformation-matrix
+  ; and feed to gltf renderer
+  transformation-matrix
+  GFX.Drawable(Features: features Mesh: cube Params: {baseColor: @f4(0.0 1.0 0.0 1.0)})
+  @fbl/draw([])
+} Looped: true)
+
+{graphics-behavior: main-wire-graphics}

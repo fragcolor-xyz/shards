@@ -1,0 +1,8 @@
+; ; :Break = `true`, assertion false
+; ; => abort the program
+7
+Maybe(
+  Assert.Is(Value: 8 Break:
+  ; ; uncomment next line to abort program on run
+  true)
+)

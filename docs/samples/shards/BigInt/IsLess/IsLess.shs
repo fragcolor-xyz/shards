@@ -1,0 +1,5 @@
+11 | BigInt = expected
+
+9 | BigInt
+BigInt.IsLess(Operand: expected)
+Assert.Is(true true)

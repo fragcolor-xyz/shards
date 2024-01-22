@@ -1,0 +1,8 @@
+
+@wire(main-wire {
+  "Hello" | String.ToUpper | Log
+  Assert.Is("HELLO" Break: true)
+  
+} Looped: true)
+
+{logic-behavior: main-wire}

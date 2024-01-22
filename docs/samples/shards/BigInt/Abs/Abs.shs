@@ -1,0 +1,10 @@
+
+@wire(main-wire {
+  1 | BigInt = expected
+  
+  -1 | BigInt
+  BigInt.Abs
+  BigInt.Is(expected) | Assert.Is(true true)
+} Looped: true)
+
+{logic-behavior: main-wire}

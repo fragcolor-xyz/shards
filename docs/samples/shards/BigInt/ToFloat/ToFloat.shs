@@ -1,0 +1,3 @@
+3 | BigInt
+BigInt.ToFloat(ShiftedBy: 1)
+Assert.Is(3.0 true)

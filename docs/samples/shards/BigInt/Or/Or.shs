@@ -1,0 +1,6 @@
+7 | BigInt = expected
+3 | BigInt = operand
+
+6 | BigInt
+BigInt.Or(Operand: operand)
+BigInt.Is(expected) | Assert.Is(true true)
