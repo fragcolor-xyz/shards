@@ -1,17 +1,16 @@
 ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2019 Fragcolor Pte. Ltd.
+; Copyright © 2019 Fragcolor Pte. Ltd
 
 @mesh(root)
 
 @wire(mywire {
-  "Hello wire" |
-  Set(var1 Global: true) |
+  "Hello wire"
+  Set(var1 Global: true)
   Cond([
     {true} {1 | Set(var2 Global: true)}
-    {false} {2 | Set(var2 Global: true)}
-  ])
-  Input |
-  Log |
+    {false} {2 | Set(var2 Global: true)}])
+  Input
+  Log
   Assert.Is("Initial input" true)
 })
 
@@ -44,105 +43,105 @@
 
 @wire(ticked {
   ; check that we can read root variables
-  var-from-root |
+  var-from-root
   Assert.Is("Ok!" true)
 
   Msg("message 1")
-  1 |
-  Pause |
-  Msg("message 2") |
+  1
+  Pause
+  Msg("message 2")
 
   ; test jumping to another coro
-  SwitchTo(jumphere) |
-  Msg("ticked resumed") |
-  2 |
-  Pause |
-  Msg("message 3") |
-  3 |
-  Pause |
+  SwitchTo(jumphere)
+  Msg("ticked resumed")
+  2
+  Pause
+  Msg("message 3")
+  3
+  Pause
 
-  Msg("message 4") |
-  4 |
-  Pause |
+  Msg("message 4")
+  4
+  Pause
 
   ; make sure main is not stopped in this case
-  SwitchTo(stopping) |
+  SwitchTo(stopping)
   ; the flow stopped via Stop, the input of Stop was 4 from previous SwitchTo
   Assert.Is(4 true)
 })
 
 @wire(ticked2 {
   Msg("message 1")
-  1 |
-  Pause |
-  Msg("message 2") |
+  1
+  Pause
+  Msg("message 2")
 
   ; test jumping to another coro
-  SwitchTo(jumphere2 true) |
-  Msg("ticked resumed") |
-  2 |
-  Pause |
-  Msg("message 3") |
-  3 |
-  Pause |
+  SwitchTo(jumphere2 true)
+  Msg("ticked resumed")
+  2
+  Pause
+  Msg("message 3")
+  3
+  Pause
 
-  Msg("message 4") |
-  4 |
+  Msg("message 4")
+  4
   Msg("ticked2 done")
 })
 
 @wire(started {
   Msg("From top!")
-  SwitchTo(root-wire) |
+  SwitchTo(root-wire)
   ; root-wire should complete, and so output "done"
   Assert.Is("done" true)
 })
 
 @wire(root-wire {
-  "Initial input" |
-  Once({Do(mywire)}) |
-  Get(var1) |
-  Log("var1") |
-  Get(var2) |
-  Log("var2") |
-  Detach(other) |
-  Wait(other) |
-  Log("otherWire") |
+  "Initial input"
+  Once({Do(mywire)})
+  Get(var1)
+  Log("var1")
+  Get(var2)
+  Log("var2")
+  Detach(other)
+  Wait(other)
+  Log("otherWire")
   Assert.Is(99 true)
-  10 |
+  10
   Do(func)
-  12 |
+  12
   Do(func)
-  20 |
+  20
   Do(func)
 
-  Detach(otherLooped) |
-  Stop(otherLooped) |
+  Detach(otherLooped)
+  Stop(otherLooped)
   Wait(otherLooped)
 
   "Ok!" = var-from-root
   ; test a stepped wire that Stops
-  Step(ticked) |
-  Msg("had message 1") |
+  Step(ticked)
+  Msg("had message 1")
   Assert.Is(1 true) ; pause after 1
 
-  Step(ticked) |
-  Msg("had message 2") |
+  Step(ticked)
+  Msg("had message 2")
   Assert.Is(1 true) ; resume pauses jumped
 
-  Step(ticked) |
-  Msg("before ticked resume") |
+  Step(ticked)
+  Msg("before ticked resume")
   Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
 
   Step(ticked) ; pause after 2
   Assert.Is(2 true)
 
   Step(ticked) ; resume pauses when going stopping
-  Msg("had message 3") |
+  Msg("had message 3")
   Assert.Is(3 true) ; pause after 3
 
-  Step(ticked) |
-  Msg("had message 4") |
+  Step(ticked)
+  Msg("had message 4")
   Assert.Is(4 true) ; pause after 4
 
   Step(ticked) ; will stop the wire
@@ -155,36 +154,36 @@
   ; test a stepped wire that never stops and rotates
   Repeat({
     Msg("repeating!")
-    Step(ticked2) |
-    Msg("had message 1") |
+    Step(ticked2)
+    Msg("had message 1")
     Assert.Is(1 true) ; pause after 1
 
-    Step(ticked2) |
-    Msg("had message 2") |
+    Step(ticked2)
+    Msg("had message 2")
     Assert.Is(1 true) ; resume pauses jumped
 
-    Step(ticked2) |
-    Msg("before ticked resume") |
+    Step(ticked2)
+    Msg("before ticked resume")
     Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
 
     Step(ticked2) ; pause after 2
     Assert.Is(2 true)
 
     Step(ticked2) ; resume pauses when going stopping
-    Msg("had message 3") |
+    Msg("had message 3")
     Assert.Is(3 true) ; pause after 3
 
-    Step(ticked2) |
-    Msg("had message 4") |
+    Step(ticked2)
+    Msg("had message 4")
     Assert.Is(4 true) ; pause after 4
   } Times: 3)
 
-  SwitchTo(started true) |
-  Msg("root resumed") |
-  SwitchTo(started true) |
+  SwitchTo(started true)
+  Msg("root resumed")
+  SwitchTo(started true)
   Msg("root resumed")
 
-  "done" |
+  "done"
   Log
 })
 
@@ -192,8 +191,8 @@
 @run(root) | Assert.Is(true)
 
 @wire(save {
-  Const(root-wire) |
-  WriteFile("subwires.wire") |
+  Const(root-wire)
+  WriteFile("subwires.wire")
   Msg("Serialized!")
 })
 
@@ -201,11 +200,11 @@
 @run(root) | Assert.Is(true)
 
 @wire(load {
-  ReadFile("subwires.wire") |
+  ReadFile("subwires.wire")
   ExpectWire >= wire
-  Log("loaded") |
+  Log("loaded")
   ; we must do this here! cos wire will try to resume self
-  WireRunner(wire Mode: RunWireMode::Async) |
+  WireRunner(wire Mode: RunWireMode::Async)
   Wait(wire)
 })
 

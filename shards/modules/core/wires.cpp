@@ -977,7 +977,7 @@ struct SwitchTo : public WireBase {
     // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
 
     // check if this is the end! as we might get here on a stop
-    if(wire && context->shouldStop()) {
+    if (wire && current != pWire->resumer && context->shouldStop()) {
       // means we were stopped, so we need to stop the wire too
       shards::stop(pWire);
     }
