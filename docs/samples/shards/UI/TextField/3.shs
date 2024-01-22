@@ -1,16 +1,16 @@
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
-      UI.CentralPanel({
-        ; exposing a new variable
-        UI.TextField(text)
-      })
-    ) | UI.Render(ui-draw-queue)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+@wire(ui-wire {
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      ; exposing a new variable
+      UI.TextField(text)
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

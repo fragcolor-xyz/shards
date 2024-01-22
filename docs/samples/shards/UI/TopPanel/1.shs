@@ -1,17 +1,19 @@
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
+
+@wire(ui-wire {
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
       UI.TopPanel(
         Contents: {
           "Top Panel" | UI.Label
         }
       )
-    ) | UI.Render(ui-draw-queue)
+    }
+  )
+} Looped: true)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+{ui-behavior: ui-wire}

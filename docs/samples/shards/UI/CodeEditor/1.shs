@@ -1,23 +1,33 @@
+
 @wire(ui-wire {
-  Once({
-    "" >= code
-  })
-  UI.TopPanel(
-    Contents:
-    UI.MenuBar(
-      Contents:
-      UI.Menu(
-        "Edit"
-        UI.Button(
-          "Clear"
-          {"" > code (UI.CloseMenu)}
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      Once({
+        "" >= code
+      })
+      UI.TopPanel(
+        Contents:
+        UI.MenuBar(
+          Contents:
+          UI.Menu(
+            "Edit"
+            UI.Button(
+              "Clear"
+              {"" > code (UI.CloseMenu)}
+            )
+          )
         )
       )
-    )
+      UI.CentralPanel(
+      Contents:
+      UI.CodeEditor(code "Rust"))
+    }
   )
-  UI.CentralPanel(
-  Contents:
-  UI.CodeEditor(code "Rust"))
 } Looped: true)
 
 {ui-behavior: ui-wire}

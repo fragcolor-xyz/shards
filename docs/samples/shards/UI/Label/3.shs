@@ -1,6 +1,6 @@
 @wire(ui-wire {
   UI.Window(
-    Title: "UI Image"
+    Title: "UI Label"
     Position: @f2(0 0)
     Anchor: Anchor::Center
     Width: 700

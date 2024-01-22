@@ -1,7 +1,29 @@
+
 @wire(ui-wire {
-  UI.CentralPanel(
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
     Contents: {
-      "Central Panel" | UI.Label
+      UI.TopPanel(
+        Contents: {
+          "Top Panel" | UI.Label
+        }
+      )
+      UI.CentralPanel(
+        Contents: {
+          "Central Panel" | UI.Label
+        }
+      )
+      UI.BottomPanel(
+        Contents: {
+          "Bottom Panel" | UI.Label
+        }
+      )
     }
   )
-} Looped:  true)
+} Looped: true)
+
+{ui-behavior: ui-wire}

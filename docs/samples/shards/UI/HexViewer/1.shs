@@ -1,6 +1,6 @@
 @wire(ui-wire {
   UI.Window(
-    Title: "UI Disable"
+    Title: "UI Hex Viewer"
     Position: @f2(0 0)
     Anchor: Anchor::Center
     Width: 700

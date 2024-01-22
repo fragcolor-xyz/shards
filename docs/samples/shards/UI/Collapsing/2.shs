@@ -1,11 +1,18 @@
+
 @wire(ui-wire {
-  UI.CentralPanel(
-    Contents:
-    UI.Collapsing(
-      Heading: UI.Button("Heading" Msg("Clicked"))
-      DefaultOpen: true
-      Contents: {"Content" (UI.Label)}
-    )
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.Collapsing(
+        Heading: UI.Button("Heading" Msg("Clicked"))
+        DefaultOpen: true
+        Contents: {"Content" | UI.Label}
+      )
+    }
   )
 } Looped: true)
 

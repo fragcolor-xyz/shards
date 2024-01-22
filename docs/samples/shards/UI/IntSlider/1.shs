@@ -7,13 +7,13 @@
     Height: 200
     Flags: [WindowFlags::NoResize]
     Contents: {
-      {["α Α" "ω Ω"]
-        UI.Combo(
-          Label: "Greek letter"
-          Index: index
-        )
-        ExpectString >= letter
-      }
+      UI.IntSlider(
+        Label: "My Label"
+        Style: {color: @color(255 128 64) italics: true}
+        Variable: int
+        Min: 1 Max: 100
+      )
+      ExpectInt
     }
   )
 } Looped: true)

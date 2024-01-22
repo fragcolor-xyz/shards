@@ -1,10 +1,18 @@
+
 @wire(ui-wire {
-  UI.CentralPanel(
-    UI.Columns(
-      Contents:
-      [{"Column 1" | UI.Label}
-        {"Column 2" | UI.Label}]
-    )
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.Columns(
+        Contents:
+        [{"Column 1" | UI.Label}
+          {"Column 2" | UI.Label}]
+      )
+    }
   )
 } Looped: true)
 

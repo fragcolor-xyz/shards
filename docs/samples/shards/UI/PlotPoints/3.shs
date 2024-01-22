@@ -1,6 +1,6 @@
 @wire(ui-wire {
   UI.Window(
-    Title: "UI PlotBar"
+    Title: "UI PlotPoints"
     Position: @f2(0 0)
     Anchor: Anchor::Center
     Width: 700

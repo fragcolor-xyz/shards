@@ -1,11 +1,19 @@
+
 @wire(ui-wire {
-  UI.CentralPanel(
-    UI.Button(
-      Label: "Click me!"
-      Style: {color: @color(255 255 0)}
-      Action: Msg("Clicked")
-    )
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.Button(
+        Label: "Click me!"
+        Style: {color: @color(255 255 0)}
+        Action: Msg("Clicked")
+      )
+    }
   )
-} Looped:  true)
+} Looped: true)
 
 {ui-behavior: ui-wire}

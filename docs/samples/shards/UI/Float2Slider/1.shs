@@ -1,15 +1,19 @@
-(GFX.MainWindow
- :Contents
- (->
-  (Setup
-   (GFX.DrawQueue) >= .ui-draw-queue
-   (GFX.UIPass .ui-draw-queue) >> .render-steps)
-  (UI
-   (UI.CentralPanel
-    (->
-     (UI.Float2Slider
-      :Variable .float2
-      :Min (float2 0) :Max (float2 1))
-     (ExpectFloat2))))
 
-  (GFX.Render :Steps .render-steps)))
+@wire(ui-wire {
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.Float2Slider(
+        Variable: float2
+        Min: @f2(0.0) Max: @f2(1.0)
+      )
+      ExpectFloat2
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}

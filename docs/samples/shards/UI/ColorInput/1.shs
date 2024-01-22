@@ -1,8 +1,15 @@
 
-
 @wire(ui-wire {
-  UI.CentralPanel(
-  UI.ColorInput(Variable: color))
+  UI.Window(
+    Position: @f2(0 0)
+    Anchor: Anchor::Center
+    Width: 200
+    Height: 200
+    Flags: [WindowFlags::NoResize]
+    Contents: {
+      UI.ColorInput(Variable: color)
+    }
+  )
 } Looped: true)
 
 {ui-behavior: ui-wire}

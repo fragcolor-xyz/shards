@@ -1,19 +1,12 @@
-GFX.MainWindow(
-  Contents: {
-    Once({
-      GFX.DrawQueue >= ui-draw-queue
-      GFX.UIPass(ui-draw-queue) >> render-steps
-    })
-    UI(
-        UI.Window(
-          Title: "Greetings"
-          Flags: WindowFlags::NoCollapse
-          Contents: {
-            "Hello shards!" | UI.Label
-          }
-        )
-    ) | UI.Render(ui-draw-queue)
 
-    GFX.Render(Steps: render-steps)
-  }
-)
+@wire(ui-wire {
+  UI.Window(
+    Title: "Greetings"
+    Flags: WindowFlags::NoCollapse
+    Contents: {
+      "Hello shards!" | UI.Label
+    }
+  )
+} Looped: true)
+
+{ui-behavior: ui-wire}
