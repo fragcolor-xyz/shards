@@ -37,7 +37,9 @@ inline TexturePtr varToTexture(const SHVar &var) {
   return result;
 }
 
-inline std::variant<NumParameter, TextureParameter> varToShaderParameter(const SHVar &var) {
+using ShaderParamVariant = std::variant<NumParameter, TextureParameter, BufferPtr>;
+
+inline ShaderParamVariant varToShaderParameter(const SHVar &var) {
   auto isTypedSeq = [&](const SHType basicType) {
     if (var.innerType == SHType::Float4)
       return true;
@@ -103,8 +105,13 @@ inline std::variant<NumParameter, TextureParameter> varToShaderParameter(const S
     } else {
       throw formatException("Seq inner value {} can not be converted to NumParameter", var);
     }
-  case SHType::Object:
+  case SHType::Object: {
+    auto objType = shards::Type::Object(var.payload.objectVendorId, var.payload.objectTypeId);
+    if (objType == ShardsTypes::Buffer) {
+      return varAsObjectChecked<SHBuffer>(var, ShardsTypes::Buffer).buffer;
+    }
     return TextureParameter(varToTexture(var));
+  }
   default:
     throw formatException("Value {} can not be converted to NumParameter", var);
   }
@@ -148,7 +155,7 @@ inline std::optional<shader::Type> deriveShaderFieldType(const SHTypeInfo &typeI
   return std::nullopt;
 }
 
-inline std::optional<std::variant<NumParameter, TextureParameter>> tryVarToParam(const SHVar &var) {
+inline std::optional<ShaderParamVariant> tryVarToParam(const SHVar &var) {
   try {
     return varToShaderParameter(var);
   } catch (std::exception &e) {
