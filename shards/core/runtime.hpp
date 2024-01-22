@@ -693,9 +693,20 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   void terminate() {
     boost::container::small_vector<std::shared_ptr<SHWire>, 16> toStop;
+
+    // scheduled might not be the full picture!
+    for(auto flow : _flowPool) {
+      toStop.emplace_back(flow.wire->shared_from_this());
+    }
+
+    // now add scheduled, notice me might have duplicates!
     for (auto wire : scheduled) {
       toStop.emplace_back(wire);
     }
+
+    // remove dupes
+    std::sort(toStop.begin(), toStop.end());
+    toStop.erase(std::unique(toStop.begin(), toStop.end()), toStop.end());
 
     for (auto wire : toStop) {
       shards::stop(wire.get());
