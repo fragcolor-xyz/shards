@@ -11,13 +11,9 @@
 namespace gfx::detail {
 
 inline shards::logging::Logger getQueueLogger() {
-  auto logger = spdlog::get("GFXQueue");
-  if (!logger) {
-    logger = std::make_shared<spdlog::logger>("GFXQueue");
+  return shards::logging::getOrCreate("gfx_queue", [](shards::logging::Logger logger) {
     logger->set_level(spdlog::level::info);
-    shards::logging::init(logger);
-  }
-  return logger;
+  });
 }
 
 struct QueueData {
