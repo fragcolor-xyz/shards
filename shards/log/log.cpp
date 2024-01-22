@@ -17,7 +17,10 @@
 
 namespace shards::logging {
 
-std::shared_mutex getOrCreateMutex;
+std::shared_mutex &__getRegisterMutex() {
+  static std::shared_mutex m;
+  return m;
+}
 
 struct Sinks {
   std::shared_mutex lock;

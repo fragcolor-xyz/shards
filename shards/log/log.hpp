@@ -28,14 +28,15 @@ void setupDefaultLoggerConditional(std::string fileName = "shards.log");
 // !! use getOrCreate instead to prevent race conditions
 void __init(Logger logger);
 
-extern std::shared_mutex getOrCreateMutex;
+std::shared_mutex& __getRegisterMutex();
 template <typename T> Logger getOrCreate(const std::string &name, T init) {
-  std::shared_lock<std::shared_mutex> l(getOrCreateMutex);
+  auto& m = __getRegisterMutex();
+  std::shared_lock<std::shared_mutex> l(m);
   auto logger = spdlog::get(name);
   if (!logger) {
     // Swap to write lock
     l.unlock();
-    std::unique_lock<std::shared_mutex> ul(getOrCreateMutex);
+    std::unique_lock<std::shared_mutex> ul(m);
 
     // Check again after acquiring write lock in case another thread created the logger in between
     logger = spdlog::get(name);
