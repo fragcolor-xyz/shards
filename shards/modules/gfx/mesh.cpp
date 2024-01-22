@@ -24,12 +24,13 @@ struct MeshShard {
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
 
   PARAM_VAR(_layoutParam, "Layout", "The names for each vertex attribute.", {VertexAttributeSeqType});
-  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {ShardsTypes::WindingOrderEnumInfo::Type});
+  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.",
+            {ShardsTypes::WindingOrderEnumInfo::Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
 
   MeshPtr *_mesh = {};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     if (_mesh) {
       ShardsTypes::MeshObjectVar.Release(_mesh);
@@ -119,33 +120,46 @@ struct BuiltinMeshShard {
   PARAM_VAR(_type, "Type", "The type of object to make.", {BuiltinMeshTypeEnumInfo::Type})
   PARAM_IMPL(PARAM_IMPL_FOR(_type));
 
+  MeshPtr *_output{};
+  void clearOutput() {
+    if (_output) {
+      ShardsTypes::MeshObjectVar.Release(_output);
+      _output = nullptr;
+    }
+  }
+
   BuiltinMeshShard() { _type = Var::Enum(Type::Cube, BuiltinMeshTypeEnumInfo::VendorId, BuiltinMeshTypeEnumInfo::TypeId); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    clearOutput();
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    MeshPtr *meshVar = ShardsTypes::MeshObjectVar.New();
+    if (!_output) {
+      _output = ShardsTypes::MeshObjectVar.New();
 
-    switch (Type(_type.payload.enumValue)) {
-    case Type::Cube: {
-      geom::CubeGenerator gen;
-      gen.generate();
-      *meshVar = createMesh(gen.vertices, gen.indices);
-    } break;
-    case Type::Sphere: {
-      geom::SphereGenerator gen;
-      gen.generate();
-      *meshVar = createMesh(gen.vertices, gen.indices);
-    } break;
-    case Type::Plane: {
-      geom::PlaneGenerator gen;
-      gen.generate();
-      *meshVar = createMesh(gen.vertices, gen.indices);
-    } break;
+      switch (Type(_type.payload.enumValue)) {
+      case Type::Cube: {
+        geom::CubeGenerator gen;
+        gen.generate();
+        *_output = createMesh(gen.vertices, gen.indices);
+      } break;
+      case Type::Sphere: {
+        geom::SphereGenerator gen;
+        gen.generate();
+        *_output = createMesh(gen.vertices, gen.indices);
+      } break;
+      case Type::Plane: {
+        geom::PlaneGenerator gen;
+        gen.generate();
+        *_output = createMesh(gen.vertices, gen.indices);
+      } break;
+      }
     }
 
-    return ShardsTypes::MeshObjectVar.Get(meshVar);
+    return ShardsTypes::MeshObjectVar.Get(_output);
   }
 };
 

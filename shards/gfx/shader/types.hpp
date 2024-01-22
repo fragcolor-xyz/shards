@@ -13,12 +13,50 @@ namespace gfx {
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
 enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
-bool isIntegerType(const ShaderFieldBaseType &type);
-bool isFloatType(const ShaderFieldBaseType &type);
-size_t getByteSize(const ShaderFieldBaseType &type);
+constexpr bool isFloatType(const ShaderFieldBaseType &type) {
+  switch (type) {
+  case ShaderFieldBaseType::UInt8:
+  case ShaderFieldBaseType::Int8:
+  case ShaderFieldBaseType::UInt16:
+  case ShaderFieldBaseType::Int16:
+  case ShaderFieldBaseType::UInt32:
+  case ShaderFieldBaseType::Int32:
+    return false;
+  case ShaderFieldBaseType::Float16:
+  case ShaderFieldBaseType::Float32:
+    return true;
+  default:
+    return false;
+  }
+}
+constexpr bool isIntegerType(const ShaderFieldBaseType &type) { return !isFloatType(type); }
+constexpr size_t getByteSize(const ShaderFieldBaseType &type) {
+  switch (type) {
+  case ShaderFieldBaseType::UInt8:
+  case ShaderFieldBaseType::Int8:
+    return 1;
+  case ShaderFieldBaseType::UInt16:
+  case ShaderFieldBaseType::Int16:
+  case ShaderFieldBaseType::Float16:
+    return 2;
+  case ShaderFieldBaseType::UInt32:
+  case ShaderFieldBaseType::Int32:
+  case ShaderFieldBaseType::Float32:
+    return 4;
+  default:
+    return 0;
+  }
+}
 size_t getWGSLAlignment(const ShaderFieldBaseType &type);
 
 namespace shader {
+
+enum class AddressSpace {
+  Uniform,
+  Storage,
+  StorageRW,
+};
+
 struct TextureType {
   gfx::TextureDimension dimension = gfx::TextureDimension::D2;
   TextureSampleType format = TextureSampleType::Float;
@@ -78,7 +116,7 @@ private:
   std::unique_ptr<ArrayTypeImpl> impl; // Indirection because of variant declaration
 public:
   ArrayType();
-  ArrayType(const Type &elementType, size_t fixedLength = 0);
+  ArrayType(const Type &elementType, std::optional<size_t> fixedLength = std::nullopt);
   ArrayType(const ArrayType &other);
   ArrayType(ArrayType &&other) = default;
   ArrayType &operator=(const ArrayType &other);
@@ -120,7 +158,7 @@ struct ArrayTypeImpl {
   std::strong_ordering operator<=>(const ArrayTypeImpl &other) const = default;
 };
 inline ArrayType::ArrayType() { impl = std::make_unique<ArrayTypeImpl>(); }
-inline ArrayType::ArrayType(const Type &elementType, size_t fixedLength) {
+inline ArrayType::ArrayType(const Type &elementType, std::optional<size_t> fixedLength) {
   impl = std::make_unique<ArrayTypeImpl>();
   impl->elementType = elementType;
   impl->fixedLength = fixedLength;

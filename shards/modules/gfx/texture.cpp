@@ -486,7 +486,7 @@ struct ReadTextureShard {
 
     // Poll for previously queued operation completion
     if (!*_wait)
-      _requiredGraphicsContext->renderer->pollTextureCopies();
+      _requiredGraphicsContext->renderer->pollBufferCopies();
 
     _image.valueType = SHType::Image;
     auto &outImage = _image.payload.imageValue;

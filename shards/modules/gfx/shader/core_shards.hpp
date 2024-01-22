@@ -510,8 +510,7 @@ template <typename TShard> struct Write : public IOBase {
         if (outputIt != outputs.end()) {
           outputType = &outputIt->second;
         } else {
-          outputType =
-              shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumType>(inTypeOpt.value()));
+          outputType = shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumType>(inTypeOpt.value()));
           if (!outputType) {
             throw formatException("Output \"{}\" does not exist", _name);
           }
@@ -718,6 +717,46 @@ struct RefSampler {
 
     auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.textureDefaultSampler(textureName); });
     context.setWGSLTopVar(_samplerType, std::move(block));
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+};
+
+struct RefBuffer {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Buffer; }
+
+  static SHOptionalString help() { return SHCCSTR("Returns a reference to the default sampler object for a named texture."); }
+
+  PARAM_VAR(_name, "Name", "The name of the buffer", {CoreInfo::StringType});
+  PARAM_VAR(_pointer, "Pointer", "Reference as pointer", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_pointer));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    auto name = _name.payload.stringValue; // null term ok
+    auto &shaderCtx = ShaderCompositionContext::get();
+    auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
+    auto it = buffers.find(name);
+    if (it == buffers.end()) {
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+    }
+    return ShardsTypes::Buffer;
+  }
+
+  void translate(TranslationContext &context) {
+    const SHString &bufferName = _name.payload.stringValue; // null term ok
+    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/buffer)> {}", bufferName);
+
+    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { 
+      if(_pointer->isNone() || (bool)*_pointer) {
+        ctx.write("&");
+      }
+      ctx.refBuffer(bufferName); 
+    });
+    context.setWGSLTopVar(StructType{}, std::move(block));
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }

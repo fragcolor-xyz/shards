@@ -4,6 +4,7 @@
 #include "fwd.hpp"
 #include "params.hpp"
 #include "unique_id.hpp"
+#include <boost/container/flat_map.hpp>
 #include <map>
 #include <memory>
 #include <vector>
@@ -18,12 +19,14 @@ struct PipelineHashCollector;
 // Container for shader parameters (basic/texture)
 /// <div rustbindgen opaque>
 struct MaterialParameters {
-  std::map<FastString, NumParameter> basic;
-  std::map<FastString, TextureParameter> textures;
+  boost::container::flat_map<FastString, NumParameter> basic;
+  boost::container::flat_map<FastString, TextureParameter> textures;
+  boost::container::flat_map<FastString, BufferPtr> blocks;
 
   void set(FastString key, const NumParameter &param) { basic.insert_or_assign(key, (param)); }
   void set(FastString key, NumParameter &&param) { basic.insert_or_assign(key, std::move(param)); }
   void set(FastString key, const TextureParameter &param) { textures.insert_or_assign(key, (param)); }
+  void set(FastString key, const BufferPtr &param) { blocks.insert_or_assign(key, (param)); }
 
   bool setIfChanged(FastString key, NumParameter param) {
     auto it = basic.find(key);
@@ -38,6 +41,7 @@ struct MaterialParameters {
     }
     return false;
   }
+
   bool setIfChanged(FastString key, TextureParameter param) {
     auto it = textures.find(key);
     if (it != textures.end()) {
@@ -47,6 +51,20 @@ struct MaterialParameters {
       }
     } else {
       textures.insert_or_assign(key, param);
+      return true;
+    }
+    return false;
+  }
+
+  bool setIfChanged(FastString key, BufferPtr param) {
+    auto it = blocks.find(key);
+    if (it != blocks.end()) {
+      if (it->second != param) {
+        it->second = param;
+        return true;
+      }
+    } else {
+      blocks.insert_or_assign(key, param);
       return true;
     }
     return false;

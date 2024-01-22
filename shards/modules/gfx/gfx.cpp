@@ -152,6 +152,7 @@ SHARDS_REGISTER_FN(gfx) {
   REGISTER_ENUM(ShardsTypes::OrthographicSizeTypeEnumInfo);
   REGISTER_ENUM(ShardsTypes::BindGroupIdEnumInfo);
   REGISTER_ENUM(ShardsTypes::TextureSampleTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::BufferAddressSpaceEnumInfo);
 
   registerMainWindowShards();
   registerRendererShards();

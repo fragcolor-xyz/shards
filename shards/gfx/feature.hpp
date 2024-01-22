@@ -143,7 +143,6 @@ inline RequiredAttributes operator|(const RequiredAttributes &a, const RequiredA
   };
 }
 
-
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature : public std::enable_shared_from_this<Feature> {
   // Used to identify this feature for caching purposes
@@ -157,8 +156,8 @@ struct Feature : public std::enable_shared_from_this<Feature> {
   boost::container::flat_map<FastString, NumParamDecl> shaderParams;
   // Texture parameters
   boost::container::flat_map<FastString, TextureParamDecl> textureParams;
-  // Storage params such as buffers and read-write textures
-  boost::container::flat_map<FastString, StorageParamDecl> storageParams;
+  // Params that are bound as a single binding
+  boost::container::flat_map<FastString, BlockParamDecl> blockParams;
   // Shader entry points
   std::vector<shader::EntryPoint> shaderEntryPoints;
 
