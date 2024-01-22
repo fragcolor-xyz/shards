@@ -976,6 +976,12 @@ struct SwitchTo : public WireBase {
     // We will end here when we get resumed!
     // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
 
+    // check if this is the end! as we might get here on a stop
+    if(context->shouldStop()) {
+      // means we were stopped, so we need to stop the wire too
+      shards::stop(pWire);
+    }
+
     // reset resumer
     pWire->resumer = nullptr;
 
@@ -1371,7 +1377,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     if (unlikely(!newWire))
       return input;
 
-    if(wire && wire != newWire) {
+    if (wire && wire != newWire) {
       // if current wire is different, we need to cleanup
       stop(wire.get());
     }
