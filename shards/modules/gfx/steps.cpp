@@ -53,6 +53,7 @@ static inline const SHVar &getDefaultOutputScale() {
 void applyInputs(SHContext *context, RenderStepInput &rsInput, const SHVar &input) {
   checkType(input.valueType, SHType::Seq, ":Inputs");
 
+  rsInput.attachments.clear();
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
     checkType(elem.valueType, SHType::String, "Input");
@@ -268,7 +269,8 @@ struct DrawablePassShard {
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_sort, "Sort",
                  "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
-                 {CoreInfo::NoneType, ShardsTypes::SortModeEnumInfo::Type, Type::VariableOf(ShardsTypes::SortModeEnumInfo::Type)});
+                 {CoreInfo::NoneType, ShardsTypes::SortModeEnumInfo::Type,
+                  Type::VariableOf(ShardsTypes::SortModeEnumInfo::Type)});
   PARAM_VAR(_ignoreDrawableFeatures, "IgnoreDrawableFeatures",
             "Ignore any features on drawables and only use the features specified in this pass",
             {CoreInfo::NoneType, CoreInfo::BoolType});

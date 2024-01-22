@@ -1,5 +1,3 @@
-@define(timestep #(1.0 | Math.Divide(120.0)))
-
 @template(spin-transform [t location] {
   t
   {Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX}
@@ -9,74 +7,99 @@
 })
 
 @define(buffer-type {
-  global_int: {@type(Type::Int) atomic: true}
+  global_int: {type: @type(Type::Int) atomic: true}
+  global_uint: {type: @type(Type::Int) unsigned: true atomic: true}
+  flags: @type(Type::Int)
   size: @type(Type::Int2)
   values: {type: @type([Type::Float]) length: 4000}
 })
 
-@define(shader-lib """
-struct BufferType {
-  atomic<i32> global_int;
-  vec2<i32> size;
-  f32 values[4000];
-};
-
-fn test(x: Buffer) -> f32 {
-}
-""")
-
 @wire(gfx {
+  Animation.Timer >= time
+  
+  false >= looped-trigger
+  Animation.Timer(Duration: 0.2 Looped: true Action: {
+    true > looped-trigger
+  }) = lt-timer
+  
+  GFX.Buffer(@buffer-type AddressSpace: BufferAddressSpace::StorageRW) >= buf
+  {
+    "global_int": 100
+    "global_uint": 100
+    size: @i2(200 200)
+    flags: (lt-timer | If(IsLess(0.1) {1} {0}))
+    values: [1.0 2.0 3.0 4.0 5.0 0.0 99.0]
+  } | GFX.WriteBuffer(buf)
+  
   Once({
-    0.0 >= time
-    
-    ; translate to the new syntax
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
-    @f3(0 0 0) | Math.Translation >= transform-0
-    
-    ; The first pass that just renders the spinning cube
-    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
-    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
-    GFX.DrawQueue >= queue
-    GFX.DrawablePass(Features: features Queue: queue) >> render-steps1
-    
-    ; The effect pass that modifies the rendered cube image
-    ; It also uses the depth buffer from the rendered cube
-    GFX.EffectPass(
-      ; This indicates that the outputs from previous passes named "color" & "depth" are used within the pass
-      ; EffectPass will automatically expose them as shader bindings
-      Inputs: ["color" "depth"]
-      EntryPoint: {; Begin shader
-        ; Texture coordinates are named texCoord0/1/2/etc. by convention
-        Shader.ReadInput("texCoord0") >= uv
-        uv | Take(0) >= u
-        uv | Take(1) >= v
-        
-        ; Manipulate coordinates
-        v | Math.Multiply(300.0) | Math.Cos | Math.Multiply(0.001) | Math.Add(u) > u
-        MakeFloat2(u v) | Math.Multiply(2.0) | Math.Mod(@f2(1.0 1.0)) > uv
-
-        ; Sample the previous pass color output
-        uv | Shader.SampleTextureCoord("color") | ToFloat4 >= color
-        
-        ; Sample the previous pass depth output
-        ; Linearize and scale the result to display it, since depth is stored as normalized 1/z
-        uv | Shader.SampleTextureCoord("depth") | Take([0])
-        Shader.LinearizeDepth | Math.Subtract(6.0) | Math.Divide(4.0) >= depth
-        
-        ; Write output to "color"
-        MakeFloat4(depth depth 1.0 1.0) | Math.Multiply(color)
-        Shader.WriteOutput("color")
-        ; End shader
-      }
-    ) >> render-steps1
-    
-    {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
-    GFX.View(View: view-transform) >= view
   })
+  @f3(0 0 0) | Math.Translation >= transform-0
+  
+  ; The first pass that just renders the spinning cube
+  GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+  GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+  GFX.DrawQueue >= queue
+  GFX.DrawablePass(Features: features Queue: queue) >> render-steps1
+  
+  GFX.Feature(BlockParams: {
+    "buffer": {
+      AddressSpace: BufferAddressSpace::StorageRW
+      Type: @buffer-type
+      BindGroup: BindGroupId::Draw
+    }
+  }) >> fx-features
+  
+  ; The effect pass that modifies the rendered cube image
+  ; It also uses the depth buffer from the rendered cube
+  GFX.EffectPass(
+    Features: fx-features
+    Params: {
+      "buffer": buf
+    }
+    Inputs: ["color" "depth"]
+    EntryPoint: {; Begin shader
+      ; Texture coordinates are named texCoord0/1/2/etc. by convention
+      Shader.ReadInput("texCoord0") >= uv
+      uv | Take(0) >= u
+      uv | Take(1) >= v
+      
+      Shader.RefBuffer("buffer") = b
+      Shader.Literal([
+        "let b = " b ";"
+        "if((*b).flags == 1)"
+        "{"
+        "let jx = atomicAdd(&(*b).global_uint, 1u) % u32((*b).size.x);"
+        "let jy = atomicAdd(&(*b).global_int, 2) % (*b).size.y;"
+        u " = " u " + f32(jx) * 0.00005;"
+        v " = " v " + f32(jy) * 0.00005;"
+        "}"
+      ])
+      
+      ; Manipulate coordinates
+      v | Math.Multiply(300.0) | Math.Cos | Math.Multiply(0.001) | Math.Add(u) > u
+      MakeFloat2(u v) | Math.Multiply(3.0) | Math.Mod(@f2(1.0 1.0)) > uv
+      
+      ; Sample the previous pass color output
+      uv | Shader.SampleTextureCoord("color") | ToFloat4 >= color
+      
+      ; Sample the previous pass depth output
+      ; Linearize and scale the result to display it, since depth is stored as normalized 1/z
+      uv | Shader.SampleTextureCoord("depth") | Take([0])
+      Shader.LinearizeDepth | Math.Subtract(1.5) | Math.Divide(5.0) >= depth
+      
+      ; Write output to "color"
+      MakeFloat4(depth depth 1.0 1.0) | Math.Multiply(color)
+      Shader.WriteOutput("color")
+      ; End shader
+    }
+  ) >> render-steps1
+  
+  {Position: @f3(0 0 4) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+  GFX.View(View: view-transform) >= view
   
   view-transform | FreeCamera > view-transform
   
-  time | Math.Add(@timestep) > time
   @spin-transform(time @f3(0.0 0 0)) > transform-0
   
   transform-0 | GFX.Drawable(Mesh: mesh Params: {BaseColor: @f4(1 1 1 1)}) | GFX.Draw(Queue: queue)
@@ -88,6 +111,139 @@ fn test(x: Buffer) -> f32 {
 } Looped: true LStack: 4194304)
 
 @mesh(root)
-@schedule(root test-wire)
 
-@run(root FPS: 120 Iterations: 200) | Assert.Is(true)
+@schedule(root test-wire)
+@run(root FPS: 100 Iterations: 100) | Assert.Is(true)
+
+@wire(fail-test-missing-buffer {
+  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
+    GFX.Feature(BlockParams: {
+      "buffer": {
+        AddressSpace: BufferAddressSpace::StorageRW
+        Type: @buffer-type
+        BindGroup: BindGroupId::Draw
+      }
+      "buffer_v": {
+        AddressSpace: BufferAddressSpace::Storage
+        Type: @buffer-type
+        BindGroup: BindGroupId::View
+      }
+    }) >> fx-features
+    
+    GFX.EffectPass(
+      Features: fx-features
+      EntryPoint: {
+        Shader.RefBuffer("buffer") = b
+        Shader.Literal([
+          "let b = " b ";"
+        ])
+        
+        @f4(0.0) | Shader.WriteOutput("color")
+      }
+    ) >> render-steps
+    GFX.View = view
+    GFX.Render(Steps: render-steps View: view)
+    
+  })
+} Looped: true LStack: 4194304)
+
+@schedule(root fail-test-missing-buffer)
+@run(root FPS: 100 Iterations: 100) | Assert.Is(true)
+
+@define(v-buffer-type {
+  color: @type(Type::Float4)
+})
+@wire(view-binding {
+  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
+    Once({
+      GFX.Buffer(@v-buffer-type) = buf
+      {color: @f4(1.0 0.0 0.5 1.0)} | GFX.WriteBuffer(buf)
+      
+      GFX.Feature(BlockParams: {
+          "buffer_v": {
+            AddressSpace: BufferAddressSpace::Uniform
+            Type: @v-buffer-type
+            BindGroup: BindGroupId::View
+          }
+        }
+        ViewGenerators: {
+          {"buffer_v": buf}
+        }
+      ) >> fx-features
+    })
+    
+    GFX.EffectPass(
+      Features: fx-features
+      EntryPoint: {
+        Shader.RefBuffer("buffer_v") = b
+        @f4(0.0) >= color
+        
+        Shader.Literal([
+          "let b = " b ";"
+          color " = (*b).color;" ; 
+        ])
+        
+        color | Shader.WriteOutput("color")
+      }
+    ) >> render-steps
+    GFX.View = view
+    GFX.Render(Steps: render-steps View: view)
+  })
+} Looped: true LStack: 4194304)
+
+@schedule(root view-binding)
+@run(root FPS: 100 Iterations: 100) | Assert.Is(true)
+
+@define(v-readback-buffer-type {
+  color: @type(Type::Float4)
+})
+@wire(read-buffer {
+  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
+    Once({
+      GFX.Buffer(@v-readback-buffer-type AddressSpace: BufferAddressSpace::StorageRW) = buf
+      
+      GFX.Feature(BlockParams: {
+          "buffer_v": {
+            AddressSpace: BufferAddressSpace::StorageRW
+            Type: @v-readback-buffer-type
+            BindGroup: BindGroupId::View
+          }
+        }
+        ViewGenerators: {
+          {"buffer_v": buf}
+        }
+      ) >> fx-features
+    })
+    
+    GFX.EffectPass(
+      Features: fx-features
+      EntryPoint: {
+        Shader.RefBuffer("buffer_v") = b
+        @f4(0.0) >= color
+        
+        Shader.Literal([
+          "let b = " b ";"
+          "(*b).color = vec4<f32>(1.0, 0.2, 0.4, 1.0);"
+          color " = (*b).color;"
+        ])
+        
+        color | Shader.WriteOutput("color")
+      }
+    ) >> render-steps
+    
+    {color: @f4(0.0)} >= tmp-var
+    When({GFX.ReadBuffer(buf tmp-var)} {
+      ["Read buffer result" tmp-var] | String.Format | Log
+      tmp-var | Take("color") | Assert.Is(@f4(1 0.2 0.4 1))
+    })
+    
+    GFX.View = view
+    GFX.Render(Steps: render-steps View: view)
+  })
+} Looped: true LStack: 4194304)
+
+@schedule(root read-buffer)
+@run(root FPS: 100 Iterations: 100) | Assert.Is(true)

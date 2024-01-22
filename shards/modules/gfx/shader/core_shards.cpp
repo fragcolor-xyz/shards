@@ -48,6 +48,7 @@ void registerCoreShards() {
   REGISTER_SHADER_SHARD("Shader.SampleTextureCoord", gfx::shader::SampleTextureCoord);
   REGISTER_SHADER_SHARD("Shader.RefTexture", gfx::shader::RefTexture);
   REGISTER_SHADER_SHARD("Shader.RefSampler", gfx::shader::RefSampler);
+  REGISTER_SHADER_SHARD("Shader.RefBuffer", gfx::shader::RefBuffer);
 
   REGISTER_SHADER_SHARD("Shader.WithInput", gfx::shader::WithInput);
   REGISTER_SHADER_SHARD("Shader.WithTexture", gfx::shader::WithTexture);

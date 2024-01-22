@@ -23,7 +23,7 @@ struct RendererStorage {
   WorkerMemory workerMemory;
   WGPUSupportedLimits deviceLimits = {};
   DrawableProcessorCache drawableProcessorCache;
-  std::list<TransientPtr> transientPtrCleanupQueue;
+  std::vector<TransientPtr> transientPtrCleanupQueue;
   RenderGraphCache renderGraphCache;
   std::unordered_map<UniqueId, CachedViewDataPtr> viewCache;
   std::unordered_map<UniqueId, QueueDataPtr> queueCache;

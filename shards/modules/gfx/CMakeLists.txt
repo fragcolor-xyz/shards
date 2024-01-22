@@ -19,6 +19,7 @@ set(SOURCES
   texture.cpp
   view.cpp
   steps.cpp
+  buffer.cpp
   gizmos/context.cpp
   gizmos/gizmos.cpp
   gizmos/highlight.cpp
@@ -26,7 +27,7 @@ set(SOURCES
 )
 
 add_shards_module(gfx SOURCES ${SOURCES}
-  REGISTER_SHARDS gfx gizmos)
+  REGISTER_SHARDS gfx gizmos buffer)
 
 target_link_libraries(shards-module-gfx
   stb gfx gfx-gltf)
