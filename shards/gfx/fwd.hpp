@@ -23,6 +23,9 @@ typedef std::shared_ptr<IDrawable> DrawablePtr;
 struct Mesh;
 typedef std::shared_ptr<Mesh> MeshPtr;
 
+struct Buffer;
+typedef std::shared_ptr<Buffer> BufferPtr;
+
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
 typedef std::weak_ptr<Feature> FeatureWeakPtr;

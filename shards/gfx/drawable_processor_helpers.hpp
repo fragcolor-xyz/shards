@@ -8,6 +8,7 @@
 #include "texture.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
+#include "buffer.hpp"
 #include "../core/platform.hpp"
 #include "../core/assert.hpp"
 #include "unique_id.hpp"
@@ -179,28 +180,18 @@ struct TextureData {
   operator bool() const { return data != nullptr; }
 };
 
+struct BufferData {
+  const BufferContextData *data{};
+  UniqueId id{};
+
+  operator bool() const { return data != nullptr; }
+};
+
 template <typename TTextureBindings> auto mapTextureBinding(const TTextureBindings &textureBindings, FastString name) -> int32_t {
   auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
   if (it != textureBindings.end())
     return int32_t(it - textureBindings.begin());
   return -1;
-};
-
-template <typename TTextureBindings, typename TOutTextures>
-auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
-                         SamplerCache &samplerCache, size_t frameCounter, FastString name, const TexturePtr &texture, TextureContextData& texData) {
-  int32_t targetSlot = mapTextureBinding(textureBindings, name);
-  if (targetSlot >= 0) {
-    bool isFilterable = textureBindings[targetSlot].type.format == TextureSampleType::Float;
-    outTextures[targetSlot].data = &texData;
-    outTextures[targetSlot].sampler = samplerCache.getDefaultSampler(frameCounter, isFilterable, texture);
-    outTextures[targetSlot].id = texture->getId();
-  }
-};
-
-template <typename TTextureBindings, typename TOutTextures, typename TSrc>
-auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
-                     SamplerCache &samplerCache, size_t frameCounter, ParameterStorage &dstParams, const TSrc &srcParam) {
 };
 
 } // namespace gfx::detail

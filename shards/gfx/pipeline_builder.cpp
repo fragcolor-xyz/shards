@@ -50,7 +50,11 @@ static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builder
       continue;
 
     auto &bglEntry = outEntries.emplace_back();
-    bglEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
+    if (builder->addressSpace == AddressSpace::StorageRW) {
+      bglEntry.visibility = WGPUShaderStage_Fragment;
+    } else {
+      bglEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
+    }
     bglEntry.binding = builder->binding;
 
     auto &bufferBinding = bglEntry.buffer;
@@ -143,6 +147,10 @@ void PipelineBuilder::buildOptimalBufferLayouts(const WGPULimits &deviceLimits,
                                                 const shader::IndexedBindings &indexedShaderDindings) {
   auto &usedBufferBindings = indexedShaderDindings.bufferBindings;
   for (auto &bufferBinding : bufferBindings) {
+    // Don't optimize external buffers
+    if (bufferBinding.isExternal)
+      continue;
+
     auto it = std::find_if(usedBufferBindings.begin(), usedBufferBindings.end(),
                            [&](auto &binding) { return binding.name == bufferBinding.name; });
     if (it == usedBufferBindings.end()) {
@@ -210,6 +218,24 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
     // Apply modifiers
     if (feature->pipelineModifier) {
       feature->pipelineModifier->buildPipeline(*this, options);
+    }
+
+    // Add block bindings from feature
+    for (auto &it : feature->blockParams) {
+      auto name = it.first;
+      auto &block = it.second;
+      auto st = std::get_if<StructType>(&block.type);
+      if (!st) {
+        throw std::runtime_error(fmt::format("Block parameter {} should be a struct type", name));
+      }
+      StructLayoutBuilder slb(block.addressSpace);
+      slb.pushFromStruct(*st);
+      auto &newBinding = getOrCreateBufferBinding(name);
+      newBinding.optimizedStructType = *st;
+      newBinding.optimizedStructLayout = slb.finalize();
+      newBinding.addressSpace = block.addressSpace;
+      newBinding.bindGroupId = block.bindGroupId;
+      newBinding.isExternal = true;
     }
 
     std::vector<std::weak_ptr<Feature>> otherFeatures;
@@ -361,6 +387,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
     outBinding.index = binding.binding;
     outBinding.dimension = binding.dimension;
     outBinding.name = binding.name;
+    outBinding.isExternal = binding.isExternal;
   }
 }
 

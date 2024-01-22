@@ -3,6 +3,7 @@
 
 #include "types.hpp"
 #include "wgsl_mapping.hpp"
+#include "struct_layout.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <variant>
@@ -34,8 +35,7 @@ template <> struct fmt::formatter<gfx::shader::Type> {
     return it;
   }
 
-  template <typename FormatContext>
-  auto format(const gfx::shader::Type &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+  template <typename FormatContext> auto format(const gfx::shader::Type &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
     return std::visit(
         [&](auto &arg) {
           using T = std::decay_t<decltype(arg)>;
@@ -46,6 +46,24 @@ template <> struct fmt::formatter<gfx::shader::Type> {
           }
         },
         fieldType);
+  }
+};
+
+template <> struct fmt::formatter<gfx::shader::LayoutPath> {
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
+    auto it = ctx.begin(), end = ctx.end();
+    if (it != end)
+      throw format_error("invalid format");
+    return it;
+  }
+
+  template <typename FormatContext> auto format(const gfx::shader::LayoutPath &lp, FormatContext &ctx) -> decltype(ctx.out()) {
+    for (size_t i = 0; i < lp.path.size(); i++) {
+      if (i > 0) {
+        format_to(ctx.out(), ".");
+      }
+      format_to(ctx.out(), "{}", lp.path[i]);
+    }
   }
 };
 

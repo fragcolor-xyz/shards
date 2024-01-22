@@ -4,41 +4,6 @@
 #include <stdexcept>
 
 namespace gfx {
-bool isFloatType(const ShaderFieldBaseType &type) {
-  switch (type) {
-  case ShaderFieldBaseType::UInt8:
-  case ShaderFieldBaseType::Int8:
-  case ShaderFieldBaseType::UInt16:
-  case ShaderFieldBaseType::Int16:
-  case ShaderFieldBaseType::UInt32:
-  case ShaderFieldBaseType::Int32:
-    return false;
-  case ShaderFieldBaseType::Float16:
-  case ShaderFieldBaseType::Float32:
-    return true;
-  default:
-    throw std::out_of_range(std::string(NAMEOF_TYPE(ShaderFieldBaseType)));
-  }
-}
-
-bool isIntegerType(const ShaderFieldBaseType &type) { return !isFloatType(type); }
-size_t getByteSize(const ShaderFieldBaseType &type) {
-  switch (type) {
-  case ShaderFieldBaseType::UInt8:
-  case ShaderFieldBaseType::Int8:
-    return 1;
-  case ShaderFieldBaseType::UInt16:
-  case ShaderFieldBaseType::Int16:
-  case ShaderFieldBaseType::Float16:
-    return 2;
-  case ShaderFieldBaseType::UInt32:
-  case ShaderFieldBaseType::Int32:
-  case ShaderFieldBaseType::Float32:
-    return 4;
-  default:
-    throw std::out_of_range(std::string(NAMEOF_TYPE(ShaderFieldBaseType)));
-  }
-}
 
 size_t getWGSLAlignment(const ShaderFieldBaseType &type) {
   // https://www.w3.org/TR/WGSL/#alignment-and-size

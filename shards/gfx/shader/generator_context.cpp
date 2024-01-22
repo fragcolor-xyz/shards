@@ -194,6 +194,25 @@ void GeneratorContext::readBuffer(FastString fieldName, const NumType &expectedT
       },
       buffer.dimension);
 }
+void GeneratorContext::refBuffer(FastString bufferName) {
+  auto bufferIt = definitions.buffers.find(bufferName);
+  if (bufferIt == definitions.buffers.end()) {
+    pushError(formatError("Buffer \"{}\" is not defined", bufferName));
+    return;
+  }
+
+  const BufferDefinition &buffer = bufferIt->second;
+  std::visit(
+      [&](auto &&arg) {
+        using T1 = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T1, dim::PerInstance>) {
+          getOutput() += fmt::format("{}.elements[{}]", buffer.variableName, "u_instanceIndex");
+        } else {
+          getOutput() += fmt::format("{}", buffer.variableName);
+        }
+      },
+      buffer.dimension);
+}
 
 void GeneratorContext::pushError(GeneratorError &&error) { errors.emplace_back(std::move(error)); }
 } // namespace gfx::shader
