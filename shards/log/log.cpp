@@ -17,6 +17,8 @@
 
 namespace shards::logging {
 
+std::shared_mutex getOrCreateMutex;
+
 struct Sinks {
   std::shared_mutex lock;
 
@@ -58,7 +60,7 @@ Sinks &globalSinks() {
   return sinks;
 }
 
-void init(Logger logger) {
+void __init(Logger logger) {
   spdlog::register_logger(logger);
   initLogLevel(logger);
   initLogFormat(logger);
@@ -123,16 +125,6 @@ void initLogFormat(Logger logger) {
 void initSinks(Logger logger) {
   logger->sinks().clear();
   logger->sinks().push_back(globalSinks().distSink);
-}
-
-Logger get(const std::string &name) {
-  auto logger = spdlog::get(name);
-  if (!logger) {
-    logger = std::make_shared<spdlog::logger>(name);
-    init(logger);
-    spdlog::register_logger(logger);
-  }
-  return logger;
 }
 
 void initAllSinks() {

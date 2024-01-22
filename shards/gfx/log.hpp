@@ -6,24 +6,16 @@
 namespace gfx {
 
 inline shards::logging::Logger getLogger() {
-  auto logger = spdlog::get("GFX");
-  if (!logger) {
-    logger = std::make_shared<spdlog::logger>("GFX");
+  return shards::logging::getOrCreate("gfx", [](shards::logging::Logger logger) {
     // Set default log level to warn to be less verbose
     logger->set_level(spdlog::level::warn);
-    shards::logging::init(logger);
-  }
-  return logger;
+  });
 }
 
 inline shards::logging::Logger getWgpuLogger() {
-  auto logger = spdlog::get("wgpu");
-  if (!logger) {
-    logger = std::make_shared<spdlog::logger>("wgpu");
+  return shards::logging::getOrCreate("wgpu", [](shards::logging::Logger logger) {
     logger->set_level(spdlog::level::err);
-    shards::logging::init(logger);
-  }
-  return logger;
+  });
 }
 } // namespace gfx
 
