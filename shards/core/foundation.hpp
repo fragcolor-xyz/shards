@@ -487,8 +487,6 @@ public:
 
   oneapi::tbb::concurrent_unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
-  entt::registry Registry;
-
   SHTableInterface TableInterface{
       .tableGetIterator =
           [](SHTable table, SHTableIterator *outIter) {
