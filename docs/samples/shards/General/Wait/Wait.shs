@@ -1,0 +1,26 @@
+@wire(wire-that-waits {
+  If(Predicate: IsLess(0)
+    Then: {
+      "Negative" > result
+    } Else: {
+      "Positive" > result
+    }
+  )
+})
+
+@wire(main-wire {
+  Once({
+    "false" >= result
+  })
+  5
+  Detach(wire-that-waits)
+  Wait(
+    Wire: "myWire"
+    Passthrough: false
+  )
+  
+  result
+  Log
+} Looped: true)
+
+{logic-behavior: main-wire}
