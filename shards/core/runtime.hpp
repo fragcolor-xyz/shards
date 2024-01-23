@@ -396,6 +396,12 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
     return true;
   }
 
+  bool stopping = false; // <- expected
+  const_cast<SHWire *>(wire)->stopping.compare_exchange_strong(stopping, true);
+  if (stopping) // <- actual value, if true, we are already stopping
+    return true;
+  DEFER({ wire->stopping = false; });
+
   SHLOG_TRACE("stopping wire: {}, has-coro: {}, state: {}", wire->name, bool(wire->coro),
               magic_enum::enum_name<SHWire::State>(wire->state));
 
@@ -695,7 +701,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     boost::container::small_vector<std::shared_ptr<SHWire>, 16> toStop;
 
     // scheduled might not be the full picture!
-    for(auto flow : _flowPool) {
+    for (auto flow : _flowPool) {
       toStop.emplace_back(flow.wire->shared_from_this());
     }
 

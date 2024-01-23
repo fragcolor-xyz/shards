@@ -1,34 +1,34 @@
 ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+; Copyright © 2020 Fragcolor Pte. Ltd
 
 @mesh(root-1)
 
 @wire(fitness-1 {
-  Math.Subtract(36) |
-  ToFloat |
-  Math.Abs |
-  Math.Multiply(-1.0) |
+  Math.Subtract(36)
+  ToFloat
+  Math.Abs
+  Math.Multiply(-1.0)
   Log("evolution happens here... fitness")
 })
 
 @wire(evolveme-1 {
-  Mutant(Const(10) [0]) |
-  Pause |
+  Mutant(Const(10) [0])
+  Pause
   Mutant(Math.Multiply(2) [0] [{
-    RandomInt(10) |
-    Math.Add(1)
-  }])
+      RandomInt(10)
+      Math.Add(1)
+    }])
 })
 
 @wire(test-1 {
-  Sequence(best Type: @type([Type::Float Type::Wire])) |
+  Sequence(best Type: @type([Type::Float Type::Wire]))
   Repeat({
-    Evolve(evolveme-1 fitness-1 Population: 64 Coroutines: 8) |
+    Evolve(evolveme-1 fitness-1 Population: 64 Coroutines: 8)
     Log > best
   } Times: 15)
-  best |
-  Take(1) |
-  ToJson(false) |
+  best
+  Take(1)
+  ToJson(false)
   Log
 })
 
@@ -38,22 +38,22 @@
 @mesh(root-2)
 
 @wire(fitness-2 {
-  Math.Subtract(36) |
-  ToFloat |
-  Math.Abs |
-  Math.Multiply(-1.0) |
+  Math.Subtract(36)
+  ToFloat
+  Math.Abs
+  Math.Multiply(-1.0)
   Log("evolution happens here... fitness")
 })
 
 @wire(state-1 {
-  Msg("into state 1") |
-  SwitchTo(state-2 true) |
-  Msg("back to state 1") |
+  Msg("into state 1")
+  SwitchTo(state-2 true)
+  Msg("back to state 1")
   SwitchTo(stepped)
 })
 
 @wire(state-2 {
-  Msg("into state 2") |
+  Msg("into state 2")
   SwitchTo(state-1)
 })
 
@@ -65,30 +65,30 @@
   Once({
     ; 0 >== niters ; global on purpose for testing
     0 | Set(niters Global: true)
-  }) |
-  Math.Inc(niters) |
-  niters |
-  When({IsMore(10)} {Stop}) |
-  Step(stepped) |
-  Mutant(Const(10) [0]) |
+  })
+  Math.Inc(niters)
+  niters
+  When({IsMore(10)} {Stop})
+  Step(stepped)
+  Mutant(Const(10) [0])
   Mutant(Math.Multiply(2) [0] [{
-    RandomInt(10) |
-    Math.Add(1)
-  }])
+      RandomInt(10)
+      Math.Add(1)
+    }])
 } Looped: true)
 
 @wire(test-2 {
-  Sequence(best Type: @type([Type::Float Type::Wire])) |
+  Sequence(best Type: @type([Type::Float Type::Wire]))
   Repeat({
-    Evolve(evolveme-2 fitness-2 Elitism: 0.0 Population: 100 Threads: 10 Coroutines: 1) |
+    Evolve(evolveme-2 fitness-2 Elitism: 0.0 Population: 1 Threads: 1 Coroutines: 1)
     Log > best
   } Times: 4)
-  best |
-  Log |
+  best
+  Log
   Take(1) | ExpectWire >= bestWire
-  WireRunner(bestWire Mode: RunWireMode::Async) |
-  Msg("Waiting...") |
-  Wait(bestWire)  |
+  WireRunner(bestWire Mode: RunWireMode::Async)
+  Msg("Waiting...")
+  Wait(bestWire)
   Msg("Exiting...")
 })
 
@@ -98,35 +98,35 @@
 @mesh(root-3)
 
 @wire(fitness-3 {
-  Math.Subtract(36) |
-  ToFloat |
-  Math.Abs |
-  Math.Multiply(-1.0) |
+  Math.Subtract(36)
+  ToFloat
+  Math.Abs
+  Math.Multiply(-1.0)
   Log("evolution happens here... fitness")
 })
 
 @wire(evolveme-3 {
-  Mutant(Const(10) [0]) |
-  Pause |
+  Mutant(Const(10) [0])
+  Pause
   Mutant(Math.Multiply(2) [0] [{
-    RandomInt(10) |
-    Math.Add(1)
-  }])
+      RandomInt(10)
+      Math.Add(1)
+    }])
 })
 
 @wire(test-3 {
   Once({
     0 >= ntimes
-  }) |
-  Math.Inc(ntimes) |
-  ntimes |
+  })
+  Math.Inc(ntimes)
+  ntimes
   When({IsMore(7)} {
-    Msg("STOP OK!") |
+    Msg("STOP OK!")
     none | Stop
-  }) |
-  Evolve(evolveme-3 fitness-3 Population: 64 Coroutines: 8) |
-  Take(1) |
-  ToJson(false) |
+  })
+  Evolve(evolveme-3 fitness-3 Population: 64 Coroutines: 8)
+  Take(1)
+  ToJson(false)
   Log
   none
 } Looped: true)
