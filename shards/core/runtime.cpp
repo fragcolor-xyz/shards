@@ -1121,8 +1121,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
   // compare exchange and then shassert we were not composing
   bool expected = false;
-  auto composeState = const_cast<SHWire *>(wire)->composing.compare_exchange_strong(expected, true);
-  if (!composeState) {
+  if (!const_cast<SHWire *>(wire)->composing.compare_exchange_strong(expected, true)) {
     SHLOG_ERROR("Wire {} is already being composed", wire->name);
     throw ComposeError("Wire is already being composed");
   }
