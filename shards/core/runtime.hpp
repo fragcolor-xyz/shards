@@ -397,8 +397,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   }
 
   bool stopping = false; // <- expected
-  const_cast<SHWire *>(wire)->stopping.compare_exchange_strong(stopping, true);
-  if (stopping) // <- actual value, if true, we are already stopping
+  // if exchange fails, we are already stopping
+  if (!const_cast<SHWire *>(wire)->stopping.compare_exchange_strong(stopping, true))
     return true;
   DEFER({ wire->stopping = false; });
 
