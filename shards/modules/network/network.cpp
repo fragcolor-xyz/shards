@@ -1022,6 +1022,8 @@ struct Client : public NetworkBase {
     auto &io_context = _sharedNetworkContext->_io_context;
 
     if (!_socket) {
+      setup(); // reset the peer
+
       // first activation, let's init
       _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
       boost::asio::socket_base::send_buffer_size option_send(65536);
