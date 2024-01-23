@@ -901,9 +901,10 @@ struct SwitchTo : public WireBase {
   }
 
   void cleanup(SHContext *context) {
-    if (context && wire) {
-      shards::stop(wire.get(), nullptr, context);
-    }
+    // Notice we don't stop wire!
+    // it does not make sense cos maybe another wire wants to pick it up and resume it!
+    // we should not be the owners of the wire, we just want to switch to it!
+    // think like a state machine, we are just switching to another state
 
     for (auto &v : _vars) {
       v.cleanup();
@@ -979,24 +980,6 @@ struct SwitchTo : public WireBase {
 
     // We will end here when we get resumed!
     // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
-
-    // check if this is the end! as we might get here on a stop
-    if (context->shouldStop() && wire) {
-      // means we were stopped, so we need to stop the wire too
-      // but before doing so, let's prevent the following call to stop the current wire
-      // we use this trick:
-      bool expected = false;
-      if (current->stopping.compare_exchange_strong(expected, true)) {
-        try {
-          // we are the first to set it, so we can stop the wire
-          shards::stop(pWire);
-        } catch (...) {
-          // restore
-          current->stopping = false;
-          throw;
-        }
-      }
-    }
 
     // reset resumer
     pWire->resumer = nullptr;
