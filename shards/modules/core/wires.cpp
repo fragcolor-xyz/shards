@@ -914,13 +914,19 @@ struct SwitchTo : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto current = context->wireStack.back();
+    SHWire *previousWithCoro = nullptr;
+    for(auto it = context->wireStack.rbegin(); it != context->wireStack.rend(); ++it) {
+      if (coroutineValid((*it)->coro)) {
+        previousWithCoro = *it;
+        break;
+      }
+    }
 
     auto pWire = [&] {
       if (!wire) {
-        if (current->resumer) {
-          SHLOG_TRACE("Resume, wire not found, using resumer: {}", current->resumer->name);
-          return current->resumer;
+        if (previousWithCoro->resumer) {
+          SHLOG_TRACE("Resume, wire not found, using resumer: {}", previousWithCoro->resumer->name);
+          return previousWithCoro->resumer;
         } else {
           throw ActivationError("Resume, wire not found.");
         }
@@ -965,7 +971,7 @@ struct SwitchTo : public WireBase {
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
     if (pWire->resumer == nullptr)
-      pWire->resumer = current;
+      pWire->resumer = previousWithCoro;
 
     // Start it if not started
     if (!shards::isRunning(pWire)) {
