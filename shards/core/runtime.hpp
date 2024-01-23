@@ -701,7 +701,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return tick(obs);
   }
 
-  void terminate() {
+  void clear() {
+    // clear all wires!
     boost::container::small_vector<std::shared_ptr<SHWire>, 16> toStop;
 
     // scheduled might not be the full picture!
@@ -730,6 +731,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // release all wires
     scheduled.clear();
+  }
+
+  void terminate() {
+    clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
