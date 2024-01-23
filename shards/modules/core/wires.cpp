@@ -901,6 +901,10 @@ struct SwitchTo : public WireBase {
   }
 
   void cleanup(SHContext *context) {
+    if (context && wire) {
+      shards::stop(wire.get(), nullptr, context);
+    }
+
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -977,7 +981,7 @@ struct SwitchTo : public WireBase {
     // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
 
     // check if this is the end! as we might get here on a stop
-    if (context->shouldStop() && wire && current != pWire->resumer) {
+    if (context->shouldStop() && wire) {
       // means we were stopped, so we need to stop the wire too
       // but before doing so, let's prevent the following call to stop the current wire
       // we use this trick:

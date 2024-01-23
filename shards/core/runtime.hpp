@@ -387,7 +387,7 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   }
 }
 
-inline bool stop(SHWire *wire, SHVar *result = nullptr) {
+inline bool stop(SHWire *wire, SHVar *result = nullptr, SHContext *currentContext = nullptr) {
   if (wire->state == SHWire::State::Stopped) {
     // Clone the results if we need them
     if (result)
@@ -416,7 +416,11 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       // after this resume wire->context is trash!
 
       // Another issue, if we resume from current context to current context we dead lock here!!
-      shards::tick<true>(wire, SHDuration{});
+      if (currentContext && currentContext == wire->context) {
+        SHLOG_WARNING("Trying to stop wire {} from the same context it's running in!", wire->name);
+      } else {
+        shards::tick<true>(wire, SHDuration{});
+      }
     }
 
     // delete also the coro ptr
