@@ -281,6 +281,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::atomic<State> state{Stopped};
   std::atomic_bool composing{false};
+  std::atomic_bool stopping{false};
 
   shards::OwnedVar currentInput{};
   SHVar previousOutput{};
