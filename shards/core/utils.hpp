@@ -19,7 +19,9 @@
 #include <cassert>
 #include <spdlog/fmt/fmt.h>
 
+#ifndef SH_DEBUG_THREAD_NAMES
 #define SH_DEBUG_THREAD_NAMES 1
+#endif
 
 namespace shards {
 
