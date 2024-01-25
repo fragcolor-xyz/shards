@@ -700,7 +700,11 @@ struct ForEachShard {
   SHVar activateTable(SHContext *context, const SHVar &input) {
     const auto &table = input.payload.tableValue;
     SHVar output{};
-    for (auto &[k, v] : table) {
+    SHTableIterator tit;
+    table.api->tableGetIterator(table, &tit);
+    SHVar k;
+    SHVar v;
+    while (table.api->tableNext(table, &tit, &k, &v)) {
       _tableItem[0] = Var(k);
       _tableItem[1] = v;
       const auto item = Var(_tableItem);
