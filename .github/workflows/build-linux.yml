@@ -147,6 +147,7 @@ jobs:
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
           ./shards new ../shards/tests/whendone.shs
+          ./shards new ../shards/tests/return.shs
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -179,7 +180,7 @@ jobs:
         run: |
           cmake --build build --target shards
           SH=`pwd`/build/shards
-          
+
           echo "Running language formatter tests"
           cd shards/lang/src/tests
           $SH test

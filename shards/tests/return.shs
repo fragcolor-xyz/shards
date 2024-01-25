@@ -1,0 +1,32 @@
+@wire(test1 {
+  0 >= x
+  [1 2 3 4 5] | ForEach({
+    = x
+    Return
+  })
+  x | Assert.Is(1 true)
+})
+
+Do(test1)
+
+@wire(test2 {
+  0 >= x
+  [1 2 3 4 5] | ForEach({
+    = x
+    When(Is(1) Return)
+  })
+  x | Assert.Is(1 true)
+})
+
+Do(test2)
+
+@wire(test3 {
+  0 >= x
+  {1: none 2: none 3: none 4: none 5: none} | ForEach({
+    Take(0) | ExpectInt = x
+    When(Is(1) Return)
+  })
+  x | Assert.Is(1 true)
+})
+
+Do(test3)

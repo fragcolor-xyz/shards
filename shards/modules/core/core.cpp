@@ -700,17 +700,15 @@ struct ForEachShard {
   SHVar activateTable(SHContext *context, const SHVar &input) {
     const auto &table = input.payload.tableValue;
     SHVar output{};
-    ForEach(table, [&](auto key, auto &val) {
-      _tableItem[0] = Var(key);
-      _tableItem[1] = val;
+    for (auto &[k, v] : table) {
+      _tableItem[0] = Var(k);
+      _tableItem[1] = v;
       const auto item = Var(_tableItem);
       const auto state = _shards.activate<true>(context, item, output);
       // handle return short circuit, assume it was for us
-      if (unlikely(state != SHWireState::Continue))
-        return false;
-      else
-        return true;
-    });
+      if (state != SHWireState::Continue)
+        break;
+    }
     return input;
   }
 
