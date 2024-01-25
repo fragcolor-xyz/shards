@@ -6,12 +6,12 @@
 #include <variant>
 
 namespace shards {
-struct TableIterator : public std::tuple<SHVar, SHVar> {
+struct TableIterator : public std::pair<SHVar, SHVar> {
   const SHTable *table{};
   SHTableIterator it;
 
   TableIterator() = default;
-  TableIterator(const SHTable *table, SHTableIterator it, SHVar k, SHVar v) : std::tuple<SHVar, SHVar>(k, v), table(table) {
+  TableIterator(const SHTable *table, SHTableIterator it, SHVar k, SHVar v) : std::pair<SHVar, SHVar>(k, v), table(table) {
     memcpy(this->it, it, sizeof(SHTableIterator));
   }
   const TableIterator &operator++() {
@@ -27,8 +27,12 @@ struct TableIterator : public std::tuple<SHVar, SHVar> {
       return true;
     return std::get<0>(*this) == std::get<0>(end);
   }
+  bool operator!=(const TableIterator &end) const {
+    return !(*this == end);
+  }
 
-  const std::tuple<SHVar, SHVar> &operator*() const { return *this; }
+  const std::pair<SHVar, SHVar> &operator*() const { return *this; }
+  const std::pair<SHVar, SHVar> *operator->() const { return this; }
 };
 } // namespace shards
 
