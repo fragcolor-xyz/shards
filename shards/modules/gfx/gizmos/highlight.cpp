@@ -7,9 +7,9 @@ using namespace gfx;
 
 struct HighlightShard : public Base {
   // TODO: Merge with DrawShard type
-  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable};
+  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::ShardsTypes::Drawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
-  static inline shards::Types DrawableTypes{gfx::Types::Drawable, DrawableSeqType};
+  static inline shards::Types DrawableTypes{gfx::ShardsTypes::Drawable, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }

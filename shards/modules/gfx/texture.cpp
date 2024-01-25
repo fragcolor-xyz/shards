@@ -26,21 +26,21 @@ enum ComponentType {
 };
 
 struct TextureFormatException : public std::runtime_error {
-  TextureFormatException(ComponentType componentType, Types::TextureType_ asType)
+  TextureFormatException(ComponentType componentType, ShardsTypes::TextureType_ asType)
       : std::runtime_error(formatError(componentType, asType)) {}
 
-  static std::string formatError(ComponentType componentType, Types::TextureType_ asType) {
+  static std::string formatError(ComponentType componentType, ShardsTypes::TextureType_ asType) {
     return fmt::format("Image with component type '{}' can not be converted to texture type '{}'",
                        magic_enum::enum_name(componentType), magic_enum::enum_name(asType));
   }
 };
 
 struct TextureShard {
-  using TextureType = Types::TextureType_;
+  using TextureType = ShardsTypes::TextureType_;
 
   static inline shards::Types InputTypes{{CoreInfo::ImageType, CoreInfo::NoneType, CoreInfo::AnyType}};
   static SHTypesInfo inputTypes() { return InputTypes; }
-  static SHTypesInfo outputTypes() { return Types::TextureTypes; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::TextureTypes; }
   static SHOptionalString help() { return SHCCSTR("Creates a texture from an image. Or as a render target"); }
 
   TexturePtr texture;
@@ -49,19 +49,19 @@ struct TextureShard {
 
   PARAM_VAR(_interpretAs, "InterpretAs",
             "Type to interpret image data as. (From image only, Default: UNormSRGB for RGBA8 images, UNorm for other formats)",
-            {Types::TextureTypeEnumInfo::Type});
+            {ShardsTypes::TextureTypeEnumInfo::Type});
   PARAM_PARAMVAR(_format, "Format",
                  "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
-                 {Types::TextureFormatEnumInfo::Type, Type::VariableOf(Types::TextureFormatEnumInfo::Type)});
+                 {ShardsTypes::TextureFormatEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
   PARAM_PARAMVAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)",
                  {CoreInfo::Int2Type, Type::VariableOf(CoreInfo::Int2Type)});
   PARAM_PARAMVAR(_mipLevels, "MipLevels", "The number of mip levels to create. (Render target only)",
                  {CoreInfo::IntType, Type::VariableOf(CoreInfo::IntType)});
   PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
-            {Types::TextureDimensionEnumInfo::Type});
+            {ShardsTypes::TextureDimensionEnumInfo::Type});
   PARAM_PARAMVAR(_addressing, "Addressing", "For sampling, sets the address modes.",
-                 {Types::TextureAddressingEnumInfo::Type, Type::SeqOf(Types::TextureAddressingEnumInfo::Type)});
-  PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {Types::TextureFilteringEnumInfo::Type});
+                 {ShardsTypes::TextureAddressingEnumInfo::Type, Type::SeqOf(ShardsTypes::TextureAddressingEnumInfo::Type)});
+  PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {ShardsTypes::TextureFilteringEnumInfo::Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution), PARAM_IMPL_FOR(_mipLevels),
              PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering));
 
@@ -78,10 +78,10 @@ struct TextureShard {
     case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
     case gfx::TextureDimension::D2:
-      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
       break;
     case gfx::TextureDimension::Cube:
-      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureCubeTypeId);
+      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
       break;
     }
   }
@@ -118,9 +118,9 @@ struct TextureShard {
 
     auto dim = getTextureDimension();
     if (dim == gfx::TextureDimension::Cube)
-      return Types::TextureCube;
+      return ShardsTypes::TextureCube;
     else
-      return Types::Texture;
+      return ShardsTypes::Texture;
   }
 
   void activateFromImage(const SHImage &image) {
@@ -350,7 +350,7 @@ struct TextureShard {
 
 struct RenderTargetShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return Types::RenderTarget; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::RenderTarget; }
   static SHOptionalString help() {
     return SHCCSTR("Groups a collection of textures into a render target that can be rendered into");
   }
@@ -370,7 +370,7 @@ struct RenderTargetShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _renderTarget.renderTarget = std::make_shared<RenderTarget>();
-    _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, Types::RenderTargetTypeId);
+    _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, ShardsTypes::RenderTargetTypeId);
   }
   void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
@@ -382,7 +382,7 @@ struct RenderTargetShard {
     ForEach(table, [&](SHVar &k, SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("Invalid attachment name: {}", k);
-      TexturePtr texture = varAsObjectChecked<TexturePtr>(v, Types::Texture);
+      TexturePtr texture = varAsObjectChecked<TexturePtr>(v, ShardsTypes::Texture);
       std::string ks(SHSTRVIEW(k));
       attachments.emplace(std::move(ks), texture);
     });
@@ -392,8 +392,8 @@ struct RenderTargetShard {
 };
 
 struct RenderTargetTextureShard {
-  static SHTypesInfo inputTypes() { return Types::RenderTarget; }
-  static SHTypesInfo outputTypes() { return Types::Texture; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::RenderTarget; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Texture; }
   static SHOptionalString help() { return SHCCSTR("Retrieve a named attachment from a render target"); }
 
   PARAM_PARAMVAR(_nameVar, "Name", "Name of the attachment to retrieve", {CoreInfo::StringOrNone})
@@ -422,7 +422,7 @@ struct RenderTargetTextureShard {
   void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, Types::RenderTarget);
+    auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, ShardsTypes::RenderTarget);
 
     if (!isNameStatic) {
       auto sv = SHSTRVIEW(_nameVar.get());
@@ -430,14 +430,14 @@ struct RenderTargetTextureShard {
     }
 
     texture = renderTarget->getAttachment(_name);
-    textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+    textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
 
     return textureVar;
   }
 };
 
 struct ReadTextureShard {
-  static SHTypesInfo inputTypes() { return Types::TextureTypes; }
+  static SHTypesInfo inputTypes() { return ShardsTypes::TextureTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
   static SHOptionalString help() {
     return SHCCSTR("Adds a render step that reads back the rendered textures into a images, the returned images ");

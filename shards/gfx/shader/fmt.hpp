@@ -7,7 +7,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <variant>
 
-template <> struct fmt::formatter<gfx::shader::NumFieldType> {
+template <> struct fmt::formatter<gfx::shader::NumType> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end)
@@ -16,7 +16,7 @@ template <> struct fmt::formatter<gfx::shader::NumFieldType> {
   }
 
   template <typename FormatContext>
-  auto format(const gfx::shader::NumFieldType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(const gfx::shader::NumType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
     auto baseTypeName = magic_enum::enum_name(fieldType.baseType);
     if (fieldType.matrixDimension > 1) {
       return format_to(ctx.out(), "{{{}, {}x{}}}", baseTypeName, fieldType.numComponents, fieldType.matrixDimension);
@@ -26,7 +26,7 @@ template <> struct fmt::formatter<gfx::shader::NumFieldType> {
   }
 };
 
-template <> struct fmt::formatter<gfx::shader::FieldType> {
+template <> struct fmt::formatter<gfx::shader::Type> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end)
@@ -35,14 +35,14 @@ template <> struct fmt::formatter<gfx::shader::FieldType> {
   }
 
   template <typename FormatContext>
-  auto format(const gfx::shader::FieldType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(const gfx::shader::Type &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
     return std::visit(
         [&](auto &arg) {
           using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, gfx::shader::NumFieldType>) {
+          if constexpr (std::is_same_v<T, gfx::shader::NumType>) {
             return format_to(ctx.out(), "{}", arg);
           } else {
-            return format_to(ctx.out(), "{{{}}}", gfx::shader::getFieldWGSLTypeName(arg));
+            return format_to(ctx.out(), "{{{}}}", gfx::shader::getWGSLTypeName(arg));
           }
         },
         fieldType);

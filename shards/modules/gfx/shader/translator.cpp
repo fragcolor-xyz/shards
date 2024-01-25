@@ -32,8 +32,16 @@ void TranslationContext::processShard(ShardPtr shard) {
   handler->translate(shard, *this);
 }
 
+void TranslationContext::finalize() {
+  auto top = takeWGSLTop();
+  if(top) {
+    const std::string &varName = getUniqueVariableName("unused");
+    addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), top->toBlock(), ";\n"));
+  }
+}
+
 const TranslatedFunction &TranslationContext::processWire(const std::shared_ptr<SHWire> &wire,
-                                                          const std::optional<FieldType> &inputType) {
+                                                          const std::optional<Type> &inputType) {
   SHWire *wirePtr = wire.get();
   auto it = translatedWires.find(wirePtr);
   if (it != translatedWires.end())
@@ -45,7 +53,7 @@ const TranslatedFunction &TranslationContext::processWire(const std::shared_ptr<
 }
 
 TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr> &shards, const SHComposeResult &composeResult,
-                                                     const std::optional<FieldType> &inputType, const std::string &name) {
+                                                     const std::optional<Type> &inputType, const std::string &name) {
   TranslatedFunction translated;
   translated.functionName = getUniqueVariableName(name);
   SPDLOG_LOGGER_INFO(logger, "Generating shader function for shards {} => {}", name, translated.functionName);
@@ -73,7 +81,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   // Setup input
   if (translated.inputType) {
     inputVarName = getUniqueVariableName("arg");
-    argsDecl = fmt::format("{} : {}", inputVarName, getFieldWGSLTypeName(translated.inputType.value()));
+    argsDecl = fmt::format("{} : {}", inputVarName, getWGSLTypeName(translated.inputType.value()));
 
     // Set the stack value from input
     setWGSLTop<WGSLBlock>(translated.inputType.value(), blocks::makeBlock<blocks::Direct>(inputVarName));
@@ -87,7 +95,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
     for (auto &req : composeResult.requiredInfo) {
       tryExpandIntoVariable(req.name);
 
-      const FieldType *fieldType{};
+      const Type *fieldType{};
       const TranslationBlockRef *parent{};
       if (!findVariable(req.name, fieldType, parent)) {
         throw ShaderComposeError(fmt::format("Can not compose shader wire: Requred variable {} does not exist", req.name));
@@ -96,7 +104,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
       if (!argsDecl.empty())
         argsDecl += ", ";
       std::string wgslVarName = getUniqueVariableName(req.name);
-      argsDecl += fmt::format("{}: {}", wgslVarName, getFieldWGSLTypeName(*fieldType));
+      argsDecl += fmt::format("{}: {}", wgslVarName, getWGSLTypeName(*fieldType));
       translated.arguments.emplace_back(TranslatedFunctionArgument{*fieldType, wgslVarName, req.name});
 
       functionScope.variables.mapUniqueVariableName(req.name, wgslVarName);
@@ -125,7 +133,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
 
     functionBody->appendLine("return ", returnValue->toBlock());
 
-    returnDecl = fmt::format("-> {}", getFieldWGSLTypeName(translated.outputType.value()));
+    returnDecl = fmt::format("-> {}", getWGSLTypeName(translated.outputType.value()));
   }
 
   // Restore input value
@@ -147,7 +155,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   return translated;
 }
 
-bool TranslationContext::findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const {
+bool TranslationContext::findVariableGlobal(const std::string &varName, const Type *&outFieldType) const {
   auto globalIt = globals.variables.find(varName);
   if (globalIt != globals.variables.end()) {
     outFieldType = &globalIt->second.type;
@@ -156,7 +164,7 @@ bool TranslationContext::findVariableGlobal(const std::string &varName, const Fi
   return false;
 }
 
-bool TranslationContext::findVariable(const std::string &varName, const FieldType *&outFieldType,
+bool TranslationContext::findVariable(const std::string &varName, const Type *&outFieldType,
                                       const TranslationBlockRef *&outParent) const {
   for (auto it = stack.crbegin(); it != stack.crend(); ++it) {
     auto &variables = it->variables;
@@ -174,9 +182,9 @@ bool TranslationContext::findVariable(const std::string &varName, const FieldTyp
 
 WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable,
                                              std::unique_ptr<IWGSLGenerated> &&value) {
-  FieldType valueType = value->getType();
+  Type valueType = value->getType();
 
-  auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const FieldType &fieldType,
+  auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const Type &fieldType,
                            bool forceNewVariable = false) {
     const std::string *outVariableName{};
 
@@ -207,17 +215,17 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     // Store global variable type info & check update
     const std::string &uniqueVariableName = updateStorage(globals, varName, valueType);
 
-    const NumFieldType *numFieldType = std::get_if<NumFieldType>(&valueType);
-    if (!numFieldType)
+    const NumType *numType = std::get_if<NumType>(&valueType);
+    if (!numType)
       throw ShaderComposeError(fmt::format("Can not assign {} globally, unsupported type: {}", varName, valueType));
 
     // Generate a shader source block containing the assignment
-    addNew(blocks::makeBlock<blocks::WriteGlobal>(uniqueVariableName, *numFieldType, value->toBlock()));
+    addNew(blocks::makeBlock<blocks::WriteGlobal>(uniqueVariableName, *numType, value->toBlock()));
 
     // Push reference to assigned value
     return WGSLBlock(valueType, blocks::makeBlock<blocks::ReadGlobal>(uniqueVariableName));
   } else {
-    const FieldType *foundFieldType{};
+    const Type *foundFieldType{};
     TranslationBlockRef *parent{};
     bool isNewVariable = true;
     if (allowUpdate) {
@@ -263,11 +271,11 @@ bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
   auto it = top.virtualSequences.find(varName);
   if (it != top.virtualSequences.end()) {
     auto &virtualSeq = it->second;
-    NumFieldType type = virtualSeq.elementType;
+    NumType type = virtualSeq.elementType;
     type.matrixDimension = virtualSeq.elements.size();
 
     auto constructor = blocks::makeCompoundBlock();
-    constructor->append(fmt::format("{}(", getFieldWGSLTypeName(type)));
+    constructor->append(fmt::format("{}(", getWGSLTypeName(type)));
     for (size_t i = 0; i < type.matrixDimension; i++) {
       if (i > 0)
         constructor->append(", ");
@@ -287,7 +295,7 @@ bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
 WGSLBlock TranslationContext::reference(const std::string &varName) {
   tryExpandIntoVariable(varName);
 
-  const FieldType *fieldType{};
+  const Type *fieldType{};
   const TranslationBlockRef *parent{};
   if (!findVariable(varName, fieldType, parent)) {
     throw ShaderComposeError(fmt::format("Can not get/ref: Variable {} does not exist here", varName));

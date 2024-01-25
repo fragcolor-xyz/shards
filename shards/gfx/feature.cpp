@@ -2,7 +2,7 @@
 #include "feature.hpp"
 
 namespace gfx {
-using shader::NumFieldType;
+using shader::NumType;
 
 UniqueIdGenerator featureIdGenerator(UniqueIdTag::Feature);
 
@@ -27,7 +27,7 @@ BlendComponent BlendComponent::AlphaPremultiplied = BlendComponent{
     .dstFactor = WGPUBlendFactor::WGPUBlendFactor_OneMinusSrcAlpha,
 };
 
-NumParamDecl::NumParamDecl(const NumFieldType &type, NumParameter defaultValue)
+NumParamDecl::NumParamDecl(const NumType &type, NumParameter defaultValue)
     : type(type), defaultValue(defaultValue) {}
 NumParamDecl::NumParamDecl(NumParameter defaultValue)
     : type(getNumParameterType(defaultValue)), defaultValue(defaultValue) {}

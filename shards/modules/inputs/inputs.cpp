@@ -109,7 +109,7 @@ struct MousePos : public Base {
 
 struct InputRegionSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -119,7 +119,24 @@ struct InputRegionSize : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int2 size = (int2)_inputContext->getState().region.size;
+    float2 size = _inputContext->getState().region.size;
+    return toVar(size);
+  }
+};
+
+struct InputRegionPixelSize : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return CoreInfo::Int2Type;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    int2 size = (int2)_inputContext->getState().region.pixelSize;
     return toVar(size);
   }
 };
@@ -586,6 +603,7 @@ SHARDS_REGISTER_FN(inputs) {
   REGISTER_ENUM(ModifierKeyEnumInfo);
 
   REGISTER_SHARD("Inputs.Size", InputRegionSize);
+  REGISTER_SHARD("Inputs.PixelSize", InputRegionPixelSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_SHARD("Inputs.MousePos", MousePos);
   REGISTER_SHARD("Inputs.MouseDelta", MouseDelta);

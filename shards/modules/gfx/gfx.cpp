@@ -28,8 +28,8 @@ struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  PARAM_PARAMVAR(_steps, "Steps", "Render steps to follow.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
-  PARAM_PARAMVAR(_view, "View", "The view to render. (Optional)", {CoreInfo::NoneType, Type::VariableOf(Types::View)});
+  PARAM_PARAMVAR(_steps, "Steps", "Render steps to follow.", {Type::VariableOf(ShardsTypes::PipelineStepSeq), ShardsTypes::PipelineStepSeq});
+  PARAM_PARAMVAR(_view, "View", "The view to render. (Optional)", {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::View)});
   PARAM_IMPL(PARAM_IMPL_FOR(_steps), PARAM_IMPL_FOR(_view));
 
   OptionalGraphicsContext _graphicsContext;
@@ -72,7 +72,7 @@ struct RenderShard {
   const ViewPtr &getView() {
     Var &viewVar = (Var &)_view.get();
     if (!viewVar.isNone()) {
-      SHView &shView = varAsObjectChecked<SHView>(viewVar, Types::View);
+      SHView &shView = varAsObjectChecked<SHView>(viewVar, ShardsTypes::View);
       return shView.view;
     } else {
       return getDefaultView();
@@ -134,25 +134,24 @@ extern void registerTranslatorShards();
 
 SHARDS_REGISTER_FN(gfx) {
   using namespace gfx;
-  using gfx::Types;
-  REGISTER_ENUM(Types::WindingOrderEnumInfo);
-  REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
-  REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
-  REGISTER_ENUM(Types::DependencyTypeEnumInfo);
-  REGISTER_ENUM(Types::BlendFactorEnumInfo);
-  REGISTER_ENUM(Types::BlendOperationEnumInfo);
-  REGISTER_ENUM(Types::FilterModeEnumInfo);
-  REGISTER_ENUM(Types::CompareFunctionEnumInfo);
-  REGISTER_ENUM(Types::ColorMaskEnumInfo);
-  REGISTER_ENUM(Types::TextureTypeEnumInfo);
-  REGISTER_ENUM(Types::SortModeEnumInfo);
-  REGISTER_ENUM(Types::TextureFormatEnumInfo);
-  REGISTER_ENUM(Types::TextureDimensionEnumInfo);
-  REGISTER_ENUM(Types::TextureAddressingEnumInfo);
-  REGISTER_ENUM(Types::TextureFilteringEnumInfo);
-  REGISTER_ENUM(Types::OrthographicSizeTypeEnumInfo);
-  REGISTER_ENUM(Types::BindGroupIdEnumInfo);
-  REGISTER_ENUM(Types::TextureSampleTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::WindingOrderEnumInfo);
+  REGISTER_ENUM(ShardsTypes::ShaderFieldBaseTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::ProgrammableGraphicsStageEnumInfo);
+  REGISTER_ENUM(ShardsTypes::DependencyTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::BlendFactorEnumInfo);
+  REGISTER_ENUM(ShardsTypes::BlendOperationEnumInfo);
+  REGISTER_ENUM(ShardsTypes::FilterModeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::CompareFunctionEnumInfo);
+  REGISTER_ENUM(ShardsTypes::ColorMaskEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::SortModeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureFormatEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureDimensionEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureAddressingEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureFilteringEnumInfo);
+  REGISTER_ENUM(ShardsTypes::OrthographicSizeTypeEnumInfo);
+  REGISTER_ENUM(ShardsTypes::BindGroupIdEnumInfo);
+  REGISTER_ENUM(ShardsTypes::TextureSampleTypeEnumInfo);
 
   registerMainWindowShards();
   registerRendererShards();

@@ -9,7 +9,6 @@
 using namespace shards::input;
 using namespace gfx;
 using namespace shards;
-using GFXTypes = gfx::Types;
 
 SHTypeInfo *gfx_getGraphicsContextType() {
   static SHTypeInfo type = gfx::GraphicsContext::Type;
@@ -30,7 +29,7 @@ SHTypeInfo *gfx_getInputContextType() {
 const char *gfx_getInputContextVarName() { return IInputContext::VariableName; }
 
 SHTypeInfo *gfx_getQueueType() {
-  static SHTypeInfo type = GFXTypes::DrawQueue;
+  static SHTypeInfo type = ShardsTypes::DrawQueue;
   return &type;
 }
 
@@ -44,7 +43,7 @@ gfx::Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
 }
 
 DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
-  SHDrawQueue &shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, GFXTypes::DrawQueue);
+  SHDrawQueue &shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, ShardsTypes::DrawQueue);
   return &shDrawQueue.queue;
 }
 

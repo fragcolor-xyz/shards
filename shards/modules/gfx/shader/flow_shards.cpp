@@ -23,7 +23,7 @@ struct SubTranslator {
 
 struct IfTranslator {
   static void translate(IfBlock *shard, TranslationContext &context) {
-    FieldType inputType = context.wgslTop->getType();
+    Type inputType = context.wgslTop->getType();
     BlockPtr inputBlock = context.wgslTop->toBlock();
 
     // NOTE: Evaluate condition as a function to support (And) & (Or) flow control mechanisms
@@ -31,7 +31,7 @@ struct IfTranslator {
     auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
     std::string ifResultVarName;
-    FieldType outputType;
+    Type outputType;
     if (!shard->_passth) {
       SHTypeInfo ta = shard->_then.composeResult().outputType;
       SHTypeInfo tb = shard->_else.composeResult().outputType;
@@ -41,7 +41,7 @@ struct IfTranslator {
       outputType = shardsTypeToFieldType(ta);
       ifResultVarName = context.getUniqueVariableName("if");
       context.addNew(
-          blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getFieldWGSLTypeName(outputType)), ";\n"));
+          blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
     }
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
@@ -91,7 +91,7 @@ template <typename TShard> struct WhenTranslator {
       throw ShaderComposeError("Non-passthrough on When is not supported in shaders");
     }
 
-    FieldType inputType = context.wgslTop->getType();
+    Type inputType = context.wgslTop->getType();
     BlockPtr inputBlock = context.wgslTop->toBlock();
 
     // NOTE: Evaluate condition as a function to support (And) & (Or) flow control mechanisms
@@ -127,7 +127,7 @@ struct ForRangeTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {}++) {{", indexVarName)));
 
     // Pass index as input
-    context.setWGSLTop<WGSLBlock>(FieldTypes::Int32, blocks::makeBlock<blocks::Direct>(indexVarName));
+    context.setWGSLTop<WGSLBlock>(Types::Int32, blocks::makeBlock<blocks::Direct>(indexVarName));
 
     // Loop body
     processShardsVar(shard->_shards, context);
@@ -141,7 +141,7 @@ struct ForRangeTranslator {
 struct LogicOrTranslator {
   static void translate(shards::Or *shard, TranslationContext &context) {
     assert(context.wgslTop);
-    assert(context.wgslTop->getType() == FieldTypes::Bool);
+    assert(context.wgslTop->getType() == Types::Bool);
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(") { return true; }"));
@@ -151,7 +151,7 @@ struct LogicOrTranslator {
 struct LogicAndTranslator {
   static void translate(shards::And *shard, TranslationContext &context) {
     assert(context.wgslTop);
-    assert(context.wgslTop->getType() == FieldTypes::Bool);
+    assert(context.wgslTop->getType() == Types::Bool);
     context.addNew(blocks::makeBlock<blocks::Direct>("if(!("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(")) { return false; }"));

@@ -47,7 +47,7 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
           resolvedBinding.subResource.texture->initWithResolution(targetSize);
         } else {
           shassert(resolvedBinding.subResource.getResolution() == expectedSize.size &&
-                 "Manually sized texture does not have it's expected size, this should not happen");
+                   "Manually sized texture does not have it's expected size, this should not happen");
         }
       }
       outFrameTextures.push_back(resolveSubResourceView(resolvedBinding.subResource));
@@ -179,11 +179,13 @@ RenderGraphEvaluator::ResolvedBinding RenderGraphEvaluator::resolveBinding(Rende
       binding);
 }
 
-void RenderGraphEvaluator::computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs) {
+void RenderGraphEvaluator::computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs, int2 fallbackSize) {
   int2 refSize{};
   for (auto &output : outputs) {
     refSize = linalg::max(refSize, output.getResolution());
   }
+  if (refSize == int2{})
+    refSize = fallbackSize;
 
   frameSizes.resize(graph.sizes.size());
   for (size_t sizeIndex = 0; sizeIndex < graph.sizes.size(); sizeIndex++) {
@@ -238,7 +240,7 @@ void RenderGraphEvaluator::validateOutputSizes(const RenderGraph &graph) {
 }
 
 void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData,
-                                    std::span<TextureSubResource> outputs) {
+                                    std::span<TextureSubResource> outputs, int2 fallbackSize) {
   // Evaluate all render steps in the order they are defined
   // potential optimizations:
   // - evaluate steps without dependencies in parralel
@@ -246,7 +248,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
 
   auto &context = renderer.getContext();
 
-  computeFrameSizes(graph, outputs);
+  computeFrameSizes(graph, outputs, fallbackSize);
   getFrameTextures(frameTextures, outputs, graph, context);
   validateOutputSizes(graph);
 
@@ -263,8 +265,11 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
       node.setupPass(renderPassDesc);
     WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
 
-    auto &outFrame = graph.frames[node.outputs[0].frameIndex];
-    int2 targetSize = frameSizes[outFrame.size].size;
+    int2 targetSize = fallbackSize;
+    if (!node.outputs.empty()) {
+      auto &outFrame = graph.frames[node.outputs[0].frameIndex];
+      targetSize = frameSizes[outFrame.size].size;
+    }
 
     RenderGraphEncodeContext ctx{
         .encoder = renderPassEncoder,

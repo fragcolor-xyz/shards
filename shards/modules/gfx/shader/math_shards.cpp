@@ -18,10 +18,10 @@ template <typename TShard> struct ToNumberTranslator {
     const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
     const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
 
-    NumFieldType fieldType = getShaderBaseType(outputNumberType->type);
+    NumType fieldType = getShaderBaseType(outputNumberType->type);
     fieldType.numComponents = outputVectorType->dimension;
 
-    NumFieldType unitFieldType = fieldType;
+    NumType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(cast/{})> ", outputVectorType->name);
@@ -30,7 +30,7 @@ template <typename TShard> struct ToNumberTranslator {
       throw ShaderComposeError(fmt::format("Cast requires a value"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    NumFieldType sourceFieldType = std::get<NumFieldType>(wgslValue->getType());
+    NumType sourceFieldType = std::get<NumType>(wgslValue->getType());
 
     blocks::BlockPtr sourceBlock = wgslValue->toBlock();
     std::unique_ptr<blocks::Compound> sourceComponentList;
@@ -47,7 +47,7 @@ template <typename TShard> struct ToNumberTranslator {
       bool isLast = i >= (numComponentsToCopy - 1);
       blocks::BlockPtr inner = isLast ? std::move(sourceBlock) : sourceBlock->clone();
 
-      std::string prefix = fmt::format("{}((", getFieldWGSLTypeName(unitFieldType));
+      std::string prefix = fmt::format("{}((", getWGSLTypeName(unitFieldType));
       std::string suffix{};
       if (requireSourceSwizzle)
         suffix = fmt::format((isLast ? ").{})" : ").{}), "), componentNames[i]);
@@ -63,7 +63,7 @@ template <typename TShard> struct ToNumberTranslator {
       result = std::move(sourceComponentList);
     } else {
       // Generate constructor for target type
-      std::string prefix = fmt::format("{}(", getFieldWGSLTypeName(fieldType));
+      std::string prefix = fmt::format("{}(", getWGSLTypeName(fieldType));
       std::unique_ptr<blocks::Compound> compound = blocks::makeCompoundBlock(std::move(prefix), std::move(sourceComponentList));
 
       // Append zeros to fill vector type
@@ -103,10 +103,10 @@ template <typename TShard> struct MakeVectorTranslator {
     const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
     const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
 
-    NumFieldType fieldType = getShaderBaseType(outputNumberType->type);
+    NumType fieldType = getShaderBaseType(outputNumberType->type);
     fieldType.numComponents = outputVectorType->dimension;
 
-    NumFieldType unitFieldType = fieldType;
+    NumType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(make/{})> ", outputVectorType->name);
@@ -126,7 +126,7 @@ template <typename TShard> struct MakeVectorTranslator {
       bool isLast = i == (shard->inputSize - 1);
 
       auto value = translateParamVar(params[i], context);
-      if (value->getType() != FieldType(unitFieldType))
+      if (value->getType() != Type(unitFieldType))
         throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
 
       sourceComponentList->append(value->toBlock());
@@ -135,7 +135,7 @@ template <typename TShard> struct MakeVectorTranslator {
     }
 
     // Generate constructor for target type
-    std::string prefix = fmt::format("{}(", getFieldWGSLTypeName(fieldType));
+    std::string prefix = fmt::format("{}(", getWGSLTypeName(fieldType));
     blocks::BlockPtr result = blocks::makeCompoundBlock(std::move(prefix), std::move(sourceComponentList), ")");
 
     context.setWGSLTopVar(fieldType, std::move(result));

@@ -135,8 +135,7 @@ inline void groupDrawables(size_t numDrawables, std::vector<detail::DrawGroup, T
   }
 }
 
-inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout,
-                         const ParameterStorage &parameterStorage) {
+inline void packDrawData(uint8_t *outData, size_t outSize, const StructLayout &layout, const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (auto &fieldName : layout.fieldNames) {
 #if SH_ANDROID
@@ -145,8 +144,8 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
     auto drawDataIt = parameterStorage.basic.find(fieldName);
 #endif
     if (drawDataIt != parameterStorage.basic.end()) {
-      const UniformLayout &itemLayout = layout.items[layoutIndex];
-      NumFieldType drawDataFieldType = getNumParameterType(drawDataIt->second);
+      const StructLayoutItem &itemLayout = layout.items[layoutIndex];
+      NumType drawDataFieldType = getNumParameterType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
         SPDLOG_LOGGER_WARN(getLogger(), "Shader field \"{}\" type mismatch layout:{} parameterStorage:{}", fieldName,
                            itemLayout.type, drawDataFieldType);

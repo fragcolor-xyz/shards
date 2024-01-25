@@ -17,6 +17,8 @@ inline constexpr float radToDeg(float v) { return v * radToDegFactor; }
 
 inline constexpr bool isPOT(size_t N) { return (N & (N - 1)) == 0; }
 
+inline constexpr size_t roundUpAlignment(size_t a, size_t b) { return size_t(std::ceil(double(a) / double(b)) * b); }
+
 inline constexpr size_t alignTo(size_t size, size_t alignment) {
   if (alignment == 0)
     return size;

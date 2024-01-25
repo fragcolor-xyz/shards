@@ -180,7 +180,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     auto feature = std::make_shared<Feature>();
     auto code = makeCompoundBlock();
     code->appendLine("let vel = ", SampleTexture("velocity"), ".xy");
-    code->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(vel.x*0.5+0.5, vel.y*0.5+0.5, 0.0, 1.0)"));
+    code->appendLine(WriteOutput("color", Types::Float4, "vec4<f32>(vel.x*0.5+0.5, vel.y*0.5+0.5, 0.0, 1.0)"));
     feature->shaderEntryPoints.emplace_back("", ProgrammableGraphicsStage::Fragment, std::move(code));
     feature->textureParams.emplace("velocity", TextureParamDecl());
     return feature;
@@ -238,7 +238,7 @@ TEST_CASE("Format conversion", "[RenderGraph]") {
 
   // Pass that writes a fixed color (linear)
   {
-    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(1.0, 0.5, 0.25, 1.0)"));
+    blk->appendLine(WriteOutput("color", Types::Float4, "vec4<f32>(1.0, 0.5, 0.25, 1.0)"));
     steps.emplace_back(Effect::create(RenderStepInput{},
                                       RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float)),
                                       std::move(blk)));
@@ -297,7 +297,7 @@ TEST_CASE("Graph output size mismatch", "[RenderGraph]") {
 
   // write "test" target
   {
-    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(1.0, 0.0, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", Types::Float4, "vec4<f32>(1.0, 0.0, 0.0, 1.0)"));
     auto &stepPtr = steps.emplace_back(
         Effect::create(RenderStepInput{}, RenderStepOutput::make(RenderStepOutput::Named("test", WGPUTextureFormat_RGBA32Float)),
                        std::move(blk)));
@@ -308,8 +308,8 @@ TEST_CASE("Graph output size mismatch", "[RenderGraph]") {
   // write "color" & "test" target with mismatching sizes
   {
     blk = makeCompoundBlock();
-    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
-    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("color", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
     auto &stepPtr =
         steps.emplace_back(Effect::create(RenderStepInput{},
                                           RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
@@ -341,8 +341,8 @@ TEST_CASE("Write to texture auto-size", "[RenderGraph]") {
   // write "color" & "test" target with mismatching sizes
   {
     blk = makeCompoundBlock();
-    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
-    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("color", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
     auto &stepPtr =
         steps.emplace_back(Effect::create(RenderStepInput{},
                                           RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
@@ -374,8 +374,8 @@ TEST_CASE("Graph evaluate output size mismatch", "[RenderGraph]") {
   // write "color" & "test" target with mismatching sizes
   {
     blk = makeCompoundBlock();
-    blk->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
-    blk->appendLine(WriteOutput("test", FieldTypes::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("color", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", Types::Float4, "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
     auto &stepPtr =
         steps.emplace_back(Effect::create(RenderStepInput{},
                                           RenderStepOutput::make(RenderStepOutput::Named("color", WGPUTextureFormat_RGBA32Float),
@@ -408,7 +408,7 @@ TEST_CASE("Read and write same texture", "[RenderGraph]") {
   // write "color" & "test" target with mismatching sizes
   {
     blk = makeCompoundBlock();
-    blk->appendLine(WriteOutput("test", FieldTypes::Float4, SampleTexture("test"), "+", "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
+    blk->appendLine(WriteOutput("test", Types::Float4, SampleTexture("test"), "+", "vec4<f32>(0.0, 0.5, 0.0, 1.0)"));
     auto &stepPtr = steps.emplace_back(Effect::create(RenderStepInput::make(RenderStepInput::Texture("test", outputTexture)),
                                                       RenderStepOutput::make(RenderStepOutput::Texture("test", outputTexture)),
                                                       std::move(blk)));

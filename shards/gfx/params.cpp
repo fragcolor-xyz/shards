@@ -89,34 +89,34 @@ size_t packNumParameter(uint8_t *outData, size_t outLength, const NumParameter &
   return std::visit(visitor, variant);
 }
 
-using shader::FieldTypes;
-using shader::NumFieldType;
-NumFieldType getNumParameterType(const NumParameter &variant) {
-  NumFieldType result = {};
+using shader::Types;
+using shader::NumType;
+NumType getNumParameterType(const NumParameter &variant) {
+  NumType result = {};
   std::visit(
       [&](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
 
         if constexpr (std::is_same_v<T, float>) {
-          result = FieldTypes::Float;
+          result = Types::Float;
         } else if constexpr (std::is_same_v<T, float2>) {
-          result = FieldTypes::Float2;
+          result = Types::Float2;
         } else if constexpr (std::is_same_v<T, float3>) {
-          result = FieldTypes::Float3;
+          result = Types::Float3;
         } else if constexpr (std::is_same_v<T, float4>) {
-          result = FieldTypes::Float4;
+          result = Types::Float4;
         } else if constexpr (std::is_same_v<T, float4x4>) {
-          result = FieldTypes::Float4x4;
+          result = Types::Float4x4;
         } else if constexpr (std::is_same_v<T, int>) {
-          result = FieldTypes::Int32;
+          result = Types::Int32;
         } else if constexpr (std::is_same_v<T, int2>) {
-          result = FieldTypes::Int2;
+          result = Types::Int2;
         } else if constexpr (std::is_same_v<T, int3>) {
-          result = FieldTypes::Int3;
+          result = Types::Int3;
         } else if constexpr (std::is_same_v<T, int4>) {
-          result = FieldTypes::Int4;
+          result = Types::Int4;
         } else if constexpr (std::is_same_v<T, uint32_t>) {
-          result = FieldTypes::UInt32;
+          result = Types::UInt32;
         } else {
           throw std::logic_error(fmt::format("Type {} not suported by NumParameter", NAMEOF_TYPE(T)));
         }

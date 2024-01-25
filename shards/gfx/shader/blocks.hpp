@@ -126,14 +126,14 @@ struct WithOutput : public Block {
 
 struct WriteOutput : public Block {
   FastString name;
-  NumFieldType type;
+  NumType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteOutput(FastString name, NumFieldType type, T &&inner)
+  WriteOutput(FastString name, NumType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteOutput(FastString name, NumFieldType type, TArgs &&...inner)
+  WriteOutput(FastString name, NumType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteOutput(WriteOutput &&other) = default;
 
@@ -160,14 +160,14 @@ struct ReadInput : public Block {
 
 struct WriteGlobal : public Block {
   FastString name;
-  NumFieldType type;
+  NumType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteGlobal(FastString name, NumFieldType type, T &&inner)
+  WriteGlobal(FastString name, NumType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteGlobal(FastString name, NumFieldType type, TArgs &&...inner)
+  WriteGlobal(FastString name, NumType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteGlobal(WriteGlobal &&other) = default;
 
@@ -191,10 +191,10 @@ struct ReadGlobal : public Block {
 
 struct ReadBuffer : public Block {
   FastString fieldName;
-  NumFieldType type;
+  NumType type;
   FastString bufferName;
 
-  ReadBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName = "object")
+  ReadBuffer(FastString fieldName, const NumType &type, FastString bufferName = "object")
       : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 
@@ -257,7 +257,7 @@ struct LinearizeDepth : public Block {
     context.popHeaderScope();
 
     context.write(fmt::format("{}(", funcName));
-    context.readBuffer("proj", FieldTypes::Float4x4, "view");
+    context.readBuffer("proj", Types::Float4x4, "view");
     context.write(", ");
     input->apply(context);
     context.write(")");

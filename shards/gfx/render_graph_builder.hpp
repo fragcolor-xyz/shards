@@ -627,9 +627,9 @@ public:
     return std::visit([](auto &arg) { return arg.getId().getIdPart(); }, *step.get());
   }
 
-  void dumpDebugInfo(References &references) {
-    SPDLOG_LOGGER_DEBUG(logger, "-- Render graph builder --");
-    SPDLOG_LOGGER_DEBUG(logger, "Frames:");
+  void dumpDebugInfo(References &references, spdlog::level::level_enum logLevel) {
+    SPDLOG_LOGGER_CALL(logger, logLevel, "-- Render graph builder --");
+    SPDLOG_LOGGER_CALL(logger, logLevel, "Frames:");
 
     size_t index{};
     for (auto &frame : buildingFrames) {
@@ -643,13 +643,13 @@ public:
       if (auto outputIndex = std::get_if<RenderGraph::OutputIndex>(&frame.binding)) {
         outSuffix += fmt::format(" out: {}", *outputIndex);
       }
-      SPDLOG_LOGGER_DEBUG(logger, " - [{}{}] {} fmt: {} size: {}{}", index, unused ? ":UNUSED" : "", frame.name,
+      SPDLOG_LOGGER_CALL(logger, logLevel, " - [{}{}] {} fmt: {} size: {}{}", index, unused ? ":UNUSED" : "", frame.name,
                           magic_enum::enum_name(frame.format), *frame.sizing, outSuffix);
       ++index;
     }
 
     index = 0;
-    SPDLOG_LOGGER_DEBUG(logger, "Output Graph:");
+    SPDLOG_LOGGER_CALL(logger, logLevel, "Output Graph:");
     for (auto &node : buildingNodes) {
       std::string writesToStr;
       for (auto &wt : node.outputs)
@@ -692,7 +692,7 @@ public:
         }
       }
 
-      SPDLOG_LOGGER_DEBUG(logger, " - {} (step:{}/{})", logStr, getPipelineStepName(node.step), getStepId(node.step));
+      SPDLOG_LOGGER_CALL(logger, logLevel, " - {} (step:{}/{})", logStr, getPipelineStepName(node.step), getStepId(node.step));
 
       ++index;
     }
@@ -892,8 +892,12 @@ public:
       for (auto &out : node.outputs) {
         auto inIt = std::find(node.inputs.begin(), node.inputs.end(), out);
         if (inIt != node.inputs.end()) {
-          errors.emplace_back(fmt::format("Node {} has an output {} that is also an input", out->index, node.srcIndex));
+          errors.emplace_back(fmt::format("Node {} has an output {} that is also an input", node.srcIndex, out->index));
         }
+      }
+
+      if (node.outputs.empty()) {
+        errors.emplace_back(fmt::format("Node {} has no outputs, it must have at least one", node.srcIndex));
       }
     }
 
@@ -901,7 +905,7 @@ public:
       References references;
       SPDLOG_LOGGER_ERROR(logger, "Render graph has invalid connections:");
       collectReferences(references);
-      dumpDebugInfo(references);
+      dumpDebugInfo(references, spdlog::level::err);
       for (auto &error : errors) {
         SPDLOG_LOGGER_ERROR(logger, error);
       }
@@ -927,7 +931,8 @@ public:
     if (!validateUninitializedFrames())
       return false;
 
-    assert(validateConnections());
+    if (!validateConnections())
+      return false;
 
     return true;
   }
@@ -945,7 +950,7 @@ public:
     assignNodes(result, references);
 
     if (logger->level() <= spdlog::level::debug) {
-      dumpDebugInfo(references);
+      dumpDebugInfo(references, spdlog::level::debug);
     }
 
     return result;

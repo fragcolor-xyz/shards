@@ -10,10 +10,10 @@ using namespace shards;
 namespace gfx {
 struct MaterialShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::Material; }
+  static SHTypesInfo outputTypes() { return ShardsTypes::Material; }
 
-  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
-  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
 
   PARAM_IMPL(PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
@@ -22,14 +22,14 @@ struct MaterialShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _material = Types::MaterialObjectVar.New();
+    _material = ShardsTypes::MaterialObjectVar.New();
     _material->material = std::make_shared<Material>();
   }
 
   void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     if (_material) {
-      Types::MaterialObjectVar.Release(_material);
+      ShardsTypes::MaterialObjectVar.Release(_material);
       _material = nullptr;
     }
   }
@@ -53,7 +53,7 @@ struct MaterialShard {
       applyFeatures(shContext, material->features, _features.get());
     }
 
-    return Types::MaterialObjectVar.Get(_material);
+    return ShardsTypes::MaterialObjectVar.Get(_material);
   }
 };
 

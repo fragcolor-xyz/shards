@@ -2,13 +2,15 @@
 #define GFX_SHADER_GENERATOR
 
 #include "../../core/function.hpp"
+#include "utils.hpp"
 #include "block.hpp"
 #include "entry_point.hpp"
 #include "spdlog/logger.h"
 #include "textures.hpp"
 #include "types.hpp"
-#include "uniforms.hpp"
+#include "struct_layout.hpp"
 #include "temp_variable.hpp"
+#include "fwd.hpp"
 #include <gfx/mesh.hpp>
 #include <gfx/params.hpp>
 #include <map>
@@ -18,28 +20,8 @@
 
 namespace gfx {
 namespace shader {
-using String = std::string;
-using StringView = std::string_view;
-
-inline String sanitizeIdentifier(StringView inName) {
-  String result;
-  for (auto c : inName) {
-    if (std::isalnum(c) || c == '_') {
-      result += c;
-    } else {
-      result += '_';
-    }
-  }
-  return result;
-}
-
 struct GeneratorError {
   std::string error;
-};
-
-enum class BufferType {
-  Uniform,
-  Storage,
 };
 
 template <typename Sig> using Function = shards::FunctionBase<128, Sig>;
@@ -47,10 +29,10 @@ template <typename Sig> using Function = shards::FunctionBase<128, Sig>;
 struct IGeneratorDynamicHandler {
   // Entry point for generating stage inputs on-demand
   // return true to indicate that the input now exists and the out field is filled in
-  virtual bool createDynamicInput(FastString name, NumFieldType &out) { return false; }
+  virtual bool createDynamicInput(FastString name, NumType &out) { return false; }
   // Entry point for generating stage outputs on-demand
   // return true to indicate that the output now exists
-  virtual bool createDynamicOutput(FastString name, NumFieldType requestedType) { return false; }
+  virtual bool createDynamicOutput(FastString name, NumType requestedType) { return false; }
 };
 
 template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
@@ -60,9 +42,9 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 struct GeneratorDefinitions {
   std::map<FastString, BufferDefinition> buffers;
   std::map<FastString, TextureDefinition> textures;
-  std::map<FastString, NumFieldType> inputs;
-  std::map<FastString, NumFieldType> globals;
-  std::map<FastString, NumFieldType> outputs;
+  std::map<FastString, NumType> inputs;
+  std::map<FastString, NumType> globals;
+  std::map<FastString, NumType> outputs;
 };
 
 struct IGeneratorContext {
@@ -75,16 +57,16 @@ struct IGeneratorContext {
   virtual void popHeaderScope() = 0;
 
   virtual void readGlobal(FastString name) = 0;
-  virtual void beginWriteGlobal(FastString name, const NumFieldType &type) = 0;
+  virtual void beginWriteGlobal(FastString name, const NumType &type) = 0;
   virtual void endWriteGlobal() = 0;
 
   virtual bool hasInput(FastString name) = 0;
   virtual void readInput(FastString name) = 0;
-  virtual const NumFieldType *getOrCreateDynamicInput(FastString name) = 0;
+  virtual const NumType *getOrCreateDynamicInput(FastString name) = 0;
 
   virtual bool hasOutput(FastString name) = 0;
-  virtual void writeOutput(FastString name, const NumFieldType &type) = 0;
-  virtual const NumFieldType *getOrCreateDynamicOutput(FastString name, NumFieldType requestedType) = 0;
+  virtual void writeOutput(FastString name, const NumType &type) = 0;
+  virtual const NumType *getOrCreateDynamicOutput(FastString name, NumType requestedType) = 0;
 
   virtual bool hasTexture(FastString name, bool defaultTexcoordRequired = true) = 0;
   virtual const TextureDefinition *getTexture(FastString name) = 0;
@@ -92,7 +74,7 @@ struct IGeneratorContext {
   virtual void textureDefaultTextureCoordinate(FastString name) = 0;
   virtual void textureDefaultSampler(FastString name) = 0;
 
-  virtual void readBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName,
+  virtual void readBuffer(FastString fieldName, const NumType &type, FastString bufferName,
                           const Function<void(IGeneratorContext &ctx)> &index = Function<void(IGeneratorContext &ctx)>()) = 0;
 
   virtual const GeneratorDefinitions &getDefinitions() const = 0;
@@ -102,7 +84,7 @@ struct IGeneratorContext {
   virtual const std::string &generateTempVariable() = 0;
 
   // Helper function for writeGlobal
-  template <typename T> void writeGlobal(FastString name, const NumFieldType &type, T &&inner) {
+  template <typename T> void writeGlobal(FastString name, const NumType &type, T &&inner) {
     beginWriteGlobal(name, type);
     inner();
     endWriteGlobal();
@@ -137,16 +119,16 @@ struct GeneratorContext : public IGeneratorContext {
   void writeHeader(const StringView &str);
 
   void readGlobal(FastString name);
-  void beginWriteGlobal(FastString name, const NumFieldType &type);
+  void beginWriteGlobal(FastString name, const NumType &type);
   void endWriteGlobal();
 
   bool hasInput(FastString name);
   void readInput(FastString name);
-  const NumFieldType *getOrCreateDynamicInput(FastString name);
+  const NumType *getOrCreateDynamicInput(FastString name);
 
   bool hasOutput(FastString name);
-  void writeOutput(FastString name, const NumFieldType &type);
-  const NumFieldType *getOrCreateDynamicOutput(FastString name, NumFieldType requestedType);
+  void writeOutput(FastString name, const NumType &type);
+  const NumType *getOrCreateDynamicOutput(FastString name, NumType requestedType);
 
   bool hasTexture(FastString name, bool defaultTexcoordRequired = true);
   const TextureDefinition *getTexture(FastString name);
@@ -154,7 +136,7 @@ struct GeneratorContext : public IGeneratorContext {
   void textureDefaultTextureCoordinate(FastString name);
   void textureDefaultSampler(FastString name);
 
-  void readBuffer(FastString fieldName, const NumFieldType &type, FastString bufferName,
+  void readBuffer(FastString fieldName, const NumType &type, FastString bufferName,
                   const Function<void(IGeneratorContext &ctx)> &index);
 
   void pushError(GeneratorError &&error);
@@ -175,14 +157,14 @@ struct BufferBinding {
   size_t bindGroup{};
   size_t binding{};
   FastString name;
-  UniformBufferLayout layout;
-  BufferType type = BufferType::Uniform;
+  Type layout;
+  AddressSpace addressSpace = AddressSpace::Uniform;
   Dimension dimension;
 };
 
 struct IndexedBufferBinding {
   FastString name;
-  std::map<FastString, NumFieldType> accessedFields;
+  std::map<FastString, Type> accessedFields;
 };
 
 struct IndexedTextureBinding {
@@ -191,7 +173,7 @@ struct IndexedTextureBinding {
 
 struct IndexedOutput {
   FastString name;
-  NumFieldType type;
+  NumType type;
 };
 
 struct IndexedBindings {
@@ -207,7 +189,7 @@ struct Generator {
   TextureBindingLayout textureBindingLayout;
   size_t textureBindGroup{};
   MeshFormat meshFormat;
-  std::vector<NamedField> outputFields;
+  std::vector<NamedNumType> outputFields;
 
   IndexedBindings indexBindings(const std::vector<EntryPoint> &entryPoints);
   IndexedBindings indexBindings(const std::vector<const EntryPoint *> &entryPoints);

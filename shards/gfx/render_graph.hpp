@@ -342,10 +342,10 @@ public:
   };
 
   ResolvedBinding resolveBinding(RenderGraph::FrameBinding binding, const std::span<TextureSubResource> &outputs);
-  void computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs);
+  void computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs, int2 fallbackSize);
   void validateOutputSizes(const RenderGraph &graph);
 
-  void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs);
+  void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs, int2 fallbackSize);
 };
 
 struct CachedRenderGraph {

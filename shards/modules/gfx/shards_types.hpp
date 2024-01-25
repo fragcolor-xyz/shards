@@ -356,7 +356,7 @@ struct Container {
 #undef OBJECT
 };
 } // namespace detail
-using Types = detail::Container;
+using ShardsTypes = detail::Container;
 
 } // namespace gfx
 

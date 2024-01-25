@@ -10,7 +10,7 @@ namespace gfx::shader {
 struct BaseRunnerTranslator {
   static void translate(BaseRunner *shard, TranslationContext &context) {
     auto input = context.takeWGSLTop();
-    std::optional<FieldType> inputType = input ? std::make_optional(input->getType()) : std::nullopt;
+    std::optional<Type> inputType = input ? std::make_optional(input->getType()) : std::nullopt;
 
     auto wire = shard->wire;
     const TranslatedFunction &translatedFunction = context.processWire(wire, inputType);

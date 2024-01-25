@@ -22,7 +22,7 @@
 #include "shader/fmt.hpp"
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
-#include "shader/uniforms.hpp"
+#include "shader/struct_layout.hpp"
 #include "drawable_processor.hpp"
 #include "texture.hpp"
 #include "texture_placeholder.hpp"
@@ -179,7 +179,8 @@ struct RendererImpl final : public ContextData {
 
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
-      frameQueue->evaluate(outer);
+      auto fallbackSize = viewStack.getOutput().size;
+      frameQueue->evaluate(outer, fallbackSize);
     }
 
     frameQueues.pop_back();

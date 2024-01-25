@@ -17,7 +17,7 @@
 #include "../drawable_processor_helpers.hpp"
 #include "../pipeline_builder.hpp"
 #include "../renderer_types.hpp"
-#include "../shader/uniforms.hpp"
+#include "../shader/struct_layout.hpp"
 #include <boost/container/flat_map.hpp>
 #include <spdlog/spdlog.h>
 #include <functional>
@@ -191,33 +191,33 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     auto &viewBinding = builder.getOrCreateBufferBinding("view");
     viewBinding.bindGroupId = BindGroupId::View;
-    auto &viewLayoutBuilder = viewBinding.layoutBuilder;
-    viewLayoutBuilder.push("view", FieldTypes::Float4x4);
-    viewLayoutBuilder.push("proj", FieldTypes::Float4x4);
-    viewLayoutBuilder.push("invView", FieldTypes::Float4x4);
-    viewLayoutBuilder.push("invProj", FieldTypes::Float4x4);
-    viewLayoutBuilder.push("viewport", FieldTypes::Float4);
+    auto &viewStructType = viewBinding.structType;
+    viewStructType->addField("view", Types::Float4x4);
+    viewStructType->addField("proj", Types::Float4x4);
+    viewStructType->addField("invView", Types::Float4x4);
+    viewStructType->addField("invProj", Types::Float4x4);
+    viewStructType->addField("viewport", Types::Float4);
 
     auto &objectBinding = builder.getOrCreateBufferBinding("object");
     objectBinding.bindGroupId = BindGroupId::Draw;
-    objectBinding.bufferType = shader::BufferType::Storage;
+    objectBinding.addressSpace = shader::AddressSpace::Storage;
     objectBinding.dimension = dim::PerInstance{};
     objectBinding.hasDynamicOffset = true;
-    auto &objectLayoutBuilder = objectBinding.layoutBuilder;
-    objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-    objectLayoutBuilder.push("invWorld", FieldTypes::Float4x4);
-    objectLayoutBuilder.push("invTransWorld", FieldTypes::Float4x4);
+    auto &objectStructType = objectBinding.structType;
+    objectStructType->addField("world", Types::Float4x4);
+    objectStructType->addField("invWorld", Types::Float4x4);
+    objectStructType->addField("invTransWorld", Types::Float4x4);
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(builder.firstDrawable);
     auto &cached = drawableCache[meshDrawable.getId()];
 
     if (meshDrawable.skin) {
       auto &jointsBufferBinding = builder.getOrCreateBufferBinding("joints");
-      jointsBufferBinding.bufferType = shader::BufferType::Storage;
+      jointsBufferBinding.addressSpace = shader::AddressSpace::Storage;
       jointsBufferBinding.bindGroupId = BindGroupId::Draw;
       jointsBufferBinding.dimension = dim::Dynamic{};
-      auto &layoutBuilder = jointsBufferBinding.layoutBuilder;
-      layoutBuilder.push("transform", FieldTypes::Float4x4);
+      auto &jointsStructType = jointsBufferBinding.structType;
+      jointsStructType->addField("transform", Types::Float4x4);
     }
 
     builder.meshFormat = cached.mesh->getFormat();

@@ -28,7 +28,7 @@ struct TextureParameter {
 size_t packNumParameter(uint8_t *outData, size_t outLength, const NumParameter &variant);
 
 /// <div rustbindgen hide></div>
-gfx::shader::NumFieldType getNumParameterType(const NumParameter &variant);
+gfx::shader::NumType getNumParameterType(const NumParameter &variant);
 
 /// <div rustbindgen hide></div>
 struct IParameterCollector {
@@ -37,6 +37,50 @@ struct IParameterCollector {
 
   void setParam(FastString name, const NumParameter &value) { setParam(name, NumParameter(value)); }
   void setTexture(FastString name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
+};
+
+enum class NumParamFlags {
+  None = 0,
+};
+
+enum class ShaderParamFlags {
+  None = 0,
+};
+
+enum class BindGroupId {
+  View,
+  Draw,
+};
+
+struct NumParamDecl {
+  shader::NumType type = shader::NumType(ShaderFieldBaseType::Float32, 4);
+  NumParameter defaultValue;
+  NumParamFlags flags = NumParamFlags::None;
+  BindGroupId bindGroupId = BindGroupId::Draw;
+
+  NumParamDecl() = default;
+  NumParamDecl(const shader::NumType &type, NumParameter defaultValue = NumParameter());
+  NumParamDecl(NumParameter defaultValue);
+};
+
+struct TextureParamDecl {
+  shader::TextureType type;
+  TexturePtr defaultValue;
+  ShaderParamFlags flags = ShaderParamFlags::None;
+  BindGroupId bindGroupId = BindGroupId::Draw;
+
+  TextureParamDecl() = default;
+  TextureParamDecl(TextureDimension dimension, ShaderParamFlags flags = ShaderParamFlags::None)
+      : type(dimension), flags(flags) {}
+  TextureParamDecl(shader::TextureType type, ShaderParamFlags flags = ShaderParamFlags::None) : type(type), flags(flags) {}
+};
+
+struct StorageParamDecl {
+  shader::Type type;
+  BindGroupId bindGroupId = BindGroupId::Draw;
+
+  StorageParamDecl() = default;
+  StorageParamDecl(shader::Type type) : type(type) {}
 };
 
 } // namespace gfx

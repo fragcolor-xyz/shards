@@ -35,7 +35,7 @@ struct Wireframe {
     code->appendLine("var bx: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 4) % 3) - 1)");
     code->appendLine("var by: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 2) % 3) - 1)");
     code->appendLine("var bz: i32 = 1 - bx - by");
-    code->append(blocks::WriteOutput("barycentricCoord", FieldTypes::Float3, "vec3<f32>(f32(bx), f32(by), f32(bz))"));
+    code->append(blocks::WriteOutput("barycentricCoord", Types::Float3, "vec3<f32>(f32(bx), f32(by), f32(bz))"));
     feature->shaderEntryPoints.emplace_back("initBarycentricCoordinates", ProgrammableGraphicsStage::Vertex, std::move(code));
 
     // Generate screen space edge distance to wireframe color
@@ -45,7 +45,7 @@ struct Wireframe {
     code->appendLine("bary = smoothstep(deltas, deltas * 1.0, bary)");
     code->appendLine("var distance = min(bary.x, min(bary.y, bary.z))");
     code->appendLine("var wire = max(0.0, 1.0 - round(distance))");
-    code->append(blocks::WriteGlobal("color", FieldTypes::Float4, "wire * vec4<f32>(1.0, 1.0, 1.0, 1.0)"));
+    code->append(blocks::WriteGlobal("color", Types::Float4, "wire * vec4<f32>(1.0, 1.0, 1.0, 1.0)"));
     code->appendLine("if(wire == 0.0) {discard;}");
     auto &entry = feature->shaderEntryPoints.emplace_back("visualizeBarycentricCoordinates", ProgrammableGraphicsStage::Fragment,
                                                           std::move(code));

@@ -6,17 +6,16 @@
 using namespace gfx;
 
 namespace shards::egui {
-using gfx::Types;
 using shards::CoreInfo;
 
 struct UIPassShard {
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return gfx::Types::PipelineStep; }
+  static SHTypesInfo outputTypes() { return gfx::ShardsTypes::PipelineStep; }
 
-  PARAM_EXT(ParamVar, _name, Types::NameParameterInfo);
+  PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (Optional). Uses the default queue if not specified",
-                 {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
+                 {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::DrawQueue)});
   PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_name));
 
   PipelineStepPtr *_stepPtr{};
@@ -28,14 +27,14 @@ struct UIPassShard {
 
   void cleanup(SHContext *context) {
     if (_stepPtr) {
-      Types::PipelineStepObjectVar.Release(_stepPtr);
+      ShardsTypes::PipelineStepObjectVar.Release(_stepPtr);
       _stepPtr = nullptr;
     }
     PARAM_CLEANUP(context);
   }
 
   void warmup(SHContext *context) {
-    _stepPtr = Types::PipelineStepObjectVar.New();
+    _stepPtr = ShardsTypes::PipelineStepObjectVar.New();
     PARAM_WARMUP(context);
   }
 
@@ -55,7 +54,7 @@ struct UIPassShard {
     }
     getRenderDrawablesStep().drawQueue = shDrawQueue->queue;
 
-    return Types::PipelineStepObjectVar.Get(_stepPtr);
+    return ShardsTypes::PipelineStepObjectVar.Get(_stepPtr);
   }
 };
 

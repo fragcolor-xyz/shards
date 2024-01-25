@@ -17,10 +17,10 @@ struct TextureBinding {
   size_t defaultTexcoordBinding{};
   size_t binding{};
   size_t defaultSamplerBinding{};
-  TextureFieldType type;
+  TextureType type;
 
   // TextureBinding() = default;
-  TextureBinding(FastString name, TextureFieldType type, size_t defaultTexcoordBinding = 0)
+  TextureBinding(FastString name, TextureType type, size_t defaultTexcoordBinding = 0)
       : name(name), defaultTexcoordBinding(defaultTexcoordBinding), type(type) {}
 };
 
@@ -34,7 +34,7 @@ private:
   TextureBindingLayout layout;
 
 public:
-  void addOrUpdateSlot(FastString name, TextureFieldType type, size_t defaultTexcoordBinding) {
+  void addOrUpdateSlot(FastString name, TextureType type, size_t defaultTexcoordBinding) {
     auto it = mapping.find(name);
     TextureBinding *binding;
     if (it == mapping.end()) {
@@ -45,8 +45,8 @@ public:
     } else {
       binding = &layout.bindings[it->second];
       if (binding->type != type)
-        throw formatException("Texture {} redefined as type {} but already defined as {}", name, FieldType(type),
-                              FieldType(binding->type));
+        throw formatException("Texture {} redefined as type {} but already defined as {}", name, Type(type),
+                              Type(binding->type));
     }
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }

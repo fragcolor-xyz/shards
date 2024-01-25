@@ -49,11 +49,11 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
     void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) {
       auto &objectBinding = builder.getOrCreateBufferBinding("object");
       objectBinding.bindGroupId = BindGroupId::Draw;
-      objectBinding.layoutBuilder.push("previousWorld", FieldTypes::Float4x4);
+      objectBinding.structType->addField("previousWorld", Types::Float4x4);
 
       auto &viewBinding = builder.getOrCreateBufferBinding("view");
       viewBinding.bindGroupId = BindGroupId::View;
-      viewBinding.layoutBuilder.push("previousView", FieldTypes::Float4x4);
+      viewBinding.structType->addField("previousView", Types::Float4x4);
     }
   };
 
@@ -89,12 +89,12 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
 
     code->append("let prevScreenPosition = ");
     if (applyProjection)
-      code->append(ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*");
+      code->append(ReadBuffer("proj", Types::Float4x4, "view"), "*");
     if (applyView)
-      code->append(ReadBuffer("previousView", FieldTypes::Float4x4, "view"), "*");
-    code->append(ReadBuffer("previousWorld", FieldTypes::Float4x4, "object"), "*");
+      code->append(ReadBuffer("previousView", Types::Float4x4, "view"), "*");
+    code->append(ReadBuffer("previousWorld", Types::Float4x4, "object"), "*");
     code->appendLine("localPosition");
-    code->appendLine(WriteOutput("previousPosition", FieldTypes::Float4, "prevScreenPosition"));
+    code->appendLine(WriteOutput("previousPosition", Types::Float4, "prevScreenPosition"));
 
     auto &writePreviousPosition =
         feature->shaderEntryPoints.emplace_back("writePreviousPosition", ProgrammableGraphicsStage::Vertex, std::move(code));
@@ -106,15 +106,15 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
     // NOTE: Fragment shader position input is in framebuffer space
     // https://www.w3.org/TR/WGSL/#builtin-values
     code->appendLine("let screenPosition = ", ReadInput("position"));
-    code->appendLine("let viewport = ", ReadBuffer("viewport", FieldTypes::Float4, "view"));
+    code->appendLine("let viewport = ", ReadBuffer("viewport", Types::Float4, "view"));
     code->appendLine("let ndc = (screenPosition.xy - viewport.xy) / viewport.zw * vec2<f32>(2.0, -2.0) - vec2<f32>(1.0, -1.0)");
 
     code->appendLine("let prevNdc = ", ReadInput("previousPosition"));
     code->appendLine("let ndcVelocity = (ndc.xy - prevNdc.xy/prevNdc.w)");
-    code->appendLine(WriteGlobal("velocity", FieldTypes::Float2, "ndcVelocity"));
+    code->appendLine(WriteGlobal("velocity", Types::Float2, "ndcVelocity"));
 
     // Apply scale to fit in output precision
-    code->appendLine(WithOutput("velocity", WriteOutput("velocity", FieldTypes::Float2, ReadGlobal("velocity"),
+    code->appendLine(WithOutput("velocity", WriteOutput("velocity", Types::Float2, ReadGlobal("velocity"),
                                                         fmt::format(" * {:0.2}", scalingFactor))));
 
     feature->shaderEntryPoints.emplace_back("initVelocity", ProgrammableGraphicsStage::Fragment, std::move(code));

@@ -106,25 +106,25 @@ static bool validateShaderModule(Context &context, const String &code) {
 
 void setupDefaultBindings(shader::Generator &generator) {
   {
-    UniformBufferLayoutBuilder objectLayoutBuilder;
-    objectLayoutBuilder.push("world", FieldTypes::Float4x4);
+    StructType structType;
+    structType->addField("world", Types::Float4x4);
     auto &binding = generator.bufferBindings.emplace_back();
     binding.bindGroup = 0;
     binding.binding = 0;
     binding.name = "object";
-    binding.layout = objectLayoutBuilder.finalize();
-    binding.type = BufferType::Storage;
+    binding.layout = structType;
+    binding.addressSpace = AddressSpace::Storage;
   }
 
   {
-    UniformBufferLayoutBuilder viewLayoutBuilder;
-    viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
+    StructType structType;
+    structType->addField("viewProj", Types::Float4x4);
     auto &binding = generator.bufferBindings.emplace_back();
     binding.bindGroup = 1;
     binding.binding = 0;
     binding.name = "view";
-    binding.layout = viewLayoutBuilder.finalize();
-    binding.type = BufferType::Uniform;
+    binding.layout = structType;
+    binding.addressSpace = AddressSpace::Uniform;
   }
 }
 
@@ -141,8 +141,8 @@ TEST_CASE("Shader basic", "[Shader]") {
 
   setupDefaultBindings(generator);
 
-  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumType(ShaderFieldBaseType::Float32, 4);
 
   generator.outputFields.emplace_back("color", colorFieldType);
 
@@ -151,8 +151,8 @@ TEST_CASE("Shader basic", "[Shader]") {
   entryPoints.emplace_back(
       "position", ProgrammableGraphicsStage::Vertex,
       blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
-                                                    blocks::ReadBuffer("world", FieldTypes::Float4x4), "*",
-                                                    blocks::ReadBuffer("viewProj", FieldTypes::Float4x4, "view"))));
+                                                    blocks::ReadBuffer("world", Types::Float4x4), "*",
+                                                    blocks::ReadBuffer("viewProj", Types::Float4x4, "view"))));
 
   entryPoints.emplace_back(
       "color", ProgrammableGraphicsStage::Fragment,
@@ -177,8 +177,8 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
   setupDefaultBindings(generator);
 
-  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumType(ShaderFieldBaseType::Float32, 4);
 
   generator.outputFields.emplace_back("color", colorFieldType);
 
@@ -187,8 +187,8 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
   entryPoints.emplace_back(
       "position", ProgrammableGraphicsStage::Vertex,
       blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
-                                                    blocks::ReadBuffer("world", FieldTypes::Float4x4), "*",
-                                                    blocks::ReadBuffer("viewProj", FieldTypes::Float4x4, "view"))));
+                                                    blocks::ReadBuffer("world", Types::Float4x4), "*",
+                                                    blocks::ReadBuffer("viewProj", Types::Float4x4, "view"))));
 
   entryPoints.emplace_back(
       "colorDefault", ProgrammableGraphicsStage::Fragment,
@@ -218,8 +218,8 @@ TEST_CASE("Shader textures", "[Shader]") {
 
   std::shared_ptr<TestContext> context = createTestContext();
 
-  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumType(ShaderFieldBaseType::Float32, 4);
 
   TextureBindingLayoutBuilder textureLayoutBuilder;
   textureLayoutBuilder.addOrUpdateSlot("baseColorTexture", TextureDimension::D2, 0);
@@ -231,6 +231,62 @@ TEST_CASE("Shader textures", "[Shader]") {
   entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
                            blocks::WriteOutput("color", colorFieldType, blocks::SampleTexture("baseColorTexture")));
   entryPoints.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
+
+  // Need dummy position
+  entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
+                           blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, "vec4<f32>(0.0)")));
+
+  GeneratorOutput output = generator.build(entryPoints);
+  SPDLOG_INFO(output.wgslSource);
+
+  GeneratorOutput::dumpErrors(shader::getLogger(), output);
+  CHECK(output.errors.empty());
+
+  CHECK(validateShaderModule(*context.get(), output.wgslSource));
+}
+
+TEST_CASE("Shader storage", "[Shader]") {
+  Generator generator;
+
+  std::shared_ptr<TestContext> context = createTestContext();
+
+  auto positionFieldType = NumType(ShaderFieldBaseType::Float32, 4);
+
+  generator.outputFields.emplace_back("position", positionFieldType);
+  {
+    auto &buf = generator.bufferBindings.emplace_back();
+    buf.name = "data";
+    buf.bindGroup = 1;
+    buf.dimension = dim::One{};
+    buf.addressSpace = AddressSpace::Storage;
+
+    StructType t;
+    t->entries.emplace_back("const_f", NumType(ShaderFieldBaseType::Float32, 1));
+    t->entries.emplace_back("counter", NumType(ShaderFieldBaseType::Int32, 1).asAtomic());
+    StructType t1;
+    t1->addField("elements", ArrayType(t));
+    buf.layout = t1;
+  }
+  {
+    auto &buf = generator.bufferBindings.emplace_back();
+    buf.name = "data1";
+    buf.bindGroup = 1;
+    buf.binding = 1;
+    buf.dimension = dim::PerInstance{};
+    buf.addressSpace = AddressSpace::Storage;
+    buf.layout = Types::Int4;
+  }
+  {
+    auto &buf = generator.bufferBindings.emplace_back();
+    buf.name = "fixeddata2";
+    buf.bindGroup = 1;
+    buf.binding = 1;
+    buf.dimension = dim::Fixed(200);
+    buf.addressSpace = AddressSpace::Uniform;
+    buf.layout = Types::Int4;
+  }
+
+  std::vector<EntryPoint> entryPoints;
 
   // Need dummy position
   entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,

@@ -60,7 +60,7 @@ struct DynamicBlockFromShards : public blocks::Block {
       auto &entry = exposedTypes.emplace_back();
       entry.name = v.first.c_str();
       entry.global = true;
-      entry.exposedType = Type{fieldTypeToShardsType(v.second)};
+      entry.exposedType = shards::Type{fieldTypeToShardsType(v.second)};
       entry.isMutable = true;
     }
 
@@ -92,6 +92,7 @@ struct DynamicBlockFromShards : public blocks::Block {
       for (ShardPtr shard : shards) {
         shaderCtx.processShard(shard);
       }
+      shaderCtx.finalize();
 
       auto compiledBlock = std::move(shaderCtx.root);
       compiledBlock->apply(context);
