@@ -1595,44 +1595,37 @@ struct Get : public VariableBase {
 
 struct Swap {
   static inline shards::ParamsInfo swapParamsInfo =
-      shards::ParamsInfo(shards::ParamsInfo::Param("NameA", SHCCSTR("The name of first variable."), CoreInfo::StringOrAnyVar),
-                         shards::ParamsInfo::Param("NameB", SHCCSTR("The name of second variable."), CoreInfo::StringOrAnyVar));
+      shards::ParamsInfo(shards::ParamsInfo::Param("First", SHCCSTR("The name of first variable."), CoreInfo::AnyVarType),
+                         shards::ParamsInfo::Param("Second", SHCCSTR("The name of second variable."), CoreInfo::AnyVarType));
 
-  std::string _nameA;
-  std::string _nameB;
-  SHVar *_targetA{};
-  SHVar *_targetB{};
+  ParamVar _first;
+  ParamVar _second;
   ExposedInfo _exposedInfo;
 
   void cleanup(SHContext *context) {
-    if (_targetA) {
-      releaseVariable(_targetA);
-      releaseVariable(_targetB);
-    }
-    _targetA = nullptr;
-    _targetB = nullptr;
+    _first.cleanup();
+    _second.cleanup();
   }
 
   void warmup(SHContext *ctx) {
-    assert(!_targetA);
-    assert(!_targetB);
-    _targetA = referenceVariable(ctx, _nameA.c_str());
-    _targetB = referenceVariable(ctx, _nameB.c_str());
+    _first.warmup(ctx);
+    _second.warmup(ctx);
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Swaps the values of the two variables passed to it via `:NameA` and `:NameB` parameters.");
+    return SHCCSTR("Swaps the values of the two variables passed to it via `First` and `Second` parameters.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHExposedTypesInfo requiredVariables() {
-    _exposedInfo = ExposedInfo(ExposedInfo::Variable(_nameA.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType),
-                               ExposedInfo::Variable(_nameB.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType));
+    _exposedInfo =
+        ExposedInfo(ExposedInfo::Variable(_first.variableName(), SHCCSTR("The required variable."), CoreInfo::AnyType),
+                    ExposedInfo::Variable(_second.variableName(), SHCCSTR("The required variable."), CoreInfo::AnyType));
     return SHExposedTypesInfo(_exposedInfo);
   }
 
@@ -1640,24 +1633,28 @@ struct Swap {
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
-      _nameA = SHSTRVIEW(value);
+      _first = value;
     else if (index == 1) {
-      _nameB = SHSTRVIEW(value);
+      _second = value;
+    } else {
+      throw SHException("Param index out of range.");
     }
   }
 
   SHVar getParam(int index) {
     if (index == 0)
-      return shards::Var(_nameA.c_str());
+      return _first;
     else if (index == 1)
-      return shards::Var(_nameB.c_str());
+      return _second;
     throw SHException("Param index out of range.");
   }
 
+  OwnedVar _cache;
+
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    auto tmp = *_targetA;
-    *_targetA = *_targetB;
-    *_targetB = tmp;
+    _cache = _first.get();
+    cloneVar(_first.get(), _second.get());
+    cloneVar(_second.get(), _cache);
     return input;
   }
 };
