@@ -10,18 +10,22 @@
 namespace naga {
 
 template <typename T> constexpr Expression::Tag getExpressionTag() {
-  if constexpr (std::is_same_v<T, Expression::Access_Body>) {
+  if constexpr (std::is_same_v<T, Expression::Literal_Body>) {
+    return Expression::Tag::Literal;
+  } else if constexpr (std::is_same_v<T, Expression::Constant_Body>) {
+    return Expression::Tag::Constant;
+  } else if constexpr (std::is_same_v<T, Expression::ZeroValue_Body>) {
+    return Expression::Tag::ZeroValue;
+  } else if constexpr (std::is_same_v<T, Expression::Compose_Body>) {
+    return Expression::Tag::Compose;
+  } else if constexpr (std::is_same_v<T, Expression::Access_Body>) {
     return Expression::Tag::Access;
   } else if constexpr (std::is_same_v<T, Expression::AccessIndex_Body>) {
     return Expression::Tag::AccessIndex;
-  } else if constexpr (std::is_same_v<T, Expression::Constant_Body>) {
-    return Expression::Tag::Constant;
   } else if constexpr (std::is_same_v<T, Expression::Splat_Body>) {
     return Expression::Tag::Splat;
   } else if constexpr (std::is_same_v<T, Expression::Swizzle_Body>) {
     return Expression::Tag::Swizzle;
-  } else if constexpr (std::is_same_v<T, Expression::Compose_Body>) {
-    return Expression::Tag::Compose;
   } else if constexpr (std::is_same_v<T, Expression::FunctionArgument_Body>) {
     return Expression::Tag::FunctionArgument;
   } else if constexpr (std::is_same_v<T, Expression::GlobalVariable_Body>) {
@@ -82,6 +86,8 @@ template <typename T> constexpr Statement::Tag getStatementTag() {
     return Statement::Tag::ImageStore;
   } else if constexpr (std::is_same_v<T, Statement::Atomic_Body>) {
     return Statement::Tag::Atomic;
+  } else if constexpr (std::is_same_v<T, Statement::WorkGroupUniformLoad_Body>) {
+    return Statement::Tag::WorkGroupUniformLoad;
   } else if constexpr (std::is_same_v<T, Statement::Call_Body>) {
     return Statement::Tag::Call;
   } else if constexpr (std::is_same_v<T, Statement::RayQuery_Body>) {
@@ -123,9 +129,8 @@ template <typename T, int M> constexpr Type typeOfVector() {
   auto &vec = inner.vector;
 
   inner.tag = TypeInner::Tag::Vector;
-  vec.kind = scalarKindOf<T>();
+  vec.scalar = Scalar{.kind = scalarKindOf<T>(), .width = typeWidth<T>()};
   vec.size = toVectorSize<M>();
-  vec.width = typeWidth<T>();
 
   return type;
 }
@@ -138,13 +143,19 @@ template <typename T, int M, int N> constexpr Type typeOfMatrix() {
   inner.tag = TypeInner::Tag::Matrix;
   mat.rows = toVectorSize<M>();
   mat.columns = toVectorSize<N>();
-  mat.width = typeWidth<T>();
+  mat.scalar = Scalar{.kind = scalarKindOf<T>(), .width = typeWidth<T>()};
 
   return type;
 }
 
 template <typename T, template <typename...> class R> struct is_specialization : std::false_type {};
 template <template <typename...> class R, typename... Args> struct is_specialization<R<Args...>, R> : std::true_type {};
+
+template <typename T> inline Expression makeExpr(T expr) {
+  Expression e{.tag = getExpressionTag<T>()};
+  memcpy(&e.access, &expr, sizeof(T));
+  return e;
+}
 
 struct Writer {
   NagaWriter *ctx{};
@@ -157,8 +168,8 @@ struct Writer {
     if constexpr (std::is_scalar_v<T>) {
       Type t{};
       auto &ti = t.inner;
-      ti.scalar.width = sizeof(T);
-      ti.scalar.kind = scalarKindOf<T>();
+      ti.scalar._0.width = sizeof(T);
+      ti.scalar._0.kind = scalarKindOf<T>();
       return nagaStoreType(ctx, t);
     }
   }
@@ -176,28 +187,61 @@ struct Writer {
     return makeDerivedType(dummy);
   }
 
+  template <typename T> inline Handle<Expression> makeConstExpr(T value) {
+    Expression e{
+        .tag = Expression::Tag::Literal,
+    };
+    if constexpr (std::is_same_v<T, bool>) {
+      e.literal._0.tag = Literal::Tag::Bool;
+      e.literal._0.bool_._0 = value;
+    } else if constexpr (std::is_floating_point_v<T>) {
+      e.literal._0.tag = Literal::Tag::AbstractFloat;
+      e.literal._0.abstract_float._0 = value;
+    } else if constexpr (std::is_integral_v<T>) {
+      e.literal._0.tag = Literal::Tag::AbstractInt;
+      e.literal._0.abstract_int._0 = int64_t(value);
+    } else {
+      throw std::runtime_error("Unsupported constant type");
+    }
+    return nagaStoreConstExpression(ctx, e);
+  }
+
+  template <typename T, int M> inline Handle<Expression> makeConstExpr(linalg::vec<T, M> value) {
+    Expression e{.tag = Expression::Tag::Compose};
+    e.compose.ty = makeDerivedType(value);
+
+    auto &storage = exprHandles.emplace_back();
+    storage.resize(M);
+    for (size_t i = 0; i < M; i++) {
+      storage[i] = makeConstExpr(value[i]);
+    }
+    e.compose.components = storage.data();
+    e.compose.components_len = storage.size();
+    return nagaStoreConstExpression(ctx, e);
+  }
+
+  template <typename T, int M, int N>
+  inline Handle<Expression> makeConstExpr(linalg::mat<T, M, N> value, const char *name = nullptr) {
+    auto e = makeExpr<Expression::Tag::Compose>();
+    e.compose.ty = makeDerivedType(value);
+
+    // Store matrix constant as an array of N column vectors (of size M)
+    auto &storage = exprHandles.emplace_back();
+    storage.resize(M);
+    for (size_t i = 0; i < N; i++) {
+      auto &col = value[i];
+      storage[i] = makeConstExpr(col);
+    }
+    e.compose.components = storage.data();
+    e.compose.components_len = storage.size();
+    return nagaStoreConstExpression(ctx, e);
+  }
+
   template <typename T> inline Handle<Constant> makeConstant(T value, const char *name = nullptr) {
     Constant c{};
     c.name = name;
-    c.inner.tag = ConstantInner::Tag::Scalar;
-    c.inner.scalar.width = sizeof(T);
-    auto &sv = c.inner.scalar.value;
-
-    if constexpr (std::is_same_v<T, bool>) {
-      sv.tag = ScalarValue::Tag::Float;
-      sv.bool_._0 = value;
-    } else if constexpr (std::is_floating_point_v<T>) {
-      sv.tag = ScalarValue::Tag::Float;
-      sv.float_._0 = double(value);
-    } else if constexpr (std::is_integral_v<T>) {
-      if constexpr (std::is_signed_v<T>) {
-        sv.tag = ScalarValue::Tag::Sint;
-        sv.sint._0 = (decltype(sv.sint._0))(value);
-      } else {
-        sv.tag = ScalarValue::Tag::Uint;
-        sv.uint._0 = (decltype(sv.uint._0))(value);
-      }
-    }
+    c.ty = makeType<T>();
+    c.init = makeConstExpr(value);
 
     return nagaStoreConstant(ctx, c);
   }
@@ -205,16 +249,9 @@ struct Writer {
   template <typename T, int M> inline Handle<Constant> makeConstant(linalg::vec<T, M> value, const char *name = nullptr) {
     Constant c{};
     c.name = name;
-    c.inner.tag = ConstantInner::Tag::Composite;
-    c.inner.composite.ty = makeDerivedType(value);
+    c.ty = makeDerivedType(value);
+    c.init = makeConstExpr(value);
 
-    auto &storage = constantHandles.emplace_back();
-    storage.resize(M);
-    for (size_t i = 0; i < M; i++) {
-      storage[i] = makeConstant(value[i]);
-    }
-    c.inner.composite.components = storage.data();
-    c.inner.composite.components_len = storage.size();
     return nagaStoreConstant(ctx, c);
   }
 
@@ -222,18 +259,9 @@ struct Writer {
   inline Handle<Constant> makeConstant(linalg::mat<T, M, N> value, const char *name = nullptr) {
     Constant c{};
     c.name = name;
-    c.inner.tag = ConstantInner::Tag::Composite;
-    c.inner.composite.ty = makeDerivedType(value);
+    c.ty = makeDerivedType(value);
+    c.init = makeConstExpr(value);
 
-    // Store matrix constant as an array of N column vectors (of size M)
-    auto &storage = constantHandles.emplace_back();
-    storage.resize(M);
-    for (size_t i = 0; i < N; i++) {
-      auto &col = value[i];
-      storage[i] = makeConstant(ctx, col);
-    }
-    c.inner.composite.components = storage.data();
-    c.inner.composite.components_len = storage.size();
     return nagaStoreConstant(ctx, c);
   }
 

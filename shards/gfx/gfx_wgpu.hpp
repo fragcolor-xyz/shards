@@ -2,28 +2,6 @@
 #define GFX_GFX_WGPU
 
 #ifdef WEBGPU_NATIVE
-#define wgpuBufferRelease(...) wgpuBufferDrop(__VA_ARGS__)
-#define wgpuCommandEncoderRelease(...) wgpuCommandEncoderDrop(__VA_ARGS__)
-#define wgpuDeviceRelease(...) wgpuDeviceDrop(__VA_ARGS__)
-#define wgpuQuerySetRelease(...) wgpuQuerySetDrop(__VA_ARGS__)
-#define wgpuRenderPipelineRelease(...) wgpuRenderPipelineDrop(__VA_ARGS__)
-#define wgpuTextureRelease(...) wgpuTextureDrop(__VA_ARGS__)
-#define wgpuTextureViewRelease(...) wgpuTextureViewDrop(__VA_ARGS__)
-#define wgpuSamplerRelease(...) wgpuSamplerDrop(__VA_ARGS__)
-#define wgpuBindGroupLayoutRelease(...) wgpuBindGroupLayoutDrop(__VA_ARGS__)
-#define wgpuPipelineLayoutRelease(...) wgpuPipelineLayoutDrop(__VA_ARGS__)
-#define wgpuBindGroupRelease(...) wgpuBindGroupDrop(__VA_ARGS__)
-#define wgpuShaderModuleRelease(...) wgpuShaderModuleDrop(__VA_ARGS__)
-#define wgpuCommandBufferRelease(...) wgpuCommandBufferDrop(__VA_ARGS__)
-#define wgpuRenderBundleRelease(...) wgpuRenderBundleDrop(__VA_ARGS__)
-#define wgpuComputePipelineRelease(...) wgpuComputePipelineDrop(__VA_ARGS__)
-#define wgpuRenderPassEncoderRelease(...)
-#define wgpuSwapChainRelease(...)
-#define wgpuQueueRelease(...)
-#define wgpuAdapterRelease(...) wgpuAdapterDrop(__VA_ARGS__)
-#define wgpuSurfaceRelease(...) wgpuSurfaceDrop(__VA_ARGS__)
-#define wgpuInstanceRelease(...) wgpuInstanceDrop(__VA_ARGS__)
-
 extern "C" {
 #include <wgpu.h>
 }

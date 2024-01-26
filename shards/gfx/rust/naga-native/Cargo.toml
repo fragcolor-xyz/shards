@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-naga = { path = "../naga", features = ["wgsl-out"] }
+naga = { path = "../wgpu/naga", features = ["wgsl-out", "serialize", "deserialize" ] }
 bitflags = { version = "2.3.3" }
 
 [patch.crates-io]
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
-naga = { path = "../naga" }
+naga = { path = "../wgpu/naga" }
 profiling = { path = "../profiling" } # Until updates tracy-client to 0.15.0 (https://github.com/aclysma/profiling/pull/44)
 
 [build-dependencies]

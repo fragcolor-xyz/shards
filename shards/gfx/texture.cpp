@@ -25,7 +25,8 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
 }
 
 Texture &Texture::init(const TextureDesc &desc) {
-  if (this->desc != desc) {
+  if (this->desc != desc || desc.externalTexture) {
+    // NOTE: Always update when external texture is present
     update();
     this->desc = desc;
   }
@@ -117,7 +118,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     return;
 
   if (desc.externalTexture) {
-    contextData.externalView = desc.externalTexture.value();
+    contextData.externalTexture = desc.externalTexture.value();
   } else {
     WGPUTextureDescriptor wgpuDesc = {};
     wgpuDesc.usage = WGPUTextureUsage_TextureBinding;

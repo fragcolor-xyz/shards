@@ -35,15 +35,6 @@ void TestRenderer::createRenderTarget(int2 res) {
   rtTexture = wgpuDeviceCreateTexture(context->wgpuDevice, &textureDesc);
   shassert(rtTexture);
 
-  WGPUTextureViewDescriptor viewDesc{};
-  viewDesc.arrayLayerCount = 1;
-  viewDesc.aspect = WGPUTextureAspect_All;
-  viewDesc.mipLevelCount = 1;
-  viewDesc.dimension = WGPUTextureViewDimension_2D;
-  viewDesc.label = textureDesc.label;
-  viewDesc.format = textureDesc.format;
-  rtView = wgpuTextureCreateView(rtTexture, &viewDesc);
-
   // Wrap in texture
   TexturePtr rtTexture = std::make_shared<Texture>();
   rtTexture->init(TextureDesc{
@@ -54,7 +45,7 @@ void TestRenderer::createRenderTarget(int2 res) {
               .pixelFormat = rtFormat,
           },
       .resolution = rtSize,
-      .externalTexture = rtView,
+      .externalTexture = this->rtTexture,
   });
 
   renderer->setMainOutput(Renderer::MainOutput{
@@ -63,7 +54,6 @@ void TestRenderer::createRenderTarget(int2 res) {
 }
 
 void TestRenderer::cleanupRenderTarget() {
-  WGPU_SAFE_RELEASE(wgpuTextureViewRelease, rtView);
   WGPU_SAFE_RELEASE(wgpuTextureRelease, rtTexture);
 }
 
