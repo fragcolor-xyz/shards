@@ -222,7 +222,7 @@ struct Writer {
 
   template <typename T, int M, int N>
   inline Handle<Expression> makeConstExpr(linalg::mat<T, M, N> value, const char *name = nullptr) {
-    auto e = makeExpr<Expression::Tag::Compose>();
+    Expression e{.tag = Expression::Tag::Compose};
     e.compose.ty = makeDerivedType(value);
 
     // Store matrix constant as an array of N column vectors (of size M)
