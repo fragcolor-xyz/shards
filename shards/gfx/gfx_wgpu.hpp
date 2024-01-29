@@ -46,13 +46,7 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _x = nullptr;                  \
   }
 
-inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor &desc, const char *code) {
-#ifdef WEBGPU_NATIVE
-  desc.code = code;
-#else
-  desc.source = code;
-#endif
-}
+inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor &desc, const char *code) { desc.code = code; }
 
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
