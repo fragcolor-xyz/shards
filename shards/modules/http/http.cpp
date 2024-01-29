@@ -647,11 +647,7 @@ struct Read {
 
     _output[Var("body")] = Var(request.body());
 
-    auto res = SHVar();
-    res.valueType = SHType::Table;
-    res.payload.tableValue.opaque = &_output;
-    res.payload.tableValue.api = &GetGlobals().TableInterface;
-    return res;
+    return _output;
   }
 
   SHVar *_peerVar{nullptr};
