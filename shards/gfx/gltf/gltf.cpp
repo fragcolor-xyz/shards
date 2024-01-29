@@ -648,7 +648,11 @@ template <typename T> glTF load(T loader) {
   loader(model);
 
   if (model.defaultScene == -1) {
-    throw formatException("glTF model has no default scene");
+    if (model.scenes.empty())
+      throw formatException("glTF model has no scenes");
+    if (model.scenes.size() > 1)
+      SPDLOG_WARN("Model has no default scene out of {} scenes, using first scene", model.scenes.size());
+    model.defaultScene = 0;
   }
 
   Loader gfxLoader(model);
@@ -698,6 +702,7 @@ glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
     std::string err;
     std::string warn;
     bool success{};
+
     success = context.LoadBinaryFromMemory(&model, &err, &warn, data, dataLength);
 
     if (!success) {
@@ -706,5 +711,14 @@ glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
   };
 
   return load(loader);
+}
+
+bool isBinary(uint8_t (&bytes)[4]) {
+  // Small snippet from tiny glTF to identify the binary glTF format
+  if (bytes[0] == 'g' && bytes[1] == 'l' && bytes[2] == 'T' && bytes[3] == 'F') {
+    return true;
+  } else {
+    return false;
+  }
 }
 } // namespace gfx
