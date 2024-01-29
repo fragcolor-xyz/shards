@@ -12,17 +12,19 @@ if(HTTP_SUPPORTED)
   set(SOURCES
     http.cpp
   )
+  set(REGISTER_SHARDS_ARG http)
 
   # The rust shards use reqwest, which can not run on emscripten
   if(NOT EMSCRIPTEN)
     add_rust_library(NAME shards-http
       PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
     set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
+    list(APPEND REGISTER_SHARDS_ARG rust)
   endif()
 
   add_shards_module(http SOURCES ${SOURCES}
     ${RUST_TARGETS_ARG}
-    REGISTER_SHARDS http rust)
+    REGISTER_SHARDS ${REGISTER_SHARDS_ARG})
 
   target_include_directories(shards-module-http PRIVATE ../core)
 
