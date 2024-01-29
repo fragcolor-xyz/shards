@@ -25,6 +25,7 @@ struct glTF {
 
 glTF loadGltfFromFile(std::string_view file);
 glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength);
+bool isBinary(uint8_t (&peekBuffer)[4]);
 
 } // namespace gfx
 
