@@ -116,12 +116,20 @@ void initLogFormat(Logger logger) {
   if (const char *val = SDL_getenv(varName.c_str())) {
     logger->set_pattern(val);
   } else {
+    std::string logPattern;
+    // Use global log format
+    if (const char *val = SDL_getenv("LOG_FORMAT")) {
+      logPattern = val;
+    } else {
 #ifdef __ANDROID
-    // Logcat already countains timestamps & log level
-    logger->set_pattern("[T-%t] [%s::%#] %v");
+      // Logcat already countains timestamps & log level
+      logPattern = "[T-%t] [%s::%#] %v";
 #else
-    logger->set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+      logPattern = "%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v";
 #endif
+    }
+
+    logger->set_pattern(logPattern);
   }
 }
 
