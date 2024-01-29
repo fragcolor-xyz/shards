@@ -565,8 +565,47 @@ void Context::requestAdapter() {
 
   state = ContextState::Requesting;
 
+  std::optional<WGPUBackendType> backend;
+  if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
+    std::string typeStr = std::string("WGPUBackendType_") + backendStr;
+    backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
+    if (backend) {
+      SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(*backend));
+    }
+  }
+
   if (!wgpuInstance) {
     WGPUInstanceDescriptor desc{};
+#if WEBGPU_NATIVE
+    WGPUInstanceExtras extras{
+        .chain = {.sType = (WGPUSType)WGPUSType_InstanceExtras},
+    };
+    if (backend) {
+      switch (*backend) {
+      case WGPUBackendType_D3D11:
+        extras.backends = WGPUInstanceBackend_DX11;
+        break;
+      case WGPUBackendType_D3D12:
+        extras.backends = WGPUInstanceBackend_DX12;
+        break;
+      case WGPUBackendType_Metal:
+        extras.backends = WGPUInstanceBackend_Metal;
+        break;
+      case WGPUBackendType_Vulkan:
+        extras.backends = WGPUInstanceBackend_Vulkan;
+        break;
+      default:
+        break;
+      }
+    }
+    if (const char *debug = SDL_getenv("GFX_DEBUG")) {
+      extras.flags |= WGPUInstanceFlag_Debug;
+    }
+    if (const char *debug = SDL_getenv("GFX_VALIDATION")) {
+      extras.flags |= WGPUInstanceFlag_Validation;
+    }
+    desc.nextInChain = &extras.chain;
+#endif
     wgpuInstance = wgpuCreateInstance(&desc);
   }
 
@@ -577,18 +616,13 @@ void Context::requestAdapter() {
 
 #ifdef WEBGPU_NATIVE
   requestAdapter.backendType = WGPUBackendType_Null;
-  if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
-    std::string typeStr = std::string("WGPUBackendType_") + backendStr;
-    auto foundValue = magic_enum::enum_cast<WGPUBackendType>(typeStr);
-    if (foundValue) {
-      requestAdapter.backendType = foundValue.value();
-    }
-  }
 
   if (requestAdapter.backendType == WGPUBackendType_Null)
     requestAdapter.backendType = getDefaultWgpuBackendType();
 
-  SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(requestAdapter.backendType));
+  if (backend) {
+    requestAdapter.backendType = *backend;
+  }
 #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
