@@ -119,6 +119,10 @@ if(EMSCRIPTEN)
       "SHELL:-s EXCEPTION_DEBUG=1"
     )
   endif()
+
+  if(EMSCRIPTEN)
+    em_link_js_library(gfx gfx_wgpu.js)
+  endif()
 else()
   target_link_libraries(gfx SDL2)
   if(NOT DESKTOP)

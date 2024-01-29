@@ -12,10 +12,7 @@ extern "C" {
 #endif
 
 #ifndef WEBGPU_NATIVE
-#define WGPUMipmapFilterMode_Nearest WGPUFilterMode_Nearest
-#define WGPUMipmapFilterMode_Linear WGPUFilterMode_Linear
-#define WGPUMipmapFilterMode WGPUFilterMode
-
+extern "C" WGPUTexture gfxWgpuSwapChainGetCurrentTexture(WGPUSwapChain surface);
 #else // WEBGPU_NATIVE
 // Alias Undefined to Clear so wgpu is satisfied
 #define WGPULoadOp_Undefined WGPULoadOp_Clear

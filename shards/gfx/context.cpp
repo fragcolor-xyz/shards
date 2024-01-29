@@ -108,11 +108,20 @@ struct ContextMainOutput {
   WGPUTexture wgpuCurrentTexture{};
   TexturePtr texture;
 
+#ifndef WEBGPU_NATIVE
+  WGPUSwapChain wgpuSwapChain;
+#endif
+
   ContextMainOutput(Window &window) {
     this->window = &window;
     texture = std::make_shared<Texture>();
   }
-  ~ContextMainOutput() { releaseSurface(); }
+  ~ContextMainOutput() {
+#ifndef WEBGPU_NATIVE
+    releaseSwapchain();
+#endif
+    releaseSurface();
+  }
 
   WGPUSurface initSurface(WGPUInstance instance, void *overrideNativeWindowHandle) {
     ZoneScoped;
@@ -140,6 +149,7 @@ struct ContextMainOutput {
     if (drawableSize != currentSize)
       resizeSwapchain(device, adapter, drawableSize);
 
+#ifdef WEBGPU_NATIVE
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
     if (st.status != WGPUSurfaceGetCurrentTextureStatus_Success) {
@@ -150,8 +160,10 @@ struct ContextMainOutput {
     if (st.suboptimal) {
       SPDLOG_LOGGER_DEBUG(logger, "Suboptimal surface configuration");
     }
-
     wgpuCurrentTexture = st.texture;
+#else
+    wgpuCurrentTexture = gfxWgpuSwapChainGetCurrentTexture(wgpuSwapChain);
+#endif
 
     auto desc = texture->getDesc();
     desc.externalTexture = wgpuCurrentTexture;
@@ -168,7 +180,9 @@ struct ContextMainOutput {
   void present() {
     shassert(wgpuCurrentTexture);
 
+#if WEBGPU_NATIVE
     wgpuSurfacePresent(wgpuSurface);
+#endif
 
     wgpuTextureRelease(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
@@ -202,6 +216,7 @@ struct ContextMainOutput {
     SPDLOG_LOGGER_DEBUG(logger, "Configuring surface width: {}, height: {}, format: {}", newSize.x, newSize.y, swapchainFormat);
     currentSize = newSize;
 
+#if WEBGPU_NATIVE
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
     surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
@@ -221,6 +236,18 @@ struct ContextMainOutput {
 #endif
     surfaceConf.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
     wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
+#else
+    WGPUSwapChainDescriptor desc{
+        .label = "<swapchain>",
+        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst,
+        .format = swapchainFormat,
+        .width = uint32_t(newSize.x),
+        .height = uint32_t(newSize.y),
+        .presentMode = WGPUPresentMode_Fifo,
+    };
+    releaseSwapchain();
+    wgpuSwapChain = wgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
+#endif
 
     texture
         ->initWithPixelFormat(swapchainFormat) //
@@ -230,6 +257,9 @@ struct ContextMainOutput {
   }
 
   void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface); }
+#ifndef WEBGPU_NATIVE
+  void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapChain); }
+#endif
 };
 
 Context::Context() {}

@@ -39,7 +39,7 @@ inline WgpuHandle<WGPUShaderModule> compileShaderFromWgsl(WGPUDevice device, con
   moduleDesc.nextInChain = &wgslModuleDesc.chain;
 
   wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgslModuleDesc.source = wgsl;
+  wgslModuleDesc.code = wgsl;
 
   WGPUShaderModule module = wgpuDeviceCreateShaderModule(device, &moduleDesc);
   if (!module) {

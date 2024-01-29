@@ -35,9 +35,9 @@
 namespace gfx::detail {
 
 using shader::NumType;
-using shader::TextureBindingLayout;
 using shader::StructLayout;
 using shader::StructLayoutItem;
+using shader::TextureBindingLayout;
 
 inline auto getLogger() {
   static auto logger = gfx::getLogger();
@@ -319,8 +319,10 @@ struct PooledWGPUBufferTraits {
 };
 
 inline constexpr auto findBufferInPoolBySize(size_t targetSize) {
-  if (targetSize > INT64_MAX) {
-    throw std::runtime_error("targetSize too large");
+  if constexpr (sizeof(size_t) >= 8) {
+    if (targetSize > INT64_MAX) {
+      throw std::runtime_error("targetSize too large");
+    }
   }
   return [targetSize](PooledWGPUBuffer &buffer) -> int64_t {
     if (buffer.capacity < targetSize) {
@@ -340,9 +342,9 @@ struct WGPUBufferPool : public shards::Pool<PooledWGPUBuffer, PooledWGPUBufferTr
   static WGPUBuffer defaultInitializer(size_t) { throw std::runtime_error("invalid buffer initializer"); }
   WGPUBufferPool(InitFunction &&init_ = &defaultInitializer) : initFn(std::move(init_)) {}
 
-  PooledWGPUBuffer& allocateBuffer(size_t size) {
+  PooledWGPUBuffer &allocateBuffer(size_t size) {
     return this->newValue(
-        [=](PooledWGPUBuffer &buffer) {
+        [&](PooledWGPUBuffer &buffer) {
           buffer.capacity = alignTo(size, 512);
           buffer.buffer.reset(initFn(buffer.capacity));
         },
