@@ -29,11 +29,6 @@ if(EMSCRIPTEN)
   endforeach()
   
   string(JOIN "," TMP_ASYNCIFY_ADD ${TMP_QUOTED})
-  target_compile_options(shards-union INTERFACE
-    "SHELL:-s ASYNCIFY_ADVISE=1"
-    "SHELL:-s ASYNCIFY_IGNORE_INDIRECT=1"
-    "SHELL:-s \"ASYNCIFY_ADD=[${TMP_ASYNCIFY_ADD}]\""
-  )
   target_link_options(shards-union INTERFACE
     "SHELL:-s ASYNCIFY_ADVISE=1"
     "SHELL:-s ASYNCIFY_IGNORE_INDIRECT=1"
