@@ -1,6 +1,7 @@
 #include "context.hpp"
 #include "context_data.hpp"
 #include "error_utils.hpp"
+#include <boost/container/small_vector.hpp>
 #include "../core/platform.hpp"
 #include "../core/assert.hpp"
 #include "platform_surface.hpp"
@@ -585,24 +586,28 @@ void Context::requestAdapter() {
     WGPUInstanceExtras extras{
         .chain = {.sType = (WGPUSType)WGPUSType_InstanceExtras},
     };
+
+    instanceBackends = WGPUInstanceBackend_Primary;
     if (backend) {
       switch (*backend) {
       case WGPUBackendType_D3D11:
-        extras.backends = WGPUInstanceBackend_DX11;
+        instanceBackends = WGPUInstanceBackend_DX11;
         break;
       case WGPUBackendType_D3D12:
-        extras.backends = WGPUInstanceBackend_DX12;
+        instanceBackends = WGPUInstanceBackend_DX12;
         break;
       case WGPUBackendType_Metal:
-        extras.backends = WGPUInstanceBackend_Metal;
+        instanceBackends = WGPUInstanceBackend_Metal;
         break;
       case WGPUBackendType_Vulkan:
-        extras.backends = WGPUInstanceBackend_Vulkan;
+        instanceBackends = WGPUInstanceBackend_Vulkan;
         break;
       default:
         break;
       }
     }
+    extras.backends = instanceBackends;
+
     if (const char *debug = SDL_getenv("GFX_DEBUG")) {
       extras.flags |= WGPUInstanceFlag_Debug;
     }
@@ -614,24 +619,61 @@ void Context::requestAdapter() {
     wgpuInstance = wgpuCreateInstance(&desc);
   }
 
-  WGPURequestAdapterOptions requestAdapter = {};
-  requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
-  requestAdapter.compatibleSurface = getOrCreateSurface();
-  requestAdapter.forceFallbackAdapter = false;
+  WGPUInstanceEnumerateAdapterOptions enumOpts{.backends = instanceBackends};
+  boost::container::small_vector<WGPUAdapter, 32> adapters;
+  adapters.resize(wgpuInstanceEnumerateAdapters(wgpuInstance, &enumOpts, nullptr));
+  adapters.resize(wgpuInstanceEnumerateAdapters(wgpuInstance, &enumOpts, adapters.data()));
+
+  WGPUAdapter adapterToUse{};
+  SPDLOG_LOGGER_DEBUG(logger, "Enumerating {} adapters", adapters.size());
+  for (size_t i = 0; i < adapters.size(); i++) {
+    auto &adapter = adapters[i];
+    WGPUAdapterProperties props;
+    wgpuAdapterGetProperties(adapter, &props);
+
+    SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
+    SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{
+  vendorID: {}
+  vendorName: {}
+  architecture: {}
+  deviceID: {}
+  name: {}
+  driverDescription: {}
+  adapterType: {}
+  backendType: {}
+}})",
+                        props.vendorID, props.vendorName, props.architecture, props.deviceID, props.name, props.driverDescription,
+                        props.adapterType, props.backendType);
+    if (!adapterToUse && props.adapterType == WGPUAdapterType_DiscreteGPU) {
+      adapterToUse = adapter;
+    } else {
+      wgpuAdapterRelease(adapter);
+    }
+  }
+
+  if (adapterToUse) {
+    wgpuAdapter = adapterToUse;
+    requestDevice();
+  } else {
+    WGPURequestAdapterOptions requestAdapter = {};
+    requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
+    requestAdapter.compatibleSurface = getOrCreateSurface();
+    requestAdapter.forceFallbackAdapter = false;
 
 #ifdef WEBGPU_NATIVE
-  requestAdapter.backendType = WGPUBackendType_Null;
+    requestAdapter.backendType = WGPUBackendType_Null;
 
-  if (requestAdapter.backendType == WGPUBackendType_Null)
-    requestAdapter.backendType = getDefaultWgpuBackendType();
+    if (requestAdapter.backendType == WGPUBackendType_Null)
+      requestAdapter.backendType = getDefaultWgpuBackendType();
 
-  if (backend) {
-    requestAdapter.backendType = *backend;
-  }
+    if (backend) {
+      requestAdapter.backendType = *backend;
+    }
 #endif
 
-  SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
-  adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
+    SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
+    adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
+  }
 }
 
 void Context::releaseAdapter() {

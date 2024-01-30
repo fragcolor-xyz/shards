@@ -52,6 +52,7 @@ public:
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
+  WGPUInstanceBackendFlags instanceBackends{};
 
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
