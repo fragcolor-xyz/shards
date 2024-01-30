@@ -219,7 +219,7 @@ struct RendererImpl final : public ContextData {
   std::list<DeferredTextureReadCommand> deferredTextureReadCommands;
 
   bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
-    auto &textureData = cmd.texture.texture->createContextDataConditional(context);
+    auto &textureData = cmd.texture.texture->createContextDataConditionalRefUNSAFE(context);
     if (!textureData.texture) {
       SPDLOG_LOGGER_WARN(logger, "Invalid texture queued for reading, ignoring");
       return false;

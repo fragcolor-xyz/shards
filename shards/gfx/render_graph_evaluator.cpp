@@ -22,12 +22,12 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
 
   // Entire texture view
   auto resolve = [&](TexturePtr texture) {
-    return ResolvedFrameTexture(texture, storage.getTextureView(texture->createContextDataConditional(context), 0, 0));
+    return ResolvedFrameTexture(texture, storage.getTextureView(texture->createContextDataConditionalRefUNSAFE(context), 0, 0));
   };
 
   // Subresource texture view
   auto resolveSubResourceView = [&](const TextureSubResource &resource) {
-    return ResolvedFrameTexture(resource.texture, storage.getTextureView(resource.texture->createContextDataConditional(context),
+    return ResolvedFrameTexture(resource.texture, storage.getTextureView(resource.texture->createContextDataConditionalRefUNSAFE(context),
                                                                          resource.faceIndex, resource.mipIndex));
   };
 

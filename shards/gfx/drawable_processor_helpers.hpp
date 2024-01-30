@@ -5,6 +5,7 @@
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "sampler_cache.hpp"
+#include "texture.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
 #include "../core/platform.hpp"
@@ -187,11 +188,11 @@ template <typename TTextureBindings> auto mapTextureBinding(const TTextureBindin
 
 template <typename TTextureBindings, typename TOutTextures>
 auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
-                         SamplerCache &samplerCache, size_t frameCounter, FastString name, const TexturePtr &texture) {
+                         SamplerCache &samplerCache, size_t frameCounter, FastString name, const TexturePtr &texture, TextureContextData& texData) {
   int32_t targetSlot = mapTextureBinding(textureBindings, name);
   if (targetSlot >= 0) {
     bool isFilterable = textureBindings[targetSlot].type.format == TextureSampleType::Float;
-    outTextures[targetSlot].data = &texture->createContextDataConditional(context);
+    outTextures[targetSlot].data = &texData;
     outTextures[targetSlot].sampler = samplerCache.getDefaultSampler(frameCounter, isFilterable, texture);
     outTextures[targetSlot].id = texture->getId();
   }
@@ -200,10 +201,6 @@ auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &
 template <typename TTextureBindings, typename TOutTextures, typename TSrc>
 auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
                      SamplerCache &samplerCache, size_t frameCounter, ParameterStorage &dstParams, const TSrc &srcParam) {
-  for (auto &param : srcParam.basic)
-    dstParams.setParam(param.first, param.second);
-  for (auto &param : srcParam.textures)
-    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first, param.second.texture);
 };
 
 } // namespace gfx::detail

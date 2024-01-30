@@ -42,7 +42,11 @@ protected:
 template <typename T> struct TWithContextData {
   std::shared_ptr<T> contextData;
 
-  T &createContextDataConditional(Context &context) {
+  T &createContextDataConditionalRefUNSAFE(Context &context) {
+    return *createContextDataConditional(context).get();
+  }
+
+  std::shared_ptr<T> createContextDataConditional(Context &context) {
     ContextData::globalMutex.lock();
 
     // Create or reinitialize context data
@@ -55,9 +59,10 @@ template <typename T> struct TWithContextData {
     }
     updateContextData(context, *contextData.get());
 
+    auto ptr = contextData;
     ContextData::globalMutex.unlock();
 
-    return *contextData.get();
+    return ptr;
   }
 
 protected:
