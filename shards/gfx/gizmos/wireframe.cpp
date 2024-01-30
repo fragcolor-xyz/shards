@@ -72,7 +72,7 @@ void WireframeRenderer::reset(size_t frameCounter) {
   }
   currentFrameCounter = frameCounter;
 }
-void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) {
+void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable, float4 color) {
   if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
     Mesh *meshPtr = meshDrawable->mesh.get();
     auto it = meshCache.find(meshPtr);
@@ -98,12 +98,12 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) 
     });
     drawable->transform = meshDrawable->transform;
     static FastString fs_baseColor = "baseColor";
-    drawable->parameters.set(fs_baseColor, float4(1.0f, 0.0f, 0.0f, 1.0f));
+    drawable->parameters.set(fs_baseColor, color);
     queue.add(drawable);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     allocator->reset();
     TransformUpdaterCollector collector(*allocator.get());
-    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get()); };
+    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get(), color); };
     collector.update(*treeDrawable);
   }
 }
