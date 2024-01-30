@@ -3,6 +3,7 @@
 
 #include "../fwd.hpp"
 #include "../../core/pool.hpp"
+#include "../linalg.hpp"
 #include <map>
 
 namespace gfx {
@@ -43,7 +44,7 @@ private:
 public:
   WireframeRenderer(bool showBackfaces = false);
   void reset(size_t frameCounter);
-  void overlayWireframe(DrawQueue &queue, IDrawable &drawable);
+  void overlayWireframe(DrawQueue &queue, IDrawable &drawable, float4 color);
 };
 } // namespace gfx
 
