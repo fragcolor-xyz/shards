@@ -194,12 +194,21 @@ struct Writer {
     if constexpr (std::is_same_v<T, bool>) {
       e.literal._0.tag = Literal::Tag::Bool;
       e.literal._0.bool_._0 = value;
-    } else if constexpr (std::is_floating_point_v<T>) {
-      e.literal._0.tag = Literal::Tag::AbstractFloat;
-      e.literal._0.abstract_float._0 = value;
+    } else if constexpr (std::is_same_v<T, float>) {
+      e.literal._0.tag = Literal::Tag::F32;
+      e.literal._0.f32._0 = value;
+    } else if constexpr (std::is_same_v<T, double>) {
+      e.literal._0.tag = Literal::Tag::F64;
+      e.literal._0.f64._0 = value;
+    } else if constexpr (std::is_same_v<T, uint32_t>) {
+      e.literal._0.tag = Literal::Tag::U32;
+      e.literal._0.u32._0 = value;
+    } else if constexpr (std::is_same_v<T, int32_t>) {
+      e.literal._0.tag = Literal::Tag::I32;
+      e.literal._0.i32._0 = value;
     } else if constexpr (std::is_integral_v<T>) {
-      e.literal._0.tag = Literal::Tag::AbstractInt;
-      e.literal._0.abstract_int._0 = int64_t(value);
+      e.literal._0.tag = Literal::Tag::I64;
+      e.literal._0.i64._0 = int64_t(value);
     } else {
       throw std::runtime_error("Unsupported constant type");
     }
