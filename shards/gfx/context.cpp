@@ -533,6 +533,11 @@ void Context::requestDevice() {
           WGPUChainedStruct{
               .sType = (WGPUSType)WGPUSType_RequiredLimitsExtras,
           },
+      .limits =
+          {
+              .maxPushConstantSize = 0,
+              .maxNonSamplerBindings = 1000000,
+          },
   };
   requiredLimits.nextInChain = &extraLimits.chain;
 #endif
