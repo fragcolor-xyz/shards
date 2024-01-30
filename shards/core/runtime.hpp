@@ -731,6 +731,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // release all wires
     scheduled.clear();
+
+    // do this here just in case as well as we might be not using schedule directly!
+    visitedWires.clear();
   }
 
   void terminate() {

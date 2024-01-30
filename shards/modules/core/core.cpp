@@ -2134,6 +2134,7 @@ struct Once {
     SHVar output{};
     _blks.activate(context, input, output);
     // let's cheat in this case and stop triggering this call
+    shassert(self != nullptr && "self is null");
     self->inlineShardId = InlineShard::NoopShard;
   }
 
