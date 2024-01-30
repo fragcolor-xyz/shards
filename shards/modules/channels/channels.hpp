@@ -20,6 +20,7 @@ struct ChannelShared {
 };
 
 struct DummyChannel : public ChannelShared {
+  virtual ~DummyChannel() = default;
   virtual void clear() override {}
 };
 
@@ -28,7 +29,7 @@ struct MPMCChannel : public ChannelShared {
 
   // no real cleanups happens in Produce/Consume to keep things simple
   // and without locks
-  ~MPMCChannel() {
+  virtual ~MPMCChannel() {
     if (!_noCopy) {
       SHVar tmp{};
       while (data.pop(tmp)) {
@@ -62,6 +63,12 @@ struct Broadcast;
 class BroadcastChannel : public ChannelShared {
 public:
   BroadcastChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
+
+  virtual ~BroadcastChannel() {
+    if (!_noCopy) {
+      clear();
+    }
+  }
 
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
