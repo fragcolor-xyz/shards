@@ -52,7 +52,9 @@ public:
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
+#if WEBGPU_NATIVE
   WGPUInstanceBackendFlags instanceBackends{};
+#endif
 
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;

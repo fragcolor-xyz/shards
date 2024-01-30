@@ -619,6 +619,7 @@ void Context::requestAdapter() {
     wgpuInstance = wgpuCreateInstance(&desc);
   }
 
+#if WEBGPU_NATIVE
   WGPUInstanceEnumerateAdapterOptions enumOpts{.backends = instanceBackends};
   boost::container::small_vector<WGPUAdapter, 32> adapters;
   adapters.resize(wgpuInstanceEnumerateAdapters(wgpuInstance, &enumOpts, nullptr));
@@ -654,7 +655,9 @@ void Context::requestAdapter() {
   if (adapterToUse) {
     wgpuAdapter = adapterToUse;
     requestDevice();
-  } else {
+  } else
+#endif
+  {
     WGPURequestAdapterOptions requestAdapter = {};
     requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
     requestAdapter.compatibleSurface = getOrCreateSurface();
