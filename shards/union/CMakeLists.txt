@@ -14,24 +14,24 @@ endif()
 
 
 if(EMSCRIPTEN)
-  set(UNWIND_FUNCTIONS 
-    # shards::channels::Broadcast::activate
-    # shards::channels::Consume::activate
-    # shards::channels::Listen::activate
-    # shards::CaptureLog::activateWithSuspend
-    # shards::Time::Pop::activate
-    # shards::Wait::activate
-    # shards::RunWire::activate
-    shards::suspend
-  )
-  foreach(UF ${UNWIND_FUNCTIONS})
-    list(APPEND TMP_QUOTED "'${UF}'")
-  endforeach()
+  # set(UNWIND_FUNCTIONS 
+  #   # shards::channels::Broadcast::activate
+  #   # shards::channels::Consume::activate
+  #   # shards::channels::Listen::activate
+  #   # shards::CaptureLog::activateWithSuspend
+  #   # shards::Time::Pop::activate
+  #   # shards::Wait::activate
+  #   # shards::RunWire::activate
+  #   shards::suspend
+  # )
+  # foreach(UF ${UNWIND_FUNCTIONS})
+  #   list(APPEND TMP_QUOTED "'${UF}'")
+  # endforeach()
   
-  string(JOIN "," TMP_ASYNCIFY_ADD ${TMP_QUOTED})
-  target_link_options(shards-union INTERFACE
-    "SHELL:-s ASYNCIFY_ADVISE=1"
-    "SHELL:-s ASYNCIFY_IGNORE_INDIRECT=1"
-    "SHELL:-s \"ASYNCIFY_ADD=[${TMP_ASYNCIFY_ADD}]\""
-  )
+  # string(JOIN "," TMP_ASYNCIFY_ADD ${TMP_QUOTED})
+  # target_link_options(shards-union INTERFACE
+  #   "SHELL:-s ASYNCIFY_ADVISE=1"
+  #   "SHELL:-s ASYNCIFY_IGNORE_INDIRECT=1"
+  #   "SHELL:-s \"ASYNCIFY_ADD=[${TMP_ASYNCIFY_ADD}]\""
+  # )
 endif()
