@@ -15,9 +15,13 @@ namespace channels {
 struct ChannelShared {
   SHTypeInfo type;
   std::atomic_bool closed;
+
+  virtual void clear() = 0;
 };
 
-struct DummyChannel : public ChannelShared {};
+struct DummyChannel : public ChannelShared {
+  virtual void clear() override {}
+};
 
 struct MPMCChannel : public ChannelShared {
   MPMCChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
@@ -33,6 +37,16 @@ struct MPMCChannel : public ChannelShared {
       while (recycle.pop(tmp)) {
         destroyVar(tmp);
       }
+    }
+  }
+
+  virtual void clear() override {
+    SHVar tmp{};
+    while (data.pop(tmp)) {
+      destroyVar(tmp);
+    }
+    while (recycle.pop(tmp)) {
+      destroyVar(tmp);
     }
   }
 
@@ -53,6 +67,14 @@ public:
     // we automatically cleanup based on the closed flag of the inner channel
     std::unique_lock<std::mutex> lock(subMutex);
     return subscribers.emplace_back(_noCopy);
+  }
+
+  virtual void clear() override {
+    std::unique_lock<std::mutex> lock(subMutex);
+    for (auto &sub : subscribers) {
+      sub.clear();
+    }
+    subscribers.clear();
   }
 
 protected:

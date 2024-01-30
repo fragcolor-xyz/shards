@@ -103,7 +103,7 @@ struct Produce : public Base {
     // try to get from recycle bin
     // this might fail but we don't care
     // if it fails will just initialize a new variable
-    if(!_mpChannel->recycle.pop(tmp)) // might modify tmp if fails
+    if (!_mpChannel->recycle.pop(tmp)) // might modify tmp if fails
       tmp = SHVar();
 
     if (_noCopy) {
@@ -162,7 +162,7 @@ struct Broadcast : public Base {
         // try to get from recycle bin
         // this might fail but we don't care//
         // if it fails will just allocate a brand new
-        if(!it->recycle.pop(tmp)) // might modify tmp if fails
+        if (!it->recycle.pop(tmp)) // might modify tmp if fails
           tmp = SHVar();
 
         if (_noCopy) {
@@ -266,7 +266,7 @@ struct Consumers : public Base {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     // reset buffer counter
     _current = _bufferSize;
   }
@@ -327,7 +327,7 @@ struct Consume : public Consumers {
     return _storage;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     Consumers::cleanup(context);
 
     // cleanup storage
@@ -340,7 +340,7 @@ struct Listen : public Consumers {
   BroadcastChannel *_bChannel;
   MPMCChannel *_subscriptionChannel;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     Consumers::cleanup(context);
 
     // cleanup storage
@@ -487,6 +487,64 @@ std::shared_ptr<Channel> get(const std::string &name) {
     return sp;
   }
 }
+
+// flush/cleanup a channel
+struct Flush : public Base {
+  std::shared_ptr<Channel> _channel;
+  ChannelShared *_mpChannel{};
+
+  static inline Parameters flushParams{
+      {"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
+  };
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static SHParametersInfo parameters() { return flushParams; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _name = SHSTRVIEW(value);
+      break;
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _channel = get(_name);
+    _mpChannel = std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if (std::is_same_v<T, DummyChannel>) {
+            throw SHException("Expected a valid channel.");
+          } else {
+            return (ChannelShared *)&arg;
+          }
+        },
+        *_channel.get());
+
+    return data.inputType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_mpChannel);
+
+    _mpChannel->clear();
+
+    return input;
+  }
+};
 } // namespace channels
 } // namespace shards
 SHARDS_REGISTER_FN(channels) {
@@ -496,4 +554,5 @@ SHARDS_REGISTER_FN(channels) {
   REGISTER_SHARD("Consume", Consume);
   REGISTER_SHARD("Listen", Listen);
   REGISTER_SHARD("Complete", Complete);
+  REGISTER_SHARD("Flush", Flush);
 }

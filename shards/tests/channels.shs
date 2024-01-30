@@ -64,4 +64,22 @@
 
 @run(root FPS: 10) | Assert.Is(true)
 
+@wire(test-flush {
+  1 | Produce("test-flush")
+  2 | Produce("test-flush")
+  3 | Produce("test-flush")
+  4 | Produce("test-flush")
+
+  Consume("test-flush" Type: @type(Type::Int)) | Assert.Is(1)
+
+  Flush("test-flush")
+
+  5 | Produce("test-flush")
+
+  Consume("test-flush" Type: @type(Type::Int)) | Assert.Is(5)
+})
+
+@schedule(root test-flush)
+@run(root FPS: 10) | Assert.Is(true)
+
 Msg("Done")

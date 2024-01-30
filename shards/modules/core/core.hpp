@@ -977,6 +977,7 @@ struct Set : public SetUpdateBase {
       // Ok so, at this point if we are exposed we might be also be Set!
       // if that is true we can disable this Shard completely from the graph !
       SHLOG_TRACE("Variable {} is exposed and already initialized, disabling shard", _name);
+      shassert(_self && "Self should be valid at this point");
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NoopShard;
     }
   }
@@ -987,6 +988,8 @@ struct Set : public SetUpdateBase {
     if (_onStartConnection) {
       _onStartConnection.release();
     }
+
+    shassert(_self && "Self should be valid at this point");
 
     if (_exposed) {
       _target->flags |= SHVAR_FLAGS_EXPOSED;
@@ -1282,6 +1285,8 @@ struct Update : public SetUpdateBase {
 
   void warmup(SHContext *context) {
     SetBase::warmup(context);
+
+    shassert(_self && "Self should be valid at this point");
 
     if (_isExposed) {
       if (!(_target->flags & SHVAR_FLAGS_EXPOSED)) {
