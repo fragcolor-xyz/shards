@@ -627,6 +627,11 @@ void Context::requestAdapter() {
 
   WGPUAdapter adapterToUse{};
   SPDLOG_LOGGER_DEBUG(logger, "Enumerating {} adapters", adapters.size());
+
+  bool useAnyAdapter = {};
+  if (const char *v = SDL_getenv("GFX_ANY_ADAPTER")) {
+    useAnyAdapter = true;
+  }
   for (size_t i = 0; i < adapters.size(); i++) {
     auto &adapter = adapters[i];
     WGPUAdapterProperties props;
@@ -645,7 +650,7 @@ void Context::requestAdapter() {
 }})",
                         props.vendorID, props.vendorName, props.architecture, props.deviceID, props.name, props.driverDescription,
                         props.adapterType, props.backendType);
-    if (!adapterToUse && props.adapterType == WGPUAdapterType_DiscreteGPU) {
+    if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
       adapterToUse = adapter;
     } else {
       wgpuAdapterRelease(adapter);
