@@ -734,10 +734,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // do this here just in case as well as we might be not using schedule directly!
     visitedWires.clear();
-  }
-
-  void terminate() {
-    clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
@@ -746,6 +742,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       }
     }
     variables.clear();
+  }
+
+  void terminate() {
+    clear();
 
     // whichever shard uses refs must clean them
     refs.clear();
