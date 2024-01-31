@@ -3,6 +3,7 @@
 #include "linalg.hpp"
 #include "mesh.hpp"
 #include "transform_updater.hpp"
+#include "../renderer_cache.hpp"
 #include "wireframe.hpp"
 #include "mesh_utils.hpp"
 #include <stdexcept>
@@ -49,7 +50,7 @@ MeshPtr WireframeMeshGenerator::generate() {
 
   boost::container::small_vector<std::tuple<AttribBuffer *, FastString>, 16> outAttributes;
   for (size_t i = 0; i < attributesToCopy.size(); i++) {
-    size_t srcAttribIdx  = attributesToCopy[i];
+    size_t srcAttribIdx = attributesToCopy[i];
     outAttributes.push_back({&attributes[i], srcFormat.vertexAttributes[srcAttribIdx].name});
   }
   return generateMesh(std::nullopt, boost::span(outAttributes));
@@ -57,6 +58,16 @@ MeshPtr WireframeMeshGenerator::generate() {
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
 
+MeshDrawable::Ptr WireFrameDrawablePoolTraits::newItem() { return std::make_shared<MeshDrawable>(); }
+
+void WireframeRenderer::reset(size_t frameCounter) {
+  detail::clearOldCacheItemsIn(meshCache, frameCounter, 32);
+  for (auto &it : meshCache) {
+    auto &entry = it.second;
+    entry.drawablePool.recycle();
+  }
+  currentFrameCounter = frameCounter;
+}
 void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) {
   if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
     Mesh *meshPtr = meshDrawable->mesh.get();
@@ -71,16 +82,19 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) 
 
       it = meshCache.insert_or_assign(meshPtr, entry).first;
     }
+    detail::touchCacheItem(it->second, currentFrameCounter);
 
-    auto clone = std::static_pointer_cast<MeshDrawable>(meshDrawable->clone());
-    clone->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
-    clone->mesh = it->second.wireMesh;
-    clone->parameters.clear();
-    clone->material.reset();
-    clone->parameters.set("baseColor", float4(1.0f, 0.0f, 0.0f, 1.0f));
-    clone->features.clear();
-    clone->features.push_back(wireframeFeature);
-    queue.add(clone);
+    auto drawable = it->second.drawablePool.newValue([&](auto &drawable) {
+      drawable->mesh = it->second.wireMesh;
+      drawable->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
+      drawable->material.reset();
+      drawable->features.clear();
+      drawable->parameters.clear();
+      drawable->features.push_back(wireframeFeature);
+    });
+    drawable->transform = meshDrawable->transform;
+    drawable->parameters.set("baseColor", float4(1.0f, 0.0f, 0.0f, 1.0f));
+    queue.add(drawable);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     TransformUpdaterCollector collector;
     collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get()); };
