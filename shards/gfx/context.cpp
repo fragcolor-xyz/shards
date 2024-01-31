@@ -192,7 +192,6 @@ struct ContextMainOutput {
   }
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
-    swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
     int2 mainOutputSize = window->getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
   }
