@@ -58,10 +58,11 @@ static void updateSkin(const std::shared_ptr<const MeshTreeDrawable> &root, Mesh
   }
 }
 
-bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawables) const {
+bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawables,
+                              shards::pmr::PolymorphicAllocator<> alloc) const {
   boost::container::small_vector<MeshDrawable *, 16> drawablesWithSkinsToUpdate;
 
-  TransformUpdaterCollector collector;
+  TransformUpdaterCollector collector(alloc);
   collector.collector = [&](const DrawablePtr &drawable) {
     outDrawables.push_back(drawable.get());
     if (MeshDrawable *md = dynamic_cast<MeshDrawable *>(drawable.get())) {

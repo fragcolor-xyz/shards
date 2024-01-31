@@ -6,6 +6,7 @@
 #include "../renderer_cache.hpp"
 #include "wireframe.hpp"
 #include "mesh_utils.hpp"
+#include "worker_memory.hpp"
 #include <stdexcept>
 
 namespace gfx {
@@ -56,7 +57,10 @@ MeshPtr WireframeMeshGenerator::generate() {
   return generateMesh(std::nullopt, boost::span(outAttributes));
 }
 
-WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
+WireframeRenderer::WireframeRenderer(bool showBackfaces) {
+  wireframeFeature = features::Wireframe::create(showBackfaces);
+  allocator = std::make_shared<detail::WorkerMemory>();
+}
 
 MeshDrawable::Ptr WireFrameDrawablePoolTraits::newItem() { return std::make_shared<MeshDrawable>(); }
 
@@ -96,7 +100,8 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) 
     drawable->parameters.set("baseColor", float4(1.0f, 0.0f, 0.0f, 1.0f));
     queue.add(drawable);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
-    TransformUpdaterCollector collector;
+    allocator->reset();
+    TransformUpdaterCollector collector(*allocator.get());
     collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get()); };
     collector.update(*treeDrawable);
   }

@@ -7,6 +7,9 @@
 
 namespace gfx {
 struct MeshDrawable;
+namespace detail {
+struct WorkerMemory;
+}
 struct WireframeMeshGenerator {
   MeshPtr mesh;
 
@@ -25,6 +28,8 @@ struct WireFrameDrawablePoolTraits {
 struct WireframeRenderer {
 private:
   FeaturePtr wireframeFeature;
+
+  std::shared_ptr<detail::WorkerMemory> allocator;
 
   struct MeshCacheEntry {
     size_t lastTouched{};

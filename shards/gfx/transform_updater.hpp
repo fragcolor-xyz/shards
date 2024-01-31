@@ -3,6 +3,7 @@
 
 #include "drawables/mesh_tree_drawable.hpp"
 #include "../core/function.hpp"
+#include "pmr/wrapper.hpp"
 #include <cassert>
 #include <set>
 #include <boost/container/small_vector.hpp>
@@ -15,18 +16,22 @@ namespace gfx {
 
 // Updates a MeshTreeDrawable and all it's children while collecting drawables
 struct TransformUpdaterCollector {
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
   struct Node {
     float4x4 parentTransform;
     MeshTreeDrawable *node;
     bool updated;
   };
-  boost::container::small_vector<Node, 32> queue;
+  shards::pmr::vector<Node> queue;
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
   static thread_local std::set<MeshTreeDrawable *> visited;
 #endif
 
   shards::Function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
+
+  TransformUpdaterCollector(allocator_type alloc) : queue(alloc) {}
 
   void update(MeshTreeDrawable &root) {
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
