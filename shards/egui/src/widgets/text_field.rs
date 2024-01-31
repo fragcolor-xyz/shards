@@ -200,7 +200,7 @@ impl Shard for TextField {
 
     let response = ui.add(text_edit);
 
-    if response.changed() || response.lost_focus() {
+    if response.lost_focus() {
       Ok(*self.variable.get())
     } else {
       Ok(Var::default())
