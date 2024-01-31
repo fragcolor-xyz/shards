@@ -13,8 +13,8 @@
 inline const char *type2Name_raw(SHType type) {
   switch (type) {
   case SHType::EndOfBlittableTypes:
-    // this should never happen
-    throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
+    shassert("Invalid type");
+    return "";
   case SHType::Type:
     return "Type";
   case SHType::None:
@@ -284,14 +284,19 @@ bool _tableLess(const SHVar &a, const SHVar &b);
 
 ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
-    throw shards::InvalidVarTypeError("Comparison < between two different value types");
+    return a.valueType < b.valueType;
 
   switch (a.valueType) {
-  case SHType::Enum: {
-    if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
-      throw shards::InvalidVarTypeError("Comparison < between two different kind of enums (vendor/type)");
+  case SHType::None:
+    return false;
+  case SHType::Any:
+    return false;
+  case SHType::Enum:
+    if (a.payload.enumVendorId != b.payload.enumVendorId)
+      return a.payload.enumVendorId < b.payload.enumVendorId;
+    if (a.payload.enumTypeId != b.payload.enumTypeId)
+      return a.payload.enumTypeId < b.payload.enumTypeId;
     return a.payload.enumValue < b.payload.enumValue;
-  }
   case SHType::Bool:
     return a.payload.boolValue < b.payload.boolValue;
   case SHType::Int:
@@ -325,6 +330,13 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   case SHType::Color:
     return a.payload.colorValue.r < b.payload.colorValue.r || a.payload.colorValue.g < b.payload.colorValue.g ||
            a.payload.colorValue.b < b.payload.colorValue.b || a.payload.colorValue.a < b.payload.colorValue.a;
+  case SHType::Bytes: {
+    if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
+      return false;
+    std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
+    std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
+    return abuf < bbuf;
+  }
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
@@ -339,17 +351,22 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
 
     return astr < bstr;
   }
+  case SHType::Image:
+    return a.payload.imageValue.data < b.payload.imageValue.data;
   case SHType::Seq:
     return _seqLess(a, b);
   case SHType::Table:
     return _tableLess(a, b);
-  case SHType::Bytes: {
-    if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
-      return false;
-    std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
-    std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
-    return abuf < bbuf;
-  }
+  case SHType::Wire:
+    return a.payload.wireValue < b.payload.wireValue;
+  case SHType::ShardRef:
+    return a.payload.shardValue < b.payload.shardValue;
+  case SHType::Object:
+    if (a.payload.objectVendorId != b.payload.objectVendorId)
+      return a.payload.objectVendorId < b.payload.objectVendorId;
+    if (a.payload.objectTypeId != b.payload.objectTypeId)
+      return a.payload.objectTypeId < b.payload.objectTypeId;
+    return a.payload.objectValue < b.payload.objectValue;
   case SHType::Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return false;
@@ -357,8 +374,13 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
     return abuf < bbuf;
   }
-  default:
-    throw shards::InvalidVarTypeError("Comparison operator < not supported for the given type: " + type2Name(a.valueType));
+  case SHType::Audio:
+    return a.payload.audioValue.samples < b.payload.audioValue.samples;
+  case SHType::Type:
+    return a.payload.typeValue < b.payload.typeValue;
+  case SHType::Set:
+  case SHType::EndOfBlittableTypes:
+    shassert("Invalid type");
   }
 }
 
@@ -368,12 +390,14 @@ bool _tableLessEq(const SHVar &a, const SHVar &b);
 
 ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
-    throw shards::InvalidVarTypeError("Comparison <= between two different value types");
+    return a.valueType < b.valueType;
 
   switch (a.valueType) {
   case SHType::Enum: {
-    if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
-      throw shards::InvalidVarTypeError("Comparison <= between two different kind of enums (vendor/type)");
+    if (a.payload.enumVendorId != b.payload.enumVendorId)
+      return a.payload.enumVendorId < b.payload.enumVendorId;
+    if (a.payload.enumTypeId != b.payload.enumTypeId)
+      return a.payload.enumTypeId < b.payload.enumTypeId;
     return a.payload.enumValue <= b.payload.enumValue;
   }
   case SHType::Bool:
@@ -409,6 +433,13 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r && a.payload.colorValue.g <= b.payload.colorValue.g &&
            a.payload.colorValue.b <= b.payload.colorValue.b && a.payload.colorValue.a <= b.payload.colorValue.a;
+  case SHType::Bytes: {
+    if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
+      return true;
+    std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
+    std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
+    return abuf <= bbuf;
+  }
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
@@ -423,17 +454,22 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
 
     return astr <= bstr;
   }
+  case SHType::Image:
+    return a.payload.imageValue.data <= b.payload.imageValue.data;
   case SHType::Seq:
     return _seqLessEq(a, b);
   case SHType::Table:
     return _tableLessEq(a, b);
-  case SHType::Bytes: {
-    if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
-      return true;
-    std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
-    std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
-    return abuf <= bbuf;
-  }
+  case SHType::Wire:
+    return a.payload.wireValue <= b.payload.wireValue;
+  case SHType::ShardRef:
+    return a.payload.shardValue <= b.payload.shardValue;
+  case SHType::Object:
+    if (a.payload.objectVendorId != b.payload.objectVendorId)
+      return a.payload.objectVendorId < b.payload.objectVendorId;
+    if (a.payload.objectTypeId != b.payload.objectTypeId)
+      return a.payload.objectTypeId < b.payload.objectTypeId;
+    return a.payload.objectValue <= b.payload.objectValue;
   case SHType::Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return true;
@@ -441,8 +477,13 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
     return abuf <= bbuf;
   }
-  default:
-    throw shards::InvalidVarTypeError("Comparison operator <= not supported for the given type: " + type2Name(a.valueType));
+  case SHType::Audio:
+    return a.payload.audioValue.samples <= b.payload.audioValue.samples;
+  case SHType::Type:
+    return a.payload.typeValue <= b.payload.typeValue;
+  case SHType::Set:
+  case SHType::EndOfBlittableTypes:
+    shassert("Invalid type");
   }
 }
 

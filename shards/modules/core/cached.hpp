@@ -18,7 +18,7 @@ struct Cached {
   SHVar _lastOutput{};
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(SHInstanceData &data) {
     SHComposeResult res = _evaluate.compose(data);
@@ -32,7 +32,12 @@ struct Cached {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_lastInput != input) {
       _lastInput = input;
-      _evaluate.activate(shContext, input, _lastOutput);
+      // Need to try-catch because inlined shard doesn't handle
+      try {
+        _evaluate.activate(shContext, input, _lastOutput);
+      } catch (std::exception &e) {
+        shards::abortWire(shContext, e.what());
+      }
     }
     return _lastOutput;
   }
