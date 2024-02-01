@@ -30,7 +30,7 @@
     GFX.DrawablePass(Features: features Queue: editor-queue-np-depth
                      Outputs: [{Name: "color"}
                                {Name: "depth" Clear: true}]) >> render-steps
-    
+
     ; Create view
     {Position: @f3(3 3 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
@@ -84,12 +84,6 @@
 
                         Gizmos.Grid(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 1.5)
                         Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
-                     })
-                     
-      ; Draw on top of everthing (ignore depth)
-      Gizmos.Context(Queue: editor-queue-np-depth View: view
-                     Contents: {
-                       transform-0 | Gizmos.Translation(200.0) > transform-0
                      })
       GFX.Render(Steps: render-steps View: view)
     }

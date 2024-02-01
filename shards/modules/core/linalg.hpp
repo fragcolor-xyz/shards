@@ -16,6 +16,21 @@
 namespace shards {
 namespace Math {
 namespace LinAlg {
+
+struct Types {
+  static inline std::array<SHVar, 3> _trsKeys{
+      Var("translation"),
+      Var("rotation"),
+      Var("scale"),
+  };
+  static inline shards::Types _trsTypes{{
+      CoreInfo::Float3Type,
+      CoreInfo::Float4Type,
+      CoreInfo::Float3Type,
+  }};
+  static inline Type TRS = Type::TableOf(_trsTypes, _trsKeys);
+};
+
 template <typename TOp> struct UnaryOperation : public Math::UnaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
@@ -217,7 +232,7 @@ struct Transpose : public UnaryBase {
 };
 
 struct Inverse : public UnaryBase {
-  static inline Types MatrixTypes{{CoreInfo::Float4x4Type}};
+  static inline shards::Types MatrixTypes{{CoreInfo::Float4x4Type}};
   static SHTypesInfo inputTypes() { return MatrixTypes; }
   static SHTypesInfo outputTypes() { return MatrixTypes; }
 
@@ -356,7 +371,7 @@ struct Rotation {
 };
 
 struct LookAt {
-  static inline Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
+  static inline shards::Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
   static inline std::array<SHVar, 2> InputTableKeys{Var("Position"), Var("Target")};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
