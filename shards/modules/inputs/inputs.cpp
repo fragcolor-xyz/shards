@@ -32,6 +32,130 @@ enum ModifierKey {
 };
 DECL_ENUM_INFO(ModifierKey, ModifierKey, 'mdIf');
 
+struct Types {
+  static inline Type ModifierKeys = Type::SeqOf(ModifierKeyEnumInfo::Type);
+};
+
+static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
+    // note: keep the same order as in SDL_keycode.h
+    {"return", SDLK_RETURN},
+    {"escape", SDLK_ESCAPE},
+    {"backspace", SDLK_BACKSPACE},
+    {"tab", SDLK_TAB},
+    {"space", SDLK_SPACE},
+    {"f1", SDLK_F1},
+    {"f2", SDLK_F2},
+    {"f3", SDLK_F3},
+    {"f4", SDLK_F4},
+    {"f5", SDLK_F5},
+    {"f6", SDLK_F6},
+    {"f7", SDLK_F7},
+    {"f8", SDLK_F8},
+    {"f9", SDLK_F9},
+    {"f10", SDLK_F10},
+    {"f11", SDLK_F11},
+    {"f12", SDLK_F12},
+    {"pause", SDLK_PAUSE},
+    {"insert", SDLK_INSERT},
+    {"home", SDLK_HOME},
+    {"pageUp", SDLK_PAGEUP},
+    {"delete", SDLK_DELETE},
+    {"end", SDLK_END},
+    {"pageDown", SDLK_PAGEDOWN},
+    {"right", SDLK_RIGHT},
+    {"left", SDLK_LEFT},
+    {"down", SDLK_DOWN},
+    {"up", SDLK_UP},
+    {"divide", SDLK_KP_DIVIDE},
+    {"multiply", SDLK_KP_MULTIPLY},
+    {"subtract", SDLK_KP_MINUS},
+    {"add", SDLK_KP_PLUS},
+    {"enter", SDLK_KP_ENTER},
+    {"num1", SDLK_KP_1},
+    {"num2", SDLK_KP_2},
+    {"num3", SDLK_KP_3},
+    {"num4", SDLK_KP_4},
+    {"num5", SDLK_KP_5},
+    {"num6", SDLK_KP_6},
+    {"num7", SDLK_KP_7},
+    {"num8", SDLK_KP_8},
+    {"num9", SDLK_KP_9},
+    {"num0", SDLK_KP_0},
+    {"leftCtrl", SDLK_LCTRL},
+    {"leftShift", SDLK_LSHIFT},
+    {"leftAlt", SDLK_LALT},
+    {"rightCtrl", SDLK_RCTRL},
+    {"rightShift", SDLK_RSHIFT},
+    {"rightAlt", SDLK_RALT},
+};
+
+inline bool matchModifiers(SDL_Keymod a, SDL_Keymod mask) {
+  auto check = [&](SDL_Keymod mod) {
+    if ((mask & mod) == mod) {
+      if ((a & mod) == 0)
+        return false;
+    }
+    return true;
+  };
+  if (!check(KMOD_CTRL))
+    return false;
+  if (!check(KMOD_ALT))
+    return false;
+  if (!check(KMOD_GUI))
+    return false;
+  if (!check(KMOD_SHIFT))
+    return false;
+  return true;
+}
+
+inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
+  if (str.empty()) {
+    return SDLK_UNKNOWN;
+  }
+
+  if (str.length() == 1) {
+    if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
+      return SDL_Keycode(str[0]);
+    }
+    if (str[0] >= 'A' && str[0] <= 'Z') {
+      return SDL_Keycode(str[0] + 32);
+    }
+  }
+
+  auto it = KeycodeMap.find(str);
+  if (it != KeycodeMap.end())
+    return it->second;
+
+  throw SHException(fmt::format("Unknown key identifier: {}", str));
+}
+
+inline SDL_Keymod convertModifierKeys(const Var &modifiers) {
+  SDL_Keymod result = KMOD_NONE;
+  if (!modifiers.isNone()) {
+    auto &seq = (SeqVar &)modifiers;
+    for (auto &mod_ : seq) {
+      auto &mod = (ModifierKey &)mod_.payload.enumValue;
+      switch (mod) {
+      case ModifierKey::Shift:
+        (uint16_t &)result |= KMOD_SHIFT;
+        break;
+      case ModifierKey::Alt:
+        (uint16_t &)result |= KMOD_ALT;
+        break;
+      case ModifierKey::Primary:
+        (uint16_t &)result |= KMOD_PRIMARY;
+        break;
+      case ModifierKey::Secondary:
+        (uint16_t &)result |= KMOD_SECONDARY;
+        break;
+      default:
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 struct Base {
   RequiredInputContext _inputContext;
 
@@ -255,19 +379,23 @@ template <bool Pressed> struct MouseUpDown : public Base {
   PARAM(ShardsVar, _middleButton, "Middle", "The action to perform when the middle mouse button is pressed down.",
         {CoreInfo::ShardsOrNone});
   PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume));
+  PARAM_VAR(_ignoreConsumed, "IgnoreConsumed", "Ignore consumed events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume), PARAM_IMPL_FOR(_ignoreConsumed));
+
+  bool ignoreConsumed{};
+  bool consume{};
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     baseWarmup(context);
+    ignoreConsumed = _ignoreConsumed->isNone() ? true : (bool)*_ignoreConsumed;
+    consume = _consume->isNone() ? true : (bool)*_consume;
   }
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
   }
-
-  bool shouldConsume() const { return _consume->isNone() || *_consume; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -286,7 +414,7 @@ template <bool Pressed> struct MouseUpDown : public Base {
       return input;
 
     for (auto &event : _inputContext->getEvents()) {
-      if (event.isConsumed())
+      if (ignoreConsumed && event.isConsumed())
         continue;
 
       if (const PointerButtonEvent *pbe = std::get_if<PointerButtonEvent>(&event.event)) {
@@ -295,19 +423,19 @@ template <bool Pressed> struct MouseUpDown : public Base {
           if (pbe->index == SDL_BUTTON_LEFT) {
             if (_leftButton) {
               _leftButton.activate(context, input, output);
-              if (shouldConsume())
+              if (this->consume)
                 consume(event);
             }
           } else if (pbe->index == SDL_BUTTON_RIGHT) {
             if (_rightButton) {
               _rightButton.activate(context, input, output);
-              if (shouldConsume())
+              if (this->consume)
                 consume(event);
             }
           } else if (pbe->index == SDL_BUTTON_MIDDLE) {
             if (_middleButton) {
               _middleButton.activate(context, input, output);
-              if (shouldConsume())
+              if (this->consume)
                 consume(event);
             }
           }
@@ -318,140 +446,24 @@ template <bool Pressed> struct MouseUpDown : public Base {
   }
 };
 
-static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
-    // note: keep the same order as in SDL_keycode.h
-    {"return", SDLK_RETURN},
-    {"escape", SDLK_ESCAPE},
-    {"backspace", SDLK_BACKSPACE},
-    {"tab", SDLK_TAB},
-    {"space", SDLK_SPACE},
-    {"f1", SDLK_F1},
-    {"f2", SDLK_F2},
-    {"f3", SDLK_F3},
-    {"f4", SDLK_F4},
-    {"f5", SDLK_F5},
-    {"f6", SDLK_F6},
-    {"f7", SDLK_F7},
-    {"f8", SDLK_F8},
-    {"f9", SDLK_F9},
-    {"f10", SDLK_F10},
-    {"f11", SDLK_F11},
-    {"f12", SDLK_F12},
-    {"pause", SDLK_PAUSE},
-    {"insert", SDLK_INSERT},
-    {"home", SDLK_HOME},
-    {"pageUp", SDLK_PAGEUP},
-    {"delete", SDLK_DELETE},
-    {"end", SDLK_END},
-    {"pageDown", SDLK_PAGEDOWN},
-    {"right", SDLK_RIGHT},
-    {"left", SDLK_LEFT},
-    {"down", SDLK_DOWN},
-    {"up", SDLK_UP},
-    {"divide", SDLK_KP_DIVIDE},
-    {"multiply", SDLK_KP_MULTIPLY},
-    {"subtract", SDLK_KP_MINUS},
-    {"add", SDLK_KP_PLUS},
-    {"enter", SDLK_KP_ENTER},
-    {"num1", SDLK_KP_1},
-    {"num2", SDLK_KP_2},
-    {"num3", SDLK_KP_3},
-    {"num4", SDLK_KP_4},
-    {"num5", SDLK_KP_5},
-    {"num6", SDLK_KP_6},
-    {"num7", SDLK_KP_7},
-    {"num8", SDLK_KP_8},
-    {"num9", SDLK_KP_9},
-    {"num0", SDLK_KP_0},
-    {"leftCtrl", SDLK_LCTRL},
-    {"leftShift", SDLK_LSHIFT},
-    {"leftAlt", SDLK_LALT},
-    {"rightCtrl", SDLK_RCTRL},
-    {"rightShift", SDLK_RSHIFT},
-    {"rightAlt", SDLK_RALT},
-};
-
-inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
-  if (str.empty()) {
-    return SDLK_UNKNOWN;
-  }
-
-  if (str.length() == 1) {
-    if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
-      return SDL_Keycode(str[0]);
-    }
-    if (str[0] >= 'A' && str[0] <= 'Z') {
-      return SDL_Keycode(str[0] + 32);
-    }
-  }
-
-  auto it = KeycodeMap.find(str);
-  if (it != KeycodeMap.end())
-    return it->second;
-
-  throw SHException(fmt::format("Unknown key identifier: {}", str));
-}
-
 template <bool Pressed> struct KeyUpDown : public Base {
-  static inline Type ModifierKeysType = Type::SeqOf(ModifierKeyEnumInfo::Type);
 
   PARAM_VAR(_key, "Key", "The key to check.", {{CoreInfo::StringType}});
   PARAM(ShardsVar, _shards, "Action", "The Shards to run if a key event happened.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_repeat, "Repeat", "If the key event should be repeated.", {{CoreInfo::NoneType, CoreInfo::BoolType}});
-  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, ModifierKeysType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_key), PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_repeat), PARAM_IMPL_FOR(_modifiers));
+  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, Types::ModifierKeys});
+  PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_VAR(_ignoreConsumed, "IgnoreConsumed", "Ignore consumed events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_key), PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_repeat), PARAM_IMPL_FOR(_modifiers),
+             PARAM_IMPL_FOR(_consume), PARAM_IMPL_FOR(_ignoreConsumed));
 
   SDL_Keymod _modifierMask;
   SDL_Keycode _keyCode;
+  bool ignoreConsumed{};
+  bool consume{};
 
 public:
   KeyUpDown() { _repeat = Var(false); }
-
-  SDL_Keymod convertModifierKeys(const SHVar &input) {
-    SDL_Keymod result = KMOD_NONE;
-    if (!_modifiers->isNone()) {
-      auto &seq = (SeqVar &)*_modifiers;
-      for (auto &mod_ : seq) {
-        auto &mod = (ModifierKey &)mod_.payload.enumValue;
-        switch (mod) {
-        case ModifierKey::Shift:
-          (uint16_t &)result |= KMOD_SHIFT;
-          break;
-        case ModifierKey::Alt:
-          (uint16_t &)result |= KMOD_ALT;
-          break;
-        case ModifierKey::Primary:
-          (uint16_t &)result |= KMOD_PRIMARY;
-          break;
-        case ModifierKey::Secondary:
-          (uint16_t &)result |= KMOD_SECONDARY;
-          break;
-        default:
-          break;
-        }
-      }
-    }
-    return result;
-  }
-
-  bool matchModifiers(SDL_Keymod a, SDL_Keymod mask) {
-    auto check = [&](SDL_Keymod mod) {
-      if ((mask & mod) == mod) {
-        if ((a & mod) == 0)
-          return false;
-      }
-      return true;
-    };
-    if (!check(KMOD_CTRL))
-      return false;
-    if (!check(KMOD_ALT))
-      return false;
-    if (!check(KMOD_GUI))
-      return false;
-    if (!check(KMOD_SHIFT))
-      return false;
-    return true;
-  }
 
   void cleanup(SHContext *context) {
     _shards.cleanup(context);
@@ -461,8 +473,10 @@ public:
   void warmup(SHContext *context) {
     _shards.warmup(context);
     baseWarmup(context);
-    _modifierMask = convertModifierKeys(_modifiers);
+    _modifierMask = convertModifierKeys(*_modifiers);
     _keyCode = keyStringToKeyCode(std::string(SHSTRVIEW(_key)));
+    ignoreConsumed = _ignoreConsumed->isNone() ? true : (bool)*_ignoreConsumed;
+    consume = _consume->isNone() ? true : (bool)*_consume;
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -480,20 +494,54 @@ public:
     auto &events = _inputContext->getEvents();
     auto consume = _inputContext->getEventConsumer();
     for (auto &event : events) {
-      if (event.isConsumed())
+      if (ignoreConsumed && event.isConsumed())
         continue;
       if (const KeyEvent *ke = std::get_if<KeyEvent>(&event.event)) {
         if (ke->pressed == Pressed && ke->key == _keyCode && matchModifiers(ke->modifiers, _modifierMask)) {
           if (*_repeat || ke->repeat == 0) {
             SHVar output{};
             _shards.activate(context, input, output);
-            consume(event);
+            if (this->consume)
+              consume(event);
           }
         }
       }
     }
 
     return input;
+  }
+};
+
+struct MatchModifierKeys : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, Types::ModifierKeys});
+  PARAM_IMPL(PARAM_IMPL_FOR(_modifiers));
+
+  SDL_Keymod _modifierMask;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseCleanup(context);
+  }
+  void warmup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    baseWarmup(context);
+    _modifierMask = convertModifierKeys(*_modifiers);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto modState = _inputContext->getState().modifiers;
+    return Var(matchModifiers(modState, _modifierMask));
   }
 };
 
@@ -620,4 +668,6 @@ SHARDS_REGISTER_FN(inputs) {
   using KeyUp = KeyUpDown<false>;
   REGISTER_SHARD("Inputs.KeyDown", KeyDown);
   REGISTER_SHARD("Inputs.KeyUp", KeyUp);
+
+  REGISTER_SHARD("Inputs.MatchModifierKeys", MatchModifierKeys);
 }
