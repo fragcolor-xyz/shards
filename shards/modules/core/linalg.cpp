@@ -365,22 +365,16 @@ SHVar Inverse::activate(SHContext *context, const SHVar &input) {
 }
 
 struct Decompose {
-  static inline std::array<SHVar, 3> _keys{
-      Var("translation"),
-      Var("rotation"),
-      Var("scale"),
-  };
-  static inline Types _types{{
-      CoreInfo::Float3Type,
-      CoreInfo::Float4Type,
-      CoreInfo::Float3Type,
-  }};
-  static inline Type ValueType = Type::TableOf(_types, _keys);
-
   TableVar output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
-  static SHTypesInfo outputTypes() { return ValueType; }
+  static SHTypesInfo outputTypes() { return Types::TRS; }
+
+  static SHOptionalString help() { return SHCCSTR("Decompose a matrix(4x4) into a TRS description"); }
+
+  static inline Var v_scale{"scale"};
+  static inline Var v_translation{"translation"};
+  static inline Var v_rotation{"rotation"};
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace linalg::aliases;
@@ -394,6 +388,28 @@ struct Decompose {
     output[Var("rotation")] = toVar(qRot);
     output[Var("scale")] = toVar(scale);
     return output;
+  }
+};
+
+struct Compose {
+  static SHTypesInfo inputTypes() { return Types::TRS; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  static SHOptionalString help() { return SHCCSTR("Compose a matrix(4x4) from a TRS description"); }
+
+  Mat4 _output;
+
+  SHVar activate(SHContext *context, const SHVar &input_) {
+    using namespace linalg::aliases;
+    TableVar &input = (TableVar &)input_;
+    float3 scale = (float3 &)input[Decompose::v_scale].payload;
+    float3 translation = (float3 &)input[Decompose::v_translation].payload;
+    float4 rotation = (float4 &)input[Decompose::v_rotation].payload;
+    auto t = linalg::translation_matrix(translation);
+    auto r = linalg::rotation_matrix(rotation);
+    auto s = linalg::scaling_matrix(scale);
+    _output = linalg::mul(linalg::mul(t, r), s);
+    return _output;
   }
 };
 
@@ -621,6 +637,7 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
+  REGISTER_SHARD("Math.Compose", Compose);
   REGISTER_SHARD("Math.Decompose", Decompose);
   REGISTER_SHARD("Math.Project", Project);
   REGISTER_SHARD("Math.Unproject", Unproject);
