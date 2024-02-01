@@ -55,20 +55,6 @@ struct TRS {
 
   TRS translated(const float3 &delta) const { return TRS(translation + delta, rotation, scale); }
   TRS rotated(const float4 &q) const { return TRS(translation, linalg::qmul(q, rotation), scale); }
-  TRS rotatedAround(const float3 &pivot, const float4 &q) const {
-    float4x4 mat = linalg::translation_matrix(-pivot);
-    mat = linalg::mul(linalg::rotation_matrix(q), mat);
-    mat = linalg::mul(linalg::translation_matrix(pivot), mat);
-    return TRS(linalg::mul(mat, getMatrix()));
-  }
-  TRS scaleAround(const TRS &pivot, const float3 &s) const {
-    float4 toRotSpaceQ = linalg::qmul(rotation, linalg::qinv(pivot.rotation));
-    float3 relScale =  linalg::qrot(toRotSpaceQ, scale) * s;
-    float3 newLocalScale = linalg::qrot(linalg::qinv(toRotSpaceQ), relScale);
-
-    float3 relTsl = (translation - pivot.translation) * s;
-    return TRS(pivot.translation + relTsl, rotation, newLocalScale);
-  }
   TRS scaled(const float3 &s) const { return TRS(translation, rotation, scale * s); }
 };
 

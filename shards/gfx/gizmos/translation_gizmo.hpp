@@ -69,6 +69,18 @@ public:
     }
   }
 
+  static inline float4x4 computePivot(boost::span<gfx::TRS> transforms) {
+    if (transforms.empty()) {
+      throw std::runtime_error("No transforms to compute pivot from");
+    }
+
+    float3 p{};
+    for (auto &trs : transforms) {
+      p += trs.translation;
+    }
+    return TRS(p / transforms.size()).getMatrix();
+  }
+
   void update(InputContext &inputContext) {
     movedTransforms.clear();
     pivotTransform = pivot.getMatrix();
@@ -125,7 +137,6 @@ public:
 
   virtual void grabbed(InputContext &context, Handle &handle) {
     dragStartTransform = pivotTransform;
-    startTransforms = transforms;
 
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
@@ -139,6 +150,8 @@ public:
       dragStartPoint =
           hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
     }
+
+    startTransforms = transforms;
   }
 
   virtual void released(InputContext &context, Handle &handle) {
