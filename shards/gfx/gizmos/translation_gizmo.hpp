@@ -2,7 +2,8 @@
 #define BCCA14A9_4E3A_4D04_B838_CE099ABD609E
 
 #include "gizmos.hpp"
-#include <gfx/linalg.hpp>
+#include "../trs.hpp"
+#include "../linalg.hpp"
 
 namespace gfx {
 namespace gizmos {
@@ -32,7 +33,14 @@ struct CombinedAxes {
 //       This is to prevent multiple handles from different gizmos being selected at the same time,
 //       resulting in unexpected behaviour.
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
-  float4x4 transform = linalg::identity;
+  TRS pivot;
+  boost::container::small_vector<TRS, 16> transforms;
+  boost::container::small_vector<TRS, 16> movedTransforms;
+
+  float scale = 1.0f;
+
+private:
+  float4x4 pivotTransform;
 
   Handle handles[6];
   Box handleSelectionBoxes[6];
@@ -40,8 +48,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 dragStartTransform;
   float4x4 transformNoScale;
   float3 dragStartPoint;
-
-  float scale = 1.0f;
+  boost::container::small_vector<TRS, 16> startTransforms;
 
   const float axisRadius = 0.2f;
   const float visualAxisRadius = 0.1f;
@@ -50,6 +57,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   // How far the combined planes extend from the gizmo center (relative to handle length)
   const float combinedAxisSizeRatio = 0.5f;
 
+public:
   float getVisualAxisRadius() const { return visualAxisRadius * scale; }
   float getAxisRadius() const { return axisRadius * scale; }
   float getAxisLength() const { return axisLength * scale; }
@@ -62,8 +70,10 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void update(InputContext &inputContext) {
-    // TODO: local space mode
-    transformNoScale = linalg::translation_matrix(extractTranslation(transform));
+    movedTransforms.clear();
+    pivotTransform = pivot.getMatrix();
+
+    transformNoScale = linalg::translation_matrix(extractTranslation(pivotTransform));
     float3 localRayDir = transformNormal(linalg::inverse(transformNoScale), inputContext.rayDirection);
 
     for (size_t i = 0; i < 6; i++) {
@@ -114,7 +124,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   virtual void grabbed(InputContext &context, Handle &handle) {
-    dragStartTransform = transform;
+    dragStartTransform = pivotTransform;
+    startTransforms = transforms;
 
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
@@ -143,8 +154,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
 
       float3 delta = hitPoint - dragStartPoint;
-      delta = linalg::dot(delta, fwd) * fwd;
-      transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
+      for (size_t i = 0; i < transforms.size(); i++) {
+        movedTransforms.push_back(startTransforms[i].translated(delta));
+      }
     } else {
       CombinedAxes ca = CombinedAxes::get(index - 3);
       float3 axis = linalg::normalize(linalg::mul(transformNoScale, float4(ca.z, 0.0f)).xyz());
@@ -153,7 +165,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
           hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
 
       float3 delta = hitPoint - dragStartPoint;
-      transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
+      for (size_t i = 0; i < transforms.size(); i++) {
+        movedTransforms.push_back(startTransforms[i].translated(delta));
+      }
     }
   }
 
@@ -161,7 +175,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     for (size_t i = 0; i < 6; i++) {
       auto &handle = handles[i];
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
-      float3 loc = extractTranslation(transform);
+      float3 loc = extractTranslation(pivotTransform);
       float3 dir = getAxisDirection(i, transformNoScale);
       if (i < 3) {
         float4 axisColor = axisColors[i];
