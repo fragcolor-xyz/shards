@@ -5,40 +5,13 @@
 #include "mesh_drawable.hpp"
 #include "../anim/path.hpp"
 #include "../debug_visualize.hpp"
+#include "../trs.hpp"
 #include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <memory>
 #include <set>
 
 namespace gfx {
-
-struct TRS {
-  float3 translation;
-  float3 scale = float3(1.0f);
-  float4 rotation = float4(0.0f, 0.0f, 0.0f, 1.0f);
-
-  TRS() = default;
-  TRS(const float4x4 &other) { *this = other; }
-  TRS &operator=(const TRS &other) = default;
-  TRS &operator=(const float4x4 &other) {
-    float3x3 rotationMatrix;
-    decomposeTRS(other, translation, scale, rotationMatrix);
-    this->rotation = linalg::rotation_quat(rotationMatrix);
-    return *this;
-  }
-
-  bool operator==(const TRS &other) const {
-    return translation == other.translation && scale == other.scale && rotation == other.rotation;
-  }
-  bool operator!=(const TRS &other) const { return !(*this == other); }
-
-  float4x4 getMatrix() const {
-    float4x4 rot = linalg::rotation_matrix(this->rotation);
-    float4x4 scale = linalg::scaling_matrix(this->scale);
-    float4x4 tsl = linalg::translation_matrix(this->translation);
-    return linalg::mul(tsl, linalg::mul(rot, scale));
-  }
-};
 
 // Transform tree of drawable objects
 struct MeshTreeDrawable final : public IDrawable, public IDebugVisualize, public std::enable_shared_from_this<MeshTreeDrawable> {
