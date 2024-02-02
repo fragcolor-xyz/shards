@@ -11,7 +11,7 @@ pub fn adjust_drag_value<'a, Num: emath::Numeric>(
   let val = f64::abs(value.to_f64());
   let log = f64::log(f64::max(0.0, val - 10.0), 10.0);
   let speed = f64::clamp(log * 0.1, 0.01, 10.0);
-  drag_value.speed(speed)
+  drag_value.update_while_editing(false).speed(speed)
 }
 
 impl<'a> CustomDragValue<'a> {
