@@ -109,14 +109,17 @@ struct ContextMainOutput {
   WGPUTexture wgpuCurrentTexture{};
   TexturePtr texture;
 
+  ContextFlushTextureCallback onFlushTextureReferences;
+
 #ifndef WEBGPU_NATIVE
   WGPUSwapChain wgpuSwapChain;
 #endif
 
-  ContextMainOutput(Window &window) {
-    this->window = &window;
+  ContextMainOutput(Window &window, ContextFlushTextureCallback onFlushTextureReferences)
+      : window(&window), onFlushTextureReferences(onFlushTextureReferences) {
     texture = std::make_shared<Texture>();
   }
+
   ~ContextMainOutput() {
 #ifndef WEBGPU_NATIVE
     releaseSwapchain();
@@ -147,8 +150,9 @@ struct ContextMainOutput {
     shassert(!wgpuCurrentTexture);
 
     int2 drawableSize = window->getDrawableSize();
-    if (drawableSize != currentSize)
+    if (drawableSize != currentSize) {
       resizeSwapchain(device, adapter, drawableSize);
+    }
 
 #ifdef WEBGPU_NATIVE
     WGPUSurfaceTexture st{};
@@ -216,6 +220,10 @@ struct ContextMainOutput {
     SPDLOG_LOGGER_DEBUG(logger, "Configuring surface width: {}, height: {}, format: {}", newSize.x, newSize.y, swapchainFormat);
     currentSize = newSize;
 
+    // Force flush all texture references before resizing
+    // this should cause all references to the surface texture to be released
+    onFlushTextureReferences->call();
+
 #if WEBGPU_NATIVE
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
@@ -267,7 +275,7 @@ Context::~Context() { release(); }
 
 void Context::init(Window &window, const ContextCreationOptions &inOptions) {
   options = inOptions;
-  mainOutput = std::make_shared<ContextMainOutput>(window);
+  mainOutput = std::make_shared<ContextMainOutput>(window, onFlushTextureReferences);
 
   initCommon();
 }
@@ -301,6 +309,8 @@ void Context::resizeMainOutputConditional(const int2 &newSize) {
 
   shassert(mainOutput);
   if (mainOutput->currentSize != newSize) {
+    // Need to sync before to make sure surface is no longer in use
+    poll(true);
     mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, newSize);
   }
 }
@@ -404,7 +414,13 @@ void Context::endFrame() {
 void Context::poll(bool wait) {
   ZoneScoped;
 #ifdef WEBGPU_NATIVE
-  wgpuDevicePoll(wgpuDevice, wait, nullptr);
+  if (wait) {
+    while (!wgpuDevicePoll(wgpuDevice, true, nullptr)) {
+      // Poll until no more submissions are in flight
+    }
+  } else {
+    wgpuDevicePoll(wgpuDevice, false, nullptr);
+  }
 #else
   emscripten_sleep(0);
 #endif
