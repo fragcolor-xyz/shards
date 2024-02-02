@@ -7,6 +7,9 @@
 #include "types.hpp"
 #include "fwd.hpp"
 #include "user_data.hpp"
+#ifndef RUST_BINDGEN
+#include "callback.hpp"
+#endif
 #include <cassert>
 #include <list>
 #include <map>
@@ -45,6 +48,10 @@ namespace detail {
 struct GraphicsExecutor;
 }
 
+#ifndef RUST_BINDGEN
+using ContextFlushTextureCallback = std::shared_ptr<CallbackRegistry<>>;
+#endif
+
 /// <div rustbindgen opaque></div>
 struct Context {
 public:
@@ -54,6 +61,10 @@ public:
   WGPUQueue wgpuQueue = nullptr;
 #if WEBGPU_NATIVE
   WGPUInstanceBackendFlags instanceBackends{};
+#endif
+
+#ifndef RUST_BINDGEN
+  ContextFlushTextureCallback onFlushTextureReferences = std::make_shared<CallbackRegistry<>>();
 #endif
 
 private:

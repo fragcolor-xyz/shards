@@ -84,7 +84,16 @@ struct RendererImpl final : public ContextData {
 
   boost::container::stable_vector<std::optional<FrameQueue>> frameQueues;
 
-  RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {}
+  CallbackHandle<> onFlushTextureReferences;
+
+  RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {
+    struct FlushSurfaceTextureReferences : public CallbackHandleImpl<> {
+      TextureViewCache &tvc;
+      FlushSurfaceTextureReferences(TextureViewCache &tvc) : tvc(tvc) {}
+      void call() override { tvc.reset(); }
+    };
+    onFlushTextureReferences = context.onFlushTextureReferences->emplace<FlushSurfaceTextureReferences>(storage.textureViewCache);
+  }
 
   ~RendererImpl() { releaseContextDataConditional(); }
 

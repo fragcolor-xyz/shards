@@ -64,10 +64,14 @@ struct TextureViewCache {
   std::unordered_map<TextureViewKey, Entry, boost::hash<TextureViewKey>> cache;
   std::shared_mutex mutex;
 
+  void reset() {
+    std::unique_lock lock(mutex);
+    cache.clear();
+  }
+
   void clearOldCacheItems(size_t frameCounter, size_t frameThreshold) {
-    mutex.lock();
+    std::unique_lock lock(mutex);
     detail::clearOldCacheItemsIn(cache, frameCounter, frameThreshold);
-    mutex.unlock();
   }
 
   WGPUTextureView getTextureView(size_t frameCounter, TexturePtr texture, WGPUTexture wgpuTexture, TextureViewDesc desc) {
