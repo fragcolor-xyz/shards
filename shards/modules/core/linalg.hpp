@@ -323,7 +323,7 @@ struct Translation {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto v3 = reinterpret_cast<const Vec3 *>(&input);
-    _output = linalg::translation_matrix(*v3);
+    _output = linalg::translation_matrix(**v3);
     return _output;
   }
 };
@@ -336,7 +336,7 @@ struct Scaling {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto v3 = reinterpret_cast<const Vec3 *>(&input);
-    _output = linalg::scaling_matrix(*v3);
+    _output = linalg::scaling_matrix(**v3);
     return _output;
   }
 };
@@ -350,7 +350,7 @@ struct Rotation {
   SHVar activate(SHContext *context, const SHVar &input) {
     // quaternion
     auto v4 = reinterpret_cast<const Vec4 *>(&input);
-    _output = linalg::rotation_matrix(*v4);
+    _output = linalg::rotation_matrix(**v4);
     return _output;
   }
 };
@@ -395,8 +395,8 @@ struct LookAt {
     assert(position.valueType == SHType::Float3 && target.valueType == SHType::Float3);
 
     using namespace linalg::aliases;
-    auto eye_ = reinterpret_cast<const float3 *>(&position);
-    auto target_ = reinterpret_cast<const float3 *>(&target);
+    auto eye_ = reinterpret_cast<const padded::Float3 *>(&position);
+    auto target_ = reinterpret_cast<const padded::Float3 *>(&target);
     _output = gfx::safeLookat(*eye_, *target_);
     return _output;
   }

@@ -370,16 +370,101 @@ struct Zip {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfAnySeqType; }
+  static SHTypesInfo outputTypes() {
+    static Types outputTypes{CoreInfo::SeqOfAnyTableType, CoreInfo::SeqOfAnySeqType};
+    return outputTypes;
+  }
 
   PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqsType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_seqs));
+  PARAM_VAR(_keys, "Keys", "The element keys to user.", {CoreInfo::NoneType, CoreInfo::StringSeqType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_seqs), PARAM_IMPL_FOR(_keys));
 
   PARAM_REQUIRED_VARIABLES();
 
+  std::vector<TypeInfo> _typeInfos;
+  Types _elementTypes;
+  std::vector<OwnedVar> _elementKeys;
+  Type _innerType;
+
+  bool _outputSeq = false;
+  SeqVar _output;
+
+  const SHTypeInfo &seqInnerType(const SHTypeInfo &ti) {
+    if (ti.basicType != SHType::Seq) {
+      throw ComposeError("Expected a sequence type");
+    }
+    if (ti.seqTypes.len != 1)
+      return CoreInfo::AnyType;
+    return ti.seqTypes.elements[0];
+  }
+
+  bool haveElementType(const SHTypeInfo &ti) {
+    auto it = std::find_if(_elementTypes._types.begin(), _elementTypes._types.end(), [&](const auto &t) { return t == ti; });
+    if (it != _elementTypes._types.end()) {
+      return true;
+    }
+    return false;
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CoreInfo::SeqOfSeqsType;
+
+    _elementTypes._types.clear();
+    _typeInfos.clear();
+
+    if (_keys->isNone()) {
+      for (auto &v : _seqs) {
+        if (v.valueType == SHType::ContextVar) {
+          auto et = findContextVarExposedType(data, v);
+          if (!et)
+            throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
+          auto innerType = seqInnerType(et->exposedType);
+          if (!haveElementType(innerType))
+            _elementTypes._types.push_back(innerType);
+        } else {
+          _typeInfos.emplace_back(v, data);
+          auto innerType = seqInnerType(_typeInfos.back());
+          if (!haveElementType(innerType))
+            _elementTypes._types.push_back(innerType);
+        }
+      }
+
+      _innerType = SHTypeInfo{
+          .basicType = SHType::Seq,
+          .seqTypes = _elementTypes,
+      };
+      _outputSeq = true;
+      return Type::SeqOf(_innerType);
+    } else {
+      for (auto &v : _seqs) {
+        size_t keyIdx = _elementTypes._types.size();
+        if (keyIdx < _keys.payload.seqValue.len) {
+          _elementKeys.emplace_back(_keys.payload.seqValue.elements[keyIdx]);
+        }
+        if (_elementKeys.size() <= keyIdx)
+          _elementKeys.emplace_back(Var(fmt::format("${}", keyIdx)));
+
+        if (v.valueType == SHType::ContextVar) {
+          auto et = findContextVarExposedType(data, v);
+          if (!et)
+            throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
+          _elementTypes._types.push_back(seqInnerType(et->exposedType));
+        } else {
+          _typeInfos.emplace_back(v, data);
+          _elementTypes._types.push_back(seqInnerType(_typeInfos.back()));
+        }
+      }
+      _innerType = SHTypeInfo{
+          .basicType = SHType::Table,
+          .table =
+              {
+                  .keys = SHSeq{.elements = _elementKeys.data(), .len = (uint32_t)_elementKeys.size()},
+                  .types = _elementTypes,
+              },
+      };
+      _outputSeq = false;
+      return Type::SeqOf(_innerType);
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -408,8 +493,6 @@ struct Zip {
       }
     }
   }
-
-  SeqVar _output{};
   std::vector<SHVar *> _refs{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -438,21 +521,39 @@ struct Zip {
     }
 
     _output.resize(shortestLen);
-
-    for (uint32_t i = 0; i < shortestLen; i++) {
-      auto &inner = _output[i];
-      if (inner.valueType != SHType::Seq) {
-        inner = SeqVar();
+    if (_outputSeq) {
+      for (uint32_t i = 0; i < shortestLen; i++) {
+        auto &inner = _output[i];
+        if (inner.valueType != SHType::Seq) {
+          inner = SeqVar();
+        }
+        asSeq(inner).resize(seqsLen);
       }
 
-      auto &innerSeq = asSeq(inner);
+      for (uint32_t i = 0; i < shortestLen; i++) {
+        auto &innerSeq = asSeq(_output[i]);
+        for (uint32_t y = 0; y < seqsLen; y++) {
+          if (_refs[y]) {
+            innerSeq[y] = (_refs[y]->payload.seqValue.elements[i]);
+          } else {
+            innerSeq[y] = _seqs.payload.seqValue.elements[y].payload.seqValue.elements[i];
+          }
+        }
+      }
+    } else {
+      for (uint32_t i = 0; i < shortestLen; i++) {
+        auto &inner = _output[i];
+        if (inner.valueType != SHType::Table) {
+          inner = TableVar();
+        }
 
-      for (uint32_t y = 0; y < seqsLen; y++) {
-        if (_refs[y]) {
-          innerSeq.emplace_back(_refs[y]->payload.seqValue.elements[i]);
-        } else {
-          // const seq case
-          innerSeq.emplace_back(_seqs.payload.seqValue.elements[y].payload.seqValue.elements[i]);
+        auto &innerTable = asTable(inner);
+        for (uint32_t y = 0; y < seqsLen; y++) {
+          if (_refs[y]) {
+            innerTable[_elementKeys[y]] = (_refs[y]->payload.seqValue.elements[i]);
+          } else {
+            innerTable[_elementKeys[y]] = _seqs.payload.seqValue.elements[y].payload.seqValue.elements[i];
+          }
         }
       }
     }

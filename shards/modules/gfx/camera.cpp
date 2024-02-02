@@ -433,7 +433,7 @@ struct TargetCameraMatrix {
     TargetCameraState state{
         .pivot = toFloat3(inputTable.get<Var>("pivot")),
         .distance = (float)(inputTable.get<Var>("distance")),
-        .rotation = toFloat2(inputTable.get<Var>("rotation")),
+        .rotation = (float2)toFloat2(inputTable.get<Var>("rotation")),
     };
 
     float4 rotPitch = linalg::rotation_quat(float3(1.0f, 0.0, 0.0f), state.rotation.x);
@@ -443,11 +443,10 @@ struct TargetCameraMatrix {
     float3 lookDirection = -linalg::qzdir(cameraRotation);
 
     // Reconstruct view matrix using the inverse rotation/translation of the camera
-    auto &newViewMatrix = (float4x4 &)_result;
-    newViewMatrix = linalg::identity;
+    float4x4 newViewMatrix = linalg::identity;
     newViewMatrix = linalg::mul(linalg::translation_matrix(-(state.pivot - lookDirection * state.distance)), newViewMatrix);
     newViewMatrix = linalg::mul(linalg::rotation_matrix(linalg::qconj(cameraRotation)), newViewMatrix);
-    return _result;
+    return (_result = newViewMatrix);
   }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }

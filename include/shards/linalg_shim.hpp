@@ -10,10 +10,148 @@
 #include <vector>
 
 namespace shards {
-struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
-  using linalg::aliases::float4x4::mat;
+namespace padded {
+template <typename T> struct _TypeOf {};
+template <> struct _TypeOf<double> {
+  static constexpr SHType type = SHType::Float;
+};
+template <> struct _TypeOf<linalg::vec<double, 2>> {
+  static constexpr SHType type = SHType::Float2;
+};
+template <> struct _TypeOf<linalg::vec<float, 3>> {
+  static constexpr SHType type = SHType::Float3;
+};
+template <> struct _TypeOf<linalg::vec<float, 4>> {
+  static constexpr SHType type = SHType::Float4;
+};
+template <> struct _TypeOf<int64_t> {
+  static constexpr SHType type = SHType::Int;
+};
+template <> struct _TypeOf<linalg::vec<int64_t, 2>> {
+  static constexpr SHType type = SHType::Int2;
+};
+template <> struct _TypeOf<linalg::vec<int32_t, 3>> {
+  static constexpr SHType type = SHType::Int3;
+};
+template <> struct _TypeOf<linalg::vec<int32_t, 4>> {
+  static constexpr SHType type = SHType::Int4;
+};
+
+template <typename T> struct generic {
+  using Self = generic<T>;
+  using Base = T;
+
+  T payload;
+  uint8_t padding[16 - sizeof(T)];
+  uint64_t _internal{};
+  SHType valueType = _TypeOf<Self>::type;
+  uint16_t flags{};
+  uint32_t refcount{};
+
+  operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
+  operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
+  operator const T &() const { return payload; }
+  operator T &() { return payload; }
+  const T &operator*() const { return payload; }
+  T &operator*() { return payload; }
+  Self &operator=(const T &other) {
+    payload = other;
+    return *this;
+  }
+  Self &operator=(const generic &other) {
+    payload = other.payload;
+    return *this;
+  }
+};
+template <typename T, int M> struct vec {
+  using Self = vec<T, M>;
+  using TVec = linalg::vec<T, M>;
+  using Base = TVec;
+
+  TVec payload;
+  uint8_t padding[16 - sizeof(TVec)];
+  uint64_t _internal{};
+  SHType valueType = _TypeOf<TVec>::type;
+  uint16_t flags{};
+  uint32_t refcount{};
+
+  operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
+  operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
+  operator const TVec &() const { return payload; }
+  operator TVec &() { return payload; }
+  const TVec &operator*() const { return payload; }
+  TVec &operator*() { return payload; }
+  Self &operator=(const TVec &other) {
+    payload = other;
+    return *this;
+  }
+  Self &operator=(const Self &other) {
+    payload = other.payload;
+    return *this;
+  }
+  const T &operator[](int i) const { return payload[i]; }
+  T &operator[](int i) { return payload[i]; }
+};
+
+using Float4 = vec<float, 4>;
+using Float3 = vec<float, 3>;
+using Float2 = vec<double, 2>;
+using Float = generic<double>;
+
+using Int4 = vec<int32_t, 4>;
+using Int3 = vec<int32_t, 3>;
+using Int2 = vec<int64_t, 2>;
+using Int = generic<int64_t>;
+} // namespace padded
+
+struct alignas(16) Mat2 {
+  using Base = linalg::aliases::double2x2;
+  using V = padded::Float2;
+  V x, y;
+
+  Mat2() = default;
+  Mat2(const Base &other) { *this = other; }
+
+  operator Base() const { return Base(x, y); }
+  inline Mat2 &operator=(const Base &mat) {
+    x = mat.x;
+    y = mat.y;
+    return *this;
+  }
+};
+
+struct alignas(16) Mat3 {
+  using Base = linalg::aliases::float3x3;
+  using V = padded::Float3;
+  V x, y, z;
+
+  Mat3() = default;
+  Mat3(const Base &other) { *this = other; }
+
+  operator Base() const { return Base(x, y, z); }
+
+  inline Mat3 &operator=(const Base &mat) {
+    x = mat.x;
+    x = mat.y;
+    x = mat.z;
+    return *this;
+  }
+};
+
+struct alignas(16) Mat4 {
+  using Base = linalg::aliases::float4x4;
+  using V = padded::Float4;
+  V x, y, z, w;
+
+  Mat4() = default;
   Mat4(const SHVar &var) { *this = var; }
-  Mat4(const linalg::aliases::float4x4 &other) : linalg::aliases::float4x4(other) {}
+  Mat4(const Base &other) { *this = other; }
+  Mat4(const linalg::identity_t &id) { *this = id; }
+
+  operator Base() const { return Base(x, y, z, w); }
+
+  constexpr const V &operator[](int j) const { return j == 0 ? x : j == 1 ? y : j == 2 ? z : w; }
+  LINALG_CONSTEXPR14 V &operator[](int j) { return j == 0 ? x : j == 1 ? y : j == 2 ? z : w; }
 
   template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
@@ -75,15 +213,20 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
-  Mat4 &operator=(linalg::aliases::float4x4 &&mat) {
-    (*this)[0] = std::move(mat[0]);
-    (*this)[1] = std::move(mat[1]);
-    (*this)[2] = std::move(mat[2]);
-    (*this)[3] = std::move(mat[3]);
+  inline Mat4 &operator=(linalg::identity_t id) {
+    *this = Identity();
     return *this;
   }
 
-  Mat4 &operator=(const SHVar &var) {
+  inline Mat4 &operator=(const Base &mat) {
+    (*this)[0] = mat[0];
+    (*this)[1] = mat[1];
+    (*this)[2] = mat[2];
+    (*this)[3] = mat[3];
+    return *this;
+  }
+
+  inline Mat4 &operator=(const SHVar &var) {
     if (var.valueType != SHType::Seq || var.payload.seqValue.len != 4)
       throw SHException("Invalid Mat4 variable given as input");
     auto vm = reinterpret_cast<const Mat4 *>(var.payload.seqValue.elements);
@@ -107,162 +250,9 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   }
 };
 
-struct alignas(16) Vec2 : public linalg::aliases::float2 {
-  Vec2() = default;
-
-  constexpr Vec2(const Vec2 &other) {
-    x = other.x;
-    y = other.y;
-  }
-
-  Vec2 &operator=(const Vec2 &other) {
-    x = other.x;
-    y = other.y;
-    return *this;
-  }
-
-  template <typename XY_TYPE> Vec2(const XY_TYPE &vec) {
-    x = float(vec.x);
-    y = float(vec.y);
-  }
-
-  template <typename NUMBER> Vec2(NUMBER x_, NUMBER y_) {
-    x = float(x_);
-    y = float(y_);
-  }
-
-  Vec2 &operator=(const linalg::aliases::float2 &vec) {
-    x = vec.x;
-    y = vec.y;
-    return *this;
-  }
-};
-
-struct alignas(16) Vec3 : public linalg::aliases::float3 {
-  Vec3() = default;
-
-  constexpr Vec3(const Vec3 &other) {
-    x = other.x;
-    y = other.y;
-    z = other.z;
-  }
-
-  Vec3 &operator=(const Vec3 &other) {
-    x = other.x;
-    y = other.y;
-    z = other.z;
-    return *this;
-  }
-
-  template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {
-    x = float(vec.x);
-    y = float(vec.y);
-    z = float(vec.z);
-  }
-
-  template <typename NUMBER> Vec3(NUMBER x_, NUMBER y_, NUMBER z_) {
-    x = float(x_);
-    y = float(y_);
-    z = float(z_);
-  }
-
-  template <typename NUMBER> static Vec3 FromVector(const std::vector<NUMBER> &vec) {
-    // used by gltf
-    assert(vec.size() == 3);
-    Vec3 res;
-    for (int j = 0; j < 3; j++) {
-      res[j] = float(vec[j]);
-    }
-    return res;
-  }
-
-  Vec3 &applyMatrix(const linalg::aliases::float4x4 &mat) {
-    const auto w = 1.0f / (mat.x.w * x + mat.y.w * y + mat.z.w * z + mat.w.w);
-    x = (mat.x.x * x + mat.y.x * y + mat.z.x * z + mat.w.x) * w;
-    y = (mat.x.y * x + mat.y.y * y + mat.z.y * z + mat.w.y) * w;
-    z = (mat.x.z * x + mat.y.z * y + mat.z.z * z + mat.w.z) * w;
-    return *this;
-  }
-
-  Vec3 &operator=(const linalg::aliases::float3 &vec) {
-    x = vec.x;
-    y = vec.y;
-    z = vec.z;
-    return *this;
-  }
-
-  operator SHVar() const {
-    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec3 *>(this));
-    v->valueType = SHType::Float3;
-    return *v;
-  }
-};
-
-struct alignas(16) Vec4 : public linalg::aliases::float4 {
-  Vec4() = default;
-
-  constexpr Vec4(const Vec4 &other) {
-    x = other.x;
-    y = other.y;
-    z = other.z;
-    w = other.w;
-  }
-
-  Vec4 &operator=(const Vec4 &other) {
-    x = other.x;
-    y = other.y;
-    z = other.z;
-    w = other.w;
-    return *this;
-  }
-
-  template <typename XYZW_TYPE> Vec4(const XYZW_TYPE &vec) {
-    x = float(vec.x);
-    y = float(vec.y);
-    z = float(vec.z);
-    w = float(vec.w);
-  }
-
-  template <typename NUMBER> Vec4(NUMBER x_, NUMBER y_, NUMBER z_, NUMBER w_) {
-    x = float(x_);
-    y = float(y_);
-    z = float(z_);
-    w = float(w_);
-  }
-
-  constexpr static Vec4 Quaternion() {
-    Vec4 q;
-    q.x = 0.0;
-    q.y = 0.0;
-    q.z = 0.0;
-    q.w = 1.0;
-    return q;
-  }
-
-  template <typename NUMBER> static Vec4 FromVector(const std::vector<NUMBER> &vec) {
-    // used by gltf
-    assert(vec.size() == 4);
-    Vec4 res;
-    for (int j = 0; j < 4; j++) {
-      res[j] = float(vec[j]);
-    }
-    return res;
-  }
-
-  Vec4 &operator=(const linalg::aliases::float4 &vec) {
-    x = vec.x;
-    y = vec.y;
-    z = vec.z;
-    w = vec.w;
-    return *this;
-  }
-
-  operator SHVar() const {
-    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec4 *>(this));
-    v->valueType = SHType::Float4;
-    return *v;
-  }
-};
+using Vec2 = padded::Float2;
+using Vec3 = padded::Float3;
+using Vec4 = padded::Float4;
 
 template <typename T> struct VectorConversion {};
 template <> struct VectorConversion<float> {
@@ -315,12 +305,12 @@ template <typename TVec> inline auto toVec(const SHVar &value) {
   return Conv::convert(value);
 }
 
-inline auto toFloat2(const SHVar &value) { return toVec<linalg::aliases::float2>(value); }
-inline auto toFloat3(const SHVar &value) { return toVec<linalg::aliases::float3>(value); }
-inline auto toFloat4(const SHVar &value) { return toVec<linalg::aliases::float4>(value); }
-inline auto toInt2(const SHVar &value) { return toVec<linalg::aliases::int2>(value); }
-inline auto toInt3(const SHVar &value) { return toVec<linalg::aliases::int3>(value); }
-inline auto toInt4(const SHVar &value) { return toVec<linalg::aliases::int4>(value); }
+inline auto toFloat2(const SHVar &value) { return *reinterpret_cast<const padded::Float2 &>(value); }
+inline auto toFloat3(const SHVar &value) { return *reinterpret_cast<const padded::Float3 &>(value); }
+inline auto toFloat4(const SHVar &value) { return *reinterpret_cast<const padded::Float4 &>(value); }
+inline auto toInt2(const SHVar &value) { return *reinterpret_cast<const padded::Int2 &>(value); }
+inline auto toInt3(const SHVar &value) { return *reinterpret_cast<const padded::Int3 &>(value); }
+inline auto toInt4(const SHVar &value) { return *reinterpret_cast<const padded::Int4 &>(value); }
 
 template <typename TVec> inline SHVar genericToVar(const TVec &value) {
   using Conv = VectorConversion<TVec>;
