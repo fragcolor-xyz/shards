@@ -292,7 +292,7 @@ struct TextureShard {
     Var formatVar{_format.get()};
 
     // NOTE: Use existing resolution if unspecified here to avoid resetting the texture
-    int2 resolution = !resolutionVar.isNone() ? toInt2(resolutionVar) : int2(0);
+    int2 resolution = !resolutionVar.isNone() ? (int2)toInt2(resolutionVar) : int2(0);
     if (resolutionVar.isNone())
       resolution = texture->getDesc().resolution;
 

@@ -339,7 +339,7 @@ struct ResizeWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
+    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->resize((int2)toInt2(input)); });
     return input;
   }
 };
@@ -401,7 +401,7 @@ struct MoveWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
+    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->move((int2)toInt2(input)); });
     return input;
   }
 };

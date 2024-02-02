@@ -772,16 +772,20 @@ inline size_t getPixelSize(const SHVar &input) {
   return pixsize;
 }
 
-template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
-  if (!var.isVariable())
+inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
+  if (var.valueType != SHType::ContextVar)
     return nullptr;
 
   for (const auto &share : data.shared) {
-    if (!strcmp(share.name, var->payload.stringValue)) { // safe cos ParamVar should be null terminated
+    if (!strcmp(share.name, var.payload.stringValue)) { // safe cos ParamVar should be null terminated
       return &share;
     }
   }
   return nullptr;
+}
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  return findContextVarExposedType(data, var);
 }
 template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
   const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);

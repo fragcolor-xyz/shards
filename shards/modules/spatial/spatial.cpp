@@ -221,7 +221,7 @@ struct SpatialPanelShard {
     result.anchor = gfx::extractTranslation(transform);
     result.up = transform.y.xyz();
     result.right = transform.x.xyz();
-    result.size = toFloat2(_size.get());
+    result.size = (float2)toFloat2(_size.get());
     result.center =
         result.anchor + result.right * (0.5f - alignment.x) * result.size.x + result.up * (0.5f - alignment.y) * result.size.y;
     return result;

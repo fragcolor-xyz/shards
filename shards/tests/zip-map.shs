@@ -1,0 +1,28 @@
+[@f3(0.0) @f3(0.0) @f3(0.0)] = t
+[@f4(0.0) @f4(0.0) @f4(0.0)] = r
+
+Zip([t r]) | Log("zip0") | Map({
+  {translation: (Take(0)) rotation: (Take(1))}
+}) | Assert.Is([
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+  {translation: @f3(0.0) rotation: @f4(0.0)}])
+
+Zip([t r] Keys: ["t"]) | Log("zip1") | Assert.Is([
+  {t: @f3(0.0) $1: @f4(0.0)}
+  {t: @f3(0.0) $1: @f4(0.0)}
+  {t: @f3(0.0) $1: @f4(0.0)}])
+
+Zip([t r] Keys: ["translation" "rotation"]) | Log("zip2") | Assert.Is([
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+  {translation: @f3(0.0) rotation: @f4(0.0)}])
+
+Zip([[@f3(1.0)] r] Keys: ["translation" "rotation"]) | Log("zip3") | Assert.Is([
+  {translation: @f3(1.0) rotation: @f4(0.0)}])
+
+; Type checks
+TypeOf({Zip([t r])}) | Log("t") | Assert.Is(@type([[Type::Float3 Type::Float4]]))
+TypeOf({Zip([t [@f3(0.0) @f3(1.0)]])}) | Log("t") | Assert.Is(@type([[Type::Float3]]))
+TypeOf({Zip([t [@f3(0.0) @f3(1.0)]] Keys: ["a"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 "$1": Type::Float3}]))
+TypeOf({Zip([t [@f4(0.0) @f4(1.0)]] Keys: ["a" "b"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 b: Type::Float4}]))

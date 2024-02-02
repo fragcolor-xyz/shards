@@ -33,7 +33,7 @@ struct TargetCameraState {
     return TargetCameraState{
         .pivot = toFloat3(inputTable.get<shards::Var>("pivot")),
         .distance = (float)(inputTable.get<shards::Var>("distance")),
-        .rotation = toFloat2(inputTable.get<shards::Var>("rotation")),
+        .rotation = (float2)toFloat2(inputTable.get<shards::Var>("rotation")),
     };
   }
 };
