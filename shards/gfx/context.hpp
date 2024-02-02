@@ -7,6 +7,7 @@
 #include "types.hpp"
 #include "fwd.hpp"
 #include "user_data.hpp"
+#include "callback.hpp"
 #include <cassert>
 #include <list>
 #include <map>
@@ -45,6 +46,8 @@ namespace detail {
 struct GraphicsExecutor;
 }
 
+using ContextFlushTextureCallback = std::shared_ptr<CallbackRegistry<>>;
+
 /// <div rustbindgen opaque></div>
 struct Context {
 public:
@@ -55,6 +58,8 @@ public:
 #if WEBGPU_NATIVE
   WGPUInstanceBackendFlags instanceBackends{};
 #endif
+
+  ContextFlushTextureCallback onFlushTextureReferences = std::make_shared<CallbackRegistry<>>();
 
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
