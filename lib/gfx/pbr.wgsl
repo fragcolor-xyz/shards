@@ -115,8 +115,8 @@ fn visibilitySmithGGXCorrelated(nDotL: f32, nDotV: f32, roughness: f32) -> f32 {
   return 0.5 / (GGXV + GGXL);
 }
 
-fn normalDistributionCharlie(sheenRoughness: f32, NdotH: f32) -> f32 {
-  let sheenRoughness = max(sheenRoughness, 0.000001); //clamp (0,1]
+fn normalDistributionCharlie(sheenRoughness_: f32, NdotH: f32) -> f32 {
+  let sheenRoughness = max(sheenRoughness_, 0.000001); //clamp (0,1]
   let alphaG = sheenRoughness * sheenRoughness;
   let invR = 1.0 / alphaG;
   let cos2h = NdotH * NdotH;
@@ -143,8 +143,8 @@ fn lambdaSheen(cosTheta: f32, alphaG: f32) -> f32 {
   }
 }
 
-fn visiblitySheen(nDotL: f32, nDotV: f32, sheenRoughness: f32) -> f32 {
-  let sheenRoughness = max(sheenRoughness, 0.000001); //clamp (0,1]
+fn visiblitySheen(nDotL: f32, nDotV: f32, sheenRoughness_: f32) -> f32 {
+  let sheenRoughness = max(sheenRoughness_, 0.000001); //clamp (0,1]
   let alphaG = sheenRoughness * sheenRoughness;
 
   return clamp(1.0 / ((1.0 + lambdaSheen(nDotV, alphaG) + lambdaSheen(nDotL, alphaG)) * (4.0 * nDotV * nDotL)), 0.0, 1.0);
@@ -213,7 +213,7 @@ fn setSpecularGlossinessInfo(info_3: ptr<function, MaterialInfo>, u_SpecularFact
   return;
 }
 
-fn computeEnvironmentLighting(material: MaterialInfo,
+fn computeEnvironmentLighting(material_: MaterialInfo,
   params: LightingGeneralParams,
   envLambert: texture_cube<f32>,
   envLambertSampler: sampler,
@@ -221,7 +221,7 @@ fn computeEnvironmentLighting(material: MaterialInfo,
   envGGXSampler: sampler,
   ggxLUT: texture_2d<f32>,
   ggxLUTSampler: sampler) -> vec3<f32> {
-  var material = material;
+  var material = material_;
   let viewDir = params.viewDirection;
   let reflDir = reflect(-viewDir, params.surfaceNormal);
   let nDotV = dot(viewDir, params.surfaceNormal);
@@ -230,15 +230,15 @@ fn computeEnvironmentLighting(material: MaterialInfo,
   let reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
 
   let numMipLevels = f32(textureNumLevels(envGGX));
-  let ggxLUT = textureSample(ggxLUT, ggxLUTSampler, vec2<f32>(nDotV, roughness)).xy;
+  let ggxLUTSample = textureSample(ggxLUT, ggxLUTSampler, vec2<f32>(nDotV, roughness)).xy;
   let ggxSample = sampleEnvironmentLod(envGGX, envGGXSampler, reflDir, numMipLevels * material.perceptualRoughness);
   let lambertianSample = sampleEnvironmentLod(envLambert, envLambertSampler, params.surfaceNormal, 0.0);
 
   let specularColor90 = max(vec3<f32>(1.0 - roughness), material.specularColor0);
   let fresnelColor = fresnelSchlick(material.specularColor0, specularColor90, nDotV);
 
-  let specularLight = getIBLRadianceGGX(ggxSample, ggxLUT, fresnelColor, material.specularWeight);
-  let diffuseLight = getIBLRadianceLambertian(lambertianSample, ggxLUT, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
+  let specularLight = getIBLRadianceGGX(ggxSample, ggxLUTSample, fresnelColor, material.specularWeight);
+  let diffuseLight = getIBLRadianceLambertian(lambertianSample, ggxLUTSample, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
 
   return specularLight + diffuseLight;
 }
