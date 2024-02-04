@@ -741,6 +741,32 @@ struct SetMousePos : public MousePosBase {
   }
 };
 
+struct SetMouseRelativePos : public MousePosBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    // Delta movement
+    int dx = input.payload.int2Value[0];
+    int dy = input.payload.int2Value[1];
+
+    // Using SendInput for relative movement
+    INPUT inputMove = {0};
+    inputMove.type = INPUT_MOUSE;
+    inputMove.mi.dx = dx;
+    inputMove.mi.dy = dy;
+    inputMove.mi.mouseData = 0;
+    inputMove.mi.dwFlags = MOUSEEVENTF_MOVE;
+    inputMove.mi.time = 0;
+    inputMove.mi.dwExtraInfo = 0;
+
+    if (!SendInput(1, &inputMove, sizeof(INPUT))) {
+      throw ActivationError("SendInput failed for relative mouse movement.");
+    }
+
+    return input;
+  }
+};
+
 struct Tap : public MousePosBase {
   typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD dwMode);
   typedef BOOL (*InjectTouchInputProc)(UINT32 count, const POINTER_TOUCH_INFO *contacts);
@@ -1367,4 +1393,5 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD("Desktop.LastInput", LastInput);
   REGISTER_SHARD("Desktop.ScrollHorizontal", ScrollHorizontal);
   REGISTER_SHARD("Desktop.ScrollVertical", ScrollVertical);
+  REGISTER_SHARD("Desktop.MoveMouse", SetMouseRelativePos);
 }
