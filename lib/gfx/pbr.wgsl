@@ -51,8 +51,8 @@ struct FilterParameters {
 // CC BY 3.0 (Holger Dammertz)
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 // with adapted interface
-fn radicalInverse_VdC(bits:u32) -> f32 {
-    var bits = bits;
+fn radicalInverse_VdC(bits_: u32) -> f32 {
+    var bits = bits_;
     bits = (bits << 16u) | (bits >> 16u);
     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
@@ -213,8 +213,8 @@ fn setSpecularGlossinessInfo(info_3: ptr<function, MaterialInfo>, u_SpecularFact
   return;
 }
 
-fn computeEnvironmentLighting(material: MaterialInfo, 
-  params: LightingGeneralParams,  
+fn computeEnvironmentLighting(material: MaterialInfo,
+  params: LightingGeneralParams,
   envLambert: texture_cube<f32>,
   envLambertSampler: sampler,
   envGGX: texture_cube<f32>,
@@ -294,7 +294,7 @@ fn computeLUT(in: vec2<f32>, numSamples:i32) -> vec2<f32> {
     let nDotL = localLightDir.z;
     let nDotH = sampleNormal.z;
     let vDotH = dot(localViewDir, sampleNormal);
-    
+
     if(nDotL > 0.0) {
       let pdf = visibilitySmithGGXCorrelated(nDotL, nDotV, roughness) * vDotH * nDotL / nDotH;
       let fc = pow(1.0 - vDotH, 5.0);
@@ -304,7 +304,7 @@ fn computeLUT(in: vec2<f32>, numSamples:i32) -> vec2<f32> {
 
     sampleIndex = sampleIndex + 1;
   }
-  
+
   return (result.xy * 4.0) / f32(numSamples);
 }
 
