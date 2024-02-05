@@ -76,14 +76,6 @@ jobs:
     secrets: inherit
 
   #
-  # Build shards and publish docker image
-  #
-  Linux-docker:
-    needs: Setup
-    uses: ./.github/workflows/build-linux-docker.yml
-    secrets: inherit
-
-  #
   # Build shards and run valgrind on Linux
   #
   Linux-valgrind:

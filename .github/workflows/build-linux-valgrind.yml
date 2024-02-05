@@ -18,41 +18,38 @@ jobs:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
-      # TODO: use docker actions to build and run
-      #       see:
-      #         - https://github.com/docker/build-push-action
-      #         - https://github.com/addnab/docker-run-action
-      - name: Build docker
+      - name: Set up dependencies
         run: |
-          docker build --build-arg RUSTUP_TOOLCHAIN=`cat rust.version` -f docker/linux/Dockerfile -t shards-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
-      - name: Clear docker build cache
-        run: |
-          docker builder prune -a --force
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev valgrind
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          ./bootstrap
       - name: Build and Test
         run: |
-          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` shards-test bash -c "./bootstrap &&\
-          mkdir build &&\
-          cd build &&\
-          cmake -G Ninja -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. &&\
-          ninja shards &&\
-          ninja test-runtime &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/hello.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/bug1.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/general.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/strings.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-compose.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/variables.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/flows.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/linalg.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/return.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/kdtree.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/channels.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/genetic.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/wasm.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/subwires.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/const-vars.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards ../shards/tests/wires-embed-issue.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/network.shs &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/capture-logs.shs &&\
-          valgrind --exit-on-first-error=no --error-exitcode=1 --fair-sched=yes --leak-check=full ./test-runtime &&\
+          mkdir build
+          cd build
+          cmake -G Ninja -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+          ninja shards
+          ninja test-runtime
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/hello.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/bug1.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/general.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/strings.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-compose.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/variables.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/flows.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/linalg.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/return.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/kdtree.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/channels.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/genetic.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/wasm.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/subwires.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/const-vars.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards ../shards/tests/wires-embed-issue.edn
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/network.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/capture-logs.shs
+          valgrind --exit-on-first-error=no --error-exitcode=1 --fair-sched=yes --leak-check=full ./test-runtime
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/complex-deserialize.shs"
