@@ -37,7 +37,7 @@ jobs:
           buildargs: RUSTUP_TOOLCHAIN
       - name: Clear docker build cache
         run: |
-          docker builder prune -a
+          docker builder prune -a --force
       - name: Build and Test
         run: |
           docker run --name shards -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja shards && ./shards new ../shards/tests/general.shs && ./shards new ../shards/tests/variables.shs && ./shards new ../shards/tests/linalg.shs && ./shards new ../shards/tests/channels.shs"

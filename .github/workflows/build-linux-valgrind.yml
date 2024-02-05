@@ -27,7 +27,7 @@ jobs:
           docker build --build-arg RUSTUP_TOOLCHAIN=`cat rust.version` -f docker/linux/Dockerfile -t shards-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
       - name: Clear docker build cache
         run: |
-          docker builder prune -a
+          docker builder prune -a --force
       - name: Build and Test
         run: |
           docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` shards-test bash -c "./bootstrap &&\
