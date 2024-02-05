@@ -381,6 +381,7 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
+    return false;
   }
 }
 
@@ -484,6 +485,11 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
+    return false;
+  case SHType::None:
+    return true;
+  case SHType::Any:
+    return true;
   }
 }
 
