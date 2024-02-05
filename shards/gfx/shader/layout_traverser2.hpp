@@ -2,6 +2,7 @@
 #define C9B5D141_DE0C_4173_97E1_0E5367526CFA
 
 #include "struct_layout.hpp"
+#include "fmt.hpp"
 #include <tracy/Wrapper.hpp>
 #include <boost/tti/has_member_function.hpp>
 
