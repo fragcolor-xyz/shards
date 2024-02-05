@@ -64,14 +64,14 @@ jobs:
     with:
       build-type: Release
       run-tests: true
-  Linux-GPU:
+  MacOS-GPU:
     needs: Setup
-    uses: ./.github/workflows/test-linux-gpu.yml
+    uses: ./.github/workflows/test-macos-gpu.yml
     secrets: inherit
     with:
       build-type: Debug
   Codecov:
-    needs: [Linux-Debug, Linux-GPU]
+    needs: [Linux-Debug, MacOS-GPU]
     uses: ./.github/workflows/codecov.yml
     secrets: inherit
 
