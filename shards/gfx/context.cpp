@@ -232,7 +232,7 @@ struct ContextMainOutput {
 #if SH_WINDOWS || SH_OSX || SH_LINUX
     surfaceConf.presentMode = WGPUPresentMode_Immediate;
 #else
-    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+    surfaceConf.presentMode = WGPUPresentMode_Fifo;
 #endif
     surfaceConf.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
     wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
