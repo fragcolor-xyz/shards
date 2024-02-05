@@ -1,4 +1,4 @@
-if(UNIX AND NOT (APPLE OR ANDROID OR EMSCRIPTEN))
+if(UNIX AND NOT(APPLE OR ANDROID OR EMSCRIPTEN))
   set(DESKTOP_LINUX TRUE)
 endif()
 
@@ -12,7 +12,7 @@ if(IOS)
   set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
 endif()
 
-if(NOT EMSCRIPTEN AND (WIN32 OR MACOSX OR DESKTOP_LINUX))
+if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
   set(DESKTOP TRUE)
 endif()
 
@@ -72,7 +72,7 @@ if(EMSCRIPTEN)
   add_compile_definitions(NO_FORCE_INLINE)
   add_link_options(--bind)
 
-  ## if we wanted thread support...
+  # # if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)
     add_link_options("SHELL:-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=6")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
@@ -96,6 +96,7 @@ if(WIN32)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
   add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
   add_compile_definitions(NOMINMAX=1)
+
   if(X86 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     # align stack to 16 bytes
     add_compile_options(-mstackrealign)
@@ -121,6 +122,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     add_link_options(-static)
     list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-static -DCMAKE_C_FLAGS=-static)
   endif()
+
   if(GNU_STATIC_BUILD)
     add_link_options(-static -static-libgcc -static-libstdc++)
   endif()
@@ -129,18 +131,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
   if(NOT SKIP_HEAVY_INLINE)
     # this works with emscripten too but makes the final binary much bigger
     # for now let's keep it disabled
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "[A-Za-z]*Clang")
       set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-mllvm>
         $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=100000>
       )
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-finline-limit=100000>
       )
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-      # using Intel C++
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    # using Intel C++
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
       # using Visual Studio C++
     endif()
   endif()
@@ -165,10 +167,12 @@ if(NOT MSVC)
   )
 endif()
 
-if(WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
+if(WIN32 AND(CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND(CMAKE_BUILD_TYPE STREQUAL "Debug"))
   set(USE_LLD_DEFAULT ON)
 endif()
+
 option(USE_LLD "Override linker tools to use lld & llvm-ar/ranlib" ${USE_LLD_DEFAULT})
+
 if(USE_LLD)
   add_link_options(-fuse-ld=lld)
   SET(CMAKE_AR llvm-ar)
@@ -177,13 +181,14 @@ endif()
 
 if(DESKTOP_LINUX)
   add_link_options(-export-dynamic)
+
   if(USE_VALGRIND)
     add_compile_definitions(BOOST_USE_VALGRIND SHARDS_VALGRIND)
   endif()
 endif()
 
 if(USE_GCC_ANALYZER)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(-fanalyzer)
   endif()
 endif()
@@ -210,15 +215,17 @@ if(USE_TSAN)
 endif()
 
 if(CODE_COVERAGE)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"
+    OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "[A-Za-z]*Clang"
+  )
     add_compile_options(--coverage)
     add_link_options(--coverage)
+  else()
+    message(FATAL_ERROR "Code coverage is not supported for the '${CMAKE_CXX_COMPILER_ID}' compiler")
   endif()
 endif()
 
 # Move this?
-
-
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 
 if(ANDROID OR APPLE)
@@ -229,6 +236,7 @@ if(ANDROID OR APPLE)
   else()
     set(CMAKE_THREAD_LIBS_INIT "-lpthread")
   endif()
+
   set(CMAKE_HAVE_THREADS_LIBRARY 1)
   set(CMAKE_USE_WIN32_THREADS_INIT 0)
   set(CMAKE_USE_PTHREADS_INIT 1)
@@ -243,7 +251,6 @@ if(APPLE)
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-field-initializers>
   )
 endif()
-
 
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
   set(LIB_PREFIX "")
