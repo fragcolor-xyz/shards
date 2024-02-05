@@ -97,7 +97,8 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) 
       drawable->features.push_back(wireframeFeature);
     });
     drawable->transform = meshDrawable->transform;
-    drawable->parameters.set("baseColor", float4(1.0f, 0.0f, 0.0f, 1.0f));
+    static FastString fs_baseColor = "baseColor";
+    drawable->parameters.set(fs_baseColor, float4(1.0f, 0.0f, 0.0f, 1.0f));
     queue.add(drawable);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     allocator->reset();
