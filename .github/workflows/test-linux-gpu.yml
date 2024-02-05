@@ -33,7 +33,7 @@ jobs:
   #
   Linux:
     name: Test (${{ github.event.inputs.build-type || inputs.build-type }})
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     steps:
       - name: Setup
         id: setup

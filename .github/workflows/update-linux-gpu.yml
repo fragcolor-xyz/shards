@@ -16,7 +16,7 @@ on:
 
 jobs:
   Update-host:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     steps:
       - name: Setup
         id: setup
