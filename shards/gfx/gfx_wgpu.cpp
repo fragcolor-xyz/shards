@@ -13,6 +13,7 @@ WGPULimits wgpuGetUndefinedLimits() {
       .maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED,
       .maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED,
       .maxBindGroups = WGPU_LIMIT_U32_UNDEFINED,
+      .maxBindGroupsPlusVertexBuffers = WGPU_LIMIT_U32_UNDEFINED,
 #ifdef WEBGPU_NATIVE
       .maxBindingsPerBindGroup = WGPU_LIMIT_U32_UNDEFINED,
 #endif

@@ -5,6 +5,7 @@
 #include "gfx_wgpu.hpp"
 #include "../core/platform.hpp"
 #include "types.hpp"
+#include "fwd.hpp"
 #include "user_data.hpp"
 #include <cassert>
 #include <list>
@@ -51,6 +52,9 @@ public:
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
+#if WEBGPU_NATIVE
+  WGPUInstanceBackendFlags instanceBackends{};
+#endif
 
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
@@ -87,9 +91,7 @@ public:
 
   Window &getWindow();
   void resizeMainOutputConditional(const int2 &newSize);
-  int2 getMainOutputSize() const;
-  WGPUTextureView getMainOutputTextureView();
-  WGPUTextureFormat getMainOutputFormat() const;
+  TexturePtr getMainOutputTexture();
   bool isHeadless() const;
 
   // Returns when a frame can be rendered

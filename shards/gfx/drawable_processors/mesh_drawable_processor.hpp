@@ -229,9 +229,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
   }
 
-  void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
-                            const ViewData &viewData, const ParameterStorage *baseDrawData, const ParameterStorage *baseViewData,
-                            size_t frameCounter, bool needProjectedDepth = false) {
+  void generateDrawableData(PrepareData *prepareData, DrawableData &data, Context &context, const CachedPipeline &cachedPipeline,
+                            const IDrawable *drawable, const ViewData &viewData, const ParameterStorage *baseDrawData,
+                            const ParameterStorage *baseViewData, size_t frameCounter, bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
@@ -261,11 +261,22 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.textures.resize(textureBindings.size());
 
     auto setTextureParameter = [&](FastString name, const TexturePtr &texture) {
-      gfx::detail::setTextureParameter(textureBindings, data.textures, context, samplerCache, frameCounter, name, texture);
+      if (!texture)
+        return;
+      auto texData = texture->createContextDataConditional(context);
+      if (texData && texData->texture) {
+        gfx::detail::setTextureParameter(textureBindings, data.textures, context, samplerCache, frameCounter, name, texture,
+                                         *texData.get());
+        prepareData->referencedContextData.push_back(texData);
+      }
     };
 
     auto applyParameters = [&](const auto &srcParams) {
-      gfx::detail::applyParameters(textureBindings, data.textures, context, samplerCache, frameCounter, parameters, srcParams);
+      for (auto &param : srcParams.basic)
+        parameters.setParam(param.first, param.second);
+
+      for (auto &param : srcParams.textures)
+        setTextureParameter(param.first, param.second.texture);
     };
 
     // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
@@ -343,20 +354,20 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       ZoneScopedN("Prepare resources");
       // Init placeholder texture
       for (size_t i = 0; i < std::size(placeholderTextures); i++) {
-        placeholderTextures[i]->createContextDataConditional(context.context);
+        placeholderTextures[i]->createContextDataConditionalRefUNSAFE(context.context);
       }
 
       // Prepare mesh & texture buffers
       for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
         if (baseParam.second.texture) {
-          baseParam.second.texture->createContextDataConditional(context.context);
+          baseParam.second.texture->createContextDataConditionalRefUNSAFE(context.context);
         }
       }
 
       for (auto &drawable : context.drawables) {
         const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
         auto &cached = drawableCache[meshDrawable.getId()];
-        cached.mesh->createContextDataConditional(context.context);
+        cached.mesh->createContextDataConditionalRefUNSAFE(context.context);
       }
     }
 
@@ -400,7 +411,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         // TODO: Temporary to store per-view textures in per-object bind group
         ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
 
-        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
+        generateDrawableData(prepareData, drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
                              baseDrawData1, context.storage.frameCounter, needProjectedDepth);
       }
     }

@@ -88,7 +88,7 @@ namespace Http {
 struct Base {
   static inline Types FullStrOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
   static inline Types FullBytesOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
-  static inline std::array<SHString, 3> FullOutputKeys{"status", "headers", "body"};
+  static inline std::array<SHVar, 3> FullOutputKeys{Var("status"), Var("headers"), Var("body")};
   static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys);
   static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
   static inline Types AllOutputTypes{{FullBytesOutputType, CoreInfo::BytesType, FullStrOutputType, CoreInfo::StringType}};
@@ -125,13 +125,7 @@ struct Base {
     case 4:
       fullResponse = value.payload.boolValue;
       if (fullResponse) {
-        // also init lazily the map
-        SHMap m;
-        SHVar empty{};
-        empty.valueType = SHType::Table;
-        empty.payload.tableValue.opaque = &m;
-        empty.payload.tableValue.api = &GetGlobals().TableInterface;
-        outMap["headers"] = empty;
+        outMap["headers"] = TableVar{};
       }
       break;
     default:
@@ -188,8 +182,7 @@ struct Base {
       const auto len = emscripten_fetch_get_response_headers_length(fetch);
       self->hbuffer.resize(len + 1); // well I think the + 1 is not needed
       emscripten_fetch_get_response_headers(fetch, self->hbuffer.data(), len + 1);
-      auto &mvar = self->outMap["headers"];
-      auto m = reinterpret_cast<SHMap *>(mvar.payload.tableValue.opaque);
+      auto &mvar = self->outMap.get<TableVar>("headers");
       std::istringstream resp(self->hbuffer);
       std::string header;
       std::string::size_type index;
@@ -199,7 +192,7 @@ struct Base {
           auto key = boost::algorithm::trim_copy(header.substr(0, index));
           boost::algorithm::to_lower(key);
           auto val = boost::algorithm::trim_copy(header.substr(index + 1));
-          m->emplace(key, Var(val));
+          mvar[key] = Var(val);
         }
       }
       self->status = fetch->status;
@@ -225,7 +218,7 @@ struct Base {
   std::string hbuffer;
   std::string vars;
   std::vector<const char *> headersCArray;
-  SHMap outMap;
+  TableVar outMap;
   ParamVar url{Var("")};
   ParamVar headers{};
 };
@@ -249,10 +242,9 @@ template <const string_view &METHOD> struct GetLike : public Base {
     if (input.valueType == SHType::Table) {
       vars.append("?");
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
-        auto sv_value = SHSTRVIEW(value);
-        vars.append(url_encode(key));
+        vars.append(url_encode(SHSTRVIEW(key)));
         vars.append("=");
-        vars.append(url_encode(sv_value));
+        vars.append(url_encode(SHSTRVIEW(value)));
         vars.append("&");
       });
       vars.resize(vars.size() - 1);
@@ -263,9 +255,8 @@ template <const string_view &METHOD> struct GetLike : public Base {
     if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
-        auto sv_value = SHSTRVIEW(value);
-        headersCArray.emplace_back(key);
-        headersCArray.emplace_back(sv_value.data());
+        headersCArray.emplace_back(SHSTRVIEW(key).data());
+        headersCArray.emplace_back(SHSTRVIEW(value).data());
       });
     }
     headersCArray.emplace_back(nullptr);
@@ -281,17 +272,13 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     if (state == 1) {
       if (unlikely(fullResponse)) {
-        outMap.emplace("status", Var(status));
+        outMap["status"] = Var(status);
         if (asBytes) {
-          outMap.emplace("body", Var((uint8_t *)buffer.data(), buffer.size()));
+          outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
         } else {
-          outMap.emplace("body", Var(buffer));
+          outMap["body"] = Var(buffer);
         }
-        SHVar res{};
-        res.valueType = SHType::Table;
-        res.payload.tableValue.opaque = &outMap;
-        res.payload.tableValue.api = &GetGlobals().TableInterface;
-        return res;
+        return outMap;
       } else {
         if (asBytes) {
           return Var((uint8_t *)buffer.data(), buffer.size());
@@ -331,12 +318,12 @@ template <const string_view &METHOD> struct PostLike : public Base {
     if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
-        std::string data(key);
+        std::string data(SHSTRVIEW(key));
         std::transform(data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
         if (data == "content-type") {
           hasContentType = true;
         }
-        headersCArray.emplace_back(key);
+        headersCArray.emplace_back(SHSTRVIEW(key).data());
         headersCArray.emplace_back(value.payload.stringValue);
       });
     }
@@ -363,8 +350,9 @@ template <const string_view &METHOD> struct PostLike : public Base {
       }
       vars.clear();
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+        auto sv_key = SHSTRVIEW(key);
         auto sv_value = SHSTRVIEW(value);
-        vars.append(url_encode(key));
+        vars.append(url_encode(sv_key));
         vars.append("=");
         vars.append(url_encode(sv_value));
         vars.append("&");
@@ -387,17 +375,13 @@ template <const string_view &METHOD> struct PostLike : public Base {
 
     if (state == 1) {
       if (unlikely(fullResponse)) {
-        outMap.emplace("status", Var(status));
+        outMap["status"] = Var(status);
         if (asBytes) {
-          outMap.emplace("body", Var((uint8_t *)buffer.data(), buffer.size()));
+          outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
         } else {
-          outMap.emplace("body", Var(buffer));
+          outMap["body"] = Var(buffer);
         }
-        SHVar res{};
-        res.valueType = SHType::Table;
-        res.payload.tableValue.opaque = &outMap;
-        res.payload.tableValue.api = &GetGlobals().TableInterface;
-        return res;
+        return outMap;
       } else {
         if (asBytes) {
           return Var((uint8_t *)buffer.data(), buffer.size());
@@ -663,15 +647,11 @@ struct Read {
 
     _output[Var("body")] = Var(request.body());
 
-    auto res = SHVar();
-    res.valueType = SHType::Table;
-    res.payload.tableValue.opaque = &_output;
-    res.payload.tableValue.api = &GetGlobals().TableInterface;
-    return res;
+    return _output;
   }
 
   SHVar *_peerVar{nullptr};
-  SHMap _output;
+  TableVar _output;
   beast::flat_buffer buffer{8192};
   http::request<http::string_body> request;
 };

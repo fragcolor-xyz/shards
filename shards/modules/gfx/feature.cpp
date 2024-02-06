@@ -198,8 +198,6 @@ private:
 
   FeaturePtr *_featurePtr{};
 
-  std::list<FeaturePtr> _featurePtrsTemp;
-
   gfx::shader::VariableMap _composedWith;
 
 public:
@@ -697,7 +695,7 @@ public:
     });
   }
 
-  template <bool PerDrawable, typename T, typename T1> void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
+  template <bool PerDrawable, typename T, typename T1> static void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
     auto &mesh = brancher.mesh;
     auto &wires = brancher.wires;
 
@@ -728,15 +726,17 @@ public:
       }
     }
 
-    _featurePtrsTemp.clear();
+    boost::container::small_vector<FeaturePtr, 32> featurePtrsTmp;
     SeqVar &features = input.get<SeqVar>(Var("Features"));
     for (auto &weakFeature : ctx.features) {
       FeaturePtr feature = weakFeature.lock();
       if (feature) {
-        _featurePtrsTemp.push_back(feature);
-        features.push_back(Var::Object(&_featurePtrsTemp.back(), ShardsTypes::Feature));
+        featurePtrsTmp.push_back(feature);
       }
     }
+
+    for (auto &tmp : featurePtrsTmp)
+      features.push_back(Var::Object(&tmp, ShardsTypes::Feature));
 
     brancher.updateInputs(input);
     try {

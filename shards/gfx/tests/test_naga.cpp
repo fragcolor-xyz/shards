@@ -54,7 +54,7 @@ TEST_CASE("Naga Basic", "[naga]") {
   };
   auto structType = nagaStoreType(ctx.ctx, t);
   auto globalOut =
-      nagaStoreGlobal(ctx.ctx, GlobalVariable{.name = "test", .space = AddressSpace::Tag::Private, .ty = structType});
+      nagaStoreGlobal(ctx.ctx, GlobalVariable{.name = "test", .space = {.tag = AddressSpace::Tag::Private}, .ty = structType});
 
   ctx.addEntryPoint(
       [&](FunctionWriter &fn) {

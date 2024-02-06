@@ -58,13 +58,13 @@ struct InputTextureFormat {
 /// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
   TextureFormat format;
+  // Only set for managed textures
   WGPUTexture texture{};
+  // Only set for externally managed textures, not freed
+  WGPUTexture externalTexture{};
   WGPUExtent3D size{};
   UniqueId id;
   size_t version;
-
-  // Only set for externally managed texture views
-  WGPUTextureView externalView{};
 
   ~TextureContextData() { releaseContextDataConditional(); }
 
@@ -79,7 +79,7 @@ struct TextureDesc {
 
   // Can wrap an already existing texture if this is passed
   // it will not be released when the texture object is destroyed
-  std::optional<WGPUTextureView> externalTexture;
+  std::optional<WGPUTexture> externalTexture;
 
   static TextureDesc getDefault();
 

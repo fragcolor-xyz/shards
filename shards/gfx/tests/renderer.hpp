@@ -18,7 +18,6 @@ struct TestRenderer {
 
   WGPUTexture rtTexture{};
   WGPUTextureFormat rtFormat{};
-  WGPUTextureView rtView{};
   int2 rtSize{};
 
   bool debugging{};
@@ -31,7 +30,7 @@ struct TestRenderer {
 
   int2 getOutputSize() const {
     if (!context->isHeadless())
-      return context->getMainOutputSize();
+      return context->getMainOutputTexture()->getResolution();
     return rtSize;
   }
 

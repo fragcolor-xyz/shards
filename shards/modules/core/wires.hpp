@@ -260,6 +260,9 @@ struct BaseRunner : public WireBase {
       // Notice we don't share our flow!
       // let the wire create one by passing null
       shards::prepare(wire.get(), nullptr);
+      if (wire->state == SHWire::Failed) {
+        throw ActivationError(fmt::format("Step: wire {} warmup failed", wire->name));
+      }
     }
 
     shassert(wire->context && "wire context should be valid at this point");

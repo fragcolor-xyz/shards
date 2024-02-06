@@ -103,7 +103,8 @@ struct TextureViewCache {
   }
 
   WGPUTextureView getTextureView(size_t frameCounter, const TextureContextData &textureData, TextureViewDesc desc) {
-    return getTextureView(frameCounter, TextureViewKey{textureData.id, textureData.version, desc}, textureData.texture);
+    WGPUTexture texture = textureData.externalTexture ? textureData.externalTexture : textureData.texture;
+    return getTextureView(frameCounter, TextureViewKey{textureData.id, textureData.version, desc}, texture);
   }
 
   WGPUTextureView getDefaultTextureView(size_t frameCounter, const TextureContextData &textureData) {

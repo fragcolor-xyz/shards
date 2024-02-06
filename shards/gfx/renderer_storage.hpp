@@ -54,10 +54,7 @@ struct RendererStorage {
   }
 
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
-    if (textureData.externalView)
-      return textureData.externalView;
-
-    shassert(textureData.texture && "Invalid texture");
+    shassert((textureData.texture || textureData.externalTexture) && "Invalid texture");
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
         .dimension = WGPUTextureViewDimension_2D,

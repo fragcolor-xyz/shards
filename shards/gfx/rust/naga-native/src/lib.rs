@@ -170,7 +170,7 @@ pub mod native {
   #[derive(Clone, Debug, PartialEq, PartialOrd)]
   pub enum ArraySize {
     /// The array size is constant.
-    Constant(Handle<Constant>),
+    Constant(std::num::NonZeroU32),
     /// The array size can change at runtime.
     Dynamic,
   }
@@ -339,26 +339,33 @@ pub mod native {
     pub inner: TypeInner,
   }
 
+  /// Characteristics of a scalar type.
+  #[repr(C)]
+  #[derive(Clone, Debug, PartialEq, PartialOrd)]
+  pub struct Scalar {
+    /// How the value's bits are to be interpreted.
+    pub kind: ScalarKind,
+
+    /// This size of the value in bytes.
+    pub width: Bytes,
+  }
+
   /// Enum with additional information, depending on the kind of type.
   #[repr(C)]
   #[derive(Clone, Debug, PartialEq, PartialOrd)]
   pub enum TypeInner {
     /// Number of integral or floating-point kind.
-    Scalar { kind: ScalarKind, width: Bytes },
+    Scalar(Scalar),
     /// Vector of numbers.
-    Vector {
-      size: VectorSize,
-      kind: ScalarKind,
-      width: Bytes,
-    },
-    /// Matrix of floats.
+    Vector { size: VectorSize, scalar: Scalar },
+    /// Matrix of numbers.
     Matrix {
       columns: VectorSize,
       rows: VectorSize,
-      width: Bytes,
+      scalar: Scalar,
     },
     /// Atomic scalar.
-    Atomic { kind: ScalarKind, width: Bytes },
+    Atomic(Scalar),
     /// Pointer to another type.
     ///
     /// Pointers to scalars and vectors should be treated as equivalent to
@@ -405,8 +412,7 @@ pub mod native {
     ValuePointer {
       size: VectorSize,
       has_size: bool,
-      kind: ScalarKind,
-      width: Bytes,
+      scalar: Scalar,
       space: AddressSpace,
     },
 
@@ -524,34 +530,8 @@ pub mod native {
   #[derive(Clone, Debug, PartialEq, PartialOrd)]
   pub struct Constant {
     pub name: *const c_char,
-    pub specialization: u32,
-    has_specialization: bool,
-    pub inner: ConstantInner,
-  }
-
-  /// A literal scalar value, used in constants.
-  #[repr(C)]
-  #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-  pub enum ScalarValue {
-    Sint(i64),
-    Uint(u64),
-    Float(f64),
-    Bool(bool),
-  }
-
-  /// Additional information, dependent on the kind of constant.
-  #[repr(C)]
-  #[derive(Clone, Debug, PartialEq, PartialOrd)]
-  pub enum ConstantInner {
-    Scalar {
-      width: Bytes,
-      value: ScalarValue,
-    },
-    Composite {
-      ty: Handle<Type>,
-      components: *const Handle<Constant>,
-      components_len: u32,
-    },
+    pub ty: Handle<Type>,
+    pub init: Handle<Expression>,
   }
 
   /// Describes how an input/output variable is to be bound.
@@ -579,6 +559,8 @@ pub mod native {
     /// [`Fragment`]: crate::ShaderStage::Fragment
     Location {
       location: u32,
+      /// Indicates the 2nd input to the blender when dual-source blending.
+      second_blend_source: bool,
       interpolation: Interpolation,
       has_interpolation: bool,
       sampling: Sampling,
@@ -632,7 +614,8 @@ pub mod native {
   #[derive(Clone, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
   pub enum UnaryOperator {
     Negate,
-    Not,
+    LogicalNot,
+    BitwiseNot,
   }
 
   /// Operation that can be applied on two values.
@@ -746,8 +729,6 @@ pub mod native {
     Any,
     IsNan,
     IsInf,
-    IsFinite,
-    IsNormal,
   }
 
   /// Built-in shader function for math.
@@ -893,12 +874,40 @@ pub mod native {
       }
   }
 
+  #[repr(C)]
+  #[derive(Clone, Debug, PartialEq, PartialOrd)]
+  pub enum Literal {
+    /// May not be NaN or infinity.
+    F64(f64),
+    /// May not be NaN or infinity.
+    F32(f32),
+    U32(u32),
+    I32(i32),
+    I64(i64),
+    Bool(bool),
+    AbstractInt(i64),
+    AbstractFloat(f64),
+  }
+
   /// An expression that can be evaluated to obtain a value.
   ///
   /// This is a Single Static Assignment (SSA) scheme similar to SPIR-V.
   #[repr(C)]
   #[derive(Clone, Debug, PartialEq, PartialOrd)]
   pub enum Expression {
+    /// Literal.
+    Literal(Literal),
+    /// Constant value.
+    Constant(Handle<Constant>),
+    /// Zero value of a type.
+    ZeroValue(Handle<Type>),
+    /// Composite expression.
+    Compose {
+      ty: Handle<Type>,
+      components: *const Handle<Expression>,
+      components_len: u32,
+    },
+
     /// Array access with a computed index.
     ///
     /// ## Typing rules
@@ -957,8 +966,6 @@ pub mod native {
       base: Handle<Expression>,
       index: u32,
     },
-    /// Constant value.
-    Constant(Handle<Constant>),
     /// Splat scalar into a vector.
     Splat {
       size: VectorSize,
@@ -969,12 +976,6 @@ pub mod native {
       size: VectorSize,
       vector: Handle<Expression>,
       pattern: [SwizzleComponent; 4],
-    },
-    /// Composite expression.
-    Compose {
-      ty: Handle<Type>,
-      components: *const Handle<Expression>,
-      components_len: u32,
     },
 
     /// Reference a function parameter, by its index.
@@ -1419,6 +1420,21 @@ pub mod native {
       /// [`AtomicResult`]: crate::Expression::AtomicResult
       result: Handle<Expression>,
     },
+    /// Load uniformly from a uniform pointer in the workgroup address space.
+    ///
+    /// Corresponds to the [`workgroupUniformLoad`](https://www.w3.org/TR/WGSL/#workgroupUniformLoad-builtin)
+    /// built-in function of wgsl, and has the same barrier semantics
+    WorkGroupUniformLoad {
+      /// This must be of type [`Pointer`] in the [`WorkGroup`] address space
+      ///
+      /// [`Pointer`]: TypeInner::Pointer
+      /// [`WorkGroup`]: AddressSpace::WorkGroup
+      pointer: Handle<Expression>,
+      /// The [`WorkGroupUniformLoadResult`] expression representing this load's result.
+      ///
+      /// [`WorkGroupUniformLoadResult`]: Expression::WorkGroupUniformLoadResult
+      result: Handle<Expression>,
+    },
     /// Calls a function.
     ///
     /// If the `result` is `Some`, the corresponding expression has to be
@@ -1673,7 +1689,7 @@ pub mod native {
 
     fn try_from(asize: ArraySize) -> Result<naga::ArraySize, Self::Error> {
       let result = match asize {
-        ArraySize::Constant(handle) => naga::ArraySize::Constant(handle.into()),
+        ArraySize::Constant(handle) => naga::ArraySize::Constant(handle),
         ArraySize::Dynamic => naga::ArraySize::Dynamic,
       };
       Ok(result)
@@ -1840,32 +1856,41 @@ pub mod native {
     }
   }
 
+  impl TryFrom<Scalar> for naga::Scalar {
+    type Error = ConversionError;
+
+    fn try_from(s: Scalar) -> Result<naga::Scalar, Self::Error> {
+      let kind = s.kind.try_into()?;
+      Ok(naga::Scalar {
+        kind,
+        width: s.width,
+      })
+    }
+  }
+
   impl TryFrom<TypeInner> for naga::TypeInner {
     type Error = ConversionError;
 
     fn try_from(ti: TypeInner) -> Result<naga::TypeInner, Self::Error> {
       let result = match ti {
-        TypeInner::Scalar { kind, width } => naga::TypeInner::Scalar {
-          kind: kind.try_into()?,
-          width,
+        TypeInner::Scalar(scalar) => naga::TypeInner::Scalar {
+          0: scalar.try_into()?,
         },
-        TypeInner::Vector { size, kind, width } => naga::TypeInner::Vector {
+        TypeInner::Vector { size, scalar } => naga::TypeInner::Vector {
           size: size.try_into()?,
-          kind: kind.try_into()?,
-          width,
+          scalar: scalar.try_into()?,
         },
         TypeInner::Matrix {
           columns,
           rows,
-          width,
+          scalar,
         } => naga::TypeInner::Matrix {
           columns: columns.try_into()?,
           rows: rows.try_into()?,
-          width,
+          scalar: scalar.try_into()?,
         },
-        TypeInner::Atomic { kind, width } => naga::TypeInner::Atomic {
-          kind: kind.try_into()?,
-          width,
+        TypeInner::Atomic(scalar) => naga::TypeInner::Atomic {
+          0: scalar.try_into()?,
         },
         TypeInner::Pointer { base, space } => naga::TypeInner::Pointer {
           base: base.into(),
@@ -1874,8 +1899,7 @@ pub mod native {
         TypeInner::ValuePointer {
           size,
           has_size,
-          kind,
-          width,
+          scalar,
           space,
         } => naga::TypeInner::ValuePointer {
           size: if has_size {
@@ -1883,8 +1907,7 @@ pub mod native {
           } else {
             None
           },
-          kind: kind.try_into()?,
-          width,
+          scalar: scalar.try_into()?,
           space: space.try_into()?,
         },
         TypeInner::Array { base, size, stride } => naga::TypeInner::Array {
@@ -1932,62 +1955,12 @@ pub mod native {
     type Error = ConversionError;
 
     fn try_from(c: Constant) -> Result<naga::Constant, Self::Error> {
-      let specialization = if c.has_specialization {
-        Some(c.specialization)
-      } else {
-        None
-      };
-      let inner = c.inner.try_into()?;
       Ok(naga::Constant {
         name: convert_string(c.name),
-        specialization,
-        inner,
+        init: c.init.into(),
+        ty: c.ty.into(),
+        r#override: naga::Override::None,
       })
-    }
-  }
-
-  impl TryFrom<ScalarValue> for naga::ScalarValue {
-    type Error = ConversionError;
-
-    fn try_from(sv: ScalarValue) -> Result<naga::ScalarValue, Self::Error> {
-      let result = match sv {
-        ScalarValue::Sint(i) => naga::ScalarValue::Sint(i),
-        ScalarValue::Uint(u) => naga::ScalarValue::Uint(u),
-        ScalarValue::Float(f) => naga::ScalarValue::Float(f),
-        ScalarValue::Bool(b) => naga::ScalarValue::Bool(b),
-      };
-      Ok(result)
-    }
-  }
-
-  impl TryFrom<ConstantInner> for naga::ConstantInner {
-    type Error = ConversionError;
-
-    fn try_from(ci: ConstantInner) -> Result<naga::ConstantInner, Self::Error> {
-      let result = match ci {
-        ConstantInner::Scalar { width, value } => naga::ConstantInner::Scalar {
-          width,
-          value: value.try_into()?,
-        },
-        ConstantInner::Composite {
-          ty,
-          components,
-          components_len,
-        } => {
-          let components =
-            unsafe { std::slice::from_raw_parts(components, components_len as usize) };
-          let mut converted_components: Vec<naga::Handle<naga::Constant>> =
-            Vec::with_capacity(components_len as usize);
-          for component in components {
-            converted_components.push(component.clone().into());
-          }
-          naga::ConstantInner::Composite {
-            ty: ty.into(),
-            components: converted_components,
-          }
-        }
-      };
-      Ok(result)
     }
   }
 
@@ -1999,12 +1972,14 @@ pub mod native {
         Binding::BuiltIn(bi) => naga::Binding::BuiltIn(bi.try_into()?),
         Binding::Location {
           location,
+          second_blend_source,
           interpolation,
           has_interpolation,
           sampling,
           has_sampling,
         } => naga::Binding::Location {
           location,
+          second_blend_source,
           interpolation: if has_interpolation {
             Some(interpolation.try_into()?)
           } else {
@@ -2081,7 +2056,8 @@ pub mod native {
     fn try_from(uo: UnaryOperator) -> Result<naga::UnaryOperator, Self::Error> {
       let result = match uo {
         UnaryOperator::Negate => naga::UnaryOperator::Negate,
-        UnaryOperator::Not => naga::UnaryOperator::Not,
+        UnaryOperator::LogicalNot => naga::UnaryOperator::LogicalNot,
+        UnaryOperator::BitwiseNot => naga::UnaryOperator::BitwiseNot,
       };
       Ok(result)
     }
@@ -2315,6 +2291,10 @@ pub mod native {
           value: value.into(),
           result: result.into(),
         },
+        Statement::WorkGroupUniformLoad { pointer, result } => naga::Statement::WorkGroupUniformLoad {
+          pointer: pointer.into(),
+          result: result.into(),
+        },
         Statement::Call {
           function,
           arguments,
@@ -2435,8 +2415,6 @@ pub mod native {
         RelationalFunction::Any => naga::RelationalFunction::Any,
         RelationalFunction::IsNan => naga::RelationalFunction::IsNan,
         RelationalFunction::IsInf => naga::RelationalFunction::IsInf,
-        RelationalFunction::IsFinite => naga::RelationalFunction::IsFinite,
-        RelationalFunction::IsNormal => naga::RelationalFunction::IsNormal,
       };
       Ok(result)
     }
@@ -2522,11 +2500,47 @@ pub mod native {
     }
   }
 
+  impl TryFrom<Literal> for naga::Literal {
+    type Error = ConversionError;
+
+    fn try_from(literal: Literal) -> Result<naga::Literal, Self::Error> {
+      let result = match literal {
+        Literal::F64(f) => naga::Literal::F64(f),
+        Literal::F32(f) => naga::Literal::F32(f),
+        Literal::U32(u) => naga::Literal::U32(u),
+        Literal::I32(i) => naga::Literal::I32(i),
+        Literal::I64(i) => naga::Literal::I64(i),
+        Literal::Bool(b) => naga::Literal::Bool(b),
+        Literal::AbstractInt(i) => naga::Literal::AbstractInt(i),
+        Literal::AbstractFloat(f) => naga::Literal::AbstractFloat(f),
+      };
+      Ok(result)
+    }
+  }
+
   impl TryFrom<Expression> for naga::Expression {
     type Error = ConversionError;
 
     fn try_from(expr: Expression) -> Result<naga::Expression, Self::Error> {
       let result = match expr {
+        Expression::Literal(literal) => naga::Expression::Literal(literal.try_into()?),
+        Expression::Constant(handle) => naga::Expression::Constant(handle.into()),
+        Expression::ZeroValue(ty) => naga::Expression::ZeroValue(ty.into()),
+        Expression::Compose {
+          ty,
+          components,
+          components_len,
+        } => {
+          let mut components1: Vec<naga::Handle<naga::Expression>> =
+            Vec::with_capacity(components_len as usize);
+          for handle in unsafe { std::slice::from_raw_parts(components, components_len as usize) } {
+            components1.push(handle.clone().into());
+          }
+          naga::Expression::Compose {
+            ty: ty.into(),
+            components: components1,
+          }
+        }
         Expression::Access { base, index } => naga::Expression::Access {
           base: base.into(),
           index: index.into(),
@@ -2535,7 +2549,6 @@ pub mod native {
           base: base.into(),
           index,
         },
-        Expression::Constant(handle) => naga::Expression::Constant(handle.into()),
         Expression::Splat { size, value } => naga::Expression::Splat {
           size: size.try_into()?,
           value: value.into(),
@@ -2553,21 +2566,6 @@ pub mod native {
             size: size.try_into()?,
             vector: vector.into(),
             pattern: swizzle_components,
-          }
-        }
-        Expression::Compose {
-          ty,
-          components,
-          components_len,
-        } => {
-          let mut components1: Vec<naga::Handle<naga::Expression>> =
-            Vec::with_capacity(components_len as usize);
-          for handle in unsafe { std::slice::from_raw_parts(components, components_len as usize) } {
-            components1.push(handle.clone().into());
-          }
-          naga::Expression::Compose {
-            ty: ty.into(),
-            components: components1,
           }
         }
         Expression::FunctionArgument(index) => naga::Expression::FunctionArgument(index),
@@ -2806,6 +2804,21 @@ pub unsafe extern "C" fn nagaStoreConstant(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn nagaStoreConstExpression(
+  writer_: *mut NagaWriter,
+  expr: native::Expression,
+) -> native::Handle<native::Expression> {
+  let writer = writer_.as_mut().expect("Invalid writer");
+  let expr = expr.try_into().expect("Invalid expression");
+
+  let handle = writer
+    .module
+    .const_expressions
+    .append(expr, naga::Span::default());
+  return handle.into();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn nagaStoreGlobal(
   writer_: *mut NagaWriter,
   gv: native::GlobalVariable,
@@ -2926,7 +2939,6 @@ fn into_wgsl(writer: &mut NagaWriter) -> Result<*const c_char, ()> {
 pub unsafe extern "C" fn nagaValidate(writer: *mut NagaWriter) -> bool {
   let writer = writer.as_mut().expect("Invalid writer");
 
-  // writer.validation =
   match naga::valid::Validator::new(
     naga::valid::ValidationFlags::all(),
     naga::valid::Capabilities::all(),

@@ -29,8 +29,10 @@ namespace gfx {
 static auto logger = getLogger();
 
 inline constexpr auto findDrawableInPoolByMeshSize(size_t targetSize) {
-  if (targetSize > INT64_MAX) {
-    throw std::runtime_error("targetSize too large");
+  if constexpr (sizeof(size_t) >= 8) {
+    if (targetSize > INT64_MAX) {
+      throw std::runtime_error("targetSize too large");
+    }
   }
   return [targetSize](std::shared_ptr<MeshDrawable> &item) -> int64_t {
     auto &mesh = item->mesh;

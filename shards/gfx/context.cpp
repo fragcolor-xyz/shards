@@ -1,11 +1,13 @@
 #include "context.hpp"
 #include "context_data.hpp"
 #include "error_utils.hpp"
+#include <boost/container/small_vector.hpp>
 #include "../core/platform.hpp"
 #include "../core/assert.hpp"
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
+#include "texture.hpp"
 #include <SDL_video.h>
 #include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
@@ -101,22 +103,31 @@ struct DeviceRequest {
 
 struct ContextMainOutput {
   Window *window{};
-  WGPUSwapChain wgpuSwapchain{};
-  WGPUSurface wgpuWindowSurface{};
+  WGPUSurface wgpuSurface{};
   WGPUTextureFormat swapchainFormat = WGPUTextureFormat_Undefined;
   int2 currentSize{};
-  WGPUTextureView currentView{};
+  WGPUTexture wgpuCurrentTexture{};
+  TexturePtr texture;
 
-  ContextMainOutput(Window &window) { this->window = &window; }
+#ifndef WEBGPU_NATIVE
+  WGPUSwapChain wgpuSwapChain;
+#endif
+
+  ContextMainOutput(Window &window) {
+    this->window = &window;
+    texture = std::make_shared<Texture>();
+  }
   ~ContextMainOutput() {
+#ifndef WEBGPU_NATIVE
     releaseSwapchain();
+#endif
     releaseSurface();
   }
 
   WGPUSurface initSurface(WGPUInstance instance, void *overrideNativeWindowHandle) {
     ZoneScoped;
 
-    if (!wgpuWindowSurface) {
+    if (!wgpuSurface) {
       void *surfaceHandle = overrideNativeWindowHandle;
 
 #if SH_APPLE
@@ -126,92 +137,129 @@ struct ContextMainOutput {
 #endif
 
       WGPUPlatformSurfaceDescriptor surfDesc(window->window, surfaceHandle);
-      wgpuWindowSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
+      wgpuSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
     }
 
-    return wgpuWindowSurface;
+    return wgpuSurface;
   }
 
   bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
-    shassert(!currentView);
+    shassert(!wgpuCurrentTexture);
 
     int2 drawableSize = window->getDrawableSize();
     if (drawableSize != currentSize)
       resizeSwapchain(device, adapter, drawableSize);
 
-    currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
+#ifdef WEBGPU_NATIVE
+    WGPUSurfaceTexture st{};
+    wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
+    if (st.status != WGPUSurfaceGetCurrentTextureStatus_Success) {
+      SPDLOG_LOGGER_WARN(logger, "Failed to acquire surface texture: {}", magic_enum::enum_name(st.status));
+      return false;
+    }
 
-    return currentView;
+    if (st.suboptimal) {
+      SPDLOG_LOGGER_DEBUG(logger, "Suboptimal surface configuration");
+    }
+    wgpuCurrentTexture = st.texture;
+#else
+    wgpuCurrentTexture = gfxWgpuSwapChainGetCurrentTexture(wgpuSwapChain);
+#endif
+
+    auto desc = texture->getDesc();
+    desc.externalTexture = wgpuCurrentTexture;
+    texture->init(desc);
+
+    return wgpuCurrentTexture != nullptr;
+  }
+
+  const TexturePtr &getCurrentTexture() const {
+    shassert(wgpuCurrentTexture);
+    return texture;
   }
 
   void present() {
-    shassert(currentView);
+    shassert(wgpuCurrentTexture);
 
-    wgpuTextureViewRelease(currentView);
-    currentView = nullptr;
-
-    // Web doesn't have a swapchain, it automatically present the current texture when control
-    // is returned to the browser
-#ifdef WEBGPU_NATIVE
-    wgpuSwapChainPresent(wgpuSwapchain);
+#if WEBGPU_NATIVE
+    wgpuSurfacePresent(wgpuSurface);
 #endif
+
+    wgpuTextureRelease(wgpuCurrentTexture);
+    wgpuCurrentTexture = nullptr;
 
     FrameMark;
   }
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
-    swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
     int2 mainOutputSize = window->getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
-    WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
+    WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
-      releaseSwapchain();
-      throw formatException("Failed to create swapchain");
+      throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
     }
 
     if (preferredFormat != swapchainFormat) {
-      SPDLOG_LOGGER_DEBUG(logger, "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
+      SPDLOG_LOGGER_DEBUG(logger, "Surface preferred format changed: {}", magic_enum::enum_name(preferredFormat));
       swapchainFormat = preferredFormat;
     }
 
     shassert(newSize.x > 0 && newSize.y > 0);
     shassert(device);
-    shassert(wgpuWindowSurface);
+    shassert(wgpuSurface);
     shassert(swapchainFormat != WGPUTextureFormat_Undefined);
 
-    SPDLOG_LOGGER_DEBUG(logger, "resized width: {} height: {}", newSize.x, newSize.y);
+    SPDLOG_LOGGER_DEBUG(logger, "Configuring surface width: {}, height: {}, format: {}", newSize.x, newSize.y, swapchainFormat);
     currentSize = newSize;
 
-    releaseSwapchain();
-
-    WGPUSwapChainDescriptor swapchainDesc = {};
-    swapchainDesc.format = swapchainFormat;
+#if WEBGPU_NATIVE
+    WGPUSurfaceConfiguration surfaceConf = {};
+    surfaceConf.format = swapchainFormat;
+    surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
+    surfaceConf.device = device;
 
     // Canvas size should't be set when configuring, instead resize the element
     // https://github.com/emscripten-core/emscripten/issues/17416
 #if !SH_EMSCRIPTEN
-    swapchainDesc.width = newSize.x;
-    swapchainDesc.height = newSize.y;
+    surfaceConf.width = newSize.x;
+    surfaceConf.height = newSize.y;
 #endif
 
 #if SH_WINDOWS || SH_OSX || SH_LINUX
-    swapchainDesc.presentMode = WGPUPresentMode_Immediate;
+    surfaceConf.presentMode = WGPUPresentMode_Immediate;
 #else
-    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+    surfaceConf.presentMode = WGPUPresentMode_Fifo;
 #endif
-    swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
-    wgpuSwapchain = wgpuDeviceCreateSwapChain(device, wgpuWindowSurface, &swapchainDesc);
-    if (!wgpuSwapchain) {
-      throw formatException("Failed to create swapchain");
-    }
+    surfaceConf.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+    wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
+#else
+    WGPUSwapChainDescriptor desc{
+        .label = "<swapchain>",
+        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst,
+        .format = swapchainFormat,
+        .width = uint32_t(newSize.x),
+        .height = uint32_t(newSize.y),
+        .presentMode = WGPUPresentMode_Fifo,
+    };
+    releaseSwapchain();
+    wgpuSwapChain = wgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
+#endif
+
+    texture
+        ->initWithPixelFormat(swapchainFormat) //
+        .initWithLabel("<main output>")
+        .initWithResolution(currentSize)
+        .initWithFlags(TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding);
   }
 
-  void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuWindowSurface); }
-  void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
+  void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface); }
+#ifndef WEBGPU_NATIVE
+  void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapChain); }
+#endif
 };
 
 Context::Context() {}
@@ -257,20 +305,9 @@ void Context::resizeMainOutputConditional(const int2 &newSize) {
   }
 }
 
-int2 Context::getMainOutputSize() const {
+TexturePtr Context::getMainOutputTexture() {
   shassert(mainOutput);
-  return mainOutput->currentSize;
-}
-
-WGPUTextureView Context::getMainOutputTextureView() {
-  shassert(mainOutput);
-  shassert(mainOutput->wgpuSwapchain);
-  return mainOutput->currentView;
-}
-
-WGPUTextureFormat Context::getMainOutputFormat() const {
-  shassert(mainOutput);
-  return mainOutput->swapchainFormat;
+  return mainOutput->getCurrentTexture();
 }
 
 bool Context::isHeadless() const { return !mainOutput; }
@@ -459,11 +496,6 @@ void Context::deviceObtained() {
     getOrCreateSurface();
     mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
-
-  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
-    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
-  };
-  wgpuDeviceSetDeviceLostCallback(wgpuDevice, deviceLostCallback, this);
 }
 
 void Context::requestDevice() {
@@ -480,7 +512,14 @@ void Context::requestDevice() {
 
   state = ContextState::Requesting;
 
-  WGPUDeviceDescriptor deviceDesc = {};
+  WGPUDeviceDescriptor deviceDesc{};
+
+  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
+    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
+  };
+  deviceDesc.deviceLostCallback = deviceLostCallback;
+  deviceDesc.deviceLostUserdata = this;
+  deviceDesc.defaultQueue.label = "queue";
 
   // Passed to force full feature set to be enabled
 #if WEBGPU_NATIVE
@@ -493,6 +532,11 @@ void Context::requestDevice() {
       .chain =
           WGPUChainedStruct{
               .sType = (WGPUSType)WGPUSType_RequiredLimitsExtras,
+          },
+      .limits =
+          {
+              .maxPushConstantSize = 0,
+              .maxNonSamplerBindings = 1000000,
           },
   };
   requiredLimits.nextInChain = &extraLimits.chain;
@@ -507,7 +551,7 @@ void Context::releaseDevice() {
   releaseAllContextData();
 
   if (mainOutput) {
-    mainOutput->releaseSwapchain();
+    mainOutput->releaseSurface();
   }
 
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
@@ -526,38 +570,117 @@ void Context::requestAdapter() {
 
   state = ContextState::Requesting;
 
-  if (!wgpuInstance) {
-    WGPUInstanceDescriptor desc{};
-    wgpuInstance = wgpuCreateInstance(&desc);
-  }
-
-  WGPURequestAdapterOptions requestAdapter = {};
-  requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
-  requestAdapter.compatibleSurface = getOrCreateSurface();
-  requestAdapter.forceFallbackAdapter = false;
-
-#ifdef WEBGPU_NATIVE
-  WGPUAdapterExtras adapterExtras = {};
-  requestAdapter.nextInChain = &adapterExtras.chain;
-  adapterExtras.chain.sType = (WGPUSType)WGPUSType_AdapterExtras;
-
-  adapterExtras.backend = WGPUBackendType_Null;
+  std::optional<WGPUBackendType> backend;
   if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
-    auto foundValue = magic_enum::enum_cast<WGPUBackendType>(typeStr);
-    if (foundValue) {
-      adapterExtras.backend = foundValue.value();
+    backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
+    if (backend) {
+      SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(*backend));
     }
   }
 
-  if (adapterExtras.backend == WGPUBackendType_Null)
-    adapterExtras.backend = getDefaultWgpuBackendType();
+  if (!wgpuInstance) {
+    WGPUInstanceDescriptor desc{};
+#if WEBGPU_NATIVE
+    WGPUInstanceExtras extras{
+        .chain = {.sType = (WGPUSType)WGPUSType_InstanceExtras},
+    };
 
-  SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(adapterExtras.backend));
+    instanceBackends = WGPUInstanceBackend_Primary;
+    if (backend) {
+      switch (*backend) {
+      case WGPUBackendType_D3D11:
+        instanceBackends = WGPUInstanceBackend_DX11;
+        break;
+      case WGPUBackendType_D3D12:
+        instanceBackends = WGPUInstanceBackend_DX12;
+        break;
+      case WGPUBackendType_Metal:
+        instanceBackends = WGPUInstanceBackend_Metal;
+        break;
+      case WGPUBackendType_Vulkan:
+        instanceBackends = WGPUInstanceBackend_Vulkan;
+        break;
+      default:
+        break;
+      }
+    }
+    extras.backends = instanceBackends;
+
+    if (const char *debug = SDL_getenv("GFX_DEBUG")) {
+      extras.flags |= WGPUInstanceFlag_Debug;
+    }
+    if (const char *debug = SDL_getenv("GFX_VALIDATION")) {
+      extras.flags |= WGPUInstanceFlag_Validation;
+    }
+    desc.nextInChain = &extras.chain;
+#endif
+    wgpuInstance = wgpuCreateInstance(&desc);
+  }
+
+#if WEBGPU_NATIVE
+  WGPUInstanceEnumerateAdapterOptions enumOpts{.backends = instanceBackends};
+  boost::container::small_vector<WGPUAdapter, 32> adapters;
+  adapters.resize(wgpuInstanceEnumerateAdapters(wgpuInstance, &enumOpts, nullptr));
+  adapters.resize(wgpuInstanceEnumerateAdapters(wgpuInstance, &enumOpts, adapters.data()));
+
+  WGPUAdapter adapterToUse{};
+  SPDLOG_LOGGER_DEBUG(logger, "Enumerating {} adapters", adapters.size());
+
+  bool useAnyAdapter = {};
+  if (const char *v = SDL_getenv("GFX_ANY_ADAPTER")) {
+    useAnyAdapter = true;
+  }
+  for (size_t i = 0; i < adapters.size(); i++) {
+    auto &adapter = adapters[i];
+    WGPUAdapterProperties props;
+    wgpuAdapterGetProperties(adapter, &props);
+
+    SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
+    SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{
+  vendorID: {}
+  vendorName: {}
+  architecture: {}
+  deviceID: {}
+  name: {}
+  driverDescription: {}
+  adapterType: {}
+  backendType: {}
+}})",
+                        props.vendorID, props.vendorName, props.architecture, props.deviceID, props.name, props.driverDescription,
+                        props.adapterType, props.backendType);
+    if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
+      adapterToUse = adapter;
+    } else {
+      wgpuAdapterRelease(adapter);
+    }
+  }
+
+  if (adapterToUse) {
+    wgpuAdapter = adapterToUse;
+    requestDevice();
+  } else
+#endif
+  {
+    WGPURequestAdapterOptions requestAdapter = {};
+    requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
+    requestAdapter.compatibleSurface = getOrCreateSurface();
+    requestAdapter.forceFallbackAdapter = false;
+
+#ifdef WEBGPU_NATIVE
+    requestAdapter.backendType = WGPUBackendType_Null;
+
+    if (requestAdapter.backendType == WGPUBackendType_Null)
+      requestAdapter.backendType = getDefaultWgpuBackendType();
+
+    if (backend) {
+      requestAdapter.backendType = *backend;
+    }
 #endif
 
-  SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
-  adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
+    SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
+    adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
+  }
 }
 
 void Context::releaseAdapter() {

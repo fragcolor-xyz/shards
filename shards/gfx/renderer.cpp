@@ -120,29 +120,7 @@ struct RendererImpl final : public ContextData {
   void updateMainOutputFromContext() {
     ZoneScoped;
 
-    if (!mainOutput.texture) {
-      mainOutput.texture = std::make_shared<Texture>();
-    }
-
-    WGPUTextureView view = context.getMainOutputTextureView();
-    int2 resolution = context.getMainOutputSize();
-
-    auto currentDesc = mainOutput.texture->getDesc();
-    bool needUpdate = !mainOutputRenderTarget || currentDesc.externalTexture != view || currentDesc.resolution != resolution;
-    if (needUpdate) {
-      mainOutput.texture
-          ->init(TextureDesc{
-              .format =
-                  TextureFormat{
-                      .dimension = TextureDimension::D2,
-                      .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
-                      .pixelFormat = context.getMainOutputFormat(),
-                  },
-              .resolution = resolution,
-              .externalTexture = view,
-          })
-          .initWithLabel("mainOutput");
-    }
+    mainOutput.texture = context.getMainOutputTexture();
   }
 
   CachedView &getCachedView(const ViewPtr &view) {
@@ -241,7 +219,7 @@ struct RendererImpl final : public ContextData {
   std::list<DeferredTextureReadCommand> deferredTextureReadCommands;
 
   bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
-    auto &textureData = cmd.texture.texture->createContextDataConditional(context);
+    auto &textureData = cmd.texture.texture->createContextDataConditionalRefUNSAFE(context);
     if (!textureData.texture) {
       SPDLOG_LOGGER_WARN(logger, "Invalid texture queued for reading, ignoring");
       return false;

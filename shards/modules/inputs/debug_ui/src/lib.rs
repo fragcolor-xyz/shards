@@ -19,7 +19,6 @@ pub mod native {
 pub unsafe extern "C" fn shards_input_showDebugUI(
   context_var: &Var,
   params: *mut native::shards_input_debug_DebugUIParams,
-  num_layers: usize,
 ) {
   let params = &mut (*params);
   let layers = std::slice::from_raw_parts(params.layers, params.numLayers);

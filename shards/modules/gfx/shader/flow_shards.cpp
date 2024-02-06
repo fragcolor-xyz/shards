@@ -13,11 +13,15 @@ using namespace shards;
 namespace gfx::shader {
 struct SubTranslator {
   static void translate(Sub *shard, TranslationContext &context) {
-    auto restoreTop = WGSLBlock(context.wgslTop->getType(), context.wgslTop->toBlock());
+    std::optional<WGSLBlock> restoreTop;
+    if (context.wgslTop) {
+      restoreTop.emplace(context.wgslTop->getType(), context.wgslTop->toBlock());
+    }
 
     processShardsVar(shard->_shards, context);
 
-    context.setWGSLTop<WGSLBlock>(std::move(restoreTop));
+    if (restoreTop)
+      context.setWGSLTop<WGSLBlock>(std::move(restoreTop.value()));
   }
 };
 
@@ -40,8 +44,7 @@ struct IfTranslator {
             fmt::format("If block with different output types is not supported in shaders, got {} and {}", ta, tb));
       outputType = shardsTypeToFieldType(ta);
       ifResultVarName = context.getUniqueVariableName("if");
-      context.addNew(
-          blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
+      context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
     }
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));

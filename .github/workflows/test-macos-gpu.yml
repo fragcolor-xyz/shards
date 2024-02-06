@@ -39,6 +39,7 @@ jobs:
         id: setup
         run: |
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+          echo "GFX_ANY_ADAPTER=1" >> $GITHUB_ENV
       - name: Clean workspace
         if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
         run: |
