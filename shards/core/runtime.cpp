@@ -1634,7 +1634,6 @@ void installSignalHandlers() {
 #endif
   }
 }
-Var::Var(const Wire &wire) : Var(wire.weakRef()) {}
 
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput) {
   ZoneScoped;

@@ -76,6 +76,7 @@ private:
 };
 } // namespace shards
 
+#ifdef SH_WIRE_DSL_DEFINES
 #define Variable(_name) shards::Var::ContextVar(#_name)
 
 #define Defwire(_name) auto _name = shards::Wire(#_name)
@@ -148,5 +149,5 @@ private:
 
 #define Brotli_Compress() shard("Brotli.Compress")
 #define Brotli_Decompress() shard("Brotli.Decompress")
-
+#endif
 #endif

@@ -1,6 +1,8 @@
 #include <catch2/catch_all.hpp>
-#include <shards/wire_dsl.hpp>
 #include <shards/core/runtime.hpp>
+
+#define SH_WIRE_DSL_DEFINES
+#include <shards/wire_dsl.hpp>
 
 using namespace shards;
 
