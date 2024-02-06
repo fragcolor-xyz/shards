@@ -1,6 +1,8 @@
 #include <shards/wire_dsl.hpp>
 
 namespace shards {
+Var::Var(const Wire &wire) : Var(wire.weakRef()) {}
+
 Weave &Weave::shard(std::string_view name, std::vector<Var> params) {
   auto blk = createShard(name.data());
   if (!blk) {
