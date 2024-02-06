@@ -1,4 +1,4 @@
-name: Test (Linux/GPU)
+name: Test (MacOS/GPU)
 
 on:
   workflow_dispatch:
@@ -29,11 +29,11 @@ on:
 
 jobs:
   #
-  # Build shards for linux
+  # Build shards for macos
   #
-  Linux:
+  MacOS:
     name: Test (${{ github.event.inputs.build-type || inputs.build-type }})
-    runs-on: [self-hosted, Linux]
+    runs-on: [self-hosted, macOS, ARM64]
     steps:
       - name: Setup
         id: setup
@@ -70,6 +70,8 @@ jobs:
           set -e
           export DISPLAY=:1
           Xvfb "$DISPLAY" &
+
+          export LOG_GFX=debug
 
           echo "Running graphics library tests"
           build/test-gfx -r JUnit --out test-gfx.xml
@@ -155,26 +157,28 @@ jobs:
             --capture \
             --directory build/src \
             --directory build/modules \
-            --output-file coverage/coverage.info
+            --output-file coverage/coverage.info \
+            --ignore-errors inconsistent,gcov
           # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/shards/mal/*" \
-            --output-file coverage/coverage.linux-gpu.info
+            --output-file coverage/coverage-macos-gpu.info \
+            --ignore-errors inconsistent,gcov
           # convert absolute path to relative path
-          sed -i s/${PWD////\\/}/./g coverage/coverage.linux-gpu.info
+          sed -e "s|${PWD}/|./|g" coverage/coverage-macos-gpu.info
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
         with:
-          name: shards-linux-gpu-coverage
+          name: shards-macos-gpu-coverage
           path: |
-            coverage/coverage.linux-gpu.info
+            coverage/coverage-macos-gpu.info
           if-no-files-found: error
           retention-days: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: shards-linux-gpu rejected test data
+          name: shards-macos-gpu rejected test data
           path: |
             test-gfx.xml
             shards/gfx/tests/data/default/rejected

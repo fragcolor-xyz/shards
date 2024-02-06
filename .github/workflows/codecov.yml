@@ -38,7 +38,7 @@ jobs:
       - name: Download Linux GPU coverage
         uses: actions/download-artifact@v3
         with:
-          name: shards-linux-gpu-coverage
+          name: shards-macos-gpu-coverage
           path: coverage
       - uses: codecov/codecov-action@v3
         with:
@@ -50,7 +50,7 @@ jobs:
         run: |
           genhtml \
             coverage/coverage.linux.info \
-            coverage/coverage.linux-gpu.info \
+            coverage/coverage-macos-gpu.info \
             --ignore-errors source \
             --output-directory coverage/output
       - name: Upload report
