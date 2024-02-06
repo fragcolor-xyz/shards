@@ -505,7 +505,9 @@ struct Loader {
     size_t numValues = numFrames;
     if (result.interpolation == animation::Interpolation::Cubic)
       numValues = numFrames * 3;
-    shassert(numValues == output.count);
+    shassert(numValues <= output.count);
+    if (output.count > numValues)
+      SPDLOG_WARN("Animation {}: output count {} is larger than input count {}", gltfAnimation.name, output.count, numValues);
     result.data.resize(numComponents * numValues);
 
     for (size_t i = 0; i < numValues; i++) {
