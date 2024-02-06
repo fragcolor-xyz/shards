@@ -83,9 +83,6 @@
 	path = shards/gfx/rust/wgpu
 	url = https://github.com/shards-lang/wgpu.git
 	branch = master
-[submodule "shards/gfx/rust/naga"]
-	path = shards/gfx/rust/naga
-	url = https://github.com/shards-lang/naga
 [submodule "shards/gfx/rust/profiling"]
 	path = shards/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git

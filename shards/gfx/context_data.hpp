@@ -42,9 +42,8 @@ protected:
 template <typename T> struct TWithContextData {
   std::shared_ptr<T> contextData;
 
-  T &createContextDataConditionalRefUNSAFE(Context &context) {
-    return *createContextDataConditional(context).get();
-  }
+  // Only safe if texture is not updated from another thread ever
+  T &createContextDataConditionalRefUNSAFE(Context &context) { return *createContextDataConditional(context).get(); }
 
   std::shared_ptr<T> createContextDataConditional(Context &context) {
     ContextData::globalMutex.lock();

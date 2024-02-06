@@ -1964,51 +1964,6 @@ pub mod native {
     }
   }
 
-  // impl TryFrom<ScalarValue> for naga::ScalarValue {
-  //   type Error = ConversionError;
-
-  //   fn try_from(sv: ScalarValue) -> Result<naga::ScalarValue, Self::Error> {
-  //     let result = match sv {
-  //       ScalarValue::Sint(i) => naga::ScalarValue::Sint(i),
-  //       ScalarValue::Uint(u) => naga::ScalarValue::Uint(u),
-  //       ScalarValue::Float(f) => naga::ScalarValue::Float(f),
-  //       ScalarValue::Bool(b) => naga::ScalarValue::Bool(b),
-  //     };
-  //     Ok(result)
-  //   }
-  // }
-
-  // impl TryFrom<ConstantInner> for naga::ConstantInner {
-  //   type Error = ConversionError;
-
-  //   fn try_from(ci: ConstantInner) -> Result<naga::ConstantInner, Self::Error> {
-  //     let result = match ci {
-  //       ConstantInner::Scalar { width, value } => naga::ConstantInner::Scalar {
-  //         width,
-  //         value: value.try_into()?,
-  //       },
-  //       ConstantInner::Composite {
-  //         ty,
-  //         components,
-  //         components_len,
-  //       } => {
-  //         let components =
-  //           unsafe { std::slice::from_raw_parts(components, components_len as usize) };
-  //         let mut converted_components: Vec<naga::Handle<naga::Constant>> =
-  //           Vec::with_capacity(components_len as usize);
-  //         for component in components {
-  //           converted_components.push(component.clone().into());
-  //         }
-  //         naga::ConstantInner::Composite {
-  //           ty: ty.into(),
-  //           components: converted_components,
-  //         }
-  //       }
-  //     };
-  //     Ok(result)
-  //   }
-  // }
-
   impl TryFrom<Binding> for naga::Binding {
     type Error = ConversionError;
 
@@ -2984,7 +2939,6 @@ fn into_wgsl(writer: &mut NagaWriter) -> Result<*const c_char, ()> {
 pub unsafe extern "C" fn nagaValidate(writer: *mut NagaWriter) -> bool {
   let writer = writer.as_mut().expect("Invalid writer");
 
-  // writer.validation =
   match naga::valid::Validator::new(
     naga::valid::ValidationFlags::all(),
     naga::valid::Capabilities::all(),
