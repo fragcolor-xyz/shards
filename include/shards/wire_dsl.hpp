@@ -6,24 +6,94 @@
 
 #include "./shards.hpp"
 
+namespace shards {
+class Weave {
+public:
+  Weave() {}
+
+  Weave &shard(std::string_view name, std::vector<Var> params);
+
+  template <typename... Vars> Weave &shard(std::string_view name, Vars... params) {
+    std::vector<Var> vars = {Var(params)...};
+    return shard(name, vars);
+  }
+
+  Weave &let(Var value);
+
+  template <typename V> Weave &let(V value) {
+    auto val = Var(value);
+    return let(val);
+  }
+
+  template <typename... Vs> Weave &let(Vs... values) {
+    auto val = Var(values...);
+    return let(val);
+  }
+
+  operator Var() { return Var(_shards); }
+
+private:
+  std::vector<Var> _shards;
+};
+
+class Wire {
+public:
+  Wire() {}
+  Wire(std::string_view name);
+
+  Wire &shard(std::string_view name, std::vector<Var> params);
+
+  template <typename... Vars> Wire &shard(std::string_view name, Vars... params) {
+    std::vector<Var> vars = {Var(params)...};
+    return shard(name, vars);
+  }
+
+  Wire &let(Var value);
+
+  template <typename V> Wire &let(V value) {
+    auto val = Var(value);
+    return let(val);
+  }
+
+  template <typename... Vs> Wire &let(Vs... values) {
+    auto val = Var(values...);
+    return let(val);
+  }
+
+  Wire &looped(bool looped);
+  Wire &unsafe(bool unsafe);
+  Wire &stackSize(size_t size);
+  Wire &name(std::string_view name);
+
+  SHWire *operator->() { return _wire.get(); }
+  SHWire *get() { return _wire.get(); }
+
+  operator std::shared_ptr<SHWire>() { return _wire; }
+  SHWireRef weakRef() const;
+
+private:
+  std::shared_ptr<SHWire> _wire;
+};
+} // namespace shards
+
 #define Variable(_name) shards::Var::ContextVar(#_name)
 
 #define Defwire(_name) auto _name = shards::Wire(#_name)
 #define Looped() looped(true)
 
-#define None() .let(shards::Var::Empty)
+#define None() let(shards::Var::Empty)
 
 #define Input() shard("Input")
 #define Pass() shard("Pass")
 
-#define Set(_name) .shard("Set", #_name)
-#define Ref(_name) .shard("Ref", #_name)
+#define Set(_name) shard("Set", #_name)
+#define Ref(_name) shard("Ref", #_name)
 #define Get(_name) shard("Get", #_name)
-#define SetTable(_name, _key) .shard("Set", #_name, _key)
-#define PushTable(_name, _key) .shard("Push", #_name, _key)
+#define SetTable(_name, _key) shard("Set", #_name, _key)
+#define PushTable(_name, _key) shard("Push", #_name, _key)
 #define GetTable(_name, _key) shard("Get", #_name, _key)
 #define GetTable_Default(_name, _key, _default) shard("Get", #_name, _key, false, false, _default)
-#define Push(_name) .shard("Push", #_name)
+#define Push(_name) shard("Push", #_name)
 #define Take(_idx_or_key) shard("Take", _idx_or_key)
 #define Count(_name) shard("Count", shards::Var::ContextVar(#_name))
 
@@ -44,14 +114,13 @@
 #define ToBytes() shard("ToBytes")
 #define ToBase58() shard("ToBase58")
 
-#define PrependTo(_var) .shard("PrependTo", shards::Var::ContextVar(#_var))
-#define AppendTo(_var) .shard("AppendTo", shards::Var::ContextVar(#_var))
+#define PrependTo(_var) shard("PrependTo", shards::Var::ContextVar(#_var))
+#define AppendTo(_var) shard("AppendTo", shards::Var::ContextVar(#_var))
 
 #define FS_Read_Bytes() shard("FS.Read", true)
 #define FS_Read() shard("FS.Read")
 #define FS_Write_Overwriting(_contents) shard("FS.Write", shards::Var::ContextVar(#_contents), true)
-#ifdef LoadImage
-// mingw defines this
+#ifdef LoadImage // Windows header
 #undef LoadImage
 #endif
 #define LoadImage(_imagePath) shard("LoadImage", _imagePath)
