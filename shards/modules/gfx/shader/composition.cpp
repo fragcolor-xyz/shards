@@ -47,7 +47,7 @@ struct DynamicBlockFromShards : public blocks::Block {
     };
 
     std::shared_ptr<SHMesh> tempMesh = SHMesh::make();
-    shards::Wire tempWire("<shader wire>");
+    std::shared_ptr<SHWire> tempWire = std::make_shared<SHWire>("<shader wire>");
     tempWire->mesh = tempMesh;
     DEFER(tempWire->mesh.reset());
     tempWire->isRoot = true;

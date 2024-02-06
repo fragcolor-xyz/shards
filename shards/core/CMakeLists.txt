@@ -4,6 +4,7 @@ set(core_SOURCES
   number_types.cpp
   utils.cpp
   coro.cpp
+  wire_dsl.cpp
 )
 
 add_library(shards-core STATIC ${core_SOURCES})

@@ -1,5 +1,8 @@
 if(SHARDS_BUILD_TESTS)
-  add_executable(test-runtime ../tests/test_runtime.cpp)
+  set(TESTS_SRC ../tests)
+  add_executable(test-runtime
+    ${TESTS_SRC}/test_runtime.cpp
+    ${TESTS_SRC}/test_exposed.cpp)
 
   target_link_libraries(test-runtime
     shards-union shards-lang-rust Catch2 Catch2Main

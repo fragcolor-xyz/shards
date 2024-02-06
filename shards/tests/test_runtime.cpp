@@ -11,6 +11,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/modules/core/serialization.hpp>
 #include <shards/linalg_shim.hpp>
+#include <shards/wire_dsl.hpp>
 
 #undef CHECK
 
@@ -231,7 +232,7 @@ TEST_CASE("SHVar-comparison", "[ops]") {
   REQUIRE(f1 != f3);                \
   REQUIRE(v1 != v3);                \
   REQUIRE(f1 != i1);                \
-  REQUIRE_NOTHROW(f1 <= i1);         \
+  REQUIRE_NOTHROW(f1 <= i1);        \
   REQUIRE(f1 <= f2);                \
   REQUIRE(v1 <= v2);                \
   REQUIRE_FALSE(f3 <= f1);          \
