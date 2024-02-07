@@ -17,7 +17,7 @@ endif()
 
 # The default log level for
 if(NOT SHARDS_DEFAULT_LOG_LEVEL)
-  set(SHARDS_DEFAULT_LOG_LEVEL SPDLOG_LEVEL_DEBUG)
+  set(SHARDS_DEFAULT_LOG_LEVEL SPDLOG_LEVEL_INFO)
 endif()
 
 target_compile_definitions(shards-logging
