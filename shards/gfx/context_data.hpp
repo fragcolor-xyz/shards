@@ -45,6 +45,11 @@ template <typename T> struct TWithContextData {
   // Only safe if texture is not updated from another thread ever
   T &createContextDataConditionalRefUNSAFE(Context &context) { return *createContextDataConditional(context).get(); }
 
+  void resetContextData() {
+    std::unique_lock<std::recursive_mutex> _l(ContextData::globalMutex);
+    contextData.reset();
+  }
+
   std::shared_ptr<T> createContextDataConditional(Context &context) {
     ContextData::globalMutex.lock();
 

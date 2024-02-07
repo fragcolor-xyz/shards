@@ -61,7 +61,6 @@ impl Shard for OverlayShard {
     for c in &mut self.calls {
       c.cleanup(ctx);
     }
-    self.calls.clear();
     Ok(())
   }
 

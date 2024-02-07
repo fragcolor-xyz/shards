@@ -174,7 +174,7 @@ UniqueId Texture::getNextId() {
 
 void Texture::update() {
   ++version;
-  contextData.reset();
+  resetContextData();
 }
 
 } // namespace gfx
