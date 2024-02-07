@@ -15,15 +15,25 @@ if(NOT SPDLOG_ACTIVE_LEVEL)
   endif()
 endif()
 
-# The default enabled log level
+# The default log level for
 if(NOT SHARDS_DEFAULT_LOG_LEVEL)
-  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(SHARDS_DEFAULT_LOG_LEVEL SPDLOG_LEVEL_INFO)
-  else()
-    set(SHARDS_DEFAULT_LOG_LEVEL SPDLOG_LEVEL_TRACE)
-  endif()
+  set(SHARDS_DEFAULT_LOG_LEVEL SPDLOG_LEVEL_INFO)
 endif()
 
 target_compile_definitions(shards-logging
-  PUBLIC SPDLOG_ACTIVE_LEVEL=${SPDLOG_ACTIVE_LEVEL}
-  PRIVATE SHARDS_DEFAULT_LOG_LEVEL=${SHARDS_DEFAULT_LOG_LEVEL})
+  PUBLIC SPDLOG_ACTIVE_LEVEL=${SPDLOG_ACTIVE_LEVEL})
+
+# Default log level for all loggers
+if(SHARDS_DEFAULT_LOG_LEVEL)
+  target_compile_definitions(shards-logging PRIVATE SHARDS_DEFAULT_LOG_LEVEL=${SHARDS_DEFAULT_LOG_LEVEL})
+endif()
+
+# Default filter for stdout logger
+if(SHARDS_DEFAULT_STDOUT_LOG_LEVEL)
+  target_compile_definitions(shards-logging PRIVATE SHARDS_DEFAULT_STDOUT_LOG_LEVEL=${SHARDS_DEFAULT_STDOUT_LOG_LEVEL})
+endif()
+
+# Default filter for file logger
+if(SHARDS_DEFAULT_FILE_LOG_LEVEL)
+  target_compile_definitions(shards-logging PRIVATE SHARDS_DEFAULT_FILE_LOG_LEVEL=${SHARDS_DEFAULT_FILE_LOG_LEVEL})
+endif()

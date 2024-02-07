@@ -88,11 +88,15 @@ struct NetworkBase {
 
       // defer all in the context or we will crash!
       if (_socket) {
-        boost::asio::post(io_context, [this]() {
+        struct Container {
+          udp::socket socket;
+          Container(udp::socket &&s) : socket(std::move(s)) {}
+        };
+        boost::asio::post(io_context, [socket_ = std::make_unique<Container>(std::move(_socket.value()))]() {
           SHLOG_TRACE("Closing socket");
-          _socket->close();
-          _socket.reset();
+          socket_->socket.close();
         });
+        _socket.reset();
       }
     }
 
