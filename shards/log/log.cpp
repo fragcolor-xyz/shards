@@ -65,14 +65,25 @@ struct Config {
       std::nullopt;
 #endif
 
+  static constexpr std::optional<spdlog::level::level_enum> DefaultLoggerLevel =
+#ifdef SHARDS_DEFAULT_LOG_LEVEL
+      spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL);
+#else
+      std::nullopt;
+#endif
+
   static constexpr std::optional<spdlog::level::level_enum> getDefaultLogLevel() {
+    if (DefaultLoggerLevel)
+      return *DefaultLoggerLevel;
+
     if (!DefaultStdOutLogLevel && !DefaultFileLogLevel)
       return std::nullopt;
+
     spdlog::level::level_enum level = spdlog::level::info;
     if (DefaultStdOutLogLevel)
-      level = std::min(level, DefaultStdOutLogLevel.value());
+      level = std::min(level, *DefaultStdOutLogLevel);
     if (DefaultFileLogLevel)
-      level = std::min(level, DefaultFileLogLevel.value());
+      level = std::min(level, *DefaultFileLogLevel);
     return level;
   }
 };
@@ -86,6 +97,8 @@ struct Sinks {
 #ifdef __ANDROID__
   std::shared_ptr<spdlog::sinks::android_sink_mt> androidSink;
 #endif
+
+  bool logLevelOverriden{};
 
   Sinks() {
     distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
@@ -118,6 +131,16 @@ struct Sinks {
     }
     distSink->add_sink(logFileSink);
   }
+
+  // Reset compile-time settings when environment override is detected
+  void overrideLogLevel() {
+    if (!logLevelOverriden) {
+      for (auto &s : distSink->sinks())
+        s->set_level(spdlog::level::trace);
+      spdlog::set_level(spdlog::level::info);
+      logLevelOverriden = true;
+    }
+  }
 };
 
 Sinks &globalSinks() {
@@ -136,6 +159,7 @@ void __init(Logger logger) {
 void initLogLevel(Logger logger) {
   auto level = getLogLevelFromEnvVar(fmt::format("LOG_{}", logger->name()));
   if (level) {
+    globalSinks().overrideLogLevel();
     logger->set_level(level.value());
     return;
   }
@@ -143,6 +167,7 @@ void initLogLevel(Logger logger) {
   // Use "LOG" var to set global log level
   auto globalLevel = getLogLevelFromEnvVar(fmt::format("LOG"));
   if (globalLevel) {
+    globalSinks().overrideLogLevel();
     logger->set_level(globalLevel.value());
     return;
   }
@@ -164,9 +189,9 @@ void initLogFormat(Logger logger) {
     } else {
 #ifdef __ANDROID
       // Logcat already countains timestamps & log level
-      logPattern = "[T-%t] [%s::%#] %v";
+      logPattern = "[T-%t][%n][%s::%#] %v";
 #else
-      logPattern = "%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v";
+      logPattern = "[%d/%m %T.%e][T-%t][%n]%^[%l]%$[%s::%#] %v";
 #endif
     }
 
@@ -197,7 +222,6 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
 
   auto logger = std::make_shared<spdlog::logger>("shards", sinks.distSink);
   logger->flush_on(spdlog::level::err);
-  logger->set_level(spdlog::level::level_enum(SHARDS_DEFAULT_LOG_LEVEL));
   spdlog::set_default_logger(logger);
   initLogLevel(logger);
   initLogFormat(logger);
