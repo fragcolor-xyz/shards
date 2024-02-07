@@ -860,7 +860,7 @@ private:
   SHExposedTypeInfo _tmpInfo{"$0"};
 };
 
-struct Erase : SeqUser {
+struct Erase : VariableUser {
   static SHOptionalString help() { return SHCCSTR("Deletes an index or indices from a sequence or a key or keys from a table."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -872,13 +872,13 @@ struct Erase : SeqUser {
   static SHParametersInfo parameters() { return _params; }
 
   void warmup(SHContext *ctx) {
-    SeqUser::warmup(ctx);
+    VariableUser::warmup(ctx);
     _indices.warmup(ctx);
   }
 
   void cleanup(SHContext *context) {
     _indices.cleanup(context);
-    SeqUser::cleanup(context);
+    VariableUser::cleanup(context);
   }
 
   void setParam(int index, const SHVar &value) {
@@ -886,7 +886,7 @@ struct Erase : SeqUser {
       _indices = value;
     } else {
       index--;
-      SeqUser::setParam(index, value);
+      VariableUser::setParam(index, value);
     }
   }
 
@@ -895,7 +895,7 @@ struct Erase : SeqUser {
       return _indices;
     } else {
       index--;
-      return SeqUser::getParam(index);
+      return VariableUser::getParam(index);
     }
   }
 

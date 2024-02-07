@@ -94,12 +94,12 @@ struct GetTranslator {
     }
   }
 
-  static void translate(shards::Get *shard, TranslationContext &context) { translateByName(shard->_name, context); }
+  static void translate(shards::Get *shard, TranslationContext &context) { translateByName( SHSTRING_PREFER_SHSTRVIEW(shard->_name), context); }
 };
 
 struct UpdateTranslator {
   static void translate(shards::Update *shard, TranslationContext &context) {
-    auto &varName = shard->_name;
+    auto varName = SHSTRING_PREFER_SHSTRVIEW(shard->_name);
     SPDLOG_LOGGER_INFO(context.logger, "gen(upd)> {}", varName);
 
     if (!context.wgslTop)
