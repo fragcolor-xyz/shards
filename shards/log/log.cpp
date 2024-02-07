@@ -22,54 +22,6 @@ std::shared_mutex &__getRegisterMutex() {
   return m;
 }
 
-struct Sinks {
-  std::shared_mutex lock;
-
-  std::shared_ptr<spdlog::sinks::dist_sink_mt> distSink;
-  std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> stdErrSink;
-  std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logFileSink;
-#ifdef __ANDROID__
-  std::shared_ptr<spdlog::sinks::android_sink_mt> androidSink;
-#endif
-
-  Sinks() {
-    distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
-
-    stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
-    distSink->add_sink(stdErrSink);
-
-    // Setup android logcat output
-#ifdef __ANDROID__
-    androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
-    distSink->add_sink(androidSink);
-#endif
-  }
-
-  std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }
-  std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
-
-  void initLogFile(std::string fileName) {
-    std::string logFilePath = boost::filesystem::absolute(fileName).string();
-    if (logFileSink)
-      distSink->remove_sink(logFileSink);
-
-    logFileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
-    distSink->add_sink(logFileSink);
-  }
-};
-
-Sinks &globalSinks() {
-  static Sinks sinks;
-  return sinks;
-}
-
-void __init(Logger logger) {
-  spdlog::register_logger(logger);
-  initLogLevel(logger);
-  initLogFormat(logger);
-  initSinks(logger);
-}
-
 std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inName) {
   std::string varName;
   const char *val{};
@@ -97,6 +49,90 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
   return std::nullopt;
 }
 
+struct Config {
+  // -- Compile time settings --
+  static constexpr std::optional<spdlog::level::level_enum> DefaultStdOutLogLevel =
+#ifdef SHARDS_DEFAULT_STDOUT_LOG_LEVEL
+      spdlog::level::level_enum(SHARDS_DEFAULT_STDOUT_LOG_LEVEL);
+#else
+      std::nullopt;
+#endif
+
+  static constexpr std::optional<spdlog::level::level_enum> DefaultFileLogLevel =
+#ifdef SHARDS_DEFAULT_FILE_LOG_LEVEL
+      spdlog::level::level_enum(SHARDS_DEFAULT_FILE_LOG_LEVEL);
+#else
+      std::nullopt;
+#endif
+
+  static constexpr std::optional<spdlog::level::level_enum> getDefaultLogLevel() {
+    if (!DefaultStdOutLogLevel && !DefaultFileLogLevel)
+      return std::nullopt;
+    spdlog::level::level_enum level = spdlog::level::info;
+    if (DefaultStdOutLogLevel)
+      level = std::min(level, DefaultStdOutLogLevel.value());
+    if (DefaultFileLogLevel)
+      level = std::min(level, DefaultFileLogLevel.value());
+    return level;
+  }
+};
+
+struct Sinks {
+  std::shared_mutex lock;
+
+  std::shared_ptr<spdlog::sinks::dist_sink_mt> distSink;
+  std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> stdErrSink;
+  std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logFileSink;
+#ifdef __ANDROID__
+  std::shared_ptr<spdlog::sinks::android_sink_mt> androidSink;
+#endif
+
+  Sinks() {
+    distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+
+    stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+    distSink->add_sink(stdErrSink);
+
+    // Setup android logcat output
+#ifdef __ANDROID__
+    androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
+    distSink->add_sink(androidSink);
+#endif
+
+    if (Config::DefaultStdOutLogLevel) {
+      stdErrSink->set_level(Config::DefaultStdOutLogLevel.value());
+    }
+  }
+
+  std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }
+  std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
+
+  void initLogFile(std::string fileName) {
+    std::string logFilePath = boost::filesystem::absolute(fileName).string();
+    if (logFileSink)
+      distSink->remove_sink(logFileSink);
+
+    logFileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
+    if (Config::DefaultFileLogLevel) {
+      logFileSink->set_level(Config::DefaultFileLogLevel.value());
+    }
+    distSink->add_sink(logFileSink);
+  }
+};
+
+Sinks &globalSinks() {
+  static Sinks sinks;
+  return sinks;
+}
+
+void __init(Logger logger) {
+  spdlog::register_logger(logger);
+  logger->flush_on(spdlog::level::err);
+  initLogLevel(logger);
+  initLogFormat(logger);
+  initSinks(logger);
+}
+
 void initLogLevel(Logger logger) {
   auto level = getLogLevelFromEnvVar(fmt::format("LOG_{}", logger->name()));
   if (level) {
@@ -108,6 +144,11 @@ void initLogLevel(Logger logger) {
   auto globalLevel = getLogLevelFromEnvVar(fmt::format("LOG"));
   if (globalLevel) {
     logger->set_level(globalLevel.value());
+    return;
+  }
+
+  if (auto ll = Config::getDefaultLogLevel()) {
+    logger->set_level(ll.value());
   }
 }
 
