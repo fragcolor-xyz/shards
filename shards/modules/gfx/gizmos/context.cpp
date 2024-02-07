@@ -49,9 +49,9 @@ struct GizmosContextShard {
   ExposedInfo _innerExposedInfo;
   ExposedInfo _exposedInfo;
 
-  SHExposedTypesInfo exposedVariables() {
-    return SHExposedTypesInfo(_exposedInfo);
-  }
+  size_t frameCounter{};
+
+  SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void warmup(SHContext *context) {
     _inputContext.warmup(context);
@@ -63,7 +63,7 @@ struct GizmosContextShard {
     withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_WARMUP(context); });
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_contextVarRef) {
       withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_CLEANUP(context); });
       releaseVariable(_contextVarRef);
@@ -105,6 +105,8 @@ struct GizmosContextShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
+    ++frameCounter;
+
     Var queueVar(_queue.get());
     Var viewVar(_view.get());
     Var scalingVar(_scaling.get());
@@ -114,6 +116,8 @@ struct GizmosContextShard {
     assert(queueVar.payload.objectValue);
     _gizmoContext.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
     assert(_gizmoContext.queue);
+
+    _gizmoContext.wireframeRenderer.reset(frameCounter);
 
     gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
     gfxGizmoContext.renderer.scalingFactor = !scalingVar.isNone() ? float(scalingVar) : 1.0f;

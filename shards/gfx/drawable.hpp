@@ -39,7 +39,7 @@ struct IDrawable {
   }
 
   // If this is a group this function should extract it's contents and return true
-  virtual bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const { return false; }
+  virtual bool expand(shards::pmr::vector<const IDrawable *> &outDrawables, shards::pmr::PolymorphicAllocator<> alloc) const { return false; }
 
   // virtual void ShapeRenderer
 

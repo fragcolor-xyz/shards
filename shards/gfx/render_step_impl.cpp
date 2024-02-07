@@ -190,7 +190,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
       // Expand drawables
       ZoneScopedN("expandDrawables");
       for (auto &drawable : drawables) {
-        if (!drawable->expand(expandedDrawables))
+        if (!drawable->expand(expandedDrawables, storage.workerMemory))
           expandedDrawables.push_back(drawable);
       }
     }

@@ -14,6 +14,7 @@
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
+#include <boost/container/flat_map.hpp>
 #include <iterator>
 #include <memory>
 #include <stdexcept>
@@ -139,6 +140,13 @@ struct Loader {
   struct Mesh {
     std::vector<MeshDrawable::Ptr> primitives;
   };
+
+  struct TextureKey {
+    int imageIndex;
+    int samplerIndex;
+    std::strong_ordering operator<=>(const TextureKey &rhs) const = default;
+  };
+  boost::container::flat_map<TextureKey, TexturePtr> textureLookup;
 
   tinygltf::Model &model;
   std::vector<MeshPtr> primitiveMap;
@@ -405,22 +413,31 @@ struct Loader {
       const tinygltf::Texture &gltfTexture = model.textures[i];
       const tinygltf::Image &gltfImage = model.images[gltfTexture.source];
 
-      TexturePtr &texture = textureMap[i];
-      texture = std::make_shared<Texture>();
+      TextureKey cacheKey{.imageIndex = gltfTexture.source, .samplerIndex = gltfTexture.sampler};
+      auto itCached = textureLookup.find(cacheKey);
+      if (itCached != textureLookup.end()) {
+        textureMap[i] = itCached->second;
+        continue;
+      } else {
+        TexturePtr &texture = textureMap[i];
+        texture = std::make_shared<Texture>();
 
-      SamplerState samplerState{};
-      if (gltfTexture.sampler >= 0) {
-        samplerState = convertSampler(model.samplers[gltfTexture.sampler]);
+        SamplerState samplerState{};
+        if (gltfTexture.sampler >= 0) {
+          samplerState = convertSampler(model.samplers[gltfTexture.sampler]);
+        }
+
+        int2 resolution(gltfImage.width, gltfImage.height);
+        texture
+            ->init(TextureDesc{
+                .format = convertTextureFormat(gltfImage, false),
+                .resolution = resolution,
+                .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+            })
+            .initWithSamplerState(samplerState);
+
+        textureLookup[cacheKey] = texture;
       }
-
-      int2 resolution(gltfImage.width, gltfImage.height);
-      texture
-          ->init(TextureDesc{
-              .format = convertTextureFormat(gltfImage, false),
-              .resolution = resolution,
-              .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
-          })
-          .initWithSamplerState(samplerState);
     }
   }
 

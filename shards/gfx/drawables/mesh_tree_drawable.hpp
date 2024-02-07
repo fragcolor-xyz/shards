@@ -147,7 +147,7 @@ public:
 
   UniqueId getId() const override { return id; }
 
-  bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const override;
+  bool expand(shards::pmr::vector<const IDrawable *> &outDrawables, shards::pmr::PolymorphicAllocator<> alloc) const override;
 
   void debugVisualize(ShapeRenderer &renderer) override;
 };
