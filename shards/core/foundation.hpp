@@ -401,7 +401,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   SHVar *getExternalVariable(const SHStringWithLen name) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
-    return externalVariables[key];
+    return externalVariables[key].var;
   }
 
   constexpr auto &getExternalVariables() { return externalVariables; }
@@ -420,7 +420,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto key = shards::OwnedVar::Foreign(name);
     auto it = externalVariables.find(key);
     if (it != externalVariables.end()) {
-      return it->second;
+      return it->second.var;
     } else {
       return nullptr;
     }
@@ -434,8 +434,8 @@ private:
       variables;
 
   // variables with lifetime managed externally
-  std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
-                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar *>, 16>>
+  std::unordered_map<shards::OwnedVar, SHExternalVariable, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHExternalVariable>, 16>>
       externalVariables;
 
 private:
