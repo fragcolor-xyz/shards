@@ -485,7 +485,11 @@ impl WireRef {
       len: name.len() as u64,
     };
     unsafe {
-      (*Core).setExternalVariable.unwrap()(self.0, name, &var.0 as *const _ as *mut _);
+      let ev = SHExternalVariable {
+        var: &var.0 as *const _ as *mut _,
+        type_: std::ptr::null(),
+      };
+      (*Core).setExternalVariable.unwrap()(self.0, name, &ev as *const _ as *mut _);
     }
   }
 

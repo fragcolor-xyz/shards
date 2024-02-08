@@ -1842,7 +1842,7 @@ BUILTIN("set-var") {
   auto clonedVar = malSHVar::newCloned(var->value());
   clonedVar->value().flags |= SHVAR_FLAGS_EXTERNAL;
   auto vName = shards::OwnedVar::Foreign(varName);
-  wire->getExternalVariables()[vName] = &clonedVar->value();
+  wire->getExternalVariables()[vName] = SHExternalVariable{.var = &clonedVar->value()};
   wirevar->reference(clonedVar); // keep alive until wire is destroyed
   return malValuePtr(clonedVar);
 }

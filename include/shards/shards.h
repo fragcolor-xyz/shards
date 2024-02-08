@@ -819,11 +819,17 @@ typedef void(__cdecl *SHUnregisterExitCallback)(SHString eventName);
 typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, struct SHStringWithLen name);
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, struct SHStringWithLen name, struct SHVar *pVar);
+typedef struct SHExternalVariable {
+  struct SHVar *var;
+  // Optional, if null, the type is derived  from the var
+  const struct SHTypeInfo *type;
+} SHExternalVariable;
 
+// This copies the SHExternalVariable, althought the var/type fields should be kept alive by the caller
+typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, struct SHStringWithLen name, struct SHExternalVariable *pVar);
 typedef void(__cdecl *SHRemoveExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
+typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, struct SHStringWithLen name, const struct SHTypeInfo *type);
 
 typedef void(__cdecl *SHFreeExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
