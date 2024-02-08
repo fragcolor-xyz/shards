@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <shards/core/foundation.hpp>
+#include <shards/wire_dsl.hpp>
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"
