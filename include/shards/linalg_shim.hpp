@@ -47,6 +47,10 @@ template <typename T> struct generic {
   SHType valueType = _TypeOf<Self>::type;
   uint16_t flags{};
   uint32_t refcount{};
+  
+  generic() = default;
+  generic(const Base &other) { *this = other; }
+  generic(const Self& other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
@@ -74,6 +78,10 @@ template <typename T, int M> struct vec {
   SHType valueType = _TypeOf<TVec>::type;
   uint16_t flags{};
   uint32_t refcount{};
+  
+  vec() = default;
+  vec(const TVec &other) { *this = other; }
+  vec(const Self& other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
