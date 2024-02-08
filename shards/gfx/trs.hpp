@@ -61,11 +61,13 @@ struct TRS {
     mat = linalg::mul(linalg::translation_matrix(pivot), mat);
     return TRS(linalg::mul(mat, getMatrix()));
   }
-  TRS scaleAround(const float3 &pivot, const float3 &s) const {
-    float4x4 mat = linalg::translation_matrix(-pivot);
-    mat = linalg::mul(linalg::scaling_matrix(s), mat);
-    mat = linalg::mul(linalg::translation_matrix(pivot), mat);
-    return TRS(linalg::mul(mat, getMatrix()));
+  TRS scaleAround(const TRS &pivot, const float3 &s) const {
+    float4 toRotSpaceQ = linalg::qmul(rotation, linalg::qinv(pivot.rotation));
+    float3 relScale =  linalg::qrot(toRotSpaceQ, scale) * s;
+    float3 newLocalScale = linalg::qrot(linalg::qinv(toRotSpaceQ), relScale);
+
+    float3 relTsl = (translation - pivot.translation) * s;
+    return TRS(pivot.translation + relTsl, rotation, newLocalScale);
   }
   TRS scaled(const float3 &s) const { return TRS(translation, rotation, scale * s); }
 };
