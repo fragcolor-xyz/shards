@@ -28,16 +28,21 @@ inline float getScreenSize(ParamVar &v) {
   return !screenSizeVar.isNone() ? float(screenSizeVar) : 60.0f;
 }
 
-inline TRS computePivot(boost::span<gfx::TRSRef> transforms) {
+inline TRS computePivot(boost::span<gfx::TRSRef> transforms, bool localSpace = false) {
   if (transforms.empty()) {
     throw std::runtime_error("No transforms to compute pivot from");
   }
 
-  float3 p{};
-  for (auto &trs : transforms) {
-    p += trs.translation;
+  if (localSpace) {
+    auto &trs = transforms[0];
+    return TRS(trs.translation, trs.rotation);
+  } else {
+    float3 p{};
+    for (auto &trs : transforms) {
+      p += trs.translation;
+    }
+    return TRS(p / transforms.size());
   }
-  return TRS(p / transforms.size());
 }
 
 inline void applyPivotTranslation(boost::span<gfx::TRSRef> transforms, const TRS &oldTRS, const TRS &newTRS) {
@@ -71,7 +76,7 @@ struct GizmoIO {
       return Types::GizmoInOutTypes._types[0];
   }
 
-  void fillInput(const SHVar &input) {
+  void fillInputTransforms(const SHVar &input) {
     if (_isSeq) {
       _trsRefs.clear();
       for (auto &r : input.payload.seqValue) {
@@ -80,7 +85,9 @@ struct GizmoIO {
     } else {
       _trsRefs.push_back(gfx::toTrsRef(input));
     }
-
+  }
+  void fillInput(const SHVar &input) {
+    fillInputTransforms(input);
     pivot = computePivot(_trsRefs);
   }
 
@@ -225,7 +232,15 @@ struct ScalingGizmo : public Base {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _io.fillInput(input);
+    _io.fillInputTransforms(input);
+
+    // Prefer local pivot
+    if (_io._trsRefs.size() == 1) {
+      _io.pivot = computePivot(_io._trsRefs, true);
+    } else {
+      _io.pivot = computePivot(_io._trsRefs);
+    }
+
     _io.setGizmoInputs(_gizmo);
 
     // Scale based on screen distance
