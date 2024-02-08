@@ -732,18 +732,17 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
 template <class SH_CORE> TTableVar<SH_CORE> &makeTable(SHVar &var) {
   if (var.valueType != SHType::Table) {
-    destroyVar(var);
+    SH_CORE::destroyVar(var);
 
     var.valueType = SHType::Table;
-    var.payload.tableValue.api = &GetGlobals().TableInterface;
-    var.payload.tableValue.opaque = new SHMap();
+    var.payload.tableValue = SH_CORE::tableNew();
   }
   return reinterpret_cast<TTableVar<SH_CORE> &>(var);
 }
 
 template <class SH_CORE> TSeqVar<SH_CORE> &makeSeq(SHVar &var) {
   if (var.valueType != SHType::Seq) {
-    destroyVar(var);
+    SH_CORE::destroyVar(var);
 
     var.valueType = SHType::Seq;
   }
