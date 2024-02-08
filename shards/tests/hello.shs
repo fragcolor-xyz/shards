@@ -173,7 +173,7 @@ x | Log
 
 @template(table-user [table table-1234] {
   table:key1 | Log
-
+  
   100 | Set(table "key3")
   100 | Set(table-1234 "key3")
 })
@@ -206,8 +206,8 @@ WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 ["7" "8" "9"] = zs3
 ["10" "20" "30" "40"] = zs4
 Zip([zs1 zs2 zs3 zs4 [99 98]]) | Assert.Is([
-  {$0: "1" $1: "4" $2: "7" $3: "10" $4: 99}
-  {$0: "2" $1: "5" $2: "8" $3: "20" $4: 98}]) | Log
+  {"$0": "1" "$1": "4" "$2": "7" "$3": "10" "$4": 99}
+  {"$0": "2" "$1": "5" "$2": "8" "$3": "20" "$4": 98}]) | Log
 
 true = is-true | IsTrue | Assert.Is(true) | Log
 false = is-false | IsFalse | Assert.Is(true) | Log
