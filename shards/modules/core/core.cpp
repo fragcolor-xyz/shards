@@ -202,7 +202,7 @@ struct Sort : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException("From variable is not a single type SHType::Seq.");
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar), info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
@@ -369,7 +369,7 @@ struct Remove : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException("From variable is not a single type SHType::Seq.");
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar), info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];

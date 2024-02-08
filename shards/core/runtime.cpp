@@ -1020,18 +1020,25 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   // add externally added variables
   if (ctx.wire) {
     for (const auto &[key, pVar] : ctx.wire->getExternalVariables()) {
-      SHVar &var = *pVar;
+      const SHExternalVariable &extVar = pVar;
+      const SHVar &var = *extVar.var;
       shassert((var.flags & SHVAR_FLAGS_EXTERNAL) != 0);
 
-      auto hash = deriveTypeHash(var);
-      TypeInfo *info = nullptr;
-      if (ctx.wire->typesCache.find(hash) == ctx.wire->typesCache.end()) {
-        info = &ctx.wire->typesCache.emplace(hash, TypeInfo(var, data)).first->second;
+      const SHTypeInfo *type{};
+      if (extVar.type) {
+        type = extVar.type;
       } else {
-        info = &ctx.wire->typesCache.at(hash);
+        auto hash = deriveTypeHash(var);
+        TypeInfo *info = nullptr;
+        if (ctx.wire->typesCache.find(hash) == ctx.wire->typesCache.end()) {
+          info = &ctx.wire->typesCache.emplace(hash, TypeInfo(var, data)).first->second;
+        } else {
+          info = &ctx.wire->typesCache.at(hash);
+        }
+        type = &(const SHTypeInfo &)*info;
       }
 
-      SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *info, true /* mutable */};
+      SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
       expInfo.exposed = var.flags & SHVAR_FLAGS_EXPOSED;
       std::string_view sName(key.payload.stringValue, key.payload.stringLen);
       ctx.inherited[sName] = expInfo;
@@ -2858,7 +2865,7 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto vName = shards::OwnedVar::Foreign(nameView);
   auto it = wire->getExternalVariables().find(vName);
   if (it != wire->getExternalVariables().end()) {
-    return it->second;
+    return it->second.var;
   } else {
     auto it2 = wire->getVariables().find(vName);
     if (it2 != wire->getVariables().end()) {
@@ -2952,10 +2959,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->releaseVariable = [](SHVar *variable) noexcept { return shards::releaseVariable(variable); };
 
-  result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHVar *pVar) noexcept {
+  result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHExternalVariable *extVar) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     auto vName = shards::OwnedVar::Foreign(name);
-    sc->getExternalVariables()[vName] = pVar;
+    sc->getExternalVariables()[vName] = *extVar;
   };
 
   result->removeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
@@ -2964,20 +2971,20 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     sc->getExternalVariables().erase(vName);
   };
 
-  result->allocExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
+  result->allocExternalVariable = [](SHWireRef wire, SHStringWithLen name, const struct SHTypeInfo *type) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     auto vName = shards::OwnedVar::Foreign(name);
     auto res = new (std::align_val_t{16}) SHVar();
-    sc->getExternalVariables()[vName] = res;
+    sc->getExternalVariables()[vName] = SHExternalVariable{.var = res, .type = type};
     return res;
   };
 
   result->freeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     auto vName = shards::OwnedVar::Foreign(name);
-    auto var = sc->getExternalVariables()[vName];
-    if (var) {
-      ::operator delete(var, std::align_val_t{16});
+    auto extVar = sc->getExternalVariables()[vName];
+    if (extVar.var) {
+      ::operator delete(extVar.var, std::align_val_t{16});
     }
     sc->getExternalVariables().erase(vName);
   };
