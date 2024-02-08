@@ -121,7 +121,7 @@ struct Type {
     return res;
   }
 
-  operator SHTypeInfo() const { return _type; }
+  operator const SHTypeInfo&() const { return _type; }
 
   static Type SeqOf(SHTypesInfo types) {
     Type res;
