@@ -2,7 +2,8 @@
 #define AD244946_690B_4770_A0A2_D2AF76FFBBD0
 
 #include "gizmos.hpp"
-#include <gfx/linalg.hpp>
+#include "../trs.hpp"
+#include "../linalg.hpp"
 
 namespace gfx {
 namespace gizmos {
@@ -20,7 +21,15 @@ struct SelectionDisc {
 //       This is to prevent multiple handles from different gizmos being selected at the same time,
 //       resulting in unexpected behaviour.
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
-  float4x4 transform = linalg::identity;
+public:
+  TRS pivot;
+  boost::container::small_vector<TRS, 16> transforms;
+  boost::container::small_vector<TRS, 16> movedTransforms;
+
+  float scale = 1.0f;
+
+private:
+  float4x4 pivotTransform;
 
   Handle handles[4];
   SelectionDisc handleSelectionDiscs[4];
@@ -29,14 +38,14 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 dragStartPoint;
   float3 dragTangentDir;
   float3 dragNormalDir;
-
-  float scale = 1.0f;
+  boost::container::small_vector<TRS, 16> startTransforms;
 
   const float outerRadius = 1.0f;
   const float innerRadius = 0.9f;
   float getInnerRadius() const { return innerRadius * scale; }
   float getOuterRadius() const { return outerRadius * scale; }
 
+public:
   RotationGizmo() {
     for (int i = 0; i < 3; ++i) {
       handles[i].userData = reinterpret_cast<void *>(i);
@@ -51,11 +60,13 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // update from IGizmo, seems to update gizmo based on inputcontext
   // updates mainly the hitbox for the handle and calls updateHandle to check if the handle is selected (via raycasting)
   virtual void update(InputContext &inputContext) {
+    movedTransforms.clear();
+    pivotTransform = pivot.getMatrix();
 
     // Rotate the 3 discs for x/y/z-axis according to the current transform of the object
     // TODO: Currently identity matrix
     //   Make this work correctly in local-transform mode
-    transformNoScale = linalg::translation_matrix(extractTranslation(transform));
+    transformNoScale = linalg::translation_matrix(extractTranslation(pivotTransform));
     for (int i = 0; i < 3; ++i) {
       handleSelectionDiscs[i].torus.normal = transformNoScale[i].xyz();
       handleSelectionDiscs[i].baseX = transformNoScale[(i + 1) % 3].xyz();
@@ -101,7 +112,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
   // Called when handle grabbed from IGizmoCallbacks
   virtual void grabbed(InputContext &context, Handle &handle) {
-    dragStartTransform = transform;
+    dragStartTransform = pivotTransform;
+    startTransforms = transforms;
 
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
@@ -138,7 +150,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
   // Called every update while handle is being held from IGizmoCallbacks
   virtual void move(InputContext &context, Handle &handle) {
-
     auto handleIndex = getHandleIndex(handle);
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
@@ -167,10 +178,9 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       }
 
       float4 qRotation = linalg::rotation_quat(axis, delta);
-      float3 t, s;
-      float3x3 r;
-      decomposeTRS(dragStartTransform, t, s, r);
-      transform = composeTRS(t, s, linalg::mul(rotationMatrix3(qRotation), r));
+      for (size_t i = 0; i < startTransforms.size(); i++) {
+        movedTransforms.push_back(startTransforms[i].rotatedAround(extractTranslation(dragStartTransform), qRotation));
+      }
     }
   }
 
