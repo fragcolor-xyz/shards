@@ -59,7 +59,7 @@ struct ConstTranslator {
 template <typename TShard> struct SetTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
     auto &varName = shard->_name;
-    SPDLOG_LOGGER_INFO(context.logger, "gen(set/ref)> {}", varName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(set/ref)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not set: no value to set"));
@@ -83,7 +83,7 @@ template <typename TShard> struct SetTranslator {
 
 struct GetTranslator {
   static void translateByName(const std::string &varName, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(get)> {}", varName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(get)> {}", varName);
 
     auto &compositionContext = ShaderCompositionContext::get();
 
@@ -100,7 +100,7 @@ struct GetTranslator {
 struct UpdateTranslator {
   static void translate(shards::Update *shard, TranslationContext &context) {
     auto &varName = shard->_name;
-    SPDLOG_LOGGER_INFO(context.logger, "gen(upd)> {}", varName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(upd)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not update: no value to set"));
@@ -157,7 +157,7 @@ struct TakeTranslator {
     NumType outFieldType = getShaderBaseType(outVectorType.numberType);
     outFieldType.numComponents = outVectorType.dimension;
 
-    SPDLOG_LOGGER_INFO(context.logger, "gen(take)> {}", swizzle);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(take)> {}", swizzle);
 
     context.setWGSLTop<WGSLBlock>(outFieldType, blocks::makeCompoundBlock("(", wgslValue->toBlock(), ")." + swizzle));
   }
@@ -300,7 +300,7 @@ struct Literal {
     auto type = ShaderLiteralType(_type.payload.enumValue);
 
     bool isDynamic = _source.valueType != SHType::String;
-    SPDLOG_LOGGER_INFO(context.logger, "gen(literal/{})> {}", magic_enum::enum_name(type),
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(literal/{})> {}", magic_enum::enum_name(type),
                        isDynamic ? "dynamic" : SHSTRVIEW(_source));
 
     auto outputFieldType = getOutputType();
@@ -392,7 +392,7 @@ template <typename TShard> struct Read final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
 
     context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<TShard>(_name));
   }
@@ -472,7 +472,7 @@ struct ReadBuffer final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName, _name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName, _name);
 
     NumType fieldType = std::get<NumType>(_type.shaderType);
     context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _resolvedBufferName));
@@ -532,7 +532,7 @@ template <typename TShard> struct Write : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
@@ -588,7 +588,7 @@ struct SampleTexture {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_INFO(context.logger, "gen(sample)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample)> {}", textureName);
 
     context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
   }
@@ -636,7 +636,7 @@ struct SampleTextureCoord : public SampleTexture {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_INFO(context.logger, "gen(sample/uv)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample/uv)> {}", textureName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not sample texture: coordinate is required"));
@@ -677,7 +677,7 @@ struct RefTexture {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/texture)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/texture)> {}", textureName);
 
     auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.texture(textureName); });
     context.setWGSLTopVar(_textureType, std::move(block));
@@ -714,7 +714,7 @@ struct RefSampler {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/sampler)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/sampler)> {}", textureName);
 
     auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.textureDefaultSampler(textureName); });
     context.setWGSLTopVar(_samplerType, std::move(block));

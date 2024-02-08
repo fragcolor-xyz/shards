@@ -56,7 +56,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
                                                      const std::optional<Type> &inputType, const std::string &name) {
   TranslatedFunction translated;
   translated.functionName = getUniqueVariableName(name);
-  SPDLOG_LOGGER_INFO(logger, "Generating shader function for shards {} => {}", name, translated.functionName);
+  SPDLOG_LOGGER_TRACE(logger, "Generating shader function for shards {} => {}", name, translated.functionName);
 
   if (inputType) {
     assert(inputType.has_value());
@@ -146,7 +146,7 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   std::string signature = fmt::format("fn {}({}) {}", translated.functionName, argsDecl, returnDecl);
   functionHeader.appendLine(signature + "{");
 
-  SPDLOG_LOGGER_INFO(logger, "gen(function)> {}", signature);
+  SPDLOG_LOGGER_TRACE(logger, "gen(function)> {}", signature);
 
   // Insert function definition into root so it will be processed first
   // the Header block will insert it's generate code outside & before the shader entry point

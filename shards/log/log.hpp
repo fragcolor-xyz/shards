@@ -49,6 +49,9 @@ template <typename T> Logger getOrCreate(const std::string &name, T init) {
   }
   return logger;
 }
+inline Logger getOrCreate(const std::string &name) {
+  return getOrCreate(name, [](Logger logger) {});
+}
 } // namespace shards::logging
 
 #endif /* E8296F1D_E25F_4AC4_AA7C_D680CA0D7ABF */

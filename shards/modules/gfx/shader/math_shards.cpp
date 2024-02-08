@@ -24,7 +24,7 @@ template <typename TShard> struct ToNumberTranslator {
     NumType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
-    SPDLOG_LOGGER_INFO(context.logger, "gen(cast/{})> ", outputVectorType->name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(cast/{})> ", outputVectorType->name);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Cast requires a value"));
@@ -109,7 +109,7 @@ template <typename TShard> struct MakeVectorTranslator {
     NumType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
-    SPDLOG_LOGGER_INFO(context.logger, "gen(make/{})> ", outputVectorType->name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(make/{})> ", outputVectorType->name);
 
     std::vector<shards::ParamVar> &params = shard->params;
     std::unique_ptr<blocks::Compound> sourceComponentList;

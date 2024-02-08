@@ -24,7 +24,7 @@ SH_HAS_MEMBER_TEST(postfixOp);
 
 template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(bop)>");
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(bop)>");
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not apply binary operator without input"));
@@ -71,7 +71,7 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
 
 template <typename TShard, typename TOp> struct UnaryOperatorTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(unop)>");
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(unop)>");
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not apply unary operator without input"));

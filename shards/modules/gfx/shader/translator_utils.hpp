@@ -37,7 +37,7 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
   {                                                                                                    \
     NumType fieldType(_type, _dim);                                                               \
     std::string resultStr = fmt::format("{}(" _fmt ")", getWGSLTypeName(fieldType), __VA_ARGS__); \
-    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                   \
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(const)> {}", resultStr);                                   \
     result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
   }
 
@@ -77,7 +77,7 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
     translateTable(var, context);
     break;
   case SHType::None:
-    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> nil");
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(const)> nil");
     break;
   default:
     throw ShaderComposeError(fmt::format("Unsupported SHType constant inside shader: {}", magic_enum::enum_name(valueType)));

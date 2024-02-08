@@ -6,16 +6,11 @@
 namespace gfx {
 
 inline shards::logging::Logger getLogger() {
-  return shards::logging::getOrCreate("gfx", [](shards::logging::Logger logger) {
-    // Set default log level to warn to be less verbose
-    logger->set_level(spdlog::level::warn);
-  });
+  return shards::logging::getOrCreate("gfx");
 }
 
 inline shards::logging::Logger getWgpuLogger() {
-  return shards::logging::getOrCreate("wgpu", [](shards::logging::Logger logger) {
-    logger->set_level(spdlog::level::err);
-  });
+  return shards::logging::getOrCreate("wgpu");
 }
 } // namespace gfx
 

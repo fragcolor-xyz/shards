@@ -575,7 +575,7 @@ void Context::requestAdapter() {
     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
     backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
     if (backend) {
-      SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(*backend));
+      SPDLOG_LOGGER_DEBUG(logger, "Using backend {}", magic_enum::enum_name(*backend));
     }
   }
 
@@ -707,10 +707,12 @@ void Context::initCommon() {
           wgpuLogger->warn("{}", msg);
           break;
         case WGPULogLevel_Info:
-          wgpuLogger->info("{}", msg);
+          // Default logging is too verbose for info
+          wgpuLogger->debug("{}", msg);
           break;
         case WGPULogLevel_Debug:
-          wgpuLogger->debug("{}", msg);
+          // Debug too verbose for debug level
+          wgpuLogger->trace("{}", msg);
           break;
         case WGPULogLevel_Trace:
           wgpuLogger->trace("{}", msg);
