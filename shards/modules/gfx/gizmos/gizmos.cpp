@@ -48,6 +48,73 @@ inline void applyPivotTranslation(boost::span<gfx::TRSRef> transforms, const TRS
   }
 }
 
+template <typename T>
+concept Gizmo = requires(T gizmo) {
+  { gizmo.pivot } -> std::convertible_to<TRS>;
+  { gizmo.transforms.push_back(TRS()) };
+};
+
+struct GizmoIO {
+  bool _isSeq{};
+  boost::container::small_vector<gfx::TRSRef, 16> _trsRefs;
+
+  SeqVar _outVars;
+  boost::container::small_vector<gfx::TRSRef, 16> _outTrsRefs;
+
+  TRS pivot;
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _isSeq = data.inputType.basicType == SHType::Seq;
+    if (_isSeq)
+      return Types::GizmoInOutTypes._types[1];
+    else
+      return Types::GizmoInOutTypes._types[0];
+  }
+
+  void fillInput(const SHVar &input) {
+    if (_isSeq) {
+      _trsRefs.clear();
+      for (auto &r : input.payload.seqValue) {
+        _trsRefs.push_back(gfx::toTrsRef(r));
+      }
+    } else {
+      _trsRefs.push_back(gfx::toTrsRef(input));
+    }
+
+    pivot = computePivot(_trsRefs);
+  }
+
+  SHVar fillOutput(boost::span<TRS> modifiedTransforms) {
+    _outVars.resize(_trsRefs.size());
+    _outTrsRefs.clear();
+    for (size_t i = 0; i < _trsRefs.size(); i++) {
+      auto &v = _outVars[i];
+      if (v.valueType != SHType::Table) {
+        (OwnedVar &)v = TableVar();
+      }
+      auto &tv = (TableVar &)v;
+      toVar(tv, modifiedTransforms[i]);
+      _outTrsRefs.push_back(gfx::toTrsRef(v));
+    }
+    if (_isSeq) {
+      return _outVars;
+    } else {
+      return _outVars[0];
+    }
+  }
+
+  template <typename G>
+  void setGizmoInputs(G &gizmo)
+    requires Gizmo<G>
+  {
+    gizmo.pivot = pivot;
+    gizmo.transforms.clear();
+    for (auto &trs : _trsRefs) {
+      gizmo.transforms.push_back(trs);
+    }
+  }
+};
+
 struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() { return Types::GizmoInOutTypes; }
   static SHTypesInfo outputTypes() { return Types::GizmoInOutTypes; }
@@ -58,62 +125,25 @@ struct TranslationGizmo : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::TranslationGizmo _gizmo{};
-  bool _isSeq{};
-  boost::container::small_vector<gfx::TRSRef, 16> _trsRefs;
-
-  SeqVar _outVars;
-  boost::container::small_vector<gfx::TRSRef, 16> _outTrsRefs;
+  GizmoIO _io{};
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _isSeq = data.inputType.basicType == SHType::Seq;
-    if (_isSeq)
-      return outputTypes().elements[1];
-    else
-      return outputTypes().elements[0];
+    return _io.compose(data);
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    if (_isSeq) {
-      _trsRefs.clear();
-      for (auto &r : input.payload.seqValue) {
-        _trsRefs.push_back(gfx::toTrsRef(r));
-      }
-    } else {
-      _trsRefs.push_back(gfx::toTrsRef(input));
-    }
-
-    TRS pivot = computePivot(_trsRefs);
+    _io.fillInput(input);
+    _io.setGizmoInputs(_gizmo);
 
     // Scale based on screen distance
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(pivot.translation, getScreenSize(_screenSize));
-
-    _gizmo.pivot = pivot;
-    _gizmo.transforms.clear();
-    for(auto &trs : _trsRefs) {
-      _gizmo.transforms.push_back(trs);
-    }
+    _gizmo.scale =
+        _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(_io.pivot.translation, getScreenSize(_screenSize));
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
     if (!_gizmo.movedTransforms.empty()) {
-      _outVars.resize(_trsRefs.size());
-      _outTrsRefs.clear();
-      for (size_t i = 0; i < _trsRefs.size(); i++) {
-        auto &v = _outVars[i];
-        if (v.valueType != SHType::Table) {
-          (OwnedVar &)v = TableVar();
-        }
-        auto &tv = (TableVar &)v;
-        toVar(tv, _gizmo.movedTransforms[i]);
-        _outTrsRefs.push_back(gfx::toTrsRef(v));
-      }
-      // applyPivotTranslation(_outTrsRefs, _gizmo.pivot, *_gizmo.movedPivot);
-      if (_isSeq) {
-        return _outVars;
-      } else {
-        return _outVars[0];
-      }
+      return _io.fillOutput(_gizmo.movedTransforms);
     } else {
       return input;
     }
@@ -142,55 +172,29 @@ struct RotationGizmo : public Base {
 
   // gizmo from translation_gizmo.hpp, not this file
   gfx::gizmos::RotationGizmo _gizmo{};
+  GizmoIO _io{};
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    float4x4 inputMat;
-    std::function<void(float4x4 & mat)> applyOutputMat;
-
-    switch (input.valueType) {
-    // if sequence given (transform matrix)
-    case SHType::Seq:
-      inputMat = (shards::Mat4)input;
-      break;
-    // if object given (drawable)
-    case SHType::Object: {
-      gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
-      std::visit(
-          [&](auto &drawable) {
-            // let T be the type of the drawable
-            using T = std::decay_t<decltype(drawable)>;
-            // if same type as MeshTreeDrawable
-            if constexpr (std::is_same_v<T, gfx::MeshTreeDrawable::Ptr>) {
-              // get the transform matrix from drawable, and set applyOutputMat to a function that sets the transform
-              inputMat = drawable->trs.getMatrix();
-              applyOutputMat = [&](float4x4 &outMat) { drawable->trs = outMat; };
-            } else { // not sure what type this is expecting, just a type with transform member variable?
-              inputMat = drawable->transform;
-              applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
-            }
-          },
-          drawable->drawable);
-      break;
-    }
-    default:
-      throw std::invalid_argument("input type");
-      break;
-    }
-
-    _gizmo.transform = inputMat;
-
-    // Scale based on screen distance
-    float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(gizmoLocation, getScreenSize(_screenSize));
-
-    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
-
-    if (applyOutputMat)
-      applyOutputMat(_gizmo.transform);
-
-    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return _io.compose(data);
   }
 
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _io.fillInput(input);
+    _io.setGizmoInputs(_gizmo);
+
+    // Scale based on screen distance
+    _gizmo.scale =
+        _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(_io.pivot.translation, getScreenSize(_screenSize));
+
+    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
+    if (!_gizmo.movedTransforms.empty()) {
+      return _io.fillOutput(_gizmo.movedTransforms);
+    } else {
+      return input;
+    }
+  }
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     baseWarmup(context);
@@ -199,12 +203,6 @@ struct RotationGizmo : public Base {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
-  }
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(const SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
   }
 };
 
@@ -218,55 +216,29 @@ struct ScalingGizmo : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::ScalingGizmo _gizmo{};
+  GizmoIO _io{};
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    float4x4 inputMat;
-    std::function<void(float4x4 & mat)> applyOutputMat;
-
-    switch (input.valueType) {
-    // if sequence given (transform matrix)
-    case SHType::Seq:
-      inputMat = (shards::Mat4)input;
-      break;
-    // if object given (drawable)
-    case SHType::Object: {
-      gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
-      std::visit(
-          [&](auto &drawable) {
-            // let T be the type of the drawable
-            using T = std::decay_t<decltype(drawable)>;
-            // if same type as MeshTreeDrawable
-            if constexpr (std::is_same_v<T, gfx::MeshTreeDrawable::Ptr>) {
-              // get the transform matrix from drawable, and set applyOutputMat to a function that sets the transform
-              inputMat = drawable->trs.getMatrix();
-              applyOutputMat = [&](float4x4 &outMat) { drawable->trs = outMat; };
-            } else { // not sure what type this is expecting, just a type with transform member variable?
-              inputMat = drawable->transform;
-              applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
-            }
-          },
-          drawable->drawable);
-      break;
-    }
-    default:
-      throw std::invalid_argument("input type");
-      break;
-    }
-
-    _gizmo.transform = inputMat;
-
-    // Scale based on screen distance
-    float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(gizmoLocation, getScreenSize(_screenSize));
-
-    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
-
-    if (applyOutputMat)
-      applyOutputMat(_gizmo.transform);
-
-    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return _io.compose(data);
   }
 
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _io.fillInput(input);
+    _io.setGizmoInputs(_gizmo);
+
+    // Scale based on screen distance
+    _gizmo.scale =
+        _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(_io.pivot.translation, getScreenSize(_screenSize));
+
+    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
+    if (!_gizmo.movedTransforms.empty()) {
+      return _io.fillOutput(_gizmo.movedTransforms);
+    } else {
+      return input;
+    }
+  }
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     baseWarmup(context);
@@ -275,12 +247,6 @@ struct ScalingGizmo : public Base {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
-  }
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(const SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
   }
 };
 

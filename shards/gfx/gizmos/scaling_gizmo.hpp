@@ -182,9 +182,14 @@ public:
       scaling[index] = 1 + delta[index] * axisSensitivity;
     }
 
-    TRS pivotTrs(dragStartTransform);
+    // float3 t, s;
+    // float3x3 r;
+    // decomposeTRS(dragStartTransform, t, s, r);
+    // s *= scaling;
+    // transform = composeTRS(t, s, r);
+
     for (size_t i = 0; i < transforms.size(); i++) {
-      movedTransforms.push_back(startTransforms[i].scaleAround(pivotTrs, scaling));
+      movedTransforms.push_back(startTransforms[i].scaleAround(extractTranslation(dragStartTransform), scaling));
     }
   }
 
