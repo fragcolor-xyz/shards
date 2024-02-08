@@ -1943,7 +1943,9 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
 }
 
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
-  shassert((dst.flags & SHVAR_FLAGS_FOREIGN) != SHVAR_FLAGS_FOREIGN && "cannot clone into a foreign var");
+  static constexpr uint16_t ForeignWritableFlags = (SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_FOREIGN_WRITABLE);
+  uint16_t foreignFlagsMasked = (dst.flags & ForeignWritableFlags);
+  shassert((foreignFlagsMasked == 0 || foreignFlagsMasked == ForeignWritableFlags)  && "cannot clone into a foreign var");
   switch (src.valueType) {
   case SHType::Seq: {
     uint32_t srcLen = src.payload.seqValue.len;

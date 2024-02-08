@@ -590,6 +590,8 @@ struct SHVarPayload {
 // used internally to cancel and abort a wire flow, must be String type and receiver must abort and destroy the var
 // used only in async.hpp and rust side async activation so far
 #define SHVAR_FLAGS_ABORT (1 << 5)
+// can be used alongside foreign to mark a foreign variable as writable
+#define SHVAR_FLAGS_FOREIGN_WRITABLE (1 << 6)
 
 struct SHVar {
   struct SHVarPayload payload;
