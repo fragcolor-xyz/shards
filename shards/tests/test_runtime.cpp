@@ -1068,6 +1068,8 @@ TEST_CASE("linalg compatibility") {
   static_assert(sizeof(SHVar) == sizeof(padded::Int3));
   static_assert(sizeof(SHVar) == sizeof(padded::Int2));
   static_assert(sizeof(SHVar) == sizeof(padded::Int));
+  static_assert(sizeof(SHVar) * 4 == sizeof(Mat4));
+  static_assert(sizeof(padded::Float4)*4 == sizeof(Mat4));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float4, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float3, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float2, valueType));
@@ -1076,6 +1078,10 @@ TEST_CASE("linalg compatibility") {
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int3, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int2, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int, valueType));
+  static_assert(0 == offsetof(Mat4, x));
+  static_assert(sizeof(SHVar) * 1 == offsetof(Mat4, y));
+  static_assert(sizeof(SHVar) * 2 == offsetof(Mat4, z));
+  static_assert(sizeof(SHVar) * 3 == offsetof(Mat4, w));
 
   Var a{1.0, 2.0, 3.0, 4.0};
   Var b{4.0, 3.0, 2.0, 1.0};
