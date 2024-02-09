@@ -1,4 +1,4 @@
 [profile.rel-with-deb-info]
 inherits = "release"
 debug-assertions = true
-debug = true
+debug = "line-tables-only"
