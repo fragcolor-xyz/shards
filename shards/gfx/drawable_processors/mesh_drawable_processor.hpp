@@ -140,6 +140,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   struct CachedDrawable {
     MeshPtr mesh;
+    bool flipped{};
     size_t lastTouched{};
   };
   boost::container::flat_map<UniqueId, CachedDrawable> drawableCache;
@@ -225,6 +226,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     builder.meshFormat = cached.mesh->getFormat();
+
+    if (isFlippedCoordinateSpace(meshDrawable.transform)) {
+      builder.isRenderingFlipped = !builder.isRenderingFlipped;
+    }
 
     if (!options.ignoreDrawableFeatures) {
       for (auto &feature : meshDrawable.features) {
@@ -856,7 +861,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       auto &entry = detail::getCacheEntry(drawableCache, drawable.getId());
       entry.mesh = meshCacheEntry.mesh;
+      entry.flipped = isFlippedCoordinateSpace(drawable.transform);
       touchCacheItem(entry, frameCounter);
+
+      pipelineHashCollector((bool)entry.flipped);
 
       pipelineHashCollector(mesh);
       if (drawable.material) {
