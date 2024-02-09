@@ -1,0 +1,376 @@
+; (defn setup-pbr-lib [pbr-wgsl filter-cubemap render-cubemap-0]
+; (defshards shader-integrate [texture sampler base-dir body num-samples args]
+; (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
+; let tbn = generateFrameFromZDirection(baseDir);
+; var weight = 0.0;
+; var result = vec3<f32>(0.0);" "
+; var sampleIndex = 0;
+; loop {
+; if(sampleIndex >= " num-samples ") {
+; break;
+; }" "
+; var mci: IntegrateInput;
+; mci.baseDirection = baseDir;
+; mci.coord = hammersley2d(sampleIndex, " num-samples ");
+; let mco = " body ";
+; let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
+; let direction = tbn * mco.localDirection;
+; let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
+; result = result + s * mco.sampleScale;
+; weight = weight + mco.sampleWeight;" "
+; sampleIndex = sampleIndex + 1;
+; }
+; return result / weight;
+; }"])
+; (Shader.Literal ["integrate(" args "," base-dir "," texture "," sampler ")"] :OutputDimension 3))
+
+; (defshards compute-specular-lut [pbr-wgsl out-name]
+; (Msg "Computing specular split-sum LUT")
+; (GFX.EffectPass
+; :ComposeWith {:pbr-wgsl pbr-wgsl}
+; :EntryPoint (->
+; (Shader.Literal :Type ShaderLiteralType.Header :Source .pbr-wgsl)
+; (Shader.ReadInput "texCoord0") >= .uv
+; (Shader.Literal :OutputDimension 2 :Source ["computeLUT(" .uv ", 1024)"])
+; (ToFloat2) (Shader.WriteOutput "color"))) >> .lut-steps-1
+; (GFX.Texture :Format TextureFormat.RG16Float :Addressing TextureAddressing.ClampToEdge) >= out-name
+; (GFX.RenderInto :Textures {:color out-name}
+; :Size (Int2 64)
+; :Contents (->
+; (GFX.Render :Steps .lut-steps-1)))
+; out-name;
+; )
+
+
+; (defshards calc-num-mips []
+; (| (Take 0) >= .dim-x) (| (Take 1) >= .dim-y)
+; .dim-x (Min .dim-y) >= .dim-min
+; .dim-min (ToFloat) (Math.Log2) (Math.Floor) (ToInt) ; This is up until 2x2
+; )
+
+; (defshards compute-integrated-specular-fs []
+; (Shader.Literal :Type ShaderLiteralType.Header :Source .pbr-wgsl)
+; (Shader.ReadInput "worldNormal") >= .world-normal
+; (Shader.RefTexture "source") = .source-texture
+; (Shader.RefSampler "source") = .source-sampler
+; (Shader.ReadBuffer "roughness") (ToFloat4) = .args
+; (shader-integrate .source-texture .source-sampler .world-normal "ggx(args.x, mci)" "1024" .args)
+; (ToFloat4) (Math.Add (Float4 0 0 0 1))
+; (Shader.WriteOutput "color"))
+
+; (defwire compute-integrated-specular-mip
+; .current-mip (Log "Computing integrated ggx mip level")
+; .num-mips (Math.Subtract 1) (ToFloat) = .div
+; .current-mip (ToFloat) (Math.Divide .div) = .roughness
+; .roughness (Log "Roughness")
+; (GFX.Feature :Params {:source .cube-tex
+; :roughness .roughness}
+; :ComposeWith {:pbr-wgsl pbr-wgsl}
+; :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+; :EntryPoint (compute-integrated-specular-fs)}]) >= .filter-feature
+; (filter-cubemap .filter-feature .cube-tex .current-mip {})
+; .current-mip (Log "Done"))
+
+; (defshards compute-integrated-lambert-fs []
+; (Shader.Literal :Type ShaderLiteralType.Header :Source .pbr-wgsl)
+; (Shader.ReadInput "worldNormal") >= .world-normal
+; (Shader.RefTexture "source") = .source-texture
+; (Shader.RefSampler "source") = .source-sampler
+; 1.0 (ToFloat4) = .args
+; (shader-integrate .source-texture .source-sampler .world-normal "lambert(mci)" "256" .args)
+; (ToFloat4) (Math.Add (Float4 0 0 0 1))
+; (Shader.WriteOutput "color"))
+
+; (defwire compute-integrated-lambert
+; (Msg "Computing integrated lambert")
+; (GFX.Feature :Params {:source .cube-tex}
+; :ComposeWith {:pbr-wgsl pbr-wgsl}
+; :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+; :EntryPoint (compute-integrated-lambert-fs)}]) >= .filter-feature
+; (filter-cubemap .filter-feature .cube-tex-2 0 {})
+; (Msg "Done"))
+
+; (defwire generate-probes
+; (| (Take "steps") = .probe-inner-steps)
+; (| (Take "offset") = .probe-offset)
+
+; (Msg "Generating pre-rendered PBR textures")
+; (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= .cube-tex
+; (render-cubemap-0 .probe-inner-steps .cube-tex .probe-offset)
+
+; ; Precompute reflective
+; (Int2 256) >= .size
+; (Log "Cubemap dimension")
+; (calc-num-mips) >= .num-mips
+; (Log "Number of mip levels")
+; (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution .size :MipLevels .num-mips :Dimension TextureDimension.Cube) >= .cube-tex
+; (ForRange 1 .num-mips (->
+; (Math.Subtract 1) >= .current-mip
+; (Spawn compute-integrated-specular-mip)))
+
+; ; Precompute lambertian
+; (Int2 256) > .size
+; (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution .size :Dimension TextureDimension.Cube) >= .cube-tex-2
+; (Do compute-integrated-lambert)
+
+; (compute-specular-lut pbr-wgsl .ggx-lut)
+; {:lambert .cube-tex-2 :ggx .cube-tex :ggxLUT .ggx-lut})
+
+; (defwire setup-pbr-feature
+; ; Expects built probe 
+; >= .parameters
+; 1.0 (Set .parameters "roughness")
+; 0.0 (Set .parameters "metallic")
+; (Setup
+; (Float4 0 0 1 0) = .init
+; [.init .init .init .init] (Flatten) (FloatsToImage 2 2 4)
+; (GFX.Texture) = .normal-placeholder-texture
+
+; (Float4 0 0 0 0) = .init-0
+; [.init-0 .init-0 .init-0 .init-0] (Flatten) (FloatsToImage 2 2 4)
+; (GFX.Texture) = .zero-placeholder-texture)
+; .normal-placeholder-texture  (Set .parameters "normalTexture")
+; {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
+; .zero-placeholder-texture (Set .parameters "emissiveTexture")
+; 1.0 (Set .parameters "normalScale")
+; (GFX.Feature
+; :Params .parameters
+; :ComposeWith {:pbr-wgsl pbr-wgsl}
+; :RequiredAttributes [RequiredAttributes.Tangent]
+; :Shaders
+; [{:Stage ProgrammableGraphicsStage.Fragment
+; :After ["writeColor"]
+; :Before []
+; :EntryPoint
+; (->
+; (Shader.ReadBuffer "invView" :BufferName "view") >= .camera-matrix
+; (Shader.Literal [.camera-matrix "[3].xyz"] :OutputDimension 3) >= .eye-pos
+; (Shader.ReadInput "worldPosition") >= .world-position
+; .eye-pos (Math.Subtract .world-position) (Math.Normalize) >= .view-direction
+
+; (Shader.ReadBuffer "roughness") >= .roughness
+; (Shader.ReadBuffer "metallic") >= .metallic
+; (Shader.ReadGlobal "color") >= .base-color
+
+; (Shader.Literal :Type ShaderLiteralType.Header :Source .pbr-wgsl)
+; (Shader.RefTexture "lambert") = .lambert-texture
+; (Shader.RefSampler "lambert") = .lambert-sampler
+; (Shader.RefTexture "ggx") = .ggx-texture
+; (Shader.RefSampler "ggx") = .ggx-sampler
+; (Shader.RefTexture "ggxLUT") = .ggx-lut-texture
+; (Shader.RefSampler "ggxLUT") = .ggx-lut-sampler
+
+; ; Apply metallic-roughness texture
+; ; glTF Spec:
+; ; The metalness values are sampled from the B channel. The roughness values are sampled from the G channel.
+; (Shader.SampleTexture "metallicRoughnessTexture") = .metallic-roughness
+; .metallic-roughness:2 (Math.Multiply .metallic) > .metallic
+; .metallic-roughness:1 (Math.Multiply .roughness) > .roughness
+
+; (Float3 0 0 0) >= .emissive-color
+; (Shader.WithTexture "emissiveTexture" (->
+; (Shader.SampleTexture "emissiveTexture") (ToFloat3) > .emissive-color))
+
+; ; Apply normal map
+; ; glTF Spec:
+; ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
+; ; The scalar parameter applied to each normal vector of the texture.
+; ; This value scales the normal vector in X and Y directions using the formula: 
+; ;  scaledNormal =  normalize((<sampled normal texture value> * 2.0 - 1.0) * vec3(<normal scale>, <normal scale>, 1.0))
+; (Shader.ReadBuffer "normalScale") = .normal-scale
+; (Float3 .normal-scale .normal-scale 1.0) = .normal-scale-3
+; (Shader.SampleTexture "normalTexture") (ToFloat3)
+; (Math.Multiply (Float3 2.0 2.0 1.0))
+; (Math.Subtract (Float3 1 1 0))
+; (Math.Multiply .normal-scale-3) (Math.Normalize) = .local-normal
+
+; (Shader.ReadInput "worldNormal") >= .world-normal
+; (Shader.ReadInput "worldTangent") = .world-tangent
+; (Shader.ReadInput "biTangentSign") = .bi-tangent-sign
+
+; (Shader.ReadBuffer "world") = .world-mat
+; (Shader.Literal ["var biTangent = normalize(cross(" .world-normal "," .world-tangent ") * " .bi-tangent-sign ");"
+; "var tbnMat = mat3x3<f32>(" .world-tangent ", biTangent ," .world-normal ");"
+; .world-normal " = normalize((tbnMat * " .local-normal ").xyz);"])
+
+; (Shader.Literal ["
+; var lgp: LightingGeneralParams;
+; lgp.surfaceNormal = " .world-normal ";
+; lgp.viewDirection = " .view-direction ";"])
+
+; (Shader.Literal ["
+; var mi = getDefaultMaterialInfo();
+; mi.baseColor = (" .base-color ").xyz;
+; materialSetMetallicRoughness(&mi, " .metallic ", " .roughness ");
+; "])
+
+; (Shader.Literal ["computeEnvironmentLighting(mi, lgp, "
+; .lambert-texture "," .lambert-sampler ","
+; .ggx-texture "," .ggx-sampler ","
+; .ggx-lut-texture "," .ggx-lut-sampler ")"] :OutputDimension 3) >= .light-color
+
+; .light-color (Math.Add .emissive-color)
+; (ToFloat4) (Math.Add (Float4 0 0 0 1))
+; (Shader.WriteOutput "color")
+; )}]))
+
+; (defshards render-pbr-base [capture-steps]
+; (Setup
+; (Float3 0.0 5.0 0.0) (Set "global-probe-location" :Exposed true))
+
+; ; Capture global lighting probe
+; (Setup
+; {:steps .capture-steps
+; :offset .global-probe-location} (Do generate-probes)
+; (Do setup-pbr-feature) >= .pbr-feature-1)
+
+; .pbr-feature-1))
+
+@include("cubemap-utils.shs" Once: true)
+@define(pbr-wgsl @read("pbr.wgsl"))
+
+@template(shader-integrate [texture sampler base-dir body num-samples args] {
+  Shader.Literal(
+    Type: ShaderLiteralType::Header
+    Source: [
+      "fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
+        let tbn = generateFrameFromZDirection(baseDir);
+        var weight = 0.0;
+        var result = vec3<f32>(0.0);" "
+        var sampleIndex = 0;
+        loop {
+            if(sampleIndex >= " num-samples ") {
+            break;
+            }" "
+            var mci: IntegrateInput;
+            mci.baseDirection = baseDir;
+            mci.coord = hammersley2d(sampleIndex, " num-samples ");
+            let mco = " body ";
+            let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
+            let direction = tbn * mco.localDirection;
+            let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
+            result = result + s * mco.sampleScale;
+            weight = weight + mco.sampleWeight;" "
+            sampleIndex = sampleIndex + 1;
+        }
+        return result / weight;
+    }"
+    ]
+  )
+  Shader.Literal(["integrate(" args "," base-dir "," texture "," sampler ")"] OutputDimension: 3)
+})
+
+@template(compute-specular-lut [out-texture] {
+  Msg("Computing specular split-sum LUT")
+  GFX.EffectPass(
+    EntryPoint: {
+      Shader.Literal(Type: ShaderLiteralType::Header Source: @pbr-wgsl)
+      Shader.ReadInput("texCoord0") >= uv
+      Shader.Literal(OutputDimension: 2 Source: ["computeLUT(" uv ", 1024)"])
+      ToFloat2 | Shader.WriteOutput("color")
+    }
+  ) >> lut-steps
+  GFX.Texture(Format: TextureFormat::RG16Float Addressing: TextureAddressing::ClampToEdge) = out-texture
+  GFX.RenderInto(
+    Textures: {color: out-texture}
+    Size: @i2(64)
+    Contents: {
+      GFX.Render(Steps: lut-steps)
+    }
+  )
+  out-texture
+})
+
+@template(calc-num-mips [] {
+  {Take(0) = dim-x}
+  {Take(1) = dim-y}
+  dim-x | Min(dim-y) = dim-min
+  dim-min | ToFloat | Math.Log2 | Math.Floor | ToInt ; This is up until 2x2
+})
+
+@template(compute-integrated-specular-fs [] {
+  Shader.Literal(Type: ShaderLiteralType::Header Source: @pbr-wgsl)
+  Shader.ReadInput("worldNormal") >= world-normal
+  Shader.RefTexture("source") = source-texture
+  Shader.RefSampler("source") = source-sampler
+  Shader.ReadBuffer("roughness") | ToFloat4 = args
+  @shader-integrate(source-texture source-sampler world-normal "ggx(args.x, mci)" "1024" args)
+  ToFloat4 | Math.Add(@f4(0 0 0 1)) | Shader.WriteOutput("color")
+})
+
+@template(compute-integrated-lambert-fs [] {
+  Shader.Literal(Type: ShaderLiteralType::Header Source: @pbr-wgsl)
+  Shader.ReadInput("worldNormal") >= world-normal
+  Shader.RefTexture("source") = source-texture
+  Shader.RefSampler("source") = source-sampler
+  1.0 | ToFloat4 = args
+  @shader-integrate(source-texture source-sampler world-normal "lambert(mci)" "256" args)
+  ToFloat4 | Math.Add(@f4(0 0 0 1)) | Shader.WriteOutput("color")
+})
+
+@template(compute-integrated-specular-mip [current-mip num-mips in-texture out-texture] {
+  current-mip | Log("Computing integrated ggx mip level")
+  num-mips | Math.Subtract(1) | ToFloat = div
+  current-mip | ToFloat | Math.Divide(div) = roughness
+  roughness | Log("Roughness")
+  GFX.Feature(
+    Params: {source: in-texture roughness: roughness}
+    Shaders: [{
+        Stage: ProgrammableGraphicsStage::Fragment
+        EntryPoint: {@compute-integrated-specular-fs()}
+      }]
+  ) = filter-feature
+  @filter-cubemap(filter-feature out-texture current-mip {})
+  current-mip | Log("Done")
+})
+
+@template(compute-integrated-lambert [in-texture out-texture] {
+  Msg("Computing integrated lambert")
+  GFX.Feature(
+    Params: {source: in-texture}
+    Shaders: [{
+        Stage: ProgrammableGraphicsStage::Fragment
+        EntryPoint: {@compute-integrated-lambert-fs()}
+      }]
+  ) = filter-feature
+  @filter-cubemap(filter-feature out-texture 0 {})
+})
+
+
+
+@template(generate-probes [probe-inner-steps probe-offset] {
+  Msg("Generating pre-rendered PBR textures")
+  GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb Resolution: @i2(512) Dimension: TextureDimension::Cube) = baked-input-tex
+  @render-cubemap-0(probe-inner-steps baked-input-tex probe-offset)
+  
+  ; Precompute reflective
+  @i2(256) = size
+  size | Log("Cubemap dimension")
+  @calc-num-mips = num-mips
+  num-mips | Log("Number of mip levels")
+  GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb Resolution: size MipLevels: num-mips Dimension: TextureDimension::Cube) = cube-tex
+  ForRange(1 num-mips {
+    Math.Subtract(1) = current-mip
+    
+    @wire(mip-wire {
+      @compute-integrated-specular-mip(current-mip num-mips baked-input-tex cube-tex)
+    })
+    Spawn(mip-wire)
+  })
+  
+  ; Precompute lambertian
+  @i2(256) = size-1
+  GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb Resolution: size-1 Dimension: TextureDimension::Cube) = cube-tex-2
+  
+  @compute-integrated-lambert(baked-input-tex cube-tex-2)
+  @compute-specular-lut(ggx-lut)
+  
+  {lambert: cube-tex-2 ggx: cube-tex ggxLUT: ggx-lut}
+})
+
+@template(render-pbr-base [capture-steps probe-location params] {
+  [probe-location params] | Cached({
+    @generate-probes(capture-steps probe-location)
+    Log("probes")
+  }) = pbr-probes
+})

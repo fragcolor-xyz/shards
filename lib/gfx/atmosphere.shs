@@ -1,83 +1,4 @@
-@define(cube-rotations [
-  {idx: 0 rot: @f3(0 -90.0 0)} ; X+
-  {idx: 1 rot: @f3(0 90.0 0)} ; X-
-  {idx: 2 rot: @f3(90.0 180 0)} ; Y+
-  {idx: 3 rot: @f3(-90.0 180 0)} ; Y-
-  {idx: 4 rot: @f3(0 180 0)} ; Z-
-  {idx: 5 rot: @f3(0 0 0)} ; Z+
-])
-
-@template(xyz-rot-to-mat [] {
-  {Take(0) = x}
-  {Take(1) = y}
-  {Take(2) = z}
-  x | Math.DegreesToRadians | Math.AxisAngleX | Math.Rotation = rx
-  y | Math.DegreesToRadians | Math.AxisAngleY | Math.Rotation = ry
-  z | Math.DegreesToRadians | Math.AxisAngleZ | Math.Rotation = rz
-  rz | Math.MatMul(ry) | Math.MatMul(rx)
-})
-
-@template(render-cubemap [probe-inner-steps cube-tex probe-offset mip-level] {
-  90.0 | Math.DegreesToRadians >= fov
-  @cube-rotations | DoMany({
-    {Take("idx") = face-idx}
-    {Take("rot") | @xyz-rot-to-mat() = tmp-rot}
-    probe-offset | Math.Translation = tmp-tsl
-    @f3(-1 1 1) | Math.Scaling = tmp-flip
-    tmp-tsl | Math.MatMul(tmp-rot) | Math.MatMul(tmp-flip) | Math.Inverse = view-transform
-    GFX.View(View: view-transform Fov: fov) = capture-view
-    GFX.RenderInto(
-      Textures: {color: {Texture: cube-tex Face: face-idx Mip: mip-level}}
-      Contents: {
-        GFX.Render(Steps: probe-inner-steps View: capture-view)
-      }
-    )
-  })
-})
-
-@template(render-cubemap-0 [probe-inner-steps cube-tex probe-offset] {
-  @render-cubemap(probe-inner-steps cube-tex probe-offset 0)
-})
-
-@template(sky-sphere-vs [] {
-  Shader.ReadGlobal("localPosition") | ToFloat3 | Math.Multiply(@f3(20.0)) >= local-pos
-  Shader.ReadBuffer("view" BufferName: "view") >= view
-  Shader.ReadBuffer("proj" BufferName: "view") >= proj
-  local-pos | ToFloat4 >= local-pos-4
-  view | Math.MatMul(local-pos-4) | Math.Add(@f4(0 0 0 1)) >= view-pos-4
-  proj | Math.MatMul(view-pos-4) >= screen-pos
-  screen-pos | Shader.WriteGlobal("screenPosition")
-})
-
-@template(render-sky-sphere-queue [params] {
-  Once({GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = mesh})
-  GFX.DrawQueue(AutoClear: false)
-  {
-    = queue
-    GFX.ClearQueue
-    Math.MatIdentity | GFX.Drawable(Mesh: mesh Params: params) | GFX.Draw(queue)
-  }
-})
-
-@template(filter-cubemap [effect-feature out-texture mip-level shader-params] {
-  GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> filter-cubemap-features
-  GFX.Feature(State: {FlipFrontFace: true DepthWrite: false}
-    Shaders: [
-      {Stage: ProgrammableGraphicsStage::Vertex
-       EntryPoint: {@sky-sphere-vs()}
-       After: ["initScreenPosition"]
-       Before: ["writePosition"]}]
-  ) >> filter-cubemap-features
-  effect-feature >> filter-cubemap-features
-  
-  GFX.DrawablePass(
-    Features: filter-cubemap-features
-    Queue: (@render-sky-sphere-queue(shader-params))
-  ) >> filter-cubemap-steps
-  @render-cubemap(filter-cubemap-steps out-texture @f3(0.0) 0)
-})
-
-; ---- SPLIT ----
+@include("cubemap-utils.shs" Once: true)
 
 @define(atmosphere-wgsl @read("atmosphere.wgsl"))
 @template(precompute-sky-fs [] {
@@ -109,8 +30,6 @@
   
   1.0 | Shader.WriteOutput("depth")
 })
-
-
 
 @template(setup-skybox-pass [] {
   @wire(precompute-sky {
@@ -150,8 +69,6 @@
     State: {FlipFrontFace: true DepthWrite: false DepthCompare: CompareFunction::LessEqual}
     ViewGenerators: precompute-sky
   ) >> sky-features
-  
-  GFX.DrawQueue = sky-queue
   
   GFX.DrawablePass(
     Features: sky-features
