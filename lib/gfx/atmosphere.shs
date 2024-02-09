@@ -1,0 +1,77 @@
+@include("cubemap-utils.shs" Once: true)
+
+@define(atmosphere-wgsl @read("atmosphere.wgsl"))
+@template(precompute-sky-fs [] {
+  Shader.Literal(Type: ShaderLiteralType::Header Source: @atmosphere-wgsl)
+  Shader.ReadInput("worldNormal") | Math.Normalize >= ray-dir
+  @f3(0.0) >= ray-start
+  9999999999999.0 >= ray-length
+  
+  lightDir >= light-dir
+  lightColor >= light-color
+  
+  Shader.Literal(["
+  let _DrawPlanet = 0;
+  if (_DrawPlanet == 1) {
+    let planetIntersection = PlanetIntersection(" ray-start ", " ray-dir ");
+    if (planetIntersection.x > 0.0) { " ray-length " = min(" ray-length ", planetIntersection.x); }
+  }"])
+  
+  Shader.Literal("var transmittance : vec3<f32> = vec3<f32>(0.0);")
+  Shader.Literal(["IntegrateScattering(" ray-start ", " ray-dir ", " ray-length ", " light-dir ", " light-color ", &transmittance)"] OutputDimension: 3)
+  ToFloat4 | Math.Add(@f4(0 0 0 1))
+  Shader.WriteOutput("color")
+})
+
+@template(sky-fs [] {
+  Shader.ReadInput("worldNormal") >= world-normal
+  Shader.SampleTextureCoord("sky")
+  Shader.WriteOutput("color")
+  
+  1.0 | Shader.WriteOutput("depth")
+})
+
+@template(setup-skybox-pass [] {
+  @wire(precompute-sky {
+    Once({
+      GFX.Texture(
+        Format: TextureFormat::RGBA8UnormSrgb
+        Resolution: @i2(1024)
+        Dimension: TextureDimension::Cube
+      ) = sky-cube-tex
+    })
+    
+    light-direction | Math.Normalize = ldn
+    [ldn light-color] | Cached({
+      Log("Recomputing skybox")
+      GFX.Feature(ComposeWith: {
+          lightDir: ldn
+          lightColor: light-color
+        }
+        Shaders: [
+          {Stage: ProgrammableGraphicsStage::Fragment
+           EntryPoint: {@precompute-sky-fs()}}]
+      ) = filter-feature
+      @filter-cubemap(filter-feature sky-cube-tex 0 {})
+      sky-cube-tex | Log("the sky cube tex")
+      {sky: sky-cube-tex}
+    })
+  } Looped: true)
+  
+  GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> sky-features
+  GFX.Feature(Shaders: [
+      {Stage: ProgrammableGraphicsStage::Vertex
+       EntryPoint: {@sky-sphere-vs()}
+       After: ["initScreenPosition"]
+       Before: ["writePosition"]}
+      {Stage: ProgrammableGraphicsStage::Fragment
+       EntryPoint: {@sky-fs()}}]
+    State: {FlipFrontFace: true DepthWrite: false DepthCompare: CompareFunction::LessEqual}
+    ViewGenerators: precompute-sky
+  ) >> sky-features
+  
+  GFX.DrawablePass(
+    Features: sky-features
+    Queue: (@render-sky-sphere-queue({}))
+  )
+})

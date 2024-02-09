@@ -198,7 +198,6 @@ struct FeatureShard {
 
 private:
   Brancher _viewGeneratorBranch;
-
   Brancher _drawableGeneratorBranch;
 
   bool _branchesWarmedUp{};
@@ -829,12 +828,14 @@ public:
 
       // Fetch results and insert into parameter collector
       for (auto &wire : wires) {
-        if (wire->previousOutput.valueType != SHType::None) {
-          applyResults(ctx, wire->context, wire->previousOutput);
+        if (wire->state == SHWire::State::IterationEnded) {
+          if (wire->previousOutput.valueType != SHType::None) {
+            applyResults(ctx, wire->context, wire->previousOutput);
+          }
         }
       }
-    } catch (...) {
-      SHLOG_ERROR("Error running GFX.Feature generator");
+    } catch (std::exception &e) {
+      SHLOG_ERROR("Error running GFX.Feature generator: {}", e.what());
     }
   }
 };
