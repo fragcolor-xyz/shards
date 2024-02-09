@@ -402,12 +402,12 @@ struct Compose {
   SHVar activate(SHContext *context, const SHVar &input_) {
     using namespace linalg::aliases;
     TableVar &input = (TableVar &)input_;
-    float3 scale = (float3 &)input[Decompose::v_scale].payload;
-    float3 translation = (float3 &)input[Decompose::v_translation].payload;
-    float4 rotation = (float4 &)input[Decompose::v_rotation].payload;
-    auto t = linalg::translation_matrix(translation);
-    auto r = linalg::rotation_matrix(rotation);
-    auto s = linalg::scaling_matrix(scale);
+    Vec3 scale = reinterpret_cast<Vec3 &>(input[Decompose::v_scale]);
+    Vec3 translation = reinterpret_cast<Vec3 &>(input[Decompose::v_translation]);
+    Vec4 rotation = reinterpret_cast<Vec4 &>(input[Decompose::v_rotation]);
+    auto t = linalg::translation_matrix(translation.payload);
+    auto r = linalg::rotation_matrix(rotation.payload);
+    auto s = linalg::scaling_matrix(scale.payload);
     _output = linalg::mul(linalg::mul(t, r), s);
     return _output;
   }
@@ -574,8 +574,8 @@ struct QuaternionSlerp {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     float factor = input.payload.floatValue;
-    auto a = *reinterpret_cast<Vec4 *>(&_a.get());
-    auto b = *reinterpret_cast<Vec4 *>(&_b.get());
+    auto& a = *reinterpret_cast<Vec4 *>(&_a.get());
+    auto& b = *reinterpret_cast<Vec4 *>(&_b.get());
     _output = linalg::slerp<float, 4>(a, b, factor);
     return _output;
   }
