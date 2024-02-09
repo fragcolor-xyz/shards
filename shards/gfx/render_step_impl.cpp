@@ -267,7 +267,6 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
     ZoneScopedN("buildPipeline");
 
     const IDrawable &firstDrawable = *group.drawables[0];
-
     // Construct processor instance, or get existing one
     auto constructor = firstDrawable.getProcessor();
     auto &processor = storage.drawableProcessorCache.get(constructor);
