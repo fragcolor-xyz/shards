@@ -1082,6 +1082,8 @@ TEST_CASE("linalg compatibility") {
   static_assert(sizeof(SHVar) * 1 == offsetof(Mat4, y));
   static_assert(sizeof(SHVar) * 2 == offsetof(Mat4, z));
   static_assert(sizeof(SHVar) * 3 == offsetof(Mat4, w));
+  static_assert(alignof(SHVar) == alignof(padded::Float4));
+  static_assert(alignof(SHVar) == alignof(padded::Float3));
 
   Var a{1.0, 2.0, 3.0, 4.0};
   Var b{4.0, 3.0, 2.0, 1.0};

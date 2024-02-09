@@ -99,7 +99,7 @@ template <typename T, int M> struct vec {
   }
   const T &operator[](int i) const { return payload[i]; }
   T &operator[](int i) { return payload[i]; }
-};
+} __attribute__((aligned(16)));
 
 using Float4 = vec<float, 4>;
 using Float3 = vec<float, 3>;
@@ -140,8 +140,8 @@ struct alignas(16) Mat3 {
 
   inline Mat3 &operator=(const Base &mat) {
     x = mat.x;
-    x = mat.y;
-    x = mat.z;
+    y = mat.y;
+    z = mat.z;
     return *this;
   }
 };
