@@ -103,8 +103,7 @@ struct Sinks {
   Sinks() {
     distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
-    stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
-    distSink->add_sink(stdErrSink);
+    initStdErrSink();
 
     // Setup android logcat output
 #ifdef __ANDROID__
@@ -119,6 +118,13 @@ struct Sinks {
 
   std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }
   std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
+
+  void initStdErrSink() {
+    if (stdErrSink)
+      distSink->remove_sink(stdErrSink);
+    stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+    distSink->add_sink(stdErrSink);
+  }
 
   void initLogFile(std::string fileName) {
     std::string logFilePath = boost::filesystem::absolute(fileName).string();
@@ -218,6 +224,8 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
   {
     auto l = sinks.lockUnique();
     sinks.initLogFile(fileName);
+    // Reset this sink in case stderr handle changed
+    sinks.initStdErrSink();
   }
 
   auto logger = std::make_shared<spdlog::logger>("shards", sinks.distSink);
