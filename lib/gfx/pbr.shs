@@ -249,8 +249,14 @@
     }) = pbr-probes
     @setup-pbr-feature(pbr-probes)
   } Looped: true)
-  Step(update-probes) = out
+  Step(update-probes) = out 
+  
+  Sequence(last-features Type: @type([@type(GFX.Feature)]) Clear: false)
   Maybe({
-    out | Expect(@type(GFX.Feature)) >> out-features
+    out | Expect(@type(GFX.Feature))
+    {Clear(last-features)} >> last-features
   } Silent: true)
+  last-features | ForEach({
+    >> out-features
+  })
 })
