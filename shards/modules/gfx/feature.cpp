@@ -198,7 +198,6 @@ struct FeatureShard {
 
 private:
   Brancher _viewGeneratorBranch;
-
   Brancher _drawableGeneratorBranch;
 
   bool _branchesWarmedUp{};

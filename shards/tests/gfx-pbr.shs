@@ -1,100 +1,20 @@
 @include("../../lib/gfx/atmosphere.shs")
 @include("../../lib/gfx/pbr.shs")
-; (load-file "../../lib/gfx/cubemap-utils.edn")
-; (load-file "../../lib/gfx/atmosphere.edn")
-; (load-file "../../lib/gfx/pbr.edn")
-; (setup-pbr-lib (slurp "../../lib/gfx/pbr.wgsl") filter-cubemap render-cubemap-0)
 
-; (def timestep (/ 1.0 120.0))
-; (def pi 3.14159265359)
-; (def pi2 (* pi 2.0))
-
-; (defshards sky-sphere-fs []
-; ; Just sample the cubemap
-; (Shader.ReadInput "texCoord0") >= .uv
-; .uv (Shader.SampleTextureCoord "sky")
-; (Shader.WriteOutput "color")
-
-; ; NOTE: Write depth to compare to (>=) and render sky where it passes
-; 1.0 (Shader.WriteOutput "depth"))
-
-; (defshards sphere-map-pass [texture]
-; (Setup
-; (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-sphere-features
-; (GFX.Feature
-; :Params {:sky texture}
-; :Shaders [{:Stage ProgrammableGraphicsStage::Vertex
-; :EntryPoint (sky-sphere-vs)
-; :After ["initScreenPosition"]
-; :Before ["writePosition"]}
-; {:Stage ProgrammableGraphicsStage::Fragment
-; :EntryPoint (sky-sphere-fs)}]
-; :State {:FlipFrontFace true :DepthWrite false :DepthCompare CompareFunction.LessEqual}) >> .sky-sphere-features
-; (render-sky-sphere-queue "sky-sphere-queue" {}))
-; (GFX.DrawablePass :Features .sky-sphere-features :Queue .sky-sphere-queue))
-
-; (defloop test-wire
-; :Looped
-; (GFX.MainWindow
-; :Title "SDL Window" :Width 600 :Height 400
-; :Contents (->
-; (Setup
-; (LoadImage "data/footprint_court.hdr") (GFX.Texture) = .sphere-map-texture)
-; (sphere-map-pass .sphere-map-texture) = .skybox-step
-; .skybox-step >> .render-steps
-; (GFX.DrawQueue) = .queue
-
-; (Animation.Timer :Rate 0.2) = .t
-
-; 5.0 = .r
-; .t (Math.Cos) (Math.Multiply .r) >= .x
-; .t (Math.Sin) (Math.Multiply .r) >= .z
-; .t (Math.Multiply 0.4) (Math.Sin) (Math.Multiply 2.0) >= .y
-
-; ; Rotating camera
-; {:Target (Float3 0.0 0.0 0.0) :Position (Float3 0.0)} >= .lookat
-; (Float3 .x .y .z) (Update .lookat "Position")
-; .lookat (Math.LookAt) >= .view-transform
-
-; ; Static Camera
-; ;; {:Target (Float3 0.0) :Position (Float3 0.0 0.0 5.5)} (Math.LookAt) >= .view-transform
-
-; 90.0 (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) = .rot-z
-; (Float3 0 0 0) (Math.Translation) = .tsl
-; .tsl (Math.MatMul .rot-z)
-; (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb") (GFX.Draw .queue)
-
-; ;; (Math.MatIdentity)
-; ;; (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/NormalTangentTest/glTF-Binary/NormalTangentTest.glb") (GFX.Draw .queue)
-
-; (GFX.View .view-transform) = .view
-
-; (Setup
-; (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> capture-features
-; (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> capture-features
-
-; .skybox-step >> .capture-steps)
-
-; ;; Main features & render step
-; (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-; (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
-; (render-pbr-base .capture-steps) >> .features ; Create/update PBR render step here
-; (GFX.DrawablePass :Queue .queue :Features .features) >> .steps
-; .skybox-step >> .steps
-
-; (GFX.Render .steps .view))))
-
-; @template(sphere-map-pass [texture] {
-; Once({
-; GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> sky-spehre-features
-; GFX.Feature(Params: {sky: texture} 
-; Shaders: [
-; {Stage: ProgrammableGraphicsStage::Vertex EntryPoint: sky-sphere-vs After: ["initScreenPosition"] Before: ["writePosition"]} 
-; {Stage: ProgrammableGraphicsStage::Fragment EntryPoint: sky-sphere-fs}]
-; State: {:FlipFrontFace true :DepthWrite false :DepthCompare CompareFunction::LessEqual}) >> sky-sphere-features
-
-; })
-; })
+@template(sphere-map-pass [texture] {
+  Once({
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> sky-sphere-features
+    GFX.Feature(
+      Params: {sky: texture}
+      Shaders: [
+        {Stage: ProgrammableGraphicsStage::Vertex EntryPoint: {@sky-sphere-vs()} After: ["initScreenPosition"] Before: ["writePosition"]}
+        {Stage: ProgrammableGraphicsStage::Fragment EntryPoint: {@sky-sphere-fs()}}]
+      State: {FlipFrontFace: true DepthWrite: false DepthCompare: CompareFunction::LessEqual}
+    ) >> sky-sphere-features
+  })
+  @render-sky-sphere-queue({}) = queue
+  GFX.DrawablePass(Queue: queue Features: sky-sphere-features)
+})
 
 @wire(ui {
   Once({
@@ -104,11 +24,13 @@
   
   UI({
     UI.Window(
-      Title: "Window with Panels"
+      Title: "Settings"
       Contents: {
-        "hi" | UI.Label
-        UI.Variable(light-color)
-        UI.Variable(light-direction)
+        UI.Horizontal({"Use Procedural Skybox" | UI.Label | UI.Variable(use-procedural-skybox)})
+        When({use-procedural-skybox} {
+          UI.Horizontal({"Light Color" | UI.Label | UI.Variable(light-color)})
+          UI.Horizontal({"Light Direction" | UI.Label | UI.Variable(light-direction)})
+        })
       }
     )
   }) | UI.Render(ui-draw-queue)
@@ -123,7 +45,6 @@
     GFX.DrawQueue = queue
     
     Once({
-      LoadImage("data/footprint_court.hdr") | GFX.Texture = sphere-map-texture
       GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> base-features
       GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> base-features
       base-features >= capture-features
@@ -131,9 +52,17 @@
     
     Once({
       @f3(1.0 1.0 1.0) >= light-color
-      @f3(1.0 -1.0 1.0) >= light-direction
+      @f3(0.5 1.0 0.5) >= light-direction
+      false >= use-procedural-skybox
     })
-    @setup-skybox-pass() = skybox-step
+    
+    If({use-procedural-skybox} {
+        @setup-skybox-pass()
+      } {
+        Once({ LoadImage("data/footprint_court.hdr") | GFX.Texture = sphere-map-texture })
+        @sphere-map-pass(sphere-map-texture)
+      }
+    ) = skybox-step
     
     5.0 = r
     t | Math.Cos | Math.Multiply(r) >= x
@@ -150,29 +79,19 @@
     
     GFX.View(view-transform) = view
     
+    ; PBR Step
     base-features >= features
+    skybox-step >> capture-steps
+    
+    @render-pbr-base(capture-steps @f3(0.0) [use-procedural-skybox light-color light-direction] features)
     
     GFX.DrawablePass(Queue: queue Features: features) >> steps
-
-    ; PBR Step
-    skybox-step >> capture-steps
-    ; @render-pbr-base(capture-steps @f3(0.0) [light-color light-direction]) = pbr-step
-    
     skybox-step >> steps
     
+    ; Render UI
     Do(ui)
     
-    ; skybox-step >> steps
     GFX.Render(steps view)
-    ; GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> capture-features
-    ; GFX.BuiltinFeature(Id: BuiltinFeatureId.BaseColor) >> capture-features
-    ; skybox-step >> capture-steps
-    ; GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> features
-    ; GFX.BuiltinFeature(Id: BuiltinFeatureId.BaseColor) >> features
-    ; (render-pbr-base .capture-steps) >> .features
-    ; GFX.DrawablePass(Queue: .queue Features: .features) >> .steps
-    ; .skybox-step >> .steps
-    ; GFX.Render(.steps .view)
   })
 } Looped: true)
 

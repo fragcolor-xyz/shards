@@ -145,12 +145,20 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   };
   boost::container::flat_map<UniqueId, CachedDrawable> drawableCache;
 
+  struct MeshCacheKey {
+    UniqueId id;
+    RequiredAttributes flags;
+
+    MeshCacheKey(UniqueId id, RequiredAttributes flags) : id(id), flags(flags) {}
+    std::strong_ordering operator<=>(const MeshCacheKey &other) const = default;
+  };
   struct CachedMesh {
     MeshPtr mesh;
+    bool hasLocalBasisVector{};
     size_t version{};
     size_t lastTouched{};
   };
-  boost::container::flat_map<UniqueId, CachedMesh> meshCache;
+  boost::container::flat_map<MeshCacheKey, CachedMesh> meshCache;
 
   MeshDrawableProcessor(Context &context)
       : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),
@@ -843,15 +851,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       // Skinned (yes/no)
       pipelineHashCollector((bool)drawable.skin);
 
-      auto &meshCacheEntry = detail::getCacheEntry(meshCache, mesh->getId());
+      auto &meshCacheEntry = detail::getCacheEntry(meshCache, MeshCacheKey(mesh->getId(), requiredAttributes));
       if (!meshCacheEntry.mesh || meshCacheEntry.version != mesh->getVersion()) {
         meshCacheEntry.mesh = mesh;
+        meshCacheEntry.hasLocalBasisVector = false;
         meshCacheEntry.version = mesh->getVersion();
 
         if (requiredAttributes.requirePerVertexLocalBasis) {
           // Optionally generate tangent mesh
           try {
             meshCacheEntry.mesh = generateLocalBasisAttribute(meshCacheEntry.mesh);
+            meshCacheEntry.hasLocalBasisVector = true;
           } catch (...) {
             SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate tangents for mesh {}", mesh->getId().value);
           }

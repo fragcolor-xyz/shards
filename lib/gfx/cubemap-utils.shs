@@ -49,6 +49,16 @@
   screen-pos | Shader.WriteGlobal("screenPosition")
 })
 
+@template(sky-sphere-fs [] {
+  ; Just sample the cubemap
+  Shader.ReadInput("texCoord0") >= uv
+  uv | Shader.SampleTextureCoord("sky") >= color
+  color | Shader.WriteOutput("color")
+  
+  ; NOTE: Write depth to compare to (>=) and render sky where it passes
+  1.0 | Shader.WriteOutput("depth")
+})
+
 @template(render-sky-sphere-queue [params] {
   Once({GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = mesh})
   GFX.DrawQueue(AutoClear: false)
@@ -74,5 +84,5 @@
     Features: filter-cubemap-features
     Queue: (@render-sky-sphere-queue(shader-params))
   ) >> filter-cubemap-steps
-  @render-cubemap(filter-cubemap-steps out-texture @f3(0.0) 0)
+  @render-cubemap(filter-cubemap-steps out-texture @f3(0.0) mip-level)
 })
