@@ -52,8 +52,8 @@
       ; Draw on top of everthing (ignore depth)
       Gizmos.Context(Queue: editor-queue-np-depth View: view
         Contents: {
-          transforms | Gizmos.Translation(200.0) > transforms
-          transform-1 | Gizmos.Translation(200.0) > transform-1
+          transforms | Gizmos.Scaling(200.0) > transforms
+          transform-1 | Gizmos.Scaling(200.0) > transform-1
         }
       )
       GFX.Render(Steps: render-steps View: view)
