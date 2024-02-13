@@ -208,6 +208,7 @@ private:
   boost::container::flat_map<FastString, TextureParamDecl> _derivedTextureParams;
 
   FeaturePtr *_featurePtr{};
+  SHVar _externalContextVar{};
 
   gfx::shader::VariableMap _composedWith;
 
@@ -312,11 +313,13 @@ public:
 
     generatorInstanceData.inputType = GeneratedDrawInputTableType;
     _drawableGeneratorBranch.setRunnables(_drawableGenerators);
-    _drawableGeneratorBranch.compose(generatorInstanceData);
+    if (!_drawableGeneratorBranch.wires.empty())
+      _drawableGeneratorBranch.compose(generatorInstanceData);
 
     generatorInstanceData.inputType = GeneratedViewInputTableType;
     _viewGeneratorBranch.setRunnables(_viewGenerators);
-    _viewGeneratorBranch.compose(generatorInstanceData);
+    if (!_viewGeneratorBranch.wires.empty())
+      _viewGeneratorBranch.compose(generatorInstanceData);
 
     // Collect derived shader parameters from wire outputs
     _derivedShaderParams.clear();
@@ -719,7 +722,7 @@ public:
             ++index;
           });
         };
-        runGenerators<true>(_drawableGeneratorBranch, ctx, applyResults);
+        runGenerators<true>(_drawableGeneratorBranch, _externalContextVar, ctx, applyResults);
       });
     }
 
@@ -729,7 +732,7 @@ public:
           auto &collector = ctx.getParameterCollector();
           collectParameters(collector, shContext, output.payload.tableValue);
         };
-        runGenerators<false>(_viewGeneratorBranch, ctx, applyResults);
+        runGenerators<false>(_viewGeneratorBranch, _externalContextVar, ctx, applyResults);
       });
     }
 
@@ -766,7 +769,8 @@ public:
     });
   }
 
-  template <bool PerDrawable, typename T, typename T1> static void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
+  template <bool PerDrawable, typename T, typename T1>
+  static void runGenerators(Brancher &brancher, SHVar &externalContextVar, T &ctx, T1 applyResults) {
     auto &mesh = brancher.mesh;
     auto &wires = brancher.wires;
 
@@ -779,8 +783,18 @@ public:
         .render = [&ctx = ctx](ViewPtr view, const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
 
-    auto &grc = mesh->getVariable(ToSWL(GraphicsRendererContext::VariableName));
-    grc = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
+    // Override render context
+    static auto swl_context = ToSWL(GraphicsRendererContext::VariableName);
+    externalContextVar = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
+    externalContextVar.flags = SHVAR_FLAGS_EXTERNAL;
+
+    for (auto &wire : wires) {
+      auto &externalVariables = wire->getExternalVariables();
+      externalVariables[shards::OwnedVar::Foreign(swl_context)] = SHExternalVariable{
+          .var = &externalContextVar,
+          .type = &GraphicsRendererContext::Type,
+      };
+    }
 
     // Setup input table
     SHDrawQueue queue{ctx.queue};
