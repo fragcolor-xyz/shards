@@ -57,14 +57,13 @@
       Gizmos.Context(Queue: queue-1 View: view Contents: {
         Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
         obj-transform | Math.Decompose
-        Gizmos.Rotation(ScreenSize: 300.0) >= out-transform
+        Gizmos.Rotation(ScreenSize: 300.0) | Math.Compose >= out-transform
       })
       {obj-transform: out-transform queue: queue-1}
     } {
       RTake(0)
       {Take("queue") | GFX.QueueDrawables | GFX.Draw(queue)}
       {Take("obj-transform") > obj-transform
-        ; | Log("New transform") 
       }
     } Name: "Gizmos" Priority: 1
   )
