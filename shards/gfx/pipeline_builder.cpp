@@ -487,7 +487,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   if (generatorOutput.errors.size() > 0) {
     shader::GeneratorOutput::dumpErrors(shader::getLogger(), generatorOutput);
     for (auto &err : generatorOutput.errors)
-      output.compilationError.emplace(err.error);
+      output.compilationError.emplace(err.what());
     return;
   }
 
