@@ -747,7 +747,7 @@ void GeneratorOutput::dumpErrors(const std::shared_ptr<spdlog::logger> &logger, 
     SPDLOG_LOGGER_ERROR(logger, "Failed to generate shader code:");
     SPDLOG_LOGGER_ERROR(logger, "{}\n------------------", output.wgslSource);
     for (auto &error : output.errors) {
-      SPDLOG_LOGGER_ERROR(logger, ">  {}", error.error);
+      SPDLOG_LOGGER_ERROR(logger, ">  {}", error.what());
     }
   }
 }

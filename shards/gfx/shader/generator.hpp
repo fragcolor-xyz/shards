@@ -20,9 +20,7 @@
 
 namespace gfx {
 namespace shader {
-struct GeneratorError {
-  std::string error;
-};
+using GeneratorError = std::runtime_error;
 
 template <typename Sig> using Function = shards::FunctionBase<128, Sig>;
 
@@ -36,7 +34,7 @@ struct IGeneratorDynamicHandler {
 };
 
 template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
-  return GeneratorError{fmt::format(format, args...)};
+  return GeneratorError(fmt::format(format, args...));
 }
 
 struct GeneratorDefinitions {

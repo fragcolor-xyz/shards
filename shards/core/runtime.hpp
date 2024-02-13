@@ -822,8 +822,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void addRef(const SHStringWithLen name, SHVar *var) {
-    shassert((var->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED);
-    shassert(var->refcount > 0);
+    shassert(((var->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED && var->refcount > 0) ||
+             (var->flags & SHVAR_FLAGS_EXTERNAL) == SHVAR_FLAGS_EXTERNAL);
     auto key = shards::OwnedVar::Foreign(name); // copy on write
     refs[key] = var;
   }
