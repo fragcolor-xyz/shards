@@ -77,8 +77,8 @@ struct GizmoIO {
   }
 
   void fillInputTransforms(const SHVar &input) {
+    _trsRefs.clear();
     if (_isSeq) {
-      _trsRefs.clear();
       for (auto &r : input.payload.seqValue) {
         _trsRefs.push_back(gfx::toTrsRef(r));
       }
