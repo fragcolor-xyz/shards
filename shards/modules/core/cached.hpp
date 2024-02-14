@@ -28,6 +28,7 @@ struct Cached {
   }
 
   SHExposedTypesInfo requiredVariables() { return _evaluate.composeResult().requiredInfo; }
+  SHExposedTypesInfo exposedVariables() { return _evaluate.composeResult().exposedInfo; }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_lastInput != input) {

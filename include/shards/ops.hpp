@@ -518,6 +518,7 @@ bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e);
 
 namespace shards {
 SHVar hash(const SHVar &var);
+void hash_update(const SHVar &var, void *state);
 } // namespace shards
 
 namespace std {

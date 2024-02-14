@@ -364,6 +364,7 @@ struct EffectPassShard {
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
   gfx::shader::VariableMap _composedWith;
+  SHVar _composedWithHash{};
   std::vector<FeaturePtr> _generatedFeatures;
 
   EffectPassShard() {
@@ -412,11 +413,11 @@ struct EffectPassShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
-    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     if (!_composeWith.isNone()) {
-      // Always create a new object to force shader recompile
-      wrapperFeature = std::make_shared<Feature>();
-      shader::applyComposeWith(context, _composedWith, _composeWith.get());
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, [&]() {
+        // Create a new object to force shader recompile
+        wrapperFeature = std::make_shared<Feature>();
+      });
     }
 
     shared::applyAll(context, step, _outputs, _outputScale, _features, _name);

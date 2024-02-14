@@ -210,6 +210,7 @@ private:
   SHVar _externalContextVar{};
 
   gfx::shader::VariableMap _composedWith;
+  SHVar _composedWithHash{};
 
 public:
   void cleanup(SHContext *context) {
@@ -673,11 +674,11 @@ public:
       _branchesWarmedUp = true;
     }
 
-    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     if (!_composeWith.isNone()) {
-      // Always create a new object to force shader recompile
-      *_featurePtr = std::make_shared<Feature>();
-      shader::applyComposeWith(context, _composedWith, _composeWith.get());
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, [&]() {
+        // Create a new object to force shader recompile
+        *_featurePtr = std::make_shared<Feature>();
+      });
     }
 
     Feature &feature = *_featurePtr->get();
