@@ -216,11 +216,13 @@
   1.0 | Set(parameters "roughness")
   0.0 | Set(parameters "metallic")
   Once({
-    @f4(0 0 1 0) = init-n
-    [init-n init-n init-n init-n] | Flatten | FloatsToImage(2 2 4) | GFX.Texture = normal-placeholder-texture
+    @f4(0.5 0.5 1 0) = init-n
+    [init-n init-n init-n init-n] | Flatten | FloatsToImage(2 2 4)
+    GFX.Texture(InterpretAs: TextureType::UNorm) = normal-placeholder-texture
     
     @f4(0 0 0 0) = init-0
-    [init-0 init-0 init-0 init-0] | Flatten | FloatsToImage(2 2 4) | GFX.Texture = zero-placeholder-texture
+    [init-0 init-0 init-0 init-0] | Flatten | FloatsToImage(2 2 4)
+    GFX.Texture = zero-placeholder-texture
   })
   
   normal-placeholder-texture | Set(parameters "normalTexture")
