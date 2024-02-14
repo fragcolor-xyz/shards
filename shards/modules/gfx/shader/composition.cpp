@@ -118,23 +118,6 @@ void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, c
   entryPoint.code = std::make_unique<DynamicBlockFromShards>(std::move(shards), composeWithVariables);
 }
 
-void applyComposeWith(SHContext *context, gfx::shader::VariableMap &composedWith, const SHVar &input) {
-  checkType(input.valueType, SHType::Table, ":ComposeWith table");
-
-  composedWith.clear();
-  for (auto &[k, v] : input.payload.tableValue) {
-    if (k.valueType != SHType::String)
-      throw formatException("ComposeWith key must be a string");
-    std::string keyStr(SHSTRVIEW(k));
-    shards::ParamVar pv(v);
-    pv.warmup(context);
-    auto &var = composedWith.emplace(std::move(keyStr), pv.get()).first->second;
-    if (var.valueType == SHType::None) {
-      throw formatException("Required variable {} not found", k);
-    }
-  }
-}
-
 } // namespace gfx::shader
 
 #endif /* CD187556_E38B_4180_B6B9_B72301E8299E */

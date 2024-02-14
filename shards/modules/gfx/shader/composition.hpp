@@ -43,8 +43,31 @@ private:
 void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
                            const VariableMap &composeWithVariables = VariableMap());
 
-void applyComposeWith(SHContext *context, gfx::shader::VariableMap &composedWith, const SHVar &input);
+template <typename T>
+void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash, gfx::shader::VariableMap &composedWith,
+                            T apply) {
+  checkType(input.valueType, SHType::Table, "ComposeWith table");
 
+  auto newHash = shards::hash(input);
+  if (newHash != hash) {
+    hash = newHash;
+
+    composedWith.clear();
+    for (auto &[k, v] : input.payload.tableValue) {
+      if (k.valueType != SHType::String)
+        throw formatException("ComposeWith key must be a string");
+      std::string keyStr(SHSTRVIEW(k));
+      shards::ParamVar pv(v);
+      pv.warmup(context);
+      auto &var = composedWith.emplace(std::move(keyStr), pv.get()).first->second;
+      if (var.valueType == SHType::None) {
+        throw formatException("Required variable {} not found", k);
+      }
+    }
+
+    apply();
+  }
+}
 } // namespace gfx::shader
 
 #endif /* F7DDD110_DF89_4AA4_A005_18C9BBFDFC40 */
