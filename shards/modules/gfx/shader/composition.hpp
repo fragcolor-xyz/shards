@@ -48,10 +48,24 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
                             T apply) {
   checkType(input.valueType, SHType::Table, "ComposeWith table");
 
-  auto newHash = shards::hash(input);
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+  XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+  for (auto &[k, v] : input.payload.tableValue) {
+    if (v.valueType == SHType::ContextVar) {
+      shards::ParamVar pv(v);
+      pv.warmup(context);
+      hash_update(pv.get(), &hashState);
+    } else {
+      uint8_t constData = 0xff;
+      XXH3_128bits_update(&hashState, &constData, 1);
+    }
+  }
+  auto digest = XXH3_128bits_digest(&hashState);
+  SHVar newHash = Var(int64_t(digest.low64), int64_t(digest.high64));
+
   if (newHash != hash) {
     hash = newHash;
-
     composedWith.clear();
     for (auto &[k, v] : input.payload.tableValue) {
       if (k.valueType != SHType::String)
