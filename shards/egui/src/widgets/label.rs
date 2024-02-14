@@ -132,7 +132,7 @@ impl LegacyShard for Label {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
-      let mut text = egui::RichText::new(text);
+      let mut text = egui::RichText::new(text); // allocation here, todo cache
 
       let style = self.style.get();
       if !style.is_none() {
