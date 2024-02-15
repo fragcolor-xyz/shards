@@ -238,6 +238,8 @@ jobs:
           ./shards new ../shards/tests/hello.shs
           echo "Running general"
           ./shards new ../shards/tests/general.shs
+          echo "Running zip-map"
+          ./shards new ../shards/tests/zip-map.shs
           echo "Running strings"
           ./shards new ../shards/tests/strings.shs
           echo "Running variables"

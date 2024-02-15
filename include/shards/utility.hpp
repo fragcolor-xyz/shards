@@ -730,6 +730,25 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
   TOwnedVar<SH_CORE> &asOwned() { return (TOwnedVar<SH_CORE> &)*this; }
 };
 
+template <class SH_CORE> TTableVar<SH_CORE> &makeTable(SHVar &var) {
+  if (var.valueType != SHType::Table) {
+    SH_CORE::destroyVar(var);
+
+    var.valueType = SHType::Table;
+    var.payload.tableValue = SH_CORE::tableNew();
+  }
+  return reinterpret_cast<TTableVar<SH_CORE> &>(var);
+}
+
+template <class SH_CORE> TSeqVar<SH_CORE> &makeSeq(SHVar &var) {
+  if (var.valueType != SHType::Seq) {
+    SH_CORE::destroyVar(var);
+
+    var.valueType = SHType::Seq;
+  }
+  return reinterpret_cast<TSeqVar<SH_CORE> &>(var);
+}
+
 template <class SH_CORE> TTableVar<SH_CORE> &asTable(TOwnedVar<SH_CORE> &var) {
   assert(var.valueType == SHType::Table);
   return reinterpret_cast<TTableVar<SH_CORE> &>(var);
@@ -772,16 +791,20 @@ inline size_t getPixelSize(const SHVar &input) {
   return pixsize;
 }
 
-template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
-  if (!var.isVariable())
+inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
+  if (var.valueType != SHType::ContextVar)
     return nullptr;
 
   for (const auto &share : data.shared) {
-    if (!strcmp(share.name, var->payload.stringValue)) { // safe cos ParamVar should be null terminated
+    if (!strcmp(share.name, var.payload.stringValue)) { // safe cos ParamVar should be null terminated
       return &share;
     }
   }
   return nullptr;
+}
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  return findContextVarExposedType(data, var);
 }
 template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
   const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);

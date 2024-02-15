@@ -916,6 +916,8 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   }
 
   switch (var.valueType) {
+  case SHType::None:
+    return;
   case SHType::Type:
   case SHType::Table:
   case SHType::Set:
@@ -1098,6 +1100,9 @@ typedef TShardsVar<InternalCore> ShardsVar;
 
 typedef TTableVar<InternalCore> TableVar;
 typedef TSeqVar<InternalCore> SeqVar;
+
+inline SeqVar& makeSeq(SHVar &var) { return makeSeq<InternalCore>(var); }
+inline TableVar& makeTable(SHVar &var) { return makeTable<InternalCore>(var); }
 
 inline TableVar &asTable(SHVar &var) {
   shassert(var.valueType == SHType::Table);
@@ -1543,7 +1548,9 @@ inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   std::vector<SHExposedTypeInfo> expInfo;
   TypeInfo ti(var, data, &expInfo, false);
   for (auto &type : validTypes) {
-    if (TypeMatcher{.isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}.match(ti, type)) {
+    if (TypeMatcher{
+            .isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}
+            .match(ti, type)) {
       for (auto &it : expInfo) {
         out.push_back(it);
       }

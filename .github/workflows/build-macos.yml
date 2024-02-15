@@ -135,6 +135,7 @@ jobs:
           cd build
           chmod +x shards
           ./shards new ../shards/tests/general.shs
+          ./shards new ../shards/tests/zip-map.shs
           ./shards new ../shards/tests/strings.shs
           ./shards new ../shards/tests/table-compose.shs
           ./shards new ../shards/tests/variables.shs

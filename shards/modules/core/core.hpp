@@ -666,10 +666,10 @@ struct VariableBase {
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
-    case 0:
+    case 0: // Name
       _name = SHSTRVIEW(value);
       break;
-    case 1:
+    case 1: // Key
       if (value.valueType == SHType::None) {
         _isTable = false;
       } else {
@@ -677,7 +677,7 @@ struct VariableBase {
       }
       _key = value;
       break;
-    case 2:
+    case 2: // Global
       _global = value.payload.boolValue;
       break;
     }
@@ -685,11 +685,11 @@ struct VariableBase {
 
   SHVar getParam(int index) {
     switch (index) {
-    case 0:
+    case 0: // Name
       return Var(_name);
-    case 1:
+    case 1: // Key
       return _key;
-    case 2:
+    case 2: // Global
       return Var(_global);
     default:
       throw InvalidParameterIndex();

@@ -114,6 +114,10 @@ struct Sinks {
     if (Config::DefaultStdOutLogLevel) {
       stdErrSink->set_level(Config::DefaultStdOutLogLevel.value());
     }
+    if (auto filter = getLogLevelFromEnvVar("LOG_STDERR_FILTER")) {
+      stdErrSink->set_level(*filter);
+      logLevelOverriden = true;
+    }
   }
 
   std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }

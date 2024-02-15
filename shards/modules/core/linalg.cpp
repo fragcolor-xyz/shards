@@ -165,25 +165,25 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   auto &operand = _operand.get();
   // expect SeqSeq as in 2x 2D arrays or SHType::Seq1 Mat @ Vec
   if (_opType == SeqSeq) {
-#define MATMUL_OP(_v1_, _v2_, _n_)                                                                             \
-  shards::arrayResize(_result.payload.seqValue, _n_);                                                          \
-  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(&input.payload.seqValue.elements[0]);   \
-  linalg::aliases::_v1_ *b = reinterpret_cast<linalg::aliases::_v1_ *>(&operand.payload.seqValue.elements[0]); \
-  linalg::aliases::_v1_ *c = reinterpret_cast<linalg::aliases::_v1_ *>(&_result.payload.seqValue.elements[0]); \
-  *c = linalg::mul(*a, *b);                                                                                    \
-  for (auto i = 0; i < _n_; i++) {                                                                             \
-    _result.payload.seqValue.elements[i].valueType = _v2_;                                                     \
+#define MATMUL_OP(_v1_, _v2_, _n_)                                          \
+  shards::arrayResize(_result.payload.seqValue, _n_);                       \
+  auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]);   \
+  auto &b = reinterpret_cast<_v1_ &>(operand.payload.seqValue.elements[0]); \
+  auto &c = reinterpret_cast<_v1_ &>(_result.payload.seqValue.elements[0]); \
+  c = linalg::mul((_v1_::Base)a, (_v1_::Base)b);                            \
+  for (auto i = 0; i < _n_; i++) {                                          \
+    _result.payload.seqValue.elements[i].valueType = _v2_;                  \
   }
     _result.valueType = SHType::Seq;
     switch (input.payload.seqValue.elements[0].valueType) {
     case SHType::Float2: {
-      MATMUL_OP(double2x2, SHType::Float2, 2);
+      MATMUL_OP(Mat2, SHType::Float2, 2);
     } break;
     case SHType::Float3: {
-      MATMUL_OP(float3x3, SHType::Float3, 3);
+      MATMUL_OP(Mat3, SHType::Float3, 3);
     } break;
     case SHType::Float4: {
-      MATMUL_OP(float4x4, SHType::Float4, 4);
+      MATMUL_OP(Mat4, SHType::Float4, 4);
     } break;
     default:
       throw ActivationError("Invalid value type for MatMul");
@@ -191,21 +191,21 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
 #undef MATMUL_OP
     return _result;
   } else if (_opType == Seq1) {
-#define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                                                              \
-  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(&input.payload.seqValue.elements[0]); \
-  linalg::aliases::_v3_ *b = reinterpret_cast<linalg::aliases::_v3_ *>(&operand.payload._v3v_);              \
-  linalg::aliases::_v3_ *c = reinterpret_cast<linalg::aliases::_v3_ *>(&_result.payload._v3v_);              \
-  *c = linalg::mul(*a, *b);                                                                                  \
+#define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                           \
+  auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]); \
+  auto &b = reinterpret_cast<_v3_ &>(operand.payload._v3v_);              \
+  auto &c = reinterpret_cast<_v3_ &>(_result.payload._v3v_);              \
+  c = linalg::mul((_v1_::Base)a, (_v3_::Base)b);                          \
   _result.valueType = _v2_;
     switch (input.payload.seqValue.elements[0].valueType) {
     case SHType::Float2: {
-      MATMUL_OP(double2x2, SHType::Float2, 2, double2, float2Value);
+      MATMUL_OP(Mat2, SHType::Float2, 2, Vec2, float2Value);
     } break;
     case SHType::Float3: {
-      MATMUL_OP(float3x3, SHType::Float3, 3, float3, float3Value);
+      MATMUL_OP(Mat3, SHType::Float3, 3, Vec3, float3Value);
     } break;
     case SHType::Float4: {
-      MATMUL_OP(float4x4, SHType::Float4, 4, float4, float4Value);
+      MATMUL_OP(Mat4, SHType::Float4, 4, Vec4, float4Value);
     } break;
     default:
       throw ActivationError("Invalid value type for MatMul");
@@ -467,7 +467,7 @@ struct Unproject {
 
     float2 depthRange(0.0f, 1.0f);
     if (!_depthRange.isNone()) {
-      depthRange = toFloat2(_depthRange.get());
+      depthRange = (float2)toFloat2(_depthRange.get());
     }
 
     float a = -depthRange.y / (depthRange.y - depthRange.x);
@@ -560,7 +560,7 @@ struct QuaternionSlerp {
     float factor = input.payload.floatValue;
     auto a = *reinterpret_cast<Vec4 *>(&_a.get());
     auto b = *reinterpret_cast<Vec4 *>(&_b.get());
-    _output = linalg::slerp(a, b, factor);
+    _output = linalg::slerp<float, 4>(a, b, factor);
     return _output;
   }
 };

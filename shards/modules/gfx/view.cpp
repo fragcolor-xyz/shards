@@ -323,7 +323,7 @@ struct RenderIntoShard {
 
     int2 referenceSize{};
     if (!referenceSizeVar.isNone()) {
-      referenceSize = toInt2(referenceSizeVar);
+      referenceSize = (int2)toInt2(referenceSizeVar);
     } else if (matchOutputSize) {
       referenceSize = viewStack.getOutput().referenceSize;
     } else {

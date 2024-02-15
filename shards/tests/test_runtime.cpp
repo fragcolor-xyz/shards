@@ -11,6 +11,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/modules/core/serialization.hpp>
 #include <shards/linalg_shim.hpp>
+#include <shards/wire_dsl.hpp>
 
 #undef CHECK
 
@@ -231,7 +232,7 @@ TEST_CASE("SHVar-comparison", "[ops]") {
   REQUIRE(f1 != f3);                \
   REQUIRE(v1 != v3);                \
   REQUIRE(f1 != i1);                \
-  REQUIRE_NOTHROW(f1 <= i1);         \
+  REQUIRE_NOTHROW(f1 <= i1);        \
   REQUIRE(f1 <= f2);                \
   REQUIRE(v1 <= v2);                \
   REQUIRE_FALSE(f3 <= f1);          \
@@ -1059,31 +1060,51 @@ TEST_CASE("ObjectVar") {
 }
 
 TEST_CASE("linalg compatibility") {
-  static_assert(sizeof(linalg::aliases::double2) == 32);
-  static_assert(sizeof(linalg::aliases::float3) == 32);
-  static_assert(sizeof(linalg::aliases::float3) == sizeof(Vec3));
-  static_assert(sizeof(linalg::aliases::float4) == 32);
-  static_assert(sizeof(linalg::aliases::float4) == sizeof(Vec4));
+  static_assert(sizeof(SHVar) == sizeof(padded::Float4));
+  static_assert(sizeof(SHVar) == sizeof(padded::Float3));
+  static_assert(sizeof(SHVar) == sizeof(padded::Float2));
+  static_assert(sizeof(SHVar) == sizeof(padded::Float));
+  static_assert(sizeof(SHVar) == sizeof(padded::Int4));
+  static_assert(sizeof(SHVar) == sizeof(padded::Int3));
+  static_assert(sizeof(SHVar) == sizeof(padded::Int2));
+  static_assert(sizeof(SHVar) == sizeof(padded::Int));
+  static_assert(sizeof(SHVar) * 4 == sizeof(Mat4));
+  static_assert(sizeof(padded::Float4)*4 == sizeof(Mat4));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float4, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float3, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float2, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int4, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int3, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int2, valueType));
+  static_assert(offsetof(SHVar, valueType) == offsetof(padded::Int, valueType));
+  static_assert(0 == offsetof(Mat4, x));
+  static_assert(sizeof(SHVar) * 1 == offsetof(Mat4, y));
+  static_assert(sizeof(SHVar) * 2 == offsetof(Mat4, z));
+  static_assert(sizeof(SHVar) * 3 == offsetof(Mat4, w));
+  static_assert(alignof(SHVar) == alignof(padded::Float4));
+  static_assert(alignof(SHVar) == alignof(padded::Float3));
+
   Var a{1.0, 2.0, 3.0, 4.0};
   Var b{4.0, 3.0, 2.0, 1.0};
-  const linalg::aliases::float4 *va = reinterpret_cast<linalg::aliases::float4 *>(&a.payload.float4Value);
-  const linalg::aliases::float4 *vb = reinterpret_cast<linalg::aliases::float4 *>(&b.payload.float4Value);
-  auto c = (*va) + (*vb);
+  const padded::Float4 *va = reinterpret_cast<padded::Float4 *>(&a.payload.float4Value);
+  const padded::Float4 *vb = reinterpret_cast<padded::Float4 *>(&b.payload.float4Value);
+  auto c = (**va) + (**vb);
   linalg::aliases::float4 rc{5.0, 5.0, 5.0, 5.0};
   REQUIRE(c == rc);
-  c = (*va) * (*vb);
+  c = (**va) * (**vb);
   rc = {4.0, 6.0, 6.0, 4.0};
   REQUIRE(c == rc);
 
   std::vector<Var> ad{Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0)};
   Var d(ad);
-  const linalg::aliases::float4x4 *md = reinterpret_cast<linalg::aliases::float4x4 *>(&d.payload.seqValue.elements[0]);
+  const Mat4 *md = reinterpret_cast<Mat4 *>(&d.payload.seqValue.elements[0]);
   linalg::aliases::float4x4 rd{{1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}};
-  REQUIRE((*md) == rd);
+  REQUIRE(linalg::aliases::float4x4(*md) == rd);
 
   Mat4 sm{rd};
-  REQUIRE(sm.x == rd.x);
-  REQUIRE(sm.y == rd.y);
+  REQUIRE(*sm.x == rd.x);
+  REQUIRE(*sm.y == rd.y);
 }
 
 enum class XRHand { Left, Right };
