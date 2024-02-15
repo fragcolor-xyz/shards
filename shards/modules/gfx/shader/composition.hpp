@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <shards/shards.h>
+#include <shards/ops.hpp>
 #include <gfx/shader/generator.hpp>
 
 namespace gfx::shader {
@@ -55,7 +56,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
     if (v.valueType == SHType::ContextVar) {
       shards::ParamVar pv(v);
       pv.warmup(context);
-      hash_update(pv.get(), &hashState);
+      shards::hash_update(pv.get(), &hashState);
     } else {
       uint8_t constData = 0xff;
       XXH3_128bits_update(&hashState, &constData, 1);
