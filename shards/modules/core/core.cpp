@@ -2156,6 +2156,8 @@ struct Once {
       _lastInnerActivation = start;
 #endif
       _next = _next + dsleep;
+      if(_next < start)
+        _next = start + dsleep;
 
       // Call the activation function
       SHVar output{};
