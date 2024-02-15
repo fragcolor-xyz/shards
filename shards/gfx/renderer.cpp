@@ -272,9 +272,9 @@ struct RendererImpl final : public ContextData {
       cmd.destination->data.resize(cmd.bufferSize);
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
 
-      cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
+      cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
 
       wgpuBufferUnmap(cmd.buffer);
       cmd.mappedBuffer.reset();

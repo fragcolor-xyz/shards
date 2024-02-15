@@ -168,7 +168,17 @@ struct MainWindow final {
     _windowContext->window->init(windowOptions);
 
     // Adjust window size so they're specified in virtual points
-    float scaling = (*_useDisplayScaling && Window::isWindowSizeInPixels()) ? _windowContext->window->getUIScale() : 1.0f;
+    float uiScale = _windowContext->window->getUIScale();
+    float scaling = 1.0f;
+    if (*_useDisplayScaling) {
+      if (Window::isWindowSizeInPixels()) {
+        scaling = uiScale;
+      }
+    } else {
+      if (!Window::isWindowSizeInPixels()) {
+        scaling = 1.0f / uiScale;
+      }
+    }
     _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
 
 #if SH_APPLE
