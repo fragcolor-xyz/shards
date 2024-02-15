@@ -4,6 +4,9 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 
+#ifdef NDEBUG
+#define DEBUG_BREAK() abort()
+#else
 #if defined(_MSC_VER) // Microsoft Visual Studio
 #include <intrin.h>
 #define DEBUG_BREAK() __debugbreak()
@@ -25,6 +28,7 @@
 #else
 #error "Compiler not supported."
 #endif
+#endif
 
 namespace shards {
 namespace Assert {
@@ -42,7 +46,7 @@ struct Base {
   Base() { _aborting = Var(false); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -80,7 +84,7 @@ struct IsStatic {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -106,7 +110,7 @@ struct IsVariable {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -186,7 +190,7 @@ struct IsAlmost {
   }
 
   void warmup(SHContext *context) { _value.warmup(context); }
-  void cleanup(SHContext* context) { _value.cleanup(); }
+  void cleanup(SHContext *context) { _value.cleanup(); }
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
   SHTypeInfo compose(const SHInstanceData &data) {

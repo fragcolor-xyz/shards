@@ -75,6 +75,8 @@ if(NOT EMSCRIPTEN)
     # NOTE: External project doesn't work with Xcode here
     #  since ssl/cypto builds into object library referenced by static library
     add_library(OpenSSL INTERFACE)
+    add_library(OpenSSL::SSL ALIAS OpenSSL)
+    add_library(OpenSSL::Crypto ALIAS crypto)
     target_link_libraries(OpenSSL INTERFACE ssl)
     target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
   endif()
