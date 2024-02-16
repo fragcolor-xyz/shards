@@ -5,6 +5,8 @@
 #include <shards/shards.h>
 #include <shards/ops.hpp>
 #include <gfx/shader/generator.hpp>
+#include <shards/core/runtime.hpp>
+#include "../shards_utils.hpp"
 
 namespace gfx::shader {
 using VariableMap = std::unordered_map<std::string, shards::OwnedVar>;
@@ -63,7 +65,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
     }
   }
   auto digest = XXH3_128bits_digest(&hashState);
-  SHVar newHash = Var(int64_t(digest.low64), int64_t(digest.high64));
+  SHVar newHash = shards::Var(int64_t(digest.low64), int64_t(digest.high64));
 
   if (newHash != hash) {
     hash = newHash;
