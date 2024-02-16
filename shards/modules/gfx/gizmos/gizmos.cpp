@@ -33,6 +33,7 @@ struct TranslationGizmo : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::TranslationGizmo _gizmo{};
+  Mat4 _output{};
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     float4x4 inputMat;
@@ -74,7 +75,8 @@ struct TranslationGizmo : public Base {
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
-    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+    _output = _gizmo.transform;
+    return _output;
   }
 
   void warmup(SHContext *context) {
@@ -109,6 +111,7 @@ struct RotationGizmo : public Base {
 
   // gizmo from translation_gizmo.hpp, not this file
   gfx::gizmos::RotationGizmo _gizmo{};
+  Mat4 _output{};
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     float4x4 inputMat;
@@ -155,7 +158,8 @@ struct RotationGizmo : public Base {
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
-    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+    _output = _gizmo.transform;
+    return _output;
   }
 
   void warmup(SHContext *context) {
@@ -188,6 +192,7 @@ struct ScalingGizmo : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::ScalingGizmo _gizmo{};
+  Mat4 _output{};
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     float4x4 inputMat;
@@ -234,7 +239,8 @@ struct ScalingGizmo : public Base {
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
-    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+    _output = _gizmo.transform;
+    return _output;
   }
 
   void warmup(SHContext *context) {
