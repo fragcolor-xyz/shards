@@ -48,13 +48,10 @@ struct int4 {
 // External functions to work around an issue where using complex
 //   return values inside member functions the stack is messed up
 extern "C" {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
-gfx::int2 gfx_Window_getSize_ext(gfx::Window *window);
-gfx::int2 gfx_Window_getDrawableSize_ext(gfx::Window *window);
+void gfx_Window_getSize_ext(gfx::Window *window, gfx::int2 *out);
+void gfx_Window_getDrawableSize_ext(gfx::Window *window, gfx::int2 *out);
 float gfx_Window_getUIScale_ext(gfx::Window *window);
-gfx::int2 gfx_TexturePtr_getResolution_ext(gfx::TexturePtr *texture);
-#pragma clang diagnostic push
+void gfx_TexturePtr_getResolution_ext(gfx::TexturePtr *texture, gfx::int2 *out);
 }
 
 #endif /* BFB13E29_4B2D_433E_905E_DAC3525F8FAD */

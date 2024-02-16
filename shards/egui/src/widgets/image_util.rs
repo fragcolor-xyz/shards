@@ -3,6 +3,7 @@
 
 use crate::bindings::gfx_TexturePtr;
 use crate::bindings::gfx_TexturePtr_getResolution_ext;
+use crate::bindings::linalg_aliases_int2;
 use egui::vec2;
 use shards::fourCharacterCode;
 use shards::shardsc::SHImage;
@@ -25,7 +26,6 @@ pub fn into_vec2(scale_var: &ParamVar) -> Result<egui::Vec2, &'static str> {
   let scale: (f32, f32) = scale_var.get().try_into()?;
   Ok(egui::vec2(scale.0, scale.1))
 }
-
 
 // Resolve image point size based on parameters
 pub fn resolve_image_size(
@@ -98,7 +98,8 @@ pub fn get_egui_texture_from_gfx(
   let texture_ptr: *mut gfx_TexturePtr =
     Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(input, &TEXTURE_TYPE)?;
   let texture_size = {
-    let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+    let mut texture_res = linalg_aliases_int2::default();
+    unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr, &mut texture_res) };
     egui::vec2(texture_res.x as f32, texture_res.y as f32)
   };
 
