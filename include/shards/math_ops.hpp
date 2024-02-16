@@ -83,6 +83,14 @@ struct BroadcastColor {
 
 template <SHType BasicType> struct PayloadTraits {};
 
+template <> struct PayloadTraits<SHType::Bool> {
+  using Type = SHInt;
+  using ApplyBinary = ApplyBinaryVector<1>;
+  using ApplyUnary = ApplyUnaryVector<1>;
+  using Broadcast = BroadcastVector<1>;
+  using UnitType = PayloadTraits<SHType::Bool>;
+  auto &getContents(SHVarPayload &payload) { return payload.boolValue; }
+};
 template <> struct PayloadTraits<SHType::Float> {
   using Type = SHFloat;
   using ApplyBinary = ApplyBinaryVector<1>;
@@ -185,7 +193,9 @@ template <SHType ValueType> const auto &getPayloadContents(const SHVarPayload &p
 enum class DispatchType : uint8_t {
   FloatTypes = 0x1,
   IntTypes = 0x2,
+  BoolTypes = 0x4,
   NumberTypes = FloatTypes | IntTypes,
+  IntOrBoolTypes = IntTypes | BoolTypes,
 };
 } // namespace shards::Math
 
@@ -199,50 +209,57 @@ namespace shards::Math {
 constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t(a) & uint8_t(b)) != 0; }
 
 template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
-  if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes)) {
-    switch (type) {
-    case SHType::Int:
+  switch (type) {
+  case SHType::Int:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Int2:
+    break;
+  case SHType::Int2:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int2>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Int3:
+    break;
+  case SHType::Int3:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int3>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Int4:
+    break;
+  case SHType::Int4:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int4>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Int8:
+    break;
+  case SHType::Int8:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int8>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Int16:
+    break;
+  case SHType::Int16:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Int16>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Color:
+    break;
+  case SHType::Color:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
       return v.template apply<SHType::Color>(std::forward<TArgs>(args)...);
-      break;
-    default:
-      break;
-    }
-  }
-  if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes)) {
-    switch (type) {
-    case SHType::Float:
+    break;
+  case SHType::Float:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
       return v.template apply<SHType::Float>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Float2:
+    break;
+  case SHType::Float2:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
       return v.template apply<SHType::Float2>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Float3:
+    break;
+  case SHType::Float3:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
       return v.template apply<SHType::Float3>(std::forward<TArgs>(args)...);
-      break;
-    case SHType::Float4:
+    break;
+  case SHType::Float4:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
       return v.template apply<SHType::Float4>(std::forward<TArgs>(args)...);
-      break;
-    default:
-      break;
-    }
+    break;
+  case SHType::Bool:
+    if constexpr (hasDispatchType(DispatchType, DispatchType::BoolTypes))
+      return v.template apply<SHType::Bool>(std::forward<TArgs>(args)...);
+    break;
+  default:
+    break;
   }
   throw std::out_of_range(
       fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));

@@ -14,6 +14,7 @@ namespace shards {
 
 enum class NumberType {
   Invalid = 0,
+  Bool,
   UInt8,
   Int8,
   Int16,
