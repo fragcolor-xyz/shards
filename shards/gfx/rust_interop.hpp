@@ -15,32 +15,26 @@ struct Window;
 /// <div rustbindgen replaces="linalg::aliases::float2"></div>
 struct float2 {
   float x, y;
-  char padding[16];
 };
 /// <div rustbindgen replaces="linalg::aliases::float3"></div>
 struct float3 {
   float x, y, z;
-  char padding[20];
 };
 /// <div rustbindgen replaces="linalg::aliases::float4"></div>
 struct float4 {
   float x, y, z, w;
-  char padding[16];
 };
 /// <div rustbindgen replaces="linalg::aliases::int2"></div>
 struct int2 {
   int32_t x, y;
-  char padding[16];
 };
 /// <div rustbindgen replaces="linalg::aliases::int3"></div>
 struct int3 {
   int32_t x, y, z;
-  char padding[20];
 };
 /// <div rustbindgen replaces="linalg::aliases::int4"></div>
 struct int4 {
   int32_t x, y, z, w;
-  char padding[16];
 };
 #endif
 } // namespace gfx

@@ -10,7 +10,6 @@ impl Default for linalg_aliases_int2 {
     Self {
       x: 0,
       y: 0,
-      padding: [0; 16],
     }
   }
 }
