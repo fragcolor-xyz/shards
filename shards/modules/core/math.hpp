@@ -182,46 +182,47 @@ struct ApplyBroadcast {
   }
 };
 
-template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> struct BasicBinaryOperation {
+template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> struct BasicBinaryOperation {
+  static constexpr DispatchType DispatchType = DispatchType_;
+
   ApplyBinary<TOp> apply;
   ApplyBroadcast applyBroadcast;
   const VectorTypeTraits *_lhsVecType{};
   const VectorTypeTraits *_rhsVecType{};
 
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
-    OpType opType = OpType::Invalid;
     if (rhs != SHType::Seq && lhs.basicType != SHType::Seq) {
       _lhsVecType = VectorTypeLookup::getInstance().get(lhs.basicType);
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
       if (_lhsVecType || _rhsVecType) {
         if (!_lhsVecType || !_rhsVecType)
-          throw ComposeError("Unsupported type to Math.Multiply");
+          throw ComposeError(fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
 
         bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
         if (!sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
-          opType = Broadcast;
           // Result is the vector type
           if (_rhsVecType->dimension == 1) {
             resultType = _lhsVecType->type;
           } else {
             resultType = _rhsVecType->type;
           }
+          return Broadcast;
         } else {
           if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
             throw ComposeError(
                 fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
           }
-          opType = Direct;
+          return Direct;
         }
       }
     }
 
-    return opType;
+    return OpType::Invalid;
   }
 
   void operateDirect(SHVar &output, const SHVar &a, const SHVar &b) {
     output.valueType = a.valueType;
-    dispatchType<DispatchType>(a.valueType, apply, output.payload, a.payload, b.payload);
+    dispatchType<DispatchType_>(a.valueType, apply, output.payload, a.payload, b.payload);
   }
 
   void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
@@ -239,15 +240,15 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
     // Expand scalars to vectors
     if (_lhsVecType->dimension == 1) {
       SHVarPayload temp = aPayload; // Need temp var if input/output are the same
-      dispatchType<DispatchType>(vecType->shType, applyBroadcast, aPayload, temp);
+      dispatchType<DispatchType_>(vecType->shType, applyBroadcast, aPayload, temp);
     }
     if (_rhsVecType->dimension == 1) {
       SHVarPayload temp = bPayload;
-      dispatchType<DispatchType>(vecType->shType, applyBroadcast, bPayload, temp);
+      dispatchType<DispatchType_>(vecType->shType, applyBroadcast, bPayload, temp);
     }
 
     output.valueType = vecType->shType;
-    dispatchType<DispatchType>(vecType->shType, apply, output.payload, aPayload, bPayload);
+    dispatchType<DispatchType_>(vecType->shType, apply, output.payload, aPayload, bPayload);
   }
 };
 
@@ -348,11 +349,21 @@ template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
                                      CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
-  static SHTypesInfo inputTypes() { return IntOrSeqTypes; }
+  static SHTypesInfo inputTypes() {
+    static Types types = []() {
+      Types types = IntOrSeqTypes;
+      if constexpr (hasDispatchType(TOp::DispatchType, DispatchType::BoolTypes)) {
+        types._types.push_back(CoreInfo::BoolType);
+      }
+      return types;
+    }();
+    return types;
+  }
+  static SHTypesInfo outputTypes() { return inputTypes(); }
+
   static SHOptionalString inputHelp() {
     return SHCCSTR("Any valid integer(s) or a sequence of such entities supported by this operation.");
   }
-  static SHTypesInfo outputTypes() { return IntOrSeqTypes; }
 };
 
 template <typename TOp> struct ApplyUnary {
@@ -506,14 +517,18 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
   using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
+#define MATH_BINARY_INT_BOOL_OPERATION(NAME, OPERATOR)                                           \
+  using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntOrBoolTypes>>; \
+  RUNTIME_SHARD_TYPE(Math, NAME);
+
 MATH_BINARY_OPERATION(Add, +, 0);
 MATH_BINARY_OPERATION(Subtract, -, 0);
 MATH_BINARY_OPERATION(Multiply, *, 0);
 MATH_BINARY_OPERATION(Divide, /, 1);
 MATH_BINARY_OPERATION(Mod, %, 0);
-MATH_BINARY_INT_OPERATION(Xor, ^);
-MATH_BINARY_INT_OPERATION(And, &);
-MATH_BINARY_INT_OPERATION(Or, |);
+MATH_BINARY_INT_BOOL_OPERATION(Xor, ^);
+MATH_BINARY_INT_BOOL_OPERATION(And, &);
+MATH_BINARY_INT_BOOL_OPERATION(Or, |);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
