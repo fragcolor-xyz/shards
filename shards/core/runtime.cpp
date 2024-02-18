@@ -1613,9 +1613,47 @@ void error_handler(int err_sig) {
 
 #ifdef _WIN32
 #include "debugapi.h"
-static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
+bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
+#elif SH_LINUX
+#include <fstream>
+#include <string>
+
+bool isDebuggerPresent() {
+  std::ifstream status("/proc/self/status");
+  std::string line;
+  while (std::getline(status, line)) {
+    if (line.find("TracerPid:") != std::string::npos) {
+      // TracerPid is followed by a space and then the PID value
+      auto pid = std::stoi(line.substr(line.find(":") + 1));
+      return pid != 0;
+    }
+  }
+  return false;
+}
+#elif SH_APPLE
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <stdbool.h>
+
+bool isDebuggerPresent() {
+  int mib[4];
+  struct kinfo_proc info;
+  size_t size = sizeof(info);
+
+  info.kp_proc.p_flag = 0;
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_PID;
+  mib[3] = getpid();
+
+  if (sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0) == -1) {
+    return false;
+  }
+
+  return (info.kp_proc.p_flag & P_TRACED) != 0;
+}
 #else
-constexpr bool isDebuggerPresent() { return false; }
+bool isDebuggerPresent() { return false; }
 #endif
 
 void installSignalHandlers() {

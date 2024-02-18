@@ -200,6 +200,8 @@ void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var);
 
 void installSignalHandlers();
 
+bool isDebuggerPresent();
+
 #ifdef SH_COMPRESSED_STRINGS
 void decompressStrings();
 #endif
