@@ -1614,22 +1614,6 @@ void error_handler(int err_sig) {
 #ifdef _WIN32
 #include "debugapi.h"
 bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
-#elif SH_LINUX
-#include <fstream>
-#include <string>
-
-bool isDebuggerPresent() {
-  std::ifstream status("/proc/self/status");
-  std::string line;
-  while (std::getline(status, line)) {
-    if (line.find("TracerPid:") != std::string::npos) {
-      // TracerPid is followed by a space and then the PID value
-      auto pid = std::stoi(line.substr(line.find(":") + 1));
-      return pid != 0;
-    }
-  }
-  return false;
-}
 #elif SH_APPLE
 #include <sys/types.h>
 #include <sys/sysctl.h>
