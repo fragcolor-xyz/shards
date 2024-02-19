@@ -146,11 +146,17 @@ impl Image {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 
-      let scale = image_util::into_vec2(&self.scale)?;
-      let global_scale = 1.0 / ui.ctx().pixels_per_point();
+      let size = image_util::resolve_image_size(
+        ui,
+        &self.size,
+        &self.scale,
+        &self.scaling_aware,
+        texture_size,
+      );
+
       let img = SizedTexture {
         id: texture_id,
-        size: texture_size * scale * global_scale,
+        size: size,
       };
       ui.image(img);
 
