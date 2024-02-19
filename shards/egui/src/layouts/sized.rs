@@ -170,7 +170,7 @@ impl LegacyShard for super::Sized {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let max_size = vec2((&self.width.0).try_into()?, (&self.height.0).try_into()?);
 
-      let mut sized: Vec2 = vec2(0.0, 0.0);
+      let mut sized: Vec2 = max_size;
       let available_size = ui.available_size();
       let fill_width: bool = (&self.fill_width.0).try_into()?;
       let fill_height: bool = (&self.fill_height.0).try_into()?;
@@ -192,13 +192,18 @@ impl LegacyShard for super::Sized {
         }
         if fill_width {
           ui.set_width(available_size.x);
+        } else {
+          ui.set_width(max_size.x);
         }
         if fill_height {
           ui.set_height(available_size.y);
+        } else {
+          ui.set_height(max_size.y);
         }
         let response = ui
           .with_layout(
-            Layout::top_down(Align::Min).with_cross_justify(true),
+            ui.layout().clone(),
+            // Layout::top_down(Align::Min).with_cross_justify(true),
             |ui| {
               resp =
                 util::activate_ui_contents(context, input, ui, &mut self.parents, &self.contents);
