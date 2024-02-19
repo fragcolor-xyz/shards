@@ -109,57 +109,6 @@ impl EguiScrollAreaSettings {
   }
 }
 
-struct LayoutClass {
-  parent: *const LayoutClass,
-  layout: Option<egui::Layout>,
-  min_size: Option<(f32, f32)>,
-  max_size: Option<(f32, f32)>,
-  fill_width: Option<bool>,
-  fill_height: Option<bool>,
-  disabled: Option<bool>,
-  frame: Option<LayoutFrame>,
-  scroll_area: Option<EguiScrollAreaSettings>,
-}
-
-struct LayoutConstructor {
-  parent: ParamVar,
-  layout_class: Option<Rc<LayoutClass>>,
-  main_direction: ParamVar,
-  main_wrap: ParamVar,
-  main_align: ParamVar,
-  main_justify: ParamVar,
-  cross_align: ParamVar,
-  cross_justify: ParamVar,
-  min_size: ParamVar,
-  max_size: ParamVar,
-  fill_width: ParamVar,
-  fill_height: ParamVar,
-  disabled: ParamVar,
-  frame: ParamVar,
-  enable_horizontal_scroll_bar: ParamVar,
-  enable_vertical_scroll_bar: ParamVar,
-  scroll_visibility: ParamVar,
-  scroll_area_min_width: ParamVar,
-  scroll_area_min_height: ParamVar,
-  scroll_area_max_width: ParamVar,
-  scroll_area_max_height: ParamVar,
-  scroll_area_auto_shrink_width: ParamVar,
-  scroll_area_auto_shrink_height: ParamVar,
-  scroll_area_enable_scrolling: ParamVar,
-}
-
-struct Layout {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  contents: ShardsVar,
-  layout_class: ParamVar,
-  min_size: ParamVar,
-  max_size: ParamVar,
-  fill_width: ParamVar,
-  fill_height: ParamVar,
-  exposing: ExposedTypes,
-}
-
 shenum! {
   pub struct ScrollVisibility {
     [description("The scroll bars will always be visible.")]
@@ -392,6 +341,7 @@ mod vertical;
 
 pub fn register_shards() {
   auto_grid::register_shards();
+  layout::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();
@@ -399,8 +349,6 @@ pub fn register_shards() {
   register_legacy_shard::<Grid>();
   register_legacy_shard::<Group>();
   register_legacy_shard::<Horizontal>();
-  register_legacy_shard::<LayoutConstructor>();
-  register_legacy_shard::<Layout>();
   register_legacy_enum(
     FRAG_CC,
     ScrollVisibilityCC,

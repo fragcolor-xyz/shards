@@ -2,11 +2,8 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::EguiScrollAreaSettings;
-use super::Layout;
 use super::LayoutAlign;
 use super::LayoutAlignCC;
-use super::LayoutClass;
-use super::LayoutConstructor;
 use super::LayoutDirection;
 use super::LayoutDirectionCC;
 use super::LayoutFrame;
@@ -17,7 +14,10 @@ use crate::layouts::LAYOUT_ALIGN_TYPES;
 use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::layouts::SCROLL_VISIBILITY_TYPES;
 use crate::util;
+use crate::Anchor;
 use crate::EguiId;
+use crate::ANCHOR_TYPE;
+use crate::ANCHOR_TYPES;
 use crate::EGUI_UI_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::FLOAT_VAR_SLICE;
@@ -27,6 +27,8 @@ use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
 use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
+use shards::core::register_legacy_shard;
+use shards::core::{register_enum, register_shard};
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::Context;
@@ -44,7 +46,47 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::types::{common_type, NONE_TYPES};
 use std::rc::Rc;
+
+struct LayoutClass {
+  parent: *const LayoutClass,
+  layout: Option<egui::Layout>,
+  min_size: Option<(f32, f32)>,
+  max_size: Option<(f32, f32)>,
+  fill_width: Option<bool>,
+  fill_height: Option<bool>,
+  disabled: Option<bool>,
+  frame: Option<LayoutFrame>,
+  scroll_area: Option<EguiScrollAreaSettings>,
+}
+
+struct LayoutConstructor {
+  parent: ParamVar,
+  layout_class: Option<Rc<LayoutClass>>,
+  main_direction: ParamVar,
+  main_wrap: ParamVar,
+  main_align: ParamVar,
+  main_justify: ParamVar,
+  cross_align: ParamVar,
+  cross_justify: ParamVar,
+  min_size: ParamVar,
+  max_size: ParamVar,
+  fill_width: ParamVar,
+  fill_height: ParamVar,
+  disabled: ParamVar,
+  frame: ParamVar,
+  enable_horizontal_scroll_bar: ParamVar,
+  enable_vertical_scroll_bar: ParamVar,
+  scroll_visibility: ParamVar,
+  scroll_area_min_width: ParamVar,
+  scroll_area_min_height: ParamVar,
+  scroll_area_max_width: ParamVar,
+  scroll_area_max_height: ParamVar,
+  scroll_area_auto_shrink_width: ParamVar,
+  scroll_area_auto_shrink_height: ParamVar,
+  scroll_area_enable_scrolling: ParamVar,
+}
 
 macro_rules! retrieve_parameter {
   ($param:ident, $name:literal, $type:ty) => {
@@ -641,7 +683,8 @@ impl LegacyShard for LayoutConstructor {
           parent_layout_class,
           scroll_area,
           enable_horizontal_scroll_bar
-        ).unwrap_or_default()
+        )
+        .unwrap_or_default()
       } else {
         false // default enable_horizontal_scroll_bar
       }
@@ -660,7 +703,8 @@ impl LegacyShard for LayoutConstructor {
           parent_layout_class,
           scroll_area,
           enable_vertical_scroll_bar
-        ).unwrap_or_default()
+        )
+        .unwrap_or_default()
       } else {
         false // default enable_vertical_scroll_bar
       }
@@ -678,7 +722,8 @@ impl LegacyShard for LayoutConstructor {
       scroll_visibility
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
-        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap_or(ScrollVisibility::AlwaysVisible)
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
+          .unwrap_or(ScrollVisibility::AlwaysVisible)
       } else {
         ScrollVisibility::AlwaysVisible // Default should normally be VisibleWhenNeeded, but it is buggy at the moment
       }
@@ -692,7 +737,8 @@ impl LegacyShard for LayoutConstructor {
         min_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap_or(MIN_SCROLLING_SIZE)
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width)
+            .unwrap_or(MIN_SCROLLING_SIZE)
         } else {
           MIN_SCROLLING_SIZE // default min_width
         }
@@ -704,7 +750,8 @@ impl LegacyShard for LayoutConstructor {
         min_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap_or(MIN_SCROLLING_SIZE)
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height)
+            .unwrap_or(MIN_SCROLLING_SIZE)
         } else {
           MIN_SCROLLING_SIZE // default min_height
         }
@@ -716,7 +763,8 @@ impl LegacyShard for LayoutConstructor {
         max_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap_or(f32::INFINITY)
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width)
+            .unwrap_or(f32::INFINITY)
         } else {
           f32::INFINITY // default max_width
         }
@@ -728,7 +776,8 @@ impl LegacyShard for LayoutConstructor {
         max_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap_or(f32::INFINITY)
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height)
+            .unwrap_or(f32::INFINITY)
         } else {
           f32::INFINITY // default max_height
         }
@@ -825,174 +874,102 @@ impl LegacyShard for LayoutConstructor {
   }
 }
 
-impl Default for Layout {
+lazy_static! {
+  static ref ANCHOR_OR_NONE_TYPES: Vec<Type> = {
+    let mut v = ANCHOR_TYPES.to_vec();
+    v.push(common_type::none);
+    v
+  };
+  static ref POSITION_TYPES: Vec<Type> = vec![
+    common_type::float2,
+    common_type::float2_var,
+    common_type::none
+  ];
+}
+
+#[derive(shards::shard)]
+#[shard_info("UI.Layout", "Versatile layout with many options for customizing the desired UI.")]
+struct LayoutShard {
+  #[shard_required]
+  requiring: ExposedTypes,
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
+  contents: ShardsVar,
+  #[shard_param(
+    "Class",
+    "The Layout class describing all of the options relating to the layout of this UI.",
+    LAYOUTCLASS_TYPE_VEC_VAR
+  )]
+  layout_class: ParamVar,
+  #[shard_param("MinSize", "The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight.", FLOAT2_VAR_SLICE)]
+  min_size: ParamVar,
+  #[shard_param("MaxSize", "The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight.", FLOAT2_VAR_SLICE)]
+  max_size: ParamVar,
+  #[shard_param(
+    "FillWidth",
+    "Whether the Layout should take up the full width of the available space.",
+    BOOL_TYPES
+  )]
+  fill_width: ParamVar,
+  #[shard_param(
+    "FillHeight",
+    "Whether the Layout should take up the full height of the available space.",
+    BOOL_TYPES
+  )]
+  fill_height: ParamVar,
+}
+
+impl Default for LayoutShard {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
-      requiring: Vec::new(),
+      requiring: ExposedTypes::new(),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       contents: ShardsVar::default(),
       layout_class: ParamVar::default(),
       min_size: ParamVar::default(),
       max_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
-      exposing: Vec::new(),
     }
   }
 }
 
-impl LegacyShard for Layout {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Layout")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Layout-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Layout"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Versatile layout with many options for customizing the desired UI."
-    ))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shards::shard_impl]
+impl Shard for LayoutShard {
+  fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "The value that will be passed to the Contents shards of the layout."
-    ))
-  }
-
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
-    *HELP_OUTPUT_EQUAL_INPUT
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&LAYOUT_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.contents.set_param(value),
-      1 => self.layout_class.set_param(value),
-      2 => self.min_size.set_param(value),
-      3 => self.max_size.set_param(value),
-      4 => self.fill_width.set_param(value),
-      5 => self.fill_height.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.contents.get_param(),
-      1 => self.layout_class.get_param(),
-      2 => self.min_size.get_param(),
-      3 => self.max_size.get_param(),
-      4 => self.fill_width.get_param(),
-      5 => self.fill_height.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    Some(&self.requiring)
-  }
-
-  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    self.exposing.clear();
-
-    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
-      Some(&self.exposing)
-    } else {
-      None
-    }
-  }
-
-  fn hasCompose() -> bool {
-    true
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    self.requiring.clear();
-    
+    self.compose_helper(data)?;
+
     if !self.layout_class.is_variable() {
       return Err("Class parameter is required");
     }
-
-    self.requiring.push(ExposedInfo::new_with_help_from_ptr(
-      self.layout_class.get_name(),
-      shccstr!("The required layout class."),
-      *LAYOUTCLASS_TYPE,
-    ));
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
 
     if !self.contents.is_empty() {
       self.contents.compose(data)?;
     }
 
-    self.requiring.clear();
-
-    self.requiring.push(ExposedInfo::new_with_help_from_ptr(
-      self.layout_class.get_name(),
-      shccstr!("The required layout class."),
-      *LAYOUTCLASS_TYPE,
-    ));
-
-    // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
 
     // Always passthrough the input
     Ok(data.inputType)
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-    if !self.contents.is_empty() {
-      self.contents.warmup(ctx)?;
-    }
-    self.layout_class.warmup(ctx);
-    self.min_size.warmup(ctx);
-    self.max_size.warmup(ctx);
-    self.fill_width.warmup(ctx);
-    self.fill_height.warmup(ctx);
-
-    Ok(())
-  }
-
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.fill_height.cleanup(ctx);
-    self.fill_width.cleanup(ctx);
-    self.max_size.cleanup(ctx);
-    self.min_size.cleanup(ctx);
-    self.layout_class.cleanup(ctx);
-    if !self.contents.is_empty() {
-      self.contents.cleanup(ctx);
-    }
-    self.parents.cleanup(ctx);
-
-    Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
@@ -1190,8 +1167,12 @@ impl LegacyShard for Layout {
         .inner?;
       }
     }
-
     // Always passthrough the input
     Ok(*input)
   }
+}
+
+pub fn register_shards() {
+  register_legacy_shard::<LayoutConstructor>();
+  register_shard::<LayoutShard>();
 }
