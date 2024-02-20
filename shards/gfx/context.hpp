@@ -81,6 +81,8 @@ private:
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
   std::shared_mutex contextDataLock;
 
+  WGPUBackendType backendType = WGPUBackendType_Null;
+
 public:
   Context();
   ~Context();
@@ -92,6 +94,8 @@ public:
 
   void release();
   bool isInitialized() const { return state != ContextState::Uninitialized; }
+
+  WGPUBackendType getBackendType() const { return backendType; }
 
   // Checks if the the context is ready to use
   // while requesting a device this returns false
