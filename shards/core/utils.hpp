@@ -20,7 +20,11 @@
 #include <spdlog/fmt/fmt.h>
 
 #ifndef SH_DEBUG_THREAD_NAMES
+#ifdef NDEBUG
+#define SH_DEBUG_THREAD_NAMES 0
+#else
 #define SH_DEBUG_THREAD_NAMES 1
+#endif
 #endif
 
 namespace shards {
