@@ -667,6 +667,7 @@ void Context::requestAdapter() {
                         props.adapterType, props.backendType);
     if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
       adapterToUse = adapter;
+      backendType = props.backendType;
     } else {
       wgpuAdapterRelease(adapter);
     }
@@ -692,6 +693,7 @@ void Context::requestAdapter() {
     if (backend) {
       requestAdapter.backendType = *backend;
     }
+    backendType = requestAdapter.backendType;
 #endif
 
     SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
