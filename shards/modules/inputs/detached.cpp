@@ -34,12 +34,14 @@ struct InputThreadInput {
   CapturedVariables variables;
   InputStack::Item inputStackState;
 
+  InputThreadInput() = default;
   InputThreadInput(CapturedVariables &&variables, const InputStack::Item &inputStackState)
       : variables(std::move(variables)), inputStackState(inputStackState) {}
   InputThreadInput(InputThreadInput &&) = default;
   InputThreadInput(const InputThreadInput &) = default;
+  InputThreadInput &operator=(InputThreadInput &&) = default;
 };
-using InputThreadInputQueue = boost::lockfree::spsc_queue<InputThreadInput>;
+using InputThreadInputQueue = boost::lockfree::spsc_queue<InputThreadInput *>;
 
 static inline Type WindowContextType = WindowContext::Type;
 static inline CapturingBrancher::IgnoredVariables IgnoredVariables{IInputContext::VariableName};
@@ -114,6 +116,7 @@ using OutputBuffer = boost::lockfree::spsc_queue<OutputFrame>;
 struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandler>, public IInputHandler, public debug::IDebug {
   CapturingBrancher brancher;
   InputThreadInputQueue inputQueue{32};
+  InputThreadInputQueue recycleQueue{32};
 
   DetachedInputContext inputContext;
   InputStack::Item lastInputStackState;
@@ -132,7 +135,12 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   CapturingBrancher::CloningContext brancherCloningContext;
 
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
-  ~InputThreadHandler() { brancher.cleanup(); }
+  ~InputThreadHandler() {
+    brancher.cleanup();
+    auto clean = [&](InputThreadInput *input) { delete input; };
+    inputQueue.consume_all(clean);
+    recycleQueue.consume_all(clean);
+  }
 
   const char *getDebugName() override { return name.c_str(); }
 
@@ -140,11 +148,18 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   // Run on main thread activation
   void pushInputs(const VariableRefs &variableRefs, const InputStack::Item &inputStackState) {
-    CapturedVariables newVariables;
-    for (auto &vr : variableRefs) {
-      vr.second.cloneInto(newVariables[vr.first], brancherCloningContext);
+    InputThreadInput *input{};
+    if (!recycleQueue.empty()) {
+      recycleQueue.consume_one([&](InputThreadInput *recycled) { input = recycled; });
     }
-    inputQueue.push(InputThreadInput(std::move(newVariables), inputStackState));
+    if (!input)
+      input = new InputThreadInput();
+    input->inputStackState = inputStackState;
+
+    for (auto &vr : variableRefs) {
+      vr.second.cloneInto(input->variables[vr.first], brancherCloningContext);
+    }
+    inputQueue.push(input);
   }
 
   void warmup(const VariableRefs &initialVariableRefs, const InputStack::Item &inputStackState) {
@@ -187,15 +202,6 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
           windowRegion);
     }
 
-    auto canReceiveInput = inputContext.canReceiveInput();
-
-    // inputContext.detachedState.update([&](auto apply) {
-    //   for (auto &evt : master.getEvents()) {
-    //     apply(evt, canReceiveInput);
-    //   }
-    // });
-    // inputContext.detachedState.state.region = master.getState().region;
-
     double deltaTime = deltaTimer.update();
     inputContext.deltaTime = deltaTime;
     inputContext.time += deltaTime;
@@ -205,15 +211,6 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     float2 pixelCursorPos = state.cursorPosition * (float2(state.region.pixelSize) / state.region.size);
     isCursorWithinRegion = pixelCursorPos.x >= mappedRegion.x && pixelCursorPos.x <= mappedRegion[2] &&
                            pixelCursorPos.y >= mappedRegion.y && pixelCursorPos.y <= mappedRegion[3];
-
-    // Only request focus if cursor is within region or we already have focus
-    // if (/* requestFocus && */ (isCursorWithinRegion || focusTracker.hasFocus(this))) {
-    //   canReceiveInput = focusTracker.requestFocus(this);
-    // } else if (isCursorWithinRegion) {
-    //   canReceiveInput = focusTracker.canReceiveInput(this);
-    // } else {
-    //   canReceiveInput = false;
-    // }
 
     try {
       brancher.activate();
@@ -238,12 +235,13 @@ private:
       if (avail > 0) {
         // Discard extra elements
         for (int i = 0; i < (avail - 1); i++)
-          inputQueue.consume_one([&](auto &input) {});
+          inputQueue.consume_one([&](auto input) { recycleQueue.push(input); });
 
         // Consume last item
-        inputQueue.consume_one([&](InputThreadInput &input) {
-          brancher.applyCapturedVariables(std::move(input.variables));
-          lastInputStackState = input.inputStackState;
+        inputQueue.consume_one([&](InputThreadInput *input) {
+          brancher.applyCapturedVariablesSwap(input->variables);
+          lastInputStackState = input->inputStackState;
+          recycleQueue.push(input);
         });
       }
     }
