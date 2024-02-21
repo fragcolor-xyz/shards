@@ -73,6 +73,9 @@
             "FPS:" | UI.Label
             1.0 | Math.Divide((Time.Delta | Time.MovingAverage(100))) | ToString | UI.Label
           })
+          UI.Button("Freeze for 0.6s" Action: {
+            Pause(0.6)
+          })
           
         })
       }) | UI.Render(ui-draw-queue)
