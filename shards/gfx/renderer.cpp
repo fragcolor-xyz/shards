@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "wgpu_handle.hpp"
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "boost/container/stable_vector.hpp"
 #pragma clang attribute pop
@@ -363,14 +364,14 @@ struct RendererImpl final : public ContextData {
     if (wait) {
       DeferredTextureReadCommand tmpCommand(texture, destination);
       WGPUCommandEncoderDescriptor encDesc{};
-      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+      WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
 
       if (!queueTextureReadCommand(encoder, tmpCommand))
         return;
 
       WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
-      WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
       queueTextureReadBufferMap(tmpCommand);
 
@@ -385,14 +386,14 @@ struct RendererImpl final : public ContextData {
     if (wait) {
       DeferredBufferReadCommand tmpCommand(buffer, destination);
       WGPUCommandEncoderDescriptor encDesc{};
-      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+      WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
 
       if (!queueBufferReadCommand(encoder, tmpCommand))
         return;
 
       WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
-      WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
       queueBufferReadBufferMap(tmpCommand);
 
@@ -406,7 +407,7 @@ struct RendererImpl final : public ContextData {
   void queueTextureCopies() {
     boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
     WGPUCommandEncoderDescriptor encDesc{};
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
         if (queueTextureReadCommand(encoder, *it)) {
@@ -421,8 +422,8 @@ struct RendererImpl final : public ContextData {
 
     // Queue read commands for next frame
     WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture"};
-    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
     // Need to map buffers after submitting the texture copies
     for (auto &cmd : buffersToMap) {
@@ -433,7 +434,7 @@ struct RendererImpl final : public ContextData {
   void queueBufferCopies() {
     boost::container::small_vector<DeferredBufferReadCommand *, 16> buffersToMap;
     WGPUCommandEncoderDescriptor encDesc{};
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
     for (auto it = deferredBufferReadCommands.begin(); it != deferredBufferReadCommands.end();) {
       if (!it->isQueued()) {
         if (queueBufferReadCommand(encoder, *it)) {
@@ -448,8 +449,8 @@ struct RendererImpl final : public ContextData {
 
     // Queue read commands for next frame
     WGPUCommandBufferDescriptor desc{.label = "Renderer::copyBuffer"};
-    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
     // Need to map buffers after submitting the texture copies
     for (auto &cmd : buffersToMap) {
@@ -541,7 +542,7 @@ struct RendererImpl final : public ContextData {
     WGPUHubReport *hubReport{};
     switch (context.getBackendType()) {
     case WGPUBackendType_Vulkan:
-      hubReport = &report.vulkan; 
+      hubReport = &report.vulkan;
       break;
     case WGPUBackendType_D3D12:
       hubReport = &report.dx12;

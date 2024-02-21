@@ -1,5 +1,6 @@
 #include "context.hpp"
 #include "context_data.hpp"
+#include "enums.hpp"
 #include "error_utils.hpp"
 #include <boost/container/small_vector.hpp>
 #include "../core/platform.hpp"
@@ -172,6 +173,7 @@ struct ContextMainOutput {
 
     auto desc = texture->getDesc();
     desc.externalTexture = wgpuCurrentTexture;
+    desc.format.flags = desc.format.flags | TextureFormatFlags::DontCache;
     texture->init(desc);
 
     return wgpuCurrentTexture != nullptr;

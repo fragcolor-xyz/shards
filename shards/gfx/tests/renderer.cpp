@@ -53,16 +53,14 @@ void TestRenderer::createRenderTarget(int2 res) {
   });
 }
 
-void TestRenderer::cleanupRenderTarget() {
-  WGPU_SAFE_RELEASE(wgpuTextureRelease, rtTexture);
-}
+void TestRenderer::cleanupRenderTarget() { WGPU_SAFE_RELEASE(wgpuTextureRelease, rtTexture); }
 
 TestFrame TestRenderer::getTestFrame() {
   if (debugging)
     return TestFrame();
 
   WGPUCommandEncoderDescriptor ceDesc{};
-  WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context->wgpuDevice, &ceDesc);
+  WgpuHandle<WGPUCommandEncoder> commandEncoder(wgpuDeviceCreateCommandEncoder(context->wgpuDevice, &ceDesc));
 
   WGPUBufferDescriptor desc{};
   size_t bufferPitch = sizeof(TestFrame::pixel_t) * rtSize.x;
@@ -85,8 +83,8 @@ TestFrame TestRenderer::getTestFrame() {
   wgpuCommandEncoderCopyTextureToBuffer(commandEncoder, &src, &dst, &extent);
 
   WGPUCommandBufferDescriptor finishDesc{};
-  WGPUCommandBuffer copyCommandBuffer = wgpuCommandEncoderFinish(commandEncoder, &finishDesc);
-  wgpuQueueSubmit(context->wgpuQueue, 1, &copyCommandBuffer);
+  WgpuHandle<WGPUCommandBuffer> copyCommandBuffer(wgpuCommandEncoderFinish(commandEncoder, &finishDesc));
+  wgpuQueueSubmit(context->wgpuQueue, 1, &copyCommandBuffer.handle);
 
   auto mapBufferCallback = [](WGPUBufferMapAsyncStatus status, void *userdata) {};
   wgpuBufferMapAsync(tempBuffer, WGPUMapMode_Read, 0, desc.size, mapBufferCallback, nullptr);

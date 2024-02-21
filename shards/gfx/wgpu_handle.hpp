@@ -20,6 +20,7 @@ IMPL_RELEASE(WGPUBindGroup, wgpuBindGroupRelease);
 IMPL_RELEASE(WGPUBindGroupLayout, wgpuBindGroupLayoutRelease);
 IMPL_RELEASE(WGPURenderPassEncoder, wgpuRenderPassEncoderRelease);
 IMPL_RELEASE(WGPUCommandEncoder, wgpuCommandEncoderRelease);
+IMPL_RELEASE(WGPUCommandBuffer, wgpuCommandBufferRelease);
 IMPL_RELEASE(WGPURenderPipeline, wgpuRenderPipelineRelease);
 IMPL_RELEASE(WGPUComputePipeline, wgpuComputePipelineRelease);
 IMPL_RELEASE(WGPUPipelineLayout, wgpuPipelineLayoutRelease);
