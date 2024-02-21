@@ -512,7 +512,7 @@ public:
   }
 };
 
-struct MatchModifierKeys : public Base {
+struct MatchModifier : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
@@ -669,5 +669,5 @@ SHARDS_REGISTER_FN(inputs) {
   REGISTER_SHARD("Inputs.KeyDown", KeyDown);
   REGISTER_SHARD("Inputs.KeyUp", KeyUp);
 
-  REGISTER_SHARD("Inputs.MatchModifierKeys", MatchModifierKeys);
+  REGISTER_SHARD("Inputs.MatchModifier", MatchModifier);
 }
