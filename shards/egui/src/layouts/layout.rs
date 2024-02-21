@@ -892,6 +892,7 @@ lazy_static! {
 struct LayoutShard {
   #[shard_required]
   requiring: ExposedTypes,
+  inner_exposed: ExposedTypes,
   #[shard_warmup]
   parents: ParamVar,
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
@@ -924,6 +925,7 @@ impl Default for LayoutShard {
   fn default() -> Self {
     Self {
       requiring: ExposedTypes::new(),
+      inner_exposed: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       contents: ShardsVar::default(),
       layout_class: ParamVar::default(),
@@ -945,6 +947,10 @@ impl Shard for LayoutShard {
     &ANY_TYPES
   }
 
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
+    Some(&self.inner_exposed)
+  }
+
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
     Ok(())
@@ -962,9 +968,12 @@ impl Shard for LayoutShard {
       return Err("Class parameter is required");
     }
 
+    self.inner_exposed.clear();
     if !self.contents.is_empty() {
       self.contents.compose(data)?;
     }
+    shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
+    shards::util::require_shards_contents(&mut self.requiring, &self.contents);
 
     util::require_parents(&mut self.requiring);
 
