@@ -1,5 +1,6 @@
 #include "render_graph.hpp"
 #include "renderer_storage.hpp"
+#include "wgpu_handle.hpp"
 #include <spdlog/spdlog.h>
 #include <unordered_map>
 #include <boost/container/flat_map.hpp>
@@ -27,8 +28,9 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
 
   // Subresource texture view
   auto resolveSubResourceView = [&](const TextureSubResource &resource) {
-    return ResolvedFrameTexture(resource.texture, storage.getTextureView(resource.texture->createContextDataConditionalRefUNSAFE(context),
-                                                                         resource.faceIndex, resource.mipIndex));
+    return ResolvedFrameTexture(resource.texture,
+                                storage.getTextureView(resource.texture->createContextDataConditionalRefUNSAFE(context),
+                                                       resource.faceIndex, resource.mipIndex));
   };
 
   for (auto &frame : graph.frames) {
@@ -253,7 +255,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   validateOutputSizes(graph);
 
   WGPUCommandEncoderDescriptor desc = {};
-  WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
+  WgpuHandle<WGPUCommandEncoder> commandEncoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc));
 
   for (const auto &node : graph.nodes) {
     const ViewData &viewData = evaluationData.getViewData(node.queueDataIndex);
@@ -263,7 +265,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     renderPassDesc.label = nameBuffer.c_str();
     if (node.setupPass)
       node.setupPass(renderPassDesc);
-    WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
+    WgpuHandle<WGPURenderPassEncoder> renderPassEncoder( wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc));
 
     int2 targetSize = fallbackSize;
     if (!node.outputs.empty()) {
@@ -286,7 +288,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   }
 
   WGPUCommandBufferDescriptor cmdBufDesc{};
-  WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
+  WgpuHandle<WGPUCommandBuffer> cmdBuf(wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc));
 
   context.submit(cmdBuf);
 

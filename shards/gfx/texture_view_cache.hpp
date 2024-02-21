@@ -78,7 +78,7 @@ struct TextureViewCache {
     return getTextureView(frameCounter, TextureViewKey{texture->getId(), texture->getVersion(), desc}, wgpuTexture);
   }
 
-  WGPUTextureView getTextureView(size_t frameCounter, TextureViewKey key, WGPUTexture texture) {
+  WGPUTextureView getTextureView(size_t frameCounter, TextureViewKey key, WGPUTexture texture, bool dontCache = false) {
     mutex.lock_shared();
     auto it = cache.find(key);
     if (it == cache.end()) {
@@ -102,13 +102,18 @@ struct TextureViewCache {
     } else {
       mutex.unlock_shared();
     }
-    it->second.touch(frameCounter);
+    if (dontCache) {
+      it->second.lastTouched = size_t(int64_t(frameCounter) - 10000);
+    } else {
+      it->second.touch(frameCounter);
+    }
     return it->second.view;
   }
 
   WGPUTextureView getTextureView(size_t frameCounter, const TextureContextData &textureData, TextureViewDesc desc) {
     WGPUTexture texture = textureData.externalTexture ? textureData.externalTexture : textureData.texture;
-    return getTextureView(frameCounter, TextureViewKey{textureData.id, textureData.version, desc}, texture);
+    return getTextureView(frameCounter, TextureViewKey{textureData.id, textureData.version, desc}, texture,
+                          (uint8_t(textureData.format.flags) & uint8_t(TextureFormatFlags::DontCache)) != 0);
   }
 
   WGPUTextureView getDefaultTextureView(size_t frameCounter, const TextureContextData &textureData) {

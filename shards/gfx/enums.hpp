@@ -28,6 +28,8 @@ enum class TextureFormatFlags : uint8_t {
   // Indicate that this texture can not be sampled
   // Used to mark render attachments that can't be read from
   NoTextureBinding = 0x04,
+  // Hint that this texture or derived objects shouldn't be cached between frames
+  DontCache = 0x08,
 };
 inline TextureFormatFlags operator|(const TextureFormatFlags &a, const TextureFormatFlags &b) {
   return TextureFormatFlags(uint8_t(a) | uint8_t(b));
