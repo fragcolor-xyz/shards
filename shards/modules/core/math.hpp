@@ -182,8 +182,8 @@ struct ApplyBroadcast {
   }
 };
 
-template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> struct BasicBinaryOperation {
-  static constexpr DispatchType DispatchType = DispatchType_;
+template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> struct BasicBinaryOperation {
+  static constexpr shards::Math::DispatchType DispatchType_ = DispatchType;
 
   ApplyBinary<TOp> apply;
   ApplyBroadcast applyBroadcast;
@@ -222,7 +222,7 @@ template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> 
 
   void operateDirect(SHVar &output, const SHVar &a, const SHVar &b) {
     output.valueType = a.valueType;
-    dispatchType<DispatchType_>(a.valueType, apply, output.payload, a.payload, b.payload);
+    dispatchType<DispatchType>(a.valueType, apply, output.payload, a.payload, b.payload);
   }
 
   void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
@@ -240,15 +240,15 @@ template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> 
     // Expand scalars to vectors
     if (_lhsVecType->dimension == 1) {
       SHVarPayload temp = aPayload; // Need temp var if input/output are the same
-      dispatchType<DispatchType_>(vecType->shType, applyBroadcast, aPayload, temp);
+      dispatchType<DispatchType>(vecType->shType, applyBroadcast, aPayload, temp);
     }
     if (_rhsVecType->dimension == 1) {
       SHVarPayload temp = bPayload;
-      dispatchType<DispatchType_>(vecType->shType, applyBroadcast, bPayload, temp);
+      dispatchType<DispatchType>(vecType->shType, applyBroadcast, bPayload, temp);
     }
 
     output.valueType = vecType->shType;
-    dispatchType<DispatchType_>(vecType->shType, apply, output.payload, aPayload, bPayload);
+    dispatchType<DispatchType>(vecType->shType, apply, output.payload, aPayload, bPayload);
   }
 };
 
@@ -352,7 +352,7 @@ template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static SHTypesInfo inputTypes() {
     static Types types = []() {
       Types types = IntOrSeqTypes;
-      if constexpr (hasDispatchType(TOp::DispatchType, DispatchType::BoolTypes)) {
+      if constexpr (hasDispatchType(TOp::DispatchType_, DispatchType::BoolTypes)) {
         types._types.push_back(CoreInfo::BoolType);
       }
       return types;
