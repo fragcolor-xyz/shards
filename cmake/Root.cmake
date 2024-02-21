@@ -32,7 +32,6 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
 add_subdirectory(${SHARDS_DIR}/deps deps)
 
-# add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
 
 # Standalone libraries
 add_subdirectory(${SHARDS_DIR}/shards/fast_string src/fast_string)
@@ -76,7 +75,7 @@ endforeach()
 add_subdirectory(${SHARDS_DIR}/shards/union src/union)
 
 # Shards library and executable bundle
-add_subdirectory(${SHARDS_DIR}/shards/mal src/mal)
+add_subdirectory(${SHARDS_DIR}/shards/cli src/cli)
 
 add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
 

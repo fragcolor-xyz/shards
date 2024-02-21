@@ -37,8 +37,20 @@ enum Commands {
   },
   /// Run formatter tests
   Test {},
-  /// Reads and executes a Shards file
+  /// Alias for run
   New {
+    /// The script to execute
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Decompress help strings before running the script
+    #[arg(long, short = 'd', default_value = "false", action)]
+    decompress_strings: bool,
+    #[arg(num_args = 0..)]
+    args: Vec<String>,
+  },
+
+  /// Reads and executes a Shards file
+  Run {
     /// The script to execute
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
@@ -82,9 +94,6 @@ enum Commands {
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
-
-  #[command(external_subcommand)]
-  External(Vec<String>),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -128,13 +137,10 @@ pub extern "C" fn shards_process_args(
 
   let cli = Cli::parse_from(args);
 
-  // Init Core interface when not running external commands
-  match &cli.command {
-    Commands::External(_) => {}
-    _ => unsafe {
-      shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-    },
-  };
+  // Init Core interface first
+  unsafe {
+    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+  }
 
   let res: Result<_, Error> = match &cli.command {
     Commands::Build {
@@ -154,15 +160,17 @@ pub extern "C" fn shards_process_args(
       decompress_strings,
       args,
     } => execute(file, *decompress_strings, args, cancellation_token),
+    Commands::Run {
+      file,
+      decompress_strings,
+      args,
+    } => execute(file, *decompress_strings, args, cancellation_token),
     Commands::Format {
       file,
       output,
       inline,
     } => format(file, output, *inline),
     Commands::Test {} => formatter::run_tests(),
-    Commands::External(_args) => {
-      return 99;
-    }
   };
 
   if let Err(e) = res {
