@@ -14,6 +14,7 @@
 #include <shards/inlined.hpp>
 #include "inline.hpp"
 #include "async.hpp"
+#include <shards/registry.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
@@ -3484,4 +3485,12 @@ void operator delete[](void *ptr, std::size_t count) noexcept {
   std::free(ptr);
 }
 
+#endif
+
+
+#if defined(TRACY_ENABLE) && !defined(SHARDS_WITH_GFX)
+#include <tracy/Wrapper.hpp>
+extern "C" void gfxTracyInit() {
+  tracy::StartupProfiler();
+}
 #endif

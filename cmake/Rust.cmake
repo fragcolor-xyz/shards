@@ -304,7 +304,7 @@ function(rust_copy_cargo_lock TARGET FILE)
     message(WARNING "Cargo.lock file not found at ${FILE_ABS}")
   endif()
 
-  add_custom_target(${TARGET}-cargo-update
+  add_custom_target(${TARGET}-cargo-update 
     DEPENDS ${RUST_PROJECT_PATH}/Cargo.lock
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     COMMAND ${CARGO_EXE} update

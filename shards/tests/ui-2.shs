@@ -1,281 +1,54 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
-
-; Notes:
-;   This file contains unit tests for the UI shards.
-;   It is not meant to be realistic. For such samples, look at egui-demo.shs.
-
-@mesh(main)
-@define(timestep #(1.0 | Math.Divide(60.0)))
-@define(duration 60)
-@define(input "**input**")
-
-; label
-@wire(label-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
+@template(some-struct [name] {
+  UI.Node({
+    UI.Node(Payload: (
+      "Hello" >= str
+      name | AppendTo(str)
+      "!" | AppendTo(str)
+      str
+    ))
+    UI.Node({
+      UI.Node
+      UI.Node
+      UI.Node
+      UI.Node({
+        UI.Node
+        UI.Node
+        UI.Node
       })
+    })
+    UI.Node({
+      UI.Node
+      UI.Node
+      UI.Node({
+        UI.Node({
+          UI.Node
+        })
+      })
+    })
+  } Payload: name)
+})
 
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            "Hello Shards!" | UI.Label |
-            Assert.Is("Hello Shards!" Break: true)
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
+@wire(test-ui {
+  UI({
+    UI.Node({
+      UI.Node(Payload: "A1") | UI.Node(Payload: "A2") | UI.Node(Payload: "A3")
+    } Payload: "Root A Container")
+    UI.Node(Payload: "Root B")
+    UI.Node(Payload: "Root C")
+    UI.Node({
+      ForRange(0 400 {
+        = i
+        UI.Node(Payload: i)
+      })
+    } Payload: "BigList")
+    @some-struct("Main")
+    @some-struct("Inventory")
+    @some-struct("Forms")
+    @some-struct("OLA")
+    Pass
+  })
 } Looped: true)
 
-@schedule(main label-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; listbox
-@wire(listbox-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            ["Hello" "World"] | UI.ListBox(index) | ExpectString
-            index | ExpectInt
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main listbox-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; numeric input
-@wire(numeric-input-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            UI.IntInput | ExpectInt
-            UI.Int2Input | ExpectInt2
-            UI.Int3Input | ExpectInt3
-            UI.Int4Input | ExpectInt4
-            UI.FloatInput | ExpectFloat
-            UI.Float2Input | ExpectFloat2
-            UI.Float3Input | ExpectFloat3
-            UI.Float4Input | ExpectFloat4
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main numeric-input-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; numeric slider
-@wire(numeric-slider-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            UI.IntSlider(Min: 1 Max: 100) | ExpectInt
-            UI.Int2Slider(Min: @i2(1) Max: @i2(100)) | ExpectInt2
-            UI.Int3Slider(Min: @i3(1) Max: @i3(100)) | ExpectInt3
-            UI.Int4Slider(Min: @i4(1) Max: @i4(100)) | ExpectInt4
-            UI.FloatSlider(Min: 0.0 Max: 1.0) | ExpectFloat
-            UI.Float2Slider(Min: @f2(0) Max: @f2(1)) | ExpectFloat2
-            UI.Float3Slider(Min: @f3(0) Max: @f3(1)) | ExpectFloat3
-            UI.Float4Slider(Min: @f4(0) Max: @f4(1)) | ExpectFloat4
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main numeric-slider-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; progress bar
-@wire(progress-bar-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            Once({
-              0.1 >= progress
-            })
-            progress | 
-            UI.ProgressBar | 
-            ExpectFloat |
-            Math.Add(0.01) > progress
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main progress-bar-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; radio button
-@wire(radio-button-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            UI.RadioButton("Choice 1" choice 1) | ExpectBool
-            UI.RadioButton("Choice 2" choice 2) | ExpectBool
-            UI.RadioButton("Choice 3" choice 3) | ExpectBool
-            choice | ExpectInt
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main radio-button-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; spinner
-@wire(spinner-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            @input | 
-            UI.Spinner | 
-            ; input passthrough
-            Assert.Is(@input Break: true)
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main spinner-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; text input
-@wire(text-input-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            Once({
-              "Lorem ipsum dolor sit amet" >= text
-            })
-            UI.TextField("read-only") | ExpectNone
-            UI.TextField(text) | Maybe(ExpectNone Else: ExpectString)
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main text-input-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
-
-; tooltip
-@wire(tooltip-test {
-  GFX.MainWindow(
-    Contents: {
-      Once({
-        GFX.DrawQueue >= ui-draw-queue
-        GFX.UIPass(ui-draw-queue) >> render-steps
-      })
-      @input | 
-      UI({
-        UI.CentralPanel(
-          Contents: {
-            UI.Tooltip(
-              Contents: {
-                ; input passthrough
-                Assert.Is(@input Break: true)
-                "Lorem ipsum" | UI.Label
-              }
-              OnHover: {
-                ; input pass into
-                Assert.Is(@input Break: true)
-                "Tooltip" | UI.Label
-              }
-            )
-            ; input passthrough
-            Assert.Is(@input Break: true)
-          }
-        )
-      }) | UI.Render(ui-draw-queue)
-
-      GFX.Render(Steps: render-steps)
-    }
-  )
-} Looped: true)
-
-@schedule(main tooltip-test)
-@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
+@mesh(root)
+@schedule(root test-ui)
+@run(root FPS: 300)
