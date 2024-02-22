@@ -832,6 +832,8 @@ struct SetBase : public VariableBase {
         } else {
           _isExposed = false;
         }
+
+        break;
       }
     }
 
