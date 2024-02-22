@@ -970,7 +970,9 @@ impl Shard for LayoutShard {
 
     self.inner_exposed.clear();
     if !self.contents.is_empty() {
-      self.contents.compose(data)?;
+      let composed = self.contents.compose(data)?;
+      shards::util::merge_exposed_types(&mut self.inner_exposed, &composed.exposedInfo);
+      shards::util::merge_exposed_types(&mut self.requiring, &composed.requiredInfo);
     }
     shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
     shards::util::require_shards_contents(&mut self.requiring, &self.contents);
