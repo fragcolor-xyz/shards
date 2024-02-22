@@ -90,6 +90,12 @@ struct RenderTextureCache {
     }
   }
 
+  void reset() {
+    for (auto &bin : bins) {
+      bin.second.reset();
+    }
+  }
+
   const TexturePtr &allocate(const RenderTargetFormat &format, size_t frameCounter) {
     auto it = bins.find(format);
     if (it == bins.end())

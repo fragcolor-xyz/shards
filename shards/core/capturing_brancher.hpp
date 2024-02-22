@@ -106,9 +106,8 @@ public:
     }
   }
 
-  // WARNING: Need to keep variables alive during the liftime of this brancher
-  void applyCapturedVariables(CapturedVariables&& _variables) {
-    variableState = std::move(_variables);
+  void applyCapturedVariablesSwap(CapturedVariables& _variables) {
+    std::swap(variableState, _variables);
 
     if (!_variablesApplied) {
       // Initialize references here

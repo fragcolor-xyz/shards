@@ -1,0 +1,66 @@
+@mesh(root)
+
+@template(make-trs-from-t [location] {
+  {
+    translation: location
+    rotation: @f4(0 0 0 1)
+    scale: @f3(1 1 1)
+  }
+})
+
+@wire(test-wire {
+  Once({
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
+    @f3(0 0 0) | Math.Translation >= transform-0
+    
+    GFX.DrawQueue >= queue
+    GFX.DrawQueue >= editor-queue-np-depth
+    
+    ; Create render steps
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+    GFX.DrawablePass(Features: features Queue: editor-queue-np-depth
+      Outputs: [{Name: "color"}
+        {Name: "depth" Clear: true}]
+    ) >> render-steps
+    
+    TargetCamera.FromLookAt(Position: @f3(3 3 8) Target: @f3(0 0 0)) >= camera
+    
+    [
+      #(@make-trs-from-t(@f3(-1.5 0 0)))
+      #(@make-trs-from-t(@f3(0 0 0)))
+      #(@make-trs-from-t(@f3(1.5 0 0)))] >= transforms
+
+     #(@make-trs-from-t(@f3(0 0 -1.5))) >= transform-1
+  })
+
+  ; End setup
+  GFX.MainWindow(
+    Title: "SDL Window" Width: 1280 Height: 720
+    Contents: {
+      Animation.Timer = time
+      
+      camera | TargetCamera > camera
+      GFX.View(View: (TargetCamera.Matrix)) >= view
+      
+      transforms | DoMany({
+        Math.Compose | GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 0 1)}) | GFX.Draw(queue)
+      })
+      
+      ; Draw on top of everthing (ignore depth)
+      Gizmos.Context(Queue: editor-queue-np-depth View: view
+        Contents: {
+          transforms | Gizmos.Scaling(200.0) > transforms
+          transform-1 | Gizmos.Scaling(200.0) > transform-1
+        }
+      )
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+} Looped: true)
+
+@schedule(root test-wire)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+; @run(root FPS: 120) | Assert.Is(true)

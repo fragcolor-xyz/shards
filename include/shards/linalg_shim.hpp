@@ -251,9 +251,6 @@ struct alignas(16) Mat4 {
     res.payload.seqValue.elements = reinterpret_cast<SHVar *>(const_cast<shards::Mat4 *>(this));
     res.payload.seqValue.len = 4;
     res.payload.seqValue.cap = 0;
-    for (auto i = 0; i < 4; i++) {
-      res.payload.seqValue.elements[i].valueType = SHType::Float4;
-    }
     return res;
   }
 };

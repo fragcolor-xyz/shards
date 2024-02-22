@@ -9,6 +9,7 @@
 #include <gfx/pipeline_step.hpp>
 #include <gfx/shader/entry_point.hpp>
 #include <gfx/shader/types.hpp>
+#include <gfx/shader/struct_layout.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <gfx/gltf/animation.hpp>
@@ -35,6 +36,16 @@ struct SHDrawable {
       throw std::logic_error("unsupported");
     }
   }
+};
+
+struct SHBuffer {
+  shader::AddressSpace designatedAddressSpace;
+  shader::StructType type;
+  size_t runtimeSize{};
+  ImmutableSharedBuffer data;
+  BufferPtr buffer;
+
+  uint8_t *getDataMut() { return const_cast<uint8_t *>(data.getData()); }
 };
 
 struct SHView {
@@ -77,6 +88,7 @@ struct Container {
   OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
+  OBJECT('gbuf', "GFX.Buffer", Buffer, SHBuffer)
   OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder, '_e0');
@@ -285,6 +297,8 @@ struct Container {
 
   DECL_ENUM_INFO(::gfx::TextureSampleType, TextureSampleType, '_e17');
 
+  DECL_ENUM_INFO(::gfx::shader::AddressSpace, BufferAddressSpace, '_e18');
+
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
   static inline Type FeatureVarType = Type::VariableOf(Feature);
@@ -307,6 +321,7 @@ struct Container {
 
   static inline Types ShaderParamTypes{TextureTypes,
                                        {
+                                           Type::VariableOf(Buffer),
                                            CoreInfo::Float4x4Type,
                                            CoreInfo::Float4Type,
                                            CoreInfo::Float3Type,

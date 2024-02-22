@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "wgpu_handle.hpp"
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "boost/container/stable_vector.hpp"
 #pragma clang attribute pop
@@ -25,6 +26,7 @@
 #include "shader/struct_layout.hpp"
 #include "drawable_processor.hpp"
 #include "texture.hpp"
+#include "buffer.hpp"
 #include "texture_placeholder.hpp"
 #include "view.hpp"
 #include "render_target.hpp"
@@ -84,7 +86,16 @@ struct RendererImpl final : public ContextData {
 
   boost::container::stable_vector<std::optional<FrameQueue>> frameQueues;
 
-  RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {}
+  CallbackHandle<> onFlushTextureReferences;
+
+  RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {
+    struct FlushSurfaceTextureReferences : public CallbackHandleImpl<> {
+      TextureViewCache &tvc;
+      FlushSurfaceTextureReferences(TextureViewCache &tvc) : tvc(tvc) {}
+      void call() override { tvc.reset(); }
+    };
+    onFlushTextureReferences = context.onFlushTextureReferences->emplace<FlushSurfaceTextureReferences>(storage.textureViewCache);
+  }
 
   ~RendererImpl() { releaseContextDataConditional(); }
 
@@ -113,8 +124,9 @@ struct RendererImpl final : public ContextData {
     auto it = storage.transientPtrCleanupQueue.begin();
     while (it != storage.transientPtrCleanupQueue.end()) {
       it->destroy();
-      it = storage.transientPtrCleanupQueue.erase(it);
+      ++it;
     }
+    storage.transientPtrCleanupQueue.clear();
   }
 
   void updateMainOutputFromContext() {
@@ -218,6 +230,26 @@ struct RendererImpl final : public ContextData {
 
   std::list<DeferredTextureReadCommand> deferredTextureReadCommands;
 
+  struct DeferredBufferReadCommand {
+    BufferPtr buffer;
+    GpuReadBufferPtr destination;
+
+    WgpuHandle<WGPUBuffer> stagingBuffer;
+    std::optional<void *> mappedBuffer;
+    size_t rowSizeAligned{};
+    size_t bufferSize{};
+    int2 size{};
+
+    DeferredBufferReadCommand(BufferPtr buffer, GpuReadBufferPtr destination) : buffer(buffer), destination(destination) {}
+    DeferredBufferReadCommand(DeferredBufferReadCommand &&) = default;
+    DeferredBufferReadCommand &operator=(DeferredBufferReadCommand &&) = default;
+
+    // Is queued for read?
+    bool isQueued() const { return bufferSize > 0; }
+  };
+
+  std::list<DeferredBufferReadCommand> deferredBufferReadCommands;
+
   bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
     auto &textureData = cmd.texture.texture->createContextDataConditionalRefUNSAFE(context);
     if (!textureData.texture) {
@@ -256,6 +288,26 @@ struct RendererImpl final : public ContextData {
     return true;
   }
 
+  bool queueBufferReadCommand(WGPUCommandEncoder encoder, DeferredBufferReadCommand &cmd) {
+    auto &bufferData = cmd.buffer->contextData;
+    if (!bufferData || !bufferData->buffer) {
+      SPDLOG_LOGGER_WARN(logger, "Invalid buffer queued for reading, ignoring");
+      return false;
+    }
+
+    cmd.bufferSize = bufferData->bufferLength;
+
+    WGPUBufferDescriptor bufDesc{
+        .label = "Temp copy buffer",
+        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
+        .size = cmd.bufferSize,
+    };
+    cmd.stagingBuffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
+
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData->buffer, 0, cmd.stagingBuffer, 0, cmd.bufferSize);
+    return true;
+  }
+
   void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
     auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
@@ -284,18 +336,42 @@ struct RendererImpl final : public ContextData {
     }
   }
 
+  void queueBufferReadBufferMap(DeferredBufferReadCommand &cmd) {
+    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
+      DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
+      if (status != WGPUBufferMapAsyncStatus_Success)
+        throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer, 0, cmd.bufferSize);
+    };
+    wgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+  }
+
+  // Poll for mapped bugfer and copy data to target, returns true when completed
+  bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
+    if (cmd.mappedBuffer) {
+      cmd.destination->data.resize(cmd.bufferSize);
+      memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+
+      wgpuBufferUnmap(cmd.stagingBuffer);
+      cmd.mappedBuffer.reset();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   void copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait) {
     if (wait) {
       DeferredTextureReadCommand tmpCommand(texture, destination);
       WGPUCommandEncoderDescriptor encDesc{};
-      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+      WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
 
       if (!queueTextureReadCommand(encoder, tmpCommand))
         return;
 
       WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
-      WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
       queueTextureReadBufferMap(tmpCommand);
 
@@ -306,10 +382,32 @@ struct RendererImpl final : public ContextData {
     }
   }
 
+  void copyBuffer(BufferPtr buffer, GpuReadBufferPtr destination, bool wait) {
+    if (wait) {
+      DeferredBufferReadCommand tmpCommand(buffer, destination);
+      WGPUCommandEncoderDescriptor encDesc{};
+      WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+
+      if (!queueBufferReadCommand(encoder, tmpCommand))
+        return;
+
+      WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+
+      queueBufferReadBufferMap(tmpCommand);
+
+      context.poll(true);
+      pollQueuedBufferReadCommand(tmpCommand);
+    } else {
+      deferredBufferReadCommands.emplace_back(buffer, destination);
+    }
+  }
+
   void queueTextureCopies() {
     boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
     WGPUCommandEncoderDescriptor encDesc{};
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
         if (queueTextureReadCommand(encoder, *it)) {
@@ -323,9 +421,9 @@ struct RendererImpl final : public ContextData {
     }
 
     // Queue read commands for next frame
-    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
-    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture"};
+    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
 
     // Need to map buffers after submitting the texture copies
     for (auto &cmd : buffersToMap) {
@@ -333,7 +431,34 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void pollTextureCopies() {
+  void queueBufferCopies() {
+    boost::container::small_vector<DeferredBufferReadCommand *, 16> buffersToMap;
+    WGPUCommandEncoderDescriptor encDesc{};
+    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+    for (auto it = deferredBufferReadCommands.begin(); it != deferredBufferReadCommands.end();) {
+      if (!it->isQueued()) {
+        if (queueBufferReadCommand(encoder, *it)) {
+          buffersToMap.push_back(&*it);
+        } else {
+          // Invalid texture, remove from queue
+          it = deferredBufferReadCommands.erase(it);
+        }
+      }
+      ++it;
+    }
+
+    // Queue read commands for next frame
+    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyBuffer"};
+    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+
+    // Need to map buffers after submitting the texture copies
+    for (auto &cmd : buffersToMap) {
+      queueBufferReadBufferMap(*cmd);
+    }
+  }
+
+  void pollBufferCopies() {
     context.poll(false);
 
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
@@ -341,6 +466,17 @@ struct RendererImpl final : public ContextData {
         if (pollQueuedTextureReadCommand(*it)) {
           // Finished, remove from queue
           it = deferredTextureReadCommands.erase(it);
+          continue;
+        }
+      }
+      ++it;
+    }
+
+    for (auto it = deferredBufferReadCommands.begin(); it != deferredBufferReadCommands.end();) {
+      if (it->isQueued()) {
+        if (pollQueuedBufferReadCommand(*it)) {
+          // Finished, remove from queue
+          it = deferredBufferReadCommands.erase(it);
           continue;
         }
       }
@@ -386,8 +522,9 @@ struct RendererImpl final : public ContextData {
     popView();
     viewStack.reset();
 
-    pollTextureCopies();
+    pollBufferCopies();
     queueTextureCopies();
+    queueBufferCopies();
 
     clearOldCacheItems();
 
@@ -398,6 +535,30 @@ struct RendererImpl final : public ContextData {
 
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
     TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
+
+    WGPUGlobalReport report{};
+    wgpuGenerateReport(context.wgpuInstance, &report);
+
+    WGPUHubReport *hubReport{};
+    switch (context.getBackendType()) {
+    case WGPUBackendType_Vulkan:
+      hubReport = &report.vulkan;
+      break;
+    case WGPUBackendType_D3D12:
+      hubReport = &report.dx12;
+      break;
+    default:
+      break;
+    }
+
+    if (hubReport) {
+      TracyPlot("WGPU Buffers", int64_t(hubReport->buffers.numAllocated));
+      TracyPlot("WGPU BindGroups", int64_t(hubReport->bindGroups.numAllocated));
+      TracyPlot("WGPU BindGroupLayouts", int64_t(hubReport->bindGroupLayouts.numAllocated));
+      TracyPlot("WGPU CommandBuffers", int64_t(hubReport->commandBuffers.numAllocated));
+      TracyPlot("WGPU Queues", int64_t(hubReport->queues.numAllocated));
+      TracyPlot("WGPU Textures", int64_t(hubReport->textures.numAllocated));
+    }
 #endif
   }
 
@@ -437,7 +598,11 @@ void Renderer::copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr d
   impl->copyTexture(texture, destination, wait);
 }
 
-void Renderer::pollTextureCopies() { impl->pollTextureCopies(); }
+void Renderer::copyBuffer(BufferPtr buffer, GpuReadBufferPtr destination, bool wait) {
+  impl->copyBuffer(buffer, destination, wait);
+}
+
+void Renderer::pollBufferCopies() { impl->pollBufferCopies(); }
 
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
@@ -457,9 +622,7 @@ void Renderer::endFrame() { impl->endFrame(); }
 
 void Renderer::cleanup() { impl->releaseContextDataConditional(); }
 
-void Renderer::setDebug(bool debug) {
-  impl->storage.debug = debug;
-}
+void Renderer::setDebug(bool debug) { impl->storage.debug = debug; }
 void Renderer::processDebugVisuals(ShapeRenderer &sr) {
   auto &storage = impl->storage;
   auto &vec = storage.debugVisualizers.get((storage.frameCounter - 1) % 2);

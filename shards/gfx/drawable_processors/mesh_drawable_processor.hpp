@@ -79,12 +79,14 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
     shards::pmr::vector<TextureData> textures;
+    shards::pmr::vector<BufferData> buffers;
     ParameterStorage parameters; // TODO: Load values directly into buffer
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
 
     DrawableData() = default;
-    DrawableData(allocator_type allocator) : textures(allocator), parameters(allocator) {}
-    DrawableData(DrawableData &&other, allocator_type allocator) : textures(allocator), parameters(allocator) {
+    DrawableData(allocator_type allocator) : textures(allocator), buffers(allocator), parameters(allocator) {}
+    DrawableData(DrawableData &&other, allocator_type allocator)
+        : textures(allocator), buffers(allocator), parameters(allocator) {
       (*this) = std::move(other);
     }
     DrawableData &operator=(DrawableData &&other) = default;
@@ -114,10 +116,12 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     shards::pmr::vector<DrawableData *> drawableData{};
 
     shards::pmr::vector<PreparedBuffer> globalBuffers;
+    shards::pmr::vector<BufferData> viewBufferBindings;
 
     WgpuHandle<WGPUBindGroup> viewBindGroup;
 
-    PrepareData(allocator_type allocator) : referencedContextData(allocator), drawableData(allocator), globalBuffers(allocator) {}
+    PrepareData(allocator_type allocator)
+        : referencedContextData(allocator), drawableData(allocator), globalBuffers(allocator), viewBufferBindings(allocator) {}
   };
 
   SharedBufferPool uniformBufferPool;
@@ -136,6 +140,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   struct CachedDrawable {
     MeshPtr mesh;
+    bool flipped{};
     size_t lastTouched{};
   };
   boost::container::flat_map<UniqueId, CachedDrawable> drawableCache;
@@ -222,6 +227,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     builder.meshFormat = cached.mesh->getFormat();
 
+    if (isFlippedCoordinateSpace(meshDrawable.transform)) {
+      builder.isRenderingFlipped = !builder.isRenderingFlipped;
+    }
+
     if (!options.ignoreDrawableFeatures) {
       for (auto &feature : meshDrawable.features) {
         builder.features.push_back(feature.get());
@@ -260,14 +269,40 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto &textureBindings = cachedPipeline.textureBindingLayout.bindings;
     data.textures.resize(textureBindings.size());
 
+    auto &drawBufferBindings = cachedPipeline.drawBufferBindings;
+    for (auto &b : drawBufferBindings) {
+      size_t s = b.index + 1;
+      if (s > data.buffers.size())
+        data.buffers.resize(s);
+    }
+
     auto setTextureParameter = [&](FastString name, const TexturePtr &texture) {
       if (!texture)
         return;
-      auto texData = texture->createContextDataConditional(context);
-      if (texData && texData->texture) {
-        gfx::detail::setTextureParameter(textureBindings, data.textures, context, samplerCache, frameCounter, name, texture,
-                                         *texData.get());
-        prepareData->referencedContextData.push_back(texData);
+      int32_t targetSlot = mapTextureBinding(textureBindings, name);
+      if (targetSlot >= 0) {
+        auto texData = texture->createContextDataConditional(context);
+        if (texData && texData->texture) {
+          bool isFilterable = textureBindings[targetSlot].type.format == TextureSampleType::Float;
+          data.textures[targetSlot].data = texData.get();
+          data.textures[targetSlot].sampler = samplerCache.getDefaultSampler(frameCounter, isFilterable, texture);
+          data.textures[targetSlot].id = texture->getId();
+          prepareData->referencedContextData.push_back(texData);
+        }
+      }
+    };
+
+    auto setBufferParameter = [&](FastString name, const BufferPtr &buffer) {
+      if (!buffer)
+        return;
+      auto bd = buffer->createContextDataConditional(context);
+      if (bd && bd->buffer) {
+        auto binding = cachedPipeline.findDrawBufferBinding(name);
+        if (binding) {
+          data.buffers[binding->index].data = bd.get();
+          data.buffers[binding->index].id = buffer->getId();
+          prepareData->referencedContextData.push_back(bd);
+        }
       }
     };
 
@@ -277,6 +312,12 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       for (auto &param : srcParams.textures)
         setTextureParameter(param.first, param.second.texture);
+
+      using T = std::decay_t<decltype(srcParams)>;
+      if constexpr (std::is_same_v<T, MaterialParameters>) {
+        for (auto &param : srcParams.blocks)
+          setBufferParameter(param.first, param.second);
+      }
     };
 
     // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
@@ -332,6 +373,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     hasher(data.clipRect);
     for (auto &texture : data.textures)
       hasher(size_t(texture.id));
+    for (auto &buffer : data.buffers)
+      hasher(size_t(buffer.id));
     if (meshDrawable.skin) {
       hasher(size_t(meshDrawable.skin.get())); // WARNING: by pointer
     } else {
@@ -349,6 +392,13 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     // NOTE: Memory is thrown away at end of frame, deconstructed by renderer
     PrepareData *prepareData = allocator->new_object<PrepareData>();
     prepareData->drawableData.resize(context.drawables.size());
+
+    // Allocate slots for external view buffer bindings
+    for (auto &b : cachedPipeline.viewBuffersBindings) {
+      size_t s = b.index + 1;
+      if (s > prepareData->viewBufferBindings.size())
+        prepareData->viewBufferBindings.resize(s);
+    }
 
     {
       ZoneScopedN("Prepare resources");
@@ -371,12 +421,14 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
     }
 
-    // Allocate per instance buffers
+    // Allocate internal buffers ("object" & "view")
     size_t numDrawables{};
     {
       ZoneScopedN("allocateBuffers");
       numDrawables = context.drawables.size();
       for (auto &binding : cachedPipeline.drawBufferBindings) {
+        if (binding.isExternal)
+          continue;
         if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
           auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
           allocateBuffer(storageBufferPool, preparedBuffer, PipelineBuilder::getDrawBindGroupIndex(), binding, numDrawables);
@@ -385,6 +437,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Allocate global(view) buffers
       for (auto &binding : cachedPipeline.viewBuffersBindings) {
+        if (binding.isExternal)
+          continue;
         auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
         allocateBuffer(uniformBufferPool, preparedBuffer, PipelineBuilder::getViewBindGroupIndex(), binding, 1);
       }
@@ -508,6 +562,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           viewParameters.setParam(pair.first, pair.second);
         }
         // TODO: Bind per-view textures here too once bindings are split
+
+        for (auto &buffer : baseViewData->blocks) {
+          auto binding = cachedPipeline.findViewBufferBinding(buffer.first);
+          if (binding) {
+            auto bd = buffer.second->createContextDataConditional(context.context);
+            if (bd && bd->buffer) {
+              prepareData->viewBufferBindings[binding->index].data = bd.get();
+              prepareData->viewBufferBindings[binding->index].id = buffer.second->getId();
+              prepareData->referencedContextData.push_back(bd);
+            }
+          }
+        }
       }
 
       for (auto &buffer : prepareData->globalBuffers) {
@@ -547,14 +613,38 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     // Generate bind groups
     WGPUBindGroupLayout viewBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()];
 
-    BindGroupBuilder viewBindGroupBuilder(allocator);
-    for (size_t i = 0; i < prepareData->globalBuffers.size(); i++) {
-      auto &buffer = prepareData->globalBuffers[i];
-      if (buffer.bindGroup == PipelineBuilder::getViewBindGroupIndex())
-        viewBindGroupBuilder.addBinding(cachedPipeline.viewBuffersBindings[buffer.binding], buffer, numDrawables);
-    }
-    prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
+    {
+      ZoneScopedN("createViewBindGroup");
+      BindGroupBuilder viewBindGroupBuilder(allocator);
+      for (size_t i = 0; i < prepareData->globalBuffers.size(); i++) {
+        auto &buffer = prepareData->globalBuffers[i];
+        if (buffer.bindGroup == PipelineBuilder::getViewBindGroupIndex())
+          viewBindGroupBuilder.addBinding(cachedPipeline.viewBuffersBindings[buffer.binding], buffer, numDrawables);
+      }
 
+      // Check required buffers
+      bool missingBuffers{};
+      for (size_t i = 0; i < cachedPipeline.viewBuffersBindings.size(); i++) {
+        auto &b = cachedPipeline.viewBuffersBindings[i];
+        static FastString fs_view = "view";
+        if (b.name != fs_view) {
+          if (prepareData->viewBufferBindings[b.index]) {
+            viewBindGroupBuilder.addBinding(b, prepareData->viewBufferBindings[b.index].data->buffer);
+          } else {
+            missingBuffers = true;
+            SPDLOG_LOGGER_WARN(getLogger(), fmt::format("missing view buffer binding \"{}\"", b.name));
+          }
+        }
+      }
+
+      if (missingBuffers) {
+        // Mark entire pipeline as noop and return
+        prepareData->groups.reset();
+        return prepareData;
+      }
+
+      prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
+    }
     {
       ZoneScopedN("createDrawBindGroups");
 
@@ -571,8 +661,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
         // Generate texture binding hash
         HasherXXH128<HasherDefaultVisitor> hasher;
-        for (auto &texture : firstDrawableData.textures)
-          hasher(texture ? size_t(texture.id) : size_t(0));
+        for (auto &v : firstDrawableData.textures)
+          hasher(v ? size_t(v.id) : size_t(0));
+        for (auto &v : firstDrawableData.buffers)
+          hasher(v ? size_t(v.id) : size_t(0));
         for (auto &buffer : groupData.buffers)
           hasher(size_t(buffer.buffer));
         // NOTE: This is hashed since per-index bindings are bound using the required number of instance
@@ -594,6 +686,28 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             // NOTE: the buffer contains all drawables
             //  however only the number of instances for this group is bound, and later offset using dynamic bindings
             drawBindGroupBuilder.addBinding(cachedPipeline.drawBufferBindings[buffer.binding], buffer, group.numInstances);
+          }
+
+          // Check required buffers
+          bool missingBuffers{};
+          for (size_t i = 0; i < cachedPipeline.drawBufferBindings.size(); i++) {
+            auto &b = cachedPipeline.drawBufferBindings[i];
+            static FastString fs_object = "object";
+            static FastString fs_joints = "joints";
+            if (b.name != fs_object && b.name != fs_joints) {
+              if (firstDrawableData.buffers[b.index]) {
+                drawBindGroupBuilder.addBinding(b, firstDrawableData.buffers[b.index].data->buffer, group.numInstances);
+              } else {
+                missingBuffers = true;
+                SPDLOG_LOGGER_WARN(getLogger(), fmt::format("missing object buffer binding \"{}\"", b.name));
+              }
+            }
+          }
+
+          if (missingBuffers) {
+            // Mark as noop and continue
+            group.numInstances = 0;
+            continue;
           }
 
           // TODO(guusw): Need to split this so that we can have per-view texture bindings
@@ -629,6 +743,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto encoder = context.encoder;
     auto &allocator = context.storage.workerMemory;
 
+    if (!prepareData.groups)
+      return;
+
     wgpuRenderPassEncoderSetPipeline(encoder, cachedPipeline.pipeline);
     wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getViewBindGroupIndex(), prepareData.viewBindGroup, 0, nullptr);
 
@@ -637,6 +754,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       auto &group = groups.groups[i];
       auto &groupData = groups.groupData[i];
       auto &firstDrawable = *prepareData.drawableData[group.startIndex];
+
+      if (group.numInstances == 0)
+        continue;
 
       if (firstDrawable.clipRect) {
         auto clipRect = firstDrawable.clipRect.value();
@@ -741,7 +861,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       auto &entry = detail::getCacheEntry(drawableCache, drawable.getId());
       entry.mesh = meshCacheEntry.mesh;
+      entry.flipped = isFlippedCoordinateSpace(drawable.transform);
       touchCacheItem(entry, frameCounter);
+
+      pipelineHashCollector((bool)entry.flipped);
 
       pipelineHashCollector(mesh);
       if (drawable.material) {

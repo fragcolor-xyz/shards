@@ -9,6 +9,7 @@ namespace shards {
 std::map<SHType, NumberType> getSHTypeToNumberTypeMap() {
   // clang-format off
   return {
+    {SHType::Bool, NumberType::Bool},
     {SHType::Color, NumberType::UInt8},
     {SHType::Int, NumberType::Int64},
     {SHType::Int2, NumberType::Int64},
@@ -61,6 +62,7 @@ template <typename TIn, typename TOut> struct TNumberConversion : NumberConversi
 
 template <typename TIn> struct TNumberConversionTable : public NumberConversionTable {
   TNumberConversionTable() {
+    set(NumberType::Bool, TNumberConversion<TIn, bool>());
     set(NumberType::UInt8, TNumberConversion<TIn, uint8_t>());
     set(NumberType::Int8, TNumberConversion<TIn, int8_t>());
     set(NumberType::Int16, TNumberConversion<TIn, int16_t>());
@@ -106,6 +108,13 @@ template <> struct TNumberStringOperations<double> {
   static void parse(double *out, const char *input, char **inputEnd) { out[0] = std::strtod(input, inputEnd); }
 };
 
+template <> struct TNumberStringOperations<bool> {
+  static void parse(double *out, const char *input, char **inputEnd) {
+    std::string_view sv(input);
+    out[0] = sv == "true" || sv == "True" || sv == "TRUE";
+  }
+};
+
 template <NumberType Type> struct TNumberTypeTraits {};
 
 #define NUMBER_TYPE_TRAITS(_Type, _CType)                                         \
@@ -120,6 +129,7 @@ template <NumberType Type> struct TNumberTypeTraits {};
     }                                                                             \
   };
 
+NUMBER_TYPE_TRAITS(NumberType::Bool, bool);
 NUMBER_TYPE_TRAITS(NumberType::UInt8, uint8_t);
 NUMBER_TYPE_TRAITS(NumberType::Int8, int8_t);
 NUMBER_TYPE_TRAITS(NumberType::Int16, int16_t);
@@ -147,6 +157,7 @@ template <SHType Type> struct TVectorTypeTraits {};
     }                                                                               \
   };
 
+VECTOR_TYPE_TRAITS(Bool, 1, NumberType::Bool);
 VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
 VECTOR_TYPE_TRAITS(Int, 1, NumberType::Int64);
 VECTOR_TYPE_TRAITS(Int2, 2, NumberType::Int64);
@@ -166,6 +177,7 @@ VECTOR_TYPE_TRAITS(Float4, 4, NumberType::Float32);
 VectorTypeLookup::VectorTypeLookup() {
   // clang-format off
     vectorTypes = {
+        TVectorTypeTraits<SHType::Bool>(),
         TVectorTypeTraits<SHType::Color>(),
         TVectorTypeTraits<SHType::Int>(),
         TVectorTypeTraits<SHType::Int2>(),
@@ -226,6 +238,10 @@ void VectorTypeLookup::buildDimensionLookup() {
 
   size_t tails[2] = {0};
   for (const VectorTypeTraits *vectorType : sortedVectorTypes) {
+    // Quick filter to ignore bools in compatible type map
+    if (vectorType->shType == SHType::Bool)
+      continue;
+
     size_t typeIndex = vectorType->isInteger ? 0 : 1;
     std::vector<const VectorTypeTraits *> &compatibleVectorTypeMap = dimensionLookupTables[typeIndex];
 

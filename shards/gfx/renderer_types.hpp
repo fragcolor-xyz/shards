@@ -84,6 +84,9 @@ struct BufferBinding {
   StructLayout layout;
   size_t index;
   shader::Dimension dimension;
+  // External buffers are defined by features and are not part of the pipeline internals
+  // Examples of internal buffers are the "object" and "view" buffer
+  bool isExternal{};
 };
 
 struct RenderTargetLayout {
@@ -126,6 +129,7 @@ struct ParameterStorage final : public IParameterCollector {
 
   shards::pmr::unordered_map<FastString, NumParameter> basic;
   shards::pmr::unordered_map<FastString, TextureParameter> textures;
+  boost::container::flat_map<FastString, BufferPtr> blocks;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
@@ -139,12 +143,19 @@ struct ParameterStorage final : public IParameterCollector {
 
   void setParam(FastString name, NumParameter &&value) { basic.insert_or_assign(name, std::move(value)); }
   void setTexture(FastString name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
+  void setBlock(FastString name, BufferPtr &&value) { blocks.insert_or_assign(name, std::move(value)); }
 
   void setParamIfUnset(FastString key, const NumParameter &value) { basic.emplace(key, value); }
 
   void append(const ParameterStorage &other) {
     for (auto &it : other.basic) {
       basic.emplace(it);
+    }
+    for (auto &it : other.textures) {
+      textures.emplace(it);
+    }
+    for (auto &it : other.blocks) {
+      blocks.emplace(it);
     }
   }
 };
@@ -231,18 +242,6 @@ struct CachedView {
   bool isFlipped{};
 
   size_t lastTouched{};
-
-  // Checks if the given transform flips the coordinates space along a single axis
-  static bool isFlippedCoordinateSpace(const float4x4 &inTransform) {
-    float3 right = inTransform[0].xyz();
-    float3 up = inTransform[1].xyz();
-    float3 forward = linalg::normalize(inTransform[2].xyz());
-    float3 expectedForward = linalg::normalize(linalg::cross(right, up));
-    if (linalg::dot(forward, expectedForward) < 0) {
-      return true;
-    }
-    return false;
-  }
 
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
     // Update history (but only at most once per frame)

@@ -2,13 +2,21 @@
 #define D62A84E5_196A_4759_825B_4E8E9C073EC6
 
 #include "gizmos.hpp"
-#include <gfx/linalg.hpp>
+#include "../trs.hpp"
+#include "../linalg.hpp"
 
 namespace gfx {
 namespace gizmos {
 
 struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
-  float4x4 transform = linalg::identity; // load identity matrix
+  TRS pivot;
+  boost::container::small_vector<TRS, 16> transforms;
+  boost::container::small_vector<TRS, 16> movedTransforms;
+
+  float scale = 1.0f;
+
+private:
+  float4x4 pivotTransform;
 
   Handle handles[4];
   Box handleSelectionBoxes[4];
@@ -27,13 +35,13 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 dragStartTransform;
   float3 dragStartPoint;
   float2 dragStartCursor;
-
-  float scale = 1.0f;
+  boost::container::small_vector<TRS, 16> startTransforms;
 
   const float axisRadius = 0.2f;
   const float visualAxisRadius = 0.1f;
   const float axisLength = 1.0f;
 
+public:
   float getVisualAxisRadius() const { return visualAxisRadius * scale; }
   float getAxisRadius() const { return axisRadius * scale; }
   float getAxisLength() const { return axisLength * scale; }
@@ -46,8 +54,11 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void update(InputContext &inputContext) {
+    movedTransforms.clear();
+    pivotTransform = pivot.getMatrix();
+
     // NOTE: The scale gizmo always works in local mode to avoid confusion with skewed matrices
-    transformNoScale = removeTransformScale(transform);
+    transformNoScale = removeTransformScale(pivotTransform);
     float3 localRayDir = transformNormal(linalg::inverse(transformNoScale), inputContext.rayDirection);
 
     for (size_t i = 0; i < 3; i++) {
@@ -118,7 +129,8 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     position changes.
   */
   virtual void grabbed(InputContext &context, Handle &handle) {
-    dragStartTransform = transform;
+    dragStartTransform = pivotTransform;
+    startTransforms = transforms;
 
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, transformNoScale));
@@ -170,11 +182,10 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       scaling[index] = 1 + delta[index] * axisSensitivity;
     }
 
-    float3 t, s;
-    float3x3 r;
-    decomposeTRS(dragStartTransform, t, s, r);
-    s *= scaling;
-    transform = composeTRS(t, s, r);
+    TRS pivotTrs(dragStartTransform);
+    for (size_t i = 0; i < transforms.size(); i++) {
+      movedTransforms.push_back(startTransforms[i].scaleAround(pivotTrs, scaling));
+    }
   }
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {

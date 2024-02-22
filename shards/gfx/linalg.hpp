@@ -50,6 +50,18 @@ inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const 
   return false;
 }
 
+inline bool isFlippedCoordinateSpace(const float3 &x, const float3 &y, const float3 &z) {
+  float3 expectedForward = linalg::cross(x, y);
+  if (linalg::dot(z, expectedForward) < 0) {
+    return true;
+  }
+  return false;
+}
+
+inline bool isFlippedCoordinateSpace(const float4x4 &inTransform) {
+  return isFlippedCoordinateSpace(inTransform[0].xyz(), inTransform[1].xyz(), inTransform[2].xyz());
+}
+
 inline float3 extractTranslation(const float4x4 &transform) { return transform.w.xyz(); }
 
 inline float3 extractScale(const float4x4 &transform) {
@@ -58,6 +70,7 @@ inline float3 extractScale(const float4x4 &transform) {
   const float3 z = transform.z.xyz();
   return float3(linalg::length(x), linalg::length(y), linalg::length(z));
 }
+
 inline float3x3 extractRotationMatrix(const float4x4 &transform) {
   const float3 x = transform.x.xyz();
   const float3 y = transform.y.xyz();
@@ -65,6 +78,7 @@ inline float3x3 extractRotationMatrix(const float4x4 &transform) {
   float3 scale{linalg::length(x), linalg::length(y), linalg::length(z)};
   return float3x3(x / scale.x, y / scale.y, z / scale.z);
 }
+
 inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 &scale, float3x3 &rotationMatrix) {
   translation = extractTranslation(transform);
   const float3 x = transform.x.xyz();
@@ -73,6 +87,9 @@ inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 
   scale.x = linalg::length(x);
   scale.y = linalg::length(y);
   scale.z = linalg::length(z);
+  if (isFlippedCoordinateSpace(x, y, z)) {
+    scale.y = -scale.y;
+  }
   rotationMatrix = float3x3(x / scale.x, y / scale.y, z / scale.z);
 }
 

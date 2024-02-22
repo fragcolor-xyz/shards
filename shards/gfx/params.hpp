@@ -34,9 +34,11 @@ gfx::shader::NumType getNumParameterType(const NumParameter &variant);
 struct IParameterCollector {
   virtual void setParam(FastString name, NumParameter &&value) = 0;
   virtual void setTexture(FastString name, TextureParameter &&value) = 0;
+  virtual void setBlock(FastString name, BufferPtr &&value) = 0;
 
   void setParam(FastString name, const NumParameter &value) { setParam(name, NumParameter(value)); }
   void setTexture(FastString name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
+  void setBlock(FastString name, const BufferPtr &value) { setBlock(name, BufferPtr(value)); }
 };
 
 enum class NumParamFlags {
@@ -70,17 +72,20 @@ struct TextureParamDecl {
   BindGroupId bindGroupId = BindGroupId::Draw;
 
   TextureParamDecl() = default;
-  TextureParamDecl(TextureDimension dimension, ShaderParamFlags flags = ShaderParamFlags::None)
-      : type(dimension), flags(flags) {}
+  TextureParamDecl(TextureDimension dimension, ShaderParamFlags flags = ShaderParamFlags::None) : type(dimension), flags(flags) {}
   TextureParamDecl(shader::TextureType type, ShaderParamFlags flags = ShaderParamFlags::None) : type(type), flags(flags) {}
 };
 
-struct StorageParamDecl {
+struct BlockParamDecl {
+  // The type of the binding, usually a struct for buffer bindings
   shader::Type type;
-  BindGroupId bindGroupId = BindGroupId::Draw;
+  // Address space: Uniform/Storage
+  shader::AddressSpace addressSpace;
+  // Where to look for this binding
+  BindGroupId bindGroupId = BindGroupId::View;
 
-  StorageParamDecl() = default;
-  StorageParamDecl(shader::Type type) : type(type) {}
+  BlockParamDecl() = default;
+  BlockParamDecl(shader::Type type) : type(type) {}
 };
 
 } // namespace gfx

@@ -7,4 +7,10 @@
             <Item Name="[Id]" Optional="true">value &amp; ( (1llu &lt;&lt; (64-8)) - 1 )</Item>
         </Expand>
     </Type>
+    <Type Name="gfx::shader::LayoutPath">
+        <DisplayString>{path}</DisplayString>
+        <Expand>
+            <ExpandedItem>path</ExpandedItem>
+        </Expand>
+    </Type>
 </AutoVisualizer>

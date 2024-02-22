@@ -1,4 +1,5 @@
 #include "context.hpp"
+#include <shards/linalg_shim.hpp>
 
 namespace shards {
 namespace Gizmos {
@@ -15,7 +16,16 @@ struct HighlightShard : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Queues a draw operation to highlight a drawable"); }
 
+  PARAM_PARAMVAR(_color, "Color", "Color to render wireframe at", {CoreInfo::Float4Type});
+  PARAM_IMPL(PARAM_IMPL_FOR(_color));
+
+  const float4 &getColor() const { return (float4 &)_color.get().payload; }
+
+  HighlightShard() { _color = toVar(float4(1.0f, 0.0f, 0.0f, 1.0f)); }
+
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
     } else {
@@ -27,7 +37,9 @@ struct HighlightShard : public Base {
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     SHDrawable *drawable = static_cast<SHDrawable *>(input.payload.objectValue);
     std::visit(
-        [&](auto &drawable) { _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), *drawable.get()); },
+        [&](auto &drawable) {
+          _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), *drawable.get(), getColor());
+        },
         drawable->drawable);
 
     return SHVar{};
@@ -43,8 +55,14 @@ struct HighlightShard : public Base {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
-  void warmup(SHContext *shContext) { baseWarmup(shContext); }
-  void cleanup(SHContext* context) { baseCleanup(context); }
+  void warmup(SHContext *shContext) {
+    PARAM_WARMUP(shContext);
+    baseWarmup(shContext);
+  }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
+  }
 };
 
 void registerHighlightShards() { REGISTER_SHARD("Gizmos.Highlight", HighlightShard); }

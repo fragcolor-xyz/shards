@@ -76,6 +76,7 @@ struct IGeneratorContext {
 
   virtual void readBuffer(FastString fieldName, const NumType &type, FastString bufferName,
                           const Function<void(IGeneratorContext &ctx)> &index = Function<void(IGeneratorContext &ctx)>()) = 0;
+  virtual void refBuffer(FastString bufferName) = 0;
 
   virtual const GeneratorDefinitions &getDefinitions() const = 0;
 
@@ -138,6 +139,7 @@ struct GeneratorContext : public IGeneratorContext {
 
   void readBuffer(FastString fieldName, const NumType &type, FastString bufferName,
                   const Function<void(IGeneratorContext &ctx)> &index);
+  void refBuffer(FastString bufferName);
 
   void pushError(GeneratorError &&error);
 

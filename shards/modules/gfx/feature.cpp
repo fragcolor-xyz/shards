@@ -17,6 +17,7 @@
 #include "shader/translator.hpp"
 #include "shader/composition.hpp"
 #include "shards_utils.hpp"
+#include "buffer.hpp"
 #include <gfx/context.hpp>
 #include <gfx/enums.hpp>
 #include <gfx/error_utils.hpp>
@@ -98,6 +99,7 @@ struct BuiltinFeatureShard {
   }
 
   void warmup(SHContext *context) {
+    assert(!_feature);
     _feature = ShardsTypes::FeatureObjectVar.New();
     switch (_id) {
     case BuiltinFeatureId::Transform:
@@ -136,6 +138,8 @@ struct FeatureShard {
 
   static inline shards::Types ParamSpecEntryTypes{ShardsTypes::ShaderParamOrVarTypes, {CoreInfo::AnyTableType}};
   static inline Type ParameterSpecType = Type::TableOf(ParamSpecEntryTypes);
+
+  static inline Type BlockSpecType = CoreInfo::AnyTableType;
 
   static inline Type RequiredAttributesSeqType = Type::SeqOf(RequiredAttributesEnumInfo::Type);
 
@@ -177,13 +181,20 @@ struct FeatureShard {
       "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
       {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
 
+  // Table of block shader parameters, can be defined using any of the formats below:
+  //   :<name> {:Type <ShaderFieldBaseType> :Dimension <number>}
+  //   :<name> {:Default <default>}   (type will be derived from value)
+  //   :<name> <default-value>        (type will be derived from value)
+  PARAM_VAR(_blockParams, "BlockParams", "Custom bindings to expose to shaders", {CoreInfo::NoneType, BlockSpecType});
+
   PARAM_PARAMVAR(
       _requiredAttributes, "RequiredAttributes",
       "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
       {CoreInfo::NoneType, RequiredAttributesSeqType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_shaders), PARAM_IMPL_FOR(_composeWith), PARAM_IMPL_FOR(_state), PARAM_IMPL_FOR(_viewGenerators),
-             PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_requiredAttributes));
+             PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_blockParams),
+             PARAM_IMPL_FOR(_requiredAttributes));
 
 private:
   Brancher _viewGeneratorBranch;
@@ -197,6 +208,7 @@ private:
   boost::container::flat_map<FastString, TextureParamDecl> _derivedTextureParams;
 
   FeaturePtr *_featurePtr{};
+  SHVar _externalContextVar{};
 
   gfx::shader::VariableMap _composedWith;
 
@@ -217,6 +229,7 @@ public:
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
+    assert(!_featurePtr);
     _featurePtr = ShardsTypes::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
   }
@@ -229,6 +242,11 @@ public:
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
         auto v = type.table.types.elements[i];
+
+        if (v == ShardsTypes::Buffer) {
+          // Ignore buffer bindings at this stage
+          continue;
+        }
 
         auto type = deriveShaderFieldType(v);
 
@@ -295,11 +313,13 @@ public:
 
     generatorInstanceData.inputType = GeneratedDrawInputTableType;
     _drawableGeneratorBranch.setRunnables(_drawableGenerators);
-    _drawableGeneratorBranch.compose(generatorInstanceData);
+    if (!_drawableGeneratorBranch.wires.empty())
+      _drawableGeneratorBranch.compose(generatorInstanceData);
 
     generatorInstanceData.inputType = GeneratedViewInputTableType;
     _viewGeneratorBranch.setRunnables(_viewGenerators);
-    _viewGeneratorBranch.compose(generatorInstanceData);
+    if (!_viewGeneratorBranch.wires.empty())
+      _viewGeneratorBranch.compose(generatorInstanceData);
 
     // Collect derived shader parameters from wire outputs
     _derivedShaderParams.clear();
@@ -475,7 +495,7 @@ public:
     }
   }
 
-  static std::variant<NumParameter, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
+  static ShaderParamVariant paramVarToShaderParameter(SHContext *context, SHVar v) {
     SHVar *ref{};
     if (v.valueType == SHType::ContextVar) {
       ref = referenceVariable(context, SHSTRVIEW(v));
@@ -522,7 +542,7 @@ public:
 
   void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
     SHVar tmp;
-    std::optional<std::variant<NumParameter, TextureParameter>> defaultValue;
+    std::optional<ShaderParamVariant> defaultValue;
     std::optional<shader::Type> explicitType;
     std::optional<gfx::BindGroupId> bindGroup;
     std::optional<gfx::TextureSampleType> sampleType;
@@ -565,6 +585,8 @@ public:
                   param.bindGroupId = bindGroup.value();
                 if (sampleType)
                   param.type.format = sampleType.value();
+              } else if constexpr (std::is_same_v<T, BufferPtr>) {
+                throw formatException("Can not set default parameter for buffer");
               }
             },
             defaultValue.value());
@@ -600,6 +622,47 @@ public:
       std::string keyStr(SHSTRVIEW(key));
       applyParam(context, feature, keyStr, v);
     });
+  }
+
+  void applyBlockParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
+    checkType(value.valueType, SHType::Table, ":BlockParam");
+    TableVar &inputTable = (TableVar &)value;
+
+    shader::AddressSpace addressSpace = shader::AddressSpace::Storage;
+    if (auto as = inputTable.find("AddressSpace")) {
+      checkEnumType(*as, ShardsTypes::BufferAddressSpaceEnumInfo::Type, fmt::format("Block {} address space", name).c_str());
+      addressSpace = (shader::AddressSpace)as->payload.enumValue;
+    }
+
+    BindGroupId bindGroup = BindGroupId::View;
+    if (auto as = inputTable.find("BindGroup")) {
+      checkEnumType(*as, ShardsTypes::BindGroupIdEnumInfo::Type, fmt::format("Block {} bind group id", name).c_str());
+      bindGroup = (BindGroupId)as->payload.enumValue;
+    }
+
+    auto typeVar = inputTable.find("Type");
+    if (!typeVar)
+      throw std::runtime_error(fmt::format("Block parameter {} needs a 'type' field", name));
+    shader::Type parsedType;
+    DerivedLayoutInfo dli = parseStructType(parsedType, *typeVar, addressSpace);
+
+    auto &outParam = feature.blockParams[name];
+    outParam.type = parsedType;
+    outParam.addressSpace = addressSpace;
+    outParam.bindGroupId = bindGroup;
+  }
+
+  void applyBlockParams(SHContext *context, Feature &feature, const SHVar &input) {
+    checkType(input.valueType, SHType::Table, "BlockParams");
+    TableVar &inputTable = (TableVar &)input;
+    inputTable.find("space");
+
+    for (auto &[key, v] : inputTable) {
+      if (key.valueType != SHType::String)
+        throw formatException("Shader parameter key must be a string");
+      std::string keyStr(SHSTRVIEW(key));
+      applyBlockParam(context, feature, keyStr, v);
+    }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -639,6 +702,11 @@ public:
       applyParams(context, feature, _params.get());
     }
 
+    // Apply block parameters (statically, only once)
+    if (!_blockParams->isNone() && feature.blockParams.empty()) {
+      applyBlockParams(context, feature, *_blockParams);
+    }
+
     feature.generators.clear();
 
     if (!_drawableGeneratorBranch.wires.empty()) {
@@ -654,7 +722,7 @@ public:
             ++index;
           });
         };
-        runGenerators<true>(_drawableGeneratorBranch, ctx, applyResults);
+        runGenerators<true>(_drawableGeneratorBranch, _externalContextVar, ctx, applyResults);
       });
     }
 
@@ -664,7 +732,7 @@ public:
           auto &collector = ctx.getParameterCollector();
           collectParameters(collector, shContext, output.payload.tableValue);
         };
-        runGenerators<false>(_viewGeneratorBranch, ctx, applyResults);
+        runGenerators<false>(_viewGeneratorBranch, _externalContextVar, ctx, applyResults);
       });
     }
 
@@ -687,7 +755,13 @@ public:
         throw formatException("Shader parameter key must be a string");
       std::string keyStr(SHSTRVIEW(k));
       if (v.valueType == SHType::Object) {
-        collector.setTexture(keyStr, varToTexture(v));
+        auto objType = shards::Type::Object(v.payload.objectVendorId, v.payload.objectTypeId);
+        if (objType == ShardsTypes::Buffer) {
+          auto &buffer = *(SHBuffer *)v.payload.objectValue;
+          collector.setBlock(keyStr, buffer.buffer);
+        } else {
+          collector.setTexture(keyStr, varToTexture(v));
+        }
       } else {
         auto shaderParam = paramVarToShaderParameter(context, v);
         collector.setParam(keyStr, std::get<NumParameter>(shaderParam));
@@ -695,7 +769,8 @@ public:
     });
   }
 
-  template <bool PerDrawable, typename T, typename T1> static void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
+  template <bool PerDrawable, typename T, typename T1>
+  static void runGenerators(Brancher &brancher, SHVar &externalContextVar, T &ctx, T1 applyResults) {
     auto &mesh = brancher.mesh;
     auto &wires = brancher.wires;
 
@@ -708,8 +783,18 @@ public:
         .render = [&ctx = ctx](ViewPtr view, const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
 
-    auto &grc = mesh->getVariable(ToSWL(GraphicsRendererContext::VariableName));
-    grc = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
+    // Override render context
+    static auto swl_context = ToSWL(GraphicsRendererContext::VariableName);
+    externalContextVar = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
+    externalContextVar.flags = SHVAR_FLAGS_EXTERNAL;
+
+    for (auto &wire : wires) {
+      auto &externalVariables = wire->getExternalVariables();
+      externalVariables[shards::OwnedVar::Foreign(swl_context)] = SHExternalVariable{
+          .var = &externalContextVar,
+          .type = &GraphicsRendererContext::Type,
+      };
+    }
 
     // Setup input table
     SHDrawQueue queue{ctx.queue};

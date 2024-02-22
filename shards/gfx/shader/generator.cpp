@@ -93,6 +93,9 @@ static void generateBuffer(T &output, TypeBuilder &tb, const std::string &name, 
   case AddressSpace::Storage:
     varStorageType = "storage";
     break;
+  case AddressSpace::StorageRW:
+    varStorageType = "storage, read_write";
+    break;
   }
   output += fmt::format("@group({}) @binding({})\n", group, binding);
   output += fmt::format("var<{}> {}: {};\n", varStorageType, name, varType);
@@ -662,6 +665,9 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
       if (index)
         index(*this);
+    }
+    void refBuffer(FastString bufferName) {
+      findOrAddIndex(result.bufferBindings, bufferName);
     }
 
     void pushError(GeneratorError &&error) {}

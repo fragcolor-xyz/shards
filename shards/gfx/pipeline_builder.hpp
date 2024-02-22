@@ -33,6 +33,9 @@ struct BufferBindingBuilder {
   std::optional<shader::StructLayout> optimizedStructLayout;
   // Set to true if the binding is not used by any shader function
   bool unused = false;
+  // External buffers are defined by features and are not part of the pipeline internals
+  // Examples of internal buffers are the "object" and "view" buffer
+  bool isExternal{};
   // The type of storage to use
   shader::AddressSpace addressSpace = shader::AddressSpace::Uniform;
   // Specifies if the binding is a single structure or a fixed/dynamic array of structures

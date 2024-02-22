@@ -37,13 +37,18 @@ public:
 
   void dispatch(std::span<NumParameter> params) {}
 
-  // Queues a  copy of texture data from gpu to cpu memory
+  // Queues a copy of texture data from gpu to cpu memory
   // it will be guaranteed to be written when starting the next frame
   // When setting wait=true, this will block until it has actually been read
   void copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait = false);
 
+  // Queues a copy of buffer data from gpu to cpu memory
+  // it will be guaranteed to be written when starting the next frame
+  // When setting wait=true, this will block until it has actually been read
+  void copyBuffer(BufferPtr buffer, GpuReadBufferPtr destination, bool wait = false);
+
   // poll pending  texture copy commands
-  void pollTextureCopies();
+  void pollBufferCopies();
 
   /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);

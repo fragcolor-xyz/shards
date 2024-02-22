@@ -1,5 +1,5 @@
-#ifndef GFX_MESH
-#define GFX_MESH
+#ifndef A9FF2947_97BD_4662_A743_E2DB36A32FA2
+#define A9FF2947_97BD_4662_A743_E2DB36A32FA2
 
 #include "context_data.hpp"
 #include "enums.hpp"
@@ -120,4 +120,4 @@ protected:
 };
 } // namespace gfx
 
-#endif // GFX_MESH
+#endif /* A9FF2947_97BD_4662_A743_E2DB36A32FA2 */
