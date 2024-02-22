@@ -29,26 +29,27 @@
 })
 
 @wire(test-ui {
-  UI({
-    UI.Node({
-      UI.Node(Payload: "A1") | UI.Node(Payload: "A2") | UI.Node(Payload: "A3")
-    } Payload: "Root A Container")
-    UI.Node(Payload: "Root B")
-    UI.Node(Payload: "Root C")
-    UI.Node({
-      ForRange(0 400 {
-        = i
-        UI.Node(Payload: i)
-      })
-    } Payload: "BigList")
-    @some-struct("Main")
-    @some-struct("Inventory")
-    @some-struct("Forms")
-    @some-struct("OLA")
-    Pass
-  })
+  Once({
+    UI({
+      UI.Node({
+        UI.Node(Payload: "A1") | UI.Node(Payload: "A2") | UI.Node(Payload: "A3")
+      } Payload: "Root A Container")
+      UI.Node(Payload: "Root B")
+      UI.Node(Payload: "Root C")
+      UI.Node({
+        ForRange(0 64 {
+          = i
+          UI.Node(Payload: i)
+        })
+      } Payload: "BigList")
+      @some-struct("Main")
+      @some-struct("Inventory")
+      @some-struct("Forms")
+      @some-struct("OLA")
+    })
+  } Every: #(1.0 | Math.Divide(144.0)))
 } Looped: true)
 
 @mesh(root)
 @schedule(root test-ui)
-@run(root FPS: 300)
+@run(root FPS: 600)
