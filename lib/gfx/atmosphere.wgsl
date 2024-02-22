@@ -41,8 +41,8 @@ fn GetPlanetCenter() -> vec3<f32> { return vec3<f32>(0.0, -PLANET_RADIUS, 0.0); 
 fn GetRayleighHeight() -> f32 { return ATMOSPHERE_HEIGHT * 0.08; }
 fn GetMieHeight() -> f32 { return ATMOSPHERE_HEIGHT * 0.012; }
 
-fn SphereIntersection(rayStart: vec3<f32>, rayDir: vec3<f32>, sphereCenter: vec3<f32>, sphereRadius: f32) -> vec2<f32> {
-  let rayStart = rayStart - sphereCenter;
+fn SphereIntersection(rayStart_: vec3<f32>, rayDir: vec3<f32>, sphereCenter: vec3<f32>, sphereRadius: f32) -> vec2<f32> {
+  let rayStart = rayStart_ - sphereCenter;
   let a = dot(rayDir, rayDir);
   let b = 2.0 * dot(rayStart, rayDir);
   let c = dot(rayStart, rayStart) - (sphereRadius * sphereRadius);
@@ -65,8 +65,8 @@ fn AtmosphereIntersection(rayStart: vec3<f32>, rayDir: vec3<f32>) -> vec2<f32> {
 fn PhaseRayleigh(costh: f32) -> f32 { return 3.0 * (1.0 + costh * costh) / (16.0 * PI); }
 
 const MieGDefault : f32 = 0.85;
-fn PhaseMie(costh: f32, g: f32) -> f32 {
-  let g = min(g, 0.9381);
+fn PhaseMie(costh: f32, g_: f32) -> f32 {
+  let g = min(g_, 0.9381);
   var k: f32 = 1.55 * g - 0.55 * g * g * g;
   var kcosth: f32 = k * costh;
   return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
@@ -120,16 +120,16 @@ fn Absorb(opticalDepth: vec3<f32>) -> vec3<f32> {
 
 // Integrate scattering over a ray for a single directional light source.
 // Also return the transmittance for the same ray as we are already calculating the optical depth anyway.
-fn IntegrateScattering(rayStart: vec3<f32>, rayDir: vec3<f32>, rayLength: f32, lightDir: vec3<f32>, lightColor: vec3<f32>, transmittance: ptr<function, vec3<f32>>) -> vec3<f32>  {
+fn IntegrateScattering(rayStart_: vec3<f32>, rayDir: vec3<f32>, rayLength_: f32, lightDir: vec3<f32>, lightColor: vec3<f32>, transmittance: ptr<function, vec3<f32>>) -> vec3<f32>  {
   // We can reduce the number of atmospheric samples required to converge by spacing them exponentially closer to the camera.
   // This breaks space view however, so let's compensate for that with an exponent that "fades" to 1 as we leave the atmosphere.
-  var rayHeight: f32 = AtmosphereHeight(rayStart);
+  var rayHeight: f32 = AtmosphereHeight(rayStart_);
   var sampleDistributionExponent: f32 =
       1.0 + clamp(1.0 - rayHeight / ATMOSPHERE_HEIGHT, 0.0, 1.0) * 8.0; // Slightly arbitrary max exponent of 9
 
+  var rayStart = rayStart_;
   var intersection: vec2<f32> = AtmosphereIntersection(rayStart, rayDir);
-  var rayStart = rayStart;
-  var rayLength = min(rayLength, intersection.y);
+  var rayLength = min(rayLength_, intersection.y);
   if (intersection.x > 0.0) {
     // Advance ray to the atmosphere entry point
     rayStart = rayStart + rayDir * intersection.x;

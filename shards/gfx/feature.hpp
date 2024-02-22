@@ -134,7 +134,9 @@ public:
 
 struct RequiredAttributes {
   // When enabled, each vertex will be guaranteed to have a local basis encoded as a quaternion
-  bool requirePerVertexLocalBasis{};
+  bool requirePerVertexLocalBasis : 1 {};
+
+  std::strong_ordering operator<=>(const RequiredAttributes &other) const = default;
 };
 
 inline RequiredAttributes operator|(const RequiredAttributes &a, const RequiredAttributes &other) {

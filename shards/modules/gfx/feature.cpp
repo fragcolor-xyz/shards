@@ -198,7 +198,6 @@ struct FeatureShard {
 
 private:
   Brancher _viewGeneratorBranch;
-
   Brancher _drawableGeneratorBranch;
 
   bool _branchesWarmedUp{};
@@ -211,6 +210,7 @@ private:
   SHVar _externalContextVar{};
 
   gfx::shader::VariableMap _composedWith;
+  SHVar _composedWithHash{};
 
 public:
   void cleanup(SHContext *context) {
@@ -674,11 +674,11 @@ public:
       _branchesWarmedUp = true;
     }
 
-    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     if (!_composeWith.isNone()) {
-      // Always create a new object to force shader recompile
-      *_featurePtr = std::make_shared<Feature>();
-      shader::applyComposeWith(context, _composedWith, _composeWith.get());
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, [&]() {
+        // Create a new object to force shader recompile
+        *_featurePtr = std::make_shared<Feature>();
+      });
     }
 
     Feature &feature = *_featurePtr->get();
@@ -829,12 +829,14 @@ public:
 
       // Fetch results and insert into parameter collector
       for (auto &wire : wires) {
-        if (wire->previousOutput.valueType != SHType::None) {
-          applyResults(ctx, wire->context, wire->previousOutput);
+        if (wire->state == SHWire::State::IterationEnded) {
+          if (wire->previousOutput.valueType != SHType::None) {
+            applyResults(ctx, wire->context, wire->previousOutput);
+          }
         }
       }
-    } catch (...) {
-      SHLOG_ERROR("Error running GFX.Feature generator");
+    } catch (std::exception &e) {
+      SHLOG_ERROR("Error running GFX.Feature generator: {}", e.what());
     }
   }
 };
