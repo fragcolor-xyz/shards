@@ -483,18 +483,62 @@ struct Unpack : public StructBase {
 #include <ffi.h>
 
 struct Invoke : StructBase {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesSeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Library", SHCCSTR("The path to the library to load, can be None, to load self"), {CoreInfo::StringOrNone}},
+        {"Symbol", SHCCSTR("The symbol to load or a function pointer (Int)"), {CoreInfo::StringType, CoreInfo::IntType}},
+        {"Arguments", SHCCSTR("The description of argument types, e.g. \"i32 f32 b i8[256]\"."), {CoreInfo::StringType}},
+        {"Return",
+         SHCCSTR("The description of return type, e.g. \"int\", if None, void is assumed."),
+         {CoreInfo::StringType, CoreInfo::NoneType}}};
+    return params;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _lib = SHSTRVIEW(value);
+      break;
+    case 1:
+      _sym = value;
+      break;
+    case 2:
+      _argTypesDesc = value;
+      break;
+    case 3:
+      _returnTypeDesc = value;
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_lib);
+    case 1:
+      return _sym;
+    case 2:
+      return Var(_argTypesDesc);
+    case 3:
+      return Var(_returnTypeDesc);
+    }
+    return Var();
+  }
 
   std::string _lib;
   OwnedVar _sym;
   ffi_cif _cif;
   void *_fn{nullptr};
   void *_libHandle{nullptr};
-  std::vector<ffi_type *> argTypes;
-  std::vector<void *> argValues;
-  ffi_type *returnType;
-  void *returnValue;
+  std::vector<ffi_type *> _argTypes;
+  std::vector<void *> _argValues;
+  ffi_type *_returnType;
+  void *_returnValue;
+  OwnedVar _returnTypeDesc;
+  OwnedVar _argTypesDesc;
 
   ffi_type *toFFIType(Tags tag) {
     switch (tag) {
@@ -542,13 +586,19 @@ struct Invoke : StructBase {
       throw ActivationError("Expected string or int as symbol");
     }
 
-    for (auto &member : _members) {
-      argTypes.emplace_back(toFFIType(member.tag));
+    if (_returnTypeDesc->isNone()) {
+      _returnType = &ffi_type_void;
+    } else {
+      StructBase::setParam(0, _returnTypeDesc);
+      _returnType = toFFIType(_members[0].tag);
     }
 
-    returnType = toFFIType(_members.back().tag);
+    StructBase::setParam(0, _argTypesDesc);
+    for (auto &member : _members) {
+      _argTypes.emplace_back(toFFIType(member.tag));
+    }
 
-    if (ffi_prep_cif(&_cif, FFI_DEFAULT_ABI, argTypes.size(), returnType, argTypes.data()) != FFI_OK) {
+    if (ffi_prep_cif(&_cif, FFI_DEFAULT_ABI, _argTypes.size(), _returnType, _argTypes.data()) != FFI_OK) {
       throw ActivationError("Failed to prepare ffi call");
     }
   }
@@ -561,12 +611,29 @@ struct Invoke : StructBase {
 
     _fn = nullptr;
 
-    argTypes.clear();
-    argValues.clear();
+    _argTypes.clear();
+    _argValues.clear();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    throw ActivationError("Not implemented");
+    auto len = _argTypes.size();
+    if (input.payload.seqValue.len != len) {
+      throw ActivationError("Expected " + std::to_string(len) + " arguments, got: " + std::to_string(input.payload.seqValue.len));
+    }
+
+    _argValues.clear();
+    for (size_t i = 0; i < len; i++) {
+      auto &arg = input.payload.seqValue.elements[i];
+      _argValues.emplace_back(arg.payload.bytesValue);
+    }
+
+    if (_returnType == &ffi_type_void) {
+      ffi_call(&_cif, FFI_FN(_fn), _returnValue, _argValues.data());
+      return Var();
+    } else {
+      ffi_call(&_cif, FFI_FN(_fn), _returnValue, _argValues.data());
+      return Var((uint8_t *)_returnValue, _returnType->size);
+    }
   }
 };
 
