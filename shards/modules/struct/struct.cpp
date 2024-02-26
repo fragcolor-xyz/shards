@@ -5,6 +5,18 @@
 #include <shards/core/shared.hpp>
 #include <regex>
 
+#ifdef _WIN32
+#include <windows.h>
+#define LOAD_LIBRARY(name) LoadLibrary(name)
+#define GET_SYMBOL(lib, sym) GetProcAddress(lib, sym)
+#define UNLOAD_LIBRARY(lib) FreeLibrary(lib)
+#else
+#include <dlfcn.h>
+#define LOAD_LIBRARY(name) dlopen(name, RTLD_NOW | RTLD_LOCAL)
+#define GET_SYMBOL(lib, sym) dlsym(lib, sym)
+#define UNLOAD_LIBRARY(lib) dlclose(lib)
+#endif
+
 namespace shards {
 class Tokenizer {
 public:
@@ -466,6 +478,100 @@ struct Unpack : public StructBase {
   }
 };
 
+#ifdef ENABLE_LIBFFI
+
+#include <ffi.h>
+
+struct Invoke : StructBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  std::string _lib;
+  OwnedVar _sym;
+  ffi_cif _cif;
+  void *_fn{nullptr};
+  void *_libHandle{nullptr};
+  std::vector<ffi_type *> argTypes;
+  std::vector<void *> argValues;
+  ffi_type *returnType;
+  void *returnValue;
+
+  ffi_type *toFFIType(Tags tag) {
+    switch (tag) {
+    case Tags::i8:
+      return &ffi_type_sint8;
+    case Tags::i16:
+      return &ffi_type_sint16;
+    case Tags::i32:
+      return &ffi_type_sint32;
+    case Tags::i64:
+      return &ffi_type_sint64;
+    case Tags::f32:
+      return &ffi_type_float;
+    case Tags::f64:
+      return &ffi_type_double;
+    case Tags::Bool:
+      return &ffi_type_uint8;
+    case Tags::i8Array:
+    case Tags::i16Array:
+    case Tags::i32Array:
+    case Tags::i64Array:
+    case Tags::f32Array:
+    case Tags::f64Array:
+    case Tags::String:
+    case Tags::Pointer:
+      return &ffi_type_pointer;
+    }
+  }
+
+  void warmup(SHContext *context) {
+    if (_lib.empty()) {
+      _libHandle = LOAD_LIBRARY(NULL);
+    } else {
+      _libHandle = LOAD_LIBRARY(_lib.c_str());
+    }
+    if (!_libHandle) {
+      throw ActivationError("Failed to load library: " + _lib);
+    }
+
+    if (_sym.valueType == SHType::String) {
+      _fn = GET_SYMBOL(_libHandle, _sym.payload.stringValue);
+    } else if (_sym.valueType == SHType::Int) {
+      _fn = reinterpret_cast<void *>(_sym.payload.intValue);
+    } else {
+      throw ActivationError("Expected string or int as symbol");
+    }
+
+    for (auto &member : _members) {
+      argTypes.emplace_back(toFFIType(member.tag));
+    }
+
+    returnType = toFFIType(_members.back().tag);
+
+    if (ffi_prep_cif(&_cif, FFI_DEFAULT_ABI, argTypes.size(), returnType, argTypes.data()) != FFI_OK) {
+      throw ActivationError("Failed to prepare ffi call");
+    }
+  }
+
+  void cleanup() {
+    if (_libHandle) {
+      UNLOAD_LIBRARY(_libHandle);
+      _libHandle = nullptr;
+    }
+
+    _fn = nullptr;
+
+    argTypes.clear();
+    argValues.clear();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    throw ActivationError("Not implemented");
+  }
+};
+
+#endif
+
 // Register
 RUNTIME_CORE_SHARD(Unpack);
 RUNTIME_SHARD_destroy(Unpack);
@@ -480,5 +586,6 @@ RUNTIME_SHARD_END(Unpack);
 SHARDS_REGISTER_FN(struct) {
   REGISTER_CORE_SHARD(Pack);
   REGISTER_CORE_SHARD(Unpack);
+  REGISTER_SHARD("FFI.Invoke", Invoke);
 }
 } // namespace shards
