@@ -3,6 +3,7 @@ use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
 use egui::Rgba;
+use egui::Sense;
 use egui::Stroke;
 use shards::core::register_shard;
 use shards::shard::Shard;
@@ -33,6 +34,12 @@ struct Selectable {
     SHARDS_OR_NONE_TYPES
   )]
   clicked_callback: ShardsVar,
+  #[shard_param(
+    "DoubleClicked",
+    "Callback function for the contents of this shard is clicked.",
+    SHARDS_OR_NONE_TYPES
+  )]
+  double_clicked_callback: ShardsVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -48,6 +55,7 @@ impl Default for Selectable {
       contents: ShardsVar::default(),
       is_selected_callback: ShardsVar::default(),
       clicked_callback: ShardsVar::default(),
+      double_clicked_callback: ShardsVar::default(),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       required: ExposedTypes::new(),
@@ -81,6 +89,9 @@ impl Shard for Selectable {
     };
     self.clicked_callback.compose(&clicked_data)?;
     shards::util::require_shards_contents(&mut self.required, &self.clicked_callback);
+
+    self.double_clicked_callback.compose(&clicked_data)?;
+    shards::util::require_shards_contents(&mut self.required, &self.double_clicked_callback);
 
     let is_selected_data = shards::SHInstanceData {
       inputType: common_type::any,
@@ -142,15 +153,29 @@ impl Shard for Selectable {
     inner_response.inner?;
     let response = inner_response.response;
 
-    // Resolve Clicked
-    if ui.input(|i| i.pointer.primary_clicked()) && response.hovered() {
-      let mut _unused = Var::default();
-      if self
-        .clicked_callback
-        .activate(context, &input, &mut _unused)
-        == WireState::Error
-      {
-        return Err("Clicked callback failed");
+    if response.hovered() {
+      if ui.input(|i| {
+        i.pointer
+          .button_double_clicked(egui::PointerButton::Primary)
+          && i.pointer.is_still()
+      }) {
+        let mut _unused = Var::default();
+        if self
+          .double_clicked_callback
+          .activate(context, &input, &mut _unused)
+          == WireState::Error
+        {
+          return Err("DoubleClicked callback failed");
+        }
+      } else if ui.input(|i| i.pointer.primary_clicked()) {
+        let mut _unused = Var::default();
+        if self
+          .clicked_callback
+          .activate(context, &input, &mut _unused)
+          == WireState::Error
+        {
+          return Err("Clicked callback failed");
+        }
       }
     }
 
