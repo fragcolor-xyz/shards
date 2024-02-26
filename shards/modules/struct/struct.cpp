@@ -536,7 +536,7 @@ struct Invoke : StructBase {
   std::vector<ffi_type *> _argTypes;
   std::vector<void *> _argValues;
   ffi_type *_returnType;
-  void *_returnValue;
+  int64_t _returnValue;
   OwnedVar _returnTypeDesc;
   OwnedVar _argTypesDesc;
 
@@ -628,11 +628,12 @@ struct Invoke : StructBase {
     }
 
     if (_returnType == &ffi_type_void) {
-      ffi_call(&_cif, FFI_FN(_fn), _returnValue, _argValues.data());
+      ffi_call(&_cif, FFI_FN(_fn), NULL, _argValues.data());
       return Var();
     } else {
-      ffi_call(&_cif, FFI_FN(_fn), _returnValue, _argValues.data());
-      return Var((uint8_t *)_returnValue, _returnType->size);
+      // we know we don't store more than 64 bits.. so _returnValue is a int64_t
+      ffi_call(&_cif, FFI_FN(_fn), (void*)&_returnValue, _argValues.data());
+      return Var((uint8_t *)&_returnValue, _returnType->size);
     }
   }
 };
