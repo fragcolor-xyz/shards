@@ -632,7 +632,7 @@ struct Invoke : StructBase {
       return Var();
     } else {
       // we know we don't store more than 64 bits.. so _returnValue is a int64_t
-      ffi_call(&_cif, FFI_FN(_fn), (void*)&_returnValue, _argValues.data());
+      ffi_call(&_cif, FFI_FN(_fn), (void *)&_returnValue, _argValues.data());
       return Var((uint8_t *)&_returnValue, _returnType->size);
     }
   }
@@ -654,6 +654,8 @@ RUNTIME_SHARD_END(Unpack);
 SHARDS_REGISTER_FN(struct) {
   REGISTER_CORE_SHARD(Pack);
   REGISTER_CORE_SHARD(Unpack);
+#ifdef ENABLE_LIBFFI
   REGISTER_SHARD("FFI.Invoke", Invoke);
+#endif
 }
 } // namespace shards
