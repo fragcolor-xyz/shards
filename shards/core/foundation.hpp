@@ -368,7 +368,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire deleteRef - use_count: {}", (*pref)->name, pref->use_count());
+    if (*pref)
+      SHLOG_TRACE("{} wire deleteRef - use_count: {}", (*pref)->name, pref->use_count());
     delete pref;
   }
 
@@ -381,7 +382,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto cref = sharedFromRef(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire addRef - use_count: {}", cref->name, cref.use_count());
+    if (cref)
+      SHLOG_TRACE("{} wire addRef - use_count: {}", cref->name, cref.use_count());
     auto res = new std::shared_ptr<SHWire>(cref);
     return reinterpret_cast<SHWireRef>(res);
   }
@@ -1101,8 +1103,8 @@ typedef TShardsVar<InternalCore> ShardsVar;
 typedef TTableVar<InternalCore> TableVar;
 typedef TSeqVar<InternalCore> SeqVar;
 
-inline SeqVar& makeSeq(SHVar &var) { return makeSeq<InternalCore>(var); }
-inline TableVar& makeTable(SHVar &var) { return makeTable<InternalCore>(var); }
+inline SeqVar &makeSeq(SHVar &var) { return makeSeq<InternalCore>(var); }
+inline TableVar &makeTable(SHVar &var) { return makeTable<InternalCore>(var); }
 
 inline TableVar &asTable(SHVar &var) {
   shassert(var.valueType == SHType::Table);

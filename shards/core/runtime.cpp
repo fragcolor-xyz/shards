@@ -765,6 +765,8 @@ struct ValidationContext {
 };
 
 void validateConnection(ValidationContext &ctx) {
+  ZoneScoped;
+
   auto previousOutput = ctx.previousOutputType;
 
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
