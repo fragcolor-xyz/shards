@@ -261,7 +261,6 @@ RUNTIME_SHARD_activate(ToHex);
 RUNTIME_SHARD_END(ToHex);
 
 struct VarAddr {
-  VarStringStream stream;
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -269,6 +268,21 @@ struct VarAddr {
     auto res = Var(reinterpret_cast<int64_t>(v));
     releaseVariable(v);
     return res;
+  }
+};
+
+struct VarPtr {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType == SHType::Seq)
+      return Var(reinterpret_cast<int64_t>(input.payload.seqValue.elements));
+    else if (input.valueType == SHType::Bytes)
+      return Var(reinterpret_cast<int64_t>(input.payload.bytesValue));
+    else if (input.valueType == SHType::String)
+      return Var(reinterpret_cast<int64_t>(input.payload.stringValue));
+    else
+      throw ActivationError("Expected sequence, bytes or string type.");
   }
 };
 
@@ -792,5 +806,7 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ToBase64", ToBase64);
   REGISTER_SHARD("FromBase64", FromBase64);
   REGISTER_SHARD("HexToBytes", HexToBytes);
+
+  REGISTER_SHARD("VarPtr", VarPtr);
 }
 }; // namespace shards

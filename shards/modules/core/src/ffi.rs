@@ -8,7 +8,7 @@ use libffi::middle::*;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::SeqVar;
-use shards::types::{common_type, ClonedVar, ANYS_TYPES, ANY_TYPES};
+use shards::types::{common_type, ClonedVar, ANYS_TYPES, ANY_TYPES, INT_TYPES, NONE_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 /*
@@ -293,15 +293,9 @@ impl Shard for FFIInvokeShard {
         }
         10 => {
           let arg: i64 = arg.as_ref().try_into()?;
-          let mut storage = 0u64;
-          unsafe {
-            std::ptr::copy_nonoverlapping(
-              &arg as *const i64,
-              &mut storage as *mut u64 as *mut i64,
-              8,
-            );
-          }
-          self.args_storage.push(storage);
+          // reinterpret to u64 using transmute
+          let arg = unsafe { std::mem::transmute(arg) };
+          self.args_storage.push(arg);
         }
         _ => {
           return Err("Invalid argument type.");
