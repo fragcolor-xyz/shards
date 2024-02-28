@@ -11,8 +11,15 @@ set(SOURCES
   exposed.cpp
 )
 
+if(ENABLE_FFI)
+  list(APPEND CORE_RUST_FEATURES "ffi")
+else()
+  list(APPEND CORE_RUST_FEATURES "default")
+endif()
+
 add_rust_library(NAME shards-core
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
+  FEATURES ${CORE_RUST_FEATURES})
 
 add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS

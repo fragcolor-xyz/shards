@@ -1,7 +1,2 @@
-[([10] | Pack("i32")) ([20] | Pack("i32"))]
-FFI.Invoke("libdummy_dylib.dylib" "add" "i32 i32" "i32")
-Unpack("i32") | Log
-
-[([2.5] | Pack("f32")) ([3.25] | Pack("f32"))]
-FFI.Invoke("libdummy_dylib.dylib" "add_float" "f32 f32" "f32")
-Unpack("f32") | Log
+[10 20] | FFI.Invoke("libdummy_dylib.dylib" "add" "i32 i32" "i32") | Log
+[2.5 3.25] | FFI.Invoke("libdummy_dylib.dylib" "add_float" "f32 f32" "f32") | Log
