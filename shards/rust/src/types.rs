@@ -4029,7 +4029,7 @@ impl TryFrom<&Var> for SeqVar {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Table {
+    if var.valueType != SHType_Seq {
       Err("Expected Seq variable, but casting failed.")
     } else {
       Ok(SeqVar(*var))
