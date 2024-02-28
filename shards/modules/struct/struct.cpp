@@ -522,11 +522,11 @@ struct BytesBuffer {
   std::vector<uint8_t> _storage;
 
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _storage.resize(input.payload.intValue);
-    return Var(reinterpret_cast<int64_t>(&_storage.front()));
+    return Var(&_storage.front(), _storage.size());
   }
 };
 

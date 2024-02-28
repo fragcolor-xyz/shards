@@ -135,7 +135,7 @@
   Const([1 2 3]) >> args2
   22 >> args2
   args2 |
-  Pack("i64[3] p") |
+  Pack("i64[3] p" AsPointer: true) |
   Log |
   Unpack("i64[3] p") >= y |
   Take(1) |
@@ -150,3 +150,8 @@
 
 @schedule(root test)
 @run(root) | Assert.Is(true)
+
+1024 | BytesBuffer = buffer
+Count(buffer) | Assert.Is(1024 true)
+
+"Hello world" | VarPtr | PtrToString | Assert.Is("Hello world" true)
