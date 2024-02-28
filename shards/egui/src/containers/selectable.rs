@@ -2,6 +2,7 @@ use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
+use egui::Id;
 use egui::Rgba;
 use egui::Sense;
 use egui::Stroke;
@@ -40,6 +41,12 @@ struct Selectable {
     SHARDS_OR_NONE_TYPES
   )]
   double_clicked_callback: ShardsVar,
+  #[shard_param(
+    "ID",
+    "An optional ID value in case of ID conflicts.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  id: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -47,6 +54,7 @@ struct Selectable {
   #[shard_required]
   required: ExposedTypes,
   inner_exposed: ExposedTypes,
+  last_clicked: [Option<Id>; 2],
 }
 
 impl Default for Selectable {
@@ -56,10 +64,12 @@ impl Default for Selectable {
       is_selected_callback: ShardsVar::default(),
       clicked_callback: ShardsVar::default(),
       double_clicked_callback: ShardsVar::default(),
+      id: ParamVar::default(),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
+      last_clicked: [None, None],
     }
   }
 }
@@ -120,6 +130,12 @@ impl Shard for Selectable {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
+    let id = if self.id.is_none() {
+      ui.id()
+    } else {
+      ui.id().with(TryInto::<&str>::try_into(self.id.get())?)
+    };
+
     // Resolve IsSelected
     let mut is_selected_var = Var::default();
     if self
@@ -146,9 +162,14 @@ impl Shard for Selectable {
     };
 
     // Draw frame and contents
-    let inner_response = Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
-      util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-    });
+    let inner_response = ui
+      .push_id(id, |ui| {
+        Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+      })
+      .inner;
+
     // Check for errors
     inner_response.inner?;
     let response = inner_response.response;
@@ -157,15 +178,17 @@ impl Shard for Selectable {
       if ui.input(|i| {
         i.pointer
           .button_double_clicked(egui::PointerButton::Primary)
-          && i.pointer.is_still()
       }) {
-        let mut _unused = Var::default();
-        if self
-          .double_clicked_callback
-          .activate(context, &input, &mut _unused)
-          == WireState::Error
-        {
-          return Err("DoubleClicked callback failed");
+        eprintln!("Now double clicked: {:?}", id);
+        if self.last_clicked[0] == self.last_clicked[1] {
+          let mut _unused = Var::default();
+          if self
+            .double_clicked_callback
+            .activate(context, &input, &mut _unused)
+            == WireState::Error
+          {
+            return Err("DoubleClicked callback failed");
+          }
         }
       } else if ui.input(|i| i.pointer.primary_clicked()) {
         let mut _unused = Var::default();
@@ -176,6 +199,12 @@ impl Shard for Selectable {
         {
           return Err("Clicked callback failed");
         }
+      }
+
+      if ui.input(|i| i.pointer.primary_clicked()) {
+        self.last_clicked[1] = self.last_clicked[0];
+        self.last_clicked[0] = Some(id);
+        eprintln!("Set last clicked: {:?}", self.last_clicked);
       }
     }
 
