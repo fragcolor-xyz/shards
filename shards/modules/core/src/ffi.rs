@@ -385,6 +385,102 @@ impl Shard for FFIInvokeShard {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info("FFI.Global", "Fetches a global pointer from a dynamic library.")]
+struct FFILoadGlobalShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Library", "The path to the library to load, can be None, to load self.", [common_type::none, common_type::string])]
+  library: ClonedVar,
+
+  #[shard_param("Symbol", "The symbol to load or a function pointer (Int).", [common_type::string, common_type::int])]
+  symbol: ClonedVar,
+
+  actual_library: Option<Library>,
+  actual_symbol: Option<*mut u8>,
+}
+
+impl Default for FFILoadGlobalShard {
+  fn default() -> Self {
+    let empty = Var::ephemeral_string("");
+    Self {
+      required: ExposedTypes::new(),
+      library: None.into(),
+      symbol: empty.into(),
+      actual_library: None,
+      actual_symbol: None,
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for FFILoadGlobalShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &INT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    let lib = if self.library.0.is_none() {
+      Library::open_self()
+    } else {
+      let name: &str = (&self.library.0).try_into()?;
+      Library::open(name)
+    }
+    .map_err(|e| {
+      shlog_error!("Failed to open library: {}", e);
+      "Failed to open library."
+    })?;
+    self.actual_library = Some(lib);
+
+    let actual_symbol = if self.symbol.0.is_string() {
+      let name: &str = (&self.symbol.0).try_into()?;
+      let symbol = unsafe {
+        self
+          .actual_library
+          .as_ref()
+          .unwrap()
+          .symbol::<PtrOrNull<u8>>(name) // we don't care about the type, we just want the pointer
+      };
+      let symbol = symbol.map_err(|e| {
+        shlog_error!("Failed to load symbol: {}", e);
+        "Failed to load symbol."
+      })?;
+      *(*symbol) as *mut u8
+    } else {
+      let addr: i64 = (&self.symbol.0).try_into()?;
+      addr as *mut u8
+    };
+    self.actual_symbol = Some(actual_symbol);
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let symbol = self.actual_symbol.unwrap(); // qed, warmup should have failed
+    let output = symbol as i64;
+    let output = output.into();
+    Ok(output)
+  }
+}
+
 pub fn register_shards() {
   register_shard::<FFIInvokeShard>();
+  register_shard::<FFILoadGlobalShard>();
 }

@@ -316,7 +316,9 @@ RUNTIME_SHARD_END(Pack);
 struct Unpack : public StructBase {
   SHSeq _output;
 
-  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static inline Types IntOrBytes{CoreInfo::IntType, CoreInfo::BytesType};
+
+  static SHTypesInfo inputTypes() { return IntOrBytes; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   void destroy() {
@@ -390,73 +392,81 @@ struct Unpack : public StructBase {
     }
   }
 
-  template <typename T, typename CT> void read(CT &output, const SHVar &input, size_t offset) {
+  template <typename T, typename CT> void read(CT &output, const uint8_t *input, size_t offset) {
     T x;
-    memcpy(&x, input.payload.bytesValue + offset, sizeof(T));
+    memcpy(&x, input + offset, sizeof(T));
     output = static_cast<CT>(x);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto idx = 0;
+
+    uint8_t *inputData = nullptr;
+    if(input.valueType == SHType::Bytes) {
+      inputData = (uint8_t *)input.payload.bytesValue;
+    } else {
+      inputData = reinterpret_cast<uint8_t *>(input.payload.intValue);
+    }
+
     for (auto &member : _members) {
       auto &arr = _output.elements[idx].payload.seqValue;
       switch (member.tag) {
       case Tags::i8Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int8_t>(arr.elements[i].payload.intValue, input, member.offset + i);
+          read<int8_t>(arr.elements[i].payload.intValue, inputData, member.offset + i);
         }
         break;
       case Tags::i8:
-        read<int8_t>(_output.elements[idx].payload.intValue, input, member.offset);
+        read<int8_t>(_output.elements[idx].payload.intValue, inputData, member.offset);
         break;
       case Tags::i16Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int16_t>(arr.elements[i].payload.intValue, input, member.offset + (2 * i));
+          read<int16_t>(arr.elements[i].payload.intValue, inputData, member.offset + (2 * i));
         }
         break;
       case Tags::i16:
-        read<int16_t>(_output.elements[idx].payload.intValue, input, member.offset);
+        read<int16_t>(_output.elements[idx].payload.intValue, inputData, member.offset);
         break;
       case Tags::i32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int32_t>(arr.elements[i].payload.intValue, input, member.offset + (4 * i));
+          read<int32_t>(arr.elements[i].payload.intValue, inputData, member.offset + (4 * i));
         }
         break;
       case Tags::i32:
-        read<int32_t>(_output.elements[idx].payload.intValue, input, member.offset);
+        read<int32_t>(_output.elements[idx].payload.intValue, inputData, member.offset);
         break;
       case Tags::i64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int64_t>(arr.elements[i].payload.intValue, input, member.offset + (8 * i));
+          read<int64_t>(arr.elements[i].payload.intValue, inputData, member.offset + (8 * i));
         }
         break;
       case Tags::i64:
-        read<int64_t>(_output.elements[idx].payload.intValue, input, member.offset);
+        read<int64_t>(_output.elements[idx].payload.intValue, inputData, member.offset);
         break;
       case Tags::f32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<float>(arr.elements[i].payload.floatValue, input, member.offset + (4 * i));
+          read<float>(arr.elements[i].payload.floatValue, inputData, member.offset + (4 * i));
         }
         break;
       case Tags::f32:
-        read<float>(_output.elements[idx].payload.floatValue, input, member.offset);
+        read<float>(_output.elements[idx].payload.floatValue, inputData, member.offset);
         break;
       case Tags::f64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<double>(arr.elements[i].payload.floatValue, input, member.offset + (8 * i));
+          read<double>(arr.elements[i].payload.floatValue, inputData, member.offset + (8 * i));
         }
         break;
       case Tags::f64:
-        read<double>(_output.elements[idx].payload.floatValue, input, member.offset);
+        read<double>(_output.elements[idx].payload.floatValue, inputData, member.offset);
         break;
       case Tags::Bool:
-        read<bool>(_output.elements[idx].payload.boolValue, input, member.offset);
+        read<bool>(_output.elements[idx].payload.boolValue, inputData, member.offset);
         break;
       case Tags::Pointer:
-        read<uintptr_t>(_output.elements[idx].payload.intValue, input, member.offset);
+        read<uintptr_t>(_output.elements[idx].payload.intValue, inputData, member.offset);
         break;
       case Tags::String:
-        read<const char *>(_output.elements[idx].payload.stringValue, input, member.offset); // just reading a pointer
+        read<const char *>(_output.elements[idx].payload.stringValue, inputData, member.offset); // just reading a pointer
         break;
       }
       idx++;

@@ -104,3 +104,7 @@ add_shards_module(core SOURCES ${SOURCES}
 if(EMSCRIPTEN)
   em_link_js_library(shards-module-core core.js)
 endif()
+
+if(ENABLE_FFI AND WIN32)
+  target_link_libraries(shards-module-core Dbghelp)
+endif()
