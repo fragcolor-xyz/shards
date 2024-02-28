@@ -40,7 +40,9 @@ struct TypeMatcher {
     }
     case SHType::Seq: {
       if (strict) {
-        if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
+        if(inputType.seqTypes.len == 0 && receiverType.seqTypes.len == 0) {
+          return true;
+        } else if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
           // all input types must be in receiver, receiver can have more ofc
           for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
             for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {

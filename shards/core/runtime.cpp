@@ -794,25 +794,33 @@ void validateConnection(ValidationContext &ctx) {
   // If we don't we assume our output will be of the same type of the previous!
   if (ctx.bottom->compose) {
     SHInstanceData data{};
-    data.shard = ctx.bottom;
-    data.wire = ctx.wire;
-    data.inputType = previousOutput;
-    data.requiredVariables = ctx.fullRequired;
-    if (ctx.next) {
-      data.outputTypes = ctx.next->inputTypes(ctx.next);
-    }
-    data.onWorkerThread = ctx.onWorkerThread;
 
-    // Pass all we got in the context!
-    // notice that shards might add new records to this array
-    for (auto &pair : ctx.exposed) {
-      shards::arrayPush(data.shared, pair.second);
-    }
-    // and inherited
-    for (auto &pair : ctx.inherited) {
-      shards::arrayPush(data.shared, pair.second);
+    {
+      ZoneScopedN("PrepareCompose");
+      data.shard = ctx.bottom;
+      data.wire = ctx.wire;
+      data.inputType = previousOutput;
+      data.requiredVariables = ctx.fullRequired;
+      if (ctx.next) {
+        data.outputTypes = ctx.next->inputTypes(ctx.next);
+      }
+      data.onWorkerThread = ctx.onWorkerThread;
+
+      // Pass all we got in the context!
+      // notice that shards might add new records to this array
+      for (auto &pair : ctx.exposed) {
+        shards::arrayPush(data.shared, pair.second);
+      }
+      // and inherited
+      for (auto &pair : ctx.inherited) {
+        if(ctx.exposed.find(pair.first) != ctx.exposed.end())
+          continue;  // Let exposed override inherited
+        shards::arrayPush(data.shared, pair.second);
+      }
     }
     DEFER(shards::arrayFree(data.shared));
+    ZoneScopedN("Compose");
+    ZoneName(ctx.bottom->name(ctx.bottom), ctx.bottom->nameLength);
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -1008,6 +1016,11 @@ void validateConnection(ValidationContext &ctx) {
 
 SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
                             SHInstanceData data) {
+  ZoneScoped;
+  if (data.wire) {
+    ZoneText(data.wire->name.data(), data.wire->name.size());
+  }
+
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
