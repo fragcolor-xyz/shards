@@ -187,15 +187,42 @@ struct StructBase {
 
 struct Pack : public StructBase {
   std::vector<uint8_t> _storage;
+  bool _asPointer;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  SHTypesInfo outputTypes() {
+    if (_asPointer)
+      return CoreInfo::IntType;
+    else
+      return CoreInfo::BytesType;
+  }
+
+  static inline ParamsInfo params =
+      ParamsInfo(StructBase::params,
+                 ParamsInfo::Param("AsPointer", SHCCSTR("Output an Int pointer rather than Bytes type."), CoreInfo::BoolType));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
-    StructBase::setParam(index, value);
+    if (index == 0) {
+      StructBase::setParam(index, value);
+      // prepare our backing memory
+      _storage.resize(_size);
+    } else if (index == 1) {
+      _asPointer = value.payload.boolValue;
+    } else {
+      throw ActivationError("Unexpected parameter index: " + std::to_string(index));
+    }
+  }
 
-    // prepare our backing memory
-    _storage.resize(_size);
+  SHVar getParam(int index) {
+    if (index == 0) {
+      return StructBase::getParam(index);
+    } else if (index == 1) {
+      return Var(_asPointer);
+    } else {
+      throw ActivationError("Unexpected parameter index: " + std::to_string(index));
+    }
   }
 
   void ensureType(const SHVar &input, SHType wantedType) {
@@ -299,7 +326,10 @@ struct Pack : public StructBase {
       idx++;
     }
 
-    return Var(&_storage.front(), _size);
+    if (_asPointer)
+      return Var(reinterpret_cast<int64_t>(&_storage.front()));
+    else
+      return Var(&_storage.front(), _size);
   }
 };
 
@@ -402,7 +432,7 @@ struct Unpack : public StructBase {
     auto idx = 0;
 
     uint8_t *inputData = nullptr;
-    if(input.valueType == SHType::Bytes) {
+    if (input.valueType == SHType::Bytes) {
       inputData = (uint8_t *)input.payload.bytesValue;
     } else {
       inputData = reinterpret_cast<uint8_t *>(input.payload.intValue);
@@ -476,6 +506,30 @@ struct Unpack : public StructBase {
   }
 };
 
+struct PtrToString {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  std::string _storage;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _storage.assign(reinterpret_cast<const char *>(input.payload.intValue), strlen(reinterpret_cast<const char *>(input.payload.intValue)));
+    return Var(_storage);
+  }
+};
+
+struct BytesBuffer {
+  std::vector<uint8_t> _storage;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _storage.resize(input.payload.intValue);
+    return Var(reinterpret_cast<int64_t>(&_storage.front()));
+  }
+};
+
 // Register
 RUNTIME_CORE_SHARD(Unpack);
 RUNTIME_SHARD_destroy(Unpack);
@@ -490,5 +544,7 @@ RUNTIME_SHARD_END(Unpack);
 SHARDS_REGISTER_FN(struct) {
   REGISTER_CORE_SHARD(Pack);
   REGISTER_CORE_SHARD(Unpack);
+  REGISTER_SHARD("PtrToString", PtrToString);
+  REGISTER_SHARD("BytesBuffer", BytesBuffer);
 }
 } // namespace shards
