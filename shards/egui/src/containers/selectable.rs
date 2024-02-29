@@ -179,7 +179,6 @@ impl Shard for Selectable {
         i.pointer
           .button_double_clicked(egui::PointerButton::Primary)
       }) {
-        eprintln!("Now double clicked: {:?}", id);
         if self.last_clicked[0] == self.last_clicked[1] {
           let mut _unused = Var::default();
           if self
@@ -204,7 +203,6 @@ impl Shard for Selectable {
       if ui.input(|i| i.pointer.primary_clicked()) {
         self.last_clicked[1] = self.last_clicked[0];
         self.last_clicked[0] = Some(id);
-        eprintln!("Set last clicked: {:?}", self.last_clicked);
       }
     }
 
