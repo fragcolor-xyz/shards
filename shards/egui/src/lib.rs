@@ -122,6 +122,7 @@ pub struct Context {
   // Drag and drop value container
   pub dnd_value: RefCell<ClonedVar>,
   pub prev_response: Option<Response>,
+  pub override_selection_response: Option<Response>,
 }
 
 mod egui_host;

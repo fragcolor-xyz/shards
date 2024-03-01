@@ -3,6 +3,7 @@
 #include <SDL_clipboard.h>
 #include <shards/core/runtime.hpp>
 #include <shards/common_types.hpp>
+#include <shards/modules/inputs/inputs.hpp>
 
 namespace shards {
 namespace UI::Clipboard {
@@ -14,8 +15,13 @@ struct SetClipboard {
   OwnedVar nullTerminatedCache;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    nullTerminatedCache = input; // clone will null terminate inputs don't guarantee null termination
-    SDL_SetClipboardText(nullTerminatedCache.payload.stringValue);
+    nullTerminatedCache = input;      // clone will null terminate inputs don't guarantee null termination
+    callOnMeshThread(context, [&]() { //
+      int r = SDL_SetClipboardText(nullTerminatedCache.payload.stringValue);
+      if (r != 0) {
+        throw ActivationError(fmt::format("SetClipboard failed: {}", SDL_GetError()));
+      }
+    });
     return input;
   }
 };

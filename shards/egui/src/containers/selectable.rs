@@ -42,6 +42,12 @@ struct Selectable {
   )]
   double_clicked_callback: ShardsVar,
   #[shard_param(
+    "ContextMenu",
+    "Callback function for the right-click context menu.",
+    SHARDS_OR_NONE_TYPES
+  )]
+  context_menu: ShardsVar,
+  #[shard_param(
     "ID",
     "An optional ID value in case of ID conflicts.",
     STRING_VAR_OR_NONE_SLICE
@@ -64,6 +70,7 @@ impl Default for Selectable {
       is_selected_callback: ShardsVar::default(),
       clicked_callback: ShardsVar::default(),
       double_clicked_callback: ShardsVar::default(),
+      context_menu: ShardsVar::default(),
       id: ParamVar::default(),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
@@ -102,6 +109,9 @@ impl Shard for Selectable {
 
     self.double_clicked_callback.compose(&clicked_data)?;
     shards::util::require_shards_contents(&mut self.required, &self.double_clicked_callback);
+
+    self.context_menu.compose(&clicked_data)?;
+    shards::util::require_shards_contents(&mut self.required, &self.context_menu);
 
     let is_selected_data = shards::SHInstanceData {
       inputType: common_type::any,
@@ -172,9 +182,26 @@ impl Shard for Selectable {
 
     // Check for errors
     inner_response.inner?;
-    let response = inner_response.response;
+    let mut response = inner_response.response;
 
-    if response.hovered() {
+    // Find clicks in other UI elements, and ignore selection response in that case
+    let ignore_click = ui_ctx.override_selection_response.is_some();
+
+    if !self.context_menu.is_empty() {
+      let mut err: Option<&str> = None;
+      response = response.context_menu(|ui| {
+        err = util::activate_ui_contents(
+          context,
+          input,
+          ui,
+          &mut self.parents,
+          &mut self.context_menu,
+        )
+        .err();
+      });
+    }
+
+    if response.hovered() && !ignore_click {
       if ui.input(|i| {
         i.pointer
           .button_double_clicked(egui::PointerButton::Primary)
@@ -189,7 +216,10 @@ impl Shard for Selectable {
             return Err("DoubleClicked callback failed");
           }
         }
-      } else if ui.input(|i| i.pointer.primary_clicked()) {
+      } else if ui.input(|i| {
+        (i.pointer.primary_released() && !i.modifiers.any())
+          || (i.pointer.primary_clicked() && i.modifiers.any())
+      }) {
         let mut _unused = Var::default();
         if self
           .clicked_callback

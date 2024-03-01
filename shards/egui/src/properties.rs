@@ -45,6 +45,8 @@ pub enum Property {
   IsAnythingBeingDragged = 0x3,
   #[enum_value("The position of the UI cursor")]
   CursorPosition = 0x4,
+  #[enum_value("True if the current UI area is being hovered over. (bool)")]
+  IsHovered = 0x5,
 }
 
 lazy_static! {
@@ -122,6 +124,7 @@ impl Shard for PropertyShard {
       Property::PixelsPerPoint => Ok(common_type::float),
       Property::IsAnythingBeingDragged => Ok(common_type::bool),
       Property::CursorPosition => Ok(common_type::float2),
+      Property::IsHovered => Ok(common_type::bool),
     }
   }
 
@@ -159,10 +162,19 @@ impl Shard for PropertyShard {
       }
       Property::CursorPosition => {
         let egui_ctx: &egui::Context = &util::get_current_context(&self.contexts)?.egui_ctx;
-        let pos = egui_ctx.input(|i| {
-          i.pointer.interact_pos().unwrap_or_default()
-        });
+        let pos = egui_ctx.input(|i| i.pointer.interact_pos().unwrap_or_default());
         Ok((pos.x, pos.y).into())
+      }
+      Property::IsHovered => {
+        let ui = ui?.ok_or("No parent UI")?;
+        let res = ui.input(|i| {
+          if let Some(p) = i.pointer.latest_pos() {
+            ui.min_rect().contains(p)
+          } else {
+            false
+          }
+        });
+        Ok(res.into())
       }
     }
   }
