@@ -27,6 +27,7 @@ struct SHDrawable {
   Variant drawable;
   std::unordered_map<std::string, Animation> animations;
   std::unordered_map<std::string, MaterialPtr> materials;
+  bool rootNodeWrapped{};
 
   void assign(const std::shared_ptr<IDrawable> &generic) {
     if (auto mesh = std::dynamic_pointer_cast<MeshDrawable>(generic)) {

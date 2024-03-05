@@ -109,11 +109,13 @@ struct GLTFShard {
                  {CoreInfo::NoneType, CoreInfo::BytesType, CoreInfo::BytesVarType});
   PARAM_PARAMVAR(_copy, "Copy", "Reference to another glTF model to copy",
                  {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::Drawable)});
+  PARAM_VAR(_wrapRootNode, "WrapRootNode", "Wrap the root node so animations applied to it still work",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM(ShardsVar, _animController, "AnimationController", "The animation controller", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
-             PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController));
+             PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController), PARAM_IMPL_FOR(_wrapRootNode));
 
   enum LoadMode {
     Invalid,
@@ -135,6 +137,21 @@ struct GLTFShard {
   MeshTreeDrawable::Ptr &getMeshTreeDrawable() { return std::get<MeshTreeDrawable::Ptr>(_drawable->drawable); }
 
   bool hasAnimationController() const { return _animController.shards().len > 0; }
+
+  void wrapRootNode(glTF &gltf) {
+    auto oldRoot = gltf.root;
+    gltf.root = std::make_shared<MeshTreeDrawable>();
+    gltf.root->name = "__shards_root";
+    gltf.root->addChild(oldRoot);
+
+    for (auto &[name, animation] : gltf.animations) {
+      for (auto &track : animation.tracks) {
+        if (track.targetNode.lock() == oldRoot) {
+          track.targetNode = gltf.root;
+        }
+      }
+    }
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -296,6 +313,9 @@ struct GLTFShard {
   // there can only be builtin target identifiers left in the path
   MeshTreeDrawable::Ptr findNode(Animations::Path &p) {
     MeshTreeDrawable::Ptr node = _model->root;
+    if (_drawable->rootNodeWrapped)
+      node = node->getChildren()[0];
+
     while (true) {
       if (!node)
         return MeshTreeDrawable::Ptr();
@@ -519,6 +539,8 @@ struct GLTFShard {
 
     auto &drawable = getMeshTreeDrawable();
     if (!drawable) {
+      bool rootNodeWrapped = false;
+
       switch (_loadMode) {
       case LoadFileDynamic:
         _model.emplace(loadGltfFromFile(SHSTRVIEW(_path.get())));
@@ -533,6 +555,7 @@ struct GLTFShard {
         _model->root = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
         _model->animations = shOther.animations;
         _model->materials = shOther.materials;
+        rootNodeWrapped = shOther.rootNodeWrapped;
       } break;
       case LoadMode::LoadFileStatic:
         assert(_model); // Loaded in warmup
@@ -540,6 +563,11 @@ struct GLTFShard {
       default:
         throw std::out_of_range("glTF load mode");
         break;
+      }
+
+      if (!rootNodeWrapped && !_wrapRootNode->isNone() && (bool)*_wrapRootNode) {
+        wrapRootNode(*_model);
+        _drawable->rootNodeWrapped = true;
       }
 
       _drawable->drawable = _model->root;
