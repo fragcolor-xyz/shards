@@ -142,6 +142,9 @@ impl Shard for Button {
       // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
       let ctx = util::get_current_context(&self.contexts)?;
       ctx.prev_response = Some(response);
+      if button_clicked {
+        ctx.override_selection_response = ctx.prev_response.clone();
+      }
 
       // button not clicked during this frame
       Ok(button_clicked.into())

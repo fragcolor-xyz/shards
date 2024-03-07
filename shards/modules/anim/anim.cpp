@@ -54,12 +54,13 @@ struct TimerShard {
                  {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_rate, "Rate", "The playback rate", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_offset, "Offset", "Timer offset", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_variable, "Variable", "The variable to store the result in", {CoreInfo::NoneType, CoreInfo::FloatVarType});
   PARAM(ShardsVar, _action, "Action", "The action to evaluate after the given Duration",
         {CoreInfo::Shards, {CoreInfo::NoneType}});
   PARAM_IMPL(PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
-             PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action));
+             PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_variable));
 
-  float _time{};
+  double _internalTime{};
   bool _hasCallback{};
   bool _stopped{};
   DeltaTimer _deltaTimer;
@@ -73,11 +74,13 @@ struct TimerShard {
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _time = 0.0f;
+    _internalTime = 0.0f;
     _deltaTimer.reset();
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  double &getTime() { return _variable.isVariable() ? _variable.get().payload.floatValue : _internalTime; }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(SHInstanceData &data) {
@@ -123,6 +126,8 @@ struct TimerShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
+    double &time = getTime();
+
     Var offsetVar{_offset.get()};
     float offset = offsetVar.isNone() ? 0.0f : float(offsetVar);
 
@@ -139,16 +144,16 @@ struct TimerShard {
 
     float deltaTime = _deltaTimer.update();
     if (!_stopped) {
-      _time += deltaTime * rate;
+      time += deltaTime * rate;
     }
 
-    float evalTime = _time + offset;
+    float evalTime = time + offset;
     if (duration && !_stopped) {
       if (evalTime > duration.value()) {
         runAction(shContext, input);
         if (looped) {
           evalTime = std::fmod(evalTime, duration.value());
-          _time = std::fmod(_time + offset, duration.value()) - offset;
+          time = std::fmod(time + offset, duration.value()) - offset;
         } else {
           _stopped = true;
         }
@@ -177,7 +182,7 @@ struct PlayShard {
   SeqVar _output;
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(SHInstanceData &data) {
@@ -271,7 +276,7 @@ struct DurationShard {
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(SHInstanceData &data) {

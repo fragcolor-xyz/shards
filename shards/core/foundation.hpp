@@ -1101,8 +1101,8 @@ typedef TShardsVar<InternalCore> ShardsVar;
 typedef TTableVar<InternalCore> TableVar;
 typedef TSeqVar<InternalCore> SeqVar;
 
-inline SeqVar& makeSeq(SHVar &var) { return makeSeq<InternalCore>(var); }
-inline TableVar& makeTable(SHVar &var) { return makeTable<InternalCore>(var); }
+inline SeqVar &makeSeq(SHVar &var) { return makeSeq<InternalCore>(var); }
+inline TableVar &makeTable(SHVar &var) { return makeTable<InternalCore>(var); }
 
 inline TableVar &asTable(SHVar &var) {
   shassert(var.valueType == SHType::Table);
@@ -1482,6 +1482,15 @@ struct VariableResolver {
     }
   }
 };
+
+inline bool isObjectType(const SHVar &var, const SHTypeInfo &type) {
+  shassert(type.basicType == SHType::Object);
+  if (var.valueType != SHType::Object)
+    return false;
+  if (var.payload.objectVendorId != type.object.vendorId || var.payload.objectTypeId != type.object.typeId)
+    return false;
+  return true;
+}
 
 template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);

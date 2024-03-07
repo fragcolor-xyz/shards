@@ -109,11 +109,13 @@ struct GLTFShard {
                  {CoreInfo::NoneType, CoreInfo::BytesType, CoreInfo::BytesVarType});
   PARAM_PARAMVAR(_copy, "Copy", "Reference to another glTF model to copy",
                  {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::Drawable)});
+  PARAM_VAR(_wrapRootNode, "WrapRootNode", "Wrap the root node so animations applied to it still work",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM(ShardsVar, _animController, "AnimationController", "The animation controller", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
-             PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController));
+             PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController), PARAM_IMPL_FOR(_wrapRootNode));
 
   enum LoadMode {
     Invalid,
@@ -135,6 +137,21 @@ struct GLTFShard {
   MeshTreeDrawable::Ptr &getMeshTreeDrawable() { return std::get<MeshTreeDrawable::Ptr>(_drawable->drawable); }
 
   bool hasAnimationController() const { return _animController.shards().len > 0; }
+
+  void wrapRootNode(glTF &gltf) {
+    auto oldRoot = gltf.root;
+    gltf.root = std::make_shared<MeshTreeDrawable>();
+    gltf.root->name = "__shards_root";
+    gltf.root->addChild(oldRoot);
+
+    for (auto &[name, animation] : gltf.animations) {
+      for (auto &track : animation.tracks) {
+        if (track.targetNode.lock() == oldRoot) {
+          track.targetNode = gltf.root;
+        }
+      }
+    }
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -167,9 +184,11 @@ struct GLTFShard {
       childData.inputType = AnimationTable;
       _animController.compose(childData);
       SHLOG_TRACE("Checking animation frame data {}: {}", data.wire->name, _animController.composeResult().outputType);
-      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::ShardsTypes::AnimationValues, false, true, false))
+      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::ShardsTypes::AnimationValues, false, true,
+                              false))
         throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
-                                             _animController.composeResult().outputType, Animations::ShardsTypes::AnimationValues));
+                                             _animController.composeResult().outputType,
+                                             Animations::ShardsTypes::AnimationValues));
     }
 
     return ShardsTypes::Drawable;
@@ -294,6 +313,9 @@ struct GLTFShard {
   // there can only be builtin target identifiers left in the path
   MeshTreeDrawable::Ptr findNode(Animations::Path &p) {
     MeshTreeDrawable::Ptr node = _model->root;
+    if (_drawable->rootNodeWrapped)
+      node = node->getChildren()[0];
+
     while (true) {
       if (!node)
         return MeshTreeDrawable::Ptr();
@@ -371,6 +393,27 @@ struct GLTFShard {
     return true;
   }
 
+  void replaceMaterial(std::string_view materialName, MaterialPtr dst) {
+    auto matIt = _model->materials.find(std::string(materialName));
+    if (matIt == _model->materials.end()) {
+      throw std::runtime_error(fmt::format("Material not found {}", materialName));
+    }
+
+    if (matIt->second == dst)
+      return; // Nothing to do
+
+    MeshTreeDrawable::foreach (_model->root, [&](MeshTreeDrawable::Ptr &ptr) {
+      for (auto &drawable : ptr->drawables) {
+        if (drawable->material == matIt->second) {
+          drawable->material = dst;
+        }
+      }
+    });
+
+    // Replace mapping
+    matIt->second = dst;
+  }
+
   void applyInputTable(SHContext *context, const TableVar &table) {
     const auto &rootNode = getMeshTreeDrawable();
 
@@ -390,8 +433,14 @@ struct GLTFShard {
       for (auto &[k, v] : materialsTable.payload.tableValue) {
         if (k.valueType != SHType::String)
           throw std::runtime_error(fmt::format("material key should be a string ({})", k));
+        if (v.valueType == SHType::Object && isObjectType(v, ShardsTypes::Material)) {
+          auto &shmaterial = *reinterpret_cast<SHMaterial *>(v.payload.objectValue);
+          replaceMaterial(SHSTRVIEW(k), shmaterial.material);
+          continue;
+        }
+
         if (v.valueType != SHType::Table)
-          throw std::runtime_error(fmt::format("material value for {} should be a table ({})", k, v));
+          throw std::runtime_error(fmt::format("material value for {} should be a table or material (was {})", k, v));
 
         auto material = _model->materials[k.payload.stringValue];
         if (!material) {
@@ -490,6 +539,8 @@ struct GLTFShard {
 
     auto &drawable = getMeshTreeDrawable();
     if (!drawable) {
+      bool rootNodeWrapped = false;
+
       switch (_loadMode) {
       case LoadFileDynamic:
         _model.emplace(loadGltfFromFile(SHSTRVIEW(_path.get())));
@@ -503,6 +554,8 @@ struct GLTFShard {
         _model.emplace();
         _model->root = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
         _model->animations = shOther.animations;
+        _model->materials = shOther.materials;
+        rootNodeWrapped = shOther.rootNodeWrapped;
       } break;
       case LoadMode::LoadFileStatic:
         assert(_model); // Loaded in warmup
@@ -512,8 +565,14 @@ struct GLTFShard {
         break;
       }
 
+      if (!rootNodeWrapped && !_wrapRootNode->isNone() && (bool)*_wrapRootNode) {
+        wrapRootNode(*_model);
+        _drawable->rootNodeWrapped = true;
+      }
+
       _drawable->drawable = _model->root;
       _drawable->animations = _model->animations;
+      _drawable->materials = _model->materials;
 
       if (hasAnimationController()) {
         shardifyAnimationData();
