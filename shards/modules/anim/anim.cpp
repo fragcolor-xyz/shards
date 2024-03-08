@@ -126,7 +126,6 @@ struct TimerShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    double &time = getTime();
 
     Var offsetVar{_offset.get()};
     float offset = offsetVar.isNone() ? 0.0f : float(offsetVar);
@@ -141,6 +140,15 @@ struct TimerShard {
     bool looped = loopedVar.isNone() ? true : bool(loopedVar);
     if (!duration)
       looped = false;
+
+    double &time = getTime();
+
+    // Auto restart with variable
+    if (_variable.isVariable()) {
+      if (!duration || time < *duration) {
+        _stopped = false;
+      }
+    }
 
     float deltaTime = _deltaTimer.update();
     if (!_stopped) {
