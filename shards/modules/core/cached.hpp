@@ -17,7 +17,10 @@ struct Cached {
   OwnedVar _lastInput;
   SHVar _lastOutput{};
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _lastInput = Var::Empty;
+  }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(SHInstanceData &data) {
