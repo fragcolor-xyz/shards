@@ -287,6 +287,89 @@ struct DurationShard {
   SHVar activate(SHContext *shContext, const SHVar &input) { return Var{getAnimationDuration(input)}; }
 };
 
+struct InterpolateShard {
+  static inline shards::Types FloatTypes{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type};
+
+  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
+  static SHTypesInfo inputTypes() { return FloatTypes; }
+  static SHTypesInfo outputTypes() { return FloatTypes; }
+
+  DeltaTimer _deltaTimer;
+  std::optional<Var> _lastValue;
+  Var _a;
+  Var _b;
+  Var _lastOutput;
+  double t{};
+
+  PARAM_PARAMVAR(_duration, "Duration", "Duration of interpolation",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_duration));
+
+  double getDuration() const { return _duration.isNone() ? 1.0f : _duration.get().payload.floatValue; }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _deltaTimer.reset();
+    _lastValue.reset();
+    _lastOutput.valueType = SHType::None;
+  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+
+  void updateOutput() {
+    double phase = t / getDuration();
+
+    // TODO: better determination
+    bool isQuaternion = false; // va.valueType == SHType::Float4;
+    if (isQuaternion) {
+      // Quaternion slerp
+      float4 a = toVec<float4>(_a);
+      float4 b = toVec<float4>(_b);
+
+      // Fix for long path rotations (>180 degrees)
+      float dot = linalg::dot(a, b);
+      if (dot < 0.0)
+        a = -a;
+      _lastOutput = toVar(linalg::slerp(a, b, float(phase)));
+    } else {
+      // Generic lerp
+      _lastOutput.valueType = _a.valueType;
+      Math::dispatchType<Math::DispatchType::FloatTypes>(_a.valueType, Math::ApplyLerp{}, _lastOutput.payload, _a.payload,
+                                                         _b.payload, double(phase));
+    }
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float dt = _deltaTimer.update();
+    if (!_lastValue) {
+      _lastValue = input;
+      _lastOutput = input;
+      _a = input;
+      _b = input;
+      t = getDuration();
+    }
+
+    if (*_lastValue != input) {
+      _lastValue = input;
+      _a = _lastOutput;
+      _b = input;
+      t = 0.0f;
+    }
+
+    if (t < getDuration()) {
+      t = std::min((t + dt), getDuration());
+      updateOutput();
+    }
+
+    return _lastOutput;
+  }
+};
+
 extern void registerTypes();
 } // namespace shards::Animations
 
@@ -296,4 +379,5 @@ SHARDS_REGISTER_FN(anim) {
   REGISTER_SHARD("Animation.Timer", TimerShard);
   REGISTER_SHARD("Animation.Play", PlayShard);
   REGISTER_SHARD("Animation.Duration", DurationShard);
+  REGISTER_SHARD("Animation.Interpolated", InterpolateShard);
 }
