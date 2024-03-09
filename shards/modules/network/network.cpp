@@ -88,14 +88,18 @@ struct NetworkBase {
 
       // defer all in the context or we will crash!
       if (_socket) {
+        std::scoped_lock<std::mutex> l(_socketMutex);
+
         struct Container {
           udp::socket socket;
           Container(udp::socket &&s) : socket(std::move(s)) {}
         };
+
         boost::asio::post(io_context, [socket_ = std::make_unique<Container>(std::move(_socket.value()))]() {
           SHLOG_TRACE("Closing socket");
           socket_->socket.close();
         });
+
         _socket.reset();
       }
     }
