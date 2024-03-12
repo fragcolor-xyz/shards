@@ -2216,6 +2216,14 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             None
           }
         }
+      } else if let Some(w) = find_wire(&name, e) {
+        let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
+        let shard = AutoShardRef(shard);
+        shard
+          .0
+          .set_parameter(0, w.0)
+          .map_err(|e| (format!("{}", e), line_info).into())?;
+        Some(shard)
       } else {
         let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
         let shard = AutoShardRef(shard);

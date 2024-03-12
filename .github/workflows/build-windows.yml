@@ -284,6 +284,8 @@ jobs:
           ./shards new ../shards/tests/help.shs
           echo "Running when-done"
           ./shards new ../shards/tests/whendone.shs
+          echo "Running do-wire"
+          ./shards new ../shards/tests/do-wire.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

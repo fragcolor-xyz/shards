@@ -813,8 +813,8 @@ void validateConnection(ValidationContext &ctx) {
       }
       // and inherited
       for (auto &pair : ctx.inherited) {
-        if(ctx.exposed.find(pair.first) != ctx.exposed.end())
-          continue;  // Let exposed override inherited
+        if (ctx.exposed.find(pair.first) != ctx.exposed.end())
+          continue; // Let exposed override inherited
         shards::arrayPush(data.shared, pair.second);
       }
     }
@@ -992,6 +992,10 @@ void validateConnection(ValidationContext &ctx) {
       std::stringstream ss;
       ss << "Required types do not match currently exposed ones for variable '" << required.first
          << "' required possible types: ";
+      auto exposedType = findIt->second.exposedType;
+      auto requiredType = required_param.exposedType;
+      matchTypes(exposedType, requiredType, false, true, false);
+
       auto &type = required.second;
       ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
 

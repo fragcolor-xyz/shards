@@ -1,0 +1,57 @@
+@define(card-assets-ids [
+  "aq594zhoe"
+  "a8CQtlwAw"
+  "a8NMMjbfi"
+  "a_U-Jazbf"
+])
+
+@wire(aq594zhoe/card-logic {{name: "aq594zhoe"}})
+@wire(a8CQtlwAw/card-logic {{name: "a8CQtlwAw"}})
+@wire(a8NMMjbfi/card-logic {{name: "a8NMMjbfi"}})
+@wire(a_U-Jazbf/card-logic {{name: "a_U-Jazbf"}})
+
+@template(macro-id [ns name] {{namespaces: ns name: name}})
+@template(macro-const-id-block [id] {{content: {Const: {Identifier: id}}}})
+@template(macro-sub-block [inner] {{content: {Shard: {name: #(@macro-id([] "Sub")) params: [{name: none value: inner}]}}}})
+@template(macro-do-shard-block [inner] {{content: {Shard: {name: #(@macro-id([] "Do")) params: [{name: none value: inner}]}}}})
+
+; Expands into a `<asset-id>/<wire-name> | <inner>` for each of the values in card-assets-ids
+@macro(for-each-card-wire [wire-name inner] {
+  @ast(inner) | FromJson = inner-ast
+  @macro-sub-block(inner-ast) = sub-ast
+  
+  Sequence(pipelines)
+  @card-assets-ids | ForEach({
+    = asset-id
+    @macro-const-id-block(({namespaces: [asset-id] name: wire-name})) = wire-ref
+    @macro-do-shard-block(wire-ref) = do-ast
+    {Pipeline: {
+        blocks: [
+          wire-ref
+          sub-ast
+        ]
+     }} >> pipelines
+  })
+  {statements: pipelines}
+  ToJson
+})
+
+@for-each-card-wire("card-logic" {
+  >> wires
+  Log("Wire")
+})
+wires | Log("Wires")
+
+wires | ForEach({
+  = wire
+  DoWire(wire) | Log("output")
+})
+
+wires | Map({
+  = wire
+  DoWire(wire ExpectedOutputType: @type({name: Type::String}))
+}) = elems
+
+elems
+Assert.Is([{name: "aq594zhoe"} {name: "a8CQtlwAw"} {name: "a8NMMjbfi"} {name: "a_U-Jazbf"}])
+Log("collected elements")
