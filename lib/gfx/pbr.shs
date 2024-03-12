@@ -246,7 +246,7 @@
 
 @template(render-pbr-base [capture-steps probe-location hash-in out-features] {
   @wire(update-probes {
-    [probe-location hash-in] | Cached({
+    [probe-location hash-in] | Memoize({
       @generate-probes(capture-steps probe-location)
     }) = pbr-probes
     @setup-pbr-feature(pbr-probes)

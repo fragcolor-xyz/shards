@@ -42,7 +42,7 @@
     })
     
     light-direction | Math.Normalize = ldn
-    [ldn light-color] | Cached({
+    [ldn light-color] | Memoize({
       Log("Recomputing skybox")
       GFX.Feature(ComposeWith: {
           lightDir: ldn
