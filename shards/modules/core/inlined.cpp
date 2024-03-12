@@ -8,7 +8,7 @@
 #include <shards/core/module.hpp>
 #include <shards/modules/core/core.hpp>
 #include <shards/modules/core/math.hpp>
-#include <shards/modules/core/cached.hpp>
+#include <shards/modules/core/memoize.hpp>
 
 namespace shards {
 ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_view name) {
@@ -77,8 +77,8 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_
     shard->inlineShardId = InlineShard::MathLShift;
   } else if (name == "Math.RShift") {
     shard->inlineShardId = InlineShard::MathRShift;
-  } else if (name == "Cached") {
-    shard->inlineShardId = InlineShard::CoreCached;
+  } else if (name == "Memoize") {
+    shard->inlineShardId = InlineShard::CoreMemoize;
   }
   return shard->inlineShardId != 0;
 }
@@ -212,8 +212,8 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *
     auto shard = reinterpret_cast<Math::RShiftRuntime *>(blk);
     output = shard->core.activate(context, input);
   } break;
-  case InlineShard::CoreCached: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Cached> *>(blk);
+  case InlineShard::CoreMemoize: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<Memoize> *>(blk);
     output = shard->shard.activate(context, input);
   }
   default:
