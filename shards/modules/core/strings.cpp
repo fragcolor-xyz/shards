@@ -369,6 +369,26 @@ struct StartsWith : Contains {
   }
 };
 
+struct EndsWith : Contains {
+  static inline Parameters params{{{"With",
+                                    SHCCSTR("The string that needs to match the ending of the input string to output true."),
+                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sv = SHSTRVIEW(input);
+    auto check = _check.get();
+    auto checkSv = SHSTRVIEW(check);
+
+    if (sv.size() >= checkSv.size() && sv.substr(sv.size() - checkSv.size(), checkSv.size()).compare(checkSv) == 0) {
+      return Var(true);
+    } else {
+      return Var(false);
+    }
+  }
+};
+
 struct Parser {
   std::string _cache;
 };
@@ -515,4 +535,5 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.Contains", Contains);
   REGISTER_SHARD("String.Split", Split);
   REGISTER_SHARD("String.Starts", StartsWith);
+  REGISTER_SHARD("String.Ends", EndsWith);
 }
