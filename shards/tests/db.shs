@@ -1,5 +1,29 @@
 @mesh(root)
 
+@wire(extra-queries {
+  Pause(1.0)
+  Repeat({
+    Math.Inc(x)
+    Math.Inc(y)
+    [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+    Msg("Extra query")
+  } Times: 10)
+})
+
+@wire(failing-transaction {
+  Maybe({
+    DB.Transaction({
+      Repeat({
+        Math.Inc(x)
+        Math.Inc(y)
+        [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+      } Times: 10)
+      true | Assert.Is(false) ; fail on purpose, we test rerolling here
+    })
+  })
+  Msg("Failing transaction done")
+})
+
 @wire(db-test-1 {
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
@@ -26,16 +50,8 @@
   Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   Msg("Test 3 passed")
 
-  Maybe({
-    DB.Transaction({
-      Repeat({
-        Math.Inc(x)
-        Math.Inc(y)
-        [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
-      } Times: 10)
-      true | Assert.Is(false) ; fail on purpose, we test rerolling here
-    })
-  })
+  Detach(failing-transaction)
+  Detach(extra-queries)
 
   Repeat({
     [] | DB.Query("SELECT * FROM integers") | Log

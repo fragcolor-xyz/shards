@@ -36,7 +36,7 @@ struct Connection {
       if (sqlite3_open(path, &db) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
-          }
+    }
 
     uint32_t res;
     if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
@@ -59,9 +59,7 @@ struct Connection {
     }
   }
 
-  sqlite3 *get() {
-    return db;
-  }
+  sqlite3 *get() { return db; }
 
   void loadExtension(const std::string &path_) {
     char *errorMsg = nullptr;
@@ -106,9 +104,23 @@ struct Base {
   OwnedVar _dbNameStr{Var("shards.db")};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
+  bool _withinTransaction{false};
+
   void compose(SHInstanceData &data) {
     if (data.onWorkerThread)
       throw ComposeError("Can not run on worker thread");
+
+    _withinTransaction = false;
+    if (data.shared.len > 0) {
+      for (uint32_t i = data.shared.len; i > 0; i--) {
+        auto idx = i - 1;
+        auto &item = data.shared.elements[idx];
+        if (strcmp(item.name, "DB.Transaction.Cookie") == 0) {
+          _withinTransaction = true;
+          break;
+        }
+      }
+    }
   }
 
   void _ensureDb(SHContext *context, bool readOnly) {
@@ -326,6 +338,12 @@ struct Query : public Base {
     return awaitne(
         context,
         [&]() -> SHVar {
+          // ok if we are not within a transaction, we need to check if transaction lock is locked!
+          std::optional<std::unique_lock<std::mutex>> transactionLock;
+          if (!_withinTransaction) {
+            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
+            transactionLock = std::move(lock);
+          }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
@@ -391,10 +409,26 @@ struct Transaction : public Base {
 
   PARAM_REQUIRED_VARIABLES();
 
+  static inline SHExposedTypeInfo _cookie{"DB.Transaction.Cookie"};
+
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     Base::compose(data);
-    _composeResult = _queries.compose(data);
+
+    // we need to edit a copy of data
+    SHInstanceData dataCopy = data;
+    // we need to deep copy it
+    dataCopy.shared = {};
+    DEFER({ arrayFree(dataCopy.shared); });
+    for (uint32_t i = data.shared.len; i > 0; i--) {
+      auto idx = i - 1;
+      auto &item = data.shared.elements[idx];
+      arrayPush(dataCopy.shared, item);
+    }
+    // add our transaction cookie
+    arrayPush(dataCopy.shared, _cookie);
+    // the cookie will be used within inner queries to ensure they are part of the transaction
+    _composeResult = _queries.compose(dataCopy);
     return data.inputType;
   }
 
@@ -488,6 +522,11 @@ struct LoadExtension : public Base {
     return awaitne(
         context,
         [&] {
+          std::optional<std::unique_lock<std::mutex>> transactionLock;
+          if (!_withinTransaction) {
+            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
+            transactionLock = std::move(lock);
+          }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
@@ -532,6 +571,11 @@ struct RawQuery : public Base {
     return awaitne(
         context,
         [&] {
+          std::optional<std::unique_lock<std::mutex>> transactionLock;
+          if (!_withinTransaction) {
+            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
+            transactionLock = std::move(lock);
+          }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
@@ -582,6 +626,11 @@ struct Backup : public Base {
     return awaitne(
         context,
         [&] {
+          std::optional<std::unique_lock<std::mutex>> transactionLock;
+          if (!_withinTransaction) {
+            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
+            transactionLock = std::move(lock);
+          }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::unique_lock<std::mutex> l2(_connection->mutex);
 
