@@ -74,7 +74,7 @@ struct WireBase {
   void checkWireMesh(SHContext *ctx) {
     auto currentMesh = ctx->main->mesh.lock();
     auto stopWireMesh = wire->mesh.lock();
-    if (currentMesh != stopWireMesh) {
+    if (currentMesh && stopWireMesh && currentMesh != stopWireMesh) {
       SHLOG_ERROR("Wire and current wire are not part of the same mesh, wire: {}, current: {}", wire->name,
                   ctx->rootWire()->name);
       throw ActivationError("Wire and current wire are not part of the same mesh");
