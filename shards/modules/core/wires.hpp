@@ -62,9 +62,24 @@ struct WireBase {
 
   void cleanup(SHContext *context) { wireref.cleanup(); }
 
-  void warmup(SHContext *ctx) { wireref.warmup(ctx); }
+  void warmup(SHContext *ctx) {
+    wireref.warmup(ctx);
+    if (wire) {
+      checkWireMesh(ctx);
+    }
+  }
 
   void resolveWire();
+
+  void checkWireMesh(SHContext *ctx) {
+    auto currentMesh = ctx->main->mesh.lock();
+    auto stopWireMesh = wire->mesh.lock();
+    if (currentMesh != stopWireMesh) {
+      SHLOG_ERROR("StopWire: wire and current wire are not part of the same mesh, wire: {}, current: {}", wire->name,
+                  ctx->rootWire()->name);
+      throw ActivationError("StopWire: wire and current wire are not part of the same mesh");
+    }
+  }
 
   // Use state to mark the dependency for serialization as well!
 
@@ -194,6 +209,10 @@ struct BaseRunner : public WireBase {
       }
 
       onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
+    }
+
+    if (wire) {
+      checkWireMesh(ctx);
     }
 
     _mesh = ctx->main->mesh.lock();

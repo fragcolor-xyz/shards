@@ -912,7 +912,7 @@ struct SwitchTo : public WireBase {
     // it does not make sense cos maybe another wire wants to pick it up and resume it!
     // we should not be the owners of the wire, we just want to switch to it!
     // think like a state machine, we are just switching to another state
-    if(stopOnCleanup) {
+    if (stopOnCleanup) {
       if (wire) {
         SHLOG_TRACE("Start/Resume: stopping wire: {}", wire->name);
         shards::stop(wire.get());
