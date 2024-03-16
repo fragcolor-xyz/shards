@@ -111,6 +111,8 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   auto mesh = data.wire->mesh.lock();
   assert(mesh);
 
+  checkWireMesh(data.wire->name, mesh.get());
+
   auto currentMesh = wire->mesh.lock();
   if (currentMesh && currentMesh != mesh)
     throw ComposeError(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
@@ -409,6 +411,10 @@ struct IsRunning : public WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     resolveWire();
+    if (wire) {
+      auto currentMesh = wire->mesh.lock();
+      checkWireMesh(data.wire->name, currentMesh.get());
+    }
     return CoreInfo::BoolType;
   }
 
@@ -567,6 +573,10 @@ struct StopWire : public WireBase {
       _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
     } else {
       resolveWire();
+      if (wire) {
+        auto currentMesh = wire->mesh.lock();
+        checkWireMesh(data.wire->name, currentMesh.get());
+      }
     }
 
     return data.inputType;

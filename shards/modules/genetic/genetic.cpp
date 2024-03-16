@@ -113,7 +113,7 @@ struct Evolve {
 
     SHInstanceData vdata{};
     vdata.wire = bwire.get();
-    bwire->mesh = emptyMesh;
+    bwire->mesh = data.wire->mesh;
     auto res = composeWire(
         bwire.get(),
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
@@ -127,10 +127,13 @@ struct Evolve {
         this, vdata);
     arrayFree(res.exposedInfo);
     arrayFree(res.requiredInfo);
+    // unset the wire->mesh as it's not the same as the one we run on, that will happen later
+    // but warmup will fail if we don't do this
+    bwire->mesh.reset();
 
     vdata.inputType = res.outputType;
     vdata.wire = fwire.get();
-    fwire->mesh = emptyMesh;
+    fwire->mesh = data.wire->mesh;
     res = composeWire(
         fwire.get(),
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
@@ -147,6 +150,9 @@ struct Evolve {
     }
     arrayFree(res.exposedInfo);
     arrayFree(res.requiredInfo);
+    // unset the wire->mesh as it's not the same as the one we run on, that will happen later
+    // but warmup will fail if we don't do this
+    fwire->mesh.reset();
 
     return _outputType;
   }
@@ -170,7 +176,7 @@ struct Evolve {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
       cleanupFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
@@ -598,7 +604,6 @@ private:
   double _elitism = 0.1;
   size_t _nelites = 0;
   size_t _era = 0;
-  std::shared_ptr<SHMesh> emptyMesh{SHMesh::make()};
 };
 
 struct Mutant {
@@ -655,7 +660,7 @@ struct Mutant {
     }
   }
 
-  void cleanupMutations(SHContext* context) const {
+  void cleanupMutations(SHContext *context) const {
     if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
         if (mut.valueType == SHType::ShardRef) {
@@ -689,7 +694,7 @@ struct Mutant {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _shard.cleanup(context);
     cleanupMutations(context);
   }
@@ -1099,7 +1104,7 @@ struct DShard {
       _wrapped->warmup(_wrapped, context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_wrapped)
       _wrapped->cleanup(_wrapped, context);
   }
