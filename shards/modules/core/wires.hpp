@@ -66,6 +66,14 @@ struct WireBase {
 
   void resolveWire();
 
+  void checkWireMesh(const std::string &rootName, SHMesh *currentMesh) {
+    auto wireMesh = wire->mesh.lock();
+    if (currentMesh && wireMesh && currentMesh != wireMesh.get()) {
+      SHLOG_ERROR("Wire and current wire are not part of the same mesh, wire: {}, current: {}", wire->name, rootName);
+      throw ActivationError("Wire and current wire are not part of the same mesh");
+    }
+  }
+
   // Use state to mark the dependency for serialization as well!
 
   SHVar getState() {
