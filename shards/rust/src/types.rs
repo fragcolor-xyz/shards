@@ -102,6 +102,8 @@ use serde::{Deserialize, Serialize};
 use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::i32::MAX;
 use std::os::raw::c_char;
 use std::pin::Pin;
@@ -125,7 +127,7 @@ pub type ParameterInfo = SHParameterInfo;
 pub type RawString = SHString;
 
 #[repr(transparent)] // force it same size of original
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Hash, PartialEq, Eq)]
 pub struct ClonedVar(pub Var);
 
 impl ClonedVar {
@@ -1302,7 +1304,7 @@ impl Type {
 SHVar utility
  */
 
-impl Serialize for Seq {
+impl Serialize for SeqVar {
   fn serialize<S>(
     &self,
     se: S,
@@ -1311,14 +1313,14 @@ impl Serialize for Seq {
     S: serde::Serializer,
   {
     let mut s = se.serialize_seq(Some(self.len()))?;
-    for value in self.iter() {
+    for ref value in self.iter() {
       s.serialize_element(value)?;
     }
     s.end()
   }
 }
 
-impl Serialize for Table {
+impl Serialize for TableVar {
   fn serialize<S>(
     &self,
     se: S,
@@ -1497,14 +1499,14 @@ impl Serialize for Var {
         s.end()
       }
       SHType_Seq => {
-        let seq: Seq = self.try_into().unwrap();
+        let seq: SeqVar = self.try_into().unwrap();
         let mut s = se.serialize_seq(Some(2))?;
         s.serialize_element(&self.valueType)?;
         s.serialize_element(&seq)?;
         s.end()
       }
       SHType_Table => {
-        let table: Table = self.try_into().unwrap();
+        let table: TableVar = self.try_into().unwrap();
         let mut s = se.serialize_seq(Some(2))?;
         s.serialize_element(&self.valueType)?;
         s.serialize_element(&table)?;
@@ -1515,7 +1517,7 @@ impl Serialize for Var {
   }
 }
 
-impl<'de> Deserialize<'de> for Seq {
+impl<'de> Deserialize<'de> for AutoSeqVar {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
     D: Deserializer<'de>,
@@ -1523,7 +1525,7 @@ impl<'de> Deserialize<'de> for Seq {
     struct SeqVisitor;
 
     impl<'de> Visitor<'de> for SeqVisitor {
-      type Value = Seq;
+      type Value = AutoSeqVar;
 
       fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str("a supported Seq value")
@@ -1533,9 +1535,9 @@ impl<'de> Deserialize<'de> for Seq {
       where
         A: SeqAccess<'de>,
       {
-        let mut dst = Seq::new();
+        let mut dst = AutoSeqVar::new();
         while let Some(var) = seq.next_element::<ClonedVar>()? {
-          dst.push(&var.0);
+          dst.0.push(&var.0);
         }
         Ok(dst)
       }
@@ -1545,7 +1547,7 @@ impl<'de> Deserialize<'de> for Seq {
   }
 }
 
-impl<'de> Deserialize<'de> for Table {
+impl<'de> Deserialize<'de> for AutoTableVar {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
     D: Deserializer<'de>,
@@ -1553,7 +1555,7 @@ impl<'de> Deserialize<'de> for Table {
     struct TableVisitor;
 
     impl<'de> Visitor<'de> for TableVisitor {
-      type Value = Table;
+      type Value = AutoTableVar;
 
       fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str("a supported Table value")
@@ -1563,10 +1565,10 @@ impl<'de> Deserialize<'de> for Table {
       where
         A: MapAccess<'de>,
       {
-        let mut table = Table::new();
+        let mut table = AutoTableVar::new();
         while let Some((key, value)) = map.next_entry::<&str, ClonedVar>()? {
           let key = Var::ephemeral_string(key);
-          table.insert_fast(key, &value.0);
+          table.0.insert_fast(key, &value.0);
         }
         Ok(table)
       }
@@ -1676,12 +1678,14 @@ impl<'de> Deserialize<'de> for ClonedVar {
             v.payload.__bindgen_anon_1.imageValue.data = value.as_ptr() as *mut u8;
           }
           SHType_Seq => {
-            let seq: Seq = seq.next_element()?.unwrap();
-            v = Var::from(&seq);
+            let seq: AutoSeqVar = seq.next_element()?.unwrap();
+            // just reinterpret the sequence as a ClonedVar! (this is safe)
+            return Ok(unsafe { std::mem::transmute(seq) });
           }
           SHType_Table => {
-            let table: Table = seq.next_element()?.unwrap();
-            v = Var::from(&table);
+            let table: AutoTableVar = seq.next_element()?.unwrap();
+            // just reinterpret the sequence as a ClonedVar! (this is safe)
+            return Ok(unsafe { std::mem::transmute(table) });
           }
           _ => unimplemented!("Unsupported type: {:?}", type_),
         }
@@ -5786,6 +5790,8 @@ impl PartialEq for Var {
     }
   }
 }
+
+impl Eq for Var {}
 
 impl PartialEq for Type {
   fn eq(&self, other: &Type) -> bool {

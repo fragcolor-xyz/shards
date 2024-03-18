@@ -838,7 +838,7 @@ struct SwitchTo : public WireBase {
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Start/Resume need to capture all it needs, so we need deeper informations
+    // SwitchTo need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     resolveWire();
     if (wire) {
@@ -855,7 +855,7 @@ struct SwitchTo : public WireBase {
         if (it != wire->requirements.end()) {
           if (!avail.global) {
             // Capture if not global as we need to copy it!
-            SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+            SHLOG_TRACE("SwitchTo: adding variable to requirements: {}, wire {}", avail.name, wire->name);
             SHVar ctxVar{};
             ctxVar.valueType = SHType::ContextVar;
             ctxVar.payload.stringValue = avail.name;
@@ -912,7 +912,7 @@ struct SwitchTo : public WireBase {
     WireBase::warmup(context);
 
     for (auto &v : _vars) {
-      SHLOG_TRACE("Start/Resume: warming up variable: {}", v.variableName());
+      SHLOG_TRACE("SwitchTo: warming up variable: {}", v.variableName());
       v.warmup(context);
     }
   }
@@ -924,7 +924,7 @@ struct SwitchTo : public WireBase {
     // think like a state machine, we are just switching to another state
     if (stopOnCleanup) {
       if (wire) {
-        SHLOG_TRACE("Start/Resume: stopping wire: {}", wire->name);
+        SHLOG_TRACE("SwitchTo: stopping wire: {}", wire->name);
         shards::stop(wire.get());
       }
     }
