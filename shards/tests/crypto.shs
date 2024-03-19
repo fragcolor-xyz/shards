@@ -162,6 +162,8 @@
   NanoID | Log
 
   Snowflake(31 31) | Log("snowflake")
+
+  15 | Mnemonic.Generate | Log
 })
 
 @schedule(root main)
