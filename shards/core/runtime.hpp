@@ -527,7 +527,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     ZoneScoped;
 
-    SHLOG_TRACE("Pre-composing wire {}", wire->name);
+    SHLOG_TRACE("Composing wire {}", wire->name);
 
     if (wire->warmedUp) {
       SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
@@ -563,7 +563,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     shards::arrayFree(validation.requiredInfo);
     shards::freeDerivedInfo(data.inputType);
 
-    SHLOG_TRACE("Wire {} Pre-composing", wire->name);
+    SHLOG_TRACE("Wire {} composed", wire->name);
   }
 
   struct EmptyObserver {
