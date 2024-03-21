@@ -33,9 +33,7 @@ impl Default for EguiHost {
         help: cstr!("The UI context.").into(),
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
-        isTableEntry: false,
         global: false,
-        isPushTable: false,
         exposed: false,
       },
       ExposedInfo {
@@ -44,9 +42,7 @@ impl Default for EguiHost {
         help: cstr!("The parent UI objects.").into(),
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
-        isTableEntry: false,
         global: false,
-        isPushTable: false,
         exposed: false,
       },
     ];

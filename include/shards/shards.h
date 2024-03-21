@@ -462,19 +462,8 @@ struct SHExposedTypeInfo {
   // can only be used directly as reference from params
   SHBool isProtected;
 
-  // if isTableEntry is true:
-  // `name` will be the name of the table variable
-  // `exposedType` will be of `Table` type
-  // and `tableKeys` will contain the record's key name
-  // while `tableTypes` the record's type
-  SHBool isTableEntry;
-
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
-
-  // If this variable is a table that is populated using Push blocks
-  // Which makes some assumptions and optimizations for keys caching
-  SHBool isPushTable;
 
   // If the variable is market as exposed, apps building on top will can use this feature
   SHBool exposed;
@@ -829,7 +818,8 @@ typedef struct SHExternalVariable {
 typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, struct SHStringWithLen name, struct SHExternalVariable *pVar);
 typedef void(__cdecl *SHRemoveExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, struct SHStringWithLen name, const struct SHTypeInfo *type);
+typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, struct SHStringWithLen name,
+                                                         const struct SHTypeInfo *type);
 
 typedef void(__cdecl *SHFreeExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 

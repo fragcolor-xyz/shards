@@ -1229,21 +1229,19 @@ struct ExposedInfo {
     }
   }
 
-  constexpr static SHExposedTypeInfo Variable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false,
-                                              bool isTableField = false, bool isPushTable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable, false, isTableField, false, isPushTable};
+  constexpr static SHExposedTypeInfo Variable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false) {
+    SHExposedTypeInfo res = {name, help, type, isMutable};
     return res;
   }
 
   constexpr static SHExposedTypeInfo ProtectedVariable(SHString name, SHOptionalString help, SHTypeInfo type,
                                                        bool isMutable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable, true, false, false};
+    SHExposedTypeInfo res = {name, help, type, isMutable, true};
     return res;
   }
 
-  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false,
-                                                    bool isTableField = false, bool isPushTable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable, false, isTableField, true, isPushTable};
+  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false) {
+    SHExposedTypeInfo res = {name, help, type, isMutable, false, true};
     return res;
   }
 
