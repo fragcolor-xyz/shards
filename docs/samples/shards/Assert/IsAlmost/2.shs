@@ -1,0 +1,9 @@
+;; :Abort = `true`, assertion false
+;; => abort the program
+7.0 | Maybe(Assert.IsAlmost(
+              ;:Value
+              8.0
+              ;:Abort
+              ;; uncomment next line to abort program on run
+              ;true
+))
