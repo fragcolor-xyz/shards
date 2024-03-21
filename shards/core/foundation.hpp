@@ -1240,7 +1240,8 @@ struct ExposedInfo {
     return res;
   }
 
-  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false) {
+  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type,
+                                                    bool isMutable = false) {
     SHExposedTypeInfo res = {name, help, type, isMutable, false, true};
     return res;
   }

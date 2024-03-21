@@ -748,6 +748,7 @@ struct ValidationContext {
   std::unordered_set<std::string_view> variables;
   std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
+  VisitedWires* visitedWires{};
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -801,6 +802,7 @@ void validateConnection(ValidationContext &ctx) {
       data.wire = ctx.wire;
       data.inputType = previousOutput;
       data.requiredVariables = ctx.fullRequired;
+      data.visitedWires = ctx.visitedWires;
       if (ctx.next) {
         data.outputTypes = ctx.next->inputTypes(ctx.next);
       }
@@ -1021,7 +1023,14 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
+  VisitedWires *visitedWires{};
+  if (!data.visitedWires) {
+    data.visitedWires = visitedWires = new VisitedWires{};
+  }
+  DEFER({ delete visitedWires; });
+
   ValidationContext ctx{};
+  ctx.visitedWires = reinterpret_cast<VisitedWires*>(data.visitedWires);
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
@@ -2823,7 +2832,6 @@ void SHWire::cleanup(bool force) {
     // finally reset the mesh
     auto mesh_ = mesh.lock();
     if (mesh_) {
-      mesh_->visitedWires.erase(this);
       mesh_->scheduled.erase(shared_from_this());
     }
     mesh.reset();

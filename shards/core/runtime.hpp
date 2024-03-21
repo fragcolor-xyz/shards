@@ -513,6 +513,7 @@ struct RuntimeCallbacks {
 };
 }; // namespace shards
 
+using VisitedWires = std::unordered_map<SHWire *, SHTypeInfo>;
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static constexpr uint32_t TypeId = 'brcM';
   static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
@@ -536,9 +537,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     wire->mesh = shared_from_this();
 
-    // this is to avoid recursion during compose
-    visitedWires.clear();
-
     wire->isRoot = true;
     // remove when done here
     DEFER(wire->isRoot = false);
@@ -547,6 +545,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     SHInstanceData data = instanceData;
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
+    VisitedWires visitedWires;
+    data.visitedWires = &visitedWires;
     auto validation = shards::composeWire(
         wire.get(),
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
@@ -589,9 +589,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     observer.before_compose(wire.get());
     if (compose) {
-      // this is to avoid recursion during compose
-      visitedWires.clear();
-
       wire->isRoot = true;
       // remove when done here
       DEFER(wire->isRoot = false);
@@ -684,7 +681,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
           // stop should have done the following:
           SHLOG_TRACE("Wire {} ended while ticking", flow.wire->name);
-          shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
           shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
           shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
 
@@ -724,7 +720,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto wire : toStop) {
       shards::stop(wire.get());
       // stop should have done the following:
-      shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
       shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
       shassert(wire->mesh.expired() && "Wire still has a mesh!");
     }
@@ -733,9 +728,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // release all wires
     scheduled.clear();
-
-    // do this here just in case as well as we might be not using schedule directly!
-    visitedWires.clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
@@ -759,7 +751,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+    // shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
     shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
     shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
@@ -774,9 +766,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   const std::vector<std::string> &errors() { return _errors; }
 
   const std::vector<SHWire *> &failedWires() { return _failedWires; }
-
-  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::mutex visitedWiresMutex;
 
   std::unordered_set<std::shared_ptr<SHWire>> scheduled;
 

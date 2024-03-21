@@ -646,6 +646,7 @@ struct SHInstanceData {
 
   // Internally used
   void *requiredVariables;
+  void *visitedWires;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();
