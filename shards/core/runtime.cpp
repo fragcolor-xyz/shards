@@ -2101,49 +2101,74 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
       map = (SHMap *)dst.payload.tableValue.opaque;
 
-      // let's do some magic here, while KISS at same time
-      if (dst.payload.tableValue.api == src.payload.tableValue.api) {
-        auto sMap = (SHMap *)src.payload.tableValue.opaque;
-        if (sMap->size() == map->size()) {
-          auto it = sMap->begin();
-          auto dit = map->begin();
-          // copy values fast, hoping keys are the same
-          // we might end up with some extra copies if keys are not the same but
-          // given shards nature, it's unlikely it will be the majority of cases
-          while (it != sMap->end()) {
-            if (it->first != dit->first)
-              goto early_exit;
+      // Attempt to update the existing table to match the source table
+      // This is important to keep references to the table stable, even when adding elements
+      shassert(dst.payload.tableValue.api == src.payload.tableValue.api);
 
-            cloneVar(dit->second, it->second);
+      auto sMap = (SHMap *)src.payload.tableValue.opaque;
 
-            ++it;
-            ++dit;
+      // Try a fast update first, assuming matching table layouts
+      bool fastUpdateSuccessful = sMap->size() == map->size();
+      auto dstIt = map->begin();
+      if (fastUpdateSuccessful) {
+        auto srcIt = sMap->begin();
+        // copy values fast, hoping keys are the same
+        // we might end up with some extra copies if keys are not the same but
+        // given shards nature, it's unlikely it will be the majority of cases
+        while (srcIt != sMap->end()) {
+          if (srcIt->first != dstIt->first) {
+            fastUpdateSuccessful = false;
+            break;
           }
-          return;
+
+          cloneVar(dstIt->second, srcIt->second);
+
+          ++srcIt;
+          ++dstIt;
         }
       }
 
-    early_exit:
-      // ok clear destination and copy values the old way
-      map->clear();
+      // Slower stable update
+      if (!fastUpdateSuccessful) {
+        SPDLOG_WARN("Perfoming slow table clone on {} => {}", src, dst);
+
+        // Delete/update set
+        for (; dstIt != map->end();) {
+          auto srcIt = sMap->find(dstIt->first);
+          if (srcIt == sMap->end()) {
+            dstIt = map->erase(dstIt);
+          } else {
+            cloneVar(dstIt->second, srcIt->second);
+            ++dstIt;
+          }
+        }
+
+        // If the source table is larger than the destination table, add the missing elements
+        if (map->size() != sMap->size()) {
+          for (auto srcIt = sMap->begin(); srcIt != sMap->end(); ++srcIt) {
+            if (map->find(srcIt->first) == map->end()) {
+              (*map)[srcIt->first] = srcIt->second;
+            }
+          }
+        }
+      }
     } else {
       destroyVar(dst);
       dst.valueType = SHType::Table;
       dst.payload.tableValue.api = &GetGlobals().TableInterface;
       map = new SHMap();
       dst.payload.tableValue.opaque = map;
-    }
 
+      auto &t = src.payload.tableValue;
+      SHTableIterator tit;
+      t.api->tableGetIterator(t, &tit);
+      SHVar k;
+      SHVar v;
+      while (t.api->tableNext(t, &tit, &k, &v)) {
+        (*map)[k] = v;
+      }
+    }
     dst.version++;
-
-    auto &t = src.payload.tableValue;
-    SHTableIterator tit;
-    t.api->tableGetIterator(t, &tit);
-    SHVar k;
-    SHVar v;
-    while (t.api->tableNext(t, &tit, &k, &v)) {
-      (*map)[k] = v;
-    }
   } break;
   case SHType::Set: {
     SHHashSet *set;
