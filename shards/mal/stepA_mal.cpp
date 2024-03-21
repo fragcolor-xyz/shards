@@ -116,15 +116,13 @@ int main(int argc, const char *argv[]) {
   if (result != 99) // 99 triggers our old main
     return result;
 
-  // we need to skip the second arg in this compatibility mode if second arg is `--`
-  if (argc > 2 && strcmp(argv[1], "--") == 0) {
-    argc--;
-    auto argv2 = argv + 1;
-    argv2[0] = argv[0]; // replace argv[1] with argv[0]
-    return malmain(argc, argv2);
-  } else {
-    return malmain(argc, argv);
-  }
+  SHLOG_DEBUG("Mal main");
+
+  // we need to skip the second arg
+  argc--;
+  auto argv2 = argv + 1;
+  argv2[0] = argv[0]; // replace argv[1] with argv[0]
+  return malmain(argc, argv2);
 }
 
 #endif
