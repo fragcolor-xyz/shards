@@ -845,6 +845,9 @@ struct SwitchTo : public WireBase {
     if (wire) {
       auto dataCopy = data;
       dataCopy.requiredVariables = &wire->requirements;
+      for (auto &req : dataCopy.shared) {
+        req.exposed = false;
+      }
 
       WireBase::compose(dataCopy);
 
