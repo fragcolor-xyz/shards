@@ -1,0 +1,12 @@
+
+@wire(main-wire{
+
+"5"
+ToColor
+Log("result")
+  
+}Looped: false)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

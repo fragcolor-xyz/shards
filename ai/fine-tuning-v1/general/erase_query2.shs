@@ -1,0 +1,19 @@
+{
+  prompt: """How do I delete multiple elements in a sequence."""
+
+  solution: """
+   Erase([index-to-delete1 index-to-delete2 index-to-delete3] sequence-to-delete-from)
+  """
+
+  explicit: """
+    Erase(Indices:[index-to-delete1 index-to-delete2 index-to-delete3] Name:sequence-to-delete-from)
+  """
+
+  explanation: """
+    Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).
+    For a sequence, this Shard expects the index (or a sequence of indices in descending order) of the element(s) to be erased, followed by the name of the sequence variable in the Name parameter.
+    To delete more elements, add the more Indeces to the sequence in the Indeces parameter.
+  """
+
+  tag: "  #General"
+}

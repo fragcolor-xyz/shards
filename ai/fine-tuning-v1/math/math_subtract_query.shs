@@ -1,0 +1,22 @@
+{
+  prompt: """How do I subtract two values together?"""
+
+  solution: """
+    3 | Math.Subtract(2)
+    Log("Result") ;; the result will be 1
+  """
+
+  explicit: """
+    3 | Math.Subtract(Operand:2)
+    Log(Prefix:"Result") ;; the result will be 1
+  """
+
+  explanation: """
+    Math.Subtract is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the subtract
+    mathmatical operation. Math.Subtract can also take in a sequence of floats or integers as input and as a value for the Operand parameter. In this scenario
+    it will subtract the values of each corresponding index and return a sequence.  Both the input and the operand needs to be of the same type for the Shard to function.
+    Unlike Math.Dec which is a unary operation, Math.Subtract is a binary.
+  """
+
+  tag: "  #Maths"
+}

@@ -1,0 +1,21 @@
+{
+  prompt: """How to add a new element to the end of an existing Shards sequence?"""
+
+  solution: 
+    """element | 
+    AppendTo(sequence)"""
+  
+
+  explicit: 
+    """ Get(element) | 
+    AppendTo(Collection: sequence)"""
+  
+
+  explanation: """
+    The AppendTo Shard adds an element that is passed as input to the end of a sequence specified in the Collection parameter.
+    This Shard works on both string and sequence variables.
+    The type  of element being appended needs to be of the same type as the sequence.
+  """
+
+  tag: "  #General"
+}

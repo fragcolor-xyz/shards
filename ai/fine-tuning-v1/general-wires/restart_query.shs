@@ -1,0 +1,21 @@
+{
+  prompt: """How do I resume a wire that has been suspended from the start of the wire?"""
+
+  solution: """
+   @wire(wire{
+    Restart(wire-paused)
+   })
+  """
+
+  explicit: """
+   @wire(wire{
+    Restart(Wire:wire-paused)
+   })
+  """
+
+  explanation: """
+    Restart is a Shard that will resume a previously suspended wire from the start of said wire.
+  """
+
+  tag: "  #General-Wire"
+}
