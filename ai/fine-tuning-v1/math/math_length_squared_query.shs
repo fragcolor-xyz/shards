@@ -1,0 +1,21 @@
+{
+  prompt: """How do I get the swuared length/magnitude of a vector"""
+
+  solution: """
+    @f2(2.0 3.0)
+    Math.Length
+    Log("result") ;; result will be 13
+  """
+
+  explicit: """
+    @f2(2.0 3.0)
+    Math.Length
+    Log(PRefix: "result") ;; result will be 13
+  """
+
+  explanation: """
+    The Math.LengthSquared Shard is a Maths Shard that takes a vector as input and returns the vector's squared magnitude/length calculated using Pythagorean theorem.
+  """
+
+  tag: "  #Maths"
+}

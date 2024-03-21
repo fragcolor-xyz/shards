@@ -1,0 +1,26 @@
+{
+  prompt: """How do I create a conditional statement with more than one conditon, that returns true when either of its predicates is fulfilled."""
+
+  solution:
+    """2 = variable
+    
+    variable
+    When({Is(1) | Or | variable | Is(2)} {
+      Log("condition met")
+    })"""
+
+  explicit:
+    """2 = variable
+    
+    Get(variable)
+    When(Predicate:{Is(1) | Or | Get(variable) | Is(2)}  Action:{
+      Log("condition met")
+    })"""
+
+  explanation: """
+    The Or statement is a Shard that is used to chain multiple  Conditional statements together. If either of the conditions chained are met,
+    the Predicate parameter  will  return true and execute what is dictated in the Action Parameter.
+  """
+
+  tag: "  #General"
+}
