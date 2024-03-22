@@ -37,7 +37,7 @@ if(IOS)
   set_target_properties(crsqlite-extension PROPERTIES
     FRAMEWORK TRUE
     FRAMEWORK_VERSION C
-    MACOSX_FRAMEWORK_IDENTIFIER com.hasten.crsqlite
+    MACOSX_FRAMEWORK_IDENTIFIER com.fragcolor.crsqlite
     VERSION 1.0.0
     SOVERSION 1.0.0
   )
