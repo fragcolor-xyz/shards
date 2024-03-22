@@ -1292,8 +1292,7 @@ struct Update : public SetUpdateBase {
       dispatcherPtr = &dispatcher;
     } else {
       if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-        SHLOG_ERROR("Error with variable: {}", _name);
-        throw WarmupError("Update: error, variable is exposed.");
+        throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
       }
 
       // restore any possible deferred change here
