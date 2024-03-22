@@ -45,8 +45,11 @@ WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &form
 static inline const SHVar &getDefaultOutputScale() {
   // The default output scale is to scale to the main output
   // set using {main: None}
-  static TableVar table;
-  table["main"] = Var();
+  static TableVar table = []() {
+    TableVar table;
+    table["main"] = Var();
+    return table;
+  }();
   return table;
 }
 
