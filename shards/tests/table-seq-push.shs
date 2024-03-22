@@ -1,0 +1,18 @@
+@wire(main {
+  Once({
+    Sequence(empty-hand-seq Type: @type([Type::Int]))
+    Table(card-data Type: @type({none: Type::Any}))
+    {
+      card-data: card-data
+      hand: empty-hand-seq
+    } >= player-var
+  })
+  0 | Push(player-var "hand")
+  1 | Push(player-var "hand")
+  3 | Push(player-var "hand")
+  player-var | Log("player-var")
+} Looped: true)
+
+@mesh(msh)
+@schedule(msh main)
+@run(msh FPS: 60 Iterations: 4)

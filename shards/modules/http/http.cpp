@@ -29,6 +29,7 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #endif
 
 #include <shards/core/shared.hpp>
+#include <shards/core/wire_doppelganger_pool.hpp>
 
 using namespace std;
 

@@ -272,9 +272,7 @@ impl LegacyShard for Table {
           help: cstr!("The row index.").into(),
           isMutable: false,
           isProtected: false,
-          isTableEntry: false,
           global: false,
-          isPushTable: false,
           exposed: false,
         };
         shared.push(index_info);

@@ -620,9 +620,7 @@ impl ExposedInfo {
       },
       isMutable: false,
       isProtected: false,
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     }
   }
@@ -637,9 +635,7 @@ impl ExposedInfo {
       },
       isMutable: false,
       isProtected: false,
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     }
   }
@@ -651,9 +647,7 @@ impl ExposedInfo {
       help,
       isMutable: false,
       isProtected: false,
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     }
   }
@@ -670,9 +664,7 @@ impl ExposedInfo {
       },
       isMutable: false,
       isProtected: false,
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     }
   }
@@ -689,9 +681,7 @@ impl ExposedInfo {
       help,
       isMutable: false,
       isProtected: false,
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     }
   }

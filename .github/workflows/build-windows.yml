@@ -284,6 +284,8 @@ jobs:
           ./shards new ../shards/tests/help.shs
           echo "Running when-done"
           ./shards new ../shards/tests/whendone.shs
+          echo "Running table-seq-push"
+          ./shards new ../shards/tests/table-seq-push.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

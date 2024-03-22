@@ -9,6 +9,7 @@
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>
+#include <shards/core/wire_doppelganger_pool.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <chrono>
@@ -118,18 +119,18 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
     throw ComposeError(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
 
   wire->mesh = data.wire->mesh;
+  wire->id = data.wire->id;
 
-  {
-    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
-    auto visitedIt = mesh->visitedWires.find(wire.get()); // should be race free
-    if (visitedIt != mesh->visitedWires.end()) {
-      // but visited does not mean composed...
-      if (wire->composeResult && activating) {
-        IterableExposedInfo shared(data.shared);
-        verifyAlreadyComposed(data, shared);
-      }
-      return visitedIt->second;
+  shassert(data.visitedWires && "Visited wires should be set");
+  auto &visitedWires = *reinterpret_cast<VisitedWires *>(data.visitedWires);
+  auto visitedIt = visitedWires.find(wire.get()); // should be race free
+  if (visitedIt != visitedWires.end()) {
+    // but visited does not mean composed...
+    if (wire->composeResult && activating) {
+      IterableExposedInfo shared(data.shared);
+      verifyAlreadyComposed(data, shared);
     }
+    return visitedIt->second;
   }
 
   // avoid stack-overflow
@@ -143,14 +144,12 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // we can add early in this case!
   // useful for Resume/Start
   if (passthrough) {
-    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
-    auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
+    auto [_, done] = visitedWires.emplace(wire.get(), data.inputType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
   } else if (mode == Stepped) {
-    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
-    auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
+    auto [_, done] = visitedWires.emplace(wire.get(), CoreInfo::AnyType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
@@ -231,8 +230,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   }
 
   if (!passthrough && mode != Stepped) {
-    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
-    auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
+    shassert(data.visitedWires && "Visited wires should be set");
+    auto &visitedWires = *reinterpret_cast<VisitedWires *>(data.visitedWires);
+
+    auto [_, done] = visitedWires.emplace(wire.get(), outputType);
     if (done) {
       SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
                   *wire->inputType, wire->outputType);
@@ -844,6 +845,9 @@ struct SwitchTo : public WireBase {
     if (wire) {
       auto dataCopy = data;
       dataCopy.requiredVariables = &wire->requirements;
+      for (auto &req : dataCopy.shared) {
+        req.exposed = false;
+      }
 
       WireBase::compose(dataCopy);
 

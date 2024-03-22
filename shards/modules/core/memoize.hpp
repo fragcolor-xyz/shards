@@ -6,7 +6,7 @@
 #include <shards/common_types.hpp>
 
 namespace shards {
-struct Cached {
+struct Memoize {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Computes a value"); }
@@ -17,13 +17,16 @@ struct Cached {
   OwnedVar _lastInput;
   SHVar _lastOutput{};
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _lastInput = Var::Empty;
+  }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(SHInstanceData &data) {
     SHComposeResult res = _evaluate.compose(data);
     if (res.failed)
-      throw std::runtime_error("Failed to compose Cached evaluate expression");
+      throw std::runtime_error("Failed to compose Memoize evaluate expression");
     return res.outputType;
   }
 

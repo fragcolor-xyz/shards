@@ -175,9 +175,7 @@ impl LegacyShard for Plot {
       help: cstr!("The UI plot context.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
-      isTableEntry: false,
       global: false,
-      isPushTable: false,
       exposed: false,
     };
     shared.push(ctx_info);

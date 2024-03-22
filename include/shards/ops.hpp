@@ -583,7 +583,6 @@ template <> struct hash<SHExposedTypeInfo> {
     res = res ^ hash<SHTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
     res = res ^ hash<int>()(typeInfo.isProtected);
-    res = res ^ hash<int>()(typeInfo.isTableEntry);
     res = res ^ hash<int>()(typeInfo.global);
     return res;
   }

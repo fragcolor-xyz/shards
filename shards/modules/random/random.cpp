@@ -23,7 +23,7 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
 
   SHVar getParam(int index) { return _max; }
 
-  void cleanup(SHContext* context) { _max.cleanup(); }
+  void cleanup(SHContext *context) { _max.cleanup(); }
 
   void warmup(SHContext *context) { _max.warmup(context); }
 
@@ -45,8 +45,11 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
     if constexpr (SHTYPE == SHType::Int) {
       if (max.valueType == SHType::None)
         res.payload.intValue = _uintdis(_gen);
-      else
+      else if (max.payload.intValue == 0) {
+        res.payload.intValue = 0;
+      } else {
         res.payload.intValue = _uintdis(_gen) % max.payload.intValue;
+      }
     } else if constexpr (SHTYPE == SHType::Float) {
       if (max.valueType == SHType::None)
         res.payload.floatValue = _udis(_gen);

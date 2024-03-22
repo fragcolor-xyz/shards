@@ -513,6 +513,7 @@ struct RuntimeCallbacks {
 };
 }; // namespace shards
 
+using VisitedWires = std::unordered_map<SHWire *, SHTypeInfo>;
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static constexpr uint32_t TypeId = 'brcM';
   static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
@@ -527,7 +528,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     ZoneScoped;
 
-    SHLOG_TRACE("Pre-composing wire {}", wire->name);
+    SHLOG_TRACE("Composing wire {}", wire->name);
 
     if (wire->warmedUp) {
       SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
@@ -535,9 +536,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     }
 
     wire->mesh = shared_from_this();
-
-    // this is to avoid recursion during compose
-    visitedWires.clear();
 
     wire->isRoot = true;
     // remove when done here
@@ -547,6 +545,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     SHInstanceData data = instanceData;
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
+    VisitedWires visitedWires;
+    data.visitedWires = &visitedWires;
     auto validation = shards::composeWire(
         wire.get(),
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
@@ -563,7 +563,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     shards::arrayFree(validation.requiredInfo);
     shards::freeDerivedInfo(data.inputType);
 
-    SHLOG_TRACE("Wire {} Pre-composing", wire->name);
+    SHLOG_TRACE("Wire {} composed", wire->name);
   }
 
   struct EmptyObserver {
@@ -589,9 +589,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     observer.before_compose(wire.get());
     if (compose) {
-      // this is to avoid recursion during compose
-      visitedWires.clear();
-
       wire->isRoot = true;
       // remove when done here
       DEFER(wire->isRoot = false);
@@ -684,7 +681,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
           // stop should have done the following:
           SHLOG_TRACE("Wire {} ended while ticking", flow.wire->name);
-          shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
           shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
           shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
 
@@ -724,7 +720,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto wire : toStop) {
       shards::stop(wire.get());
       // stop should have done the following:
-      shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
       shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
       shassert(wire->mesh.expired() && "Wire still has a mesh!");
     }
@@ -733,9 +728,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // release all wires
     scheduled.clear();
-
-    // do this here just in case as well as we might be not using schedule directly!
-    visitedWires.clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
@@ -759,7 +751,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+    // shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
     shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
     shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
@@ -774,9 +766,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   const std::vector<std::string> &errors() { return _errors; }
 
   const std::vector<SHWire *> &failedWires() { return _failedWires; }
-
-  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::mutex visitedWiresMutex;
 
   std::unordered_set<std::shared_ptr<SHWire>> scheduled;
 
@@ -1751,96 +1740,6 @@ struct Serialization {
     }
     return total;
   }
-};
-
-template <typename T> struct WireDoppelgangerPool {
-  WireDoppelgangerPool(SHWireRef master) {
-    // Never call this from setParam or earlier...
-    auto vwire = shards::Var(master);
-    std::stringstream stream;
-    Writer w(stream);
-    Serialization serializer;
-    serializer.serialize(vwire, w);
-    _wireStr = stream.str();
-  }
-
-  // notice users should stop wires themselves, we might want wires to persist
-  // after this object lifetime
-  void stopAll() {
-    for (auto &item : _pool) {
-      stop(item->wire.get());
-      _avail.emplace(item.get());
-    }
-  }
-
-  template <class Composer, typename Anything> T *acquire(Composer &composer, Anything *anything) {
-    ZoneScoped;
-
-    std::unique_lock<std::mutex> lock(_poolMutex);
-    if (_avail.size() == 0) {
-      lock.unlock();
-
-      Serialization serializer;
-      std::stringstream stream(_wireStr);
-      Reader r(stream);
-      SHVar vwire{};
-      serializer.deserialize(r, vwire);
-      auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      destroyVar(vwire);
-
-      lock.lock();
-      auto &fresh = _pool.emplace_back(std::make_shared<T>());
-      auto index = _pool.size();
-      lock.unlock();
-
-      fresh->wire = wire;
-      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
-      composer.compose(wire.get(), anything, false);
-
-      return fresh.get();
-    } else {
-      auto res = _avail.extract(_avail.begin());
-      lock.unlock();
-
-      auto &value = res.value();
-      composer.compose(value->wire.get(), anything, true);
-
-      return value;
-    }
-  }
-
-  void release(T *wire) {
-    shassert(wire != nullptr && "Releasing a null wire?");
-
-    std::unique_lock<std::mutex> _l(_poolMutex);
-
-    _avail.emplace(wire);
-  }
-
-  size_t available() const { return _avail.size(); }
-
-private:
-  WireDoppelgangerPool() = delete;
-
-  struct Writer {
-    std::stringstream &stream;
-    Writer(std::stringstream &stream) : stream(stream) {}
-    void operator()(const uint8_t *buf, size_t size) { stream.write((const char *)buf, size); }
-  };
-
-  struct Reader {
-    std::stringstream &stream;
-    Reader(std::stringstream &stream) : stream(stream) {}
-    void operator()(uint8_t *buf, size_t size) { stream.read((char *)buf, size); }
-  };
-
-  // keep our pool in a deque in order to keep them alive
-  // so users don't have to worry about lifetime
-  // just release when possible
-  std::mutex _poolMutex;
-  std::deque<std::shared_ptr<T>> _pool;
-  std::unordered_set<T *> _avail;
-  std::string _wireStr;
 };
 
 #ifdef __EMSCRIPTEN__

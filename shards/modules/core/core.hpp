@@ -797,32 +797,29 @@ struct SetBase : public VariableBase {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
-        if (_isTable && !reference.isTableEntry && reference.exposedType.basicType != SHType::Table) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
-        } else if (!_isTable && reference.isTableEntry) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was a table", _name));
-        } else if (!_isTable &&
-                   // need to check if this was just a any table definition {}
-                   !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
-                   data.inputType != reference.exposedType) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
-                                         reference.exposedType, data.inputType));
-        }
-        if (!overwrite && !_isTable && !reference.isMutable) {
-          SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
-        }
-        if (!_isTable && reference.isProtected) {
-          SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
-        }
-        if (!_isTable && warnIfExists) {
-          SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
-        }
-        if (reference.isPushTable) {
-          SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError(
-              fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
+        if (_isTable) {
+          if (reference.exposedType.basicType != SHType::Table) {
+            throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
+          }
+        } else {
+          if (
+              // need to check if this was just a any table definition {}
+              !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
+              data.inputType != reference.exposedType) {
+            throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
+                                           reference.exposedType, data.inputType));
+          }
+          if (!overwrite && !reference.isMutable) {
+            SHLOG_ERROR("Error with variable: {}", _name);
+            throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
+          }
+          if (reference.isProtected) {
+            SHLOG_ERROR("Error with variable: {}", _name);
+            throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
+          }
+          if (warnIfExists) {
+            SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
+          }
         }
 
         existingExposedType = &data.shared.elements[i];
@@ -940,10 +937,9 @@ struct Set : public SetUpdateBase {
 
       if (_global) {
         _exposedInfo =
-            ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true, true));
+            ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true));
       } else {
-        _exposedInfo =
-            ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true, true));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true));
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
@@ -1121,8 +1117,7 @@ struct Ref : public SetBase {
       } else {
         _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.keys = {&(*_key), 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
       }
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false, true));
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false));
 
       // properly link the right call
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefTable;
@@ -1222,10 +1217,6 @@ struct Update : public SetUpdateBase {
         if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table) {
           originalTableType = &data.shared.elements[i].exposedType;
 
-          if (data.shared.elements[i].isPushTable) {
-            SHLOG_ERROR("Error with variable: {}", _name);
-            throw ComposeError("Set/Ref/Update, attempted to write a table variable that is filled using Push shards.");
-          }
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
@@ -1384,7 +1375,10 @@ struct Get : public VariableBase {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
-        if (strcmp(name, _name.c_str()) == 0 && data.shared.elements[i].exposedType.basicType == SHType::Table) {
+        if (strcmp(name, _name.c_str()) == 0) {
+          if (data.shared.elements[i].exposedType.basicType != SHType::Table)
+            throw ComposeError(fmt::format("Get: error, variable {} was not a table", _name));
+          
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
@@ -1465,17 +1459,8 @@ struct Get : public VariableBase {
           if (cv.isProtected) {
             throw ComposeError("Get (" + _name + "): Cannot Get, variable is protected.");
           }
-          if (cv.exposedType.basicType == SHType::Table && cv.isTableEntry && cv.exposedType.table.types.len == 1) {
-            // in this case we need to gather all types of the table
-            _tableTypes.emplace_back(cv.exposedType.table.types.elements[0]);
-            if (cv.exposedType.table.keys.len == 1) {
-              _tableKeys.emplace_back(cv.exposedType.table.keys.elements[0]);
-            } else {
-              _tableKeys.emplace_back(Var(""));
-            }
-          } else {
-            return cv.exposedType;
-          }
+
+          return cv.exposedType;
         }
       }
 
@@ -1804,11 +1789,10 @@ struct Push : public SeqBase {
       updateTableType(_tableInfo, !_key.isVariable() ? &(SHVar &)_key : nullptr, _seqInfo, existingTableType);
 
       if (_global) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableInfo, true, false, firstPush));
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableInfo, true));
       } else {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true, false, firstPush));
+        _exposedInfo =
+            ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
       }
     };
 
@@ -1833,7 +1817,9 @@ struct Push : public SeqBase {
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
-        if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
+        if (_name == cv.name) {
+          if (cv.exposedType.basicType != SHType::Seq)
+            throw ComposeError(fmt::format("Push: error, variable {} is not a sequence.", _name));
           // found, can we mutate it?
           if (!cv.isMutable) {
             throw ComposeError("Cannot mutate a non-mutable variable");
