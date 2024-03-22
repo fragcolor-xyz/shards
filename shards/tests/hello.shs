@@ -201,6 +201,8 @@ WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 ; also test that doesn't start with
 "Hello World!" | LogType("Type logging test") | String.Starts(With: "World") | Assert.Is(false) | Log
 
+"Hello World!" | String.Ends(With: "World!") | Assert.Is(true) | Log
+
 ["1" "2" "3"] = zs1
 ["4" "5" "6"] = zs2
 ["7" "8" "9"] = zs3
