@@ -1292,6 +1292,7 @@ struct Update : public SetUpdateBase {
       dispatcherPtr = &dispatcher;
     } else {
       if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+        SHLOG_ERROR("Error with variable: {}", _name);
         throw WarmupError("Update: error, variable is exposed.");
       }
 
@@ -1378,7 +1379,7 @@ struct Get : public VariableBase {
         if (strcmp(name, _name.c_str()) == 0) {
           if (data.shared.elements[i].exposedType.basicType != SHType::Table)
             throw ComposeError(fmt::format("Get: error, variable {} was not a table", _name));
-          
+
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
