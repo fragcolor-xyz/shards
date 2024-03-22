@@ -583,6 +583,8 @@ SHWireState suspend(SHContext *context, double seconds) {
   shassert(context->currentWire() == currentWire);
   SH_CORO_RESUMED(currentWire);
 
+  ++context->stepCounter;
+
   return context->getState();
 }
 
@@ -748,7 +750,7 @@ struct ValidationContext {
   std::unordered_set<std::string_view> variables;
   std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
-  VisitedWires* visitedWires{};
+  VisitedWires *visitedWires{};
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -815,8 +817,8 @@ void validateConnection(ValidationContext &ctx) {
       }
       // and inherited
       for (auto &pair : ctx.inherited) {
-        if(ctx.exposed.find(pair.first) != ctx.exposed.end())
-          continue;  // Let exposed override inherited
+        if (ctx.exposed.find(pair.first) != ctx.exposed.end())
+          continue; // Let exposed override inherited
         shards::arrayPush(data.shared, pair.second);
       }
     }
@@ -1030,7 +1032,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   DEFER({ delete visitedWires; });
 
   ValidationContext ctx{};
-  ctx.visitedWires = reinterpret_cast<VisitedWires*>(data.visitedWires);
+  ctx.visitedWires = reinterpret_cast<VisitedWires *>(data.visitedWires);
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
