@@ -3,6 +3,7 @@ use egui::epaint;
 use egui::ClippedPrimitive;
 use egui::Context;
 use egui::FullOutput;
+use egui::TextureId;
 use std::ffi::CString;
 use std::marker::PhantomData;
 use std::ptr;
@@ -214,6 +215,23 @@ pub fn make_native_render_output<'a>(
     vertex_mem,
     index_mem,
   })
+}
+
+pub fn collect_texture_references(input: &egui::FullOutput, out_refs: &mut Vec<GenericSharedPtr>) {
+  for shape in &input.shapes {
+    let tex_id = shape.shape.texture_id();
+    match tex_id {
+      TextureId::User(id) => {
+        unsafe {
+          let texture_ptr = id as *const gfx_TexturePtr;
+          let mut newRef = GenericSharedPtr::default();
+          gfx_TexturePtr_refAt(&mut newRef, texture_ptr);
+          out_refs.push(newRef);
+        }
+      }
+      _ => {}
+    }
+  }
 }
 
 pub fn make_native_io_output(

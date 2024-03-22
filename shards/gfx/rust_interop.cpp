@@ -13,4 +13,10 @@ void gfx_TexturePtr_getResolution_ext(gfx::TexturePtr *texture, gfx::int2 *out) 
   else
     *out = (*texture)->getResolution();
 }
+
+void gfx_TexturePtr_refAt(GenericSharedPtr *dst, const gfx::TexturePtr *texture) {
+  static_assert(sizeof(gfx::TexturePtr) <= sizeof(GenericSharedPtr), "Size mismatch");
+  std::construct_at(reinterpret_cast<gfx::TexturePtr *>(dst), *texture);
+}
+void gfx_TexturePtr_unrefAt(GenericSharedPtr *dst) { std::destroy_at(reinterpret_cast<gfx::TexturePtr *>(dst)); }
 }

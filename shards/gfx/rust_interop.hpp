@@ -46,6 +46,13 @@ void gfx_Window_getSize_ext(gfx::Window *window, gfx::int2 *out);
 void gfx_Window_getDrawableSize_ext(gfx::Window *window, gfx::int2 *out);
 float gfx_Window_getUIScale_ext(gfx::Window *window);
 void gfx_TexturePtr_getResolution_ext(gfx::TexturePtr *texture, gfx::int2 *out);
+
+struct GenericSharedPtr {
+  size_t ptr[2];
+};
+
+void gfx_TexturePtr_refAt(GenericSharedPtr *dst, const gfx::TexturePtr* texture);
+void gfx_TexturePtr_unrefAt(GenericSharedPtr *dst);
 }
 
 #endif /* BFB13E29_4B2D_433E_905E_DAC3525F8FAD */
