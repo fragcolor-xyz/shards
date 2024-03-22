@@ -5,12 +5,21 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use egui::epaint;
 
+impl Default for GenericSharedPtr {
+  fn default() -> Self {
+    Self { ptr: [0usize; 2] }
+  }
+}
+
+impl GenericSharedPtr {
+  pub fn is_null(&self) -> bool {
+    self.ptr[0] == 0 && self.ptr[1] == 0
+  }
+}
+
 impl Default for linalg_aliases_int2 {
   fn default() -> Self {
-    Self {
-      x: 0,
-      y: 0,
-    }
+    Self { x: 0, y: 0 }
   }
 }
 

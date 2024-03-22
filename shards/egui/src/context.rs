@@ -37,6 +37,17 @@ use std::rc::Rc;
 struct UIOutput {
   full_output: egui::FullOutput,
   ctx: egui::Context,
+  texture_refs: Vec<bindings::GenericSharedPtr>,
+}
+
+impl Drop for UIOutput {
+  fn drop(&mut self) {
+    for texture_ref in self.texture_refs.iter_mut() {
+      unsafe {
+        bindings::gfx_TexturePtr_unrefAt(texture_ref);
+      }
+    }
+  }
 }
 
 static UI_OUTPUT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"uiui"));
@@ -199,10 +210,14 @@ impl Shard for ContextShard {
       );
     }
 
+    let mut texture_refs = Vec::new();
+    bindings::collect_texture_references(&full_output, &mut texture_refs);
+
     self.last_output.assign(&Var::new_ref_counted(
       UIOutput {
         full_output,
         ctx: self.host.get_context().egui_ctx.clone(),
+        texture_refs,
       },
       &UI_OUTPUT_TYPE,
     ));
@@ -266,7 +281,7 @@ impl Shard for RenderShard {
         self.render_output_var(idx == (num_ui_outputs - 1), &var)?
       }
     } else {
-      self.render_output_var(true,  input)?
+      self.render_output_var(true, input)?
     }
 
     Ok(*input)
@@ -274,11 +289,7 @@ impl Shard for RenderShard {
 }
 
 impl RenderShard {
-  fn render_output_var(
-    &mut self,
-    full_render: bool,
-    input: &Var,
-  ) -> Result<(), &'static str> {
+  fn render_output_var(&mut self, full_render: bool, input: &Var) -> Result<(), &'static str> {
     let queue_var = self.queue.get();
 
     let ui_output =
