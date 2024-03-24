@@ -75,6 +75,7 @@ impl LegacyShard for Encrypt {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.key.warmup(context);
+    self.nonce = 0;
     Ok(())
   }
 
@@ -175,6 +176,7 @@ impl LegacyShard for Decrypt {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.key.warmup(context);
+    self.nonce = 0;
     Ok(())
   }
 
