@@ -198,6 +198,7 @@ struct Flatten {
 struct IndexOf {
   static inline Types OutputTypes = {{CoreInfo::IntSeqType, CoreInfo::IntType}};
 
+  ShardsVar _predicate;
   ParamVar _item{};
   SHSeq _results = {};
   bool _all = false;
@@ -208,43 +209,91 @@ struct IndexOf {
     }
   }
 
-  void cleanup(SHContext *context) { _item.cleanup(); }
-  void warmup(SHContext *context) { _item.warmup(context); }
+  void cleanup(SHContext *context) {
+    _item.cleanup();
+    _predicate.cleanup(context);
+  }
+  void warmup(SHContext *context) {
+    _predicate.warmup(context);
+    _item.warmup(context);
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   SHTypesInfo outputTypes() { return OutputTypes; }
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Item",
-                                                                 SHCCSTR("The item to find the index of from the input, "
-                                                                         "if it's a sequence it will try to match all "
-                                                                         "the items in the sequence, in sequence."),
-                                                                 CoreInfo::AnyType),
-                                               ParamsInfo::Param("All",
-                                                                 SHCCSTR("If true will return a sequence with all the indices of "
-                                                                         "Item, empty sequence if not found."),
-                                                                 CoreInfo::BoolType));
+  static inline ParamsInfo params =
+      ParamsInfo(ParamsInfo::Param("Item",
+                                   SHCCSTR("The item to find the index of from the input, "
+                                           "if it's a sequence it will try to match all "
+                                           "the items in the sequence, in sequence."),
+                                   CoreInfo::AnyType),
+                 ParamsInfo::Param("All",
+                                   SHCCSTR("If true will return a sequence with all the indices of "
+                                           "Item, empty sequence if not found."),
+                                   CoreInfo::BoolType),
+                 ParamsInfo::Param("Predicate", SHCCSTR("The shards to use as predicate."), CoreInfo::Shards));
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
       _item = value;
-    else
+    else if (index == 1)
       _all = value.payload.boolValue;
+    else
+      _predicate = value;
   }
 
   SHVar getParam(int index) {
     if (index == 0)
       return _item;
-    else
+    else if (index == 1)
       return Var(_all);
+    else
+      return _predicate;
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_predicate) {
+      SHInstanceData predicateData = data;
+      predicateData.inputType = data.inputType.seqTypes.elements[0];
+      const auto pres = _predicate.compose(predicateData);
+      if (pres.failed)
+        throw ComposeError(fmt::format("Failed to compose predicate: {}", pres.failureMessage));
+      if (pres.outputType.basicType != SHType::Bool) {
+        throw ComposeError("Remove Predicate should output a boolean value");
+      }
+      OVERRIDE_ACTIVATE(data, activatePredicate);
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+    }
+
     if (_all)
       return CoreInfo::IntSeqType;
     else
       return CoreInfo::IntType;
+  }
+
+  SHVar activatePredicate(SHContext *context, const SHVar &input) {
+    auto inputLen = input.payload.seqValue.len;
+    shards::arrayResize(_results, 0);
+
+    for (uint32_t i = 0; i < inputLen; i++) {
+      SHVar r{};
+      _predicate.activate(context, input.payload.seqValue.elements[i], r);
+      shassert(r.valueType == SHType::Bool);
+      if (r.payload.boolValue) {
+        if (!_all)
+          return Var((int64_t)i);
+        else
+          shards::arrayPush(_results, Var((int64_t)i));
+      }
+    }
+
+    if (!_all)
+      return Var(-1);
+    else
+      return Var(_results);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
