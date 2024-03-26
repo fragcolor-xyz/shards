@@ -497,6 +497,9 @@ struct XpendTo : public XPendBase {
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (!_collection.isVariable())
+      throw ComposeError("AppendTo/PrependTo expects a collection variable.");
+
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&

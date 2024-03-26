@@ -2791,9 +2791,8 @@ struct Take {
   }
 
   struct OutOfRangeEx : public ActivationError {
-    OutOfRangeEx(int64_t len, int64_t index) : ActivationError("Take out of range!") {
-      SHLOG_ERROR("Out of range! len: {} wanted index: {}", len, index);
-    }
+    OutOfRangeEx(int64_t len, int64_t index)
+        : ActivationError(fmt::format("Out of range! len: {} wanted index: {}", len, index)) {}
   };
 
   void warmup(SHContext *context) {
