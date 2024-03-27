@@ -1004,10 +1004,12 @@ struct Set : public SetUpdateBase {
       OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo), context->currentWire()};
       dispatcherPtr->trigger(ev);
     } else {
-      if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-        // something changed, we are no longer exposed
-        // fixup activations and variable flags
-        _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+      if (!_isTable) {
+        if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+          // something changed, we are no longer exposed
+          // fixup activations and variable flags
+          _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+        }
       }
 
       // restore any possible deferred change here
