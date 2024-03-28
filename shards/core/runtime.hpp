@@ -112,6 +112,7 @@ struct SHContext {
   std::vector<SHWire *> wireStack;
   bool onLastResume{false};
   bool onWorkerThread{false};
+  uint64_t stepCounter{};
 
   std::mutex anyStorageLock;
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;

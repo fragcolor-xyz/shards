@@ -644,10 +644,9 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     }
 
     const NumType *getOrCreateDynamicOutput(FastString name, NumType requestedType) {
-      NumType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicOutput(name, requestedType)) {
-          return &definitions.outputs.insert_or_assign(name, newField).first->second;
+          return &definitions.outputs.insert_or_assign(name, requestedType).first->second;
         }
       }
 

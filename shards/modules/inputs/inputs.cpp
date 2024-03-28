@@ -380,7 +380,8 @@ template <bool Pressed> struct MouseUpDown : public Base {
         {CoreInfo::ShardsOrNone});
   PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_ignoreConsumed, "IgnoreConsumed", "Ignore consumed events.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume), PARAM_IMPL_FOR(_ignoreConsumed));
+  PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume),
+             PARAM_IMPL_FOR(_ignoreConsumed));
 
   bool ignoreConsumed{};
   bool consume{};
@@ -413,6 +414,8 @@ template <bool Pressed> struct MouseUpDown : public Base {
     if (!_inputContext->canReceiveInput())
       return input;
 
+    // Use step counter to detect suspends and ignore
+    size_t startingStep = context->stepCounter;
     for (auto &event : _inputContext->getEvents()) {
       if (ignoreConsumed && event.isConsumed())
         continue;
@@ -423,18 +426,24 @@ template <bool Pressed> struct MouseUpDown : public Base {
           if (pbe->index == SDL_BUTTON_LEFT) {
             if (_leftButton) {
               _leftButton.activate(context, input, output);
+              if (startingStep != context->stepCounter)
+                break;
               if (this->consume)
                 consume(event);
             }
           } else if (pbe->index == SDL_BUTTON_RIGHT) {
             if (_rightButton) {
               _rightButton.activate(context, input, output);
+              if (startingStep != context->stepCounter)
+                break;
               if (this->consume)
                 consume(event);
             }
           } else if (pbe->index == SDL_BUTTON_MIDDLE) {
             if (_middleButton) {
               _middleButton.activate(context, input, output);
+              if (startingStep != context->stepCounter)
+                break;
               if (this->consume)
                 consume(event);
             }
@@ -491,6 +500,8 @@ public:
     if (!_inputContext->canReceiveInput())
       return input;
 
+    // Use step counter to detect suspends and ignore
+    size_t startingStep = context->stepCounter;
     auto &events = _inputContext->getEvents();
     auto consume = _inputContext->getEventConsumer();
     for (auto &event : events) {
@@ -501,6 +512,8 @@ public:
           if (*_repeat || ke->repeat == 0) {
             SHVar output{};
             _shards.activate(context, input, output);
+            if (startingStep != context->stepCounter)
+              break;
             if (this->consume)
               consume(event);
           }
@@ -627,16 +640,24 @@ struct HandleURL : public Base {
   static SHTypeInfo inputType() { return CoreInfo::AnyType; }
   static SHTypeInfo outputType() { return CoreInfo::AnyType; }
 
+  std::vector<DropFileEvent> tmpEvents;
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    tmpEvents.clear();
     for (auto &evt : _inputContext->getEvents()) {
       if (const DropFileEvent *de = std::get_if<DropFileEvent>(&evt.event)) {
-        SHVar dummy{};
-        SHWireState res = _action.activate(context, Var(de->path.c_str()), dummy);
-        if (res == SHWireState::Error) {
-          throw ActivationError("Inner activation failed");
-        }
+        tmpEvents.push_back(*de);
       }
     }
+
+    for (auto &evt : tmpEvents) {
+      SHVar dummy{};
+      SHWireState res = _action.activate(context, Var(evt.path.c_str()), dummy);
+      if (res == SHWireState::Error) {
+        throw ActivationError("Inner activation failed");
+      }
+    }
+    tmpEvents.clear();
 
     return input;
   }

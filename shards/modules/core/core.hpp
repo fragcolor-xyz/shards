@@ -1004,10 +1004,12 @@ struct Set : public SetUpdateBase {
       OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo), context->currentWire()};
       dispatcherPtr->trigger(ev);
     } else {
-      if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-        // something changed, we are no longer exposed
-        // fixup activations and variable flags
-        _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+      if (!_isTable) {
+        if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+          // something changed, we are no longer exposed
+          // fixup activations and variable flags
+          _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+        }
       }
 
       // restore any possible deferred change here
@@ -1292,8 +1294,7 @@ struct Update : public SetUpdateBase {
       dispatcherPtr = &dispatcher;
     } else {
       if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-        SHLOG_ERROR("Error with variable: {}", _name);
-        throw WarmupError("Update: error, variable is exposed.");
+        throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
       }
 
       // restore any possible deferred change here
@@ -2792,9 +2793,8 @@ struct Take {
   }
 
   struct OutOfRangeEx : public ActivationError {
-    OutOfRangeEx(int64_t len, int64_t index) : ActivationError("Take out of range!") {
-      SHLOG_ERROR("Out of range! len: {} wanted index: {}", len, index);
-    }
+    OutOfRangeEx(int64_t len, int64_t index)
+        : ActivationError(fmt::format("Out of range! len: {} wanted index: {}", len, index)) {}
   };
 
   void warmup(SHContext *context) {
@@ -3576,7 +3576,7 @@ struct Repeat {
   }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    auto repeats = _forever ? 1 : *_repeats;
+    auto repeats = (_forever || _pred) ? 1 : *_repeats;
     while (repeats) {
       if (_pred) {
         SHVar pres{};
