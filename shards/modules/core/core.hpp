@@ -3576,7 +3576,7 @@ struct Repeat {
   }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    auto repeats = _forever ? 1 : *_repeats;
+    auto repeats = (_forever || _pred) ? 1 : *_repeats;
     while (repeats) {
       if (_pred) {
         SHVar pres{};
