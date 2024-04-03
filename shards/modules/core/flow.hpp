@@ -388,6 +388,7 @@ struct Maybe : public BaseSubFlow {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _self = data.shard;
     // exposed stuff should be balanced
     // and output should the same
     SHComposeResult elseComp{};
@@ -441,7 +442,8 @@ struct Maybe : public BaseSubFlow {
       }
       if (state == SHWireState::Error) {
         if (!_silent) {
-          SHLOG_WARNING("Maybe shard Ignored an error: {}", context->getErrorMessage());
+          shassert(_self);
+          SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}", context->getErrorMessage(), _self->line, _self->column);
         }
         if (likely(!context->onLastResume)) {
           context->continueFlow();
@@ -450,7 +452,7 @@ struct Maybe : public BaseSubFlow {
           else
             return input;
         } else {
-          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume", context->getErrorMessage());
+          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume, line: {}, column: {}", context->getErrorMessage(), _self->line, _self->column);
           // Just continue as the wire is done
           return Var::Empty;
         }
@@ -463,6 +465,7 @@ struct Maybe : public BaseSubFlow {
   }
 
 private:
+  Shard *_self;
   ShardsVar _elseBlks{};
   bool _silent{false};
   static inline Parameters _params{BaseSubFlow::_params,
