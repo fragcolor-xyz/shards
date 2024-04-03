@@ -745,13 +745,14 @@ struct Server : public NetworkBase {
         setPeer(context, *peer);
 
         if (!peer->wire->warmedUp) {
-          peer->wire->warmup(context);
-
           OnPeerConnected event{
               .endpoint = *peer->endpoint,
               .wire = peer->wire,
           };
           context->main->dispatcher.trigger(std::move(event));
+
+          // warmup the wire after the event in order to give it a chance to set up
+          peer->wire->warmup(context);
         }
 
         if (peer->tryReceive(context)) {
