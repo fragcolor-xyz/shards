@@ -3559,9 +3559,17 @@ struct Repeat {
   SHTypeInfo compose(const SHInstanceData &data) {
     _blks.compose(data);
     const auto predres = _pred.compose(data);
-    if (_pred && predres.outputType.basicType != SHType::Bool) {
+    if (_pred && predres.outputType.basicType != SHType::Bool)
       throw ComposeError("Repeat shard Until predicate should output a boolean!");
+
+    if (_pred) {
+      OVERRIDE_ACTIVATE(data, activateUntilPred);
+      data.shard->inlineShardId = InlineShard::NotInline;
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+      data.shard->inlineShardId = InlineShard::CoreRepeat;
     }
+
     return data.inputType;
   }
 
@@ -3576,24 +3584,33 @@ struct Repeat {
   }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    auto repeats = (_forever || _pred) ? 1 : *_repeats;
+    auto repeats = (_forever) ? 1 : *_repeats;
     while (repeats) {
-      if (_pred) {
-        SHVar pres{};
-        auto state = _pred.activate<true>(context, input, pres);
-        // logic flow here!
-        if (unlikely(state > SHWireState::Return || pres.payload.boolValue))
-          break;
-      }
 
       SHVar repeatOutput{};
       auto state = _blks.activate<true>(context, input, repeatOutput);
       if (state != SHWireState::Continue)
         break;
 
-      if (!(_pred || _forever))
+      if (!(_forever))
         repeats--;
     }
+    return input;
+  }
+
+  FLATTEN ALWAYS_INLINE SHVar activateUntilPred(SHContext *context, const SHVar &input) {
+    do {
+      SHVar pres{};
+      auto state = _pred.activate<true>(context, input, pres);
+      // logic flow here!
+      if (unlikely(state > SHWireState::Return || pres.payload.boolValue))
+        break;
+
+      SHVar repeatOutput{};
+      state = _blks.activate<true>(context, input, repeatOutput);
+      if (state != SHWireState::Continue)
+        break;
+    } while (true);
     return input;
   }
 };
