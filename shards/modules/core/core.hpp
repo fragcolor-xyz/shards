@@ -841,7 +841,9 @@ struct SetBase : public VariableBase {
 
 struct SetUpdateBase : public SetBase {
   Shard *_self{};
-  entt::dispatcher *dispatcherPtr{nullptr};
+  entt::dispatcher *_dispatcherPtr{nullptr};
+
+  void setupDispatcher(SHContext *context, bool isGlobal) { _dispatcherPtr = &context->main->mesh.lock()->dispatcher; }
 
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
     checkIfTableChanged();
@@ -887,6 +889,15 @@ struct SetUpdateBase : public SetBase {
 struct Set : public SetUpdateBase {
   bool _exposed{false};
   entt::connection _onStartConnection{};
+  struct OnStartHandler {
+    Set *shard;
+    SHWire *targetWire;
+    void handle(SHWire::OnStartEvent &ev) {
+      if (targetWire == ev.wire) {
+        shard->onStart(ev);
+      };
+    }
+  } _startHandler;
 
   SHTypeInfo _tableType{};
 
@@ -989,13 +1000,12 @@ struct Set : public SetUpdateBase {
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
       // need to defer the check to before we actually start running
-      _onStartConnection = context->main->dispatcher.sink<SHWire::OnStartEvent>().connect<&Set::onStart>(this);
-
-      auto &dispatcher = _global ? context->main->mesh.lock()->dispatcher : context->main->dispatcher;
-      dispatcherPtr = &dispatcher;
+      setupDispatcher(context, _global);
+      _startHandler = OnStartHandler{this, context->currentWire()};
+      _onStartConnection = _dispatcherPtr->sink<SHWire::OnStartEvent>().connect<&OnStartHandler::handle>(_startHandler);
 
       OnExposedVarWarmup ev{context->main->id, _name, _exposedInfo._innerInfo.elements[0], context->currentWire()};
-      dispatcherPtr->trigger(ev);
+      _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {
         if (_target->flags & SHVAR_FLAGS_EXPOSED) {
@@ -1057,10 +1067,10 @@ struct Set : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    assert(dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
+    assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnExposedVarSet ev{context->main->id, _name, *_target, context->currentWire()};
-    dispatcherPtr->trigger(ev);
+    OnExposedVarSet ev{context->main->id, _name, *_target, _global, context->currentWire()};
+    _dispatcherPtr->trigger(ev);
 
     return output;
   }
@@ -1283,8 +1293,7 @@ struct Update : public SetUpdateBase {
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
-      auto &dispatcher = _isGlobal ? context->main->mesh.lock()->dispatcher : context->main->dispatcher;
-      dispatcherPtr = &dispatcher;
+      setupDispatcher(context, _isGlobal);
     } else {
       if (_target->flags & SHVAR_FLAGS_EXPOSED) {
         throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
@@ -1301,7 +1310,7 @@ struct Update : public SetUpdateBase {
   void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_isExposed && "This shard should not be activated if variable not exposed");
+    shassert(_isExposed && "This shard should not be activated if variable not exposed");
 
     SHVar output;
     if (_isTable)
@@ -1309,10 +1318,10 @@ struct Update : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    assert(dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
+    shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnExposedVarSet ev{context->main->id, _name, *_target, context->currentWire()};
-    dispatcherPtr->trigger(ev);
+    OnExposedVarSet ev{context->main->id, _name, *_target, _isGlobal, context->currentWire()};
+    _dispatcherPtr->trigger(ev);
 
     return output;
   }

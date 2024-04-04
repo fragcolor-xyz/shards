@@ -242,69 +242,46 @@ impl MeshVar {
     MeshVar(ClonedVar(unsafe { (*Core).createMeshVar.unwrap()() }))
   }
 
-  pub fn compose(&self, wire: WireRef) -> bool {
+  pub fn mesh_ref(&self) -> SHMeshRef {
     unsafe {
-      let mesh_ref = self
+      self
         .0
          .0
         .payload
         .__bindgen_anon_1
         .__bindgen_anon_1
-        .objectValue as SHMeshRef;
-      (*Core).compose.unwrap()(mesh_ref, wire.0)
+        .objectValue as SHMeshRef
     }
   }
 
+  pub fn compose(&self, wire: WireRef) -> bool {
+    unsafe { (*Core).compose.unwrap()(self.mesh_ref(), wire.0) }
+  }
+
   pub fn schedule(&mut self, wire: WireRef, compose: bool) {
-    unsafe {
-      let mesh_ref = self
-        .0
-         .0
-        .payload
-        .__bindgen_anon_1
-        .__bindgen_anon_1
-        .objectValue as SHMeshRef;
-      (*Core).schedule.unwrap()(mesh_ref, wire.0, compose)
-    }
+    unsafe { (*Core).schedule.unwrap()(self.mesh_ref(), wire.0, compose) }
   }
 
   /// Returns false if we had any wire failure
   pub fn tick(&mut self) -> bool {
-    unsafe {
-      let mesh_ref = self
-        .0
-         .0
-        .payload
-        .__bindgen_anon_1
-        .__bindgen_anon_1
-        .objectValue as SHMeshRef;
-      (*Core).tick.unwrap()(mesh_ref)
-    }
+    unsafe { (*Core).tick.unwrap()(self.mesh_ref()) }
   }
 
   pub fn is_empty(&mut self) -> bool {
-    unsafe {
-      let mesh_ref = self
-        .0
-         .0
-        .payload
-        .__bindgen_anon_1
-        .__bindgen_anon_1
-        .objectValue as SHMeshRef;
-      (*Core).isEmpty.unwrap()(mesh_ref)
-    }
+    unsafe { (*Core).isEmpty.unwrap()(self.mesh_ref()) }
   }
 
   pub fn terminate(&mut self) {
+    unsafe { (*Core).terminate.unwrap()(self.mesh_ref()) }
+  }
+
+  pub fn set_label(&mut self, str: &str) {
     unsafe {
-      let mesh_ref = self
-        .0
-         .0
-        .payload
-        .__bindgen_anon_1
-        .__bindgen_anon_1
-        .objectValue as SHMeshRef;
-      (*Core).terminate.unwrap()(mesh_ref)
+      let name = SHStringWithLen {
+        string: str.as_ptr() as *const c_char,
+        len: str.len() as u64,
+      };
+      (*Core).setMeshLabel.unwrap()(self.mesh_ref(), name)
     }
   }
 }

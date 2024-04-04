@@ -121,7 +121,7 @@ struct Type {
     return res;
   }
 
-  operator const SHTypeInfo&() const { return _type; }
+  operator const SHTypeInfo &() const { return _type; }
 
   static Type SeqOf(SHTypesInfo types) {
     Type res;
@@ -1126,6 +1126,7 @@ struct OnExposedVarSet {
   entt::id_type id;
   std::string_view name;
   SHVar newValue;
+  bool isGlobal{};
   const SHWire *wire;
 };
 } // namespace shards

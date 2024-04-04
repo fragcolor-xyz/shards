@@ -156,7 +156,7 @@ struct Base {
     headers.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     url.cleanup();
     headers.cleanup();
   }
@@ -484,8 +484,10 @@ struct Server {
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
-    auto container = _wireContainers[e.wire];
-    _pool->release(container);
+    auto it = _wireContainers.find(e.wire);
+    if (it != _wireContainers.end()) {
+      _pool->release(it->second);
+    }
   }
 
   // "Loop" forever accepting new connections.
@@ -495,7 +497,10 @@ struct Server {
     // Assume that we recycle containers so the connection might already exist!
     if (!peer->onStopConnection) {
       _wireContainers[peer->wire.get()] = peer;
-      peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+      auto mesh = context->main->mesh.lock();
+      if (mesh) {
+        peer->onStopConnection = mesh->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+      }
     }
 
     peer->socket.reset(new tcp::socket(*_ioc));
@@ -529,7 +534,7 @@ struct Server {
     accept_once(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_pool)
       _pool->stopAll();
   }
@@ -597,7 +602,7 @@ struct Read {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     releaseVariable(_peerVar);
     _peerVar = nullptr;
   }
@@ -695,7 +700,7 @@ struct Response {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;
@@ -773,7 +778,7 @@ struct SendFile {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;

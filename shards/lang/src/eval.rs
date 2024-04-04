@@ -2955,7 +2955,11 @@ fn eval_pipeline(
                     );
                   }
 
-                  e.meshes.insert(name.clone(), MeshVar::new());
+                  let mut new_mesh = MeshVar::new();
+                  let mesh_name_str: String = name.resolve().to_string();
+                  new_mesh.set_label(mesh_name_str.as_str());
+
+                  e.meshes.insert(name.clone(), new_mesh);
                   Ok(())
                 }
                 _ => Err(
