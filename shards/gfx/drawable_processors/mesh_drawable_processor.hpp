@@ -240,6 +240,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     if (!options.ignoreDrawableFeatures) {
+      if (meshDrawable.material) {
+        for (auto &feature : meshDrawable.material->features) {
+          builder.features.push_back(feature.get());
+        }
+      }
       for (auto &feature : meshDrawable.features) {
         builder.features.push_back(feature.get());
       }
