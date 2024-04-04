@@ -643,6 +643,23 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     schedule(obs, wire, input, compose);
   }
 
+  void wireCleanedUp(SHWire *wire) {
+    scheduled.erase(wire->shared_from_this());
+
+    auto it = std::find_if(_flowPool.begin(), _flowPool.end(), [wire](const auto &f) { return f.wire == wire; });
+    if (it != _flowPool.end()) { // Remove from flow pool, while keeping the iteration state
+      size_t idxToRemove = _flowPool.index_of(it);
+      size_t itIdx = _flowPool.index_of(_flowPoolIt);
+      _flowPool.erase(it);
+      if (idxToRemove <= itIdx) {
+        if (itIdx >= _flowPool.size())
+          _flowPoolIt = _flowPool.end();
+        else
+          _flowPoolIt = _flowPool.begin() + itIdx;
+      }
+    }
+  }
+
   template <class Observer> bool tick(Observer observer) {
     ZoneScoped;
 
@@ -654,10 +671,12 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       terminate();
     } else {
       SHDuration now = SHClock::now().time_since_epoch();
-      for (auto it = _flowPool.begin(); it != _flowPool.end();) {
-        auto &flow = *it;
+      _flowPoolIt = _flowPool.begin();
+      while (_flowPoolIt != _flowPool.end()) {
+        auto startFlowPoolIt = _flowPoolIt;
+        auto &flow = *_flowPoolIt;
         if (flow.paused) {
-          ++it;
+          ++_flowPoolIt;
           continue; // simply skip
         }
 
@@ -684,10 +703,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           SHLOG_TRACE("Wire {} ended while ticking", flow.wire->name);
           shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
           shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
+        }
 
-          it = _flowPool.erase(it);
+        // Wire removal can change the iterator, in that case don't increment
+        if (_flowPoolIt == startFlowPoolIt) {
+          ++_flowPoolIt;
         } else {
-          ++it;
+          SHLOG_TRACE("EE");
         }
       }
     }
@@ -700,6 +722,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return tick(obs);
   }
 
+  friend struct SHWire;
   void clear() {
     // clear all wires!
     boost::container::small_vector<std::shared_ptr<SHWire>, 16> toStop;
@@ -708,6 +731,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto flow : _flowPool) {
       toStop.emplace_back(flow.wire->shared_from_this());
     }
+    _flowPool.clear();
 
     // now add scheduled, notice me might have duplicates!
     for (auto wire : scheduled) {
@@ -724,8 +748,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
       shassert(wire->mesh.expired() && "Wire still has a mesh!");
     }
-
-    _flowPool.clear();
 
     // release all wires
     scheduled.clear();
@@ -865,6 +887,7 @@ private:
       refs;
 
   boost::container::stable_vector<SHFlow> _flowPool;
+  decltype(_flowPool)::iterator _flowPoolIt = _flowPool.end();
 
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
