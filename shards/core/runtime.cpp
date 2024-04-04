@@ -2834,7 +2834,7 @@ void SHWire::cleanup(bool force) {
     // finally reset the mesh
     auto mesh_ = mesh.lock();
     if (mesh_) {
-      mesh_->scheduled.erase(shared_from_this());
+      mesh_->wireCleanedUp(this);
     }
     mesh.reset();
 
