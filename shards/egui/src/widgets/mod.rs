@@ -160,6 +160,7 @@ struct Variable {
   labeled: bool,
   name: ClonedVar,
   mutable: bool,
+  global: bool,
   inner_type: Option<Type>,
 }
 

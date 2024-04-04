@@ -571,7 +571,10 @@ struct StopWire : public WireBase {
       if (_onComposedConn)
         _onComposedConn.release();
       _wire = data.wire->weak_from_this();
-      _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
+      auto mesh = data.wire->mesh.lock();
+      if (mesh) {
+        _onComposedConn = mesh->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
+      }
     } else {
       resolveWire();
       if (wire) {
@@ -584,6 +587,9 @@ struct StopWire : public WireBase {
   }
 
   void composed(const SHWire::OnComposedEvent &e) {
+    if (e.wire != wire.get())
+      return;
+
     // this check runs only when (Stop) is called without any params!
     // meaning it's stopping the wire it is in
     if (!wire && wireref->valueType == SHType::None && !matchTypes(_inputType, e.wire->outputType, false, true, true)) {
@@ -919,6 +925,12 @@ struct SwitchTo : public WireBase {
     for (auto &v : _vars) {
       SHLOG_TRACE("SwitchTo: warming up variable: {}", v.variableName());
       v.warmup(context);
+    }
+
+    // Fixup the wire id, since compose may be skipped, but id changed
+    SHWire *currentWire = context->currentWire();
+    if (wire && currentWire) {
+      wire->id = currentWire->id;
     }
   }
 
@@ -2034,13 +2046,16 @@ struct Spawn : public CapturingSpawners {
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnCleanup {}", e.wire->name);
 
-    auto container = _wireContainers[e.wire];
-    for (auto &var : container->injectedVariables) {
-      releaseVariable(var);
-    }
-    container->injectedVariables.clear();
+    auto it = _wireContainers.find(e.wire);
+    if (it != _wireContainers.end()) {
+      auto container = it->second;
+      for (auto &var : container->injectedVariables) {
+        releaseVariable(var);
+      }
+      container->injectedVariables.clear();
 
-    _pool->release(container);
+      _pool->release(container);
+    }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -2051,7 +2066,7 @@ struct Spawn : public CapturingSpawners {
     if (!c->onCleanupConnection) {
       SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
       _wireContainers[c->wire.get()] = c;
-      c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
+      c->onCleanupConnection = mesh->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
     }
 
     shassert(c->injectedVariables.empty() && "Spawn: injected variables should be empty");
@@ -2102,7 +2117,7 @@ struct WhenDone : Spawn {
       if (!c->onCleanupConnection) {
         SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
         _wireContainers[c->wire.get()] = c;
-        c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
+        c->onCleanupConnection = mesh->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
       }
 
       for (auto &v : _vars) {
@@ -2350,6 +2365,12 @@ private:
   OwnedVar _capture;
 
 public:
+  ~Branch() {
+    // Make sure that wires are destroyed before brancher in case references to branch/mesh are kept
+    _capture.reset();
+    _wires.reset();
+  }
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:

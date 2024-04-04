@@ -11,6 +11,12 @@
 		<DisplayString Condition="id==size_t(~0)">""</DisplayString>
 		<DisplayString Condition="id!=size_t(~0)">{shards::fast_string::storage-&gt;pool.reverse[id]}</DisplayString>
 	</Type>
+	<Type Name="SHMesh">
+		<DisplayString>Mesh {label}</DisplayString>
+	</Type>
+	<Type Name="SHWire">
+		<DisplayString>Wire {name}</DisplayString>
+	</Type>
 	<Type Name="SHVar">
 		<DisplayString Condition="valueType == SHType::None">None</DisplayString>
 		<DisplayString Condition="valueType == SHType::String">{payload.stringValue}</DisplayString>

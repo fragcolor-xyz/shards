@@ -312,8 +312,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards
 
-  mutable entt::dispatcher dispatcher{};
-
   std::weak_ptr<SHMesh> mesh;
 
   std::vector<Shard *> shards;

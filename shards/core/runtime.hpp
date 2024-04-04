@@ -196,8 +196,8 @@ namespace shards {
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck);
-void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var);
-void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var);
+void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var);
+void triggerVarValueChange(SHWire *wire, const SHVar *name, bool isGlobal, const SHVar *var);
 
 void installSignalHandlers();
 
@@ -390,64 +390,7 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   }
 }
 
-inline bool stop(SHWire *wire, SHVar *result = nullptr, SHContext *currentContext = nullptr) {
-  if (wire->state == SHWire::State::Stopped) {
-    // Clone the results if we need them
-    if (result)
-      cloneVar(*result, wire->finishedOutput);
-
-    return true;
-  }
-
-  bool stopping = false; // <- expected
-  // if exchange fails, we are already stopping
-  if (!const_cast<SHWire *>(wire)->stopping.compare_exchange_strong(stopping, true))
-    return true;
-  DEFER({ wire->stopping = false; });
-
-  SHLOG_TRACE("stopping wire: {}, has-coro: {}, state: {}", wire->name, bool(wire->coro),
-              magic_enum::enum_name<SHWire::State>(wire->state));
-
-  if (coroutineValid(wire->coro)) {
-    // Run until exit if alive, need to propagate to all suspended shards!
-    if (coroutineValid(wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
-      // set abortion flag, we always have a context in this case
-      wire->context->stopFlow(shards::Var::Empty);
-      wire->context->onLastResume = true;
-
-      // BIG Warning: wire->context existed in the coro stack!!!
-      // after this resume wire->context is trash!
-
-      // Another issue, if we resume from current context to current context we dead lock here!!
-      if (currentContext && currentContext == wire->context) {
-        SHLOG_WARNING("Trying to stop wire {} from the same context it's running in!", wire->name);
-      } else {
-        shards::tick<true>(wire, SHDuration{});
-      }
-    }
-
-    // delete also the coro ptr
-    wire->coro.reset();
-  } else {
-    // if we had a coro this will run inside it!
-    wire->cleanup(true);
-
-    // let's not forget to call events, those are called inside coro handler for the above case
-    wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
-  }
-
-  // return true if we ended, as in we did our job
-  auto res = wire->state == SHWire::State::Ended;
-
-  wire->state = SHWire::State::Stopped;
-  wire->currentInput.reset();
-
-  // Clone the results if we need them
-  if (result)
-    cloneVar(*result, wire->finishedOutput);
-
-  return res;
-}
+bool stop(SHWire *wire, SHVar *result = nullptr, SHContext *currentContext = nullptr);
 
 inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::IterationEnded; }
 
@@ -520,9 +463,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
   static inline shards::ObjectVar<std::shared_ptr<SHMesh>> MeshVar{"Mesh", shards::CoreCC, TypeId};
 
-  static std::shared_ptr<SHMesh> make() { return std::shared_ptr<SHMesh>(new SHMesh()); }
+  static std::shared_ptr<SHMesh> make(std::string_view label = "") { return std::shared_ptr<SHMesh>(new SHMesh(label)); }
 
-  static std::shared_ptr<SHMesh> *makePtr() { return new std::shared_ptr<SHMesh>(new SHMesh()); }
+  static std::shared_ptr<SHMesh> *makePtr(std::string_view label = "") { return new std::shared_ptr<SHMesh>(new SHMesh(label)); }
 
   ~SHMesh() { terminate(); }
 
@@ -870,8 +813,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return refs.count(key) > 0;
   }
 
+  void setLabel(std::string_view label) { this->label = label; }
+  std::string_view getLabel() const { return label; }
+
 private:
-  SHMesh() = default;
+  SHMesh(std::string_view label) : label(label) {}
 
   std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
@@ -889,9 +835,72 @@ private:
 
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
+  std::string label;
 };
 
 namespace shards {
+inline bool stop(SHWire *wire, SHVar *result, SHContext *currentContext) {
+  if (wire->state == SHWire::State::Stopped) {
+    // Clone the results if we need them
+    if (result)
+      cloneVar(*result, wire->finishedOutput);
+
+    return true;
+  }
+
+  bool stopping = false; // <- expected
+  // if exchange fails, we are already stopping
+  if (!const_cast<SHWire *>(wire)->stopping.compare_exchange_strong(stopping, true))
+    return true;
+  DEFER({ wire->stopping = false; });
+
+  SHLOG_TRACE("stopping wire: {}, has-coro: {}, state: {}", wire->name, bool(wire->coro),
+              magic_enum::enum_name<SHWire::State>(wire->state));
+
+  if (coroutineValid(wire->coro)) {
+    // Run until exit if alive, need to propagate to all suspended shards!
+    if (coroutineValid(wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
+      // set abortion flag, we always have a context in this case
+      wire->context->stopFlow(shards::Var::Empty);
+      wire->context->onLastResume = true;
+
+      // BIG Warning: wire->context existed in the coro stack!!!
+      // after this resume wire->context is trash!
+
+      // Another issue, if we resume from current context to current context we dead lock here!!
+      if (currentContext && currentContext == wire->context) {
+        SHLOG_WARNING("Trying to stop wire {} from the same context it's running in!", wire->name);
+      } else {
+        shards::tick<true>(wire, SHDuration{});
+      }
+    }
+
+    // delete also the coro ptr
+    wire->coro.reset();
+  } else {
+    // if we had a coro this will run inside it!
+    wire->cleanup(true);
+
+    // let's not forget to call events, those are called inside coro handler for the above case
+    std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
+    if (mesh) {
+      mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
+    }
+  }
+
+  // return true if we ended, as in we did our job
+  auto res = wire->state == SHWire::State::Ended;
+
+  wire->state = SHWire::State::Stopped;
+  wire->currentInput.reset();
+
+  // Clone the results if we need them
+  if (result)
+    cloneVar(*result, wire->finishedOutput);
+
+  return res;
+}
+
 inline SHContext *getRootContext(SHContext *current) {
   while (current->parent) {
     current = current->parent;
