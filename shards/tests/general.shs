@@ -27,6 +27,29 @@
   Math.Add(adder-y)
 })
 
+@template(test-repeat [] {
+  0 >= i
+  7 = times
+  
+  Repeat({
+    Math.Inc(i)
+    i | IsLessEqual(5) | Assert.Is(true)
+  } Times: times Until: {i | Is(5)})
+  i | Assert.Is(5)
+  
+  0 > i
+  Repeat({
+    Math.Inc(i)
+  } Until: {i | Is(10)})
+  i | Assert.Is(10)
+  
+  0 > i
+  Repeat({
+    Math.Inc(i)
+  } Times: 3)
+  i | Assert.Is(3)
+})
+
 @template(test-seq-insert [] {
   [1 2 3] >= sq
   99 | Insert(0 sq)
@@ -69,7 +92,8 @@
   Const("""\sHello""") | Log
   
   @test-seq-insert()
-
+  @test-repeat()
+  
   "phys" | ToHex | Log
   
   10 | ToHex | Assert.Is("0x0a" true)
