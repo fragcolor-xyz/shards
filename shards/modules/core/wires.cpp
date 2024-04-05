@@ -1510,6 +1510,12 @@ struct ParallelBase : public CapturingSpawners {
 
   static SHParametersInfo parameters() { return _params; }
 
+  ~ParallelBase() {
+    // Make sure mesh outlives the wires, because of event handlers
+    _pool.reset();
+    _meshes.clear();
+  }
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
