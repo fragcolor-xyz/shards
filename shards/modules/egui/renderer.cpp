@@ -207,7 +207,6 @@ struct EguiRendererImpl {
     auto &textureUpdates = output.textureUpdates;
     for (size_t i = 0; i < textureUpdates.numSets; i++) {
       auto &textureSet = textureUpdates.sets[i];
-      SPDLOG_LOGGER_INFO(logger, "textureSet {}", (uint64_t)textureSet.id);
       textures.set(textureSet);
     }
   }

@@ -168,6 +168,10 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *
     auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
     output = shard->core.activateTable(context, input);
   } break;
+  case InlineShard::CoreRepeat: {
+    auto shard = reinterpret_cast<shards::RepeatRuntime *>(blk);
+    output = shard->core.activate(context, input);
+  } break;
   case InlineShard::CoreSwap: {
     auto shard = reinterpret_cast<shards::SwapRuntime *>(blk);
     output = shard->core.activate(context, input);

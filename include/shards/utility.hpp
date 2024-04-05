@@ -405,7 +405,8 @@ public:
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
-          std::string_view msg(errors.message.string, size_t(errors.message.len));
+          std::string msg =
+              fmt::format("{} shard: {} (line: {}, column: {})", errors.message.string, blk->name(blk), blk->line, blk->column);
           throw WarmupError(msg);
         }
       }

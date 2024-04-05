@@ -202,7 +202,8 @@ struct Sort : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar), info.exposedType.seqTypes));
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar),
+                                    info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
@@ -369,7 +370,8 @@ struct Remove : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar), info.exposedType.seqTypes));
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar),
+                                    info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
@@ -495,6 +497,9 @@ struct XpendTo : public XPendBase {
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (!_collection.isVariable())
+      throw ComposeError("AppendTo/PrependTo expects a collection variable.");
+
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
@@ -627,6 +632,100 @@ struct PrependTo : public XpendTo {
     } break;
     default:
       throw ActivationError("PrependTo, case not implemented");
+    }
+    return input;
+  }
+};
+
+struct Insert : public XpendTo {
+  static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `Collection`."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
+  ParamVar _index;
+
+  static inline Types IndexTypes{CoreInfo::IntType, CoreInfo::IntVarType};
+  static inline ParamsInfo paramsInfo =
+      ParamsInfo(ParamsInfo::Param("Index", SHCCSTR("The collection to add the input to."), IndexTypes),
+                 ParamsInfo::Param("Collection", SHCCSTR("The collection to add the input to."), xpendTypes));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
+
+  void warmup(SHContext *context) {
+    XpendTo::warmup(context);
+    _index.warmup(context);
+  }
+  void cleanup(SHContext *context) {
+    _index.cleanup(context);
+    XpendTo::cleanup(context);
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _index = value;
+      break;
+    default:
+      XpendTo::setParam(index - 1, value);
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _index;
+    default:
+      return XpendTo::getParam(index - 1);
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHVar &indexVar = _index.get();
+    shassert(indexVar.valueType == SHType::Int);
+    SHInt index = indexVar.payload.intValue;
+
+    auto &collection = _collection.get();
+    switch (collection.valueType) {
+    case SHType::Seq: {
+      auto &arr = collection.payload.seqValue;
+      const auto len = arr.len;
+      index = std::min<SHInt>(std::max<SHInt>(index, 0), len); // Clamp
+
+      shards::arrayResize(arr, len + 1);
+      memmove(&arr.elements[index + 1], &arr.elements[index], sizeof(SHVar) * (len - index));
+      arr.elements[index] = Var::Empty; // this shifted so we can safely reset it, and we need to otherwise clone would free [1]
+      cloneVar(arr.elements[index], input);
+      break;
+    }
+    case SHType::String: {
+      const auto len = collection.payload.stringLen;
+      index = std::min<SHInt>(std::max<SHInt>(index, 0), len); // Clamp
+      // variable is mutable, so we are sure we manage the memory
+      // specifically in Set, cloneVar is used, which uses `new` to allocate
+      // all we have to do use to clone our scratch on top of it
+      _scratchStr.clear();
+      _scratchStr.append(collection.payload.stringValue, index);
+      _scratchStr.append(input.payload.stringValue);
+      _scratchStr.append(collection.payload.stringValue + index, len - index);
+      Var tmp(_scratchStr);
+      cloneVar(collection, tmp);
+      break;
+    }
+    case SHType::Bytes: {
+      const auto len = collection.payload.stringLen;
+      index = std::min<SHInt>(std::max<SHInt>(index, 0), len); // Clam
+
+      // we know it's a mutable variable so must be compatible with our
+      // arrayPush and such routines just do like string for now basically
+      _scratchStr.clear();
+      _scratchStr.append((char *)collection.payload.bytesValue, index);
+      _scratchStr.append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      _scratchStr.append((char *)collection.payload.bytesValue + index, len - index);
+      Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
+      cloneVar(collection, tmp);
+    } break;
+    default:
+      throw ActivationError("Insert, case not implemented");
     }
     return input;
   }
@@ -2156,7 +2255,7 @@ struct Once {
       _lastInnerActivation = start;
 #endif
       _next = _next + dsleep;
-      if(_next < start)
+      if (_next < start)
         _next = start + dsleep;
 
       // Call the activation function
@@ -2249,6 +2348,7 @@ SHARDS_REGISTER_FN(core) {
 
   REGISTER_SHARD("AppendTo", AppendTo);
   REGISTER_SHARD("PrependTo", PrependTo);
+  REGISTER_SHARD("Insert", Insert);
   REGISTER_SHARD("Assoc", Assoc);
 
   using PassMockShard = LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
