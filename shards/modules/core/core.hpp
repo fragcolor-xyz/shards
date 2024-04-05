@@ -3458,42 +3458,30 @@ struct ForRangeShard {
 struct Repeat {
   ShardsVar _blks{};
   ShardsVar _pred{};
-  std::string _ctxVar;
-  SHVar *_ctxTimes = nullptr;
-  int64_t _times = 0;
-  int64_t *_repeats{nullptr};
+  ParamVar _times;
   bool _forever = false;
   ExposedInfo _requiredInfo{};
 
   void cleanup(SHContext *context) {
-    if (_ctxTimes) {
-      releaseVariable(_ctxTimes);
-    }
     _blks.cleanup(context);
     _pred.cleanup(context);
-    _ctxTimes = nullptr;
-    _repeats = nullptr;
+    _times.cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
     _blks.warmup(ctx);
     _pred.warmup(ctx);
-    if (_ctxVar.size()) {
-      assert(!_ctxTimes);
-      _ctxTimes = referenceVariable(ctx, _ctxVar.c_str());
-      _repeats = &_ctxTimes->payload.intValue;
-    } else {
-      _repeats = &_times;
-    }
+    _times.warmup(ctx);
   }
 
-  static inline Parameters _params{{"Action", SHCCSTR("The shards to repeat."), CoreInfo::Shards},
-                                   {"Times", SHCCSTR("How many times we should repeat the action."), CoreInfo::IntOrIntVar},
-                                   {"Forever", SHCCSTR("If we should repeat the action forever."), {CoreInfo::BoolType}},
-                                   {"Until",
-                                    SHCCSTR("Optional shards to use as predicate to continue repeating "
-                                            "until it's true"),
-                                    CoreInfo::ShardsOrNone}};
+  static inline Parameters _params{
+      {"Action", SHCCSTR("The shards to repeat."), CoreInfo::Shards},
+      {"Times", SHCCSTR("How many times we should repeat the action."), {CoreInfo::IntOrIntVar, {CoreInfo::NoneType}}},
+      {"Forever", SHCCSTR("If we should repeat the action forever."), {CoreInfo::BoolType}},
+      {"Until",
+       SHCCSTR("Optional shards to use as predicate to continue repeating "
+               "until it's true"),
+       CoreInfo::ShardsOrNone}};
 
   static SHOptionalString help() {
     return SHCCSTR("Repeat an action a given number of times or until a condition is no longer `true`.");
@@ -3515,13 +3503,7 @@ struct Repeat {
       _blks = value;
       break;
     case 1:
-      if (value.valueType == SHType::Int) {
-        _ctxVar.clear();
-        _times = value.payload.intValue;
-      } else {
-        _ctxVar.assign(SHSTRVIEW(value));
-        _ctxTimes = nullptr;
-      }
+      _times = value;
       break;
     case 2:
       _forever = value.payload.boolValue;
@@ -3539,13 +3521,7 @@ struct Repeat {
     case 0:
       return _blks;
     case 1:
-      if (_ctxVar.size() == 0) {
-        return shards::Var(_times);
-      } else {
-        auto ctxTimes = shards::Var(_ctxVar);
-        ctxTimes.valueType = SHType::ContextVar;
-        return ctxTimes;
-      }
+      return _times;
     case 2:
       return shards::Var(_forever);
     case 3:
@@ -3570,36 +3546,46 @@ struct Repeat {
       data.shard->inlineShardId = InlineShard::CoreRepeat;
     }
 
+    _requiredInfo.clear();
+    mergeIntoExposedInfo(_requiredInfo, predres.requiredInfo);
+    mergeIntoExposedInfo(_requiredInfo, _times, CoreInfo::IntType, false);
     return data.inputType;
   }
 
-  SHExposedTypesInfo requiredVariables() {
-    if (_ctxVar.size() == 0) {
-      return {};
-    } else {
-      _requiredInfo =
-          ExposedInfo(ExposedInfo::Variable(_ctxVar.c_str(), SHCCSTR("The Int number of repeats variable."), CoreInfo::IntType));
-      return SHExposedTypesInfo(_requiredInfo);
-    }
-  }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    auto repeats = (_forever) ? 1 : *_repeats;
-    while (repeats) {
+    bool forever = _forever || _times.isNone();
+    int repeats;
+    if (!_times.isNone()) {
+      repeats = (int)(Var &)_times.get();
+    } else {
+      repeats = 0;
+    }
+    do {
+      if (!forever) {
+        if (repeats <= 0)
+          break;
+        repeats--;
+      }
 
       SHVar repeatOutput{};
       auto state = _blks.activate<true>(context, input, repeatOutput);
       if (state != SHWireState::Continue)
         break;
-
-      if (!(_forever))
-        repeats--;
-    }
+    } while (true);
     return input;
   }
 
   FLATTEN ALWAYS_INLINE SHVar activateUntilPred(SHContext *context, const SHVar &input) {
+    std::optional<int> repeats = !_times.isNone() ? std::make_optional((int)(Var &)_times.get()) : std::nullopt;
     do {
+      if (repeats) {
+        if ((*repeats) <= 0)
+          break;
+        (*repeats)--;
+      }
+
       SHVar pres{};
       auto state = _pred.activate<true>(context, input, pres);
       // logic flow here!
