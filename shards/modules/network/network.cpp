@@ -439,7 +439,10 @@ struct Server : public NetworkBase {
 
         // read lock this
         std::shared_lock<std::shared_mutex> lock(peersMutex);
-        auto container = _wire2Peer[toStop];
+        auto it = _wire2Peer.find(toStop);
+        if (it == _wire2Peer.end())
+          continue; // Wire is not managed by this server
+        NetworkPeer* container = it->second;
         lock.unlock();
 
         SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
@@ -613,7 +616,8 @@ struct Server : public NetworkBase {
                 // Assume that we recycle containers so the connection might already exist!
                 if (!peer->onStopConnection) {
                   _wire2Peer[peer->wire.get()] = peer;
-                  peer->onStopConnection = peer->wire->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+                  peer->onStopConnection =
+                      peer->wire->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
                 }
 
                 // set wire ID, in order for Events to be properly routed
