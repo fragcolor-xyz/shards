@@ -446,27 +446,29 @@ struct Server : public NetworkBase {
 
         container->disconnected = true;
 
-        if (_contextCopy) {
-          OnPeerDisconnected event{
-              .endpoint = *container->endpoint,
-              .wire = container->wire,
-          };
-          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
-        }
-
+        // call this before cleanup
         if (_disconnectionHandler) {
           Var peerId(*reinterpret_cast<int64_t *>(&toStop->id));
           SHVar output{};
           _disconnectionHandler.activate(context, peerId, output);
         }
 
-        // ensure cleanup is called
+        // ensure cleanup is called early here
         auto wireState = toStop->state.load();
         if (wireState != SHWire::State::Failed && wireState != SHWire::State::Stopped) {
           // in the above cases cleanup already happened
           const_cast<SHWire *>(toStop)->cleanup();
         } else {
           SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
+        }
+
+        // now fire events
+        if (_contextCopy) {
+          OnPeerDisconnected event{
+              .endpoint = *container->endpoint,
+              .wire = container->wire,
+          };
+          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
         }
 
         // write lock it now
