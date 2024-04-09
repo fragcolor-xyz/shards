@@ -791,46 +791,39 @@ struct SetBase : public VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   // Runs sanity checks on the target variable, returns the existing exposed type if any
-  SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
-    SHExposedTypeInfo *existingExposedType{};
-
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      auto &reference = data.shared.elements[i];
-      if (strcmp(reference.name, _name.c_str()) == 0) {
-        if (_isTable) {
-          if (reference.exposedType.basicType != SHType::Table) {
-            throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
-          }
-        } else {
-          if (
-              // need to check if this was just a any table definition {}
-              !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
-              data.inputType != reference.exposedType) {
-            throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
-                                           reference.exposedType, data.inputType));
-          }
-          if (!overwrite && !reference.isMutable) {
-            SHLOG_ERROR("Error with variable: {}", _name);
-            throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
-          }
-          if (reference.isProtected) {
-            SHLOG_ERROR("Error with variable: {}", _name);
-            throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
-          }
-          if (warnIfExists) {
-            SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
-          }
+  const SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
+    const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(data.shared, _name);
+    if (existingExposedType) {
+      auto &reference = *existingExposedType;
+      if (_isTable) {
+        if (reference.exposedType.basicType != SHType::Table) {
+          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
         }
-
-        existingExposedType = &data.shared.elements[i];
-
-        if (data.shared.elements[i].exposed) {
-          _isExposed = true;
-        } else {
-          _isExposed = false;
+      } else {
+        if (
+            // need to check if this was just a any table definition {}
+            !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
+            data.inputType != reference.exposedType) {
+          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
+                                         reference.exposedType, data.inputType));
         }
+        if (!overwrite && !reference.isMutable) {
+          SHLOG_ERROR("Error with variable: {}", _name);
+          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
+        }
+        if (reference.isProtected) {
+          SHLOG_ERROR("Error with variable: {}", _name);
+          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
+        }
+        if (warnIfExists) {
+          SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
+        }
+      }
 
-        break;
+      if (reference.exposed) {
+        _isExposed = true;
+      } else {
+        _isExposed = false;
       }
     }
 
@@ -927,7 +920,7 @@ struct Set : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false);
+    const SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false);
 
     // bake exposed types
     if (_isTable) {
@@ -1001,7 +994,7 @@ struct Set : public SetUpdateBase {
       auto &dispatcher = _global ? context->main->mesh.lock()->dispatcher : context->main->dispatcher;
       dispatcherPtr = &dispatcher;
 
-      OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo), context->currentWire()};
+      OnExposedVarWarmup ev{context->main->id, _name, _exposedInfo._innerInfo.elements[0], context->currentWire()};
       dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {

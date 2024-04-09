@@ -1118,7 +1118,7 @@ void abortWire(struct SHContext *context, std::string_view errorText);
 struct OnExposedVarWarmup {
   entt::id_type id;
   std::string_view name;
-  SHExposedTypesInfo info;
+  SHExposedTypeInfo info;
   const SHWire *wire;
 };
 
