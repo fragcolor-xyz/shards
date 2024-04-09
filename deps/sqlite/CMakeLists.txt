@@ -14,16 +14,14 @@ target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-s
 
 add_rust_library(NAME crsql_bundle
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/cr-sqlite/core/rs/bundle
+  ENVIRONMENT ${RUST_ENV} CRSQLITE_COMMIT_SHA=shards-dev
   FEATURES loadable_extension)
 
 add_library(crsqlite-extension SHARED
   cr-sqlite/core/src/sqlite/sqlite3.c
   cr-sqlite/core/src/crsqlite.c
-  cr-sqlite/core/src/util.c
-  cr-sqlite/core/src/tableinfo.c
   cr-sqlite/core/src/changes-vtab.c
-  cr-sqlite/core/src/ext-data.c
-  cr-sqlite/core/src/get-table.c)
+  cr-sqlite/core/src/ext-data.c)
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
