@@ -1,0 +1,37 @@
+	Here's how you can generate 10 flowers spread randomly on a 2x2 grid using d-FlowerRed, starting from x and z position of 1.0 and keeping the y-axis at 0.0:
+
+```python
+import random
+
+for _ in range(10):
+    x = 1.0 + random.random() * 2.0
+    z = 1.0 + random.random() * 2.0
+    print(f"d-FlowerRed 1.0 {x} 0.0 {z}")
+```
+
+This code will output 10 lines, each representing a randomly placed flower on the 2x2 grid. The output will look something like this:
+
+```
+d-FlowerRed 1.0 2.7503186678375244 0.0 1.4141845254938153
+d-FlowerRed 1.0 1.0709262693063548 0.0 2.870732729404718
+d-FlowerRed 1.0 2.4544368884996436 0.0 1.0461571933911988
+d-FlowerRed 1.0 1.5140850613783523 0.0 2.2644725341287603
+d-FlowerRed 1.0 2.993040247205013 0.0 2.1530501859515465
+d-FlowerRed 1.0 1.2272078385330278 0.0 1.6532141350438535
+d-FlowerRed 1.0 2.1844384442664944 0.0 2.558267506120641
+d-FlowerRed 1.0 1.8340613862656362 0.0 1.1638981247578293
+d-FlowerRed 1.0 1.6639210588336192 0.0 2.6157090486113525
+d-FlowerRed 1.0 2.5655937032567523 0.0 1.8721709399279692
+```
+
+Each line represents a flower with the following format:
+```
+d-FlowerRed <scale> <x> <y> <z>
+```
+
+- `<scale>` is set to 1.0 for all flowers.
+- `<x>` is a random value between 1.0 and 3.0 (1.0 + random value between 0 and 2.0).
+- `<y>` is always 0.0.
+- `<z>` is a random value between 1.0 and 3.0 (1.0 + random value between 0 and 2.0).
+
+You can copy and paste the output lines into your Shards scene file to place the flowers randomly on the 2x2 grid.

@@ -1,0 +1,49 @@
+	Here's an example of how you can generate 6 trees spread randomly on a 3x3 grid using d-TreePine in Shards, starting from x and z position of 1.0 and keeping the y-axis at 0.0:
+
+```glsl
+// Define the grid size and spacing
+const float gridSize = 3.0;
+const float gridSpacing = 1.0;
+
+// Define the number of trees
+const int numTrees = 6;
+
+// Define the tree parameters
+const float treeScale = 0.5;
+const float treeSeed = 42.0;
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    // Calculate the pixel coordinates
+    vec2 uv = fragCoord / iResolution.xy;
+    
+    // Initialize the fragment color
+    fragColor = vec4(0.0);
+    
+    // Generate random positions for the trees
+    vec2 treePositions[numTrees];
+    for (int i = 0; i < numTrees; i++) {
+        treePositions[i] = vec2(
+            1.0 + floor(rand(vec2(i, treeSeed)) * gridSize) * gridSpacing,
+            1.0 + floor(rand(vec2(i, treeSeed + 1.0)) * gridSize) * gridSpacing
+        );
+    }
+    
+    // Render the trees
+    for (int i = 0; i < numTrees; i++) {
+        vec2 treePos = treePositions[i];
+        vec3 treeColor = d_TreePine(uv, treePos, 0.0, treeScale, treeSeed + float(i));
+        fragColor.rgb += treeColor;
+    }
+}
+```
+
+Explanation:
+1. We define the `gridSize` as 3.0 to represent a 3x3 grid and the `gridSpacing` as 1.0 to set the spacing between grid cells.
+2. We define the `numTrees` as 6 to generate 6 trees.
+3. We set the `treeScale` to 0.5 to control the size of the trees and the `treeSeed` to 42.0 as a random seed for generating tree positions.
+4. In the `mainImage` function, we calculate the pixel coordinates using `fragCoord` and initialize the `fragColor` to black.
+5. We generate random positions for the trees using a loop and the `rand` function. The x and z positions are calculated by generating random values between 0 and `gridSize` and adding 1.0 to start from the desired position. The y-axis is kept at 0.0.
+6. We render the trees using another loop. For each tree position, we call the `d_TreePine` function with the appropriate parameters, including the UV coordinates, tree position, y-axis value (0.0), tree scale, and a unique seed for each tree.
+7. The resulting tree colors are accumulated in the `fragColor` variable, which is the final output color of the fragment.
+
+This code will generate 6 trees randomly positioned on a 3x3 grid, starting from x and z position of 1.0 and keeping the y-axis at 0.0. The trees will be rendered using the `d-TreePine` function from the Shards library.

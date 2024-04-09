@@ -1,0 +1,61 @@
+	Here's the code to generate a 6x6 hexagonal grid using d-BlockHexagon tiles, with the y-axis at -1.0, and the tiles offset by 0.5 on the x-axis and 0.865 on the z-axis:
+
+```python
+import bpy
+import math
+
+# Create a new collection to hold the tiles
+tile_collection = bpy.data.collections.new("Hexagonal Grid")
+bpy.context.scene.collection.children.link(tile_collection)
+
+# Define the tile size
+tile_size = 1.0
+
+# Define the offsets
+x_offset = 0.5
+z_offset = 0.865
+
+# Loop through the grid positions
+for row in range(6):
+    for col in range(6):
+        # Calculate the position of the tile
+        x = col * x_offset * 2
+        z = row * z_offset * 2
+        
+        # Offset every other row
+        if row % 2 == 1:
+            x += x_offset
+        
+        # Create a new tile
+        tile = bpy.data.meshes.new("Tile")
+        tile_obj = bpy.data.objects.new("Tile", tile)
+        tile_collection.objects.link(tile_obj)
+        
+        # Add the d-BlockHexagon tile geometry
+        bpy.ops.mesh.primitive_cylinder_add(
+            vertices=6,
+            radius=tile_size / 2,
+            depth=0.1,
+            location=(x, -1.0, z)
+        )
+        
+        # Assign the tile material
+        tile_material = bpy.data.materials.get("Tile Material")
+        if tile_material is None:
+            tile_material = bpy.data.materials.new(name="Tile Material")
+            tile_material.diffuse_color = (0.8, 0.8, 0.8, 1.0)
+        tile_obj.data.materials.append(tile_material)
+        
+        # Deselect the tile
+        bpy.context.view_layer.objects.active = None
+
+# Set the 3D view to the new collection
+bpy.context.scene.collection.children.unlink(tile_collection)
+for obj in tile_collection.objects:
+    bpy.context.scene.collection.objects.link(obj)
+bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
+```
+
+This code creates a new collection called "Hexagonal Grid" and adds a 6x6 grid of d-BlockHexagon tiles to it. The tiles are positioned using the specified offsets, and a default material is assigned to them. Finally, the 3D view is set to display the new collection.
+
+Note that this code assumes you have Blender installed and the necessary Python modules imported. You may need to adjust the material settings or tile geometry based on your specific requirements.

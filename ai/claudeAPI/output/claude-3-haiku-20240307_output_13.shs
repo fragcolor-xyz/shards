@@ -1,0 +1,47 @@
+	Here's an example of how you can generate a 6x6 hexagonal grid using d-BlockHexagon tiles in Shards:
+
+```csharp
+using Shards.Tiles;
+using Shards.Tiles.Hexagon;
+using UnityEngine;
+
+public class HexagonalGrid : MonoBehaviour
+{
+    public int gridSize = 6;
+    public float tileSize = 1f;
+
+    private void Start()
+    {
+        GenerateHexagonalGrid();
+    }
+
+    private void GenerateHexagonalGrid()
+    {
+        for (int x = 0; x < gridSize; x++)
+        {
+            for (int z = 0; z < gridSize; z++)
+            {
+                float xPos = (x + (z % 2 * 0.5f)) * tileSize * 0.866f;
+                float zPos = z * tileSize * 1.5f;
+                Vector3 position = new Vector3(xPos, -1.0f, zPos);
+
+                var tile = TileFactory.CreateTile<d_BlockHexagon>(position, Quaternion.identity);
+                tile.transform.SetParent(transform);
+            }
+        }
+    }
+}
+```
+
+Here's a breakdown of what's happening in the code:
+
+1. The `GenerateHexagonalGrid()` method is responsible for creating the 6x6 hexagonal grid.
+2. We use a nested loop to iterate through the grid size (6x6).
+3. For each tile, we calculate the x and z positions based on the current loop indices and the `tileSize` variable.
+4. The x position is offset by `(x + (z % 2 * 0.5f)) * tileSize * 0.866f`, which shifts the odd rows by half a tile width.
+5. The z position is calculated as `z * tileSize * 1.5f`, which is the standard spacing for a hexagonal grid.
+6. The y position is set to `-1.0f` to keep the tiles at the same y-axis level.
+7. We then use the `TileFactory.CreateTile<d_BlockHexagon>()` method to create a new d-BlockHexagon tile at the calculated position.
+8. Finally, we set the newly created tile as a child of the `transform` of the `HexagonalGrid` object.
+
+This code will generate a 6x6 hexagonal grid of d-BlockHexagon tiles, with the tiles offset in the x and z axes to form a cohesive hexagonal pattern.

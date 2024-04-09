@@ -1,0 +1,21 @@
+	```
+0 >= idx
+ForRange(0 5 {
+  idx | ToFloat | Math.Divide(2.0) | Math.Floor = x
+  idx | Math.Mod(2) | ToFloat = z
+  @f3((x | Math.Multiply(5.0)) 0.0 (z | Math.Multiply(5.0))) = position
+  {Graphics: {"fbl/pose": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0 1.0 1.0)}}} | Fbl.Formalize("d-treeDefault") 
+  Math.Inc(idx)
+})
+```
+
+This script will spawn 6 trees in a 2x3 grid pattern. 
+
+The key steps are:
+1. Loop from 0 to 5 using ForRange
+2. Calculate the x and z grid coordinates by dividing the index by 2 and taking the floor for x, and using modulo 2 for z 
+3. Multiply the grid coords by 5 to space out the trees
+4. Set the tree position using the calculated x, 0 for y, and z
+5. Formalize a "d-treeDefault" asset at each grid position with default rotation and scale
+
+Let me know if you have any other questions!
