@@ -1,0 +1,29 @@
+{
+  prompt: """How do I check if every value in a sequence does not equal somthing"""
+
+  solution: """
+   [2 2 2 2 2 2 2] = sequence
+
+   sequence
+   If(IsAllNot(3) {Msg("all matches")} {Msg("not all matches")})
+  """
+
+  explicit: """
+   [2 2 2 2 2 2 2] = sequence
+
+   sequence
+   If(Predicat: IsAllNot(Value: 3) Then:{
+    Msg("all matches")
+    } Else: {
+      Msg("not all matches")}
+   )
+  """
+
+  explanation: """
+    The IsAllNot Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through
+    a sequence and check if every element does not match the value stated in the Value parameter. If all elements does not match, it will return true,
+    otherwise, it will return false.
+  """
+
+  tag: "  #General"
+}

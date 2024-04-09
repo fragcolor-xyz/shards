@@ -1,0 +1,21 @@
+{
+  prompt: """How do I apply the sine trigonometric function to a value"""
+
+  solution: """
+    1.5708
+    Math.Sin
+    Log("result")
+  """
+
+  explicit: """
+    1.5708
+    Math.Sin
+    Log(Prefix:"result")
+  """
+
+  explanation: """
+    Math.Sin is a Maths Shard that will apply the sine trigonometric function to the float value passed in as input.
+  """
+
+  tag: "  #Maths"
+}
