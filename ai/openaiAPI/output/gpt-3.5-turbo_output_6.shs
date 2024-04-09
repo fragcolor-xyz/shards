@@ -1,0 +1,13 @@
+	```shards
+0 >= idx 
+ForRange(0 5 {   
+    idx | ToFloat | Math.Divide(3.0) | Math.Floor = x
+    idx | Math.Mod(3) | ToFloat = z
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomX
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomZ
+    @f3((x | Math.Add(randomX) 1.0) 0.0 (z | Math.Add(randomZ) 1.0)) = position
+    {Graphics: {"fbl/pose": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize("d-TreePine") 
+    Math.Inc(idx) 
+})
+```
+This script will generate 6 trees spread randomly on a 3x3 grid using the d-TreePine asset, with the starting x and z position of 1.0 and the y-axis set to 0.0.

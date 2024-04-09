@@ -1,0 +1,19 @@
+	
+   1.0 >= x
+   1.0 >= z
+  
+    x-z| Math.Add(@f2(1.0 0.0)) > x-z
+    x-z| Math.Add(@f2(0.0 1.0)) > x-z
+    x-z
+    | Set(tile-position)
+  
+    x-z| Math.Add(Vector:@f2(1.0 0.0)) > x-z
+    x-z| Math.Add(Vector:@f2(0.0 1.0)) > x-z
+    x-z
+    | Set(Name:tile-position)
+  
+    The wire receives 10 flowers spread randomly on the 2x2 grid using d-FlowerRed. 
+    The x and z positions are generated using the Random Shard.  Subsequent Math.Add Shards  are used to add float2 inputs with x and z positions of 1.0 
+    to the current x and z positions of the flower. The  tiling of x and z is achieved using the Math.Mod Shard.  The generated x and z positions are fed into
+    the tile-position of the Set Shard to assign the new position to the flower.
+    #General

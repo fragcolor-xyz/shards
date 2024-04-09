@@ -1,0 +1,17 @@
+	```shards
+4 >= idx ForRange(0 15 {   
+    idx | ToFloat | Math.Divide(4.0) | Math.Floor = x   
+    idx | Math.Mod(4) = z   
+
+    x | Math.Multiply(0.5) = xOffset
+    z | Math.Multiply(0.865) = zOffset
+
+    x | ToFloat | Math.Add(xOffset) = xPos
+    z | ToFloat | Math.Add(zOffset) = zPos
+
+    @f3(xPos -1.0 zPos) = position   
+    {Graphics: {"fbl/pose": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize("d-BlockSnowHexagon")   
+
+    Math.Inc(idx) 
+})
+```

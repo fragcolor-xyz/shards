@@ -1,0 +1,15 @@
+	Here is the Shards code for spawning 6 trees in a grid formation:
+
+```shards
+0 >= idx 
+ForRange(0 5 { 
+  idx | ToFloat | Math.Divide(3.0) | Math.Floor = x 
+  idx | Math.Mod(3) | ToFloat = z 
+  @f3(x, 0.0, z) = position 
+  {Graphics: {"fbl/pose": {translation: position, rotation: @f4(0.0, 0.0, 0.0, 1.0), scale: @f3(1.0, 1.0, 1.0)}}} | Fbl.Formalize("d-treeDefault") 
+  Math.Inc(idx) 
+})
+```
+
+# Here we're creating a grid with 6 trees placed at defined coordinates. idx variable is used to store the index that increments with each iteration of the ForRange loop. We calculate x and z coordinates for each tree using Math.Divide and Math.Mod. Then a new tree is spawned ("d-treeDefault") on each calculated position (translation). Rotation and scale are also defined when formalizing the tree form. As we do not need any specific orientation, we are using default rotation values.
+

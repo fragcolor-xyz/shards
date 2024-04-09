@@ -1,0 +1,293 @@
+Prompt,Model,Completion
+spawn 6 trees in a grid,ft:gpt-3.5-turbo-0125:hasten-inc::9BymRBoU,"
+   0 >= idx
+
+   ForRange(0  2 {
+    ForRange(0  2 {
+      Seq(
+        Name: ""tree""
+        ;;    Prefab: prefab
+        Position: @f3 0.0 0.0
+        ;;    Rotation:
+        ;;    Scale:
+        ;;    Wire:
+      )
+      Math.Add(idx)
+    })
+   0 >= idx
+
+   ForRange(0  2 {
+    ForRange(0  2 {
+      Seq(
+        Name: ""tree""
+        ;;    Prefab: prefab
+        Position: @f3 0.0 0.0
+        ;;    Rotation:
+        ;;    Scale:
+        ;;    Wire:
+      )
+      Math.Add(idx)
+    })
+  
+    The Tree Shard is a Shard that spawns objects (from a sequence or a single object) and gives them the  Name: provided in the Name: parameter. 
+    They type of object spawned is defined in the Prefab: parameter. 
+    The  Position: of the spawned object is determined by the value passed into the Position: parameter.
+    Generally, the Tree Shard is used in conjunction with the ForRange Shard to spawn several objects. It will also wire 
+    the objects spawned with its Wire: parameter.
+    #General"
+"Generate 6 trees spread randomly on a 3x3 grid using d-TreePine, starting from x and z position of 1.0 Keep the y-axis at 0.0",ft:gpt-3.5-turbo-0125:hasten-inc::9BymRBoU,"
+   @f3(1.0 0.0 1.0)
+   d-TreePine
+  
+   @f3(1.0 0.0 1.0)
+   d-TreePine
+  
+    d-TreePine is a Shard that generates a pine tree model using d-Tree. 
+    The tree generated has 3 levels and it's size increases with each level. 
+    The Shard has no input.
+    #General"
+"Generate 10 flowers spread randomly on a 2x2 grid using d-FlowerRed, starting from x and z position of 1.0 Keep the y-axis at 0.0 ",ft:gpt-3.5-turbo-0125:hasten-inc::9BymRBoU,"
+   1.0 >= x
+   1.0 >= z
+  
+    x-z| Math.Add(@f2(1.0 0.0)) > x-z
+    x-z| Math.Add(@f2(0.0 1.0)) > x-z
+    x-z
+    | Set(tile-position)
+  
+    x-z| Math.Add(Vector:@f2(1.0 0.0)) > x-z
+    x-z| Math.Add(Vector:@f2(0.0 1.0)) > x-z
+    x-z
+    | Set(Name:tile-position)
+  
+    The wire receives 10 flowers spread randomly on the 2x2 grid using d-FlowerRed. 
+    The x and z positions are generated using the Random Shard.  Subsequent Math.Add Shards  are used to add float2 inputs with x and z positions of 1.0 
+    to the current x and z positions of the flower. The  tiling of x and z is achieved using the Math.Mod Shard.  The generated x and z positions are fed into
+    the tile-position of the Set Shard to assign the new position to the flower.
+    #General"
+Generate a 6x6 hexagonal grid using d-BlockHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid,ft:gpt-3.5-turbo-0125:hasten-inc::9BymRBoU,"
+    0 >= idx
+    
+    ForRange(0 5  {
+      idx
+      ToFloat
+      Math.Multiply(0.866)
+      @f3( x  -1.0  z)
+    })
+  
+    0 >= idx
+    
+    ForRange(0 5  {
+      idx
+      ToFloat
+      Math.Multiply(0.866)
+      @f3( x  -1.0  z)
+    })
+  
+    ForRange is a Shard that will generate and execute through the solution provided in the :From parameter. In the example provided in the solution,
+    the ForRange Shard will generate 6 hexagon tiles.  Math.Multiply is a Maths Shard that will take a float or int as input and a a value specified on 
+    in the :Operand parameter and perform the multiply operation.  To generate a 6x6 grid we will need to feed the output of the ForRange Shard into 
+    the :From parameter of the next ForRange Shard.  #General"
+"Starting from x position 4 and z position 4, generate a 4x4 hexagonal grid using d-BlockSnowHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid.",ft:gpt-3.5-turbo-0125:hasten-inc::9BymRBoU,"
+   @f3(4.0 -1.0 4.0)
+   d-BlockSnowHexagon
+  
+   @f3(4.0 -1.0 4.0)
+   d-BlockSnowHexagon
+  
+    d-BlockSnowHexagon
+    #General"
+spawn 6 trees in a grid,gpt-3.5-turbo,"```shards 
+0 >= idx ForRange(0 5 { 
+    idx | ToFloat | Math.Divide(3.0) | Math.Floor = x 
+    idx | Math.Mod(3) | ToFloat = z 
+    RandomFloat(Max: 1.0) | Math.Multiply(10.0) = randomX 
+    RandomFloat(Max: 1.0) | Math.Multiply(10.0) = randomZ 
+    @f3((x | Math.Add(randomX)) 0.0 (z | ToFloat | Math.Add(randomZ))) = position 
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-treeDefault"") 
+    Math.Inc(idx) 
+})
+```  
+This Shards script will spawn 6 trees in a grid pattern. It iterates over a range of 6 times, calculates the grid positions based on the index, generates random positions within the grid, and then formalizes the tree entities in the Formabble environment."
+"Generate 6 trees spread randomly on a 3x3 grid using d-TreePine, starting from x and z position of 1.0 Keep the y-axis at 0.0",gpt-3.5-turbo,"```shards
+0 >= idx 
+ForRange(0 5 {   
+    idx | ToFloat | Math.Divide(3.0) | Math.Floor = x
+    idx | Math.Mod(3) | ToFloat = z
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomX
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomZ
+    @f3((x | Math.Add(randomX) 1.0) 0.0 (z | Math.Add(randomZ) 1.0)) = position
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-TreePine"") 
+    Math.Inc(idx) 
+})
+```
+This script will generate 6 trees spread randomly on a 3x3 grid using the d-TreePine asset, with the starting x and z position of 1.0 and the y-axis set to 0.0."
+"Generate 10 flowers spread randomly on a 2x2 grid using d-FlowerRed, starting from x and z position of 1.0 Keep the y-axis at 0.0 ",gpt-3.5-turbo,"```shards
+0 >= idx 
+ForRange(0 9 {   
+    idx | ToFloat | Math.Divide(3.0) = x   
+    idx | Math.Mod(3) = z   
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomX   
+    RandomFloat(Max: 0.5) | Math.Multiply(2.0) = randomZ   
+    @f3((x | Math.Add(randomX) 1.0 (z | Math.Add(randomZ))) = position   
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-FlowerRed"")   
+})
+```
+
+Here you go, the Shards script for generating 10 flowers spread randomly on a 2x2 grid using d-FlowerRed, starting from x and z position of 1.0 while keeping the y-axis at 0.0."
+Generate a 6x6 hexagonal grid using d-BlockHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid,gpt-3.5-turbo,"```SHARDS
+0 >= idx 
+ForRange(0 35 { 
+    idx | ToFloat 
+    Math.Divide(6.0) 
+    Math.Floor = q 
+    idx | Math.Mod(6) 
+    = r 
+    q | ToFloat 
+    Math.Multiply(0.865) 
+    = zOffset 
+    @f3((r | Math.Multiply(1.0) | Math.Add(0.5)) -1.0 (q | ToFloat | Math.Multiply(0.865))) 
+    = position 
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} 
+    | Fbl.Formalize(""d-BlockHexagon"") 
+})
+```  
+//--------------------------------------------------------------
+Create a hexagonal grid by using `d-BlockHexagon` tiles with the y-axis set at -1.0. Offset each tile's x position by 0.5 and z position by 0.865 to form a cohesive hexagonal grid."
+"Starting from x position 4 and z position 4, generate a 4x4 hexagonal grid using d-BlockSnowHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid.",gpt-3.5-turbo,"```shards
+4 >= idx ForRange(0 15 {   
+    idx | ToFloat | Math.Divide(4.0) | Math.Floor = x   
+    idx | Math.Mod(4) = z   
+
+    x | Math.Multiply(0.5) = xOffset
+    z | Math.Multiply(0.865) = zOffset
+
+    x | ToFloat | Math.Add(xOffset) = xPos
+    z | ToFloat | Math.Add(zOffset) = zPos
+
+    @f3(xPos -1.0 zPos) = position   
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-BlockSnowHexagon"")   
+
+    Math.Inc(idx) 
+})
+```"
+spawn 6 trees in a grid,gpt-4,"Here is the Shards code for spawning 6 trees in a grid formation:
+
+```shards
+0 >= idx 
+ForRange(0 5 { 
+  idx | ToFloat | Math.Divide(3.0) | Math.Floor = x 
+  idx | Math.Mod(3) | ToFloat = z 
+  @f3(x, 0.0, z) = position 
+  {Graphics: {""fbl/pose"": {translation: position, rotation: @f4(0.0, 0.0, 0.0, 1.0), scale: @f3(1.0, 1.0, 1.0)}}} | Fbl.Formalize(""d-treeDefault"") 
+  Math.Inc(idx) 
+})
+```
+
+# Here we're creating a grid with 6 trees placed at defined coordinates. idx variable is used to store the index that increments with each iteration of the ForRange loop. We calculate x and z coordinates for each tree using Math.Divide and Math.Mod. Then a new tree is spawned (""d-treeDefault"") on each calculated position (translation). Rotation and scale are also defined when formalizing the tree form. As we do not need any specific orientation, we are using default rotation values.
+"
+"Generate 6 trees spread randomly on a 3x3 grid using d-TreePine, starting from x and z position of 1.0 Keep the y-axis at 0.0",gpt-4,"Sure, here is the Shards script that will serve the purpose:
+
+```shards
+0 >= idx
+ForRange(0 6 { 
+  idx | ToFloat | Math.Divide(3.0) | Math.Floor | Math.Add(1.0) = x
+  idx | Math.Mod(3) | ToFloat | Math.Add(1.0) = z
+  RandomFloat(Max: 1.0) = randomX
+  RandomFloat(Max: 1.0) = randomZ
+  @f3((x | Math.Add(randomX)) 0.0 (z | Math.Add(randomZ))) = position 
+  {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-TreePine"") 
+  Math.Inc(idx) 
+})
+```
+
+Let me explain this a bit.
+
+We initialise our index `idx` with 0 and run a loop for six iterations. For each iteration, we calculate the x and z positions by dividing the current index with 3.0 and then rounding down to the nearest integer with `Math.Floor`. We add 1.0 to ensure that we start from x and z position of 1.0, and to obtain a value between 1 and 4 since our grid is 3x3. 
+
+Next, for a bit randomness in placement, we create two random float numbers `randomX` and `randomZ` that will be added to x and z coordinates.
+
+The result of it is then put into an `@f3` as the translation value for the `Fbl.Formalize` function. We set the rotation and scale values to default.
+
+Finally, we increment `idx` by 1 at the end of each loop."
+"Generate 10 flowers spread randomly on a 2x2 grid using d-FlowerRed, starting from x and z position of 1.0 Keep the y-axis at 0.0 ",gpt-4,"Here is the Shards script for generating 10 flowers spread randomly in a 2x2 grid:
+
+```shards
+0 >= idx
+ForRange(0 9 {
+   RandomFloat(Max: 2.0) | Math.Add(1.0) = randomX
+   RandomFloat(Max: 2.0) | Math.Add(1.0) = randomZ
+   @f3(randomX 0.0 randomZ) = position
+   {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-FlowerRed"")
+   Math.Inc(idx)
+})
+```
+
+* The above script initializes an index ('idx') for our loop, which will create the desired amount of flowers (10 in this case).
+* We then enter a loop (ForRange), which will run from our starting index 0 to 9 (10 iterations total).
+* For each iteration, we generate a random float number between 0.0 and 2.0 for both x-axis ('randomX') and z-axis ('randomZ'). We then add 1.0 to each value to ensure we start from an x and z position of 1.0.
+* We create a 3D vector 'position' for each flower using the random x and z values, and keep y-axis constant at 0.0. 
+* Then we create a form with that position, a default rotation using quaternion, and a scale of 1 in all directions.
+* The form for each flower is then finalized with the function 'Fbl.Formalize' using the identifier 'd-FlowerRed'
+* Lastly, we increment the index ('idx') for the next iteration. This is repeated until we have created 10 flowers. 
+
+Keep in"
+Generate a 6x6 hexagonal grid using d-BlockHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid,gpt-4,"Sure. Here is the Shards code block to generate a 6x6 hexagonal grid of 'd-BlockHexagon' tiles.
+
+```shards
+0 >= idx 
+ForRange(0 35 {   
+    idx | ToInt | Math.Divide(6) | ToFloat = row 
+    idx | ToInt | Math.Mod(6) | ToFloat  = column 
+
+    row | Math.Mod(2) | ToFloat | Math.Multiply(0.5) = rowOffset
+
+    (column | ToFloat | Math.Multiply(2.0)) | Math.Add(rowOffset) = xPosition
+    row | ToFloat | Math.Multiply(0.865) = zPosition
+
+    -1.0 = yPos 
+
+    @f3(xPosition yPos zPosition) = position 
+
+    {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0)}}} | Fbl.Formalize(""d-BlockHexagon"")   
+    Math.Inc(idx) 
+})
+```
+This Shards script defines the index range for the loop using 0 for the initial value up to 35. The arrangement of tiles is determined by the row's offset calculated by `row | Math.Mod(2) | ToFloat | Math.Multiply(0.5) = rowOffset`. 
+
+This offset adjusts the x-position of the tiles on alternate rows by 0.5, causing the tiles to align and form a hexagonal pattern. 
+
+The translation is created by `@f3(xPosition yPos zPosition)`, representing the location of each tile in 3D space. 
+
+Finally, the 'd-BlockHexagon' form is materialized with `Fbl.Formalize(""d-BlockHexagon"")` for each tile's position.
+"
+"Starting from x position 4 and z position 4, generate a 4x4 hexagonal grid using d-BlockSnowHexagon tiles. Keep the y-axis at -1.0 Offset tile’s x position by 0.5 and z position by 0.865 so they form a cohesive hexagonal grid.",gpt-4,"Here is the Shards code that accomplishes your described task:
+
+```shards
+4 >= startX
+4 >= startZ
+4 >= endX
+4 >= endZ
+-1.0 >= posY
+0.5 >= offsetX
+0.865 >= offsetZ
+@endX | Math.Add(1) = endXPlus
+endXPlus >= idxZ
+startX >= idxX
+
+ForRange(startX endX {
+    idxX | Math.Subtract(startX) | IsEven = offsetXIndex
+    offsetXIndex | Math.Multiply(offsetX) = offsetXPosition
+    ForRange(startZ endZ {
+        idxZ | Math.Subtract(startZ) = zPos
+        zPos | Math.Multiply(offsetZ) = offsetZPosition
+        @f3((idxX | Math.Add(offsetXPosition)) posY (idxZ | Math.Add(offsetZPosition))) = position
+        {Graphics: {""fbl/pose"": {translation: position rotation: @f4(0.0 0.0 0.0 1.0) scale: @f3(1.0 1.0 1.0)}}} | Fbl.Formalize(""d-BlockSnowHexagon"")
+        Math.Inc(idxZ)
+    } 
+    Math.Inc(idxX)
+    startZ >= idxZ
+})
+```
+
+This script defines a start value for X and Z position and the number of blocks in the X and Z direction (4 in both cases). It runs two nested loops from the start to end values in both X and Z directions, combing them to calculate each block position on the XY plane. An offset is added to the X and Z position each time to align the blocks into a hexagonal grid. The Y position is kept constant at -1.0. Each formalized form represents a tile from the `d-BlockSnowHexagon` asset. The `ForRange` function automatically"
