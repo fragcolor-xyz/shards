@@ -1,0 +1,20 @@
+{
+  prompt: """How do I get the highest value from a sequence"""
+
+  solution:
+    """[1 2 3 4 5] = seq
+    Highest
+    Log("resulting")"""
+
+  explicit:
+    """[1 2 3 4 5] = seq
+    Highest
+    Log(Prefix:"resulting")"""
+
+  explanation: """
+    The Highest shard will parse a sequence and return the element with the highest "value". If it is a sequence of integers or floats it will return the element with
+    the highest integer or float. If it is a sequence of strings it will return the element with the highest value based on the lexicographical order.
+  """
+
+  tag: "  #General"
+}
