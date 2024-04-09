@@ -59,7 +59,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 endif()
 
 option(SHARDS_MIN_DEBUG_INFO "Use minimal debug info" OFF)
-function(fixup_debug_flags VARNAME) 
+function(fixup_debug_flags VARNAME)
   string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UPPER)
   set(TMP_VARNAME "${VARNAME}_${CMAKE_BUILD_TYPE_UPPER}")
   string(REPLACE " " ";" TMP_FLAGS ${${TMP_VARNAME}})
@@ -152,7 +152,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "[A-Za-z]*Clang")
       set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-mllvm>
-        $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=100000>
+        $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=10000>
       )
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       set(INLINING_FLAGS
