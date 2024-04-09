@@ -1,0 +1,135 @@
+@define(prompt-type @type({"user": Type::String "assistant": Type::String}))
+@define(system-prompt "placeholder-system-prompt")
+
+@wire(prepare-jsonl {
+  "" >= jsonl
+
+  {user: "user-prompt" assistant: "ai-assistant-answer"} >> temp-prompt-seq
+  Clear(temp-prompt-seq)
+
+  ; TODO
+
+  "C:/Projects/shards/ai/fine-tuning-v1"
+  FS.Iterate
+
+  ForEach({
+    {
+      {user: "user-prompt" assistant: "ai-assistant-answer"} >= temp-chat
+      "" >= ai-assistant-answer
+    }
+
+    FS.Read
+    Shards.Read(Json: true)
+    FromJson (Pure: true)
+
+    ;; Parsing the output table and slowly taking the items that I need
+    ExpectTable
+    Take("sequence")
+    ExpectTable
+    Take("statements")
+    ExpectSeq
+    = temp-seq
+    Count(temp-seq)
+    When(Predicate: Is(1) Action:{
+      temp-seq
+      Take(0)
+      ExpectTable
+      Take("Pipeline")
+      ExpectTable
+      Take("blocks")
+      ExpectSeq
+      Take(0)
+      ExpectTable
+      Take("content")
+      ExpectTable
+      Take("Const")
+      ExpectTable
+      Take("Table")
+      ExpectSeq
+      ;; It is at this point we take  different things. Take(0) for prompt: , Take(1) for solution:, Take(2) for explicit:, Take(3) for explanation:, Take(4) for tag:
+      {Take(0) ;; Taking and Setting User Prompt
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      Update(temp-chat "user")
+      ;temp-chat
+      ;Log("result")
+      }
+
+      {Take(1) ;; Taking solution: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      AppendTo(ai-assistant-answer)
+      ;ai-assistant-answer
+      ;Log("answer")
+      }
+
+      {Take(2) ;; Taking explicit: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ToString
+      ExpectString
+      AppendTo(ai-assistant-answer)
+      ; ai-assistant-answer
+      ; Log("answer")
+      }
+
+      {Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      AppendTo(ai-assistant-answer)
+      ; ai-assistant-answer
+      ; Log("answer")
+      }
+
+      {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      AppendTo(ai-assistant-answer)
+      ; ai-assistant-answer
+      ; Log("answer")
+      }
+
+      ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
+      Update(temp-chat "assistant")
+      temp-chat >> temp-prompt-seq
+
+      ; temp-prompt-seq
+      ; Log("answer")
+    })
+  })
+  
+  temp-prompt-seq
+  ForEach({
+    Expect(@prompt-type) = chat
+    {
+      "messages": [
+        {"role": "system" "content": @system-prompt}
+        {"role": "user" "content": chat:user}
+        {"role": "assistant" "content": chat:assistant}]
+    } | ToJson | AppendTo(jsonl)
+    ; add new line
+    "\n" | AppendTo(jsonl)
+  })
+
+  "training-set.jsonl" | FS.Write(jsonl)
+
+  
+})
+
+@mesh(main)
+@schedule(main prepare-jsonl)
+@run(main)

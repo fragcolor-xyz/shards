@@ -1,0 +1,22 @@
+{
+  prompt: """How do I convert a string to an int8?"""
+
+  solution: """
+   "5" ; string to convert
+   ToInt
+  """
+
+  explicit: """
+   "5" ; string to convert
+   ToInt
+  """
+
+  explanation: """
+    The ToInt8 Shard converts an input with numeric value into 8-dimensional vector represented as eight integers. The value will always be rounded down to the nearest integer. If 
+    the input is one dimensional, the Shard will assign 0 to the second, third and fourth integers and so forth. For example, in the solution provided above, ToInt8 will output 
+    (5 0 0 0 0 0 0 0). If the input is two dimensional, it will assign 0 to the third and fourth integers and so forth. If the value has more than 8 dimensions, only 
+    the first eight values will be used. If a string that has no numeric value, like "Three", "Five" or "hello" is passed in, the Shard will return  (0 0 0 0 0 0 0 0).
+  """
+
+  tag: "  #General"
+}
