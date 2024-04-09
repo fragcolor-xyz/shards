@@ -40,6 +40,7 @@ if(IOS)
     MACOSX_FRAMEWORK_IDENTIFIER com.fragcolor.crsqlite
     VERSION 1.0.0
     SOVERSION 1.0.0
+    XCODE_ATTRIBUTE_SKIP_INSTALL "NO"
   )
 endif()
 
