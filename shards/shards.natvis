@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="shards_lang::RcStrWrapper">
+		<DisplayString>{&amp;__0.ptr.pointer.data_ptr-&gt;value,[__0.ptr.pointer.length]s} (RcStr)</DisplayString>
+		<Expand>
+			<Item Name="[Size]">__0.ptr.pointer.length</Item>
+			<Item Name="[Test]">&amp;__0.ptr.pointer.data_ptr-&gt;value</Item>
+		</Expand>
+	</Type>
 	<Type Name="shards::fast_string::FastString">
 		<DisplayString Condition="id==size_t(~0)">""</DisplayString>
 		<DisplayString Condition="id!=size_t(~0)">{shards::fast_string::storage-&gt;pool.reverse[id]}</DisplayString>
@@ -99,8 +106,8 @@
 	</Type>
 	<Type Name="shards::RequiredContextVariable&lt;*&gt;">
 		<DisplayString>{($T1*)(*variable).payload.objectValue}</DisplayString>
-		 <Expand>
-        <ExpandedItem>($T1*)(*variable).payload.objectValue</ExpandedItem>
-    </Expand>
+		<Expand>
+			<ExpandedItem>($T1*)(*variable).payload.objectValue</ExpandedItem>
+		</Expand>
 	</Type>
 </AutoVisualizer>
