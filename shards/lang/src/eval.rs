@@ -9,6 +9,7 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
+use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -1154,7 +1155,7 @@ fn as_var(
         Ok(SVar::NotCloned(mesh.0 .0))
       } else if let Some(replacement) = find_replacement(name, e) {
         if let Value::Identifier(current) = replacement {
-          if current.name.as_str() == name.name.as_str() {
+          if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
             // prevent infinite recursion
             return qualify_variable(name, line_info, e);
           }
