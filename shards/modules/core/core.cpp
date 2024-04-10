@@ -1051,11 +1051,11 @@ struct Erase : SeqUser {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &indices = _indices.get();
-    if (unlikely(_target->valueType == SHType::Table)) {
+    if (unlikely(_cell->valueType == SHType::Table)) {
       if (indices.valueType == SHType::String) {
         // single key
         const auto key = indices;
-        _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
+        _cell->payload.tableValue.api->tableRemove(_cell->payload.tableValue, key);
       } else {
         if (indices.valueType != SHType::Seq)
           throw ActivationError("Erase: Expected a sequence of keys to remove from table.");
@@ -1064,13 +1064,13 @@ struct Erase : SeqUser {
         const uint32_t nkeys = indices.payload.seqValue.len;
         for (uint32_t i = 0; nkeys > i; i++) {
           const auto key = indices.payload.seqValue.elements[i];
-          _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
+          _cell->payload.tableValue.api->tableRemove(_cell->payload.tableValue, key);
         }
       }
     } else {
       if (indices.valueType == SHType::Int) {
         const auto index = indices.payload.intValue;
-        arrayDel(_target->payload.seqValue, index);
+        arrayDel(_cell->payload.seqValue, index);
       } else {
         if (indices.valueType != SHType::Seq)
           throw ActivationError("Erase: Expected a sequence of indices to remove from sequence.");
@@ -1078,7 +1078,7 @@ struct Erase : SeqUser {
         _sorter.insertSort(indices.payload.seqValue.elements, indices.payload.seqValue.len, _sorter.sortDesc, _sorter.noopKeyFn);
         for (auto &idx : indices) {
           const auto index = idx.payload.intValue;
-          arrayDel(_target->payload.seqValue, index);
+          arrayDel(_cell->payload.seqValue, index);
         }
       }
     }
