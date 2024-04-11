@@ -93,6 +93,7 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use std::str::Utf8Error;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -819,7 +820,14 @@ impl From<SHStringWithLen> for &str {
   fn from(s: SHStringWithLen) -> Self {
     unsafe {
       let slice = slice::from_raw_parts(s.string as *const u8, s.len as usize);
-      std::str::from_utf8(slice).unwrap()
+      let s = std::str::from_utf8(slice);
+      match s {
+        Ok(s) => s,
+        Err(e) => {
+          let valid = e.valid_up_to();
+          std::str::from_utf8(&slice[..valid]).unwrap()
+        },
+      }
     }
   }
 }
