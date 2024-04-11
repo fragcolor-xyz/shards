@@ -41,6 +41,8 @@ jobs:
           name: shards-macos-gpu-coverage
           path: coverage
       - uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           directory: ./coverage/
           env_vars: OS
