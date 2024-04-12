@@ -1754,6 +1754,15 @@ where
   }
 }
 
+impl From<&Var> for u128 {
+  fn from(value: &Var) -> Self {
+    // so this is simply our Int16 16 bytes to u128
+    let value: [i8; 16] = unsafe { value.payload.__bindgen_anon_1.int16Value };
+    // reinterpret as u128
+    unsafe { std::mem::transmute(value) }
+  }
+}
+
 impl From<&Var> for ClonedVar {
   fn from(v: &Var) -> Self {
     let res = ClonedVar(Var::default());

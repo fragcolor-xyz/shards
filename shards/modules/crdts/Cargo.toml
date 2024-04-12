@@ -13,3 +13,4 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 crdts = "7.3.2"
+bincode = "1.3.3"

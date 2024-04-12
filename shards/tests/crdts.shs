@@ -1,0 +1,3 @@
+CRDT.Open(@i16(77)) = crdt
+10 | CRDT.Set(crdt "K1") | Log
+"Hello World" | CRDT.Set(crdt "K2") | Log
