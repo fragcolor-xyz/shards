@@ -230,6 +230,9 @@ struct BaseRunner : public WireBase {
         }
       }
 
+      // Assign wire id again, since it's reset on stop
+      wire->id = context->currentWire()->id;
+
       // validated during infer not here! (false)
       _mesh->schedule(wire, input, false);
 
@@ -271,6 +274,9 @@ struct BaseRunner : public WireBase {
       if (wire->state == SHWire::Failed) {
         throw ActivationError(fmt::format("Step: wire {} warmup failed", wire->name));
       }
+
+      // Assign wire id again, since it's reset on stop
+      wire->id = context->currentWire()->id;
     }
 
     shassert(wire->context && "wire context should be valid at this point");
