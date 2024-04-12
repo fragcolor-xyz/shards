@@ -93,7 +93,6 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
-use std::str::Utf8Error;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -109,6 +108,7 @@ use std::i32::MAX;
 use std::os::raw::c_char;
 use std::pin::Pin;
 use std::rc::Rc;
+use std::str::Utf8Error;
 use std::sync::RwLock;
 
 #[macro_export]
@@ -128,8 +128,31 @@ pub type ParameterInfo = SHParameterInfo;
 pub type RawString = SHString;
 
 #[repr(transparent)] // force it same size of original
-#[derive(Default, Serialize, Hash, PartialEq, Eq)]
+#[derive(Default, Serialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ClonedVar(pub Var);
+
+impl Ord for Var {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    unsafe {
+      // Use partialOrder to determine the full ordering directly
+      match (*Core).compareVar.unwrap()(
+        self as *const SHVar as *mut SHVar,
+        other as *const SHVar as *mut SHVar,
+      ) {
+        -1 => std::cmp::Ordering::Less,
+        0 => std::cmp::Ordering::Equal,
+        1 => std::cmp::Ordering::Greater,
+        _ => unreachable!("compareVar returned an invalid value"),
+      }
+    }
+  }
+}
+
+impl PartialOrd for Var {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
+  }
+}
 
 impl ClonedVar {
   pub fn assign(&mut self, other: &Var) {
@@ -826,7 +849,7 @@ impl From<SHStringWithLen> for &str {
         Err(e) => {
           let valid = e.valid_up_to();
           std::str::from_utf8(&slice[..valid]).unwrap()
-        },
+        }
       }
     }
   }
@@ -2640,7 +2663,7 @@ where
   struct Inner {
     name: CString,
     obj_info: SHObjectInfo,
-  };
+  }
 
   impl<T: 'static> typemap::Key for Key<T> {
     type Value = Box<Inner>;
