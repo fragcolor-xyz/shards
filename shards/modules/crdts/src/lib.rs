@@ -1,7 +1,9 @@
 #![allow(non_upper_case_globals)]
 
 use lazy_static::lazy_static;
-use shards::{fourCharacterCode, shlog_trace, SHObjectTypeInfo, SHType_Bytes, SHType_Int16};
+use shards::{
+  fourCharacterCode, shlog_error, shlog_trace, SHObjectTypeInfo, SHType_Bytes, SHType_Int16,
+};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -11,9 +13,9 @@ use shards::shard::Shard;
 use shards::types::{common_type, ANY_TYPES, BYTES_TYPES, FRAG_CC, NONE_TYPES};
 use shards::types::{ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
-use crdts::{map::*, CvRDT};
 use crdts::mvreg::*;
 use crdts::CmRDT;
+use crdts::{map::*, CvRDT};
 
 lazy_static! {
   static ref CRDT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"crdt"));
@@ -562,7 +564,89 @@ impl Shard for CRDTMergeShard {
     let doc2 = binding2.as_mut().unwrap();
     let crdt2 = &mut doc2.crdt;
     let crdt2 = crdt2.clone();
+
+    crdt1.validate_merge(&crdt2).map_err(|e| {
+      shlog_error!("CRDT.Merge: {:?}", e);
+      "CRDTs cannot be merged."
+    })?;
+
     crdt1.merge(crdt2);
+
+    Ok(*input)
+  }
+}
+
+// CRDT.Apply applies an operation to a CRDT instance
+#[derive(shards::shard)]
+#[shard_info("CRDT.Apply", "Applies an operation to a CRDT instance.")]
+struct CRDTApplyShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to apply the operation to.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+}
+
+impl Default for CRDTApplyShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      crdt: None,
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTApplyShard {
+  fn input_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+
+    let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
+    let doc = binding.as_mut().unwrap();
+    let crdt = &mut doc.crdt;
+    let slice: &[u8] = input.try_into().unwrap(); // qed: we know it's bytes
+
+    let op: crdts::map::Op<ClonedVar, MVReg<ClonedVar, u128>, u128> =
+      bincode::deserialize(slice).unwrap();
+    shlog_trace!("CRDT.Apply: {:?}", op);
+
+    crdt.validate_op(&op).map_err(|e| {
+      shlog_error!("CRDT.Apply: {:?}", e);
+      "Operation is invalid."
+    })?;
+
+    crdt.apply(op);
+
     Ok(*input)
   }
 }
@@ -583,4 +667,5 @@ pub extern "C" fn shardsRegister_crdts_crdts(core: *mut shards::shardsc::SHCore)
   register_shard::<CRDTDeleteShard>();
 
   register_shard::<CRDTMergeShard>();
+  register_shard::<CRDTApplyShard>();
 }

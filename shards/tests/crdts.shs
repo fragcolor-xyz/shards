@@ -1,6 +1,7 @@
 CRDT.Open(@i16(77)) = crdt
-10 | CRDT.Set(crdt "K1") | Log
-"Hello World" | CRDT.Set(crdt "K2") | Log
+CRDT.Open(@i16(77)) = crdt-copy
+10 | CRDT.Set(crdt "K1") | Log >> crdt-ops
+"Hello World" | CRDT.Set(crdt "K2") | Log >> crdt-ops
 
 CRDT.Save(crdt) | Log("pre delete") = crdt-snapshot-1
 
@@ -12,12 +13,12 @@ CRDT.Get(crdt2 "K1") | Assert.Is(10)
 CRDT.Get(crdt2 "K2") | Assert.Is("Hello World")
 
 CRDT.Get(crdt "K2") | Assert.Is("Hello World")
-CRDT.Delete(crdt "K2") | Log
+CRDT.Delete(crdt "K2") | Log >> crdt-ops
 CRDT.Get(crdt "K2") | Assert.Is(none)
 
 CRDT.Save(crdt) | Log("post delete") = crdt-snapshot-2
 
-11 | CRDT.Set(crdt "K2") | Log
+11 | CRDT.Set(crdt "K2") | Log >> crdt-ops
 
 CRDT.Save(crdt) | Log("post set")
 
@@ -32,3 +33,8 @@ CRDT.Merge(crdt2 crdt3)
 
 CRDT.Save(crdt2) | Log("post merge")
 CRDT.Get(crdt2 "K2") | Assert.Is(none)
+
+crdt-ops | ForEach(CRDT.Apply(crdt-copy))
+
+CRDT.Save(crdt) = crdt-final-snapshot
+CRDT.Save(crdt-copy) | Log("post apply final") | Is(crdt-final-snapshot) | Assert.Is(true)
