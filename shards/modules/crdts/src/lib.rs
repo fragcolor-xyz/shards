@@ -566,7 +566,7 @@ impl Shard for CRDTMergeShard {
     let crdt2 = crdt2.clone();
 
     crdt1.validate_merge(&crdt2).map_err(|e| {
-      shlog_error!("CRDT.Merge: {:?}", e);
+      shlog_error!("CRDT.Merge error: {:?}", e);
       "CRDTs cannot be merged."
     })?;
 
@@ -641,7 +641,7 @@ impl Shard for CRDTApplyShard {
     shlog_trace!("CRDT.Apply: {:?}", op);
 
     crdt.validate_op(&op).map_err(|e| {
-      shlog_error!("CRDT.Apply: {:?}", e);
+      shlog_error!("CRDT.Apply error: {:?}", e);
       "Operation is invalid."
     })?;
 
