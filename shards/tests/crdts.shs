@@ -37,6 +37,7 @@ CRDT.Get(crdt2 "K2") | Assert.Is(none)
 crdt-ops | ForEach({
   Log("applying")
   CRDT.Apply(crdt-copy)
+  CRDT.Save(crdt-copy) | Log("post apply")
 })
 
 CRDT.Save(crdt) = crdt-final-snapshot

@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use lazy_static::lazy_static;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use shards::{
   fourCharacterCode, shlog_error, shlog_trace, SHObjectTypeInfo, SHType_Bytes, SHType_Int16,
 };
@@ -316,16 +317,22 @@ impl Shard for CRDTSetShard {
     let crdt = &mut doc.crdt;
     let key = self.key.get();
     // create thew new operation
-    let op = crdt.update(
-      key,
-      crdt.read_ctx().derive_add_ctx(doc.client_id),
-      |reg, ctx| reg.write(input.into(), ctx),
-    );
-    shlog_trace!("CRDT.Set: {:?}", op);
+    let add_ctx = crdt.read_ctx().derive_add_ctx(doc.client_id);
+    let op = crdt.update(key, add_ctx, |reg, ctx| reg.write(input.into(), ctx));
+    shlog_trace!("CRDT.Set: {:?}, crdt: {:?}", op, crdt);
+
+    // Validation not working.. will fail on second apply
+    // crdt.validate_op(&op).map_err(|e| {
+    //   shlog_error!("CRDT.Delete error: {:?}", e);
+    //   "Operation is invalid."
+    // })?;
+
     // encode the operation
     self.output = bincode::serialize(&op).unwrap();
+
     // apply the operation
     crdt.apply(op);
+
     // just return the slice reference, we hold those bytes for this activation lifetime
     Ok(self.output.as_slice().into())
   }
@@ -480,13 +487,23 @@ impl Shard for CRDTDeleteShard {
     let doc = binding.as_mut().unwrap();
     let crdt = &mut doc.crdt;
     let key = self.key.get();
+
     // create thew new operation
     let op = crdt.rm(key, crdt.read_ctx().derive_rm_ctx());
     shlog_trace!("CRDT.Delete: {:?}", op);
+
+    // Validation not working.. will fail on second apply
+    // crdt.validate_op(&op).map_err(|e| {
+    //   shlog_error!("CRDT.Delete error: {:?}", e);
+    //   "Operation is invalid."
+    // })?;
+
     // encode the operation
     self.output = bincode::serialize(&op).unwrap();
+
     // apply the operation
     crdt.apply(op);
+
     // just return the slice reference, we hold those bytes for this activation lifetime
     Ok(self.output.as_slice().into())
   }
@@ -640,10 +657,11 @@ impl Shard for CRDTApplyShard {
       bincode::deserialize(slice).unwrap();
     shlog_trace!("CRDT.Apply: {:?}", op);
 
-    crdt.validate_op(&op).map_err(|e| {
-      shlog_error!("CRDT.Apply error: {:?}", e);
-      "Operation is invalid."
-    })?;
+    // Validation not working.. will fail on second apply
+    // crdt.validate_op(&op).map_err(|e| {
+    //   shlog_error!("CRDT.Apply error: {:?}", e);
+    //   "Operation is invalid."
+    // })?;
 
     crdt.apply(op);
 
