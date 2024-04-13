@@ -1,5 +1,7 @@
+#![allow(non_upper_case_globals)]
+
 use lazy_static::lazy_static;
-use shards::{fourCharacterCode, SHObjectTypeInfo};
+use shards::{fourCharacterCode, shlog_trace, SHObjectTypeInfo, SHType_Bytes, SHType_Int16};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,7 +11,7 @@ use shards::shard::Shard;
 use shards::types::{common_type, ANY_TYPES, BYTES_TYPES, FRAG_CC, NONE_TYPES};
 use shards::types::{ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
-use crdts::map::*;
+use crdts::{map::*, CvRDT};
 use crdts::mvreg::*;
 use crdts::CmRDT;
 
@@ -27,13 +29,17 @@ struct Document {
   client_id: u128,
 }
 
+// CRDT.Open
 #[derive(shards::shard)]
-#[shard_info("CRDT.Open", "Opens an existing CRDT document or creates a new one from a specified file, returning the CRDT instance.")]
+#[shard_info(
+  "CRDT.Open",
+  "Opens an empty CRDT document, returning the CRDT instance."
+)]
 struct CRDTOpenShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("ClientID", "The local client id.", [common_type::int16, common_type::int16_var])]
+  #[shard_param("ClientID", "The local client id.", [common_type::int16, common_type::int16_var, common_type::bytes, common_type::bytes_var])]
   client_id: ParamVar,
 
   crdt: Rc<RefCell<Option<Document>>>,
@@ -71,7 +77,6 @@ impl Shard for CRDTOpenShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
     Ok(())
   }
 
@@ -83,20 +88,165 @@ impl Shard for CRDTOpenShard {
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if self.output.is_none() {
       let client_id = self.client_id.get();
-      let client_id: u128 = client_id.into();
+      let client_id = match client_id.valueType {
+        SHType_Int16 => client_id.try_into().unwrap(), // qed: we know it's int16
+        SHType_Bytes => {
+          let bytes: &[u8] = client_id.try_into().unwrap(); // qed: we know it's bytes
+                                                            // ensure it's 16 bytes and convert to u128
+          if bytes.len() != 16 {
+            return Err("ClientID must be 16 bytes.");
+          }
+          let mut client_id = [0u8; 16];
+          client_id.copy_from_slice(bytes);
+          u128::from_be_bytes(client_id)
+        }
+        _ => return Err("ClientID must be an int16 or 16 bytes."),
+      };
+
       if client_id == 0 {
-        return Err("ClientID must be greater than 0.");
+        return Err("ClientID cannot be 0.");
       }
+
       let _ = self.crdt.replace(Some(Document {
         crdt: Map::new(),
         client_id,
       }));
+
       self.output = Var::new_object(&self.crdt, &CRDT_TYPE);
     }
     Ok(self.output)
   }
 }
 
+// CRDT.Load, loads a serialized CRDT into a CRDT instance
+#[derive(shards::shard)]
+#[shard_info("CRDT.Load", "Loads a serialized CRDT into a CRDT instance.")]
+struct CRDTLoadShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to load into.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+}
+
+impl Default for CRDTLoadShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      crdt: None,
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTLoadShard {
+  fn input_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+    let slice: &[u8] = input.try_into().unwrap(); // qed: we know it's bytes
+    let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
+    let doc = binding.as_mut().unwrap();
+    let crdt = &mut doc.crdt;
+    *crdt = bincode::deserialize(slice).unwrap();
+    Ok(Var::default())
+  }
+}
+
+// CRDT.Save serializes a CRDT instance
+#[derive(shards::shard)]
+#[shard_info("CRDT.Save", "Serializes a CRDT instance.")]
+struct CRDTSaveShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to save.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+  output: Vec<u8>,
+}
+
+impl Default for CRDTSaveShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      crdt: None,
+      output: Vec::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTSaveShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+    let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
+    let doc = binding.as_mut().unwrap();
+    let crdt = &doc.crdt;
+    shlog_trace!("CRDT.Save: {:?}", crdt);
+    self.output = bincode::serialize(crdt).unwrap();
+    Ok(self.output.as_slice().into())
+  }
+}
+
+// CRDT.Set
 #[derive(shards::shard)]
 #[shard_info(
   "CRDT.Set",
@@ -140,13 +290,11 @@ impl Shard for CRDTSetShard {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
     Ok(())
   }
 
@@ -171,12 +319,251 @@ impl Shard for CRDTSetShard {
       crdt.read_ctx().derive_add_ctx(doc.client_id),
       |reg, ctx| reg.write(input.into(), ctx),
     );
+    shlog_trace!("CRDT.Set: {:?}", op);
     // encode the operation
     self.output = bincode::serialize(&op).unwrap();
     // apply the operation
     crdt.apply(op);
     // just return the slice reference, we hold those bytes for this activation lifetime
     Ok(self.output.as_slice().into())
+  }
+}
+
+// CRDT.Get retrieves the value at the specified key in the CRDT instance
+#[derive(shards::shard)]
+#[shard_info(
+  "CRDT.Get",
+  "Retrieves the value at the specified key in the CRDT instance."
+)]
+struct CRDTGetShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to read from.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  #[shard_param("Key", "The key to read from the CRDT instance.", [common_type::any])]
+  key: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+
+  cloned_key: ClonedVar,
+  output: ClonedVar,
+}
+
+impl Default for CRDTGetShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      key: ParamVar::default(),
+      crdt: None,
+      cloned_key: ClonedVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTGetShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+    let binding = self.crdt.as_ref().unwrap().borrow();
+    let doc = binding.as_ref().unwrap();
+    let crdt = &doc.crdt;
+    let key = self.key.get();
+    self.cloned_key = key.into();
+    let value = crdt.get(&self.cloned_key);
+    let value = value.val;
+    if let Some(value) = value {
+      self.output = value.read().val.first().unwrap().clone(); // we know it's there, we take the first for now
+      Ok(self.output.0)
+    } else {
+      Ok(Var::default())
+    }
+  }
+}
+
+// CRDT.Delete deletes the value at the specified key in the CRDT instance
+#[derive(shards::shard)]
+#[shard_info(
+  "CRDT.Delete",
+  "Deletes the value at the specified key in the CRDT instance."
+)]
+struct CRDTDeleteShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to delete from.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  #[shard_param("Key", "The key to delete from the CRDT instance.", [common_type::any])]
+  key: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+  output: Vec<u8>,
+}
+
+impl Default for CRDTDeleteShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      key: ParamVar::default(),
+      crdt: None,
+      output: Vec::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTDeleteShard {
+  fn input_types(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+    let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
+    let doc = binding.as_mut().unwrap();
+    let crdt = &mut doc.crdt;
+    let key = self.key.get();
+    // create thew new operation
+    let op = crdt.rm(key, crdt.read_ctx().derive_rm_ctx());
+    shlog_trace!("CRDT.Delete: {:?}", op);
+    // encode the operation
+    self.output = bincode::serialize(&op).unwrap();
+    // apply the operation
+    crdt.apply(op);
+    // just return the slice reference, we hold those bytes for this activation lifetime
+    Ok(self.output.as_slice().into())
+  }
+}
+
+// CRDT.Merge merges two CRDT instances
+#[derive(shards::shard)]
+#[shard_info("CRDT.Merge", "Merges two CRDT instances.")]
+struct CRDTMergeShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Into", "The CRDT instance to merge into.", [*CRDT_VAR_TYPE])]
+  crdt1_param: ParamVar,
+
+  #[shard_param("Other", "The other CRDT instance to merge.", [*CRDT_VAR_TYPE])]
+  crdt2_param: ParamVar,
+
+  crdt1: Option<Rc<RefCell<Option<Document>>>>,
+  crdt2: Option<Rc<RefCell<Option<Document>>>>,
+}
+
+impl Default for CRDTMergeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt1_param: ParamVar::default(),
+      crdt2_param: ParamVar::default(),
+      crdt1: None,
+      crdt2: None,
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTMergeShard {
+  fn input_types(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.crdt1.is_none() {
+      let crdt = self.crdt1_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt1 = Some(crdt);
+    }
+    if self.crdt2.is_none() {
+      let crdt = self.crdt2_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt2 = Some(crdt);
+    }
+    let mut binding1 = self.crdt1.as_ref().unwrap().borrow_mut();
+    let doc1 = binding1.as_mut().unwrap();
+    let crdt1 = &mut doc1.crdt;
+    let mut binding2 = self.crdt2.as_ref().unwrap().borrow_mut();
+    let doc2 = binding2.as_mut().unwrap();
+    let crdt2 = &mut doc2.crdt;
+    let crdt2 = crdt2.clone();
+    crdt1.merge(crdt2);
+    Ok(*input)
   }
 }
 
@@ -187,5 +574,13 @@ pub extern "C" fn shardsRegister_crdts_crdts(core: *mut shards::shardsc::SHCore)
   }
 
   register_shard::<CRDTOpenShard>();
+
+  register_shard::<CRDTLoadShard>();
+  register_shard::<CRDTSaveShard>();
+
   register_shard::<CRDTSetShard>();
+  register_shard::<CRDTGetShard>();
+  register_shard::<CRDTDeleteShard>();
+
+  register_shard::<CRDTMergeShard>();
 }

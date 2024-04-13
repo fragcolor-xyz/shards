@@ -1682,9 +1682,8 @@ impl<'de> Deserialize<'de> for ClonedVar {
           }
           SHType_String | SHType_Path | SHType_ContextVar => {
             let value: &str = seq.next_element()?.unwrap();
-            let cstr = CString::new(value).unwrap();
-            v.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue = cstr.as_ptr();
-            v.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = value.len() as u32;
+            let value = Var::ephemeral_string(value);
+            v = value.into();
           }
           SHType_Image => {
             let width: u16 = seq.next_element()?.unwrap();
@@ -1751,15 +1750,6 @@ where
     // ensure this flag is set
     res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
     res
-  }
-}
-
-impl From<&Var> for u128 {
-  fn from(value: &Var) -> Self {
-    // so this is simply our Int16 16 bytes to u128
-    let value: [i8; 16] = unsafe { value.payload.__bindgen_anon_1.int16Value };
-    // reinterpret as u128
-    unsafe { std::mem::transmute(value) }
   }
 }
 
@@ -3251,6 +3241,21 @@ impl TryFrom<&Var> for u64 {
         ))
       }
     }
+  }
+}
+
+impl TryFrom<&Var> for u128 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(value: &Var) -> Result<Self, Self::Error> {
+    if value.valueType != SHType_Int16 {
+      return Err("Expected Int16 variable, but casting failed.");
+    }
+    // so this is simply our Int16 16 bytes to u128
+    let value: [i8; 16] = unsafe { value.payload.__bindgen_anon_1.int16Value };
+    // reinterpret as u128
+    Ok(unsafe { std::mem::transmute(value) })
   }
 }
 
