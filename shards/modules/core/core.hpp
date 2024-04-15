@@ -2304,8 +2304,8 @@ struct Clear : SeqUser {
     for (auto &shared : data.shared) {
       std::string_view vName(shared.name);
       if (vName == _name && !shared.isMutable) {
-        SHLOG_ERROR("Count: Variable {} is not mutable.", _name);
-        throw ComposeError("Count: Variable is not mutable.");
+        SHLOG_ERROR("Clear: Variable {} is not mutable.", _name);
+        throw ComposeError("Clear: Variable is not mutable.");
       }
     }
 
