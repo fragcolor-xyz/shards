@@ -1800,14 +1800,21 @@ struct Push : public SeqBase {
 
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
-        if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
-          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
-          for (uint32_t y = 0; y < tableKeys.len; y++) {
-            // if we got key it's not a variable
-            if (_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
-              updateTableInfo(false, &data.shared.elements[i].exposedType);
-              return data.inputType; // found lets escape
+        auto &cv = data.shared.elements[i];
+        if (cv.name == _name) {
+          if (cv.exposed) {
+            // cannot push into exposed variables
+            throw ComposeError("Cannot push into exposed variables");
+          }
+          if (cv.exposedType.table.types.elements) {
+            auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+            auto &tableTypes = data.shared.elements[i].exposedType.table.types;
+            for (uint32_t y = 0; y < tableKeys.len; y++) {
+              // if we got key it's not a variable
+              if (_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
+                updateTableInfo(false, &data.shared.elements[i].exposedType);
+                return data.inputType; // found lets escape
+              }
             }
           }
         }
@@ -1828,6 +1835,12 @@ struct Push : public SeqBase {
           } else if (cv.isProtected) {
             throw ComposeError("Cannot mutate a protected variable");
           }
+
+          if (cv.exposed) {
+            // cannot push into exposed variables
+            throw ComposeError("Cannot push into exposed variables");
+          }
+
           // ok now update into
           updateSeqInfo(&cv.exposedType);
           return data.inputType; // found lets escape
@@ -2199,6 +2212,18 @@ struct SeqUser : VariableBase {
     _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
   }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    for (auto &shared : data.shared) {
+      std::string_view vName(shared.name);
+      if (vName == _name && shared.exposed) {
+        SHLOG_ERROR("Exposed variable {} can only be updated using Update.", _name);
+        throw ComposeError("Exposed variables can only be updated using Update.");
+      }
+    }
+
+    return data.inputType;
+  }
+
   void warmup(SHContext *context) {
     if (_global)
       _target = referenceGlobalVariable(context, _name.c_str());
@@ -2236,6 +2261,11 @@ struct Count : SeqUser {
     return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
   }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+    return CoreInfo::IntType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
@@ -2269,6 +2299,8 @@ struct Clear : SeqUser {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+
     for (auto &shared : data.shared) {
       std::string_view vName(shared.name);
       if (vName == _name && !shared.isMutable) {
@@ -2385,6 +2417,8 @@ struct Pop : SeqUser {
   void destroy() { destroyVar(_output); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
@@ -2458,6 +2492,8 @@ struct PopFront : SeqUser {
   void destroy() { destroyVar(_output); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {

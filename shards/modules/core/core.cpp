@@ -520,6 +520,10 @@ struct XpendTo : public XPendBase {
           throw ComposeError("AppendTo/PrependTo input type is not compatible "
                              "with the backing SHType::Seq.");
         }
+        if (cons.exposed) {
+          SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be exposed.", _collection.variableName());
+          throw ComposeError("AppendTo/PrependTo: Variable cannot be exposed.");
+        }
         // Validation Ok if here..
         return data.inputType;
       }
@@ -999,6 +1003,8 @@ struct Erase : SeqUser {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+
     bool valid = false;
 
     std::optional<SHExposedTypeInfo> info;
@@ -1748,6 +1754,7 @@ RUNTIME_SHARD_parameters(Count);
 RUNTIME_SHARD_setParam(Count);
 RUNTIME_SHARD_getParam(Count);
 RUNTIME_SHARD_activate(Count);
+RUNTIME_SHARD_compose(Count);
 RUNTIME_SHARD_END(Count);
 
 // Register Clear
@@ -1763,6 +1770,7 @@ RUNTIME_SHARD_parameters(Clear);
 RUNTIME_SHARD_setParam(Clear);
 RUNTIME_SHARD_getParam(Clear);
 RUNTIME_SHARD_activate(Clear);
+RUNTIME_SHARD_compose(Clear);
 RUNTIME_SHARD_END(Clear);
 
 // Register Drop
@@ -1778,6 +1786,7 @@ RUNTIME_SHARD_parameters(Drop);
 RUNTIME_SHARD_setParam(Drop);
 RUNTIME_SHARD_getParam(Drop);
 RUNTIME_SHARD_activate(Drop);
+RUNTIME_SHARD_compose(Drop);
 RUNTIME_SHARD_END(Drop);
 
 // Register DropFront
@@ -1793,6 +1802,7 @@ RUNTIME_SHARD_parameters(DropFront);
 RUNTIME_SHARD_setParam(DropFront);
 RUNTIME_SHARD_getParam(DropFront);
 RUNTIME_SHARD_activate(DropFront);
+RUNTIME_SHARD_compose(DropFront);
 RUNTIME_SHARD_END(DropFront);
 
 // Register Get
