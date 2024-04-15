@@ -484,7 +484,7 @@ struct Loader {
         auto &feature = material->features.emplace_back(std::make_shared<Feature>());
         feature->state.set_blend(BlendState{
             .color = BlendComponent::Alpha,
-            .alpha = BlendComponent::Alpha,
+            .alpha = BlendComponent::Opaque,
         });
       }
 
