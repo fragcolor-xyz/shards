@@ -2261,6 +2261,11 @@ struct Count : SeqUser {
     return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
   }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SeqUser::compose(data);
+    return CoreInfo::IntType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
