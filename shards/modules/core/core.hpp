@@ -2333,6 +2333,31 @@ struct Clear : SeqUser {
   }
 };
 
+struct Shuffle : SeqUser {
+  static SHOptionalString help() {
+    return SHCCSTR("Shuffles the elements of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
+    }
+
+    if (likely(_cell->valueType == SHType::Seq)) {
+      shards::arrayShuffle(_cell->payload.seqValue);
+    } else {
+      throw ActivationError("Variable is not a sequence, failed to Shuffle.");
+    }
+
+    return input;
+  }
+};
+
 struct Drop : SeqUser {
   static SHOptionalString help() {
     return SHCCSTR("Drops the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");

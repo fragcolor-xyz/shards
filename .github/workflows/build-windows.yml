@@ -286,6 +286,8 @@ jobs:
           ./shards new ../shards/tests/whendone.shs
           echo "Running table-seq-push"
           ./shards new ../shards/tests/table-seq-push.shs
+          echo "Running crdts"
+          ./shards new ../shards/tests/crdts.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

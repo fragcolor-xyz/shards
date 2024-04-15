@@ -2401,5 +2401,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Shards.Enumerate", GetShards);
   REGISTER_SHARD("Shards.Help", GetShardHelp);
   REGISTER_SHARD("LastError", LastError);
+  REGISTER_SHARD("Shuffle", Shuffle);
 }
 }; // namespace shards
