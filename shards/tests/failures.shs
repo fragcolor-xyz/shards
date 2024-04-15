@@ -3,6 +3,19 @@
 
 @mesh(root)
 
+@template(compose-failure [name1 name2 test] {
+  @wire(name1 {
+    test
+  })
+
+  @wire(name2 {
+    ; wrapper to catch the failure of wire composition
+    Const(name1) | ToBytes | FromBytes | ExpectWire = wire
+    WireRunner(wire)
+    Wait(wire)
+  })
+})
+
 ; fail during await, uses awaitne(...)
 @wire(test-1 {
 Await({false | Assert.Is(true)})
@@ -134,19 +147,6 @@ true | Assert.Is(false)
 @schedule(root do-outer)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
-@template(compose-failure [name1 name2 test] {
-  @wire(name1 {
-    test
-  })
-
-  @wire(name2 {
-    ; wrapper to catch the failure of wire composition
-    Const(name1) | ToBytes | FromBytes | ExpectWire = wire
-    WireRunner(wire)
-    Wait(wire)
-  })
-})
-
 @compose-failure(exposed-failure1 exposed-failure-wrapper1 {
   [] | Set(a Exposed: true)
   1 >> a
@@ -169,4 +169,11 @@ true | Assert.Is(false)
 })
 
 @schedule(root clear-non-mutable-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure( event-read-used-before-send event-read-used-before-send-wrapper {
+  Events.Receive("Hello")
+})
+
+@schedule(root event-read-used-before-send-wrapper)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
