@@ -3256,6 +3256,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 #endif
   };
 
+  result->setWireInterfaces = [](SHWireRef wireref, SHSeq interfaces) noexcept {
+    for(auto& iface : interfaces) {
+      auto &wire = SHWire::sharedFromRef(wireref);
+      SHLOG_INFO("Adding wire {} interface {}", wire->name, iface);
+    }
+  };
+
   result->addShard = [](SHWireRef wireref, ShardPtr blk) noexcept {
     auto &sc = SHWire::sharedFromRef(wireref);
     sc->addShard(blk);

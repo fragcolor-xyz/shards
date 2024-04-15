@@ -28,4 +28,4 @@ ctrlc = "3.4.0"
 cbindgen = "0.24.0"
 
 [profile.dev]
-opt-level = 3
+opt-level = 0

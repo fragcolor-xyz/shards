@@ -9,6 +9,8 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
+use shards::types::Seq;
+use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -82,6 +84,8 @@ enum Definition {
   Constant(SVar),
 }
 
+type RawDefinition = ();
+
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
@@ -97,6 +101,10 @@ pub struct EvalEnv {
   shards_groups: HashMap<Identifier, ShardsGroup>,
   macro_groups: HashMap<Identifier, ShardsGroup>,
   definitions: HashMap<Identifier, Definition>,
+  // Used identifiers for templates/defines (with @ sign)
+  identifiers: HashMap<Identifier, LineInfo>,
+  // Used identifiers for wires/interfaces (without @ sign)
+  raw_identifiers: HashMap<Identifier, LineInfo>,
 
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
@@ -139,6 +147,8 @@ impl EvalEnv {
       macro_groups: HashMap::new(),
       definitions: HashMap::new(),
       replacements: HashMap::new(),
+      identifiers: HashMap::new(),
+      raw_identifiers: HashMap::new(),
       suffix: None,
       suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
@@ -166,6 +176,41 @@ impl EvalEnv {
     }
 
     env
+  }
+
+  pub(crate) fn insert_identifier(
+    &mut self,
+    id: &Identifier,
+    li: LineInfo,
+  ) -> Result<(), ShardsError> {
+    if let Some(prev) = self.identifiers.insert(id.clone(), li) {
+      Err(
+        (
+          format!("Identifier {} already used at {:?}", id.resolve(), prev),
+          li,
+        )
+          .into(),
+      )
+    } else {
+      Ok(())
+    }
+  }
+  pub(crate) fn insert_raw_identifier(
+    &mut self,
+    id: &Identifier,
+    li: LineInfo,
+  ) -> Result<(), ShardsError> {
+    if let Some(prev) = self.raw_identifiers.insert(id.clone(), li) {
+      Err(
+        (
+          format!("Identifier {} already used at {:?}", id.resolve(), prev),
+          li,
+        )
+          .into(),
+      )
+    } else {
+      Ok(())
+    }
   }
 }
 
@@ -836,8 +881,22 @@ fn finalize_wire(
     wire.add_shard(shard.0);
   }
 
+  let interfaces = param_helper
+    .get_param_by_name_or_index("Interfaces", 2)
+    .map(|param| match &param.value {
+      Value::Seq(s) => Ok(s.clone()),
+      _ => Err(("Interfaces parameter must be a sequence", line_info).into()),
+    })
+    .unwrap_or(Ok(Vec::new()))?;
+  let mut s = AutoSeqVar::new();
+  for v in interfaces {
+    let v = as_var(&v, line_info, None, env)?;
+    s.0.push(v.as_ref());
+  }
+  wire.set_interfaces(unsafe { s.0 .0.payload.__bindgen_anon_1.seqValue });
+
   let looped = param_helper
-    .get_param_by_name_or_index("Looped", 2)
+    .get_param_by_name_or_index("Looped", 3)
     .map(|param| match &param.value {
       Value::Boolean(b) => Ok(*b),
       _ => Err(("Looped parameter must be a boolean", line_info).into()),
@@ -849,7 +908,7 @@ fn finalize_wire(
     wire.set_pure(true);
   } else {
     let pure = param_helper
-      .get_param_by_name_or_index("Pure", 3)
+      .get_param_by_name_or_index("Pure", 4)
       .map(|param| match &param.value {
         Value::Boolean(b) => Ok(*b),
         _ => Err(("Pure parameter must be a boolean", line_info).into()),
@@ -2692,6 +2751,84 @@ fn eval_pipeline(
             // ignore is a special function that does nothing
             Ok(())
           }
+          ("interface", true) => {
+            if let Some(ref params) = func.params {
+              let param_helper = ParamHelper::new(params);
+
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "define built-in function requires Name parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              let types = param_helper.get_param_by_name_or_index("Types", 1).ok_or(
+                (
+                  "define built-in function requires Types parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              match (name, types) {
+                (
+                  Param {
+                    value: Value::Identifier(name),
+                    ..
+                  },
+                  types,
+                ) => {
+                  e.insert_raw_identifier(name, block.line_info.unwrap_or_default())?;
+
+                  // eval(seq, name, defines, cancellation_token)
+                  // e.replacements.
+
+                  let make_iface_shards = Sequence {
+                    statements: vec![Statement::Pipeline(Pipeline {
+                      blocks: vec![Block {
+                        content: BlockContent::Shard(Function {
+                          name: Identifier {
+                            name: "MakeInterface".into(),
+                            namespaces: vec![],
+                          },
+                          params: Some(vec![
+                            Param {
+                              name: None,
+                              value: Value::String(name.resolve()),
+                            },
+                            types.clone(),
+                          ]),
+                        }),
+                        line_info: block.line_info,
+                      }],
+                    })],
+                  };
+
+                  let cvar = eval_eval_expr(&make_iface_shards, e)?;
+                  eprintln!("interface {:?}: {:?}", name, cvar.0);
+                  // e.replacements.insert(name.clone(), cvar.0 .0);
+
+                  Ok(())
+                }
+                _ => Err(
+                  (
+                    "interface built-in function requires Name parameter to be an identifier",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                ),
+              }
+            } else {
+              Err(
+                (
+                  "interface built-in function requires proper parameters",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )
+            }
+          }
           ("define", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
@@ -2731,7 +2868,10 @@ fn eval_pipeline(
                   },
                   value,
                 ) => {
-                  if let Some(_) = find_defined(name, e) {
+                  if let Some(_) = e
+                    .raw_identifiers
+                    .insert(name.clone(), block.line_info.clone().unwrap_or_default())
+                  {
                     if !ignore_redefined {
                       return Err(
                         (
@@ -2740,8 +2880,6 @@ fn eval_pipeline(
                         )
                           .into(),
                       );
-                    } else {
-                      return Ok(()); // just do nothing
                     }
                   }
 
@@ -2813,15 +2951,7 @@ fn eval_pipeline(
                 name.clone()
               };
 
-              if let Some(_) = find_wire(&name, e) {
-                return Err(
-                  (
-                    format!("wire {} already exists", name.name),
-                    block.line_info.unwrap_or_default(),
-                  )
-                    .into(),
-                );
-              }
+              e.insert_raw_identifier(&name, block.line_info.clone().unwrap_or_default())?;
 
               let params_ptr = func.params.as_ref().ok_or(
                 (
@@ -2895,6 +3025,8 @@ fn eval_pipeline(
                         .into(),
                     );
                   }
+
+                  e.insert_identifier(name, block.line_info.clone().unwrap_or_default())?;
 
                   let args_ptr = args as *const _;
                   let shards_ptr = shards as *const _;

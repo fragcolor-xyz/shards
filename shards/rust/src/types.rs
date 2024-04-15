@@ -334,6 +334,10 @@ impl Wire {
     unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
   }
 
+  pub fn set_interfaces(&self, interfaces: SHSeq) {
+    unsafe { (*Core).setWireInterfaces.unwrap()(self.0 .0, interfaces) }
+  }
+
   pub fn set_unsafe(&self, unsafe_: bool) {
     unsafe { (*Core).setWireUnsafe.unwrap()(self.0 .0, unsafe_) }
   }
@@ -5339,6 +5343,12 @@ impl Seq {
 impl Default for Seq {
   fn default() -> Self {
     Seq::new()
+  }
+}
+
+impl Into<SHSeq> for &Seq {
+  fn into(self) -> SHSeq {
+    self.s
   }
 }
 

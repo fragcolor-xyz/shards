@@ -1,0 +1,9 @@
+@interface(toggleable {
+  enabled: @type(Type::Bool)
+})
+
+@wire(my-wire {
+  Once({
+    false >= enabled
+  })
+} [toggleable])
