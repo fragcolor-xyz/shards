@@ -1,32 +1,34 @@
 {
-  prompt: """How do I attempt to execute an action but do another action if I  fail"""
+prompt: """
+How to use Maybe in Shards?
+"""
 
-  solution:
-    """[1 2 3] =  sequence
+solution:"""
+[1 2]
+Maybe( 
+ Take(3) {Msg("Invalid, default to 42" LogLevel.Warning)
+ 42
+ }
+ true
+)
+Log("result")
+"""
 
-    sequence
-    Maybe(
-      Take(3)
-      Take(0)
-      false
-    )
-    Log("result")"""
+explicit: """
+[1 2]
+Maybe(
+ Shards: Take(3)
+ Else:
+ {Msg(Message: "Invalid, default to 42" Level: LogLevel::Warning)
+ 42
+ }
+ Silent: true
+)
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
 
-  explicit:
-    """[1 2 3] =  sequence
-
-    sequence
-    Maybe(
-      Shards: Take(3)
-      Else: Take(0)
-      Silent: false
-    )
-    Log(Prefix: "result" Level: LogLevel::Info)"""
-
-  explanation: """
-    The Maybe Shard attempts to activate a Shard or a sequence of Shards. Upon failure, it will activate another Shard or sequence of Shards specified in the Else parameter.
-    If set to true, the Silent parameter will disable logging while running the Shard and no warning message should be printed on failure.
-  """
-
-  tag: "  #General"
+explanation: """
+Maybe attempts to activate a shard or a sequence of shards specified in the Shards parameter. Upon failure, activate another shard or sequence of shards in the Else parameter. 
+If Silent boolean parameter is assigned the value true, it will disable Log and Msg shards and no warning message would be printed upon failure
+"""
 }

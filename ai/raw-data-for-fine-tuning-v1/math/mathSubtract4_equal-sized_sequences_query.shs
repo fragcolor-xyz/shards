@@ -1,0 +1,23 @@
+{
+prompt: """
+How to use Math.Subtract when applied to equal-sized sequences?
+"""
+
+solution:"""
+[4.0 5.1 6.4]
+Math.Subtract([3.9 5.0 6.2]) 
+Log
+Assert.IsAlmost([0.1 0.1 0.2] true)
+"""
+
+explicit: """
+[4.0 5.1 6.4]
+Math.Subtract(Operand: [3.9 5.0 6.2]) 
+Log(Prefix: "" Level: LogLevel::Info)
+Assert.IsAlmost(Value: [0.1 0.1 0.2] Abort: false Threshold: 1.19209e-07)
+"""
+
+explanation: """
+Applies subtraction operation. When applying subtraction operation on input and operand sequences of equal length, input seq elements compute with corresponding operand seq elements
+"""
+}

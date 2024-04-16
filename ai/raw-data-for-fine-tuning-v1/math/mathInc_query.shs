@@ -1,0 +1,23 @@
+{
+prompt: """
+How to use Math.Inc?
+"""
+
+solution:"""
+@f2(4.5 5.7) >= floatvar 
+Math.Inc(floatvar)
+floatvar | Log
+"""
+
+explicit: """
+@f2(4.5 5.7) | Set(Name: floatvar) 
+Math.Inc(Value: floatvar)
+floatvar | Log(Prefix: 
+"" Level: LogLevel::Info)
+"""
+
+explanation: """
+Increments the Value parameter by 1. 
+<input> takes any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.
+"""
+}

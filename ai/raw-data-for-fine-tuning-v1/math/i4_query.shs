@@ -1,0 +1,21 @@
+{
+prompt: """
+How to use @i4 int4 type?
+"""
+
+solution:"""
+@i4(3 6 9 4)
+Math.Add(@i4(6 3 0 5))
+Log
+"""
+
+explicit: """
+@i4(3 6 9 4)
+Math.Add(Operand: @i4(6 3 0 5))
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """
+Type Int4 is like type Int3 but is a vector of four 32-bit signed integers instead.
+"""
+}

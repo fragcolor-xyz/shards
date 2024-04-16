@@ -1,0 +1,38 @@
+{
+prompt: """
+How do I loop in Shards?
+"""
+
+solution:"""
+0 >= sum
+
+ForRange(1 999 {
+Math.Add(sum) > sum 
+}
+)
+
+sum | 
+Assert.Is(499500 true)
+"""
+
+explicit: """
+0 >= sum
+
+ForRange(
+From: 1
+To: 999
+Action: {
+Math.Add(Operand: sum) > sum 
+Log(Prefix: "" Level: LogLevel::Info)
+}
+)
+
+sum | 
+Assert.Is(Value: 499500 Break: true)
+"""
+
+explanation: """
+Loop in Shards is implemented by ForRange Shard. It has From, To and Action parameters.
+The code example shows how to sum all positive integers below 1000.
+"""
+}

@@ -1,0 +1,19 @@
+{
+prompt: """
+How to use @f3 float3 type?
+"""
+
+solution:"""
+@f3(1.2 3.4 5.6) | Math.Add(@f3(6.5 4.3 2.1))
+Log
+"""
+
+explicit: """
+@f3(1.2 3.4 5.6) | Math.Add(Operand: @f3(6.5 4.3 2.1))
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """
+Type Float3 defines a vector of three 32-bit signed floating point numbers.
+"""
+}

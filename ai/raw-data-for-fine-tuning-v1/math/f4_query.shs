@@ -1,0 +1,21 @@
+{
+prompt: """
+How to use @f4 float4 type?
+"""
+
+solution:"""
+@f4(3.1 6.4 9.2 4.6)
+Math.Add (@f4(6.8 3.5 0.9 5.3))
+Log
+"""
+
+explicit: """
+@f4(3.1 6.4 9.2 4.6)
+Math.Add (Operand: @f4(6.8 3.5 0.9 5.3))
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """
+Type Float4 is a vector of four 32-bit signed floating point numbers instead.
+"""
+}

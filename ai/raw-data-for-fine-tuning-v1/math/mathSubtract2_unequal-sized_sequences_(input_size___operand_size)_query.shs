@@ -1,0 +1,24 @@
+{
+prompt: """
+How to use Math.Subtract when applied to unequal-sized sequences where the input size is smaller than the operand size?
+"""
+
+solution:"""
+[4.0] 
+Math.Subtract([3.0 4.0 2.2])
+Log 
+Assert.Is([1.0] true)
+"""
+
+explicit: """
+[4.0] 
+Math.Subtract(Operand: [3.0 4.0 2.2])
+Log(Prefix: "" Level: LogLevel::Info)
+Assert.Is(Value: [1.0] Break: true)
+"""
+
+explanation: """
+Applies subtraction operation. When applying subtraction operation on an input sequence with fewer elements than the operand sequence, the remaining operand sequence elements are ignored and do not undergo subtraction operation; 
+Input seq elements compute with corresponding operand seq elements. Since input size < operand size, remaining operand seq elements ignored
+"""
+}

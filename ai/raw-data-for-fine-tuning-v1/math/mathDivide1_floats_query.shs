@@ -1,0 +1,25 @@
+{
+prompt: """
+How to use Math.Divide for floats?
+"""
+
+solution:"""
+9.0
+Math.Divide(Operand: 2.0) 
+Log
+
+Assert.Is(4.5 true)
+"""
+
+explicit: """
+9.0
+Math.Divide(Operand: 2.0) 
+Log(Prefix: "" Level: LogLevel::Info)
+
+Assert.Is(4.5 true)
+"""
+
+explanation: """
+Applies division operation. 2.0 is the operand which the input 9.0 is divided by and the output is 4.5
+"""
+}

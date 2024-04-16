@@ -1,0 +1,22 @@
+{
+prompt: """
+How do I do tangent trigonometric operation?
+"""
+
+solution:"""
+@f3(-1.0 0.0 1.0)
+Math.Tan
+Log
+"""
+
+explicit: """
+@f3(-1.0 0.0 1.0)
+Math.Tan
+
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """
+Applies tangent operation to the input.
+"""
+}

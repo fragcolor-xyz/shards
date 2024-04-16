@@ -1,0 +1,30 @@
+{
+prompt: """
+How do I iterate through a table?
+"""
+
+solution:"""
+{value1: 10 value2: 20 value3: 30} 
+ForEach({
+Log
+Take(1)
+ToInt
+Math.Multiply(10)
+Log
+})
+"""
+
+explicit: """
+{value1: 10 value2: 20 value3: 30} ForEach(Apply: {
+Log(Prefix: "" Level: LogLevel::Info)
+Take(Key: 1)
+ToInt
+Math.Multiply(Operand: 10)
+Log(Prefix: "" Level: LogLevel::Info)
+})
+"""
+
+explanation: """
+Iterate through a table with ForEach Shard. It has the Apply parameter. Takes each key-value pair in the table as a sequence and processes the pairs in sequential order.
+"""
+}
