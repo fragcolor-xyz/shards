@@ -2,14 +2,12 @@
 
 use lazy_static::lazy_static;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use shards::{
-  fourCharacterCode, shlog_error, shlog_trace, SHObjectTypeInfo, SHType_Bytes, SHType_Int16,
-};
+use shards::{fourCharacterCode, shlog_error, shlog_trace, SHType_Bytes, SHType_Int16};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use shards::core::{register_enum, register_shard};
+use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::{common_type, ANY_TYPES, BYTES_TYPES, FRAG_CC, NONE_TYPES};
 use shards::types::{ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
@@ -740,8 +738,7 @@ impl Shard for CRDTApplyShard {
     let slice: &[u8] = input.try_into().unwrap(); // qed: we know it's bytes
 
     // decode the operation
-    let op: CRDTOp =
-      bincode::deserialize(slice).unwrap();
+    let op: CRDTOp = bincode::deserialize(slice).unwrap();
     shlog_trace!("CRDT.Apply: {:?}", op);
 
     // Validation not working.. will fail on second apply
