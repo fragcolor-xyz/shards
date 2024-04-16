@@ -675,6 +675,14 @@ template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   arr.len = size;
 }
 
+template <typename T> inline void arrayShuffle(T &arr) {
+  // Fisher-Yates shuffle
+  for (uint32_t i = arr.len - 1; i > 0; i--) {
+    uint32_t j = rand() % (i + 1);
+    std::swap(arr.elements[i], arr.elements[j]);
+  }
+}
+
 template <typename T, typename V> inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);

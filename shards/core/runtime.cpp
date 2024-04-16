@@ -3411,6 +3411,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->isEqualVar = [](const SHVar *v1, const SHVar *v2) -> SHBool { return *v1 == *v2; };
 
+  // we need this for rust PartialOrd partial_cmp
+  result->compareVar = [](const SHVar *v1, const SHVar *v2) -> int {
+    if (*v1 < *v2)
+      return -1;
+    if (*v1 == *v2)
+      return 0;
+    return 1;
+  };
+
   result->isEqualType = [](const SHTypeInfo *t1, const SHTypeInfo *t2) -> SHBool { return *t1 == *t2; };
 
   result->deriveTypeInfo = [](const SHVar *v, const struct SHInstanceData *data) -> SHTypeInfo {

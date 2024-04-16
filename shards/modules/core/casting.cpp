@@ -363,14 +363,16 @@ template <SHType ET> struct ExpectX {
   }
 };
 
-template <Type &ET> struct ExpectXComplex {
+template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
   static inline Parameters params{{"Unsafe",
                                    SHCCSTR("If we should skip performing deep type hashing and comparison. "
                                            "(generally fast but this might improve performance)"),
                                    {CoreInfo::BoolType}}};
   static inline uint64_t ExpectedHash = deriveTypeHash(ET);
 
-  bool _unsafe{false};
+  bool _unsafe{UNSAFE};
+
+  SHParametersInfo parameters() { return params; }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ET; }
@@ -747,7 +749,7 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ExpectWireSeq", ExpectWireSeq);
   using ExpectAudioSeq = ExpectXComplex<CoreInfo::AudioSeqType>;
   REGISTER_SHARD("ExpectAudioSeq", ExpectAudioSeq);
-  using ExpectAnySeq = ExpectXComplex<CoreInfo::AnySeqType>;
+  using ExpectAnySeq = ExpectXComplex<CoreInfo::AnySeqType, true>;
   REGISTER_SHARD("ExpectSeq", ExpectAnySeq);
 
   REGISTER_SHARD("ExpectLike", ExpectLike);

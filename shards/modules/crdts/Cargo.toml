@@ -1,5 +1,5 @@
 [package]
-name = "shards-onnx"
+name = "shards-crdts"
 description = ""
 license = "BSD-3-Clause"
 version = "0.1.0"
@@ -12,5 +12,6 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
-compile-time-crc32 = "0.1.2"
-tract-onnx = { version = "0.21.3" }
+crdts = { git = "https://github.com/shards-lang/rust-crdt.git", ref = "12967bc106057ec936746ed4b2dcab66fb3e3208" }
+bincode = "1.3.3"
+serde = { version = "1", features = ["derive"] }

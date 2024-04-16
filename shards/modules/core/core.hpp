@@ -2304,8 +2304,8 @@ struct Clear : SeqUser {
     for (auto &shared : data.shared) {
       std::string_view vName(shared.name);
       if (vName == _name && !shared.isMutable) {
-        SHLOG_ERROR("Count: Variable {} is not mutable.", _name);
-        throw ComposeError("Count: Variable is not mutable.");
+        SHLOG_ERROR("Clear: Variable {} is not mutable.", _name);
+        throw ComposeError("Clear: Variable is not mutable.");
       }
     }
 
@@ -2327,6 +2327,31 @@ struct Clear : SeqUser {
       // we in that case output the same _cell with adjusted len!
       if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<SHVar &>(input).payload.seqValue.len = 0;
+    }
+
+    return input;
+  }
+};
+
+struct Shuffle : SeqUser {
+  static SHOptionalString help() {
+    return SHCCSTR("Shuffles the elements of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
+    }
+
+    if (likely(_cell->valueType == SHType::Seq)) {
+      shards::arrayShuffle(_cell->payload.seqValue);
+    } else {
+      throw ActivationError("Variable is not a sequence, failed to Shuffle.");
     }
 
     return input;

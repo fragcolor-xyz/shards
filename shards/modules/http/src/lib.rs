@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
 #[macro_use]
 extern crate shards;
 
 #[macro_use]
 extern crate lazy_static;
-
-#[macro_use]
-extern crate compile_time_crc32;
 
 use shards::core::register_legacy_shard;
 use shards::core::run_blocking;
@@ -157,17 +158,17 @@ impl RequestBase {
     match index {
       0 => self.url.set_param(value),
       1 => self.headers.set_param(value),
-      2 => Ok(self.timeout = value.try_into().map_err(|x| "Failed to set timeout")?),
-      3 => Ok(self.as_bytes = value.try_into().map_err(|x| "Failed to set as_bytes")?),
+      2 => Ok(self.timeout = value.try_into().map_err(|_x| "Failed to set timeout")?),
+      3 => Ok(self.as_bytes = value.try_into().map_err(|_x| "Failed to set as_bytes")?),
       4 => Ok(
         self.full_response = value
           .try_into()
-          .map_err(|x| "Failed to set full_response")?,
+          .map_err(|_x| "Failed to set full_response")?,
       ),
       5 => Ok(
         self.invalid_certs = value
           .try_into()
-          .map_err(|x| "Failed to set invalid_certs")?,
+          .map_err(|_x| "Failed to set invalid_certs")?,
       ),
       _ => unreachable!(),
     }
