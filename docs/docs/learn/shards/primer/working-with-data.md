@@ -109,7 +109,7 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
     (schedule main wire-x)
     (run main 1 2)
     ```
-    
+
     1. `.x` here is the original variable from `wire-x`. This is due to how `Step` results in `wire-y` existing in the same scope as `wire-x`.
 
 === "Output"
@@ -124,7 +124,7 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
 
 ### Pure Wires
 
-Pure Wires are Wires that exist in their scope. When run from another Wire, they do not copy that Wire's variables. 
+Pure Wires are Wires that exist in their scope. When run from another Wire, they do not copy that Wire's variables.
 
 To create a Pure Wire, we use `defpure`.
 
@@ -191,45 +191,45 @@ If you define a constant in your program, it will have a global scope and can be
 
 Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`Sub`](../../../../reference/shards/shards/General/Sub/). `Sub` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `Sub` will run as per usual, except that the final output will be replaced with the initial input passed into `Sub`, thereby creating a passthrough effect.
+Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`SubFlow`](../../../../reference/shards/shards/General/SubFlow/). `SubFlow` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `SubFlow` will run as per usual, except that the final output will be replaced with the initial input passed into `SubFlow`, thereby creating a passthrough effect.
 
-`Sub` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
+`SubFlow` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
 
-=== "Sub Example"
+=== "SubFlow Example"
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
     (defwire sub-test
-      1 >= .x (Log "Before Sub")
-      (Sub
+      1 >= .x (Log "Before SubFlow")
+      (SubFlow
        :Shards
        (-> (Math.Add 2) > .x
-           .x (Log "In Sub")))
-      (Log "After Sub"))
+           .x (Log "In SubFlow")))
+      (Log "After SubFlow"))
 
     (schedule main sub-test)
     (run main)
     ```
 
-=== "Sub Example with |"
+=== "SubFlow Example with |"
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
     (defwire sub-test
-      1 >= .x (Log "Before Sub")
+      1 >= .x (Log "Before SubFlow")
       (|(Math.Add 2) > .x
-        .x (Log "In Sub")) 
-      (Log "After Sub"))
+        .x (Log "In SubFlow"))
+      (Log "After SubFlow"))
 
     (schedule main sub-test)
     (run main)
     ```
-  
+
 === "Output"
     ```
-    [sub-test] Before Sub: 1
-    [sub-test] In Sub: 3
-    [sub-test] After Sub: 1
+    [sub-test] Before SubFlow: 1
+    [sub-test] In SubFlow: 3
+    [sub-test] After SubFlow: 1
     ```
 
 In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into a Wire and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
@@ -253,7 +253,7 @@ Some shards can only accept specific data types and will require you to either:
 ### Dynamic Output Types
 
 You do not have to declare the data types of most data in Shards. Shards can smartly infer and determine the data types when it is run, thereby removing the hassle of having to explicitly specify data types.
-    
+
 However, when data is output dynamically, you are still required to declare its data type as it cannot be determined easily. Examples would include data output from the shards [`FromBytes`](../../../../reference/shards/shards/General/FromBytes/) and [`FromJson`](../../../../reference/shards/shards/General/FromJson/).
 
 You will also have to declare data types when trying to [`Take`](../../../../reference/shards/shards/General/Take/) from a mixed type [Sequence](../../../../reference/shards/shards/types/#sequence).
@@ -270,14 +270,14 @@ In the example below, [`String.Join`](../../../../reference/shards/shards/String
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
-    (defwire wire 
+    (defwire wire
       2 (ToString) >= .num-of-apples
       ["John has " .num-of-apples " apples."](String.Join)(Log))
 
     (schedule main wire)
     (run main)
     ```
-  
+
 === "Output"
     ```
     [wire] John has 2 apples.

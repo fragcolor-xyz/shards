@@ -162,7 +162,7 @@ struct LogicAndTranslator {
 };
 
 void registerFlowShards() {
-  REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "Sub", shards::Sub);
+  REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "SubFlow", shards::Sub);
   REGISTER_EXTERNAL_SHADER_SHARD(IfTranslator, "If", shards::IfBlock);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "When", shards::When<true>);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "WhenNot", shards::When<false>);

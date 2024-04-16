@@ -2,12 +2,12 @@
   Sequence(pipelines)
   cond | If(IsAny([true "true" 1]) {
     {Pipeline: {blocks: [{content:
-      {Shard: {name: {name: "Sub" namespaces: []}
+      {Shard: {name: {name: "SubFlow" namespaces: []}
               params:[{name: none value: (@ast(yes) | FromJson)}]
       }}}]}}
   } {
     {Pipeline: {blocks: [{content:
-      {Shard: {name: {name: "Sub" namespaces: []}
+      {Shard: {name: {name: "SubFlow" namespaces: []}
               params:[{name: none value: (@ast(no) | FromJson)}]
       }}}]}}
   }) >> pipelines

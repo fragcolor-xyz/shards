@@ -490,7 +490,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))", env);
   rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
   rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
-  rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! | (fn* [& shards] `(SubFlow (wireify (vector ~@shards)))))", env);
   rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);
   rep("(defmacro! || (fn* [& shards] `(Await (wireify (vector ~@shards)))))", env);
   rep("(defmacro! Setup (fn* [& shards] `(Once (wireify (vector ~@shards)))))", env);
