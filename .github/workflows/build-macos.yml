@@ -171,6 +171,7 @@ jobs:
           ./shards new ../shards/tests/return.shs
           ./shards new ../shards/tests/table-seq-push.shs
           ./shards new ../shards/tests/crdts.shs
+          ./shards new ../shards/tests/failures.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
