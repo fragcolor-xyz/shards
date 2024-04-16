@@ -156,11 +156,19 @@ true | Assert.Is(false)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(exposed-failure2 exposed-failure-wrapper2 {
-  [] | Set(a Exposed: true)
+  [1] | Set(a Exposed: true)
   1 | AppendTo(a)
 })
 
 @schedule(root exposed-failure-wrapper2)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure(exposed-failure3 exposed-failure-wrapper3 {
+  [] | Set(tab Exposed: true)
+  1 | Push(tab "x")
+})
+
+@schedule(root exposed-failure-wrapper3)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(clear-non-mutable clear-non-mutable-wrapper {
@@ -176,4 +184,12 @@ true | Assert.Is(false)
 })
 
 @schedule(root event-read-used-before-send-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure(append-type1 append-type1-wrapper {
+  ["x"] | Set(a Exposed: true)
+  1 | AppendTo(a)
+})
+
+@schedule(root append-type1-wrapper)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
