@@ -307,15 +307,18 @@ impl Shard for CRDTSetShard {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
       self.crdt = Some(crdt);
     }
+
     let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
     let doc = binding.as_mut().unwrap();
     let crdt = &mut doc.crdt;
     let key = self.key.get();
+
     // create thew new operation
     let add_ctx = crdt.read_ctx().derive_add_ctx(doc.client_id);
     let op = crdt.update(key, add_ctx, |reg, ctx| reg.write(input.into(), ctx));
@@ -399,16 +402,21 @@ impl Shard for CRDTGetShard {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
       self.crdt = Some(crdt);
     }
+
     let binding = self.crdt.as_ref().unwrap().borrow();
     let doc = binding.as_ref().unwrap();
     let crdt = &doc.crdt;
     let key = self.key.get();
+
+    // optimize a bit by cloning the key here and recycling it
     self.cloned_key = key.into();
+
     let value = crdt.get(&self.cloned_key);
     let value = value.val;
     if let Some(value) = value {
@@ -478,11 +486,13 @@ impl Shard for CRDTDeleteShard {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
       self.crdt = Some(crdt);
     }
+
     let mut binding = self.crdt.as_ref().unwrap().borrow_mut();
     let doc = binding.as_mut().unwrap();
     let crdt = &mut doc.crdt;
