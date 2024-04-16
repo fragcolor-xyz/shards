@@ -25,7 +25,35 @@ lazy_static! {
   static ref CRDT_TYPES: Vec<Type> = vec![*CRDT_TYPE];
 }
 
-type CRDT = Map<ClonedVar, MVReg<ClonedVar, u128>, u128>;
+#[derive(Default, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+struct CRDTVar(Rc<ClonedVar>);
+
+impl Serialize for CRDTVar {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    self.0.serialize(serializer)
+  }
+}
+
+impl<'de> Deserialize<'de> for CRDTVar {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    let var = ClonedVar::deserialize(deserializer)?;
+    Ok(Self(Rc::new(var)))
+  }
+}
+
+impl From<&Var> for CRDTVar {
+  fn from(var: &Var) -> Self {
+    Self(Rc::new(var.into()))
+  }
+}
+
+type CRDT = Map<CRDTVar, MVReg<CRDTVar, u128>, u128>;
 
 struct Document {
   crdt: CRDT,
@@ -267,6 +295,8 @@ struct CRDTSetShard {
 
   crdt: Option<Rc<RefCell<Option<Document>>>>,
   output: Vec<u8>,
+
+  key_cache: Option<CRDTVar>,
 }
 
 impl Default for CRDTSetShard {
@@ -277,6 +307,7 @@ impl Default for CRDTSetShard {
       key: ParamVar::default(),
       crdt: None,
       output: Vec::new(),
+      key_cache: None,
     }
   }
 }
@@ -319,9 +350,19 @@ impl Shard for CRDTSetShard {
     let crdt = &mut doc.crdt;
     let key = self.key.get();
 
+    if let Some(key_cache) = &self.key_cache {
+      if key_cache.0 .0 != *key {
+        self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+      }
+    } else {
+      self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+    }
+
+    let key_clone = self.key_cache.as_ref().unwrap().clone();
+
     // create thew new operation
     let add_ctx = crdt.read_ctx().derive_add_ctx(doc.client_id);
-    let op = crdt.update(key, add_ctx, |reg, ctx| reg.write(input.into(), ctx));
+    let op = crdt.update(key_clone, add_ctx, |reg, ctx| reg.write(input.into(), ctx));
     shlog_trace!("CRDT.Set: {:?}, crdt: {:?}", op, crdt);
 
     // Validation not working.. will fail on second apply
@@ -359,8 +400,7 @@ struct CRDTGetShard {
 
   crdt: Option<Rc<RefCell<Option<Document>>>>,
 
-  cloned_key: ClonedVar,
-  output: ClonedVar,
+  key_cache: Option<CRDTVar>,
 }
 
 impl Default for CRDTGetShard {
@@ -370,8 +410,7 @@ impl Default for CRDTGetShard {
       crdt_param: ParamVar::default(),
       key: ParamVar::default(),
       crdt: None,
-      cloned_key: ClonedVar::default(),
-      output: ClonedVar::default(),
+      key_cache: None,
     }
   }
 }
@@ -414,14 +453,20 @@ impl Shard for CRDTGetShard {
     let crdt = &doc.crdt;
     let key = self.key.get();
 
-    // optimize a bit by cloning the key here and recycling it
-    self.cloned_key = key.into();
+    if let Some(key_cache) = &self.key_cache {
+      if key_cache.0 .0 != *key {
+        self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+      }
+    } else {
+      self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+    }
 
-    let value = crdt.get(&self.cloned_key);
+    let value = crdt.get(self.key_cache.as_ref().unwrap());
     let value = value.val;
     if let Some(value) = value {
-      self.output = value.read().val.first().unwrap().clone(); // we know it's there, we take the first for now
-      Ok(self.output.0)
+      let value = value.read();
+      let value = value.val.first().unwrap();
+      Ok(value.0 .0)
     } else {
       Ok(Var::default())
     }
@@ -446,6 +491,8 @@ struct CRDTDeleteShard {
 
   crdt: Option<Rc<RefCell<Option<Document>>>>,
   output: Vec<u8>,
+
+  key_cache: Option<CRDTVar>,
 }
 
 impl Default for CRDTDeleteShard {
@@ -456,6 +503,7 @@ impl Default for CRDTDeleteShard {
       key: ParamVar::default(),
       crdt: None,
       output: Vec::new(),
+      key_cache: None,
     }
   }
 }
@@ -498,8 +546,18 @@ impl Shard for CRDTDeleteShard {
     let crdt = &mut doc.crdt;
     let key = self.key.get();
 
+    if let Some(key_cache) = &self.key_cache {
+      if key_cache.0 .0 != *key {
+        self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+      }
+    } else {
+      self.key_cache = Some(CRDTVar(Rc::new(key.into())));
+    }
+
+    let key_clone = self.key_cache.as_ref().unwrap().clone();
+
     // create thew new operation
-    let op = crdt.rm(key, crdt.read_ctx().derive_rm_ctx());
+    let op = crdt.rm(key_clone, crdt.read_ctx().derive_rm_ctx());
     shlog_trace!("CRDT.Delete: {:?}", op);
 
     // Validation not working.. will fail on second apply
@@ -652,6 +710,7 @@ impl Shard for CRDTApplyShard {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
@@ -663,7 +722,8 @@ impl Shard for CRDTApplyShard {
     let crdt = &mut doc.crdt;
     let slice: &[u8] = input.try_into().unwrap(); // qed: we know it's bytes
 
-    let op: crdts::map::Op<ClonedVar, MVReg<ClonedVar, u128>, u128> =
+    // decode the operation
+    let op: crdts::map::Op<CRDTVar, MVReg<CRDTVar, u128>, u128> =
       bincode::deserialize(slice).unwrap();
     shlog_trace!("CRDT.Apply: {:?}", op);
 
@@ -673,6 +733,7 @@ impl Shard for CRDTApplyShard {
     //   "Operation is invalid."
     // })?;
 
+    // apply the operation
     crdt.apply(op);
 
     Ok(*input)
