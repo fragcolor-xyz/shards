@@ -11,12 +11,13 @@
   """
 
   explicit: """
-    Get(variable1)
-    If(Predicate:Is(Value: true) Then:{
+    Get(Name: variable1)
+    If(Predicate: Is(Value: true) Then: {
       Pass ;Do Something
-    } Else:{
+    } Else: {
       Pass ;Do Something else
-    })
+    } Passthrough: false
+    )
   """
 
   explanation: """

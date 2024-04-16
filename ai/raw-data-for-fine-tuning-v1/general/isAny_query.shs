@@ -12,11 +12,12 @@
    [1 2 3 4 5 6] = sequence
 
    sequence
-   If(Predicat: IsAny(Value: 2) Then:{
-    Msg("one match")
+   If(Predicate: IsAny(Value: 2) Then:{
+    Msg(Message: "one match" Level: LogLevel::Info)
     } Else: {
-      Msg("none match")}
-   )
+      Msg(Message: "none match" Level: LogLevel::Info)}
+      Passthrough: false
+   ) 
   """
 
   explanation: """

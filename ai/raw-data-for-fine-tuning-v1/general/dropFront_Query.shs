@@ -10,7 +10,7 @@
     DropFront(Name: sequence-to-drop)
     Log(Prefix: "Remaining Sequence")
   """
-
+  
   explanation: """
     DropFront removes the first element of the sequence variable that has been passed to in the Name parameter. Unlike the PopFront Shard, DropFront will return the remaining
     sequence as output.

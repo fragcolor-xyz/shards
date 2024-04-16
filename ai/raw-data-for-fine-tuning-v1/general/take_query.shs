@@ -5,7 +5,7 @@
    [0 1 2 3 4] = sequence
 
    sequence
-   Take() ;; Replace 0 accordingly with the desired index
+   Take() ; Replace 0 accordingly with the desired index
   """
 
   explicit: """
@@ -13,7 +13,7 @@
 
 
    Get(sequence)
-   Take([0]) ;; Replace 0 accordingly with the desired index
+   Take([0]) ; Replace 0 accordingly with the desired index
   """
 
   explanation: """

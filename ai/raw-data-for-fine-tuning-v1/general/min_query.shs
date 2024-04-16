@@ -5,19 +5,19 @@
     """[1 2 3 4 5] >= sequence
 
     sequence
-    Min(Operand: 3) ;; change the operand accordingly to the desirec value
+    Min(3) 
     > sequence
     Log("resulting sequence")
-    ;; [3 3 3 4 5]"""
+    """
 
   explicit:
     """[1 2 3 4 5] >= sequence
 
     sequence
-    Min(Operand: 3) ;; change the operand accordingly to the desirec value
+    Min(Operand: 3)
     > sequence
-    Log("resulting sequence")
-    ;; [3 3 3 4 5]"""
+    Log(Prefix: "resulting sequence" Level: LogLevel::Info)
+    """
 
   explanation: """
     This shard compares the input to its Operand parameter and outputs the lesser of the two values.

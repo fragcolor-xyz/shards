@@ -6,9 +6,9 @@
 
     sequence
     Maybe(
-      Shards: Take(3)
-      Else: Take(0)
-      Silent: false
+      Take(3)
+      Take(0)
+      false
     )
     Log("result")"""
 
@@ -21,7 +21,7 @@
       Else: Take(0)
       Silent: false
     )
-    Log("result")"""
+    Log(Prefix: "result" Level: LogLevel::Info)"""
 
   explanation: """
     The Maybe Shard attempts to activate a Shard or a sequence of Shards. Upon failure, it will activate another Shard or sequence of Shards specified in the Else parameter.

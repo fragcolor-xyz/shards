@@ -12,12 +12,12 @@
   """
 
   explicit: """
-    2 | Set(Name:variableA)
-    4 | Set(Name:variableB)
+    2 | Set(Name: variableA)
+    4 | Set(Name: variableB)
 
     Swap(
-      NameA:variableA
-      NameB:variableB
+      NameA: variableA
+      NameB: variableB
     )
   """
 

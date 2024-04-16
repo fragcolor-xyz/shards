@@ -14,10 +14,10 @@
   explicit:
     """2 = variable
     
-    Get(variable)
-    When(Predicate:{Is(2)}  Action:{
+    Get(Name: variable)
+    When(Predicate:{Is(Value: 2)}  Action: {
       Pass
-    })"""
+    } Passthrough: true)"""
 
   explanation: """
     The Pass Shard makes an action parameter do nothing and return back its input.

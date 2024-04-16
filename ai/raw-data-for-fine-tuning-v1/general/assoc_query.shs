@@ -8,7 +8,7 @@
     """[index0 variable1 index1 variable2] 
     | Assoc(
       Name: sequence
-      ;;Key: key
+      ;Key: key
     )"""
 
   explanation: """

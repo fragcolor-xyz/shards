@@ -6,7 +6,7 @@
   """
 
   explicit: """
-    Get(element) | Push(sequence)
+    Get(Name: element) | Push(Name: sequence)
   """
 
   explanation: """

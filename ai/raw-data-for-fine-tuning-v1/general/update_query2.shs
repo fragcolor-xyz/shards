@@ -6,7 +6,7 @@
   """
 
   explicit: """
-    5 | Update(Name:variable-to-update Key: "key1")
+    5 | Update(Name: variable-to-update Key: "key1")
   """
 
   explanation: """

@@ -2,12 +2,12 @@
   prompt: """How do I exit the program through code?"""
 
   solution: """
-   0;; Error Code
+   0 ; Error Code
    Exit
   """
 
   explicit: """
-    0;; Error Code
+    0 ; Error Code
     Exit
   """
 

@@ -13,9 +13,9 @@
     """{k1: 1 k2: 2 k3: 3} >= table1
     {k4: 4 k5: 5 k6: 6} >= table2
 
-    Get(Name:table2)
-    Merge(Target:table1)
-    Log(Prefix:"resulting table")"""
+    Get(Name: table2)
+    Merge(Target: table1)
+    Log(Prefix: "resulting table" Level: LogLevel::Info)"""
 
   explanation: """
     Merge, combines two tables into one, with the input table taking priority over the table passed into the Target parameter. That is,  if table2 has similar keys to table1

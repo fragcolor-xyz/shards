@@ -7,8 +7,8 @@
     } 1.0)"""
 
   explicit:
-    """Once( Action:{
-      Msg("This will only execute once")
+    """Once(Action: {
+      Msg(Message: "This will only execute once" Level: LogLevel::Info)
     } Every: 1.0)"""
 
   explanation: """

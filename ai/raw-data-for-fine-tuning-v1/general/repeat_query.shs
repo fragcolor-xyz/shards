@@ -8,9 +8,11 @@
   """
 
   explicit: """
-   Repeat(Action:{
+   Repeat(Action: {
     Pass ;; Action to repeat
-   } Times: 5)
+   } Times: 5
+   Forever: false
+   Until: none)
   """
 
   explanation: """

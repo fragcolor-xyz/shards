@@ -9,7 +9,7 @@
   explicit:
     """[1 2 3 4 5] = seq
     Lowest
-    Log(Prefix:"resulting")"""
+    Log(Prefix:"resulting" Level: LogLevel::Info)"""
 
   explanation: """
     The Lowest Shard will parse a sequence and return the element with the lowest "value". If it is a sequence of integers or floats it will return the element with

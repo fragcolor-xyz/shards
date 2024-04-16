@@ -8,7 +8,7 @@
 
   explicit: """
    table-of-values
-   ToJSON(Pure: true Indent:0)
+   ToJSON(Pure: true Indent: 0)
   """
 
   explanation: """

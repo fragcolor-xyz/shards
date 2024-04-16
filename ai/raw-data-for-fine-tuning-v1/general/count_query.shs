@@ -7,8 +7,8 @@
 
   explicit: """
     Count(
-      Name: sequence-to-Count
-      ;; Key: key
+      Name: sequence-to-count
+      ; Key: key
       )
   """
 

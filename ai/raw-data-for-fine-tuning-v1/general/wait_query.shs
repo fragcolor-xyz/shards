@@ -8,7 +8,7 @@
     "myWire"
     ;Passthrough:
     false
-    ;Timeout:
+    ;Timeout: none
     )
   """
 
@@ -17,7 +17,7 @@
     Wait(
       Wire: "myWire"
       Passthrough: false
-      ;Timeout:
+      ;Timeout: none
       )
   """
 

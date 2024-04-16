@@ -6,7 +6,7 @@
   """
 
   explicit: """
-    Erase(Indices:[index-to-delete] Name:sequence-to-delete-from)
+    Erase(Indices: [index-to-delete] Name: sequence-to-delete-from)
   """
 
   explanation: """

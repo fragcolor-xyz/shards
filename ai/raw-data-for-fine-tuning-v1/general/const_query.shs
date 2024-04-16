@@ -2,10 +2,10 @@
   prompt: """How do I create an unassigned constant in Shards."""
 
   solution: 
-   """Const(5) ;;Change the value accordingly"""
+   """Const(5) ;Change the value accordingly"""
 
   explicit: 
-    """Const(Value: 5) ;;Change the value accordingly"""
+    """Const(Value: 5) ;Change the value accordingly"""
 
   explanation: """
     Const declares a constant value (of any data type) by passing it into the Value parameter.

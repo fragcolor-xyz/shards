@@ -25,16 +25,16 @@
     
     ForRange
     (
-      From:1
-      To:5
-      Action:{
+      From: 1
+      To: 5
+      Action: {
         = added-value
 
         forRange-each-cycle-value
-        Math.Add(added-value)
+        Math.Add(Operand: added-value)
         > forRange-each-cycle-value
 
-        Log("added-value")
+        Log(Prefix: "added-value")
       }
     )
   """

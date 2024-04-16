@@ -12,11 +12,12 @@
    [1 1 1 1 2] = sequence
 
    sequence
-   If(Predicat: IsAnyNot(Value: 1) Then:{
-    Msg("one match")
+   If(Predicate: IsAnyNot(Value: 1) Then: {
+    Msg(Message: "one match" Level: LogLevel::Info)
     } Else: {
-      Msg("none match")}
-   )
+      Msg(Message: "none match" Level: LogLevel::Info)}
+      Passthrough: false
+   ) 
   """
 
   explanation: """

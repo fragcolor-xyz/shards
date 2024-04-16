@@ -5,14 +5,14 @@
    {k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
 
    sequence
-   Take("k0") ;; Replace 0 accordingly with the desired index
+   Take("k0") ; Replace 0 accordingly with the desired index
   """
 
   explicit: """
    {k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
 
    sequence
-   Take("k0") ;; Replace 0 accordingly with the desired index
+   Take("k0") ; Replace 0 accordingly with the desired index
   """
 
   explanation: """

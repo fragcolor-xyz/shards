@@ -3,12 +3,12 @@
 
   solution: """
    5 ; int to convert
-   ToLEB128(Signed:false)
+   ToLEB128(false)
   """
 
   explicit: """
    5 ; int to convert
-   ToLEB128(Signed:false)
+   ToLEB128(Signed: false)
   """
 
   explanation: """

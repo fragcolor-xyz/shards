@@ -25,17 +25,17 @@
    1 = value
     
     value
-    Match( Cases: [
+    Match(Cases: [
       1 {
-        Log("value is 1")
+        Log(Prefix: "value is 1" Level: LogLevel::Info)
       }
 
       2 {
-        Log("value is 2")
+        Log(Prefix: "value is 2" Level: LogLevel::Info)
       }
 
       3 {
-        Log("value is 3")
+        Log(Prefix: "value is 3" Level: LogLevel::Info)
       }
     ]
     Passthrough: false)

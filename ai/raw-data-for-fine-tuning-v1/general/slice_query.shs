@@ -2,7 +2,7 @@
   prompt: """How do I get a segment from a sequence."""
 
   solution: """
-    [ 0 1 2 3 4 5] >= sequence
+    [0 1 2 3 4 5] >= sequence
 
     sequence
     Slice(0 3 1)
@@ -10,16 +10,15 @@
   """
 
   explicit: """
-    [ 0 1 2 3 4 5] >= sequence
+    [0 1 2 3 4 5] >= sequence
 
-    Get(sequence)
+    Get(Name: sequence)
     Slice(
       From: 0 
       To: 3 
       Step: 1
     )
-    Log(Prefix:"result")
-    ;; Result will be a seuence [0 1 2]
+    Log(Prefix:"result" Level: LogLevel::Info)
   """
 
   explanation: """

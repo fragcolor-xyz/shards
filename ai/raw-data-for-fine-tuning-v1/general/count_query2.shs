@@ -9,7 +9,7 @@
     Count
     (
       Name: table-to-count
-      ;;Key: key-to-count
+      ;Key: key-to-count
     )
   """
 

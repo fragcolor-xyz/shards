@@ -8,7 +8,7 @@
 
   explicit: """
     Pop(Name: sequence-to-drop)
-    Log(Prefix: "Remaining Sequence")
+    Log(Prefix: "Remaining Sequence" Level: LogLevel::Info)
   """
 
   explanation: """

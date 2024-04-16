@@ -17,14 +17,14 @@
   explicit: """
    [1 2 3 4 5] = sequence
 
-    Get(Name:sequence)
+    Get(Name: sequence)
     Map(
-      Apply:{
-        Math.Add(1)
-        Log(Prefix:"result-map-each-element")
+      Apply: {
+        Math.Add(Operand: 1)
+        Log(Prefix:"result-map-each-element" Level: LogLevel::Info)
       }
     )
-    Log(Prefix:"result-map-modified-sequence")
+    Log(Prefix:"result-map-modified-sequence" Level: LogLevel::Info)
   """
 
   explanation: """

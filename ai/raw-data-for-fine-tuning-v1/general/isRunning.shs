@@ -8,7 +8,7 @@
 
   explicit: """
     IsRunning(Wire: wire-to-check)
-    Log(Prefix: "Is wire running")
+    Log(Prefix: "Is wire running" Level: LogLevel::Info)
   """
 
   explanation: """

@@ -7,9 +7,9 @@
 
   explicit: """
    Table(
-    Name:  table-created
-    ;;Global:
-    ;;Type:
+    Name: table-created
+    ;Global:
+    ;Type:
     )
   """
 

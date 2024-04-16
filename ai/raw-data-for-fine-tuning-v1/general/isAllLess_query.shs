@@ -12,11 +12,12 @@
    [1 2 3 4 5 6] = sequence
 
    sequence
-   If(Predicat: IsAllLess(Value: 7) Then:{
-    Msg("all matches")
+   If(Predicate: IsAllLess(Value: 7) Then:{
+    Msg(Message: "all matches" Level: LogLevel::Info)
     } Else: {
-      Msg("not all matches")}
-   )
+      Msg(Message: "not all matches" Level: LogLevel::Info)}
+      Passthrough: false
+   ) 
   """
 
   explanation: """

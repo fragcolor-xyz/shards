@@ -7,8 +7,8 @@
   """
 
   explicit: """
-    Get(variable-to-log)
-    LogType(Prefix: "Is wire running")
+    Get(Name: variable-to-log)
+    LogType(Prefix: "Is wire running" Level: Loglevel::Info)
   """
 
   explanation: """

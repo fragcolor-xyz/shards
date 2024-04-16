@@ -2,11 +2,11 @@
   prompt: """How do I get a random integer."""
 
   solution: """
-   RandomInt(50) ;; Replace with desired Max, non-inlcusive
+   RandomInt(50) 
   """
 
   explicit: """
-   RandomInt(Max: 50) ;; Replace with desired Max, non-inlcusive
+   RandomInt(Max: 50) 
   """
 
   explanation: """

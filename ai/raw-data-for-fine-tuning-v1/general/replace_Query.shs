@@ -2,7 +2,7 @@
   prompt: """How do I replace a elements in a sequence."""
 
   solution: """
-    [ 0 1 2 3 4 5] >= sequence
+    [0 1 2 3 4 5] >= sequence
 
     sequence
     Replace(
@@ -13,14 +13,14 @@
   """
 
   explicit: """
-    [ 0 1 2 3 4 5] >= sequence
+    [0 1 2 3 4 5] >= sequence
 
-    Get(sequence)
+    Get(Name: sequence)
     Replace(
       Patterns: [1 4]
       Replacements: [2 2]
     )
-    Log(Prefix:"result") ;; Result will be
+    Log(Prefix:"result" Level: LogLevel::Info) 
   """
 
   explanation: """

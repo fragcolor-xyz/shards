@@ -2,15 +2,15 @@
   prompt: """How do I get a random integer."""
 
   solution: """
-   RandomInt(50) ;; Replace with desired size
+   RandomBytes(50) 
   """
 
   explicit: """
-   RandomInt(Size: 50) ;; Replace with desired size
+   RandomBytes(Size: 50)
   """
 
   explanation: """
-    The RandomBytes Shard will return  randomized bytes, of the size specified in the Size parameter.
+    The RandomBytes Shard will return randomized bytes, of the size specified in the Size parameter.
   """
 
   tag: "  #General"

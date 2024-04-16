@@ -12,11 +12,12 @@
    [2 2 2 2 2 2 2] = sequence
 
    sequence
-   If(Predicat: IsAll(Value: 2) Then:{
-    Msg("all matches")
+   If(Predicate: IsAll(Value: 2) Then:{
+    Msg(Message: "all matches" Level: LogLevel::Info)
     } Else: {
-      Msg("not all matches")}
-   )
+      Msg(Message: "not all matches" Level: LogLevel::Info)}
+      Passthrough: false
+   ) 
   """
 
   explanation: """

@@ -9,10 +9,10 @@
   """
 
   explicit: """
-    Get(variable1)
-    When(Predicate:IsNone Action:{
+    Get(Name: variable1)
+    When(Predicate: IsNone Action: {
       Pass ;Do Something
-    })
+    } Passthrough: true)
   """
 
   explanation: """

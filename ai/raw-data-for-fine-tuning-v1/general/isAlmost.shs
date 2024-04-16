@@ -13,14 +13,15 @@
   explicit: """
    0 >= value
 
-   value | Math.Add(1) > value
+   value | Math.Add(Operand: 1) > value
 
-   Get(value)
-   If(Predicate: IsAlmost(Value: 10 Treshold:1) Then:{
-    Msg("all matches")
+   Get(Name: value)
+   If(Predicate: IsAlmost(Value: 10 Threshold: 1) Then:{
+    Msg(Message: "all matches" Level: LogLevel::Info)
     } Else: {
-      Msg("not all matches")}
-   )
+      Msg(Message: "not all matches" Level: LogLevel::Info)}
+      Passthrough: false
+   ) 
   """
 
   explanation: """

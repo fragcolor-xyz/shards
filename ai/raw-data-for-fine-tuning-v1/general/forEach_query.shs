@@ -10,8 +10,8 @@
 
   explicit: """
     [element1 element2 element3]
-   | ForEach(Apply:{
-    Math.Add(1)
+   | ForEach(Apply: {
+    Math.Add(Operand: 1)
    })
   """
 

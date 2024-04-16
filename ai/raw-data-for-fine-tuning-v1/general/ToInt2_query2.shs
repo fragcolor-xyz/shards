@@ -3,12 +3,12 @@
 
   solution: """
    "5.0" ; string to convert
-   ToInt
+   ToInt2
   """
 
   explicit: """
    "5.0" ; string to convert
-   ToInt
+   ToInt2
   """
 
   explanation: """

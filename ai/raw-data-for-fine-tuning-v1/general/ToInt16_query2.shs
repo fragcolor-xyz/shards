@@ -3,12 +3,12 @@
 
   solution: """
    5 ; integer to convert
-   ToInt
+   ToInt16
   """
 
   explicit: """
    5 ; integer to convert
-   ToInt
+   ToInt16
   """
 
   explanation: """

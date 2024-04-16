@@ -2,11 +2,11 @@
   prompt: """How do I get a random float"""
 
   solution: """
-   RandomFloat(50.0) ;; Replace with desired Max, non-inlcusive
+   RandomFloat(50.0)
   """
 
   explicit: """
-   RandomFloat(Max: 50.0) ;; Replace with desired Max, non-inlcusive
+   RandomFloat(Max: 50.0)
   """
 
   explanation: """

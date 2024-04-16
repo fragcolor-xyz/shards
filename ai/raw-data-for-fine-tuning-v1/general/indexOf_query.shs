@@ -8,7 +8,7 @@
   """
 
   explicit: """
-   Get(Name:sequence)
+   Get(Name: sequence)
    IndexOf(Item: item-to-find)
    Update(Name: index-of-item)
   """

@@ -12,9 +12,9 @@
   explicit:
     """2 = variable
     
-    Get(variable)
-    When(Predicate:{Is(1) | Or | Get(variable) | Is(2)}  Action:{
-      Log("condition met")
+    Get(Name: variable)
+    When(Predicate: {Is(Value: 1) | Or | Get(Name: variable) | Is(Value: 2)}  Action: {
+      Log(Prefix: "condition met" Level: LogLevel::Info)
     })"""
 
   explanation: """

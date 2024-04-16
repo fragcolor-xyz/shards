@@ -6,19 +6,19 @@
 
     Sub({
       Math.Multiply(2)
-      Log("result1:")
+      Log("result1")
     })
-    Log("result2:")
+    Log("result2")
   """
 
   explicit: """
-    2 | Set(Name:values)
+    2 | Set(Name: values)
 
-    Sub(Shards:{
-      Math.Multiply(Operand:2)
-      Log(Prefix:"result1:")
+    Sub(Shards: {
+      Math.Multiply(Operand: 2)
+      Log(Prefix: "result1" Level: LogLevel::Info)
     })
-    Log(Prefix:"result2:")
+    Log(Prefix: "result2" Level: LogLevel::Info)
   """
 
   explanation: """

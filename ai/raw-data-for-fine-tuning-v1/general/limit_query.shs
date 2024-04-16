@@ -15,9 +15,9 @@
    [1 2 3 4 5] = sequence 
 
    sequence
-   Limit(Max:3)
-   | ForEach(Apply:{
-    Math.Add(1)
+   Limit(Max: 3)
+   | ForEach(Apply: {
+    Math.Add(Operand: 1)
    })
   """
 

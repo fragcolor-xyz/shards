@@ -2,10 +2,10 @@
   prompt: """How do I load an image."""
 
   solution:
-    """LoadImage(File:filename.png PremultiplyAlpha: true) | GFX.Texture"""
+    """LoadImage(File: filename.png PremultiplyAlpha: true) | GFX.Texture"""
 
   explicit:
-    """LoadImage(File:filename.png PremultiplyAlpha: true) | GFX.Texture"""
+    """LoadImage(File: filename.png PremultiplyAlpha: true) | GFX.Texture"""
 
   explanation: """
     The LoadImage Shard will output the imge specified in the File parameter. The Premultiplied parameter is switched on or aff depending on

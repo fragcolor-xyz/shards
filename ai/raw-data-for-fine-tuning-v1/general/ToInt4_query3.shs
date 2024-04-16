@@ -3,12 +3,12 @@
 
   solution: """
    "5" ; string to convert
-   ToInt
+   ToInt4
   """
 
   explicit: """
    "5" ; atring to convert
-   ToInt
+   ToInt4
   """
 
   explanation: """

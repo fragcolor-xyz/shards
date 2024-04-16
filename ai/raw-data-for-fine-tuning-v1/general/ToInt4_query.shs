@@ -3,12 +3,12 @@
 
   solution: """
    5.0 ; float to convert
-   ToInt
+   ToInt4
   """
 
   explicit: """
    5.0 ; float to convert
-   ToInt
+   ToInt4
   """
 
   explanation: """

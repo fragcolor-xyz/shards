@@ -2,15 +2,13 @@
   prompt: """How do I convert something to a string"""
 
   solution: """
-   5 ; string to convert
+   5
    ToString
-   ;;Will output "5"
   """
 
   explicit: """
-   5 ; string to convert
+   5 
    ToString
-   ;;Will output "5"
   """
 
   explanation: """
