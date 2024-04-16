@@ -117,7 +117,12 @@ pub struct EvalEnv {
 
 impl Drop for EvalEnv {
   fn drop(&mut self) {
-    // keep this because we want borrow checker warnings
+    self.shards.clear();
+    self.finalized_wires.clear();
+    self.deferred_wires.clear();
+    self.definitions.clear();
+    // Explicitly keep meshes alive as long as possible
+    self.meshes.clear();
   }
 }
 
