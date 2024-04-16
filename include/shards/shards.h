@@ -53,7 +53,8 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Array, // Notice: of just blittable types/WIP!
   Set,
   Audio,
-  Type // Describes a type
+  Type,     // Describes a type
+  Interface // A wire interface
 };
 
 enum SH_ENUM_CLASS SHWireState : uint8_t {
@@ -404,6 +405,23 @@ struct SHTypeInfo {
   SHBool recursiveSelf;
 };
 
+typedef struct SHInterfaceVariable {
+  // Name of the variable
+  SHString name;
+  // Expected variable type
+  struct SHTypeInfo type;
+} SHInterfaceVariable;
+SH_ARRAY_DECL(SHInterfaceVariables, SHInterfaceVariable);
+
+typedef struct SHInterface {
+  // Unique Id of the interface, which is also the hash of the items
+  uint64_t id[2];
+  // Friendly name given to this interface, unhashed
+  SHString name;
+  // List of variables
+  SHInterfaceVariables variables;
+} SHInterface;
+
 struct SHShardComposeResult {
   struct SHError error;
   struct SHTypeInfo result;
@@ -561,6 +579,7 @@ struct SHVarPayload {
     SHPayloadArray arrayValue;
 
     struct SHTypeInfo *typeValue;
+    struct SHInterface *interfaceValue;
   };
 } __attribute__((aligned(16)));
 
@@ -914,6 +933,7 @@ SH_ARRAY_TYPE(Shards, ShardPtr);
 SH_ARRAY_TYPE(SHExposedTypesInfo, struct SHExposedTypeInfo);
 SH_ARRAY_TYPE(SHEnums, SHEnum);
 SH_ARRAY_TYPE(SHStrings, SHString);
+SH_ARRAY_TYPE(SHInterfaceVariables, SHInterfaceVariable);
 
 #define SH_ARRAY_PROCS(_array_, _short_)   \
   _array_##Free _short_##Free;             \
@@ -1130,6 +1150,9 @@ typedef struct _SHCore {
 
   // Utility to deal with SHStrings
   SH_ARRAY_PROCS(SHStrings, strings);
+
+  // Utility to deal with SHInterfaceVariables
+  SH_ARRAY_PROCS(SHInterfaceVariables, interfaceVariables);
 } SHCore;
 
 typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);

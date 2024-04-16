@@ -966,6 +966,8 @@ malValuePtr typeToKeyword(SHType type) {
     return mal::keyword(":Set");
   case SHType::Array:
     return mal::keyword(":Array");
+  case SHType::Interface:
+    return mal::keyword(":Interface");
   };
   return mal::keyword(":None");
 }

@@ -2,6 +2,7 @@
 #define D21D6CFA_EF1C_4BC8_A578_131D78F4D38F
 
 #include <shards/shards.hpp>
+#include <shards/iterator.hpp>
 
 namespace shards {
 struct TypeMatcher {

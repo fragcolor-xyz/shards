@@ -551,6 +551,8 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::Type:
     throw shards::ActivationError("Type can not be deserialized from json.");
+  case SHType::Interface:
+    throw shards::ActivationError("Interface can not be deserialized from json.");
   }
 }
 

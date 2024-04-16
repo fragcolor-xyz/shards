@@ -12,15 +12,45 @@
 		<DisplayString Condition="id!=size_t(~0)">{shards::fast_string::storage-&gt;pool.reverse[id]}</DisplayString>
 	</Type>
 	<Type Name="SHMesh">
-		<DisplayString>Mesh {label}</DisplayString>
+		<DisplayString>Mesh {label,s8}</DisplayString>
 	</Type>
 	<Type Name="SHWire">
-		<DisplayString>Wire {name}</DisplayString>
+		<DisplayString>Wire {name,s8}</DisplayString>
+	</Type>
+	<Type Name="SHInterfaceVariable">
+		<DisplayString>{name,s8} {type}</DisplayString>
+		<Expand>
+			<ExpandedItem>type</ExpandedItem>
+		</Expand>
+	</Type>
+	<Type Name="SHInterfaceVariables">
+		<Expand>
+			<CustomListItems>
+				<Variable Name="i" InitialValue="0" />
+				<Size>len</Size>
+				<Loop>
+					<Break Condition="i > len" />
+					<Item Name="[{i}]">
+						elements[i]
+					</Item>
+					<Exec>i++</Exec>
+				</Loop>
+			</CustomListItems>
+		</Expand>
+	</Type>
+	<Type Name="SHInterface">
+		<DisplayString>Interface {name,s8} / {id[1],x}{id[0],xb}</DisplayString>
+		<Expand>
+			<ExpandedItem>variables</ExpandedItem>
+		</Expand>
+	</Type>
+	<Type Name="SHString">
+		<DisplayString>{this,s8}</DisplayString>
 	</Type>
 	<Type Name="SHVar">
 		<DisplayString Condition="valueType == SHType::None">None</DisplayString>
-		<DisplayString Condition="valueType == SHType::String">{payload.stringValue}</DisplayString>
-		<DisplayString Condition="valueType == SHType::Path">{payload.stringValue} (Path)</DisplayString>
+		<DisplayString Condition="valueType == SHType::String">{payload.stringValue,s8}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Path">{payload.stringValue,s8} (Path)</DisplayString>
 		<DisplayString Condition="valueType == SHType::Int">{payload.intValue}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Int2">{payload.int2Value}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Int3">{payload.int3Value}</DisplayString>
@@ -37,7 +67,8 @@
 		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Any">Any</DisplayString>
-		<DisplayString Condition="valueType == SHType::ContextVar">&amp;{payload.stringValue} (Var)</DisplayString>
+		<DisplayString Condition="valueType == SHType::ContextVar">&amp;{payload.stringValue,s8b} (Var)</DisplayString>
+		<DisplayString Condition="valueType == SHType::Interface">{*payload.interfaceValue} (Interface)</DisplayString>
 		<Expand>
 			<ArrayItems Condition="valueType == SHType::Seq">
 				<Direction>Forward</Direction>
@@ -46,6 +77,8 @@
 				<ValuePointer>payload.seqValue.elements</ValuePointer>
 			</ArrayItems>
 			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque-&gt;m_flat_tree.m_data.m_seq</ExpandedItem>
+			<ExpandedItem Condition="valueType == SHType::Type">*payload.typeValue</ExpandedItem>
+			<ExpandedItem Condition="valueType == SHType::Interface">*payload.interfaceValue</ExpandedItem>
 		</Expand>
 	</Type>
 	<Type Name="SHTypeInfo">

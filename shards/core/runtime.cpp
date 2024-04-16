@@ -30,8 +30,9 @@
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
 #include <shards/fast_string/fast_string.hpp>
-#include <shards/wire_dsl.hpp>
+#include "hash.hpp"
 #include "utils.hpp"
+#include "interface.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -588,34 +589,10 @@ SHWireState suspend(SHContext *context, double seconds) {
   return context->getState();
 }
 
-void hash_update(const SHVar &var, void *state);
-
-#define SH_WIRE_SET_STACK(prefix)                                                              \
-  std::deque<std::unordered_set<const SHWire *>> &prefix##WiresStack() {                       \
-    thread_local std::deque<std::unordered_set<const SHWire *>> s;                             \
-    return s;                                                                                  \
-  }                                                                                            \
-  std::optional<std::unordered_set<const SHWire *> *> &prefix##WiresStorage() {                \
-    thread_local std::optional<std::unordered_set<const SHWire *> *> wiresOpt;                 \
-    return wiresOpt;                                                                           \
-  }                                                                                            \
-  std::unordered_set<const SHWire *> &prefix##Wires() {                                        \
-    auto wiresPtr = *prefix##WiresStorage();                                                   \
-    shassert(wiresPtr);                                                                        \
-    return *wiresPtr;                                                                          \
-  }                                                                                            \
-  void prefix##WiresPush() { prefix##WiresStorage() = &prefix##WiresStack().emplace_front(); } \
-  void prefix##WiresPop() {                                                                    \
-    prefix##WiresStack().pop_front();                                                          \
-    if (prefix##WiresStack().empty()) {                                                        \
-      prefix##WiresStorage() = std::nullopt;                                                   \
-    } else {                                                                                   \
-      prefix##WiresStorage() = &prefix##WiresStack().front();                                  \
-    }                                                                                          \
-  }
-
-SH_WIRE_SET_STACK(gathering);
-SH_WIRE_SET_STACK(hashing);
+static HashState<XXH128_hash_t> &wireHashState() {
+  static thread_local HashState<XXH128_hash_t> hashState;
+  return hashState;
+}
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
@@ -667,18 +644,18 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
       SHLOG_TRACE("Hashing input {}", input);
-      hash_update(input, &hashState);
+      wireHashState().updateHash(input, &hashState);
 
       const auto params = blk->parameters(blk);
       for (uint32_t nParam = 0; nParam < params.len; nParam++) {
         const auto param = blk->getParam(blk, nParam);
         SHLOG_TRACE("Hashing param {}", param);
-        hash_update(param, &hashState);
+        wireHashState().updateHash(param, &hashState);
       }
 
       output = activateShard(blk, context, input);
       SHLOG_TRACE("Hashing output {}", output);
-      hash_update(output, &hashState);
+      wireHashState().updateHash(output, &hashState);
     } else {
       output = activateShard(blk, context, input);
     }
@@ -1052,7 +1029,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       if (extVar.type) {
         type = extVar.type;
       } else {
-        auto hash = deriveTypeHash(var);
+        auto hash = deriveTypeHash64(var);
         TypeInfo *info = nullptr;
         if (ctx.wire->typesCache.find(hash) == ctx.wire->typesCache.end()) {
           info = &ctx.wire->typesCache.emplace(hash, TypeInfo(var, data)).first->second;
@@ -1211,333 +1188,6 @@ SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, voi
   return composeWire(shards, callback, userData, data);
 }
 
-void freeDerivedInfo(SHTypeInfo info) {
-  switch (info.basicType) {
-  case SHType::Seq: {
-    for (uint32_t i = 0; info.seqTypes.len > i; i++) {
-      freeDerivedInfo(info.seqTypes.elements[i]);
-    }
-    shards::arrayFree(info.seqTypes);
-  } break;
-  case SHType::Set: {
-    for (uint32_t i = 0; info.setTypes.len > i; i++) {
-      freeDerivedInfo(info.setTypes.elements[i]);
-    }
-    shards::arrayFree(info.setTypes);
-  } break;
-  case SHType::Table: {
-    for (uint32_t i = 0; info.table.types.len > i; i++) {
-      freeDerivedInfo(info.table.types.elements[i]);
-    }
-    for (uint32_t i = 0; info.table.keys.len > i; i++) {
-      destroyVar(info.table.keys.elements[i]);
-    }
-    shards::arrayFree(info.table.types);
-    shards::arrayFree(info.table.keys);
-  } break;
-  default:
-    break;
-  };
-}
-
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo,
-                          bool resolveContextVariables) {
-  // We need to guess a valid SHTypeInfo for this var in order to validate
-  // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and SHType::ContextVar for example
-  SHTypeInfo varType{};
-  varType.basicType = value.valueType;
-  varType.innerType = value.innerType;
-  switch (value.valueType) {
-  case SHType::Object: {
-    varType.object.vendorId = value.payload.objectVendorId;
-    varType.object.typeId = value.payload.objectTypeId;
-    break;
-  }
-  case SHType::Enum: {
-    varType.enumeration.vendorId = value.payload.enumVendorId;
-    varType.enumeration.typeId = value.payload.enumTypeId;
-    break;
-  }
-  case SHType::Seq: {
-    std::unordered_set<SHTypeInfo> types;
-    for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo, resolveContextVariables);
-      if (!types.count(derived)) {
-        shards::arrayPush(varType.seqTypes, derived);
-        types.insert(derived);
-      }
-    }
-    varType.fixedSize = value.payload.seqValue.len;
-    break;
-  }
-  case SHType::Table: {
-    auto &t = value.payload.tableValue;
-    SHTableIterator tit;
-    t.api->tableGetIterator(t, &tit);
-    SHVar k;
-    SHVar v;
-    while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
-      shards::arrayPush(varType.table.types, derived);
-      auto idx = varType.table.keys.len;
-      shards::arrayResize(varType.table.keys, idx + 1);
-      cloneVar(varType.table.keys.elements[idx], k);
-    }
-  } break;
-  case SHType::Set: {
-    auto &s = value.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
-      shards::arrayPush(varType.setTypes, derived);
-    }
-  } break;
-  case SHType::ContextVar: {
-    if (expInfo) {
-      auto sv = SHSTRVIEW(value);
-      const auto varName = sv;
-      for (auto info : data.shared) {
-        std::string_view name(info.name);
-        if (name == sv) {
-          expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
-          if (resolveContextVariables) {
-            return cloneTypeInfo(info.exposedType);
-          } else {
-            shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info.exposedType));
-            return varType;
-          }
-        }
-      }
-      SHLOG_ERROR("Could not find variable {} when deriving type info", varName);
-      throw std::runtime_error("Could not find variable when deriving type info");
-    }
-    // if we reach this point, no variable was found...
-    // not our job to trigger errors, just continue
-    // specifically we are used to verify parameters as well
-    // and in that case data is empty
-  } break;
-  default:
-    break;
-  };
-  return varType;
-}
-
-SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
-  // We need to guess a valid SHTypeInfo for this var in order to validate
-  // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and SHType::ContextVar for example
-  SHTypeInfo varType;
-  memcpy(&varType, &other, sizeof(SHTypeInfo));
-  switch (varType.basicType) {
-  case SHType::ContextVar:
-  case SHType::Set:
-  case SHType::Seq: {
-    varType.seqTypes = {};
-    for (uint32_t i = 0; i < other.seqTypes.len; i++) {
-      auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
-      shards::arrayPush(varType.seqTypes, cloned);
-    }
-    break;
-  }
-  case SHType::Table: {
-    varType.table = {};
-    for (uint32_t i = 0; i < other.table.types.len; i++) {
-      auto cloned = cloneTypeInfo(other.table.types.elements[i]);
-      shards::arrayPush(varType.table.types, cloned);
-    }
-    for (uint32_t i = 0; i < other.table.keys.len; i++) {
-      auto idx = varType.table.keys.len;
-      shards::arrayResize(varType.table.keys, idx + 1);
-      cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
-    }
-    break;
-  }
-  default:
-    break;
-  };
-  return varType;
-}
-
-// this is potentially called from unsafe code (e.g. networking)
-// let's do some crude stack protection here
-thread_local int deriveTypeHashRecursionCounter;
-constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
-
-uint64_t _deriveTypeHash(const SHVar &value);
-
-void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
-  // this is not complete at all, missing Array and SHType::ContextVar for example
-  XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
-  XXH3_64bits_update(state, &var.innerType, sizeof(var.innerType));
-
-  switch (var.valueType) {
-  case SHType::Object: {
-    XXH3_64bits_update(state, &var.payload.objectVendorId, sizeof(var.payload.objectVendorId));
-    XXH3_64bits_update(state, &var.payload.objectTypeId, sizeof(var.payload.objectTypeId));
-    break;
-  }
-  case SHType::Enum: {
-    XXH3_64bits_update(state, &var.payload.enumVendorId, sizeof(var.payload.enumVendorId));
-    XXH3_64bits_update(state, &var.payload.enumTypeId, sizeof(var.payload.enumTypeId));
-    break;
-  }
-  case SHType::Seq: {
-    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
-    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      auto typeHash = _deriveTypeHash(var.payload.seqValue.elements[i]);
-      hashes.insert(typeHash);
-    }
-    constexpr auto recursive = false;
-    XXH3_64bits_update(state, &recursive, sizeof(recursive));
-    for (const uint64_t hash : hashes) {
-      XXH3_64bits_update(state, &hash, sizeof(uint64_t));
-    }
-  } break;
-  case SHType::Table: {
-    auto &t = var.payload.tableValue;
-    SHTableIterator tit;
-    t.api->tableGetIterator(t, &tit);
-    SHVar k;
-    SHVar v;
-    while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto hk = shards::hash(k);
-      XXH3_64bits_update(state, &hk.payload.int2Value, sizeof(SHInt2));
-      auto hv = _deriveTypeHash(v);
-      XXH3_64bits_update(state, &hv, sizeof(uint64_t));
-    }
-  } break;
-  case SHType::Set: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
-    // set is unordered so just collect
-    auto &s = var.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      hashes.insert(_deriveTypeHash(v));
-    }
-    constexpr auto recursive = false;
-    XXH3_64bits_update(state, &recursive, sizeof(recursive));
-    for (const uint64_t hash : hashes) {
-      XXH3_64bits_update(state, &hash, sizeof(uint64_t));
-    }
-  } break;
-  default:
-    break;
-  };
-}
-
-uint64_t _deriveTypeHash(const SHVar &value) {
-  if (deriveTypeHashRecursionCounter >= MAX_DERIVED_TYPE_HASH_RECURSION)
-    throw SHException("deriveTypeHash maximum recursion exceeded");
-  deriveTypeHashRecursionCounter++;
-  DEFER(deriveTypeHashRecursionCounter--);
-
-  XXH3_state_s hashState;
-  XXH3_INITSTATE(&hashState);
-
-  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-
-  updateTypeHash(value, &hashState);
-
-  return XXH3_64bits_digest(&hashState);
-}
-
-uint64_t deriveTypeHash(const SHVar &value) {
-  deriveTypeHashRecursionCounter = 0;
-  return _deriveTypeHash(value);
-}
-
-uint64_t deriveTypeHash(const SHTypeInfo &value);
-
-void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
-  XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
-  XXH3_64bits_update(state, &t.innerType, sizeof(t.innerType));
-
-  switch (t.basicType) {
-  case SHType::Object: {
-    XXH3_64bits_update(state, &t.object.vendorId, sizeof(t.object.vendorId));
-    XXH3_64bits_update(state, &t.object.typeId, sizeof(t.object.typeId));
-  } break;
-  case SHType::Enum: {
-    XXH3_64bits_update(state, &t.enumeration.vendorId, sizeof(t.enumeration.vendorId));
-    XXH3_64bits_update(state, &t.enumeration.typeId, sizeof(t.enumeration.typeId));
-  } break;
-  case SHType::Seq: {
-    // this is unsafe because allocates on the stack, but faster...
-    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
-    bool recursive = false;
-
-    for (uint32_t i = 0; i < t.seqTypes.len; i++) {
-      if (t.seqTypes.elements[i].recursiveSelf) {
-        recursive = true;
-      } else {
-        auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
-        hashes.insert(typeHash);
-      }
-    }
-    XXH3_64bits_update(state, &recursive, sizeof(recursive));
-    for (const auto hash : hashes) {
-      XXH3_64bits_update(state, &hash, sizeof(hash));
-    }
-  } break;
-  case SHType::Table: {
-    if (t.table.keys.len == t.table.types.len) {
-      for (uint32_t i = 0; i < t.table.types.len; i++) {
-        auto keyHash = shards::hash(t.table.keys.elements[i]);
-        XXH3_64bits_update(state, &keyHash.payload.int2Value, sizeof(SHInt2));
-        auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-        XXH3_64bits_update(state, &typeHash, sizeof(uint64_t));
-      }
-    } else {
-      std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
-      for (uint32_t i = 0; i < t.table.types.len; i++) {
-        auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-        hashes.insert(typeHash);
-      }
-      for (const auto hash : hashes) {
-        XXH3_64bits_update(state, &hash, sizeof(hash));
-      }
-    }
-  } break;
-  case SHType::Set: {
-    // this is unsafe because allocates on the stack, but faster...
-    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
-    bool recursive = false;
-    for (uint32_t i = 0; i < t.setTypes.len; i++) {
-      if (t.setTypes.elements[i].recursiveSelf) {
-        recursive = true;
-      } else {
-        auto typeHash = deriveTypeHash(t.setTypes.elements[i]);
-        hashes.insert(typeHash);
-      }
-    }
-    XXH3_64bits_update(state, &recursive, sizeof(recursive));
-    for (const auto hash : hashes) {
-      XXH3_64bits_update(state, &hash, sizeof(hash));
-    }
-  } break;
-  default:
-    break;
-  };
-}
-
-uint64_t deriveTypeHash(const SHTypeInfo &value) {
-  XXH3_state_s hashState;
-  XXH3_INITSTATE(&hashState);
-
-  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-
-  updateTypeHash(value, &hashState);
-
-  return XXH3_64bits_digest(&hashState);
-}
-
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData) {
   auto params = shard->parameters(shard);
   if (params.len <= (uint32_t)index) {
@@ -1561,8 +1211,9 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
-                              param.name, value, varType, param.valueTypes, shard->line, shard->column));
+  std::string err(
+      fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
+                  param.name, value, varType, param.valueTypes, shard->line, shard->column));
   callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
 
   return false;
@@ -1986,6 +1637,10 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     freeDerivedInfo(*var.payload.typeValue);
     delete var.payload.typeValue;
     break;
+  case SHType::Interface:
+    freeInterface(*var.payload.interfaceValue);
+    delete var.payload.interfaceValue;
+    break;
   default:
     break;
   };
@@ -2290,11 +1945,43 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.payload.typeValue = new SHTypeInfo(cloneTypeInfo(*src.payload.typeValue));
     dst.valueType = SHType::Type;
     break;
+  case SHType::Interface:
+    destroyVar(dst);
+    dst.payload.interfaceValue = new SHInterface(cloneInterface(*src.payload.interfaceValue));
+    dst.valueType = SHType::Interface;
+    break;
+
   default:
     SHLOG_FATAL("Unhandled type {}", src.valueType);
     break;
   };
 }
+
+#define SH_WIRE_SET_STACK(prefix)                                                              \
+  std::deque<std::unordered_set<const SHWire *>> &prefix##WiresStack() {                       \
+    thread_local std::deque<std::unordered_set<const SHWire *>> s;                             \
+    return s;                                                                                  \
+  }                                                                                            \
+  std::optional<std::unordered_set<const SHWire *> *> &prefix##WiresStorage() {                \
+    thread_local std::optional<std::unordered_set<const SHWire *> *> wiresOpt;                 \
+    return wiresOpt;                                                                           \
+  }                                                                                            \
+  std::unordered_set<const SHWire *> &prefix##Wires() {                                        \
+    auto wiresPtr = *prefix##WiresStorage();                                                   \
+    shassert(wiresPtr);                                                                        \
+    return *wiresPtr;                                                                          \
+  }                                                                                            \
+  void prefix##WiresPush() { prefix##WiresStorage() = &prefix##WiresStack().emplace_front(); } \
+  void prefix##WiresPop() {                                                                    \
+    prefix##WiresStack().pop_front();                                                          \
+    if (prefix##WiresStack().empty()) {                                                        \
+      prefix##WiresStorage() = std::nullopt;                                                   \
+    } else {                                                                                   \
+      prefix##WiresStorage() = &prefix##WiresStack().front();                                  \
+    }                                                                                          \
+  }
+
+SH_WIRE_SET_STACK(gathering);
 
 void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out, const SHWire *wire) {
   // TODO out should be a set?
@@ -2459,230 +2146,10 @@ void gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out) {
 }
 
 SHVar hash(const SHVar &var) {
-  hashingWiresPush();
-  DEFER(hashingWiresPop());
+  static thread_local HashState<XXH128_hash_t> hasher;
 
-  XXH3_state_s hashState;
-  XXH3_INITSTATE(&hashState);
-  XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-
-  hash_update(var, &hashState);
-
-  auto digest = XXH3_128bits_digest(&hashState);
+  auto digest = hasher.hash(var);
   return Var(int64_t(digest.low64), int64_t(digest.high64));
-}
-
-void hash_update(const SHVar &var, void *state) {
-  auto hashState = reinterpret_cast<XXH3_state_s *>(state);
-
-  auto error = XXH3_128bits_update(hashState, &var.valueType, sizeof(var.valueType));
-  shassert(error == XXH_OK);
-
-  switch (var.valueType) {
-  case SHType::Type: {
-    updateTypeHash(*var.payload.typeValue, hashState);
-  } break;
-  case SHType::Bytes: {
-    error = XXH3_128bits_update(hashState, var.payload.bytesValue, size_t(var.payload.bytesSize));
-    shassert(error == XXH_OK);
-  } break;
-  case SHType::Path:
-  case SHType::ContextVar:
-  case SHType::String: {
-    error = XXH3_128bits_update(hashState, var.payload.stringValue,
-                                size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
-                                           ? var.payload.stringLen
-                                           : strlen(var.payload.stringValue)));
-    shassert(error == XXH_OK);
-  } break;
-  case SHType::Image: {
-    SHImage i = var.payload.imageValue;
-    i.data = nullptr;
-    error = XXH3_128bits_update(hashState, &i, sizeof(SHImage));
-    shassert(error == XXH_OK);
-    auto pixsize = getPixelSize(var);
-    error = XXH3_128bits_update(
-        hashState, var.payload.imageValue.data,
-        size_t(var.payload.imageValue.channels * var.payload.imageValue.width * var.payload.imageValue.height * pixsize));
-    shassert(error == XXH_OK);
-  } break;
-  case SHType::Audio: {
-    SHAudio a = var.payload.audioValue;
-    a.samples = nullptr;
-    error = XXH3_128bits_update(hashState, &a, sizeof(SHAudio));
-    shassert(error == XXH_OK);
-    error = XXH3_128bits_update(hashState, var.payload.audioValue.samples,
-                                size_t(var.payload.audioValue.channels * var.payload.audioValue.nsamples * sizeof(float)));
-    shassert(error == XXH_OK);
-  } break;
-  case SHType::Seq: {
-    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      hash_update(var.payload.seqValue.elements[i], state);
-    }
-  } break;
-  case SHType::Array: {
-    for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
-      SHVar tmp{}; // only of blittable types and hash uses just type, so no init
-                   // needed
-      tmp.valueType = var.innerType;
-      tmp.payload = var.payload.arrayValue.elements[i];
-      hash_update(tmp, state);
-    }
-  } break;
-  case SHType::Table: {
-    // table is sorted, do all in 1 iteration
-    auto &t = var.payload.tableValue;
-    SHTableIterator it;
-    t.api->tableGetIterator(t, &it);
-    SHVar key;
-    SHVar value;
-    while (t.api->tableNext(t, &it, &key, &value)) {
-      const auto kh = hash(key);
-      XXH3_128bits_update(hashState, &kh, sizeof(SHInt2));
-      const auto h = hash(value);
-      XXH3_128bits_update(hashState, &h, sizeof(SHInt2));
-    }
-  } break;
-  case SHType::Set: {
-    boost::container::small_vector<std::pair<uint64_t, uint64_t>, 8> hashes;
-
-    // just store hashes, sort and actually combine later
-    auto &s = var.payload.setValue;
-    SHSetIterator it;
-    s.api->setGetIterator(s, &it);
-    SHVar value;
-    while (s.api->setNext(s, &it, &value)) {
-      const auto h = hash(value);
-      hashes.emplace_back(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1]));
-    }
-
-    std::sort(hashes.begin(), hashes.end());
-    for (const auto &hash : hashes) {
-      XXH3_128bits_update(hashState, &hash, sizeof(uint64_t));
-    }
-  } break;
-  case SHType::ShardRef: {
-    auto blk = var.payload.shardValue;
-    auto name = blk->name(blk);
-    auto error = XXH3_128bits_update(hashState, name, strlen(name));
-    shassert(error == XXH_OK);
-
-    auto params = blk->parameters(blk);
-    for (uint32_t i = 0; i < params.len; i++) {
-      auto pval = blk->getParam(blk, int(i));
-      hash_update(pval, state);
-    }
-
-    if (blk->getState) {
-      auto bstate = blk->getState(blk);
-      hash_update(bstate, state);
-    }
-  } break;
-  case SHType::Wire: {
-    auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-    if (hashingWires().count(wire.get()) == 0) {
-      hashingWires().insert(wire.get());
-
-      error = XXH3_128bits_update(hashState, wire->name.c_str(), wire->name.length());
-      shassert(error == XXH_OK);
-
-      error = XXH3_128bits_update(hashState, &wire->looped, sizeof(wire->looped));
-      shassert(error == XXH_OK);
-
-      error = XXH3_128bits_update(hashState, &wire->unsafe, sizeof(wire->unsafe));
-      shassert(error == XXH_OK);
-
-      error = XXH3_128bits_update(hashState, &wire->pure, sizeof(wire->pure));
-      shassert(error == XXH_OK);
-
-      for (auto &blk : wire->shards) {
-        SHVar tmp{};
-        tmp.valueType = SHType::ShardRef;
-        tmp.payload.shardValue = blk;
-        hash_update(tmp, state);
-      }
-
-      for (auto &wireVar : wire->getVariables()) {
-        error = XXH3_128bits_update(hashState, wireVar.first.payload.stringValue, wireVar.first.payload.stringLen);
-        shassert(error == XXH_OK);
-        hash_update(wireVar.second, state);
-      }
-    }
-  } break;
-  case SHType::Object: {
-    error = XXH3_128bits_update(hashState, &var.payload.objectVendorId, sizeof(var.payload.objectVendorId));
-    shassert(error == XXH_OK);
-    error = XXH3_128bits_update(hashState, &var.payload.objectTypeId, sizeof(var.payload.objectTypeId));
-    shassert(error == XXH_OK);
-    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->hash) {
-      // hash of the hash...
-      auto objHash = var.objectInfo->hash(var.payload.objectValue);
-      error = XXH3_128bits_update(hashState, &objHash, sizeof(uint64_t));
-      shassert(error == XXH_OK);
-    } else {
-      // this will be valid only within this process memory space
-      // better then nothing
-      error = XXH3_128bits_update(hashState, &var.payload.objectValue, sizeof(var.payload.objectValue));
-      shassert(error == XXH_OK);
-    }
-  } break;
-  case SHType::None:
-  case SHType::Any:
-  case SHType::EndOfBlittableTypes:
-    break;
-  case SHType::Enum:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHEnum));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Bool:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHBool));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int2:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt2));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int3:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt3));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int4:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt4));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int8:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt8));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Int16:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt16));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Color:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHColor));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Float:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Float2:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat2));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Float3:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat3));
-    shassert(error == XXH_OK);
-    break;
-  case SHType::Float4:
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat4));
-    shassert(error == XXH_OK);
-    break;
-  }
 }
 
 SHString getString(uint32_t crc) {
@@ -3110,6 +2577,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   SH_ARRAY_IMPL(SHExposedTypesInfo, SHExposedTypeInfo, expTypes);
   SH_ARRAY_IMPL(SHEnums, SHEnum, enums);
   SH_ARRAY_IMPL(SHStrings, SHString, strings);
+  SH_ARRAY_IMPL(SHInterfaceVariables, SHInterfaceVariable, interfaceVariables);
 
   result->tableNew = []() noexcept {
     SHTable res;
@@ -3257,7 +2725,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setWireInterfaces = [](SHWireRef wireref, SHSeq interfaces) noexcept {
-    for(auto& iface : interfaces) {
+    for (auto &iface : interfaces) {
       auto &wire = SHWire::sharedFromRef(wireref);
       SHLOG_INFO("Adding wire {} interface {}", wire->name, iface);
     }

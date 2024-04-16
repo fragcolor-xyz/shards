@@ -5,6 +5,9 @@ set(core_SOURCES
   utils.cpp
   coro.cpp
   wire_dsl.cpp
+  interface.cpp
+  type_info.cpp
+  hash.cpp
 )
 
 add_library(shards-core STATIC ${core_SOURCES})

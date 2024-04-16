@@ -2,8 +2,15 @@
   enabled: @type(Type::Bool)
 })
 
+@interface(card-owner {
+  cards: @type({
+    name: Type::String
+    flags: @type([Type::String])
+  })
+})
+
 @wire(my-wire {
   Once({
     false >= enabled
   })
-} [toggleable])
+} [toggleable card-owner])

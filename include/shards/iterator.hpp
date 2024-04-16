@@ -16,7 +16,7 @@ struct TableIterator : public std::pair<SHVar, SHVar> {
   }
   const TableIterator &operator++() {
     assert(table && table->api && "invalid SHTable for table iterator");
-    if(!table->api->tableNext(*table, &it, &std::get<0>(*this), &std::get<1>(*this))) {
+    if (!table->api->tableNext(*table, &it, &std::get<0>(*this), &std::get<1>(*this))) {
       table = nullptr;
     }
     return *this;
@@ -27,17 +27,25 @@ struct TableIterator : public std::pair<SHVar, SHVar> {
       return true;
     return std::get<0>(*this) == std::get<0>(end);
   }
-  bool operator!=(const TableIterator &end) const {
-    return !(*this == end);
-  }
+  bool operator!=(const TableIterator &end) const { return !(*this == end); }
 
   const std::pair<SHVar, SHVar> &operator*() const { return *this; }
   const std::pair<SHVar, SHVar> *operator->() const { return this; }
 };
 } // namespace shards
 
-inline const SHVar *begin(const SHSeq &a) { return &a.elements[0]; }
-inline const SHVar *end(const SHSeq &a) { return begin(a) + a.len; }
+#define SH_IMPLEMENT_ARRAY_ITERATORS(_type)                           \
+  inline auto *begin(_type &a) { return &a.elements[0]; }             \
+  inline auto *end(_type &a) { return begin(a) + a.len; }             \
+  inline const auto *begin(const _type &a) { return &a.elements[0]; } \
+  inline const auto *end(const _type &a) { return begin(a) + a.len; }
+
+SH_IMPLEMENT_ARRAY_ITERATORS(SHSeq)
+SH_IMPLEMENT_ARRAY_ITERATORS(SHExposedTypesInfo)
+SH_IMPLEMENT_ARRAY_ITERATORS(SHTypesInfo)
+SH_IMPLEMENT_ARRAY_ITERATORS(SHParametersInfo)
+SH_IMPLEMENT_ARRAY_ITERATORS(SHInterfaceVariables)
+
 inline shards::TableIterator begin(const SHTable &a) {
   SHTableIterator it{};
   SHVar k{};

@@ -17,6 +17,7 @@
 
 #include "spdlog/spdlog.h"
 #include "type_matcher.hpp"
+#include "type_info.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -176,13 +177,6 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
 
-void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
-                          bool resolveContextVariables = true);
-SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
-
-uint64_t deriveTypeHash(const SHVar &value);
-uint64_t deriveTypeHash(const SHTypeInfo &value);
 
 struct TypeInfo {
   TypeInfo() {}
