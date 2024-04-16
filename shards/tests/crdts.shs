@@ -34,9 +34,9 @@ CRDT.Merge(crdt2 crdt3)
 CRDT.Save(crdt2) | Log("post merge")
 CRDT.Get(crdt2 "K2") | Assert.Is(none)
 
-; crdt-ops | Log("ops")
-; Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
-; crdt-ops | Log("shuffled ops")
+crdt-ops | Log("ops")
+Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
+crdt-ops | Log("shuffled ops")
 
 crdt-ops | ForEach({
   Log("applying")

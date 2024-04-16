@@ -54,6 +54,7 @@ impl From<&Var> for CRDTVar {
 }
 
 type CRDT = Map<CRDTVar, MVReg<CRDTVar, u128>, u128>;
+type CRDTOp = crdts::map::Op<CRDTVar, MVReg<CRDTVar, u128>, u128>;
 
 struct Document {
   crdt: CRDT,
@@ -108,6 +109,7 @@ impl Shard for CRDTOpenShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = Rc::new(RefCell::new(None));
     Ok(())
   }
 
@@ -189,6 +191,7 @@ impl Shard for CRDTLoadShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = None;
     Ok(())
   }
 
@@ -254,6 +257,7 @@ impl Shard for CRDTSaveShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = None;
     Ok(())
   }
 
@@ -329,6 +333,8 @@ impl Shard for CRDTSetShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = None;
+    self.key_cache = None;
     Ok(())
   }
 
@@ -366,10 +372,10 @@ impl Shard for CRDTSetShard {
     shlog_trace!("CRDT.Set: {:?}, crdt: {:?}", op, crdt);
 
     // Validation not working.. will fail on second apply
-    // crdt.validate_op(&op).map_err(|e| {
-    //   shlog_error!("CRDT.Delete error: {:?}", e);
-    //   "Operation is invalid."
-    // })?;
+    crdt.validate_op(&op).map_err(|e| {
+      shlog_error!("CRDT.Delete error: {:?}", e);
+      "Operation is invalid."
+    })?;
 
     // encode the operation
     self.output = bincode::serialize(&op).unwrap();
@@ -432,6 +438,8 @@ impl Shard for CRDTGetShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = None;
+    self.key_cache = None;
     Ok(())
   }
 
@@ -525,6 +533,8 @@ impl Shard for CRDTDeleteShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt = None;
+    self.key_cache = None;
     Ok(())
   }
 
@@ -561,10 +571,10 @@ impl Shard for CRDTDeleteShard {
     shlog_trace!("CRDT.Delete: {:?}", op);
 
     // Validation not working.. will fail on second apply
-    // crdt.validate_op(&op).map_err(|e| {
-    //   shlog_error!("CRDT.Delete error: {:?}", e);
-    //   "Operation is invalid."
-    // })?;
+    crdt.validate_op(&op).map_err(|e| {
+      shlog_error!("CRDT.Delete error: {:?}", e);
+      "Operation is invalid."
+    })?;
 
     // encode the operation
     self.output = bincode::serialize(&op).unwrap();
@@ -623,6 +633,8 @@ impl Shard for CRDTMergeShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.crdt1 = None;
+    self.crdt2 = None;
     Ok(())
   }
 
@@ -672,6 +684,8 @@ struct CRDTApplyShard {
   crdt_param: ParamVar,
 
   crdt: Option<Rc<RefCell<Option<Document>>>>,
+
+  deferred: Vec<CRDTOp>,
 }
 
 impl Default for CRDTApplyShard {
@@ -680,6 +694,7 @@ impl Default for CRDTApplyShard {
       required: ExposedTypes::new(),
       crdt_param: ParamVar::default(),
       crdt: None,
+      deferred: Vec::new(),
     }
   }
 }
@@ -701,6 +716,8 @@ impl Shard for CRDTApplyShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.deferred.clear();
+    self.crdt = None;
     Ok(())
   }
 
@@ -723,18 +740,45 @@ impl Shard for CRDTApplyShard {
     let slice: &[u8] = input.try_into().unwrap(); // qed: we know it's bytes
 
     // decode the operation
-    let op: crdts::map::Op<CRDTVar, MVReg<CRDTVar, u128>, u128> =
+    let op: CRDTOp =
       bincode::deserialize(slice).unwrap();
     shlog_trace!("CRDT.Apply: {:?}", op);
 
     // Validation not working.. will fail on second apply
-    // crdt.validate_op(&op).map_err(|e| {
-    //   shlog_error!("CRDT.Apply error: {:?}", e);
-    //   "Operation is invalid."
-    // })?;
+    let res = crdt.validate_op(&op);
+
+    match res {
+      Err(CmRDTValidation::SourceOrder(_)) => {
+        self.deferred.push(op);
+        return Ok(*input);
+      }
+      Err(e) => {
+        shlog_error!("CRDT.Apply error: {:?}", e);
+        return Err("Operation is invalid.");
+      }
+      _ => {}
+    }
 
     // apply the operation
     crdt.apply(op);
+
+    // brute force for now, try apply deferred operations in a loop, in whatever order
+    // todo - implement a proper deferred operation queue
+    // iterate by index in reverse order to remove applied operations
+    for i in (0..self.deferred.len()).rev() {
+      let op = &self.deferred[i];
+      let res = crdt.validate_op(&op);
+      match res {
+        Err(CmRDTValidation::SourceOrder(_)) => continue,
+        Err(e) => {
+          shlog_error!("CRDT.Apply error: {:?}", e);
+          return Err("Operation is invalid.");
+        }
+        _ => {}
+      }
+      let op = self.deferred.remove(i);
+      crdt.apply(op);
+    }
 
     Ok(*input)
   }
