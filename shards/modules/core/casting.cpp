@@ -363,6 +363,18 @@ template <SHType ET> struct ExpectX {
   }
 };
 
+struct ExpectSeq {
+  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(input.valueType != SHType::Seq)) {
+      SHLOG_ERROR("Unexpected value: {}", input);
+      throw ActivationError("Expected a sequence type got instead " + type2Name(input.valueType));
+    }
+    return input;
+  }
+};
+
 template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
   static inline Parameters params{{"Unsafe",
                                    SHCCSTR("If we should skip performing deep type hashing and comparison. "
@@ -714,6 +726,7 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ExpectTable", ExpectTable);
   using ExpectAudio = ExpectX<SHType::Audio>;
   REGISTER_SHARD("ExpectAudio", ExpectAudio);
+  REGISTER_SHARD("ExpectSeq", ExpectSeq);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_SHARD("ExpectFloatSeq", ExpectFloatSeq);
@@ -749,8 +762,6 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ExpectWireSeq", ExpectWireSeq);
   using ExpectAudioSeq = ExpectXComplex<CoreInfo::AudioSeqType>;
   REGISTER_SHARD("ExpectAudioSeq", ExpectAudioSeq);
-  using ExpectAnySeq = ExpectXComplex<CoreInfo::AnySeqType, true>;
-  REGISTER_SHARD("ExpectSeq", ExpectAnySeq);
 
   REGISTER_SHARD("ExpectLike", ExpectLike);
   REGISTER_SHARD("TypeOf", TypeOf);

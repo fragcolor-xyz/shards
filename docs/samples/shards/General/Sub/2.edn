@@ -1,12 +1,12 @@
-;; Using `Sub`, with `->`
-(int 5)                                ;; input to `Sub` shards
-(Sub (-> (Math.Multiply 2)
+;; Using `SubFlow`, with `->`
+(int 5)                                ;; input to `SubFlow` shards
+(SubFlow (-> (Math.Multiply 2)
          (Log)))                       ;; 5 * 2 => 10
-(Sub (-> (Math.Multiply 3)
+(SubFlow (-> (Math.Multiply 3)
          (Log)                         ;; 5 * 3 => 15
-         (Sub (-> (Math.Multiply 2)
+         (SubFlow (-> (Math.Multiply 2)
                   (Log)))))            ;; 15 * 2 => 30
-(Log "output of the last `Sub` shard") ;; input is output => 5
+(Log "output of the last `SubFlow` shard") ;; input is output => 5
 
 ;; Using `|`, no need for `->`
 (int 100)                              ;; input to `|` shards

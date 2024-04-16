@@ -293,7 +293,7 @@
     Math.Add(6)
   })
   Log
-  {Take("Hash") | ToBytes | ToHex | Assert.Is("0x0517ed7b7fbe5dbc1311a60edfc55db278") | Log}
+  {Take("Hash") | ToBytes | ToHex | Log | Assert.Is("0x0517ed7b7fbe5dbc1311a60edfc55db278") | Log}
 })
 
 @schedule(root hashed)
