@@ -223,9 +223,9 @@ template <class T> struct ShardWrapper {
 
     // cleanup
     if constexpr (has_cleanup<T>::value) {
-      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext* context) {
+      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext *context) {
         try {
-          if constexpr(std::is_invocable_v<decltype(&T::cleanup), T&, SHContext*>) {
+          if constexpr (std::is_invocable_v<decltype(&T::cleanup), T &, SHContext *>) {
             reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup(context);
           } else {
             reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup();
@@ -238,7 +238,7 @@ template <class T> struct ShardWrapper {
         }
       });
     } else {
-      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext*) { return SHError::Success; });
+      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext *) { return SHError::Success; });
     }
 
     // mutate
@@ -297,6 +297,9 @@ template <class T> struct ShardWrapper {
   ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
                           NAMEOF_FULL_TYPE(__type__))
 
+#define REGISTER_SHARD_ALIAS(__name__, __type__) \
+  ::shards::registerShard(__name__, &::shards::ShardWrapper<__type__>::create, NAMEOF_FULL_TYPE(__type__))
+
 #define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                 \
   __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                       \
     try {                                                                                                                     \
@@ -317,7 +320,7 @@ template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, 
 
   SHVar getParam(int index) { return params[index]; }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &param : params) {
       params.cleanup();
     }
