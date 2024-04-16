@@ -18,7 +18,7 @@
     n | Math.Add(Operand: 1) > n
    }
    Forever: true
-   Until: n | IsMore(Value: 3))
+   Until: {n | IsMore(Value: 3)})
   """
 
   explanation: """
