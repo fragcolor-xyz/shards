@@ -14,7 +14,7 @@
   """
 
   explanation: """
-    Math.Translation is a Maths Shard that takes a float3  input and converts it into a rotation matrix. 
+    Math.Translation is a Maths Shard that takes a float3  input and converts it into a float4 rotation matrix. 
     The first value in the float 3 represents the x translation, the second value the y translation and the third value the z translation.
   """
 

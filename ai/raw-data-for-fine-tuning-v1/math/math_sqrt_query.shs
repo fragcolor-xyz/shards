@@ -9,7 +9,7 @@
 
   explicit: """
     4.0
-    Math.Log
+    Math.Sqrt
     Log(Prefix:"result" Level: LogLevel::Info)
   """
 

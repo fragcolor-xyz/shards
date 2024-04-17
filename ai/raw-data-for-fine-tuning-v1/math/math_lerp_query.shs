@@ -2,7 +2,7 @@
   prompt: """How do I linearly interpolate between two values?"""
 
   solution: """
-    0 = x
+    0 >= x
     
     0.01 ; interpolation factor
     Math.Lerp(x 100)
@@ -13,7 +13,7 @@
   """
 
   explicit: """
-    0 = x
+    0 >= x
     
     0.01 ; interpolation factor
     Math.Lerp(First: x Second: 100)

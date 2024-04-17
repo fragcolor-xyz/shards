@@ -7,18 +7,16 @@ solution:"""
 [12.0] 
 Math.Divide([3.0 5.0 2.2])
 Log 
-Assert.Is([4.0 5.0 2.2] true)
 """
 
 explicit: """
 [12.0] 
 Math.Divide(Operand: [3.0 5.0 2.2])
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is(Value: [4.0 5.0 2.2] Break: true)
 """
 
 explanation: """
-Applies division operation. When applying division operation on an input sequence with fewer elements than the operand sequence, the remaining operand sequence elements are ignored and do not undergo division operation; 
-Input seq elements compute with corresponding operand seq elements. Since input size < operand size, remaining operand seq elements ignored
+Applies division operation. When applying division operation on an input sequence with fewer elements than the operand sequence,
+input seq elements compute with corresponding operand seq elements. Since input size < operand size, remaining operand seq elements ignored. Output is of same size as input size.
 """
 }

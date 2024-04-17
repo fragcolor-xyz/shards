@@ -4,7 +4,6 @@
   solution: """
     10 >= mutable-var
 
-    1
     Math.Dec(mutable-var)
 
     mutable-var
@@ -14,7 +13,6 @@
   explicit: """
     10 | Set(Name: mutable-var) 
 
-    1
     Math.Dec(Value: mutable-var)
 
     Get(Name: mutable-var)
@@ -22,8 +20,8 @@
   """
 
   explanation: """
-    Math.Dec is a Maths Shard that will take a in inputs with numeric value and decrease the mutable variable passed into Value parameter by said amount.
-    Unlike Math.Subtract which is a binary operation, Math.Dec is a unary operation.
+    Math.Dec is a Maths Shard that will take in inputs with numeric value and decrease the mutable variable passed into Value parameter by 1.
+
   """
 
   tag: "  #Maths"

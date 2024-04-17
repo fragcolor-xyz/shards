@@ -10,7 +10,7 @@
   explicit: """
     0.785398
     Math.Tan
-    Log(Prefix:"result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

@@ -2,10 +2,8 @@
   prompt: """How do I multiply two values together?"""
 
   solution: """
-   @wire(wire{
     3 | Math.Multiply(2)
     Log("result")
-   })
   """
 
   explicit: """

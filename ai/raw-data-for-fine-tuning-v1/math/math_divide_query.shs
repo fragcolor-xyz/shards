@@ -2,10 +2,8 @@
   prompt: """How do I divide two values together?"""
 
   solution: """
-   @wire(wire{
     6.0 | Math.Divide(2.0)
     Log("result") 
-   })
   """
 
   explicit: """

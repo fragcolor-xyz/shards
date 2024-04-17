@@ -4,7 +4,6 @@
   solution: """
     0 >= mutable-var
 
-    1
     Math.Inc(mutable-var)
 
     mutable-var
@@ -14,7 +13,6 @@
   explicit: """
     0 | Set(Name: mutable-var) 
 
-    1
     Math.Inc(Value: mutable-var)
 
     Get(mutable-var)
@@ -22,8 +20,7 @@
   """
 
   explanation: """
-    Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by said amount.
-    Unlike Math.Add which is a binary operation, Math.Inc is a unary operation.
+    Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by 1.
   """
 
   tag: "  #Maths"

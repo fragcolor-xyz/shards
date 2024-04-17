@@ -4,13 +4,13 @@
   solution: """
     -3
     Math.Abs
-    Log("result") ; result will be 3
+    Log("result") 
   """
 
   explicit: """
     -3
     Math.Abs
-    Log(Prefix: "result" Level: LogLevel::Info) ; result will be 3
+    Log(Prefix: "result" Level: LogLevel::Info) 
   """
 
   explanation: """

@@ -19,6 +19,6 @@ Assert.Is(Value: [7.0] Break: true)
 
 explanation: """
 Applies addition operation. When applying addition operation on an input sequence with fewer elements than the operand sequence, the remaining operand sequence elements are ignored and do not undergo addition operation; 
-Input seq elements compute with corresponding operand seq elements. Since input size < operand size, remaining operand seq elements ignored
+Input seq elements compute with corresponding operand seq elements. Since input size < operand size, remaining operand seq elements ignored. Output is of same size as input size.
 """
 }

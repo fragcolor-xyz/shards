@@ -5,13 +5,13 @@ How to create a global constant pi = 3.142 in Shards?
 
 solution:"""
 @define(pi 3.142)
-2
+2.0
 Math.Multiply(@pi)
 """
 
 explicit: """
 @define(pi 3.142)
-2
+2.0
 Math.Multiply(Operand: @pi)
 """
 

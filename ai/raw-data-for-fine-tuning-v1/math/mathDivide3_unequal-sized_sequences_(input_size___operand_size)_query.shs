@@ -4,20 +4,18 @@ How to use Math.Divide when applied to unequal-sized sequences where the input s
 """
 
 solution:"""
-[15 4 18 11 3] 
-Math.Divide([3 2]) 
+[15.0 4.0 18.0 11.0 3.0] 
+Math.Divide([3.0 2.0]) 
 Log
-Assert.Is([24 8 6 20 48] true)
 """
 
 explicit: """
 [15 4 18 11 3] 
 Math.Divide(Operand: [3 2]) 
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is(Value: [24 8 6 20 48] Break: true)
 """
 
 explanation: """
-Applies division operation. When applying When applying division operation on an input sequence with more elements than the operand sequence, input seq elements compute with corresponding operand seq elements; for (input size > operand size): remaining input seq elements continually loop over operand seq elements.
+Applies division operation. When applying division operation on an input sequence with more elements than the operand sequence, input seq elements compute with corresponding operand seq elements; for (input size > operand size): remaining input seq elements continually loop over operand seq elements. Output is of same size as input size.
 """
 }
