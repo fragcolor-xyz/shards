@@ -1204,33 +1204,62 @@ fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) ->
   combined.join("/").into()
 }
 
+struct ResolvedVar {
+  pub is_const: bool,
+  pub var: SVar,
+}
+
+impl ResolvedVar {
+  fn new_variable(sv: SVar) -> Self {
+    Self {
+      is_const: false,
+      var: sv,
+    }
+  }
+  fn new_const(sv: SVar) -> Self {
+    Self {
+      is_const: true,
+      var: sv,
+    }
+  }
+}
+
 fn as_var(
   value: &Value,
   line_info: LineInfo,
   shard: Option<ShardRef>,
   e: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
+  resolve_var(value, line_info, shard, e).map(|v| v.var)
+}
+
+fn resolve_var(
+  value: &Value,
+  line_info: LineInfo,
+  shard: Option<ShardRef>,
+  e: &mut EvalEnv,
+) -> Result<ResolvedVar, ShardsError> {
   match value {
-    Value::None => Ok(SVar::NotCloned(Var::default())),
-    Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
+    Value::None => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
+    Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
     Value::Identifier(ref name) => {
       // could be wire, trait or mesh as "special" cases
       if let Some(trait_) = find_trait(name, e) {
-        Ok(SVar::Cloned(trait_.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(trait_.into())))
       } else if let Some((wire, _finalized)) = find_wire(name, e) {
-        Ok(SVar::Cloned(wire.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(wire.into())))
       } else if let Some(mesh) = find_mesh(name, e) {
-        Ok(SVar::NotCloned(mesh.0 .0))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(mesh.0 .0)))
       } else if let Some(replacement) = find_replacement(name, e) {
         if let Value::Identifier(current) = replacement {
           if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
             // prevent infinite recursion
-            return qualify_variable(name, line_info, e);
+            return qualify_variable(name, line_info, e).map(ResolvedVar::new_variable);
           }
         }
-        as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
+        resolve_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        qualify_variable(name, line_info, e)
+        qualify_variable(name, line_info, e).map(ResolvedVar::new_variable)
       }
     }
     Value::Enum(prefix, value) => {
@@ -1261,7 +1290,7 @@ fn as_var(
               .__bindgen_anon_1
               .__bindgen_anon_3
               .enumTypeId = type_id;
-            return Ok(SVar::NotCloned(enum_var));
+            return Ok(ResolvedVar::new_const(SVar::NotCloned(enum_var)));
           }
         }
         Err(
@@ -1276,38 +1305,38 @@ fn as_var(
       }
     }
     Value::Number(num) => match num {
-      Number::Integer(n) => Ok(SVar::NotCloned((*n).into())),
-      Number::Float(n) => Ok(SVar::NotCloned((*n).into())),
+      Number::Integer(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
+      Number::Float(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
       Number::Hexadecimal(s) => {
         let s = s.as_str();
         let s = &s[2..]; // remove 0x
         let z = i64::from_str_radix(s, 16).expect("Invalid hexadecimal number"); // read should have caught this
-        Ok(SVar::NotCloned(z.into()))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(z.into())))
       }
     },
     Value::String(ref s) => {
       let s = Var::ephemeral_string(s.as_str());
-      Ok(SVar::NotCloned(s))
+      Ok(ResolvedVar::new_const(SVar::NotCloned(s)))
     }
     Value::Bytes(ref b) => {
       let bytes = b.0.as_ref();
-      Ok(SVar::NotCloned(bytes.into()))
+      Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
     }
-    Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Float4(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int2(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int3(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int4(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int8(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int16(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Float3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Float4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int8(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int16(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
     Value::Seq(vec) => {
       let mut seq = AutoSeqVar::new();
       for value in vec {
         let value = as_var(value, line_info, shard, e)?;
         seq.0.push(value.as_ref());
       }
-      Ok(SVar::Cloned(ClonedVar(seq.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
     }
     Value::Table(value) => {
       let mut table = AutoTableVar::new();
@@ -1323,7 +1352,9 @@ fn as_var(
         let value_ref = value.as_ref();
         table.0.insert_fast(*key_ref, value_ref);
       }
-      Ok(SVar::Cloned(ClonedVar(table.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(
+        table.leak(),
+      ))))
     }
     Value::Shards(seq) => {
       let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
@@ -1342,17 +1373,17 @@ fn as_var(
         debug_assert!(s.valueType == SHType_ShardRef);
         seq.0.push(&s);
       }
-      Ok(SVar::Cloned(ClonedVar(seq.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
     }
     Value::Shard(shard) => {
       let s = create_shard(shard, line_info, e)?;
       let s: Var = s.0 .0.into();
       debug_assert!(s.valueType == SHType_ShardRef);
-      Ok(SVar::Cloned(s.into()))
+      Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
     }
     Value::EvalExpr(seq) => {
       let value = eval_eval_expr(&seq, e)?;
-      Ok(SVar::Cloned(value.0))
+      Ok(ResolvedVar::new_const(SVar::Cloned(value.0)))
     }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
@@ -1378,9 +1409,9 @@ fn as_var(
         // now add a get shard to get the temporary at the end of the pipeline
         let mut s = Var::ephemeral_string(&tmp_name);
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
-        Ok(SVar::NotCloned(().into()))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
       }
     }
     Value::TakeTable(var_name, path) => {
@@ -1403,7 +1434,7 @@ fn as_var(
         // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
         panic!("TakeTable should always return a shard")
       }
@@ -1428,7 +1459,7 @@ fn as_var(
         // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
         panic!("TakeTable should always return a shard")
       }
@@ -1476,7 +1507,8 @@ fn as_var(
           |_e| Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i2", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1486,7 +1518,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i3", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1496,7 +1529,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i4", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1506,7 +1540,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i8", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1516,7 +1551,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i16", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1526,7 +1562,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f2", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1536,7 +1573,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f3", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1546,7 +1584,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f4", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1556,18 +1595,21 @@ fn as_var(
           },
           line_info,
           e,
-        ),
-        ("platform", true) => Ok(SVar::NotCloned(process_platform_built_in())),
-        ("type", true) => process_type(func, line_info, e),
-        ("ast", true) => process_ast(func, line_info, e),
+        )
+        .map(ResolvedVar::new_const),
+        ("platform", true) => Ok(ResolvedVar::new_const(SVar::NotCloned(
+          process_platform_built_in(),
+        ))),
+        ("type", true) => process_type(func, line_info, e).map(ResolvedVar::new_const),
+        ("ast", true) => process_ast(func, line_info, e).map(ResolvedVar::new_const),
         _ => {
           if let Some(defined_value) = find_defined(&func.name, e).map(|x| x.clone()) {
             match defined_value {
               Definition::Value(value) => {
                 let replacement = unsafe { &*value };
-                as_var(replacement, line_info, shard, e)
+                resolve_var(replacement, line_info, shard, e)
               }
-              Definition::Constant(var) => Ok(var),
+              Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
             }
           } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
             // @template
@@ -1599,7 +1641,7 @@ fn as_var(
               e.meshes.insert(id, mesh);
             }
 
-            Ok(SVar::Cloned(ClonedVar(seq.leak())))
+            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
           } else if let Some(ast_json) = process_macro(func, line_info, e)? {
             let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
               (
@@ -1628,7 +1670,7 @@ fn as_var(
             TMP_VALUE.with(|f| {
               let mut v = f.borrow_mut();
               *v = Some(decoded_json.clone());
-              as_var(
+              resolve_var(
                 v.as_ref().unwrap(), // should be valid
                 line_info,
                 shard,
@@ -1637,7 +1679,7 @@ fn as_var(
             })
           } else if let Some(extension) = find_extension(&func.name, e) {
             let v = extension.process_to_var(func, line_info)?;
-            Ok(SVar::Cloned(v))
+            Ok(ResolvedVar::new_const(SVar::Cloned(v)))
           } else {
             Err(
               (
@@ -2223,6 +2265,28 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(())
 }
 
+fn into_get_or_const(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<AutoShardRef, ShardsError>  {
+  let ResolvedVar { is_const, var } = resolve_var(&value, line_info, None, e)?;
+  if is_const {
+    let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
+    let shard = AutoShardRef(shard);
+    shard
+      .0
+      .set_parameter(0, *var.as_ref())
+      .map_err(|e| (format!("{}", e), line_info).into())?;
+    Ok(shard)
+  } else {
+    let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
+    let shard = AutoShardRef(shard);
+    // todo - avoid clone
+    shard
+      .0
+      .set_parameter(0, *var.as_ref())
+      .map_err(|e| (format!("{}", e), line_info).into())?;
+    Ok(shard)
+  }
+}
+
 fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = match value {
     Value::Identifier(name) => {
@@ -2261,15 +2325,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             Some(shard)
           }
           Value::Identifier(_) => {
-            let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-            let shard = AutoShardRef(shard);
-            // todo - avoid clone
-            let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
-            shard
-              .0
-              .set_parameter(0, *value.as_ref())
-              .map_err(|e| (format!("{}", e), line_info).into())?;
-            Some(shard)
+            Some(into_get_or_const(replacement.clone(), line_info, e)?)
           }
           Value::Shard(shard) => {
             // add ourselves
@@ -2286,14 +2342,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
         }
       } else {
-        let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-        let shard = AutoShardRef(shard);
-        let value = as_var(value, line_info, Some(shard.0), e)?;
-        shard
-          .0
-          .set_parameter(0, *value.as_ref())
-          .map_err(|e| (format!("{}", e), line_info).into())?;
-        Some(shard)
+        Some(into_get_or_const(value.clone(), line_info, e)?)
       }
     }
     _ => {
