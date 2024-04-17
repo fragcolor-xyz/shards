@@ -708,8 +708,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         // Wire removal can change the iterator, in that case don't increment
         if (_flowPoolIt == startFlowPoolIt) {
           ++_flowPoolIt;
-        } else {
-          SHLOG_TRACE("EE");
         }
       }
     }
