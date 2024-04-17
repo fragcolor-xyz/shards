@@ -1339,7 +1339,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
 };
 
 struct WireRunner : public BaseLoader<WireRunner> {
-  static inline Parameters params{{"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireVarType}},
+  static inline Parameters params{{"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireType, CoreInfo::WireVarType}},
                                   {"Mode",
                                    SHCCSTR("The way to run the wire. Inline: will run the sub wire "
                                            "inline within the root wire, a pause in the child wire will "

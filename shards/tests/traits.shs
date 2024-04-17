@@ -23,8 +23,7 @@ Do(valid-0)
   })
 } [toggleable card-owner])
 Maybe({
-  invalid-0 = w
-  WireRunner(w)
+  WireRunner(invalid-0)
   "Expected invalid-0 to fail" | Fail
 })
 @wire(invalid-1 {
@@ -33,8 +32,7 @@ Maybe({
   })
 } [toggleable card-owner])
 Maybe({
-  invalid-1 = w
-  WireRunner(w)
+  WireRunner(invalid-1)
   "Expected invalid-1 to fail" | Fail
 })
 
@@ -53,8 +51,7 @@ Do(valid-1)
   })
 } [toggleable card-owner])
 Maybe({
-  invalid-2 = w
-  WireRunner(w)
+  WireRunner(invalid-2)
   "Expected invalid-2 to fail" | Fail
 })
 
