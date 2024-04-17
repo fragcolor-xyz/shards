@@ -7,14 +7,14 @@ solution:"""
 [4.0] 
 Math.Multiply([3.0 4.0 2.2]) 
 Log
-Assert.Is([12.0] true)
+Assert.Is([12.0])
 """
 
 explicit: """
 [4.0] 
 Math.Multiply(Operand: [3.0 4.0 2.2]) 
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is(Value: [12.0] Break: true)
+Assert.Is(Value: [12.0])
 """
 
 explanation: """

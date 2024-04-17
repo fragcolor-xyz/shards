@@ -8,7 +8,7 @@ solution:"""
 Math.Divide(Operand: 2.0) 
 Log
 
-Assert.Is(4.5 true)
+Assert.Is(4.5)
 """
 
 explicit: """
@@ -16,7 +16,7 @@ explicit: """
 Math.Divide(Operand: 2.0) 
 Log(Prefix: "" Level: LogLevel::Info)
 
-Assert.Is(Value: 4.5 Break: true)
+Assert.Is(Value: 4.5)
 """
 
 explanation: """

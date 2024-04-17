@@ -7,14 +7,14 @@ solution:"""
 [4.0] 
 Math.Subtract([3.0 4.0 2.2])
 Log 
-Assert.Is([1.0] true)
+Assert.Is([1.0])
 """
 
 explicit: """
 [4.0] 
 Math.Subtract(Operand: [3.0 4.0 2.2])
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is(Value: [1.0] Break: true)
+Assert.Is(Value: [1.0])
 """
 
 explanation: """

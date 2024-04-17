@@ -7,14 +7,14 @@ solution:"""
 [4 5.1 6.4] 
 Math.Add([3 4.0 2.2])
 Log 
-Assert.IsAlmost([7 9.1 8.6] true)
+Assert.IsAlmost([7 9.1 8.6])
 """
 
 explicit: """
 [4 5.1 6.4] 
 Math.Add(Operand: [3 4.0 2.2])
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.IsAlmost(Value: [7 9.1 8.6] Abort: false Threshold: 0.000000119209)
+Assert.IsAlmost(Value: [7 9.1 8.6])
 
 """
 

@@ -2,18 +2,18 @@
   prompt: """How do I read a value of a key from a table?"""
 
   solution:
-    """{k1: 1 k2: 2 k3: 3} = table
-
-    Get(table k1 0)
-    Log('Key read')"""
+    """ 
+    {"k1": 1 "k2": 2 "k3": 3} = table
+    Get(table Key: "k1" Default: 0)
+    Log("Key read")
+ """
 
   explicit: 
-  """ {
-    {k1: 1 k2: 2 k3: 3} = table
+  """ 
+    {"k1": 1 "k2": 2 "k3": 3} = table
 
-    Get(Name: table Key: k1  Default: 0)
+    Get(Name: table Key: "k1"  Default: 0)
     Log(Prefix: "Key read")
-  }
   """
 
   explanation: """

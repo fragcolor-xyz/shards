@@ -2,10 +2,10 @@
   prompt: """How do I read the value of a variable?"""
 
   solution:
-    """'value' = variable
+    """"value" = variable
 
     Get(variable)
-    Log('Variable read')"""
+    Log("Variable read")"""
 
   explicit:
     """"value" = variable

@@ -7,14 +7,14 @@ solution:"""
 [4 2 1 5 8] 
 Math.Multiply([6 4])
 Log 
-Assert.Is([24 8 6 20 48] true)
+Assert.Is([24 8 6 20 48])
 """
 
 explicit: """
 [4 2 1 5 8] 
 Math.Multiply(Operand: [6 4])
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is(Value: [24 8 6 20 48] Break: true)
+Assert.Is(Value: [24 8 6 20 48])
 """
 
 explanation: """

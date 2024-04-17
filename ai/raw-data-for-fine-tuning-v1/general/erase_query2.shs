@@ -10,9 +10,9 @@
   """
 
   explanation: """
-    Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).
-    For a sequence, this Shard expects the index (or a sequence of indices in descending order) of the element(s) to be erased, followed by the name of the sequence variable in the Name parameter.
-    To delete more elements, add the more Indeces to the sequence in the Indeces parameter.
+     Erase deletes sequence of single or multiple index elements and key-value pairs (from tables).
+    For a sequence, this Shard expects a sequence of indices of the element(s) to be erased, followed by the 
+    name of the sequence variable in the Name parameter from which the elements are to be deleted from.
   """
 
   tag: "  #General"

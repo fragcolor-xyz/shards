@@ -14,7 +14,7 @@ explicit: """
 [4 5.1 6.4]
 Math.Multiply(Operand: [3 4.0 2.2]) 
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.IsAlmost(Value: [12 20.4 14.08] Abort: false Threshold: 0.000000119209)
+Assert.IsAlmost(Value: [12 20.4 14.08])
 """
 
 explanation: """

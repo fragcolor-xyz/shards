@@ -4,12 +4,12 @@
   solution:
     """[1 2 3 4 5] = seq
     Highest
-    Log("resulting")"""
+    Log("result")"""
 
   explicit:
     """[1 2 3 4 5] = seq
     Highest
-    Log(Prefix:"resulting" Level: LogLevel::Info)"""
+    Log(Prefix:"result" Level: LogLevel::Info)"""
 
   explanation: """
     The Highest shard will parse a sequence and return the element with the highest "value". If it is a sequence of integers or floats it will return the element with
