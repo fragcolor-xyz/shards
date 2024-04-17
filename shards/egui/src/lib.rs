@@ -157,7 +157,7 @@ impl<'a> egui::TextBuffer for VarTextBuffer<'a> {
   }
 
   fn as_str(&self) -> &str {
-    self.0.as_ref().try_into().unwrap()
+    self.0.as_ref().try_into().unwrap_or_default()
   }
 
   fn insert_text(&mut self, _text: &str, _char_index: usize) -> usize {
@@ -174,7 +174,7 @@ impl<'a> egui::TextBuffer for MutVarTextBuffer<'a> {
   }
 
   fn as_str(&self) -> &str {
-    self.0.as_ref().try_into().unwrap()
+    self.0.as_ref().try_into().unwrap_or_default()
   }
 
   fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
