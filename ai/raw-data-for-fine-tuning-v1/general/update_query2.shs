@@ -1,5 +1,5 @@
 {
-  prompt: """How do I update a key in a table"""
+  prompt: """How do I update a key in a table?"""
 
   solution: """
    5 | Update(variable-to-update "key1")

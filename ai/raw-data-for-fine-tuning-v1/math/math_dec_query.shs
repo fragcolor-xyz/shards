@@ -1,5 +1,5 @@
 {
-  prompt: """How do I decrease the value of a mutable variable?"""
+  prompt: """How do I decrease the value of a mutable variable by 1?"""
 
   solution: """
     10 >= mutable-var
@@ -17,13 +17,13 @@
     1
     Math.Dec(Value: mutable-var)
 
-    Get(mutable-var)
-    Log("result")
+    Get(Name: mutable-var)
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """
     Math.Dec is a Maths Shard that will take a in inputs with numeric value and decrease the mutable variable passed into Value parameter by said amount.
-    Unlike Math.Subtract which is a binary operation, Math. Dec is a unary operation.
+    Unlike Math.Subtract which is a binary operation, Math.Dec is a unary operation.
   """
 
   tag: "  #Maths"

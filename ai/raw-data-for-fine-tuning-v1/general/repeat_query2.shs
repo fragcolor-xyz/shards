@@ -1,5 +1,5 @@
 {
-  prompt: """How do I repeat something multiple times until a certain condition is false."""
+  prompt: """How to repeat something multiple times until a certain condition is false?"""
 
   solution: """
    0 >= n

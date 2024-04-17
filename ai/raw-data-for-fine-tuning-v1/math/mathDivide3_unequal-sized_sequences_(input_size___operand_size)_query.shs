@@ -12,9 +12,9 @@ Assert.Is([24 8 6 20 48] true)
 
 explicit: """
 [15 4 18 11 3] 
-Math.Divide([3 2]) 
+Math.Divide(Operand: [3 2]) 
 Log(Prefix: "" Level: LogLevel::Info)
-Assert.Is([24 8 6 20 48] true)
+Assert.Is(Value: [24 8 6 20 48] Break: true)
 """
 
 explanation: """

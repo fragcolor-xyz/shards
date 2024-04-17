@@ -13,7 +13,7 @@
   """
 
   explicit: """
-    Detach(myWire)
+    Detach(Wire: myWire Restart: false)
     Wait(
       Wire: "myWire"
       Passthrough: false

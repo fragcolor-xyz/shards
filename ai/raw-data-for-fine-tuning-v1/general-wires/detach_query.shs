@@ -1,5 +1,5 @@
 {
-  prompt: """How do I execute one wire that will run asynchornously to the main wire."""
+  prompt: """How to execute one wire that will run asynchornously to the main wire?"""
 
   solution: """
    @wire(wire{
@@ -9,7 +9,7 @@
 
   explicit: """
    @wire(wire{
-    Detach(Wire:wire-to-run-asynchronously)
+    Detach(Wire: wire-to-run-asynchronously Restart: false)
    })
   """
 

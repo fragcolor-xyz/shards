@@ -1,5 +1,5 @@
 {
-  prompt: """How do I create a conditional statement that will do something when the condition is met and something else when it is not."""
+  prompt: """How do I create a conditional statement that will do something when the condition is met and something else when it is not?"""
 
   solution: """
    variable1

@@ -9,7 +9,7 @@
 
   explicit: """
    @wire(main-wire{
-    Stop(Wire:wire-to-stop)
+    Stop(Wire: wire-to-stop)
    })
   """
 

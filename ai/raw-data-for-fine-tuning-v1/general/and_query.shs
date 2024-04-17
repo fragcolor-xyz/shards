@@ -10,7 +10,7 @@
 
   explicit: 
     """Get(variable)
-    When(Predicate: {Is(condition1) | And | Get(variable2) | Is(condition2)} Action: {
+    When(Predicate: {Is(Value: condition1) | And | Get(Name: variable2) | Is(Value: condition2)} Action: {
       Pass ; Do Something
     }
     Passthrough: true)"""

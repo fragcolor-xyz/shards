@@ -1,5 +1,5 @@
 {
-  prompt: """How do I execute something only once"""
+  prompt: """How to execute something only once?"""
 
   solution:
     """Once({

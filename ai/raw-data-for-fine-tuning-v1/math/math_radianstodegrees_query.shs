@@ -3,14 +3,14 @@
 
   solution: """
     1.5708
-    Math.DegreesToRadians
+    Math.RadiansToDegrees
     Log("result")
   """
 
   explicit: """
     1.5708
-    Math.DegreesToRadians
-    Log("result")
+    Math.RadiansToDegrees
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

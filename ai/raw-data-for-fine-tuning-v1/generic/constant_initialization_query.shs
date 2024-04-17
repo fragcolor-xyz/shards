@@ -13,7 +13,10 @@ Const(@f4(1.0 2.0 3.0 4.0))
 """
 
 explicit: """
-Const(Value:10.3)
+Const(Value: 10.3)
+Const(Value: ”Hello World”)
+Const(Value: [”A” “B” “C”])
+Const(Value: @f4(1.0 2.0 3.0 4.0))
 """
 
 explanation: """

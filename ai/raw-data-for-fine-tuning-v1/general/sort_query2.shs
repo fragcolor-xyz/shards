@@ -15,9 +15,9 @@
 
     Sort (
       From: sequence
-      ;; Join: sequenceB
+      ; Join: sequenceB
       Desc: true
-      ;; Key: 
+      ; Key: 
 
     )
   """

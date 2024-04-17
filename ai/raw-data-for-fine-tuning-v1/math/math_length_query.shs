@@ -4,13 +4,13 @@
   solution: """
     @f2(2.0 3.0)
     Math.Length
-    Log("result") ;; result will be 3.60555
+    Log("result")
   """
 
   explicit: """
     @f2(2.0 3.0)
     Math.Length
-    Log(PRefix: "result") ;; result will be 3.60555
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

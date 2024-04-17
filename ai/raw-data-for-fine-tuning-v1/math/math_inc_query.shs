@@ -1,11 +1,11 @@
 {
-  prompt: """How do I increase the value of a mutable variable?"""
+  prompt: """How do I increase the value of a mutable variable by 1?"""
 
   solution: """
     0 >= mutable-var
 
     1
-    Math.inc(mutable-var)
+    Math.Inc(mutable-var)
 
     mutable-var
     Log("result")
@@ -15,15 +15,15 @@
     0 | Set(Name: mutable-var) 
 
     1
-    Math.inc(Value: mutable-var)
+    Math.Inc(Value: mutable-var)
 
     Get(mutable-var)
-    Log("result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """
     Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by said amount.
-    Unlike Math.Add which is a binary operation, Math. Inc is a unary operation.
+    Unlike Math.Add which is a binary operation, Math.Inc is a unary operation.
   """
 
   tag: "  #Maths"

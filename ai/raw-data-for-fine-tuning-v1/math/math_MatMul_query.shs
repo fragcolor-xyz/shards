@@ -6,7 +6,7 @@
   """
 
   explicit: """
-    tsl-mat | Math.MatMul(Operand:rot-mat) | Math.MatMul(Operand:scl-mat) = transform-matrix
+    tsl-mat | Math.MatMul(Operand: rot-mat) | Math.MatMul(Operand: scl-mat) = transform-matrix
   """
 
   explanation: """

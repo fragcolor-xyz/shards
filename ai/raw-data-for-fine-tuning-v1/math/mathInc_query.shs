@@ -12,8 +12,7 @@ floatvar | Log
 explicit: """
 @f2(4.5 5.7) | Set(Name: floatvar) 
 Math.Inc(Value: floatvar)
-floatvar | Log(Prefix: 
-"" Level: LogLevel::Info)
+floatvar | Log(Prefix: "" Level: LogLevel::Info)
 """
 
 explanation: """

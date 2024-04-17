@@ -1,6 +1,6 @@
 {
 prompt: """
-How do I iterate through a sequence?
+How to iterate through a sequence?
 """
 
 solution:"""

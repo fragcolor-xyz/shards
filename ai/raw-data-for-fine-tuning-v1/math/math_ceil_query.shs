@@ -1,0 +1,23 @@
+{
+  prompt: """How do I round up a float to the higher integer?"""
+
+  solution: """
+    2.7
+    Math.Ceil
+    Log("result") 
+  """
+
+  explicit: """
+    2.7
+    Math.Ceil
+    Log(Prefix: "result" Level: LogLevel::Info) 
+  """
+
+  explanation: """
+    Math.Ceil is a Maths Shard that takes a float or a sequence of floats and rounds it up to the nearest integer. Unlike Math.Round which will
+    round a floating-point number to the nearest integer, Math.Ceil will round a floating-point number up to the nearest integer that is more than 
+    or equal to it. 
+  """
+
+  tag: "  #Maths"
+}

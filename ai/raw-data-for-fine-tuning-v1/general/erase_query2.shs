@@ -1,12 +1,12 @@
 {
-  prompt: """How do I delete multiple elements in a sequence."""
+  prompt: """How do I delete multiple elements in a sequence?"""
 
   solution: """
    Erase([index-to-delete1 index-to-delete2 index-to-delete3] sequence-to-delete-from)
   """
 
   explicit: """
-    Erase(Indices:[index-to-delete1 index-to-delete2 index-to-delete3] Name:sequence-to-delete-from)
+    Erase(Indices: [index-to-delete1 index-to-delete2 index-to-delete3] Name: sequence-to-delete-from)
   """
 
   explanation: """

@@ -1,5 +1,5 @@
 {
-  prompt: """How do I apply the cosine trigonometric function to a value"""
+  prompt: """How do I use the cosine trigonometric function?"""
 
   solution: """
     3.1415927
@@ -10,7 +10,7 @@
   explicit: """
     3.1415927
     Math.Cos
-    Log(Prefix:"result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

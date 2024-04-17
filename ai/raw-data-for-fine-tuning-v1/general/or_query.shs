@@ -1,5 +1,5 @@
 {
-  prompt: """How do I create a conditional statement with more than one conditon, that returns true when either of its predicates is fulfilled."""
+  prompt: """How to create a conditional statement with more than one conditon, that returns true when either of its predicates is fulfilled?"""
 
   solution:
     """2 = variable

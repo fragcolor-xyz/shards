@@ -1,16 +1,16 @@
 {
-  prompt: """How do I get the swuared length/magnitude of a vector"""
+  prompt: """How do I get the swuared length/magnitude of a vector?"""
 
   solution: """
     @f2(2.0 3.0)
-    Math.Length
-    Log("result") ;; result will be 13
+    Math.LengthSquared
+    Log("result")
   """
 
   explicit: """
     @f2(2.0 3.0)
-    Math.Length
-    Log(PRefix: "result") ;; result will be 13
+    Math.LengthSquared
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

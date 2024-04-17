@@ -16,6 +16,6 @@ Log(Prefix: "" Level: LogLevel::Info)
 """
 
 explanation: """
-Type Int4 is like type Int3 but is a vector of four 32-bit signed integers instead.
+Type Int4 defines a vector of four 32-bit signed integers.
 """
 }

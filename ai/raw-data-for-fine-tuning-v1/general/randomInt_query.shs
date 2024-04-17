@@ -1,5 +1,5 @@
 {
-  prompt: """How do I get a random integer."""
+  prompt: """How do I get a random integer?"""
 
   solution: """
    RandomInt(50) 

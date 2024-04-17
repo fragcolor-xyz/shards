@@ -1,5 +1,5 @@
 {
-  prompt: """How do I swap the values of two variables."""
+  prompt: """How do I swap the values of two variables?"""
 
   solution: """
     2 >= variableA

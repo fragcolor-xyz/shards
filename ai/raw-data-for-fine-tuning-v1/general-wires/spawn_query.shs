@@ -1,15 +1,15 @@
 {
-  prompt: """How do I execute multiple wires that will run asynchornously to the main wire."""
+  prompt: """How do I execute multiple wires that will run asynchornously to the main wire?"""
 
   solution: """
    @wire(wire{
-    Detach(wire-to-run-asynchronously)
+    Spawn(wire-to-run-asynchronously)
    })
   """
 
   explicit: """
    @wire(wire{
-    Detach(Wire:wire-to-run-asynchronously)
+    Spawn(Wire: wire-to-run-asynchronously)
    })
   """
 

@@ -3,19 +3,19 @@
 
   solution: """
     3 | Math.Add(2)
-    Log("Result") ;; the result will be 5
+    Log("result")
   """
 
   explicit: """
     3 | Math.Add(Operand:2)
-    Log(Prefix:"Result") ;; the result will be 5
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """
     Math.Add is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the addition 
     mathmatical operation. Math.Add can also take in a sequence of floats or integers as input and as a value for the Operand parameter. In this scenario
     it will add  the values of each corresponding index and return a sequence. Both the input and the operand needs to be of the same type for the Shard to function.
-    Unlike Math.Inc which is a unary operation,  Math.Add is a binary operation.
+    Unlike Math.Inc which is a unary operation, Math.Add is a binary operation.
   """
 
   tag: "  #Maths"

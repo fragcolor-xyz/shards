@@ -1,5 +1,5 @@
 {
-  prompt: """How do I check if any value in a sequence is not equal to something."""
+  prompt: """How do I check if any value in a sequence is not equal to something?"""
 
   solution: """
    [1 1 1 1 2] = sequence

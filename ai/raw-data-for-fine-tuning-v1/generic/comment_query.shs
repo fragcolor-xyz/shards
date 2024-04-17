@@ -1,6 +1,6 @@
 {
 prompt: """
-How to write comments in Shards coding?
+How to write comments in Shards?
 """
 
 solution:"""
@@ -10,7 +10,7 @@ Log ; prints input => [4.0 5.1 6.4]
 
 explicit: """
 [4.0 5.1 6.4] ; Input
-Log(Prefix: "” Level: LogLevel::Info) ; prints input => [4.0 5.1 6.4]
+Log(Prefix: "" Level: LogLevel::Info) ; prints input => [4.0 5.1 6.4]
 """
 
 explanation: """

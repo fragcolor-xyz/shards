@@ -1,6 +1,6 @@
 {
 prompt: """
-How do i do floor or ceiling operation?
+How do I do a clamp operation to modify an input to be within specified upper and lower bounds?
 """
 
 solution:"""

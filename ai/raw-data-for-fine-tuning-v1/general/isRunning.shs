@@ -1,5 +1,5 @@
 {
-  prompt: """How do i check if a wire is running."""
+  prompt: """How do i check if a wire is running?"""
 
   solution: """
    IsRunning(wire-to-check)

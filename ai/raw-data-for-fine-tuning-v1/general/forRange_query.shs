@@ -1,5 +1,5 @@
 {
-  prompt: """How do I do something cumalatively for a specififed range. """
+  prompt: """How do I do something cumalatively for a specififed range?"""
 
   solution: """
    0 >= forRange-each-cycle-value
@@ -34,7 +34,7 @@
         Math.Add(Operand: added-value)
         > forRange-each-cycle-value
 
-        Log(Prefix: "added-value")
+        Log(Prefix: "added-value" Level: LogLevel::Info)
       }
     )
   """

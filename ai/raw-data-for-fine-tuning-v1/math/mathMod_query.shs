@@ -13,10 +13,7 @@ Assert.Is(@i4(1 0 1 0) true)
 
 explicit: """
 @i4(1 2 3 4)
-Math.Mod(
-Operand:
-@i4(2 2 2 2)) | Log(Prefix: "" Level: LogLevel::Info)
-
+Math.Mod(Operand: @i4(2 2 2 2)) | Log(Prefix: "" Level: LogLevel::Info)
 
 Assert.Is(Value: @i4(1 0 1 0) Break: true)
 """

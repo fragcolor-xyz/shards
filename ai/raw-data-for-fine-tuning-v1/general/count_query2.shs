@@ -1,5 +1,5 @@
 {
-  prompt: """How do I count the total number of key and value pairs that a table has ?"""
+  prompt: """How do I count the total number of key and value pairs that a table has?"""
 
   solution: """
    Count(table-to-count)

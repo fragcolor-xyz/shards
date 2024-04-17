@@ -1,5 +1,5 @@
 {
-  prompt: """How do I calculate the Mean of a sequence"""
+  prompt: """How do I calculate the Mean of a sequence?"""
 
   solution: """
     [1.0 2.0 3.0 4.0 5.0 6.0]
@@ -10,7 +10,7 @@
   explicit: """
     [1.0 2.0 3.0 4.0 5.0 6.0]
     Math.Mean
-    Log("result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

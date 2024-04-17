@@ -1,6 +1,6 @@
 {
 prompt: """
-How do I do trigonometric operations in Shards?
+How to do trigonometric operations in Shards?
 """
 
 solution:"""
@@ -12,9 +12,9 @@ solution:"""
 explicit: """
 0.5 | Math.Sin | Log(Prefix: "" Level: LogLevel::Info)
 0.0 | Math.Cos | 
-Log(Prefix: "” Level: LogLevel::Info)
+Log(Prefix: "" Level: LogLevel::Info)
 1.0 | Math.Tan | 
-Log(Prefix: "” Level: LogLevel::Info)
+Log(Prefix: "" Level: LogLevel::Info)
 """
 
 explanation: """

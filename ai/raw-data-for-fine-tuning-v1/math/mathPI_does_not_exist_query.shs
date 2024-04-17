@@ -12,7 +12,7 @@ Math.Multiply(@pi)
 explicit: """
 @define(pi 3.142)
 2
-Math.Multiply(Value: @pi)
+Math.Multiply(Operand: @pi)
 """
 
 explanation: """

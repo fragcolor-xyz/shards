@@ -4,13 +4,13 @@
   solution: """
     7.38906
     Math.Log
-    Log("result") ;; result is 2
+    Log("result")
   """
 
   explicit: """
     7.38906
     Math.Log
-    Log(Prefix:"result") ;; result is 2
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

@@ -10,7 +10,7 @@
   explicit: """
     @f3(1.0 1.0 1.0)
     Math.Translation
-    Log("result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

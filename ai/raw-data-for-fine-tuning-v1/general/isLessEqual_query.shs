@@ -1,5 +1,5 @@
 {
-  prompt: """How do I check if something is less than or equals to something else."""
+  prompt: """How do I check if something is less than or equals to something else?"""
 
   solution: """
    variable1

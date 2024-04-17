@@ -10,7 +10,7 @@
   explicit: """
     90.0
     Math.DegreesToRadians
-    Log("result")
+    Log(Prefix: "result" Level: LogLevel::Info)
   """
 
   explanation: """

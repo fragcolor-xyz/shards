@@ -1,5 +1,5 @@
 {
-  prompt: """How do I get a random float"""
+  prompt: """How do I get a random float?"""
 
   solution: """
    RandomFloat(50.0)
@@ -11,7 +11,7 @@
 
   explanation: """
     The RandomInt Shard will return a random integer between the values 0 and the value specified in the Max parameter (non-inclusive).
-    The returned float will always be to the 4th decimal place. Use  Math.Add  or Math.Subtract to modify the lower limit. 
+    The returned float will always be to the 4th decimal place. Use  Math.Add or Math.Subtract to modify the lower limit. 
     For example, to get a random integer from the range of 2.0-50.0  you can use the RandomFloat(48.0) | Math.Add(2.0).
   """
 

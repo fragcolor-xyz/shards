@@ -1,14 +1,14 @@
 {
-  prompt: """How do I subtract two values together?"""
+  prompt: """How do I subtract one value from another?"""
 
   solution: """
     3 | Math.Subtract(2)
-    Log("Result") ;; the result will be 1
+    Log("Result")
   """
 
   explicit: """
-    3 | Math.Subtract(Operand:2)
-    Log(Prefix:"Result") ;; the result will be 1
+    3 | Math.Subtract(Operand: 2)
+    Log(Prefix:"Result" Level: LogLevel::Info) 
   """
 
   explanation: """

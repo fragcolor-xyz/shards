@@ -1,5 +1,5 @@
 {
-  prompt: """How do I execute a wire that continues its state whenever it is called."""
+  prompt: """How do I execute a wire that continues its state whenever it is called?"""
 
   solution: """
    @wire(main-wire{
@@ -9,7 +9,7 @@
 
   explicit: """
    @wire(main-wire{
-    Step(Wire:other-wire-that-continues)
+    Step(Wire: other-wire-that-continues)
    })
   """
 

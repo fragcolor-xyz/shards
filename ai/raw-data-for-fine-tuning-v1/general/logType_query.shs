@@ -1,5 +1,5 @@
 {
-  prompt: """How do I log the type of a variable in the console"""
+  prompt: """How do I log the type of a variable in the console?"""
 
   solution: """
    variable-to-log

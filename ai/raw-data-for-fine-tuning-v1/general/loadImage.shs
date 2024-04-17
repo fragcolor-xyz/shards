@@ -1,5 +1,5 @@
 {
-  prompt: """How do I load an image."""
+  prompt: """How do I load an image?"""
 
   solution:
     """LoadImage(File: filename.png PremultiplyAlpha: true) | GFX.Texture"""

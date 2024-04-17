@@ -1,5 +1,5 @@
 {
-  prompt: """How do I apply the sine trigonometric function to a value"""
+  prompt: """How do I use the sine trigonometric function?"""
 
   solution: """
     1.5708
@@ -10,7 +10,7 @@
   explicit: """
     1.5708
     Math.Sin
-    Log(Prefix:"result")
+    Log(Prefix:"result" Level: LogLevel::Info)
   """
 
   explanation: """

@@ -1,12 +1,12 @@
 {
-  prompt: """How do I delete keys from a table"""
+  prompt: """How do I delete keys from a table?"""
 
   solution: """
    Erase(["key1" "key2"] sequence-to-delete-from)
   """
 
   explicit: """
-    Erase(Indices:["key1" "key2"] Name:sequence-to-delete-from)
+    Erase(Indices: ["key1" "key2"] Name: sequence-to-delete-from)
   """
 
   explanation: """

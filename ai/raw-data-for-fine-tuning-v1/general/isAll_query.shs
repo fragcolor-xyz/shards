@@ -1,5 +1,5 @@
 {
-  prompt: """How do I check if every value in a sequence equals something."""
+  prompt: """How do I check if every value in a sequence equals something?"""
 
   solution: """
    [2 2 2 2 2 2 2] = sequence

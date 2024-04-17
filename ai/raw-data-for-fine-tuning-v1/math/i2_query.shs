@@ -10,7 +10,7 @@ Log
 
 explicit: """
 @i2(4 5) | Math.Add(Operand: @i2(6 9))
-Log(Prefix: "” Level: LogLevel::Info)
+Log(Prefix: "" Level: LogLevel::Info)
 """
 
 explanation: """

@@ -9,7 +9,7 @@
 
   explicit: """
    @wire(wire{
-    Resume(Wire:wire-paused)
+    Resume(Wire: wire-paused)
    })
   """
 

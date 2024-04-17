@@ -16,6 +16,6 @@ Log(Prefix: "" Level: LogLevel::Info)
 """
 
 explanation: """
-Type Float4 is a vector of four 32-bit signed floating point numbers instead.
+Type Float4 defines a vector of four 32-bit signed floating point numbers.
 """
 }

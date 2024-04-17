@@ -12,7 +12,7 @@
    [0 1 2 3 4] = sequence
 
 
-   Get(sequence)
+   Get(Name: sequence)
    Take([0]) ; Replace 0 accordingly with the desired index
   """
 
