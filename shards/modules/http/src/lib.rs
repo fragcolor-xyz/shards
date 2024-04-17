@@ -35,6 +35,8 @@ use reqwest::blocking::Response;
 use reqwest::header::{HeaderName, HeaderValue};
 use std::convert::TryInto;
 
+use std::collections::HashMap;
+
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
   common_type::none,
@@ -464,11 +466,13 @@ macro_rules! post_like {
               request = request.header("content-type", "application/x-www-form-urlencoded");
             }
 
+            let mut params = HashMap::new();
             for (k, v) in input_table.iter() {
               let key: &str = k.as_ref().try_into()?;
               let value: &str = v.as_ref().try_into()?;
-              request = request.form(&[(key, value)]);
+              params.insert(key, value);
             }
+            request = request.form(&params);
           } else {
             // .body ( string )
             let input_string: Result<&str, &str> = input.try_into();
