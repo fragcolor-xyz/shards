@@ -18,6 +18,7 @@
 #include "spdlog/spdlog.h"
 #include "type_matcher.hpp"
 #include "type_info.hpp"
+#include "trait.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -319,9 +320,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 #endif
 
   ~SHWire() {
-    destroy();
-
     SHLOG_TRACE("Destroying wire {}", name);
+    destroy();
   }
 
   void warmup(SHContext *context);
@@ -417,6 +417,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     }
   }
 
+  void addTrait(SHTrait trait);
+  const std::vector<shards::Trait> &getTraits() const { return traits; }
+
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
 
@@ -429,7 +432,7 @@ private:
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHExternalVariable>, 16>>
       externalVariables;
 
-  std::vector<SHTrait> traits;
+  std::vector<shards::Trait> traits;
 
 private:
   void destroy();

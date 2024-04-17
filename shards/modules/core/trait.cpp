@@ -37,8 +37,7 @@ struct MakeTrait {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    SPDLOG_INFO("MakeTrait: {}", _name);
-    SPDLOG_INFO("Trait types: {}", TypeTableTypes);
+    SPDLOG_TRACE("MakeTrait: {} {}", _name, _types);
 
     SHVar output{
         .payload =
@@ -80,6 +79,38 @@ struct MakeTrait {
     return output;
   }
 };
+
+struct TraitId {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the hash id of the given trait"); }
+
+  PARAM_VAR(_trait, "Trait", "The trait", {CoreInfo::TraitType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_trait));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    if (_trait->isNone())
+      throw std::runtime_error("TraitId: trait is required");
+
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    shassert(_trait->payload.traitValue);
+    Int2VarPayload i2{};
+    i2.int2Value[0] = _trait->payload.traitValue->id[0];
+    i2.int2Value[1] = _trait->payload.traitValue->id[1];
+    return Var(i2);
+  }
+};
 } // namespace shards
 
-SHARDS_REGISTER_FN(trait) { REGISTER_SHARD("MakeTrait", shards::MakeTrait); }
+SHARDS_REGISTER_FN(trait) {
+  REGISTER_SHARD("MakeTrait", shards::MakeTrait);
+  REGISTER_SHARD("TraitId", shards::TraitId);
+}

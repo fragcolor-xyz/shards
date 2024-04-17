@@ -1127,6 +1127,15 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   return result;
 }
 
+void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
+  TraitMatcher tm;
+  for (auto &trait : wire->getTraits()) {
+    if (!tm(cr.exposedInfo, trait)) {
+      throw ComposeError(fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+    }
+  }
+}
+
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
   // compare exchange and then shassert we were not composing
   bool expected = false;
@@ -1163,6 +1172,8 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
   auto res = composeWire(wire->shards, callback, userData, data);
+
+  validateWireTraits(wire, res);
 
   // set output type
   wire->outputType = res.outputType;
@@ -2188,6 +2199,14 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, bool isGlobal, const SH
 
 // NO NAMESPACE here!
 
+void SHWire::addTrait(SHTrait inTrait) {
+  auto it = std::find_if(traits.begin(), traits.end(), [&](const shards::Trait &t) { return t.sameIdAs(inTrait); });
+  if (it == traits.end()) {
+    SHLOG_TRACE("Adding <{}> to wire \"{}\"", SHVar{.payload = {.traitValue = &inTrait}, .valueType = SHType::Trait}, name);
+    traits.emplace_back(inTrait);
+  }
+}
+
 void SHWire::destroy() {
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
     (*it)->cleanup(*it, nullptr);
@@ -2725,9 +2744,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setWireTraits = [](SHWireRef wireref, SHSeq traits) noexcept {
+    auto &wire = SHWire::sharedFromRef(wireref);
     for (auto &trait : traits) {
-      auto &wire = SHWire::sharedFromRef(wireref);
-      SHLOG_TRACE("Adding <{}> to wire \"{}\"", wire->name, trait);
+      shassert(trait.valueType == SHType::Trait);
+      wire->addTrait(*trait.payload.traitValue);
     }
   };
 

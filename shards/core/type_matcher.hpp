@@ -11,6 +11,7 @@ struct TypeMatcher {
   bool relaxEmptyTableCheck = true;
   bool relaxEmptySeqCheck = false;
   bool checkVarTypes = false;
+  bool ignoreFixedSeq = false;
 
   bool match(const SHTypeInfo &inputType, const SHTypeInfo &receiverType) {
     if (receiverType.basicType == SHType::Any)
@@ -67,7 +68,7 @@ struct TypeMatcher {
           return false;
         }
         // if a fixed size is requested make sure it fits at least enough elements
-        if (receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
+        if (!ignoreFixedSeq && receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
           return false;
         }
       }

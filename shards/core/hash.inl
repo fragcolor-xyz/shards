@@ -30,6 +30,15 @@ template <typename TDigest> XXH_errorcode hashUpdate(XXH3_state_t *state, const 
   }
 }
 
+#define PUSH_TMP_HASH_SET()            \
+  int hashSetIndex = hashSetCounter++; \
+  DEFER({ --hashSetCounter; });        \
+  if (hashSetIndex >= hashSets.size()) \
+    hashSets.resize(hashSetIndex + 1); \
+  hashSets[hashSetIndex].clear();
+
+#define TMP_HASH_SET (hashSets[hashSetIndex])
+
 template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const SHVar &var, XXH3_state_s *state) {
   DEFER({ --depth; });
   if ((++depth) >= MAX_DERIVED_TYPE_HASH_RECURSION)
@@ -52,18 +61,15 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
   }
   case SHType::Seq: {
     // Needed to sort hashes
-    int hashSetIndex = hashSetCounter++;
-    DEFER({ --hashSetCounter; });
-    if (hashSetIndex >= hashSets.size())
-      hashSets.resize(hashSetIndex + 1);
+    PUSH_TMP_HASH_SET();
 
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       auto typeHash = deriveTypeHash(var.payload.seqValue.elements[i]);
-      hashSets[hashSetIndex].insert(typeHash);
+      TMP_HASH_SET.insert(typeHash);
     }
     constexpr auto recursive = false;
     hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const auto &hash : hashSets[hashSetIndex]) {
+    for (const auto &hash : TMP_HASH_SET) {
       hashUpdate<TDigest>(state, &hash, sizeof(TDigest));
     }
   } break;
@@ -82,23 +88,19 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
   } break;
   case SHType::Set: {
     // Needed to sort hashes
-    int hashSetIndex = hashSetCounter++;
-    DEFER({ --hashSetCounter; });
-    if (hashSetIndex >= hashSets.size())
-      hashSets.resize(hashSetIndex + 1);
+    PUSH_TMP_HASH_SET();
 
     // set is unordered so just collect
     auto &s = var.payload.setValue;
     SHSetIterator sit;
     s.api->setGetIterator(s, &sit);
     SHVar v;
-    hashSets[hashSetIndex].clear();
     while (s.api->setNext(s, &sit, &v)) {
-      hashSets[hashSetIndex].insert(deriveTypeHash(v));
+      TMP_HASH_SET.insert(deriveTypeHash(v));
     }
     constexpr auto recursive = false;
     hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const TDigest hash : hashSets[hashSetIndex]) {
+    for (const TDigest hash : TMP_HASH_SET) {
       hashUpdate<TDigest>(state, &hash, sizeof(TDigest));
     }
   } break;
@@ -126,10 +128,7 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
   } break;
   case SHType::Seq: {
     // Needed to sort hashes
-    int hashSetIndex = hashSetCounter++;
-    DEFER({ --hashSetCounter; });
-    if (hashSetIndex >= hashSets.size())
-      hashSets.resize(hashSetIndex + 1);
+    PUSH_TMP_HASH_SET();
 
     bool recursive = false;
 
@@ -138,44 +137,46 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
         recursive = true;
       } else {
         auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
-        hashSets[hashSetIndex].insert(typeHash);
+        TMP_HASH_SET.insert(typeHash);
       }
     }
     hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const auto hash : hashSets[hashSetIndex]) {
+    for (const auto hash : TMP_HASH_SET) {
       hashUpdate<TDigest>(state, &hash, sizeof(hash));
     }
   } break;
   case SHType::Table: {
     if (t.table.keys.len == t.table.types.len) {
+      // Needed to sort hashes
+      PUSH_TMP_HASH_SET();
+
       for (uint32_t i = 0; i < t.table.types.len; i++) {
-        auto keyHash = deriveTypeHash(t.table.keys.elements[i]);
-        hashUpdate<TDigest>(state, &keyHash, sizeof(TDigest));
-        auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-        hashUpdate<TDigest>(state, &typeHash, sizeof(TDigest));
+        XXH3_state_t subState{};
+        hashReset<TDigest>(&subState);
+        updateTypeHash(t.table.keys.elements[i], &subState);
+        updateTypeHash(t.table.types.elements[i], &subState);
+        TMP_HASH_SET.insert(hashDigest<TDigest>(&subState));
+      }
+
+      for (const auto hash : TMP_HASH_SET) {
+        hashUpdate<TDigest>(state, &hash, sizeof(hash));
       }
     } else {
       // Needed to sort hashes
-      int hashSetIndex = hashSetCounter++;
-      DEFER({ --hashSetCounter; });
-      if (hashSets.size() <= hashSetCounter)
-        hashSets.resize(hashSetCounter + 1);
+      PUSH_TMP_HASH_SET();
 
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-        hashSets[hashSetIndex].insert(typeHash);
+        TMP_HASH_SET.insert(typeHash);
       }
-      for (const auto hash : hashSets[hashSetIndex]) {
+      for (const auto hash : TMP_HASH_SET) {
         hashUpdate<TDigest>(state, &hash, sizeof(hash));
       }
     }
   } break;
   case SHType::Set: {
     // Needed to sort hashes
-    int hashSetIndex = hashSetCounter++;
-    DEFER({ --hashSetCounter; });
-    if (hashSetIndex >= hashSets.size())
-      hashSets.resize(hashSetIndex + 1);
+    PUSH_TMP_HASH_SET();
 
     bool recursive = false;
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
@@ -183,11 +184,11 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
         recursive = true;
       } else {
         auto typeHash = deriveTypeHash(t.setTypes.elements[i]);
-        hashSets[hashSetIndex].insert(typeHash);
+        TMP_HASH_SET.insert(typeHash);
       }
     }
     hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const auto hash : hashSets[hashSetIndex]) {
+    for (const auto hash : TMP_HASH_SET) {
       hashUpdate<TDigest>(state, &hash, sizeof(hash));
     }
   } break;
@@ -266,10 +267,7 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
   } break;
   case SHType::Set: {
     // Needed to sort hashes
-    int hashSetIndex = hashSetCounter++;
-    DEFER({ --hashSetCounter; });
-    if (hashSetIndex >= hashSets.size())
-      hashSets.resize(hashSetIndex + 1);
+    PUSH_TMP_HASH_SET();
 
     // just store hashes, sort and actually combine later
     auto &s = var.payload.setValue;
@@ -278,10 +276,10 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
     SHVar value;
     while (s.api->setNext(s, &it, &value)) {
       const auto h = hash(value);
-      hashSets[hashSetIndex].insert(h);
+      TMP_HASH_SET.insert(h);
     }
 
-    for (const auto &hash : hashSets[hashSetIndex]) {
+    for (const auto &hash : TMP_HASH_SET) {
       hashUpdate<TDigest>(state, &hash, sizeof(TDigest));
     }
   } break;
