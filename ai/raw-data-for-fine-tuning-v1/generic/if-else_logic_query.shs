@@ -5,7 +5,7 @@ How to do if-else logic in Shards?
 
 solution:"""
 5
-If( IsLess(2) Then:{
+If( IsLess(2) {
 Msg("input is lesser than 2")
 } 
 Msg("input is equal or greater than 2"))

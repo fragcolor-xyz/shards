@@ -5,11 +5,11 @@ How to iterate through a sequence?
 
 solution:"""
 [2 4 8 10]
-ForEach(
+ForEach({
 Math.Multiply(10)
 Log
 Math.Multiply(100)
-Log
+Log}
 )
 """
 

@@ -5,7 +5,7 @@ How to initalize variables in Shards?
 
 solution:"""
 12.4 >= variable1
-“Hello” >= variable2
+"Hello" >= variable2
 """
 
 explicit: """

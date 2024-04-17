@@ -4,21 +4,23 @@ How to do mathematical operations in Shards?
 """
 
 solution:"""
+3 >= num1 
+1 >= num2 
 num1 | Math.Add(num2)
 num1 | Math.Subtract(num2)
 num1 | Math.Divide(num2)
 num1 | Math.Multiply(num2)
 num1 | Math.Mod(num2) 
-etc.
 """
 
 explicit: """
+3 >= num1 
+1 >= num2 
 num1 | Math.Add(Operand: num2)
 num1 | Math.Subtract(Operand: num2)
 num1 | Math.Divide(Operand: num2)
 num1 | Math.Multiply(Operand: num2)
-num1 | Math.Mod(Operand: num2) 
-etc.
+num1 | Math.Mod(Operand: num2)
 """
 
 explanation: """

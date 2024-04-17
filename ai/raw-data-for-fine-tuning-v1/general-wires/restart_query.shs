@@ -3,18 +3,18 @@
 
   solution: """
    @wire(wire{
-    Restart(wire-paused)
+    Restart
    })
   """
 
   explicit: """
    @wire(wire{
-    Restart(Wire: wire-paused)
+    Restart
    })
   """
 
   explanation: """
-    Restart is a Shard that will resume a previously suspended wire from the start of said wire.
+    Restart is a Shard that will restart a currently suspended wire.
   """
 
   tag: "  #General-Wire"

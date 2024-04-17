@@ -10,7 +10,7 @@
   explicit: """
     4.0
     Math.Log
-    Log(Prefix:"result")
+    Log(Prefix:"result" Level: LogLevel::Info)
   """
 
   explanation: """

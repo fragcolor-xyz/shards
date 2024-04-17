@@ -14,7 +14,7 @@
   """
 
   explanation: """
-    Resume will execute a previously suspended wire from the point of suspension.
+    Resume will execute a currently suspended wire from the point of suspension.
   """
 
   tag: "  #General-Wire"
