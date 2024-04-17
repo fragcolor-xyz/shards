@@ -17,13 +17,13 @@
 	<Type Name="SHWire">
 		<DisplayString>Wire {name,s8}</DisplayString>
 	</Type>
-	<Type Name="SHInterfaceVariable">
+	<Type Name="SHTraitVariable">
 		<DisplayString>{name,s8} {type}</DisplayString>
 		<Expand>
 			<ExpandedItem>type</ExpandedItem>
 		</Expand>
 	</Type>
-	<Type Name="SHInterfaceVariables">
+	<Type Name="SHTraitVariables">
 		<Expand>
 			<CustomListItems>
 				<Variable Name="i" InitialValue="0" />
@@ -38,8 +38,8 @@
 			</CustomListItems>
 		</Expand>
 	</Type>
-	<Type Name="SHInterface">
-		<DisplayString>Interface {name,s8} / {id[1],x}{id[0],xb}</DisplayString>
+	<Type Name="SHTrait">
+		<DisplayString>Trait {name,s8} / {id[1],x}{id[0],xb}</DisplayString>
 		<Expand>
 			<ExpandedItem>variables</ExpandedItem>
 		</Expand>
@@ -68,7 +68,7 @@
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Any">Any</DisplayString>
 		<DisplayString Condition="valueType == SHType::ContextVar">&amp;{payload.stringValue,s8b} (Var)</DisplayString>
-		<DisplayString Condition="valueType == SHType::Interface">{*payload.interfaceValue} (Interface)</DisplayString>
+		<DisplayString Condition="valueType == SHType::Trait">{*payload.traitValue} (Trait)</DisplayString>
 		<Expand>
 			<ArrayItems Condition="valueType == SHType::Seq">
 				<Direction>Forward</Direction>
@@ -78,7 +78,7 @@
 			</ArrayItems>
 			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque-&gt;m_flat_tree.m_data.m_seq</ExpandedItem>
 			<ExpandedItem Condition="valueType == SHType::Type">*payload.typeValue</ExpandedItem>
-			<ExpandedItem Condition="valueType == SHType::Interface">*payload.interfaceValue</ExpandedItem>
+			<ExpandedItem Condition="valueType == SHType::Trait">*payload.traitValue</ExpandedItem>
 		</Expand>
 	</Type>
 	<Type Name="SHTypeInfo">

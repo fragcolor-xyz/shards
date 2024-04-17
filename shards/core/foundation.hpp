@@ -177,7 +177,6 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
 
-
 struct TypeInfo {
   TypeInfo() {}
 
@@ -429,6 +428,8 @@ private:
   std::unordered_map<shards::OwnedVar, SHExternalVariable, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHExternalVariable>, 16>>
       externalVariables;
+
+  std::vector<SHTrait> traits;
 
 private:
   void destroy();

@@ -53,8 +53,8 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Array, // Notice: of just blittable types/WIP!
   Set,
   Audio,
-  Type,     // Describes a type
-  Interface // A wire interface
+  Type, // Describes a type
+  Trait // A wire trait
 };
 
 enum SH_ENUM_CLASS SHWireState : uint8_t {
@@ -405,22 +405,22 @@ struct SHTypeInfo {
   SHBool recursiveSelf;
 };
 
-typedef struct SHInterfaceVariable {
+typedef struct SHTraitVariable {
   // Name of the variable
   SHString name;
   // Expected variable type
   struct SHTypeInfo type;
-} SHInterfaceVariable;
-SH_ARRAY_DECL(SHInterfaceVariables, SHInterfaceVariable);
+} SHTraitVariable;
+SH_ARRAY_DECL(SHTraitVariables, SHTraitVariable);
 
-typedef struct SHInterface {
-  // Unique Id of the interface, which is also the hash of the items
+typedef struct SHTrait {
+  // Unique Id of the trait, which is also the hash of the items
   uint64_t id[2];
-  // Friendly name given to this interface, unhashed
+  // Friendly name given to this trait, unhashed
   SHString name;
   // List of variables
-  SHInterfaceVariables variables;
-} SHInterface;
+  SHTraitVariables variables;
+} SHTrait;
 
 struct SHShardComposeResult {
   struct SHError error;
@@ -579,7 +579,7 @@ struct SHVarPayload {
     SHPayloadArray arrayValue;
 
     struct SHTypeInfo *typeValue;
-    struct SHInterface *interfaceValue;
+    struct SHTrait *traitValue;
   };
 } __attribute__((aligned(16)));
 
@@ -894,7 +894,7 @@ typedef void(__cdecl *SHSetWireLooped)(SHWireRef wire, SHBool looped);
 typedef void(__cdecl *SHSetWireUnsafe)(SHWireRef wire, SHBool unsafe);
 typedef void(__cdecl *SHSetWirePure)(SHWireRef wire, SHBool pure);
 typedef void(__cdecl *SHSetWireStackSize)(SHWireRef wire, uint64_t stackSize);
-typedef void(__cdecl *SHSetWireInterfaces)(SHWireRef wire, SHSeq interfaces);
+typedef void(__cdecl *SHSetWireTraits)(SHWireRef wire, SHSeq traits);
 typedef void(__cdecl *SHAddShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);
@@ -933,7 +933,7 @@ SH_ARRAY_TYPE(Shards, ShardPtr);
 SH_ARRAY_TYPE(SHExposedTypesInfo, struct SHExposedTypeInfo);
 SH_ARRAY_TYPE(SHEnums, SHEnum);
 SH_ARRAY_TYPE(SHStrings, SHString);
-SH_ARRAY_TYPE(SHInterfaceVariables, SHInterfaceVariable);
+SH_ARRAY_TYPE(SHTraitVariables, SHTraitVariable);
 
 #define SH_ARRAY_PROCS(_array_, _short_)   \
   _array_##Free _short_##Free;             \
@@ -1034,7 +1034,7 @@ typedef struct _SHCore {
   SHSetWireUnsafe setWireUnsafe;
   SHSetWirePure setWirePure;
   SHSetWireStackSize setWireStackSize;
-  SHSetWireInterfaces setWireInterfaces;
+  SHSetWireTraits setWireTraits;
   SHAddShard addShard;
   SHRemShard removeShard;
   SHDestroyWire destroyWire;
@@ -1151,8 +1151,8 @@ typedef struct _SHCore {
   // Utility to deal with SHStrings
   SH_ARRAY_PROCS(SHStrings, strings);
 
-  // Utility to deal with SHInterfaceVariables
-  SH_ARRAY_PROCS(SHInterfaceVariables, interfaceVariables);
+  // Utility to deal with SHTraitVariables
+  SH_ARRAY_PROCS(SHTraitVariables, traitVariables);
 } SHCore;
 
 typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);

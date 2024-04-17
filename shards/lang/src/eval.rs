@@ -109,6 +109,8 @@ pub struct EvalEnv {
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
 
+  traits: HashMap<Identifier, ClonedVar>,
+
   // used during @template evaluation
   suffix: Option<RcStrWrapper>,
   suffix_assigned: HashMap<RcStrWrapper, RcStrWrapper>, // maps var names to their suffix
@@ -155,6 +157,7 @@ impl EvalEnv {
       settings: Vec::new(),
       meshes: HashMap::new(),
       extensions: HashMap::new(),
+      traits: HashMap::new(),
     };
 
     if let Some(parent) = parent {
@@ -829,6 +832,16 @@ fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut M
   }
 }
 
+fn find_trait<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<Var> {
+  if let Some(trait_) = env.traits.get(name) {
+    Some(trait_.0.into())
+  } else if let Some(parent) = env.parent {
+    find_trait(name, unsafe { &mut *(parent as *mut EvalEnv) })
+  } else {
+    None
+  }
+}
+
 fn find_wire<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<(Var, bool)> {
   if let Some(wire) = env.finalized_wires.get(name) {
     Some((wire.0.into(), true))
@@ -881,19 +894,19 @@ fn finalize_wire(
     wire.add_shard(shard.0);
   }
 
-  let interfaces = param_helper
-    .get_param_by_name_or_index("Interfaces", 2)
+  let traits = param_helper
+    .get_param_by_name_or_index("Traits", 2)
     .map(|param| match &param.value {
       Value::Seq(s) => Ok(s.clone()),
-      _ => Err(("Interfaces parameter must be a sequence", line_info).into()),
+      _ => Err(("Traits parameter must be a sequence", line_info).into()),
     })
     .unwrap_or(Ok(Vec::new()))?;
   let mut s = AutoSeqVar::new();
-  for v in interfaces {
+  for v in traits {
     let v = as_var(&v, line_info, None, env)?;
     s.0.push(v.as_ref());
   }
-  wire.set_interfaces(unsafe { s.0 .0.payload.__bindgen_anon_1.seqValue });
+  wire.set_traits(unsafe { s.0 .0.payload.__bindgen_anon_1.seqValue });
 
   let looped = param_helper
     .get_param_by_name_or_index("Looped", 3)
@@ -1201,8 +1214,10 @@ fn as_var(
     Value::None => Ok(SVar::NotCloned(Var::default())),
     Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
     Value::Identifier(ref name) => {
-      // could be wire or mesh as "special" cases
-      if let Some((wire, _finalized)) = find_wire(name, e) {
+      // could be wire, trait or mesh as "special" cases
+      if let Some(trait_) = find_trait(name, e) {
+        Ok(SVar::Cloned(trait_.into()))
+      } else if let Some((wire, _finalized)) = find_wire(name, e) {
         Ok(SVar::Cloned(wire.into()))
       } else if let Some(mesh) = find_mesh(name, e) {
         Ok(SVar::NotCloned(mesh.0 .0))
@@ -2751,13 +2766,13 @@ fn eval_pipeline(
             // ignore is a special function that does nothing
             Ok(())
           }
-          ("interface", true) => {
+          ("trait", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
-                  "define built-in function requires Name parameter",
+                  "trait built-in function requires Name parameter",
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),
@@ -2765,7 +2780,7 @@ fn eval_pipeline(
 
               let types = param_helper.get_param_by_name_or_index("Types", 1).ok_or(
                 (
-                  "define built-in function requires Types parameter",
+                  "trait built-in function requires Types parameter",
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),
@@ -2781,15 +2796,12 @@ fn eval_pipeline(
                 ) => {
                   e.insert_raw_identifier(name, block.line_info.unwrap_or_default())?;
 
-                  // eval(seq, name, defines, cancellation_token)
-                  // e.replacements.
-
-                  let make_iface_shards = Sequence {
+                  let make_trait_shards = Sequence {
                     statements: vec![Statement::Pipeline(Pipeline {
                       blocks: vec![Block {
                         content: BlockContent::Shard(Function {
                           name: Identifier {
-                            name: "MakeInterface".into(),
+                            name: "MakeTrait".into(),
                             namespaces: vec![],
                           },
                           params: Some(vec![
@@ -2805,15 +2817,15 @@ fn eval_pipeline(
                     })],
                   };
 
-                  let cvar = eval_eval_expr(&make_iface_shards, e)?;
-                  eprintln!("interface {:?}: {:?}", name, cvar.0);
-                  // e.replacements.insert(name.clone(), cvar.0 .0);
+                  let cvar = eval_eval_expr(&make_trait_shards, e)?;
+                  eprintln!("trait {:?}: {:?}", name, cvar.0);
+                  e.traits.insert(name.clone(), cvar.0);
 
                   Ok(())
                 }
                 _ => Err(
                   (
-                    "interface built-in function requires Name parameter to be an identifier",
+                    "trait built-in function requires Name parameter to be an identifier",
                     block.line_info.unwrap_or_default(),
                   )
                     .into(),
@@ -2822,7 +2834,7 @@ fn eval_pipeline(
             } else {
               Err(
                 (
-                  "interface built-in function requires proper parameters",
+                  "trait built-in function requires proper parameters",
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),

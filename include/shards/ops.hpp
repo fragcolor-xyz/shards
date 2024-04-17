@@ -73,8 +73,8 @@ inline const char *type2Name_raw(SHType type) {
     return "Set";
   case SHType::Array:
     return "Array";
-  case SHType::Interface:
-    return "Interface";
+  case SHType::Trait:
+    return "Trait";
   }
   return "";
 }
@@ -264,8 +264,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
            (a.payload.arrayValue.elements == b.payload.arrayValue.elements ||
             memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
                    a.payload.arrayValue.len * sizeof(SHVarPayload)) == 0);
-  case SHType::Interface:
-    return memcmp(a.payload.interfaceValue->id, b.payload.interfaceValue->id, sizeof(SHInterface::id)) == 0;
+  case SHType::Trait:
+    return memcmp(a.payload.traitValue->id, b.payload.traitValue->id, sizeof(SHTrait::id)) == 0;
   }
 
   return false;
@@ -382,9 +382,9 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     return a.payload.audioValue.samples < b.payload.audioValue.samples;
   case SHType::Type:
     return a.payload.typeValue < b.payload.typeValue;
-  case SHType::Interface: {
-    auto &id0 = a.payload.interfaceValue->id;
-    auto &id1 = b.payload.interfaceValue->id;
+  case SHType::Trait: {
+    auto &id0 = a.payload.traitValue->id;
+    auto &id1 = b.payload.traitValue->id;
     if (id0[0] == id1[0])
       return id0[1] < id1[1];
     return id0[0] < id1[0];
@@ -493,9 +493,9 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     return a.payload.audioValue.samples <= b.payload.audioValue.samples;
   case SHType::Type:
     return a.payload.typeValue <= b.payload.typeValue;
-  case SHType::Interface: {
-    auto &id0 = a.payload.interfaceValue->id;
-    auto &id1 = b.payload.interfaceValue->id;
+  case SHType::Trait: {
+    auto &id0 = a.payload.traitValue->id;
+    auto &id1 = b.payload.traitValue->id;
     if (id0[0] == id1[0])
       return id0[1] <= id1[1];
     return id0[0] <= id1[0];

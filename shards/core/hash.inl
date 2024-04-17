@@ -380,8 +380,8 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
     error = hashUpdate<TDigest>(state, &var.payload, sizeof(SHFloat4));
     shassert(error == XXH_OK);
     break;
-  case SHType::Interface:
-    error = hashUpdate<TDigest>(state, &var.payload.interfaceValue->id, sizeof(SHInterface::id));
+  case SHType::Trait:
+    error = hashUpdate<TDigest>(state, &var.payload.traitValue->id, sizeof(SHTrait::id));
     shassert(error == XXH_OK);
     break;
   }

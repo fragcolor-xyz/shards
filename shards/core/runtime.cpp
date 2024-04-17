@@ -32,7 +32,7 @@
 #include <shards/fast_string/fast_string.hpp>
 #include "hash.hpp"
 #include "utils.hpp"
-#include "interface.hpp"
+#include "trait.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -1637,9 +1637,9 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     freeDerivedInfo(*var.payload.typeValue);
     delete var.payload.typeValue;
     break;
-  case SHType::Interface:
-    freeInterface(*var.payload.interfaceValue);
-    delete var.payload.interfaceValue;
+  case SHType::Trait:
+    freeTrait(*var.payload.traitValue);
+    delete var.payload.traitValue;
     break;
   default:
     break;
@@ -1945,10 +1945,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.payload.typeValue = new SHTypeInfo(cloneTypeInfo(*src.payload.typeValue));
     dst.valueType = SHType::Type;
     break;
-  case SHType::Interface:
+  case SHType::Trait:
     destroyVar(dst);
-    dst.payload.interfaceValue = new SHInterface(cloneInterface(*src.payload.interfaceValue));
-    dst.valueType = SHType::Interface;
+    dst.payload.traitValue = new SHTrait(cloneTrait(*src.payload.traitValue));
+    dst.valueType = SHType::Trait;
     break;
 
   default:
@@ -2577,7 +2577,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   SH_ARRAY_IMPL(SHExposedTypesInfo, SHExposedTypeInfo, expTypes);
   SH_ARRAY_IMPL(SHEnums, SHEnum, enums);
   SH_ARRAY_IMPL(SHStrings, SHString, strings);
-  SH_ARRAY_IMPL(SHInterfaceVariables, SHInterfaceVariable, interfaceVariables);
+  SH_ARRAY_IMPL(SHTraitVariables, SHTraitVariable, traitVariables);
 
   result->tableNew = []() noexcept {
     SHTable res;
@@ -2724,10 +2724,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 #endif
   };
 
-  result->setWireInterfaces = [](SHWireRef wireref, SHSeq interfaces) noexcept {
-    for (auto &iface : interfaces) {
+  result->setWireTraits = [](SHWireRef wireref, SHSeq traits) noexcept {
+    for (auto &trait : traits) {
       auto &wire = SHWire::sharedFromRef(wireref);
-      SHLOG_INFO("Adding wire {} interface {}", wire->name, iface);
+      SHLOG_TRACE("Adding <{}> to wire \"{}\"", wire->name, trait);
     }
   };
 

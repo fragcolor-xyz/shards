@@ -229,6 +229,10 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     }
     os << "}";
   } break;
+  case SHType::Trait: {
+    auto& t = *var.payload.traitValue;
+    os << "Trait " << t.name << " / 0x" << std::hex << t.id[1] << t.id[0];
+  } break;
   }
   return os;
 }

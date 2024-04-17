@@ -5,7 +5,7 @@ set(core_SOURCES
   utils.cpp
   coro.cpp
   wire_dsl.cpp
-  interface.cpp
+  trait.cpp
   type_info.cpp
   hash.cpp
 )

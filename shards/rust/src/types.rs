@@ -334,8 +334,8 @@ impl Wire {
     unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
   }
 
-  pub fn set_interfaces(&self, interfaces: SHSeq) {
-    unsafe { (*Core).setWireInterfaces.unwrap()(self.0 .0, interfaces) }
+  pub fn set_traits(&self, traits: SHSeq) {
+    unsafe { (*Core).setWireTraits.unwrap()(self.0 .0, traits) }
   }
 
   pub fn set_unsafe(&self, unsafe_: bool) {

@@ -1,8 +1,8 @@
-@interface(toggleable {
+@trait(toggleable {
   enabled: @type(Type::Bool)
 })
 
-@interface(card-owner {
+@trait(card-owner {
   cards: @type({
     name: Type::String
     flags: @type([Type::String])

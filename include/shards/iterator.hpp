@@ -44,7 +44,7 @@ SH_IMPLEMENT_ARRAY_ITERATORS(SHSeq)
 SH_IMPLEMENT_ARRAY_ITERATORS(SHExposedTypesInfo)
 SH_IMPLEMENT_ARRAY_ITERATORS(SHTypesInfo)
 SH_IMPLEMENT_ARRAY_ITERATORS(SHParametersInfo)
-SH_IMPLEMENT_ARRAY_ITERATORS(SHInterfaceVariables)
+SH_IMPLEMENT_ARRAY_ITERATORS(SHTraitVariables)
 
 inline shards::TableIterator begin(const SHTable &a) {
   SHTableIterator it{};
