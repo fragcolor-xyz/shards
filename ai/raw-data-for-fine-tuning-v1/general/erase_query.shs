@@ -2,17 +2,17 @@
   prompt: """How do I delete an element in a sequence?"""
 
   solution: """
-   Erase([index-to-delete] sequence-to-delete-from)
+   Erase(sequence-of-indices-to-delete sequence-to-delete-from)
   """
 
   explicit: """
-    Erase(Indices: [index-to-delete] Name: sequence-to-delete-from)
+    Erase(Indices: sequence-of-indices-to-delete Name: sequence-to-delete-from)
   """
 
   explanation: """
-    Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).
-    For a sequence, this Shard expects the index (or a sequence of indices in descending order) of the element(s) to be erased, followed by the 
-    name of the sequence variable in the Name parameter.
+    Erase deletes sequence of single or multiple index elements and key-value pairs (from tables).
+    For a sequence, this Shard expects a sequence of indices of the element(s) to be erased, followed by the 
+    name of the sequence variable in the Name parameter from which the elements are to be deleted from.
   """
 
   tag: "  #General"

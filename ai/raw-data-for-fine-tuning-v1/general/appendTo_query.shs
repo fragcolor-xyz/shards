@@ -7,7 +7,7 @@
   
 
   explicit: 
-    """ Get(element) | 
+    """ Get(Name: element) | 
     AppendTo(Collection: sequence)"""
   
 
