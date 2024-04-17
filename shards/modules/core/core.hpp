@@ -2262,7 +2262,6 @@ struct Count : SeqUser {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    SeqUser::compose(data);
     return CoreInfo::IntType;
   }
 
