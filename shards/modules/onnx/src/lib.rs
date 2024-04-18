@@ -28,14 +28,10 @@ pub type OnnxModel =
   SimplePlan<TypedFact, Box<dyn TypedOp, Global>, Graph<TypedFact, Box<dyn TypedOp, Global>>>;
 
 lazy_static! {
-  static ref MODEL_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x6f6e6e78, // 'onnx'
-    };
-    t
-  };
+  static ref MODEL_TYPE: Type = Type::object(
+    FRAG_CC,
+    0x6f6e6e78 // 'onnx'
+  );
   static ref MODEL_TYPE_VEC: Vec<Type> = vec![*MODEL_TYPE];
   static ref MODEL_VAR_TYPE: Type = Type::context_variable(&MODEL_TYPE_VEC);
   static ref MODEL_TYPE_VEC_VAR: Vec<Type> = vec![*MODEL_VAR_TYPE];

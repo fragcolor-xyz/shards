@@ -17,6 +17,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHObjectTypeInfo;
+use shards::SHTraits;
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ffi::CString;
@@ -64,7 +65,12 @@ lazy_static! {
     let mut t = common_type::object;
     t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC, // 'frag'
-      typeId: fourCharacterCode(*b"layo")
+      typeId: fourCharacterCode(*b"layo"),
+      traits: SHTraits{
+        elements: core::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      }
     };
     t
   };

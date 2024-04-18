@@ -58,6 +58,7 @@ use crate::shardsc::SHType_String;
 use crate::shardsc::SHType_Table;
 use crate::shardsc::SHType_Wire;
 use crate::shardsc::SHTypesInfo;
+use crate::shardsc::SHTraits;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHVarPayload;
 use crate::shardsc::SHVarPayload__bindgen_ty_1;
@@ -1254,7 +1255,15 @@ impl Type {
     Type {
       basicType: SHType_Object,
       details: SHTypeInfo_Details {
-        object: SHObjectTypeInfo { vendorId, typeId },
+        object: SHObjectTypeInfo {
+          vendorId,
+          typeId,
+          traits: SHTraits {
+            elements: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+          },
+        },
       },
       fixedSize: 0,
       innerType: SHType_None,

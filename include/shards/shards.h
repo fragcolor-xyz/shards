@@ -321,6 +321,8 @@ struct SHSetInterface {
 #define SH_UNION_NAME(_name_)
 #endif
 
+SH_ARRAY_DECL(SHTraits, struct SHTrait);
+
 typedef struct SHTableTypeInfo {
   // If tableKeys is populated, it is expected that
   // tableTypes will be populated as well and that at the same
@@ -335,6 +337,8 @@ typedef struct SHTableTypeInfo {
 typedef struct SHObjectTypeInfo {
   int32_t vendorId;
   int32_t typeId;
+  // The list of traits that this object implements
+  SHTraits traits;
 } SHObjectTypeInfo;
 
 typedef struct SHEnumTypeInfo {
@@ -411,7 +415,7 @@ typedef struct SHTraitVariable {
   // Expected variable type
   struct SHTypeInfo type;
 } SHTraitVariable;
-SH_ARRAY_DECL(SHTraitVariables, SHTraitVariable);
+SH_ARRAY_DECL(SHTraitVariables, struct SHTraitVariable);
 
 typedef struct SHTrait {
   // Unique Id of the trait, which is also the hash of the items
@@ -934,6 +938,7 @@ SH_ARRAY_TYPE(SHExposedTypesInfo, struct SHExposedTypeInfo);
 SH_ARRAY_TYPE(SHEnums, SHEnum);
 SH_ARRAY_TYPE(SHStrings, SHString);
 SH_ARRAY_TYPE(SHTraitVariables, SHTraitVariable);
+SH_ARRAY_TYPE(SHTraits, SHTrait);
 
 #define SH_ARRAY_PROCS(_array_, _short_)   \
   _array_##Free _short_##Free;             \
@@ -1153,6 +1158,9 @@ typedef struct _SHCore {
 
   // Utility to deal with SHTraitVariables
   SH_ARRAY_PROCS(SHTraitVariables, traitVariables);
+
+  // Utility to deal with SHTraits
+  SH_ARRAY_PROCS(SHTraits, traits);
 } SHCore;
 
 typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);

@@ -1,10 +1,17 @@
 #include "type_info.hpp"
 #include "foundation.hpp"
+#include "trait.hpp"
+#include <shards/iterator.hpp>
 
 namespace shards {
-
-void freeDerivedInfo(SHTypeInfo info) {
+void freeTypeInfo(SHTypeInfo info) {
   switch (info.basicType) {
+  case SHType::Object:
+    for (auto &t : info.object.traits) {
+      freeTrait(t);
+    }
+    shards::arrayFree(info.object.traits);
+    break;
   case SHType::Seq: {
     for (uint32_t i = 0; info.seqTypes.len > i; i++) {
       freeDerivedInfo(info.seqTypes.elements[i]);
@@ -30,6 +37,49 @@ void freeDerivedInfo(SHTypeInfo info) {
   default:
     break;
   };
+}
+
+SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
+  // We need to guess a valid SHTypeInfo for this var in order to validate
+  // Build a SHTypeInfo for the var
+  // this is not complete at all, missing Array and SHType::ContextVar for example
+  SHTypeInfo varType;
+  memcpy(&varType, &other, sizeof(SHTypeInfo));
+  switch (varType.basicType) {
+  case SHType::Object:
+    varType.object.traits = {};
+    for (auto &t : other.object.traits) {
+      auto cloned = cloneTrait(t);
+      shards::arrayPush(varType.object.traits, cloned);
+    }
+    break;
+  case SHType::ContextVar:
+  case SHType::Set:
+  case SHType::Seq: {
+    varType.seqTypes = {};
+    for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
+      shards::arrayPush(varType.seqTypes, cloned);
+    }
+    break;
+  }
+  case SHType::Table: {
+    varType.table = {};
+    for (uint32_t i = 0; i < other.table.types.len; i++) {
+      auto cloned = cloneTypeInfo(other.table.types.elements[i]);
+      shards::arrayPush(varType.table.types, cloned);
+    }
+    for (uint32_t i = 0; i < other.table.keys.len; i++) {
+      auto idx = varType.table.keys.len;
+      shards::arrayResize(varType.table.keys, idx + 1);
+      cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
+    }
+    break;
+  }
+  default:
+    break;
+  };
+  return varType;
 }
 
 SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo,
@@ -116,77 +166,4 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
   };
   return varType;
 }
-
-SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
-  // We need to guess a valid SHTypeInfo for this var in order to validate
-  // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and SHType::ContextVar for example
-  SHTypeInfo varType;
-  memcpy(&varType, &other, sizeof(SHTypeInfo));
-  switch (varType.basicType) {
-  case SHType::ContextVar:
-  case SHType::Set:
-  case SHType::Seq: {
-    varType.seqTypes = {};
-    for (uint32_t i = 0; i < other.seqTypes.len; i++) {
-      auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
-      shards::arrayPush(varType.seqTypes, cloned);
-    }
-    break;
-  }
-  case SHType::Table: {
-    varType.table = {};
-    for (uint32_t i = 0; i < other.table.types.len; i++) {
-      auto cloned = cloneTypeInfo(other.table.types.elements[i]);
-      shards::arrayPush(varType.table.types, cloned);
-    }
-    for (uint32_t i = 0; i < other.table.keys.len; i++) {
-      auto idx = varType.table.keys.len;
-      shards::arrayResize(varType.table.keys, idx + 1);
-      cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
-    }
-    break;
-  }
-  default:
-    break;
-  };
-  return varType;
-}
-
-// uint64_t _deriveTypeHash(const SHVar &value) {
-//   if (deriveTypeHashRecursionCounter >= MAX_DERIVED_TYPE_HASH_RECURSION)
-//     throw SHException("deriveTypeHash maximum recursion exceeded");
-//   deriveTypeHashRecursionCounter++;
-//   DEFER(deriveTypeHashRecursionCounter--);
-
-//   XXH3_state_s hashState;
-//   XXH3_INITSTATE(&hashState);
-
-//   XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-
-//   updateTypeHash64(value, &hashState);
-
-//   return XXH3_64bits_digest(&hashState);
-// }
-// uint64_t deriveTypeHash(const SHVar &value) {
-//   deriveTypeHashRecursionCounter = 0;
-//   return _deriveTypeHash(value);
-// }
-
-// void updateTypeHash64(const SHVar &t, XXH3_state_s *state) { updateTypeHash(t, state, XXH3_64bits_update); }
-// void updateTypeHash128(const SHVar &t, XXH3_state_s *state) { updateTypeHash(t, state, XXH3_128bits_update); }
-
-// uint64_t deriveTypeHash(const SHTypeInfo &value) {
-//   XXH3_state_s hashState;
-//   XXH3_INITSTATE(&hashState);
-
-//   XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-
-//   updateTypeHash64(value, &hashState);
-
-//   return XXH3_64bits_digest(&hashState);
-// }
-// void updateTypeHash64(const SHTypeInfo &t, XXH3_state_s *state) { updateTypeHash(t, state, XXH3_64bits_update); }
-// void updateTypeHash128(const SHTypeInfo &t, XXH3_state_s *state) { updateTypeHash(t, state, XXH3_128bits_update); }
 } // namespace shards
-
