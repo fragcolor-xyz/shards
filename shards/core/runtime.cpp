@@ -1190,7 +1190,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   // set output type
   wire->outputType = res.outputType;
 
-  const_cast<SHWire *>(wire)->dispatcher.trigger(SHWire::OnComposedEvent{wire});
+  wire->mesh.lock()->dispatcher.trigger(SHWire::OnComposedEvent{wire});
 
   return res;
 }
@@ -1561,8 +1561,8 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {} (valid types: {}), line: {}, column: {}",
-                              param.name, varType, param.valueTypes, shard->line, shard->column));
+  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
+                              param.name, value, varType, param.valueTypes, shard->line, shard->column));
   callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
 
   return false;
@@ -1699,7 +1699,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
-  wire->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
+  wire->mesh.lock()->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
 
   try {
     auto state =
@@ -1745,6 +1745,8 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
 
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
   bool failed = false;
+
+  std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
 
   // Reset state
   wire->state = SHWire::State::Prepared;
@@ -1793,7 +1795,7 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
     goto endOfWire;
   }
 
-  wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
+  mesh->dispatcher.trigger(SHWire::OnStartEvent{wire});
 
   while (running) {
     running = wire->looped;
@@ -1875,7 +1877,8 @@ endOfWire:
   if (wire->state != SHWire::State::Failed)
     wire->state = SHWire::State::Ended;
 
-  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
+  mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
+  mesh.reset();
 
   // Make sure to clear context at the end so it doesn't point to invalid stack memory
   wire->context = nullptr;
@@ -2696,23 +2699,23 @@ void setString(uint32_t crc, SHString str) {
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
-void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
+void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var) {
   if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
     return;
 
   auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
-  OnExposedVarSet ev{w->id, nameStr, *var, context->currentWire()};
-  w->dispatcher.trigger(ev);
+  OnExposedVarSet ev{w->id, nameStr, *var, isGlobal, context->currentWire()};
+  w->mesh.lock()->dispatcher.trigger(ev);
 }
 
-void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
+void triggerVarValueChange(SHWire *w, const SHVar *name, bool isGlobal, const SHVar *var) {
   if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
     return;
 
   auto nameStr = SHSTRVIEW((*name));
-  OnExposedVarSet ev{w->id, nameStr, *var, w};
-  w->dispatcher.trigger(ev);
+  OnExposedVarSet ev{w->id, nameStr, *var, isGlobal, w};
+  w->mesh.lock()->dispatcher.trigger(ev);
 }
 }; // namespace shards
 
@@ -2799,7 +2802,7 @@ void SHWire::cleanup(bool force) {
   if (warmedUp && (force || wireUsers.size() == 0)) {
     SHLOG_TRACE("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
 
-    dispatcher.trigger(SHWire::OnCleanupEvent{this});
+    mesh.lock()->dispatcher.trigger(SHWire::OnCleanupEvent{this});
 
     warmedUp = false;
 
@@ -2834,7 +2837,7 @@ void SHWire::cleanup(bool force) {
     // finally reset the mesh
     auto mesh_ = mesh.lock();
     if (mesh_) {
-      mesh_->scheduled.erase(shared_from_this());
+      mesh_->wireCleanedUp(this);
     }
     mesh.reset();
 
@@ -2945,7 +2948,9 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
-void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) { shards::triggerVarValueChange(ctx, name, var); }
+void triggerVarValueChange(SHContext *ctx, const SHVar *name, bool isGlobal, const SHVar *var) {
+  shards::triggerVarValueChange(ctx, name, isGlobal, var);
+}
 
 SHContext *getWireContext(SHWireRef wireRef) {
   auto &wire = SHWire::sharedFromRef(wireRef);
@@ -3307,6 +3312,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto mesh = SHMesh::make();
     auto meshVar = SHMesh::MeshVar.Emplace(std::move(mesh));
     return SHMesh::MeshVar.Get(meshVar);
+  };
+
+  result->setMeshLabel = [](SHMeshRef mesh, SHStringWithLen label) noexcept {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->setLabel(std::string_view(label.string, label.len));
   };
 
   result->destroyMesh = [](SHMeshRef mesh) noexcept {

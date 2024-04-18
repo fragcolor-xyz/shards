@@ -176,12 +176,12 @@ struct BaseRunner : public WireBase {
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("BaseRunner: wireOnStop {}", wire->name);
 
-    assert(e.wire == wire.get());
-
-    for (auto &v : _vars) {
-      // notice, this should be already destroyed by the wire releaseVariable
-      std::string_view name = v.variableName(); // notice this calls a strlen!
-      destroyVar(wire->getVariable(ToSWL(name)));
+    if (e.wire == wire.get()) {
+      for (auto &v : _vars) {
+        // notice, this should be already destroyed by the wire releaseVariable
+        std::string_view name = v.variableName(); // notice this calls a strlen!
+        destroyVar(wire->getVariable(ToSWL(name)));
+      }
     }
   }
 
@@ -201,10 +201,18 @@ struct BaseRunner : public WireBase {
         onStopConnection.reset();
       }
 
-      onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
+      auto mesh = wire->mesh.lock();
+      if (mesh) {
+        onStopConnection = mesh->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
+      }
     }
 
     _mesh = ctx->main->mesh.lock();
+
+    // Fixup the wire id, since compose may be skipped, but id changed
+    if (wire) {
+      wire->id = ctx->currentWire()->id;
+    }
   }
 
   void doWarmup(SHContext *context) {
@@ -229,6 +237,9 @@ struct BaseRunner : public WireBase {
           cloneVar(wire->getVariable(ToSWL(name)), var);
         }
       }
+
+      // Assign wire id again, since it's reset on stop
+      wire->id = context->currentWire()->id;
 
       // validated during infer not here! (false)
       _mesh->schedule(wire, input, false);
@@ -271,6 +282,9 @@ struct BaseRunner : public WireBase {
       if (wire->state == SHWire::Failed) {
         throw ActivationError(fmt::format("Step: wire {} warmup failed", wire->name));
       }
+
+      // Assign wire id again, since it's reset on stop
+      wire->id = context->currentWire()->id;
     }
 
     shassert(wire->context && "wire context should be valid at this point");

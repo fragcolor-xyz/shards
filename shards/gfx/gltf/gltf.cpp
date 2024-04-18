@@ -14,6 +14,7 @@
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
+#include <gfx/features/alpha_cutoff.hpp>
 #include <boost/container/flat_map.hpp>
 #include <iterator>
 #include <memory>
@@ -475,6 +476,17 @@ struct Loader {
           material->parameters.set(name, param);
         }
       };
+
+      if (gltfMaterial.alphaMode == "MASK") {
+        material->features.push_back(features::AlphaCutoff::create());
+        material->parameters.set("alphaCutoff", float(gltfMaterial.alphaCutoff));
+      } else if (gltfMaterial.alphaMode == "BLEND") {
+        auto &feature = material->features.emplace_back(std::make_shared<Feature>());
+        feature->state.set_blend(BlendState{
+            .color = BlendComponent::Alpha,
+            .alpha = BlendComponent::Opaque,
+        });
+      }
 
       convertOptionalFloat4Param("baseColor", gltfMaterial.pbrMetallicRoughness.baseColorFactor, float4(1, 1, 1, 1));
       convertOptionalFloatParam("roughness", gltfMaterial.pbrMetallicRoughness.roughnessFactor, 1.0f);

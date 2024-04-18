@@ -9,6 +9,7 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
+use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -116,7 +117,12 @@ pub struct EvalEnv {
 
 impl Drop for EvalEnv {
   fn drop(&mut self) {
-    // keep this because we want borrow checker warnings
+    self.shards.clear();
+    self.finalized_wires.clear();
+    self.deferred_wires.clear();
+    self.definitions.clear();
+    // Explicitly keep meshes alive as long as possible
+    self.meshes.clear();
   }
 }
 
@@ -1154,7 +1160,7 @@ fn as_var(
         Ok(SVar::NotCloned(mesh.0 .0))
       } else if let Some(replacement) = find_replacement(name, e) {
         if let Value::Identifier(current) = replacement {
-          if current.name.as_str() == name.name.as_str() {
+          if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
             // prevent infinite recursion
             return qualify_variable(name, line_info, e);
           }
@@ -2954,7 +2960,11 @@ fn eval_pipeline(
                     );
                   }
 
-                  e.meshes.insert(name.clone(), MeshVar::new());
+                  let mut new_mesh = MeshVar::new();
+                  let mesh_name_str: String = name.resolve().to_string();
+                  new_mesh.set_label(mesh_name_str.as_str());
+
+                  e.meshes.insert(name.clone(), new_mesh);
                   Ok(())
                 }
                 _ => Err(

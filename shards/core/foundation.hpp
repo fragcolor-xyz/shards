@@ -312,8 +312,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards
 
-  mutable entt::dispatcher dispatcher{};
-
   std::weak_ptr<SHMesh> mesh;
 
   std::vector<Shard *> shards;
@@ -1515,11 +1513,19 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
   return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
-inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, std::string_view variableName) {
+inline const SHExposedTypeInfo *findExposedVariablePtr(const SHExposedTypesInfo &exposed, std::string_view variableName) {
   for (const auto &entry : exposed) {
     if (variableName == entry.name) {
-      return entry;
+      return &entry;
     }
+  }
+  return nullptr;
+}
+
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, std::string_view variableName) {
+  auto ptr = findExposedVariablePtr(exposed, variableName);
+  if (ptr) {
+    return *ptr;
   }
   return std::nullopt;
 }

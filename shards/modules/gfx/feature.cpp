@@ -45,7 +45,7 @@
 using namespace shards;
 
 namespace gfx {
-enum class BuiltinFeatureId { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
+enum class BuiltinFeatureId { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity, AlphaBlend };
 enum class RequiredAttributes_ { Tangent };
 } // namespace gfx
 
@@ -58,6 +58,7 @@ ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::VertexColorFromNormal, S
 ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Wireframe, SHCCSTR("Modifies the main color to visualize vertex edges"));
 ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Velocity,
           SHCCSTR("Outputs object velocity into the velocity global & output"));
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::AlphaBlend, SHCCSTR("Simple feature that enables alpha blending"));
 
 namespace gfx {
 DECL_ENUM_INFO(RequiredAttributes_, RequiredAttributes, 'fatt');
@@ -116,6 +117,11 @@ struct BuiltinFeatureShard {
       break;
     case BuiltinFeatureId::Velocity:
       *_feature = features::Velocity::create();
+      break;
+    case BuiltinFeatureId::AlphaBlend:
+      *_feature = std::make_shared<Feature>();
+      (*_feature)->state.set_blend(BlendState{.color = BlendComponent::Alpha, .alpha = BlendComponent::Opaque});
+      (*_feature)->state.set_depthWrite(false);
       break;
     }
   }

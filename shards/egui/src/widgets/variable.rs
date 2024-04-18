@@ -56,7 +56,12 @@ static HEADERS_TYPES: &[Type] = &[
 
 extern "C" {
   fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
-  fn triggerVarValueChange(context: *mut Context, name: *const Var, var: *const Var);
+  fn triggerVarValueChange(
+    context: *mut Context,
+    name: *const Var,
+    is_global: bool,
+    var: *const Var,
+  );
   fn getWireContext(wire: WireRef) -> *mut Context;
 }
 
@@ -72,6 +77,7 @@ impl Default for Variable {
       name: ClonedVar::default(),
       mutable: true,
       inner_type: None,
+      global: false,
     }
   }
 }
@@ -148,6 +154,7 @@ impl LegacyShard for Variable {
               return Err("UI.Variable: Sequence must have only one type");
             }
             self.inner_type = Some(slice[0]);
+            self.global = var.global;
           }
           break;
         }
@@ -204,6 +211,7 @@ impl LegacyShard for Variable {
             triggerVarValueChange(
               context as *const Context as *mut Context,
               self.name.as_ref() as *const Var,
+              self.global,
               var_ref as *const Var,
             );
             var_ref.__bindgen_anon_1.version += 1
@@ -301,6 +309,7 @@ impl LegacyShard for WireVariable {
             triggerVarValueChange(
               getWireContext(wire),
               name_var as *const Var,
+              false,
               var_ref as *const Var,
             );
             var_ref.__bindgen_anon_1.version += 1
