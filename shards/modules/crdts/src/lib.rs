@@ -57,6 +57,7 @@ type CRDTOp = crdts::map::Op<CRDTVar, MVReg<CRDTVar, u128>, u128>;
 struct Document {
   crdt: CRDT,
   client_id: u128,
+  deferred : Vec<CRDTOp>,
 }
 
 // CRDT.Open
@@ -141,6 +142,7 @@ impl Shard for CRDTOpenShard {
       let _ = self.crdt.replace(Some(Document {
         crdt: Map::new(),
         client_id,
+        deferred: Vec::new(),
       }));
 
       self.output = Var::new_object(&self.crdt, &CRDT_TYPE);
@@ -682,8 +684,6 @@ struct CRDTApplyShard {
   crdt_param: ParamVar,
 
   crdt: Option<Rc<RefCell<Option<Document>>>>,
-
-  deferred: Vec<CRDTOp>,
 }
 
 impl Default for CRDTApplyShard {
@@ -692,7 +692,6 @@ impl Default for CRDTApplyShard {
       required: ExposedTypes::new(),
       crdt_param: ParamVar::default(),
       crdt: None,
-      deferred: Vec::new(),
     }
   }
 }
@@ -714,7 +713,6 @@ impl Shard for CRDTApplyShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-    self.deferred.clear();
     self.crdt = None;
     Ok(())
   }
@@ -746,35 +744,48 @@ impl Shard for CRDTApplyShard {
 
     match res {
       Err(CmRDTValidation::SourceOrder(_)) => {
-        self.deferred.push(op);
-        return Ok(*input);
+        doc.deferred.push(op);
       }
       Err(e) => {
         shlog_error!("CRDT.Apply error: {:?}", e);
         return Err("Operation is invalid.");
       }
-      _ => {}
+      Ok(_) => {
+        // apply the operation
+        crdt.apply(op);
+      }
     }
-
-    // apply the operation
-    crdt.apply(op);
 
     // brute force for now, try apply deferred operations in a loop, in whatever order
     // todo - implement a proper deferred operation queue
     // iterate by index in reverse order to remove applied operations
-    for i in (0..self.deferred.len()).rev() {
-      let op = &self.deferred[i];
-      let res = crdt.validate_op(&op);
-      match res {
-        Err(CmRDTValidation::SourceOrder(_)) => continue,
-        Err(e) => {
-          shlog_error!("CRDT.Apply error: {:?}", e);
-          return Err("Operation is invalid.");
+    loop {
+      let mut applied = false; // Flag to check if any operation was applied
+
+      for i in (0..doc.deferred.len()).rev() {
+        let op = &doc.deferred[i];
+        let res = crdt.validate_op(op);
+
+        match res {
+          Err(CmRDTValidation::SourceOrder(_)) => continue, // Skip this operation, re-check in next full iteration
+          Err(e) => {
+            shlog_error!("CRDT.Apply error: {:?}", e);
+            return Err("Operation is invalid.");
+          }
+          Ok(_) => {
+            // Only remove and apply when the operation is valid
+            let op = doc.deferred.remove(i); // Remove the operation from the list
+            crdt.apply(op);
+            applied = true; // Set the flag since an operation was applied
+            break; // Break the inner loop to restart the outer loop
+          }
         }
-        _ => {}
       }
-      let op = self.deferred.remove(i);
-      crdt.apply(op);
+
+      if !applied {
+        // If no operations were applied in this iteration, break the outer loop
+        break;
+      }
     }
 
     Ok(*input)

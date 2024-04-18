@@ -1,7 +1,8 @@
 CRDT.Open(@i16(77)) = crdt
 CRDT.Open(@i16(99)) = crdt-copy
-10 | CRDT.Set(crdt "K1") | Log >> crdt-ops
-"Hello World" | CRDT.Set(crdt "K2") | Log >> crdt-ops
+CRDT.Open(@i16(88)) = crdt-copy2
+10 | CRDT.Set(crdt "K1") | Log >> crdt-ops = op-1
+"Hello World" | CRDT.Set(crdt "K2") | Log >> crdt-ops = op-2
 
 CRDT.Save(crdt) | Log("pre delete") = crdt-snapshot-1
 
@@ -13,12 +14,12 @@ CRDT.Get(crdt2 "K1") | Assert.Is(10)
 CRDT.Get(crdt2 "K2") | Assert.Is("Hello World")
 
 CRDT.Get(crdt "K2") | Assert.Is("Hello World")
-CRDT.Delete(crdt "K2") | Log >> crdt-ops
+CRDT.Delete(crdt "K2") | Log >> crdt-ops = op-3
 CRDT.Get(crdt "K2") | Assert.Is(none)
 
 CRDT.Save(crdt) | Log("post delete") = crdt-snapshot-2
 
-11 | CRDT.Set(crdt "K2") | Log >> crdt-ops
+11 | CRDT.Set(crdt "K2") | Log >> crdt-ops = op-4
 
 CRDT.Save(crdt) | Log("post set")
 
@@ -36,6 +37,7 @@ CRDT.Get(crdt2 "K2") | Assert.Is(none)
 
 crdt-ops | Log("ops")
 Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
+Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
 crdt-ops | Log("shuffled ops")
 
 crdt-ops | ForEach({
@@ -46,3 +48,11 @@ crdt-ops | ForEach({
 
 CRDT.Save(crdt) = crdt-final-snapshot | Log("pre apply final")
 CRDT.Save(crdt-copy) | Log("post apply final") | Is(crdt-final-snapshot) | Assert.Is(true)
+
+; on purpose apply delete op last, and others in inverse order
+op-4 | Log("op-4") | CRDT.Apply(crdt-copy2)
+op-2 | Log("op-2") | CRDT.Apply(crdt-copy2)
+op-1 | Log("op-1") | CRDT.Apply(crdt-copy2)
+op-3 | Log("op-3") | CRDT.Apply(crdt-copy2)
+
+CRDT.Save(crdt-copy2) | Log("post apply final") | Is(crdt-final-snapshot) | Assert.Is(true)
