@@ -6,7 +6,7 @@ How to use Maybe in Shards?
 solution:"""
 [1 2]
 Maybe( 
- Take(3) {Msg("Invalid, default to 42" LogLevel.Warning)
+ Take(3) {Msg("Invalid, default to 42" LogLevel::Warning)
  42
  }
  true

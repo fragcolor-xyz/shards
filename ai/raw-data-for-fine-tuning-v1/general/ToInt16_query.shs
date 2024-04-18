@@ -2,12 +2,12 @@
   prompt: """How do I convert a float to an int16?"""
 
   solution: """
-   5.0 ; float to convert
+   5.0
    ToInt16
   """
 
   explicit: """
-   5.0 ; float to convert
+   5.0
    ToInt16
   """
 

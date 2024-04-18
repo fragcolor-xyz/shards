@@ -2,7 +2,7 @@
   prompt: """How do I sort all the values of a sequence in ascending order?"""
 
   solution: """
-    [0 1 2 3 4 5] >= sequence
+    [3 1 4 0 2 5] >= sequence
 
     Sort (
       sequence
@@ -10,7 +10,7 @@
   """
 
   explicit: """
-    [0 1 2 3 4 5] >= sequence
+    [3 1 4 0 2 5] >= sequence
 
     Sort (
       From: sequence

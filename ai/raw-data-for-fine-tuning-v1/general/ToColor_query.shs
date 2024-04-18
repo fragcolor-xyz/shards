@@ -2,12 +2,12 @@
   prompt: """How do I convert a integer to a RGBA color value?"""
 
   solution: """
-   5 ; integer to convert
+   5 
    ToColor
   """
 
   explicit: """
-   5 ; integer to convert
+   5
    ToColor
   """
 

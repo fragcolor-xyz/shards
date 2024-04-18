@@ -12,7 +12,7 @@ Math.Add(sum) > sum
 )
 
 sum | 
-Assert.Is(499500 true)
+Assert.Is(499500)
 """
 
 explicit: """
@@ -28,7 +28,7 @@ Log(Prefix: "" Level: LogLevel::Info)
 )
 
 sum | 
-Assert.Is(Value: 499500 Break: true)
+Assert.Is(Value: 499500)
 """
 
 explanation: """

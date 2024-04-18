@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to an int3?"""
 
   solution: """
-   "5" ; string to convert
+   "5"
    ToInt3
   """
 
   explicit: """
-   "5" ; string to convert
+   "5"
    ToInt3
   """
 

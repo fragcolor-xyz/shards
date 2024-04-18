@@ -7,7 +7,7 @@
     sequence
     Replace(
       [1]
-      [2]
+      [21]
     )
     Log("result")
   """
@@ -18,7 +18,7 @@
     Get(Name: sequence)
     Replace(
       Patterns: [1 4]
-      Replacements: [2 2]
+      Replacements: [21 22]
     )
     Log(Prefix:"result" Level: LogLevel::Info) 
   """

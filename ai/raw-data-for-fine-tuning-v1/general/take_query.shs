@@ -2,14 +2,14 @@
   prompt: """How do I get an element of a specific index in a sequence?"""
 
   solution: """
-   [0 1 2 3 4] = sequence
+   [7 1 2 3 4] = sequence
 
    sequence
-   Take() ; Replace 0 accordingly with the desired index
+   Take(0) ; Replace 0 accordingly with the desired index
   """
 
   explicit: """
-   [0 1 2 3 4] = sequence
+   [7 1 2 3 4] = sequence
 
 
    Get(Name: sequence)

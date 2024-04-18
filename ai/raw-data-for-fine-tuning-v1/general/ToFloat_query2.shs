@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to a float?"""
 
   solution: """
-   "5" ; string to convert
+   "5" 
    ToFloat
   """
 
   explicit: """
-   "5" ; string to convert
+   "5" 
    ToFloat
   """
 

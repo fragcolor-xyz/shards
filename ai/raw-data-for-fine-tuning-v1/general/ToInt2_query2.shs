@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to an int2?"""
 
   solution: """
-   "5.0" ; string to convert
+   "5.0"
    ToInt2
   """
 
   explicit: """
-   "5.0" ; string to convert
+   "5.0"
    ToInt2
   """
 

@@ -2,13 +2,13 @@
   prompt: """How to remove the first element in the sequence and get the element that was removed?"""
 
   solution: """
-   PopFront(sequence-to-drop)
-   Log("Remaining Sequence")
+   PopFront(sequence-to-pop)
+   Log("Popped First Element")
   """
 
   explicit: """
-    PopFront(Name: sequence-to-drop)
-    Log(Prefix: "Remaining Sequence" Level: LogLevel::Info)
+    PopFront(Name: sequence-to-pop)
+    Log(Prefix: "Popped First Element" Level: LogLevel::Info)
   """
 
   explanation: """

@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to an int4?"""
 
   solution: """
-   "5" ; string to convert
+   "5"
    ToInt4
   """
 
   explicit: """
-   "5" ; atring to convert
+   "5"
    ToInt4
   """
 

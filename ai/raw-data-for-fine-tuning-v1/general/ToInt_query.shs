@@ -2,12 +2,12 @@
   prompt: """How do I convert a float to an integer?"""
 
   solution: """
-   5.0 ; integer to convert
+   5.0
    ToInt
   """
 
   explicit: """
-   5.0 ; integer to convert
+   5.0
    ToInt
   """
 

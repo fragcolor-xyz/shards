@@ -2,12 +2,12 @@
   prompt: """How do I convert a byte to an hexidecimal value?"""
 
   solution: """
-   5 ; byte to convert
+   5
    ToHex
   """
 
   explicit: """
-   5 ; byte to convert
+   5
    ToHex
   """
 

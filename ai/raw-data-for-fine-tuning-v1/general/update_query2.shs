@@ -2,11 +2,11 @@
   prompt: """How do I update a key in a table?"""
 
   solution: """
-   5 | Update(variable-to-update "key1")
+   5 | Update(table-to-update "key1")
   """
 
   explicit: """
-    5 | Update(Name: variable-to-update Key: "key1")
+   5 | Update(Name: table-to-update Key: "key1")
   """
 
   explanation: """

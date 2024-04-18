@@ -2,13 +2,13 @@
   prompt: """How to remove the last element in the sequence and get the element that was removed?"""
 
   solution: """
-   Pop(sequence-to-drop)
-   Log("Remaining Sequence")
+   Pop(sequence-to-pop)
+   Log("Popped Last Element")
   """
 
   explicit: """
-    Pop(Name: sequence-to-drop)
-    Log(Prefix: "Remaining Sequence" Level: LogLevel::Info)
+    Pop(Name: sequence-to-pop)
+    Log(Prefix: "Popped Last Element" Level: LogLevel::Info)
   """
 
   explanation: """

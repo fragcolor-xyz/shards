@@ -2,12 +2,12 @@
   prompt: """How do i convert and int to Leb128 format?"""
 
   solution: """
-   5 ; int to convert
+   5
    ToLEB128(false)
   """
 
   explicit: """
-   5 ; int to convert
+   5
    ToLEB128(Signed: false)
   """
 

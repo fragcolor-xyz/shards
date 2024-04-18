@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to an int8?"""
 
   solution: """
-   "5" ; string to convert
+   "5"
    ToInt8
   """
 
   explicit: """
-   "5" ; string to convert
+   "5"
    ToInt8
   """
 

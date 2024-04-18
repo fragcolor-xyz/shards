@@ -2,12 +2,12 @@
   prompt: """How do I convert a string to an hexidecimal value?"""
 
   solution: """
-   "5" ; string to convert
+   "5"
    ToHex
   """
 
   explicit: """
-   "5" ; string to convert
+   "5"
    ToHex
   """
 

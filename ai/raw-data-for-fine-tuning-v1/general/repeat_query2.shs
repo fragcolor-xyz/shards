@@ -8,7 +8,7 @@
     n | Math.Add(1) > n
    }
    true
-  {n | IsMore(3)})
+  n | IsMore(3))
   """
 
   explicit: """
