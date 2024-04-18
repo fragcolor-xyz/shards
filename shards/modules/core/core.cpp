@@ -473,8 +473,8 @@ struct Profile {
     const auto start = std::chrono::high_resolution_clock::now();
     activateShards(SHVar(_shards).payload.seqValue, context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
-    const auto dur = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
-    SHLOG_INFO("{} took {} microseconds.", dur);
+    const auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+    SHLOG_INFO("{} took {} nanoseconds.", _label, dur);
     return output;
   }
 };
