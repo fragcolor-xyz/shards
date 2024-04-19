@@ -1258,11 +1258,12 @@ impl Type {
         object: SHObjectTypeInfo {
           vendorId,
           typeId,
-          traits: SHTraits {
-            elements: core::ptr::null_mut(),
-            len: 0,
-            cap: 0,
-          },
+          extended: core::ptr::null_mut(),
+          // traits: SHTraits {
+          //   elements: core::ptr::null_mut(),
+          //   len: 0,
+          //   cap: 0,
+          // },
         },
       },
       fixedSize: 0,

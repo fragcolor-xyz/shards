@@ -27,6 +27,11 @@ struct TypeMatcher {
       if (inputType.object.vendorId != receiverType.object.vendorId || inputType.object.typeId != receiverType.object.typeId) {
         return false;
       }
+      if (receiverType.object.extended) {
+        if (!receiverType.object.extended->matchType(&receiverType, &inputType)) {
+          return false;
+        }
+      }
       break;
     }
     case SHType::Enum: {
@@ -42,7 +47,7 @@ struct TypeMatcher {
     }
     case SHType::Seq: {
       if (strict) {
-        if(inputType.seqTypes.len == 0 && receiverType.seqTypes.len == 0) {
+        if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len == 0) {
           return true;
         } else if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
           // all input types must be in receiver, receiver can have more ofc

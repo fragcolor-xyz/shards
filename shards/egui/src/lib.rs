@@ -66,11 +66,7 @@ lazy_static! {
     t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC, // 'frag'
       typeId: fourCharacterCode(*b"layo"),
-      traits: SHTraits{
-        elements: core::ptr::null_mut(),
-        len: 0,
-        cap: 0,
-      }
+      extended: core::ptr::null_mut(),
     };
     t
   };

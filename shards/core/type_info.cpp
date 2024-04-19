@@ -7,10 +7,13 @@ namespace shards {
 void freeTypeInfo(SHTypeInfo info) {
   switch (info.basicType) {
   case SHType::Object:
-    for (auto &t : info.object.traits) {
-      freeTrait(t);
+    // for (auto &t : info.object.traits) {
+    //   freeTrait(t);
+    // }
+    // shards::arrayFree(info.object.traits);
+    if (info.object.extended) {
+      info.object.extended->release(info.object.extended);
     }
-    shards::arrayFree(info.object.traits);
     break;
   case SHType::Seq: {
     for (uint32_t i = 0; info.seqTypes.len > i; i++) {
@@ -47,10 +50,8 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
   memcpy(&varType, &other, sizeof(SHTypeInfo));
   switch (varType.basicType) {
   case SHType::Object:
-    varType.object.traits = {};
-    for (auto &t : other.object.traits) {
-      auto cloned = cloneTrait(t);
-      shards::arrayPush(varType.object.traits, cloned);
+    if (other.object.extended) {
+      other.object.extended->reference(other.object.extended);
     }
     break;
   case SHType::ContextVar:

@@ -334,11 +334,13 @@ typedef struct SHTableTypeInfo {
   SHTypesInfo types;
 } SHTableTypeInfo;
 
+typedef struct SHExtendedObjectTypeInfo SHExtendedObjectTypeInfo;
 typedef struct SHObjectTypeInfo {
   int32_t vendorId;
   int32_t typeId;
-  // The list of traits that this object implements
-  SHTraits traits;
+  // Provides additional object functionality
+  // when this is used, it should be used everywhere
+  SHExtendedObjectTypeInfo* extended;
 } SHObjectTypeInfo;
 
 typedef struct SHEnumTypeInfo {
@@ -455,20 +457,19 @@ struct SHObjectInfo {
   bool isThreadSafe;
 };
 
-typedef struct SHExtendedTypeInfo SHExtendedTypeInfo;
 typedef struct SHTypeInfo SHTypeInfo;
 
-typedef bool(__cdecl *SHExtTypeMatch)(SHTypeInfo *self, SHTypeInfo *other);
-typedef void(__cdecl *SHExtTypeHash)(SHTypeInfo *self, void *outDigest, size_t digestSize);
-typedef void(__cdecl *SHExtTypeReference)(SHExtendedTypeInfo *self);
-typedef void(__cdecl *SHExtTypeRelease)(SHExtendedTypeInfo *self);
+typedef bool(__cdecl *SHExtTypeMatch)(const SHTypeInfo *self, const SHTypeInfo *other);
+typedef void(__cdecl *SHExtTypeHash)(const SHTypeInfo *self, void *outDigest, size_t digestSize);
+typedef void(__cdecl *SHExtTypeReference)(SHExtendedObjectTypeInfo *self);
+typedef void(__cdecl *SHExtTypeRelease)(SHExtendedObjectTypeInfo *self);
 
-typedef struct SHExtendedTypeInfo {
+typedef struct SHExtendedObjectTypeInfo {
   SHExtTypeMatch matchType;
   SHExtTypeHash hash;
   SHExtTypeReference reference;
   SHExtTypeRelease release;
-} SHExtendedTypeInfo;
+} SHExtendedObjectTypeInfo;
 
 struct SHEnumInfo {
   SHString name;
