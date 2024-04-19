@@ -7,6 +7,7 @@
 #include <shards/linalg_shim.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/params.hpp>
+#include <shards/modules/core/time.hpp>
 #include <shards/modules/inputs/inputs.hpp>
 #include <shards/modules/gfx/gfx.hpp>
 #include <SDL_events.h>
@@ -102,6 +103,8 @@ struct MainWindow final {
   ExposedInfo _exposedVariables;
 
   std::optional<ShardsRenderer> _renderer;
+
+  shards::Time::DeltaTimer _deltaTimer;
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedVariables); }
 
@@ -244,6 +247,10 @@ struct MainWindow final {
     if (!_windowContext->window) {
       callOnMeshThread(shContext, [&]() { initWindow(shContext); });
     }
+
+    double deltaTime = _deltaTimer.update();
+    _windowContext->time += deltaTime;
+    _windowContext->deltaTime = (float)deltaTime;
 
     auto &window = _windowContext->window;
 
