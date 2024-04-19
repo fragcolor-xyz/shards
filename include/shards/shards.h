@@ -455,6 +455,21 @@ struct SHObjectInfo {
   bool isThreadSafe;
 };
 
+typedef struct SHExtendedTypeInfo SHExtendedTypeInfo;
+typedef struct SHTypeInfo SHTypeInfo;
+
+typedef bool(__cdecl *SHExtTypeMatch)(SHTypeInfo *self, SHTypeInfo *other);
+typedef void(__cdecl *SHExtTypeHash)(SHTypeInfo *self, void *outDigest, size_t digestSize);
+typedef void(__cdecl *SHExtTypeReference)(SHExtendedTypeInfo *self);
+typedef void(__cdecl *SHExtTypeRelease)(SHExtendedTypeInfo *self);
+
+typedef struct SHExtendedTypeInfo {
+  SHExtTypeMatch matchType;
+  SHExtTypeHash hash;
+  SHExtTypeReference reference;
+  SHExtTypeRelease release;
+} SHExtendedTypeInfo;
+
 struct SHEnumInfo {
   SHString name;
   SHStrings labels;
@@ -490,6 +505,17 @@ struct SHExposedTypeInfo {
   // If the variable is market as exposed, apps building on top will can use this feature
   SHBool exposed;
 };
+
+typedef struct SHStringPayload {
+  char* elements;
+  // this field is an optional optimization
+  // if 0 strlen should be called to find the string length
+  // if not 0 should be assumed valid
+  uint32_t len;
+  // this is mostly used internal
+  // useful when serializing, recycling memory
+  uint32_t cap;
+} SHStringPayload;
 
 // # Of SHVars and memory
 
@@ -545,6 +571,9 @@ struct SHVarPayload {
 
     struct SHSet setValue;
 
+    SHStringPayload string;
+
+    // WARNING: Keep this in sync with SHStringPayload
     struct {
       SHString stringValue;
       // this field is an optional optimization
@@ -1003,10 +1032,17 @@ typedef const struct SHObjectInfo *(__cdecl *SHFindObjectInfo)(int32_t vendorId,
 typedef int64_t(__cdecl *SHFindObjectTypeId)(SHStringWithLen name);
 typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 
+typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, size_t newCap);
+typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
+
 typedef struct _SHCore {
   // Aligned allocator
   SHAlloc alloc;
   SHFree free;
+
+  // String interface
+  SHStringGrow stringGrow;
+  SHStringFree stringFree;
 
   // SHTable interface
   SHTableNew tableNew;

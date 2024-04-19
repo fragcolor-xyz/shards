@@ -137,6 +137,8 @@ inline void destroyVar(SHVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
+using String = TString<InternalCore>;
+
 void decRef(ShardPtr shard);
 void incRef(ShardPtr shard);
 
@@ -194,18 +196,26 @@ struct TypeInfo {
   }
 
   TypeInfo &operator=(const SHTypeInfo &info) {
-    freeDerivedInfo(_info);
+    freeTypeInfo(_info);
     _info = cloneTypeInfo(info);
     return *this;
   }
 
-  ~TypeInfo() { freeDerivedInfo(_info); }
+  TypeInfo &operator=(TypeInfo &&info) {
+    freeTypeInfo(_info);
+    _info = info._info;
+    info._info = {};
+    return *this;
+  }
+
+  ~TypeInfo() { freeTypeInfo(_info); }
 
   operator const SHTypeInfo &() { return _info; }
 
   const SHTypeInfo *operator->() const { return &_info; }
-
   const SHTypeInfo &operator*() const { return _info; }
+  SHTypeInfo *operator->() { return &_info; }
+  SHTypeInfo &operator*() { return _info; }
 
 private:
   SHTypeInfo _info{};

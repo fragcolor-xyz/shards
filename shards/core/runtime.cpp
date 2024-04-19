@@ -1222,6 +1222,14 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
+  for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    // This only does a quick check to see if the type is roughly correct
+    // ContextVariable types will be checked in validateConnection based on requiredVariables
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
+      return true; // we are good just exit
+    }
+  }
+
   std::string err(
       fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
                   param.name, value, varType, param.valueTypes, shard->line, shard->column));

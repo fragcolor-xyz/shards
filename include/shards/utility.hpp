@@ -378,6 +378,66 @@ public:
   const SHComposeResult &composeResult() const { return _wireValidation; }
 };
 
+template <typename SH_CORE> struct TString {
+  SHStringPayload arr{};
+
+  TString() = default;
+  TString(const char *str) { *this = std::string_view(str); }
+  TString(const std::string_view sv) { *this = sv; }
+  TString(const TString &other) { *this = other; }
+
+  TString &operator=(const std::string_view sv) {
+    resize(sv.size());
+    memcpy(arr.elements, sv.data(), arr.len);
+    arr.elements[arr.len] = 0;
+    return *this;
+  }
+  TString &operator=(const TString &other) {
+    return (*this = std::string_view(other));
+  }
+  ~TString() {
+    SH_CORE::stringFree(&arr);
+  }
+
+  void assign(const std::string_view sv) {
+    resize(sv.size());
+    memcpy(arr.elements, sv.data(), arr.len);
+    arr.elements[arr.len] = 0;
+  }
+
+  size_t size() const { return arr.len; }
+  const char *c_str() const { return data(); }
+  const char *data() const { return (char *)arr.elements; }
+
+  void resize(size_t size) {
+    if ((size + 1) >= arr.cap) {
+      SH_CORE::stringGrow(&arr, size + 1);
+    }
+    arr.len = size;
+  }
+
+  void push_back(char c) {
+    size_t idx = size();
+    resize(idx + 1);
+    arr.elements[idx] = c;
+    arr.elements[idx + 1] = 0;
+  }
+
+  void clear() {
+    arr.len = 0;
+    if (arr.elements) {
+      arr.elements[0] = 0;
+    }
+  }
+
+  operator std::string_view() const { return {c_str(), size()}; }
+  std::strong_ordering operator<=>(std::string_view other) const { return std::string_view(*this) <=> other; }
+  std::strong_ordering operator<=>(const TString &other) const { return std::string_view(*this) <=> std::string_view(other); }
+  bool operator==(std::string_view other) const { return std::string_view(*this) == other; }
+  bool operator!=(std::string_view other) const { return std::string_view(*this) != other; }
+  bool operator<(std::string_view other) const { return std::string_view(*this) < other; }
+};
+
 template <class SH_CORE> struct TOwnedVar : public SHVar {
   TOwnedVar() : SHVar() {}
   TOwnedVar(TOwnedVar &&other) : SHVar() {

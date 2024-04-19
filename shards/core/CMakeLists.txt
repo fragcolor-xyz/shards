@@ -84,7 +84,7 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread)
+target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
 
 if(NOT EMSCRIPTEN)
   target_link_libraries(shards-core Boost::beast Boost::asio Boost::context)
