@@ -57,7 +57,7 @@ type CRDTOp = crdts::map::Op<CRDTVar, MVReg<CRDTVar, u128>, u128>;
 struct Document {
   crdt: CRDT,
   client_id: u128,
-  deferred : Vec<CRDTOp>,
+  deferred: Vec<CRDTOp>,
 }
 
 // CRDT.Open
@@ -792,6 +792,77 @@ impl Shard for CRDTApplyShard {
   }
 }
 
+// CRDT.State extract the whole state of the CRDT as a state vector (clock vectors)
+#[derive(shards::shard)]
+#[shard_info(
+  "CRDT.State",
+  "Extracts the whole state of the CRDT as a state vector."
+)]
+struct CRDTStateShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("CRDT", "The CRDT instance to extract the state from.", [*CRDT_VAR_TYPE])]
+  crdt_param: ParamVar,
+
+  crdt: Option<Rc<RefCell<Option<Document>>>>,
+  output: Vec<u8>,
+}
+
+impl Default for CRDTStateShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      crdt_param: ParamVar::default(),
+      crdt: None,
+      output: Vec::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CRDTStateShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.crdt = None;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    if self.crdt.is_none() {
+      let crdt = self.crdt_param.get();
+      let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
+      self.crdt = Some(crdt);
+    }
+
+    let binding = self.crdt.as_ref().unwrap().borrow();
+    let doc = binding.as_ref().unwrap();
+    let crdt = &doc.crdt;
+    let state: crdts::ctx::ReadCtx<(), u128> = crdt.read_ctx();
+    self.output = bincode::serialize(&state).map_err(|_| "Failed to serialize state.")?;
+    Ok(self.output.as_slice().into())
+  }
+}
+
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_crdts_crdts(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -809,4 +880,6 @@ pub extern "C" fn shardsRegister_crdts_crdts(core: *mut shards::shardsc::SHCore)
 
   register_shard::<CRDTMergeShard>();
   register_shard::<CRDTApplyShard>();
+
+  register_shard::<CRDTStateShard>();
 }
