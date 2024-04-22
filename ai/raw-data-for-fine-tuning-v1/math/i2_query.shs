@@ -1,19 +1,16 @@
 {
-prompt: """
-How to use @i2 int2 type?
-"""
-
-solution:"""
-@i2(4 5) | Math.Add(@i2(6 9))
-Log
-"""
-
-explicit: """
-@i2(4 5) | Math.Add(Operand: @i2(6 9))
-Log(Prefix: "" Level: LogLevel::Info)
-"""
-
-explanation: """
-Type Int2 defines a vector of two Int type numbers.
-"""
+  prompt: """How to use @i2 int2 type?"""
+  
+  solution:"""
+  @i2(4 5) | Math.Add(@i2(6 9))
+  Log
+  """
+  
+  explicit: """
+  @i2(4 5) | Math.Add(Operand: @i2(6 9))
+  Log(Prefix: "" Level: LogLevel::Info)
+  """
+  
+  explanation: """
+  Type Int2 defines a vector of two Int type numbers."""
 }

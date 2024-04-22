@@ -1,21 +1,21 @@
 {
-  prompt: """How do I get the square root of a number?"""
-
+  prompt: """How do I get the square root of a number?"""  
+  
   solution: """
-    4.0
-    Math.Sqrt
-    Log("result")
+  4.0
+  Math.Sqrt
+  Log("result")
   """
-
+  
   explicit: """
-    4.0
-    Math.Sqrt
-    Log(Prefix:"result" Level: LogLevel::Info)
+  4.0
+  Math.Sqrt
+  Log(Prefix:"result" Level: LogLevel::Info)
   """
-
+  
   explanation: """
-    The Math.Sqrt Shard is a Maths Shard that takes a floating point value or a sequence of floating point values and returns theri square root.
+  The Math.Sqrt Shard is a Maths Shard that takes a floating point value or a sequence of floating point values and returns theri square root.
   """
-
+  
   tag: "  #Maths"
 }

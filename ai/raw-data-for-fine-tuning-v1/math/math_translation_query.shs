@@ -1,22 +1,22 @@
 {
-  prompt: """How do I create a rotation matrix"""
-
+  prompt: """How do I create a rotation matrix"""  
+  
   solution: """
-    @f3(1.0 1.0 1.0)
-    Math.Translation
-    Log("result")
+  @f3(1.0 1.0 1.0)
+  Math.Translation
+  Log("result")
   """
-
+  
   explicit: """
-    @f3(1.0 1.0 1.0)
-    Math.Translation
-    Log(Prefix: "result" Level: LogLevel::Info)
+  @f3(1.0 1.0 1.0)
+  Math.Translation
+  Log(Prefix: "result" Level: LogLevel::Info)
   """
-
+  
   explanation: """
-    Math.Translation is a Maths Shard that takes a float3  input and converts it into a float4 rotation matrix. 
-    The first value in the float 3 represents the x translation, the second value the y translation and the third value the z translation.
+  Math.Translation is a Maths Shard that takes a float3  input and converts it into a float4 rotation matrix. 
+  The first value in the float 3 represents the x translation, the second value the y translation and the third value the z translation.
   """
-
+  
   tag: "  #Maths"
 }

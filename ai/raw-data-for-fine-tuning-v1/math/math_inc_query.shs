@@ -1,27 +1,27 @@
 {
-  prompt: """How do I increase the value of a mutable variable by 1?"""
-
+  prompt: """How do I increase the value of a mutable variable by 1?"""  
+  
   solution: """
-    0 >= mutable-var
-
-    Math.Inc(mutable-var)
-
-    mutable-var
-    Log("result")
+  0 >= mutable-var
+  
+  Math.Inc(mutable-var)
+  
+  mutable-var
+  Log("result")
   """
-
+  
   explicit: """
-    0 | Set(Name: mutable-var) 
-
-    Math.Inc(Value: mutable-var)
-
-    Get(mutable-var)
-    Log(Prefix: "result" Level: LogLevel::Info)
+  0 | Set(Name: mutable-var) 
+  
+  Math.Inc(Value: mutable-var)
+  
+  Get(mutable-var)
+  Log(Prefix: "result" Level: LogLevel::Info)
   """
-
+  
   explanation: """
-    Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by 1.
+  Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by 1.
   """
-
+  
   tag: "  #Maths"
 }
