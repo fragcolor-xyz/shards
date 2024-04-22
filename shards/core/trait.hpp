@@ -20,7 +20,15 @@ struct Trait : public SHTrait {
   ~Trait() { reset(); }
   Trait() { memset(this, 0, sizeof(SHTrait)); }
   Trait(const SHTrait &other) : SHTrait(cloneTrait(other)) {}
+  Trait(const Trait &other) : SHTrait(cloneTrait(other)) {}
   Trait &operator=(const SHTrait &other) {
+    if (this != &other) {
+      reset();
+      (SHTrait &)*this = cloneTrait(other);
+    }
+    return *this;
+  }
+  Trait &operator=(const Trait &other) {
     if (this != &other) {
       reset();
       (SHTrait &)*this = cloneTrait(other);

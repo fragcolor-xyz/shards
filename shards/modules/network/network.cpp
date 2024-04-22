@@ -9,6 +9,7 @@
 #include <shards/shardwrapper.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
+#include <shards/core/serialization.hpp>
 #include <shards/utility.hpp>
 #include <optional>
 #include <boost/lockfree/queue.hpp>

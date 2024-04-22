@@ -2,7 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "file_base.hpp"
-#include "serialization.hpp"
+#include <shards/core/serialization.hpp>
 #include <fstream>
 #include <future>
 #include <string>

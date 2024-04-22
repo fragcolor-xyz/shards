@@ -10,6 +10,7 @@ use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
 use shards::types::Seq;
+use shards::SHType_Trait;
 use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
@@ -902,8 +903,20 @@ fn finalize_wire(
     })
     .unwrap_or(Ok(Vec::new()))?;
   let mut s = AutoSeqVar::new();
-  for v in traits {
-    let v = as_var(&v, line_info, None, env)?;
+  for value in traits {
+    let v = as_var(&value, line_info, None, env)?;
+    if v.as_ref().valueType != SHType_Trait {
+      return Err(
+        ((
+          format!(
+            "Traits parameter must be a sequence of traits ({:?} is invalid)",
+            value
+          ),
+          line_info,
+        )
+          .into()),
+      );
+    }
     s.0.push(v.as_ref());
   }
   wire.set_traits(unsafe { s.0 .0.payload.__bindgen_anon_1.seqValue });
@@ -1640,6 +1653,9 @@ fn resolve_var(
             for (id, mesh) in shards_env.meshes.drain() {
               e.meshes.insert(id, mesh);
             }
+            for (id, t) in shards_env.traits.drain() {
+              e.traits.insert(id, t);
+            }
 
             Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
           } else if let Some(ast_json) = process_macro(func, line_info, e)? {
@@ -2265,7 +2281,11 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(())
 }
 
-fn into_get_or_const(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<AutoShardRef, ShardsError>  {
+fn into_get_or_const(
+  value: Value,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
   let ResolvedVar { is_const, var } = resolve_var(&value, line_info, None, e)?;
   if is_const {
     let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
@@ -2324,9 +2344,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
               .map_err(|e| (format!("{}", e), line_info).into())?;
             Some(shard)
           }
-          Value::Identifier(_) => {
-            Some(into_get_or_const(replacement.clone(), line_info, e)?)
-          }
+          Value::Identifier(_) => Some(into_get_or_const(replacement.clone(), line_info, e)?),
           Value::Shard(shard) => {
             // add ourselves
             // todo - avoid clone
@@ -3535,6 +3553,9 @@ fn eval_pipeline(
                 for (id, mesh) in shards_env.meshes.drain() {
                   e.meshes.insert(id, mesh);
                 }
+                for (id, t) in shards_env.traits.drain() {
+                  e.traits.insert(id, t);
+                }
                 Ok(())
               }
               (None, None, Some(ast_json), _) => {
@@ -3848,6 +3869,12 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) -> Result<(), ShardsError
       name.namespaces.push(env.namespace.clone());
     }
     into.meshes.insert(name, mesh);
+  }
+  for (mut name, trait_) in env.traits.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.traits.insert(name, trait_);
   }
 
   Ok(())

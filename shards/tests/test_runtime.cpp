@@ -9,7 +9,7 @@
 #include <shards/common_types.hpp>
 #include <shards/core/async.hpp>
 #include <shards/core/runtime.hpp>
-#include <shards/modules/core/serialization.hpp>
+#include <shards/core/serialization.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/wire_dsl.hpp>
 

@@ -2,12 +2,23 @@
   enabled: @type(Type::Bool)
 })
 
+@trait(shared/toggleable {
+  enabled: @type(Type::Bool)
+})
+
 @trait(card-owner {
   cards: @type({
     name: Type::String
     flags: @type([Type::String])
   })
 })
+
+@wire(valid-0-global {
+  Once({
+    false >= enabled
+  })
+} [shared/toggleable])
+Do(valid-0-global)
 
 @wire(valid-0 {
   Once({

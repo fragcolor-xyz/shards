@@ -179,13 +179,16 @@ public:
 };
 
 template <typename T> struct ExtendedObjectTypeTraits {
-  // using Type = T::Type;
+  static inline const SHTypeInfo &getTypeInfo() { return (const SHTypeInfo &)T::Type; }
 };
 
 template <class SH_CORE, typename T, typename Traits = ExtendedObjectTypeTraits<T>> class TExtendedObjectType {
   struct Extended {
     T data;
     RefCount1<true> refCount;
+
+    Extended() { refCount.count = 1; }
+    Extended(const Extended &other) : data(other.data) { refCount.count = 1; }
   };
 
 public:
@@ -229,28 +232,31 @@ public:
   static inline Extended &makeExtended(TypeInfo &dst) {
     TypeInfo old;
     std::swap(old, dst);
+    return makeExtended(dst, &old);
+  }
+  static inline T &makeExtended(TypeInfo &dst, const SHTypeInfo *original) {
     if (dst->basicType != SHType::Object) {
       dst = SHTypeInfo{};
     }
 
     Extended *e{};
-    if (old->basicType == SHType::Object && old->object.extInfo) {
-      e = new Extended(*reinterpret_cast<Extended *>(old->object.extInfoData));
+    if (original && original->basicType == SHType::Object && original->object.extInfo) {
+      e = new Extended(*reinterpret_cast<Extended *>(original->object.extInfoData));
     } else {
       e = new Extended();
     }
 
-    const Type &type = Traits::Type;
+    const Type &type = Traits::getTypeInfo();
     dst->object = type->object;
     dst->object.extInfo = &getTypeInfo();
     dst->object.extInfoData = e;
 
-    return *e;
+    return e->data;
   }
 
   // static inline void doRegister() {
-    // const Type &type = Traits::Type;
-    // SH_CORE::registerObjectType(type->object.vendorId, type->object.typeId, info);
+  // const Type &type = Traits::Type;
+  // SH_CORE::registerObjectType(type->object.vendorId, type->object.typeId, info);
   // }
 
   // the following methods are generally used by the shard

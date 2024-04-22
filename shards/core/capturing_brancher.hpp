@@ -4,7 +4,7 @@
 #include "brancher.hpp"
 #include "core/foundation.hpp"
 #include "shards/shards.h"
-#include <shards/modules/core/serialization.hpp>
+#include <shards/core/serialization.hpp>
 #include <string_view>
 #include <unordered_map>
 
