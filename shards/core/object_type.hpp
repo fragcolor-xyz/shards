@@ -6,7 +6,6 @@
 #include <boost/tti/has_member_function.hpp>
 
 namespace shards {
-
 namespace detail {
 BOOST_TTI_TRAIT_HAS_STATIC_MEMBER_FUNCTION(HasStaticMember_serialize, serialize);
 BOOST_TTI_TRAIT_HAS_STATIC_MEMBER_FUNCTION(HasStaticMember_deserialize, deserialize);
