@@ -1,26 +1,26 @@
 {
-  prompt: """How do I read a value of a key from a table?"""
-
+  prompt: """How do I read a value of a key from a table?""" 
+  
   solution:
-    """ 
-    {"k1": 1 "k2": 2 "k3": 3} = table
-    Get(table Key: "k1" Default: 0)
-    Log("Key read")
- """
-
+  """ 
+{"k1": 1 "k2": 2 "k3": 3} = table
+  Get(table Key: "k1" Default: 0)
+  Log("Key read")
+  """
+  
   explicit: 
   """ 
-    {"k1": 1 "k2": 2 "k3": 3} = table
-
-    Get(Name: table Key: "k1"  Default: 0)
-    Log(Prefix: "Key read")
+{"k1": 1 "k2": 2 "k3": 3} = table
+  
+  Get(Name: table Key: "k1"  Default: 0)
+  Log(Prefix: "Key read")
   """
-
+  
   explanation: """
-    Get can be used to read the value of a Key from a table. While the Take Shard can also be used, there is a difference between the two. The difference being, if Get
-    is trying to read a key that does not exist and no default value is provided, it will throw and error. Take on the otherhand will return none. Unlike Take, Get
-    can also place a default value through its Default parameter for a key that does not exist yet.
+  Get can be used to read the value of a Key from a table. While the Take Shard can also be used, there is a difference between the two. The difference being, if Get
+  is trying to read a key that does not exist and no default value is provided, it will throw and error. Take on the otherhand will return none. Unlike Take, Get
+  can also place a default value through its Default parameter for a key that does not exist yet.
   """
-
+  
   tag: "  #General"
 }

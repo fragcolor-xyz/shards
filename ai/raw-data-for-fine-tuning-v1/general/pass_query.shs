@@ -1,27 +1,27 @@
 {
-  prompt: """How to have an action that does nothing?"""
-
+  prompt: """How to have an action that does nothing?""" 
+  
   solution:
   """
-    2 = variable
-    
-    variable
-    When({Is(2)} {
-      Pass
-    })
+  2 = variable
+  
+  variable
+  When({Is(2)} {
+  Pass
+  })
   """
-
+  
   explicit:
-    """2 = variable
-    
-    Get(Name: variable)
-    When(Predicate:{Is(Value: 2)}  Action: {
-      Pass
-    } Passthrough: true)"""
-
+  """2 = variable
+  
+  Get(Name: variable)
+  When(Predicate:{Is(Value: 2)}  Action: {
+  Pass
+  } Passthrough: true)"""
+  
   explanation: """
-    The Pass Shard makes an action parameter do nothing and return back its input.
+  The Pass Shard makes an action parameter do nothing and return back its input.
   """
-
+  
   tag: "  #General"
 }

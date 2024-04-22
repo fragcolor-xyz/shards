@@ -1,31 +1,31 @@
 {
-  prompt: """How do I check if every value in a sequence is more than a certain value?"""
-
+  prompt: """How do I check if every value in a sequence is more than a certain value?""" 
+  
   solution: """
-   [1 2 3 4 5 6] = sequence
-
-   sequence
-   If(IsAllMore(0) {Msg("all matches")} {Msg("not all matches")})
+  [1 2 3 4 5 6] = sequence
+  
+  sequence
+  If(IsAllMore(0) {Msg("all matches")} {Msg("not all matches")})
   """
-
+  
   explicit: """
-   [1 2 3 4 5 6] = sequence
-
-   sequence
-   If(Predicate: IsAllMore(Value: 0) Then:{
-    Msg(Message: "all matches" Level: LogLevel::Info)
-    } Else: {
-      Msg(Message: "not all matches" Level: LogLevel::Info)}
-      Passthrough: false
-   ) 
+  [1 2 3 4 5 6] = sequence
+  
+  sequence
+  If(Predicate: IsAllMore(Value: 0) Then:{
+  Msg(Message: "all matches" Level: LogLevel::Info)
+  } Else: {
+Msg(Message: "not all matches" Level: LogLevel::Info)}
+  Passthrough: false
+  ) 
   """
-
+  
   explanation: """
-    The IsAllMore Shard is a Shard that can be used in the Predicate parameter of conditional Shards such as If and When. It will parse through
-    a sequence and check if every element is more than the value stated in the Value parameter. If all elements are of higher value, it will return true,
-    otherwise, it will return false. If comparing String datatypes, the Shard will compare values based on Lexicographical Order. 
-    The value placed in the Value parameter must be of the same data type as the input.
+  The IsAllMore Shard is a Shard that can be used in the Predicate parameter of conditional Shards such as If and When. It will parse through
+  a sequence and check if every element is more than the value stated in the Value parameter. If all elements are of higher value, it will return true,
+  otherwise, it will return false. If comparing String datatypes, the Shard will compare values based on Lexicographical Order. 
+  The value placed in the Value parameter must be of the same data type as the input.
   """
-
+  
   tag: "  #General"
 }

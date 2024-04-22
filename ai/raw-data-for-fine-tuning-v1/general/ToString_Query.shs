@@ -1,19 +1,19 @@
 {
-  prompt: """How do I convert something to a string"""
-
+  prompt: """How do I convert something to a string""" 
+  
   solution: """
-   5
-   ToString
+  5
+  ToString
   """
-
+  
   explicit: """
-   5 
-   ToString
+  5 
+  ToString
   """
-
+  
   explanation: """
-    ToString converts any data type and outputs a string. 
+  ToString converts any data type and outputs a string. 
   """
-
+  
   tag: "  #General"
 }

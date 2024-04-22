@@ -1,56 +1,56 @@
 {
-  prompt: """How do I compare an input with multiple cases an execute ones that are true?"""
-
+  prompt: """How do I compare an input with multiple cases an execute ones that are true?""" 
+  
   solution: """
-    1 = value
-    
-    value
-    Match([
-      1 {
-        Log("value is 1")
-      }
-
-      2 {
-        Log("value is 2")
-      }
-
-      3 {
-        Log("value is 3")
-      }
-    ]
-    false)
+  1 = value
+  
+  value
+  Match([
+  1 {
+  Log("value is 1")
+}
+  
+  2 {
+  Log("value is 2")
+}
+  
+  3 {
+  Log("value is 3")
+}
+  ]
+  false)
   """
-
+  
   explicit: """
-   1 = value
-    
-    value
-    Match(Cases: [
-      1 {
-        Log(Prefix: "value is 1" Level: LogLevel::Info)
-      }
-
-      2 {
-        Log(Prefix: "value is 2" Level: LogLevel::Info)
-      }
-
-      3 {
-        Log(Prefix: "value is 3" Level: LogLevel::Info)
-      }
-    ]
-    Passthrough: false)
+  1 = value
+  
+  value
+  Match(Cases: [
+  1 {
+  Log(Prefix: "value is 1" Level: LogLevel::Info)
+}
+  
+  2 {
+  Log(Prefix: "value is 2" Level: LogLevel::Info)
+}
+  
+  3 {
+  Log(Prefix: "value is 3" Level: LogLevel::Info)
+}
+  ]
+  Passthrough: false)
   """
-
+  
   explanation: """
-    The Match Shard Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case. If there are no matched
-    cases, the program will panic.
-
-    The Passthrough parameter set to true will allow the original input (the one that was used to match against every case in the shard) to be returned as the final 
-    output of Match, irrespective of the case match results. Setting Passthrough to false will enable the matched case's shard output to be returned as the final 
-    output of Match.
-
-    However, for Passthrough to work correctly, the data types of the shard input and the shard's case outputs must match.
+  The Match Shard Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case. If there are no matched
+  cases, the program will panic.
+  
+  The Passthrough parameter set to true will allow the original input (the one that was used to match against every case in the shard) to be returned as the final 
+  output of Match, irrespective of the case match results. Setting Passthrough to false will enable the matched case's shard output to be returned as the final 
+  output of Match.
+  
+  However, for Passthrough to work correctly, the data types of the shard input and the shard's case outputs must match.
   """
-
+  
   tag: "  #General"
 }

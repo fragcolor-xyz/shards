@@ -1,17 +1,17 @@
 {
-  prompt: """How do I get a random bytes?"""
-
+  prompt: """How do I get a random bytes?""" 
+  
   solution: """
-   RandomBytes(50) 
+  RandomBytes(50) 
   """
-
+  
   explicit: """
-   RandomBytes(Size: 50)
+  RandomBytes(Size: 50)
   """
-
+  
   explanation: """
-    The RandomBytes Shard will return randomized bytes, of the size specified in the Size parameter.
+  The RandomBytes Shard will return randomized bytes, of the size specified in the Size parameter.
   """
-
+  
   tag: "  #General"
 }

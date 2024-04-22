@@ -1,23 +1,23 @@
 {
-  prompt: """How to repeat something multiple times?"""
-
+  prompt: """How to repeat something multiple times?""" 
+  
   solution: """
-   Repeat({
-    Pass ;; Action to repeat
-   } 5)
+  Repeat({
+  Pass ;; Action to repeat
+  } 5)
   """
-
+  
   explicit: """
-   Repeat(Action: {
-    Pass ;; Action to repeat
-   } Times: 5
-   Forever: false
-   Until: none)
+  Repeat(Action: {
+  Pass ;; Action to repeat
+  } Times: 5
+  Forever: false
+  Until: none)
   """
-
+  
   explanation: """
-    Repeat will execute whatever is specified in the Action parameter X number of times, where X is the amount specified in the Times parameter.
+  Repeat will execute whatever is specified in the Action parameter X number of times, where X is the amount specified in the Times parameter.
   """
-
+  
   tag: "  #General"
 }

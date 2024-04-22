@@ -1,27 +1,27 @@
 {
-  prompt: """How do I get an element of a specific index in a sequence?"""
-
+  prompt: """How do I get an element of a specific index in a sequence?""" 
+  
   solution: """
-   [7 1 2 3 4] = sequence
-
-   sequence
-   Take(0) ; Replace 0 accordingly with the desired index
+  [7 1 2 3 4] = sequence
+  
+  sequence
+  Take(0) ; Replace 0 accordingly with the desired index
   """
-
+  
   explicit: """
-   [7 1 2 3 4] = sequence
-
-
-   Get(Name: sequence)
-   Take([0]) ; Replace 0 accordingly with the desired index
+  [7 1 2 3 4] = sequence
+  
+  
+  Get(Name: sequence)
+  Take([0]) ; Replace 0 accordingly with the desired index
   """
-
+  
   explanation: """
-    Take will get and return the specific element from the sequence passed in as input. The element it gets is of the index specified in its parameter. A
-    sequence of indices can also be specified in its parameter. If a sequence of indices is specified, Take will return a sequence of elements. These elements are
-    derived from the sequence passed in as input and are of the indeces specified in the sequence of indices. In the scenario provided under solution, Take will return
-    the 0th element from the sequence.
+  Take will get and return the specific element from the sequence passed in as input. The element it gets is of the index specified in its parameter. A
+  sequence of indices can also be specified in its parameter. If a sequence of indices is specified, Take will return a sequence of elements. These elements are
+  derived from the sequence passed in as input and are of the indeces specified in the sequence of indices. In the scenario provided under solution, Take will return
+  the 0th element from the sequence.
   """
-
+  
   tag: "  #General"
 }

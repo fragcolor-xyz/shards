@@ -1,28 +1,27 @@
 {
-prompt: """
-How to do greater than or equal to math operation?
-"""
-
-solution:"""
-"z" | IsMoreEqual("a")
-
-5 | IsMoreEqual(2)
-
-9.0 | IsMoreEqual((1.0 | Math.Add(2.0)))
-"""
-
-explicit: """
-"z" | IsMoreEqual(Value: "a")
-
-5 | IsMoreEqual(Value: 2)
-
-9.0 | IsMoreEqual(Value: (1.0 | Math.Add(Operand: 2.0)))
-"""
-
-explanation: """
-For ‘more than or equal to’ ≥ operation, use IsMoreEqual Shard.
-For string comparison, ’z' is more than or equal to 'a' numerically.
-For integer comparison, 5 is more than or equal to 2.
-An example is also provided for using IsMoreEqual Shard containing a nested addition operation.
-"""
+  prompt: """  How to do greater than or equal to math operation?
+  """
+  
+  solution:"""
+  "z" | IsMoreEqual("a")
+  
+  5 | IsMoreEqual(2)
+  
+  9.0 | IsMoreEqual((1.0 | Math.Add(2.0)))
+  """
+  
+  explicit: """
+  "z" | IsMoreEqual(Value: "a")
+  
+  5 | IsMoreEqual(Value: 2)
+  
+  9.0 | IsMoreEqual(Value: (1.0 | Math.Add(Operand: 2.0)))
+  """
+  
+  explanation: """
+  For ‘more than or equal to’ ≥ operation, use IsMoreEqual Shard.
+  For string comparison, ’z' is more than or equal to 'a' numerically.
+  For integer comparison, 5 is more than or equal to 2.
+  An example is also provided for using IsMoreEqual Shard containing a nested addition operation.
+  """
 }

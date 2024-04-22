@@ -1,25 +1,25 @@
 {
-  prompt: """How do I check if something is greater than something else?"""
-
+  prompt: """How do I check if something is greater than something else?""" 
+  
   solution: """
-   variable1
-   When(IsMore(variable2) {
-    Pass ;Do Something
+  variable1
+  When(IsMore(variable2) {
+  Pass ;Do Something
   })
   """
-
+  
   explicit: """
-    Get(Name: variable1)
-    When(Predicate: IsMore(Value: variable2) Action: {
-      Pass ;Do Something
-    } Passthrough: true)
+  Get(Name: variable1)
+  When(Predicate: IsMore(Value: variable2) Action: {
+  Pass ;Do Something
+  } Passthrough: true)
   """
-
+  
   explanation: """
-    The IsMore Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional Shard is greater than what is
-    stated in the Value parameter of the Is Shard. In this case, if variable1 is greater than variable2, the When Shard's Predicate will return true and do what is stated
-    in Action.
+  The IsMore Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional Shard is greater than what is
+  stated in the Value parameter of the Is Shard. In this case, if variable1 is greater than variable2, the When Shard's Predicate will return true and do what is stated
+  in Action.
   """
-
+  
   tag: "  #General"
 }

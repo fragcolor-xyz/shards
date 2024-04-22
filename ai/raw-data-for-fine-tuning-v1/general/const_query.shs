@@ -1,17 +1,17 @@
 {
-  prompt: """How do I create an unassigned constant in Shards?"""
-
+  prompt: """How do I create an unassigned constant in Shards?""" 
+  
   solution: 
-   """Const(5)"""  
-
+  """Const(5)"""  
+  
   explicit: 
-    """Const(Value: 5)"""
-
+  """Const(Value: 5)"""
+  
   explanation: """
-    Const declares a constant value (of any data type) by passing it into the Value parameter.
-    A constant value declared with Const is un-named i.e., it is not assigned to any variable or allocated any alias.
-    In this scenario a constant value of 5 is declared and can be used as an input for other Shards.
+  Const declares a constant value (of any data type) by passing it into the Value parameter.
+  A constant value declared with Const is un-named i.e., it is not assigned to any variable or allocated any alias.
+  In this scenario a constant value of 5 is declared and can be used as an input for other Shards.
   """
-
+  
   tag: "  #General"
 }

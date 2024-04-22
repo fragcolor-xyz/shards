@@ -1,47 +1,47 @@
 {
-  prompt: """How do I do something cumalatively for a specififed range?"""
-
+  prompt: """How do I do something cumalatively for a specififed range?""" 
+  
   solution: """
-   0 >= forRange-each-cycle-value
-    
-    ForRange
-    (
-      1
-      5
-      {
-        = added-value
-
-        forRange-each-cycle-value
-        Math.Add(added-value)
-        > forRange-each-cycle-value
-
-        Log("added-value")
-      }
-    )
+  0 >= forRange-each-cycle-value
+  
+  ForRange
+  (
+  1
+  5
+{
+  = added-value
+  
+  forRange-each-cycle-value
+  Math.Add(added-value)
+  > forRange-each-cycle-value
+  
+  Log("added-value")
+}
+  )
   """
-
+  
   explicit: """
-   0 >= forRange-each-cycle-value
-    
-    ForRange
-    (
-      From: 1
-      To: 5
-      Action: {
-        = added-value
-
-        forRange-each-cycle-value
-        Math.Add(Operand: added-value)
-        > forRange-each-cycle-value
-
-        Log(Prefix: "added-value" Level: LogLevel::Info)
-      }
-    )
+  0 >= forRange-each-cycle-value
+  
+  ForRange
+  (
+  From: 1
+  To: 5
+  Action: {
+  = added-value
+  
+  forRange-each-cycle-value
+  Math.Add(Operand: added-value)
+  > forRange-each-cycle-value
+  
+  Log(Prefix: "added-value" Level: LogLevel::Info)
+}
+  )
   """
-
+  
   explanation: """
-    The ForRange Shard iterates over a range of numbers, feeding each number into the Action parameter and executes the process stated in the Action parameter.
+  The ForRange Shard iterates over a range of numbers, feeding each number into the Action parameter and executes the process stated in the Action parameter.
   """
-
+  
   tag: "  #General"
 }

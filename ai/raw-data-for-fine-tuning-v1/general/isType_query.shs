@@ -1,52 +1,52 @@
 {
-  prompt: """How do I check if a variable is a certain type?"""
-
+  prompt: """How do I check if a variable is a certain type?""" 
+  
   solution: """
-   variable-to-check ;; use any of the Shards below to check the required type
-   IsAudio
-   IsBool
-   IsBytes
-   IsColor
-   IsFloat
-   IsFloat2
-   IsFloat3
-   IsFloat4
-   IsImage
-   IsInt
-   IsInt2
-   IsInt3
-   IsInt4
-   IsSeq
-   IsString
-   IsTable
-   IsWire
+  variable-to-check ;; use any of the Shards below to check the required type
+  IsAudio
+  IsBool
+  IsBytes
+  IsColor
+  IsFloat
+  IsFloat2
+  IsFloat3
+  IsFloat4
+  IsImage
+  IsInt
+  IsInt2
+  IsInt3
+  IsInt4
+  IsSeq
+  IsString
+  IsTable
+  IsWire
   """
-
+  
   explicit: """
-   Get(variable-to-check) ;; use any of the Shards below to check the required type
-   IsAudio
-   IsBool
-   IsBytes
-   IsColor
-   IsFloat
-   IsFloat2
-   IsFloat3
-   IsFloat4
-   IsImage
-   IsInt
-   IsInt2
-   IsInt3
-   IsInt4
-   IsSeq
-   IsString
-   IsTable
-   IsWire
+  Get(variable-to-check) ;; use any of the Shards below to check the required type
+  IsAudio
+  IsBool
+  IsBytes
+  IsColor
+  IsFloat
+  IsFloat2
+  IsFloat3
+  IsFloat4
+  IsImage
+  IsInt
+  IsInt2
+  IsInt3
+  IsInt4
+  IsSeq
+  IsString
+  IsTable
+  IsWire
   """
-
+  
   explanation: """
-    The Shards listed above all take in an input and check if they are the corresponding type. They then return true or false accordingly.
-    They can also be used in the Predicate parameter of conditional Shards like If and When.
+  The Shards listed above all take in an input and check if they are the corresponding type. They then return true or false accordingly.
+  They can also be used in the Predicate parameter of conditional Shards like If and When.
   """
-
+  
   tag: "  #General"
 }

@@ -1,24 +1,24 @@
 {
-  prompt: """How do I create a conditional to do soomething when the condition is not met?"""
-
+  prompt: """How do I create a conditional to do soomething when the condition is not met?""" 
+  
   solution: """
-   variable1
-   WhenNot(Is(true) {
-    Pass ;Do Something
-   })
+  variable1
+  WhenNot(Is(true) {
+  Pass ;Do Something
+  })
   """
-
+  
   explicit: """
-    Get(Name: variable1)
-    WhenNot(Predicate: Is(Value: true) Action: {
-      Pass ;Do Something
-    } Passthrough: true)
+  Get(Name: variable1)
+  WhenNot(Predicate: Is(Value: true) Action: {
+  Pass ;Do Something
+  } Passthrough: true)
   """
-
+  
   explanation: """
-    The WhenNot Shard is a Shard to create a conditional statement. If the conditions stated in the Predicate parameter are not met, it will execute what is stated
-    in the Action parameter.
+  The WhenNot Shard is a Shard to create a conditional statement. If the conditions stated in the Predicate parameter are not met, it will execute what is stated
+  in the Action parameter.
   """
-
+  
   tag: "  #General"
 }

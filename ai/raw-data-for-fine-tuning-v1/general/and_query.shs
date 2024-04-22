@@ -1,26 +1,26 @@
 {
-  prompt: """How do I check more than one condition?"""
-
-  solution: """
-    variable
-    When({Is(condition1) | And | variable2 | Is(condition2)} {
-      Pass ; Do Something
-    })
-  """
-
-  explicit: 
-    """Get(variable)
-    When(Predicate: {Is(Value: condition1) | And | Get(Name: variable2) | Is(Value: condition2)} Action: {
-      Pass ; Do Something
-    }
-    Passthrough: true)"""
+  prompt: """How do I check more than one condition?""" 
   
-
-  explanation: """
-    We use When or If Shards to create a conditional statement and do an action when the Predicate parameter returns true. 
-    To chain more conditions to the Predicate we use the And Shard. With conditions chained by the And Shard, the Predicate parameter will only
-    return true when all conditions are met.
+  solution: """
+  variable
+  When({Is(condition1) | And | variable2 | Is(condition2)} {
+  Pass ; Do Something
+  })
   """
-
+  
+  explicit: 
+  """Get(variable)
+  When(Predicate: {Is(Value: condition1) | And | Get(Name: variable2) | Is(Value: condition2)} Action: {
+  Pass ; Do Something
+}
+  Passthrough: true)"""
+  
+  
+  explanation: """
+  We use When or If Shards to create a conditional statement and do an action when the Predicate parameter returns true. 
+  To chain more conditions to the Predicate we use the And Shard. With conditions chained by the And Shard, the Predicate parameter will only
+  return true when all conditions are met.
+  """
+  
   tag: "  #General"
 }

@@ -1,32 +1,32 @@
 {
-  prompt: """How do I sort all the values of a sequence in ascending order?"""
-
+  prompt: """How do I sort all the values of a sequence in ascending order?""" 
+  
   solution: """
-    [3 1 4 0 2 5] >= sequence
-
-    Sort (
-      sequence
-    )
+  [3 1 4 0 2 5] >= sequence
+  
+  Sort (
+  sequence
+  )
   """
-
+  
   explicit: """
-    [3 1 4 0 2 5] >= sequence
-
-    Sort (
-      From: sequence
-      ;; Join: sequenceB
-      ;; Desc: false
-      ;; Key: 
-    )
+  [3 1 4 0 2 5] >= sequence
+  
+  Sort (
+  From: sequence
+  ;; Join: sequenceB
+  ;; Desc: false
+  ;; Key: 
+  )
   """
-
+  
   explanation: """
-    Sort is a Shard that will parse through the sequence specified in the From parameter and sort it.  
-    If Desc is set to true the sequence is sorted in descending order, else it's sorted in the ascending order
-    If another sequence is passed  into the Join parameter. The sequence in the Join parameter will mirror the final arrangement
-    of the sequence passed into the From parameter. For this to work, both sequences need to be of the same length.
-
+  Sort is a Shard that will parse through the sequence specified in the From parameter and sort it.  
+  If Desc is set to true the sequence is sorted in descending order, else it's sorted in the ascending order
+  If another sequence is passed  into the Join parameter. The sequence in the Join parameter will mirror the final arrangement
+  of the sequence passed into the From parameter. For this to work, both sequences need to be of the same length.
+  
   """
-
+  
   tag: "  #General"
 }

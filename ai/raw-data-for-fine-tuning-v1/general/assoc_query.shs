@@ -1,42 +1,42 @@
 {
-  prompt: """How do I replace an element of an existing sequence?"""
-
+  prompt: """How do I replace an element of an existing sequence?""" 
+  
   solution:
-    """
-    [9 8 7 6] >= sequence 
-    0 >= index0 
-    3 >= index1 
-    1 >= variable1
-    4 >= variable2
-    [index0 variable1 index1 variable2] | Assoc(sequence)
-    sequence | Log("result")
-    """
-
-  explicit:
-    """
-    [9 8 7 6] >= sequence 
-    0 >= index0 
-    3 >= index1 
-    1 >= variable1
-    4 >= variable2
-    [index0 variable1 index1 variable2] 
-    | Assoc(
-      Name: sequence
-      ;Key: key
-    )
-    sequence | Log("result")
-    """
-
-  explanation: """
-    The Assoc Shard is replacing element of index 0 in sequence with variable1 and element with index of 1 in sequence to variable2.
-    The input sequence for Assoc must always contain an even number of elements. 
-    The elements of the input sequence are parsed in pairs. 
-    The 1st element of each pair gives the index of the target element to update, and the 2nd element of that pair gives the new value for the target element.
-    Assoc can also be used to update a specific key in a table.
-    In the example, the index index0 of sequence will be updated to have the value of value of variable1; the index index1 of sequence will be updated to have value of variable2.
   """
-
+  [9 8 7 6] >= sequence 
+  0 >= index0 
+  3 >= index1 
+  1 >= variable1
+  4 >= variable2
+  [index0 variable1 index1 variable2] | Assoc(sequence)
+  sequence | Log("result")
+  """
+  
+  explicit:
+  """
+  [9 8 7 6] >= sequence 
+  0 >= index0 
+  3 >= index1 
+  1 >= variable1
+  4 >= variable2
+  [index0 variable1 index1 variable2] 
+  | Assoc(
+  Name: sequence
+  ;Key: key
+  )
+  sequence | Log("result")
+  """
+  
+  explanation: """
+  The Assoc Shard is replacing element of index 0 in sequence with variable1 and element with index of 1 in sequence to variable2.
+  The input sequence for Assoc must always contain an even number of elements. 
+  The elements of the input sequence are parsed in pairs. 
+  The 1st element of each pair gives the index of the target element to update, and the 2nd element of that pair gives the new value for the target element.
+  Assoc can also be used to update a specific key in a table.
+  In the example, the index index0 of sequence will be updated to have the value of value of variable1; the index index1 of sequence will be updated to have value of variable2.
+  """
+  
   tag: "  #General"
-
+  
   
 }

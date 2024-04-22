@@ -1,24 +1,24 @@
 {
-  prompt: """How do I get an element of a specific key in a table?"""
-
+  prompt: """How do I get an element of a specific key in a table?""" 
+  
   solution: """
-   {k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
-
-   sequence
-   Take("k0") ; Replace 0 accordingly with the desired index
+{k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
+  
+  sequence
+  Take("k0") ; Replace 0 accordingly with the desired index
   """
-
+  
   explicit: """
-   {k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
-
-   sequence
-   Take("k0") ; Replace 0 accordingly with the desired index
+{k0: 0 k1: 1 k2: 2 k3: 3 k4: 4} = sequence
+  
+  sequence
+  Take("k0") ; Replace 0 accordingly with the desired index
   """
-
+  
   explanation: """
-    Take will get and return the specific element from the specified key from the table passed in as input. Take can also be used to return a specific element from
-    a sequence or return an array of elements from a sequence.
+  Take will get and return the specific element from the specified key from the table passed in as input. Take can also be used to return a specific element from
+  a sequence or return an array of elements from a sequence.
   """
-
+  
   tag: "  #General"
 }

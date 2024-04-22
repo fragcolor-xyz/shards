@@ -1,17 +1,17 @@
 {
-  prompt: """How do i delete all the elements in a sequence?"""
-
+  prompt: """How do i delete all the elements in a sequence?""" 
+  
   solution:
-    """Clear(sequence)"""
-
+  """Clear(sequence)"""
+  
   explicit:
-    """Clear(Name: sequence)"""
-
+  """Clear(Name: sequence)"""
+  
   explanation: """
-    Clear removes all the elements of the sequence that has been passed to it in the Name: parameter.
-    This Shard works on both sequences and tables. 
-    Use the Key: parameter to delete all elements of the specified key in a table.
+  Clear removes all the elements of the sequence that has been passed to it in the Name: parameter.
+  This Shard works on both sequences and tables. 
+  Use the Key: parameter to delete all elements of the specified key in a table.
   """
-
+  
   tag: "  #General"
 }

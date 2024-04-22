@@ -1,29 +1,29 @@
 {
-  prompt: """How to repeat something multiple times until a certain condition is false?"""
-
+  prompt: """How to repeat something multiple times until a certain condition is false?""" 
+  
   solution: """
-   0 >= n
-   
-   Repeat({
-    n | Math.Add(1) > n
-   }
-   true
+  0 >= n
+  
+  Repeat({
+  n | Math.Add(1) > n
+}
+  true
   n | IsMore(3))
   """
-
+  
   explicit: """
-   0 | Set(Name: n)
-   
-   Repeat(Action: {
-    n | Math.Add(Operand: 1) > n
-   }
-   Forever: true
-   Until: {n | IsMore(Value: 3)})
+  0 | Set(Name: n)
+  
+  Repeat(Action: {
+  n | Math.Add(Operand: 1) > n
+}
+  Forever: true
+  Until: {n | IsMore(Value: 3)})
   """
-
+  
   explanation: """
-    Repeat will execute whatever is specified in the Action parameter forever until the condition specified in the Until parameter is met.
+  Repeat will execute whatever is specified in the Action parameter forever until the condition specified in the Until parameter is met.
   """
-
+  
   tag: "  #General"
 }

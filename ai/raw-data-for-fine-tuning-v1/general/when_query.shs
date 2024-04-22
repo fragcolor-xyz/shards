@@ -1,35 +1,34 @@
 {
-prompt: """
-How to use When in Shards?
-"""
-
-solution:"""
-64
-When(
- IsMore(50) 
- Msg("More than 50")
-)
-"""
-
-explicit: """
-64
-When(
- Predicate: {
- IsMore(50)
- }
- Action: {
- Msg(Message: "More than 50" Level: LogLevel::Info)
- }
- Passthrough: true
-)
-"""
-
-explanation: """
-When is a Conditional shard that only executes the action if the predicate is true.
-<input> is the value that will be passed to the predicate.
-<output> is the input of the shard if Passthrough is true, or the Predicate is false; otherwise the output of the Action.
-Predicate is the condition to be evaluated in order to trigger Action.
-Action is the shards to activate when Predicate is true for When and false for WhenNot. 
-Passthrough is a boolean. If the output of this shard is true, the output of this When shard will be its input.
-"""
+  prompt: """  How to use When in Shards?
+  """
+  
+  solution:"""
+  64
+  When(
+  IsMore(50) 
+  Msg("More than 50")
+  )
+  """
+  
+  explicit: """
+  64
+  When(
+  Predicate: {
+  IsMore(50)
+}
+  Action: {
+  Msg(Message: "More than 50" Level: LogLevel::Info)
+}
+  Passthrough: true
+  )
+  """
+  
+  explanation: """
+  When is a Conditional shard that only executes the action if the predicate is true.
+  <input> is the value that will be passed to the predicate.
+  <output> is the input of the shard if Passthrough is true, or the Predicate is false; otherwise the output of the Action.
+  Predicate is the condition to be evaluated in order to trigger Action.
+  Action is the shards to activate when Predicate is true for When and false for WhenNot. 
+  Passthrough is a boolean. If the output of this shard is true, the output of this When shard will be its input.
+  """
 }

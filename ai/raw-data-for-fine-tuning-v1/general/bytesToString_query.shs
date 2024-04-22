@@ -1,19 +1,19 @@
 {
-  prompt: """How do I convert bytes to String?"""
-
+  prompt: """How do I convert bytes to String?""" 
+  
   solution: """
-   bytes
-   BytesToString
+  bytes
+  BytesToString
   """
-
+  
   explicit: """
-    bytes
-    BytesToString
+  bytes
+  BytesToString
   """
-
+  
   explanation: """
-    BytesToString is a Shard that takes in an input of type Bytes and converts it to type String.
+  BytesToString is a Shard that takes in an input of type Bytes and converts it to type String.
   """
-
+  
   tag: "  #General"
 }

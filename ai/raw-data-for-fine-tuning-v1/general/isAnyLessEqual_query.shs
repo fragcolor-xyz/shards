@@ -1,31 +1,31 @@
 {
-  prompt: """How do I check if any value in a sequence is of lower value or equal to something?"""
-
+  prompt: """How do I check if any value in a sequence is of lower value or equal to something?""" 
+  
   solution: """
-   [3 3 3 3 2] = sequence
-
-   sequence
-   If(IsAnyLessEqual(2) {Msg("one match")} {Msg("none match")})
+  [3 3 3 3 2] = sequence
+  
+  sequence
+  If(IsAnyLessEqual(2) {Msg("one match")} {Msg("none match")})
   """
-
+  
   explicit: """
-   [3 3 3 3 2] = sequence
-
-   sequence
-   If(Predicate: IsAnyLessEqual(Value: 2) Then: {
-    Msg(Message: "one match" Level: LogLevel::Info)
-    } Else: {
-      Msg(Message: "none match" Level: LogLevel::Info)}
-      Passthrough: false
-   ) 
+  [3 3 3 3 2] = sequence
+  
+  sequence
+  If(Predicate: IsAnyLessEqual(Value: 2) Then: {
+  Msg(Message: "one match" Level: LogLevel::Info)
+  } Else: {
+Msg(Message: "none match" Level: LogLevel::Info)}
+  Passthrough: false
+  ) 
   """
-
+  
   explanation: """
-    The IsAnyLessEqual is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. 
-    It will parse through a sequence and check if any of the elements in the sequence is of lower value or equal to the value provided in
-    the Value parameter. If at least one element is of lower or equal to the value, the Shard will return true, otherwise, it will return false. 
-    The data type provided as input and provided in the Value Parameter must be of the same type.
+  The IsAnyLessEqual is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. 
+  It will parse through a sequence and check if any of the elements in the sequence is of lower value or equal to the value provided in
+  the Value parameter. If at least one element is of lower or equal to the value, the Shard will return true, otherwise, it will return false. 
+  The data type provided as input and provided in the Value Parameter must be of the same type.
   """
-
+  
   tag: "  #General"
 }

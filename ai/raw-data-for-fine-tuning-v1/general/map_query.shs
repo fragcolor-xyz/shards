@@ -1,35 +1,35 @@
 {
-  prompt: """How do I do an action for each element in a sequence and get the modified sequence?"""
-
+  prompt: """How do I do an action for each element in a sequence and get the modified sequence?""" 
+  
   solution: """
-   [1 2 3 4 5] = sequence
-
-    sequence
-    Map(
-      Apply:{
-        Math.Add(1)
-        Log("result-map-each-element")
-      }
-    )
-    Log("result-map-modified-sequence")
+  [1 2 3 4 5] = sequence
+  
+  sequence
+  Map(
+  Apply:{
+  Math.Add(1)
+  Log("result-map-each-element")
+}
+  )
+  Log("result-map-modified-sequence")
   """
-
+  
   explicit: """
-   [1 2 3 4 5] = sequence
-
-    Get(Name: sequence)
-    Map(
-      Apply: {
-        Math.Add(Operand: 1)
-        Log(Prefix:"result-map-each-element" Level: LogLevel::Info)
-      }
-    )
-    Log(Prefix:"result-map-modified-sequence" Level: LogLevel::Info)
+  [1 2 3 4 5] = sequence
+  
+  Get(Name: sequence)
+  Map(
+  Apply: {
+  Math.Add(Operand: 1)
+  Log(Prefix:"result-map-each-element" Level: LogLevel::Info)
+}
+  )
+  Log(Prefix:"result-map-modified-sequence" Level: LogLevel::Info)
   """
-
+  
   explanation: """
-    Map, processes every element of a sequence with a given Shard or sequence of Shards. Unlike the ForEach Shard, Map will output the resulting modified sequence.
+  Map, processes every element of a sequence with a given Shard or sequence of Shards. Unlike the ForEach Shard, Map will output the resulting modified sequence.
   """
-
+  
   tag: "  #General"
 }

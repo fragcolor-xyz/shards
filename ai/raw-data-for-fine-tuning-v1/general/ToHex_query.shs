@@ -1,19 +1,19 @@
 {
-  prompt: """How do I convert an integer to an hexidecimal value?"""
-
+  prompt: """How do I convert an integer to an hexidecimal value?""" 
+  
   solution: """
-   5 ; integer to convert
-   ToHex
+  5 ; integer to convert
+  ToHex
   """
-
+  
   explicit: """
-   5 ; integer to convert
-   ToHex
+  5 ; integer to convert
+  ToHex
   """
-
+  
   explanation: """
-    The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
+  The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
   """
-
+  
   tag: "  #General"
 }
