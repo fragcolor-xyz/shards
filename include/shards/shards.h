@@ -338,9 +338,10 @@ typedef struct SHExtendedObjectTypeInfo SHExtendedObjectTypeInfo;
 typedef struct SHObjectTypeInfo {
   int32_t vendorId;
   int32_t typeId;
-  // Provides additional object functionality
-  // when this is used, it should be used everywhere
-  SHExtendedObjectTypeInfo* extended;
+  // Provides additional object behaviors, such as comparision, special types
+  const SHExtendedObjectTypeInfo *extInfo;
+  // User data passed that can be used by the extended object type functions
+  void *extInfoData;
 } SHObjectTypeInfo;
 
 typedef struct SHEnumTypeInfo {
@@ -459,13 +460,13 @@ struct SHObjectInfo {
 
 typedef struct SHTypeInfo SHTypeInfo;
 
-typedef bool(__cdecl *SHExtTypeMatch)(const SHTypeInfo *self, const SHTypeInfo *other);
-typedef void(__cdecl *SHExtTypeHash)(const SHTypeInfo *self, void *outDigest, size_t digestSize);
-typedef void(__cdecl *SHExtTypeReference)(SHExtendedObjectTypeInfo *self);
-typedef void(__cdecl *SHExtTypeRelease)(SHExtendedObjectTypeInfo *self);
+typedef bool(__cdecl *SHExtTypeMatch)(const void *self, const void *other);
+typedef void(__cdecl *SHExtTypeHash)(const void *self, void *outDigest, size_t digestSize);
+typedef void(__cdecl *SHExtTypeReference)(void *self);
+typedef void(__cdecl *SHExtTypeRelease)(void *self);
 
 typedef struct SHExtendedObjectTypeInfo {
-  SHExtTypeMatch matchType;
+  SHExtTypeMatch match;
   SHExtTypeHash hash;
   SHExtTypeReference reference;
   SHExtTypeRelease release;
@@ -508,7 +509,7 @@ struct SHExposedTypeInfo {
 };
 
 typedef struct SHStringPayload {
-  char* elements;
+  char *elements;
   // this field is an optional optimization
   // if 0 strlen should be called to find the string length
   // if not 0 should be assumed valid

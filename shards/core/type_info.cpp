@@ -7,12 +7,8 @@ namespace shards {
 void freeTypeInfo(SHTypeInfo info) {
   switch (info.basicType) {
   case SHType::Object:
-    // for (auto &t : info.object.traits) {
-    //   freeTrait(t);
-    // }
-    // shards::arrayFree(info.object.traits);
-    if (info.object.extended) {
-      info.object.extended->release(info.object.extended);
+    if (info.object.extInfo) {
+      info.object.extInfo->release(info.object.extInfoData);
     }
     break;
   case SHType::Seq: {
@@ -50,8 +46,8 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
   memcpy(&varType, &other, sizeof(SHTypeInfo));
   switch (varType.basicType) {
   case SHType::Object:
-    if (other.object.extended) {
-      other.object.extended->reference(other.object.extended);
+    if (other.object.extInfo) {
+      other.object.extInfo->reference(other.object.extInfoData);
     }
     break;
   case SHType::ContextVar:

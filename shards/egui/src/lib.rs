@@ -61,15 +61,7 @@ static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 
 lazy_static! {
-  static ref LAYOUTCLASS_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: fourCharacterCode(*b"layo"),
-      extended: core::ptr::null_mut(),
-    };
-    t
-  };
+  static ref LAYOUTCLASS_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"layc"));
   static ref GFX_CONTEXT_TYPE: Type =
     unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
   static ref WINDOW_CONTEXT_TYPE: Type =

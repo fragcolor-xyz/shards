@@ -27,8 +27,9 @@ struct TypeMatcher {
       if (inputType.object.vendorId != receiverType.object.vendorId || inputType.object.typeId != receiverType.object.typeId) {
         return false;
       }
-      if (receiverType.object.extended) {
-        if (!receiverType.object.extended->matchType(&receiverType, &inputType)) {
+      if (receiverType.object.extInfo && receiverType.object.extInfo->match) {
+        shassert(receiverType.object.extInfo == inputType.object.extInfo);
+        if (!receiverType.object.extInfo->match(receiverType.object.extInfoData, inputType.object.extInfoData)) {
           return false;
         }
       }
