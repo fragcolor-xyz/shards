@@ -1,0 +1,158 @@
+@define(prompt-type @type({"input": Type::String "output": Type::String}))
+@define(system-prompt "You are a Shards programming language coding expert. Your task is to assist users in mastering the Shards programming language, particularly focusing on its core elements: Shards, Wires, and Meshes. Each Shard should be understood as a basic unit with one input and one output, ensuring a linear and predictable flow that simplifies debugging and understanding program behavior.
+Encourage best programming practices such as using explicit type declarations, meticulous parameter management for customizing Shards' functionalities, and robust error and memory management to prevent runtime issues and memory leaks. 
+Emphasize the significance of designing Wires as directed graphs of Shards for complex behavior orchestration and state management, and explain how Meshes manage and schedule these Wires efficiently across CPU threads.Provide code examples that demonstrate these practices, helping users grasp their practical applications and the common idioms used in Shards.
+Your intended audience has knowledge of other programming languages but not Shards. 
+They have to learn Shards very fast to quickly become Shards coding experts.
+Hence, please resolve the query step by step to ensure your Shards code is correct and clear for optimized learning.
+When interacting with users, prioritize clarity and precision in your explanations. If a user struggles with a concept, offer simplified explanations and analogies, possibly relating to familiar programming concepts or everyday scenarios. Encourage critical thinking about applying Shards in various programming contexts, promoting an exploratory and experimental learning approach.
+Your responses should be friendly and supportive, maintaining a positive tone throughout the interaction. Validate the user’s efforts, even when correcting mistakes, and provide encouragement and constructive feedback to create a supportive learning environment. Always adhere to ethical guidelines and ensure that all interactions uphold the integrity and core principles of educational engagement, focusing on fostering a deep understanding of the Shards programming language.
+Provide explanations only if asked. Otherwise, just provide the code solution for the query.")
+
+@wire(prepare-csv {
+  [] >= rows
+  "" >= csv_content
+
+  {input: "prompt" output: "completion"} >> temp-prompt-seq
+  Clear(temp-prompt-seq)
+
+  ; TODO
+
+  "./raw-data-for-fine-tuning-v1/all/"
+  FS.Iterate
+
+  ForEach({
+    {
+      {"input": "placeholder-prompt" "output": "placeholder-completion"} >= temp-chat
+      "" >= ai-assistant-answer
+    }
+
+    FS.Read
+    Shards.Read(Json: true)
+    FromJson (Pure: true)
+
+    ;; Parsing the output table and slowly taking the items that I need
+    ExpectTable
+    Take("sequence")
+    ExpectTable
+    Take("statements")
+    ExpectSeq
+    = temp-seq
+    Count(temp-seq)
+    When(Predicate: Is(1) Action:{
+      temp-seq
+      Take(0)
+      ExpectTable
+      Take("Pipeline")
+      ExpectTable
+      Take("blocks")
+      ExpectSeq
+      Take(0)
+      ExpectTable
+      Take("content")
+      ExpectTable
+      Take("Const")
+      ExpectTable
+      Take("Table")
+      ExpectSeq
+      ;; It is at this point we take  different things. Take(0) for prompt: , Take(1) for solution:, Take(2) for explicit:, Take(3) for explanation:, Take(4) for tag:
+      {Take(0) ;; Taking and Setting User Prompt
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      Update(temp-chat "input") 
+      ;temp-chat
+      ;Log("result")
+      }
+
+      {Take(1) ;; Taking solution: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString >= solution
+      AppendTo(ai-assistant-answer)
+      ;ai-assistant-answer
+      ;Log("answer")
+      }
+      ; {Take(2) ;; Taking explicit: and appending it to ai-assistant-answer
+      ; ExpectSeq
+      ; Take(1)
+      ; ExpectTable
+      ; Take("String")
+      ; ToString
+      ; ExpectString >= explicit 
+      ; ; If(IsNot(solution){
+      ; ;   AppendTo(ai-assistant-answer)
+      ; ; }Pass)
+      ; AppendTo(ai-assistant-answer)
+      ; ; ai-assistant-answer
+      ; ; Log("answer")
+      ; }
+
+      {Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      AppendTo(ai-assistant-answer)
+      ; ai-assistant-answer
+      ; Log("answer")
+      }
+
+      ; {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
+      ; ExpectSeq
+      ; Take(1)
+      ; ExpectTable
+      ; Take("String")
+      ; ExpectString
+      ; AppendTo(ai-assistant-answer)
+      ; ; ai-assistant-answer
+      ; ; Log("answer")
+      ; }
+
+      ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
+      Update(temp-chat "output")
+      temp-chat >> temp-prompt-seq
+
+      temp-prompt-seq
+      Log("temp-prompt-seq")
+    })
+  })
+  ["instruction", "input", "output"] >> rows
+
+  temp-prompt-seq
+  ForEach({
+    Expect(@prompt-type) = chat
+    [@system-prompt, chat:input, chat: output] >> rows
+    ; {
+    ;   "messages": [
+    ;     {"role": "system" "content": @system-prompt}
+    ;     {"role": "user" "content": chat:user}
+    ;     {"role": "assistant" "content": chat:assistant}]
+    ; } | ToJson | AppendTo(csv_content)
+    ; add new line
+    ; "\n" | AppendTo(csv_content)
+    
+  })
+
+  
+  rows | CSV.Write = csv-data
+  "training-set-llama3.csv" | FS.Write(csv-data Overwrite: true)
+
+  
+})
+
+@mesh(main)
+@schedule(main prepare-csv)
+@run(main)
+
+; REFERENCE
+; ["a" "b" "c"] >> rows
+; ["a" "b" "c"] >> rows
+; ["a" "b" "c"] >> rows
+; rows | CSV.Write = csv-data
+; "mydata.csv" | FS.Write(csv-data)
