@@ -2,21 +2,21 @@
   ["Hello" "world!" "How" "are" "we" "today?"]
   String.Join(Separator: " ") | Log
   Assert.Is("Hello world! How are we today?" true)
-  
+
   "0x7777" | HexToBytes | Log | BigInt | BigInt.ToString | Assert.Is("30583") | Log
-  
+
   ["Hello" "world!" "How" "are" "we" "today?"]
   Bytes.Join
   Assert.Is(("Helloworld!Howarewetoday?" | StringToBytes))
-  
+
   [("Hello" | StringToBytes) "world!"]
   Bytes.Join
   Assert.Is(("Helloworld!" | StringToBytes))
-  
+
   "hello" = hello
   "world" = world
   [hello " " world] | Bytes.Join | Assert.Is(("hello world" | StringToBytes))
-  
+
   "fbl|pose:transform:0:rot" | String.Split(":")
   Assert.Is(["fbl|pose" "transform" "0" "rot"])
 
@@ -28,10 +28,15 @@ And Again!""" | String.Split("\n\n") | Assert.Is([
 Something else"""
     """And Again!"""
   ])
-  
+
   [hello " " world] | String.Format | Log("fmt 1") | Assert.Is("hello world")
   [hello " " 4 "!"] | String.Format | Log("fmt 2") | Assert.Is("hello 4!")
   [] | String.Format | Log("fmt 3") | Assert.Is("")
+
+  "_@abc.cc" | Regex.Search("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is(["_@abc.cc"])
+  "_@abc.c" | Regex.Search("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is([])
+  "_@abc.cc" | Regex.Match("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is(["_@abc.cc"])
+  "_@abc.c" | Regex.Match("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is([])
 })
 
 @mesh(root)
