@@ -12,6 +12,6 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
-crdts = { git = "https://github.com/shards-lang/rust-crdt.git", ref = "12967bc106057ec936746ed4b2dcab66fb3e3208" }
+crdts = { git = "https://github.com/shards-lang/rust-crdt.git", tag = "shards-devel" }
 bincode = "1.3.3"
 serde = { version = "1", features = ["derive"] }

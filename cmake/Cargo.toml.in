@@ -12,6 +12,7 @@ ${CARGO_CRATE_DEPS}
 chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }
 tar = { git = "https://github.com/shards-lang/tar-rs", rev = "6d26c0d1724326c8c1b06eaafc25a19253afbcdc" }
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
+substrate-bip39 = { git = "https://github.com/shards-lang/substrate-bip39.git", version = "=0.4.4", rev = "2a025c63f6ebfcc418a199c1f1bb07a459a16850" }
 
 [profile.dev.package]
 tiny-skia = { opt-level = 3 }

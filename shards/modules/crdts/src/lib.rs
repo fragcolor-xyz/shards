@@ -470,7 +470,6 @@ impl Shard for CRDTGetShard {
     }
 
     let value = crdt.get(self.key_cache.as_ref().unwrap());
-    let value = value.val;
     if let Some(value) = value {
       let value = value.read();
       let value = value.val.first().unwrap();
