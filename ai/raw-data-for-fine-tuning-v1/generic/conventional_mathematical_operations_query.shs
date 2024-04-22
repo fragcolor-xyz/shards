@@ -1,37 +1,35 @@
 {
-prompt: """
-How to do mathematical operations in Shards?
-"""
-
-solution:"""
-3 >= num1 
-1 >= num2 
-num1 | Math.Add(num2)
-num1 | Math.Subtract(num2)
-num1 | Math.Divide(num2)
-num1 | Math.Multiply(num2)
-num1 | Math.Mod(num2) 
-"""
-
-explicit: """
-3 >= num1 
-1 >= num2 
-num1 | Math.Add(Operand: num2)
-num1 | Math.Subtract(Operand: num2)
-num1 | Math.Divide(Operand: num2)
-num1 | Math.Multiply(Operand: num2)
-num1 | Math.Mod(Operand: num2)
-"""
-
-explanation: """
-For addition operation, use Math.Add Shard.
-For subtraction operation, use Math.Subtract Shard.
-For division operation, use Math.Divide Shard.
-For multiplication operation, use Math.Multiply Shard.
-For modulo operation, use Math.Mod Shard.
-The Math shards are used instead of the conventional ‘+’, ‘-’, ‘*’, ‘/’. The provided examples assume num1 and num2 variables have already been defined.
-e.g. 
-5.0 >= num1
-2.0 >= num2
-"""
+  prompt: """How to do mathematical operations in Shards?"""
+  
+  solution:"""
+  3 >= num1 
+  1 >= num2 
+  num1 | Math.Add(num2)
+  num1 | Math.Subtract(num2)
+  num1 | Math.Divide(num2)
+  num1 | Math.Multiply(num2)
+  num1 | Math.Mod(num2) 
+  """
+  
+  explicit: """
+  3 >= num1 
+  1 >= num2 
+  num1 | Math.Add(Operand: num2)
+  num1 | Math.Subtract(Operand: num2)
+  num1 | Math.Divide(Operand: num2)
+  num1 | Math.Multiply(Operand: num2)
+  num1 | Math.Mod(Operand: num2)
+  """
+  
+  explanation: """
+  For addition operation, use Math.Add Shard.
+  For subtraction operation, use Math.Subtract Shard.
+  For division operation, use Math.Divide Shard.
+  For multiplication operation, use Math.Multiply Shard.
+  For modulo operation, use Math.Mod Shard.
+  The Math shards are used instead of the conventional ‘+’, ‘-’, ‘*’, ‘/’. The provided examples assume num1 and num2 variables have already been defined.
+  e.g. 
+  5.0 >= num1
+  2.0 >= num2
+  """
 }
