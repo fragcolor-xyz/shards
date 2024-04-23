@@ -11,6 +11,10 @@
 		<DisplayString Condition="id==size_t(~0)">""</DisplayString>
 		<DisplayString Condition="id!=size_t(~0)">{shards::fast_string::storage-&gt;pool.reverse[id]}</DisplayString>
 	</Type>
+	<Type Name="SHStringPayload">
+		<DisplayString Condition="len == 0">""</DisplayString>
+		<DisplayString Condition="len > 0">{elements,[len]s}</DisplayString>
+	</Type>
 	<Type Name="SHMesh">
 		<DisplayString>Mesh {label,s8}</DisplayString>
 	</Type>

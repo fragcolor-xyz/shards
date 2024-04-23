@@ -121,6 +121,11 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
   case SHType::Object: {
     hashUpdate<TDigest>(state, &t.object.vendorId, sizeof(t.object.vendorId));
     hashUpdate<TDigest>(state, &t.object.typeId, sizeof(t.object.typeId));
+    if(t.object.extInfo && t.object.extInfo->hash) {
+      TDigest digest{};
+      t.object.extInfo->hash(t.object.extInfoData, &digest, sizeof(TDigest));
+      hashUpdate<TDigest>(state, &digest, sizeof(TDigest));
+    }
   } break;
   case SHType::Enum: {
     hashUpdate<TDigest>(state, &t.enumeration.vendorId, sizeof(t.enumeration.vendorId));

@@ -209,14 +209,14 @@ public:
       };
       if constexpr (detail::HasStaticMember_match<T, bool(const T &, const T &)>::value) {
         info.match = [](const void *self, const void *other) {
-          auto tself = reinterpret_cast<T *>(self);
-          auto tother = reinterpret_cast<T *>(other);
+          auto tself = reinterpret_cast<const T *>(self);
+          auto tother = reinterpret_cast<const T *>(other);
           return T::match(*tself, *tother);
         };
       }
       if constexpr (detail::HasStaticMember_hash<T, void(const T &, void *outDigest, size_t digestSize)>::value) {
         info.hash = [](const void *self, void *outDigest, size_t digestSize) {
-          auto tself = reinterpret_cast<T *>(self);
+          auto tself = reinterpret_cast<const T *>(self);
           return T::hash(*tself, outDigest, digestSize);
         };
       }
@@ -246,11 +246,17 @@ public:
     }
 
     const Type &type = Traits::getTypeInfo();
+    dst->basicType = SHType::Object;
     dst->object = type->object;
     dst->object.extInfo = &getTypeInfo();
     dst->object.extInfoData = e;
 
     return e->data;
+  }
+
+  static T &fromTypeInfo(const SHTypeInfo &ti) {
+    shassert(ti.basicType == SHType::Object && ti.object.extInfo == &getTypeInfo());
+    return ((Extended *)ti.object.extInfoData)->data;
   }
 
   // static inline void doRegister() {

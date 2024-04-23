@@ -2480,6 +2480,16 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
+  result->stringGrow = [](SHStringPayload *str, size_t newCap) {
+    size_t oldLen = str->len;
+    if (newCap > str->cap) {
+      arrayResize(*str, newCap);
+      str->len = oldLen;
+    }
+  };
+
+  result->stringFree = [](SHStringPayload *str) { arrayFree(*str); };
+
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
   };
