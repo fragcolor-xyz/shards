@@ -1,8 +1,7 @@
 {
   prompt: """How to do mathematical operations in Shards?"""
   
-  solution:"""
-  3 >= num1 
+  solution: """3 >= num1 
   1 >= num2 
   num1 | Math.Add(num2)
   num1 | Math.Subtract(num2)
@@ -11,8 +10,7 @@
   num1 | Math.Mod(num2) 
   """
   
-  explicit: """
-  3 >= num1 
+  explicit: """3 >= num1 
   1 >= num2 
   num1 | Math.Add(Operand: num2)
   num1 | Math.Subtract(Operand: num2)
@@ -21,8 +19,7 @@
   num1 | Math.Mod(Operand: num2)
   """
   
-  explanation: """
-  For addition operation, use Math.Add Shard.
+  explanation: """For addition operation, use Math.Add Shard.
   For subtraction operation, use Math.Subtract Shard.
   For division operation, use Math.Divide Shard.
   For multiplication operation, use Math.Multiply Shard.

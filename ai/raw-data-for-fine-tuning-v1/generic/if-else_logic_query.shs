@@ -1,16 +1,14 @@
 {
   prompt: """How to do if-else logic in Shards?"""
   
-  solution:"""
-  5
+  solution: """5
   If( IsLess(2) {
   Msg("input is lesser than 2")
   } 
   Msg("input is equal or greater than 2"))
   """
   
-  explicit: """
-  5
+  explicit: """5
   If(
   Predicate: IsLess(2) Then: {
   Msg(Message: "input is lesser than 2" Level: LogLevel::Info)
@@ -19,7 +17,6 @@
   Passthrough: false)
   """
   
-  explanation: """
-  If-else logic is implemented by If Shard. It contains the parameters Predicate, Then, Else and Passthrough.
+  explanation: """If-else logic is implemented by If Shard. It contains the parameters Predicate, Then, Else and Passthrough.
   """
 }

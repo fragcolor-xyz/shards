@@ -1,8 +1,7 @@
 {
   prompt: """How to do inequality comparison?"""
   
-  solution:"""
-  5 | IsMore(2)
+  solution: """5 | IsMore(2)
   
   5 | IsMoreEqual(2)
   
@@ -11,8 +10,7 @@
   2 | IsLessEqual(5)
   """
   
-  explicit: """
-  5 | IsMore(Value: 2)
+  explicit: """5 | IsMore(Value: 2)
   
   5 | IsMoreEqual(Value: 2)
   
@@ -21,8 +19,7 @@
   2 | IsLessEqual(Value: 5)
   """
   
-  explanation: """
-  For ‘more than’ > operation, use IsMore Shard.
+  explanation: """For ‘more than’ > operation, use IsMore Shard.
   For ‘more than or equal to’ ≥ operation, use IsMoreEqual Shard.
   For ‘less than’ < operation, use IsLess Shard. 
   For ‘less than or equal to’ ≤ operation, use IsLessEqual Shard.

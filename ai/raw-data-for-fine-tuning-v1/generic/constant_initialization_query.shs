@@ -1,8 +1,7 @@
 {
   prompt: """How to initialize a constant in Shards?"""
   
-  solution:"""
-  10.3 = constant1
+  solution: """10.3 = constant1
   Const(10.3)
   "common string" = constant2
   Const("Hello World")
@@ -10,8 +9,7 @@
   Const(@f4(1.0 2.0 3.0 4.0))
   """
   
-  explicit: """
-  10.3 = constant1
+  explicit: """10.3 = constant1
   Const(Value: 10.3)
   "common string" = constant2
   Const(Value: "Hello World")
@@ -19,7 +17,6 @@
   Const(Value: @f4(1.0 2.0 3.0 4.0))
   """
   
-  explanation: """
-  initialization of a constant variable should be done using = sign.
+  explanation: """initialization of a constant variable should be done using = sign.
   """
 }

@@ -1,22 +1,19 @@
 {
   prompt: """How to do trigonometric operations in Shards?"""
   
-  solution:"""
-  0.5 | Math.Sin | Log
+  solution: """0.5 | Math.Sin | Log
   0.0 | Math.Cos | Log
   1.0 | Math.Tan | Log
   """
   
-  explicit: """
-  0.5 | Math.Sin | Log(Prefix: "" Level: LogLevel::Info)
+  explicit: """0.5 | Math.Sin | Log(Prefix: "" Level: LogLevel::Info)
   0.0 | Math.Cos | 
   Log(Prefix: "" Level: LogLevel::Info)
   1.0 | Math.Tan | 
   Log(Prefix: "" Level: LogLevel::Info)
   """
   
-  explanation: """
-  For sine operation, use Math.Sin Shard.
+  explanation: """For sine operation, use Math.Sin Shard.
   For cosine operation, use Math.Cos Shard.
   For tangent operation, use Math.Tan Shard.
   """

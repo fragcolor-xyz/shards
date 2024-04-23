@@ -1,8 +1,7 @@
 {
   prompt: """How to loop in Shards?"""
   
-  solution:"""
-  0 >= sum
+  solution: """0 >= sum
   
   ForRange(1 999 {
   Math.Add(sum) > sum 
@@ -13,8 +12,7 @@
   Assert.Is(499500)
   """
   
-  explicit: """
-  0 >= sum
+  explicit: """0 >= sum
   
   ForRange(
   From: 1
@@ -29,8 +27,7 @@
   Assert.Is(Value: 499500)
   """
   
-  explanation: """
-  Loop in Shards is implemented by ForRange Shard. It has From, To and Action parameters.
+  explanation: """Loop in Shards is implemented by ForRange Shard. It has From, To and Action parameters.
   The code example shows how to sum all positive integers below 1000.
   """
 }
