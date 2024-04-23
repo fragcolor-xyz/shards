@@ -1,9 +1,7 @@
 {
-  prompt: """  How to use Maybe in Shards?
-  """
+  prompt: """How to use Maybe in Shards?"""
   
-  solution:"""
-  [1 2]
+  solution: """[1 2]
   Maybe( 
   Take(3) {Msg("Invalid, default to 42" LogLevel::Warning)
   42
@@ -13,8 +11,7 @@
   Log("result")
   """
   
-  explicit: """
-  [1 2]
+  explicit: """[1 2]
   Maybe(
   Shards: Take(3)
   Else:
@@ -26,8 +23,7 @@
   Log(Prefix: "result" Level: LogLevel::Info)
   """
   
-  explanation: """
-  Maybe attempts to activate a shard or a sequence of shards specified in the Shards parameter. Upon failure, activate another shard or sequence of shards in the Else parameter. 
+  explanation: """Maybe attempts to activate a shard or a sequence of shards specified in the Shards parameter. Upon failure, activate another shard or sequence of shards in the Else parameter. 
   If Silent boolean parameter is assigned the value true, it will disable Log and Msg shards and no warning message would be printed upon failure
   """
 }

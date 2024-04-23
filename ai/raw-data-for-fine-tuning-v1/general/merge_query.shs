@@ -17,8 +17,7 @@
   Merge(Target: table1)
   Log(Prefix: "resulting table" Level: LogLevel::Info)"""
   
-  explanation: """
-  Merge, combines two tables into one, with the input table taking priority over the table passed into the Target parameter. That is,  if table2 has similar keys to table1
+  explanation: """Merge, combines two tables into one, with the input table taking priority over the table passed into the Target parameter. That is,  if table2 has similar keys to table1
   the output table will have table2's value for those similar keys.
   """
   

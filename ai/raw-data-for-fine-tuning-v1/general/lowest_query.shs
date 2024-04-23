@@ -11,8 +11,7 @@
   Lowest
   Log(Prefix:"resulting" Level: LogLevel::Info)"""
   
-  explanation: """
-  The Lowest Shard will parse a sequence and return the element with the lowest "value". If it is a sequence of integers or floats it will return the element with
+  explanation: """The Lowest Shard will parse a sequence and return the element with the lowest "value". If it is a sequence of integers or floats it will return the element with
   the lowest integer or float. If it is a sequence of strings it will return the element with the lowest value based on the lexicographical order.
   """
   

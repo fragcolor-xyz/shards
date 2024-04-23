@@ -19,8 +19,7 @@
   Log(Prefix: "resulting sequence" Level: LogLevel::Info)
   """
   
-  explanation: """
-  This Shard compares the input to its Operand parameter and outputs the greater of the two values.
+  explanation: """This Shard compares the input to its Operand parameter and outputs the greater of the two values.
   
   If the input is a sequence and the Operand parameter a single number, each input element is compared with the Operand parameter and the greater value from each comparison is collected and output as a sequence.
   

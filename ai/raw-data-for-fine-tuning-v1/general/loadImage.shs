@@ -7,8 +7,7 @@
   explicit:
   """LoadImage(File: filename.png PremultiplyAlpha: true) | GFX.Texture"""
   
-  explanation: """
-  The LoadImage Shard will output the imge specified in the File parameter. The Premultiplied parameter is switched on or aff depending on
+  explanation: """The LoadImage Shard will output the imge specified in the File parameter. The Premultiplied parameter is switched on or aff depending on
   wether the image selected does or does not have alpha. In the case provided under solution,  we are feeding the output of the 
   LoadImage Shard into GFX.Texture for the image to be used as a texture.
   """

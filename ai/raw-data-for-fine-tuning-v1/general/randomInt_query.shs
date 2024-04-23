@@ -1,16 +1,13 @@
 {
   prompt: """How do I get a random integer?""" 
   
-  solution: """
-  RandomInt(50) 
+  solution: """RandomInt(50) 
   """
   
-  explicit: """
-  RandomInt(Max: 50) 
+  explicit: """RandomInt(Max: 50) 
   """
   
-  explanation: """
-  The RandomInt Shard will return a random integer between the values 0 and the value specified in the Max parameter (non-inclusive). Use  Math.Add  or Math.Subtract
+  explanation: """The RandomInt Shard will return a random integer between the values 0 and the value specified in the Max parameter (non-inclusive). Use  Math.Add  or Math.Subtract
   to modify the lower limit. For example, to get a random integer from the range of 2-50  you can use the RandomInt(48) | Math.Add(2).
   """
   

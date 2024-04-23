@@ -1,8 +1,7 @@
 {
   prompt: """How do I create a conditional statement that will do something when the condition is met and something else when it is not?""" 
   
-  solution: """
-  variable1
+  solution: """variable1
   If(Is(true) {
   Pass ;Do Something
   } {
@@ -10,8 +9,7 @@
   })
   """
   
-  explicit: """
-  Get(Name: variable1)
+  explicit: """Get(Name: variable1)
   If(Predicate: Is(Value: true) Then: {
   Pass ;Do Something
   } Else: {
@@ -20,8 +18,7 @@
   )
   """
   
-  explanation: """
-  The If Shard is a Shard used to create a conditional statement. If the conditions stated in the Predicate parameter is met, it will execute what is stated in
+  explanation: """The If Shard is a Shard used to create a conditional statement. If the conditions stated in the Predicate parameter is met, it will execute what is stated in
   the Then paramater. If the condition is not met, it will execute what is listed in the Else parameter.
   """
   

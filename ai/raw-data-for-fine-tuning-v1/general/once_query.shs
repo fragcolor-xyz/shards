@@ -11,8 +11,7 @@
   Msg(Message: "This will only execute once" Level: LogLevel::Info)
   } Every: 0.0)"""
   
-  explanation: """
-  When the Once Shard has 0.0 in the Every parameter, it will execute what is stated in the Action parameter only once per flow execution.
+  explanation: """When the Once Shard has 0.0 in the Every parameter, it will execute what is stated in the Action parameter only once per flow execution.
   """
   
   tag: "  #General"

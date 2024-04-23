@@ -1,22 +1,19 @@
 {
   prompt: """How do I check if something is none?""" 
   
-  solution: """
-  variable1
+  solution: """variable1
   When(IsNone {
   Pass ;Do Something
   })
   """
   
-  explicit: """
-  Get(Name: variable1)
+  explicit: """Get(Name: variable1)
   When(Predicate: IsNone Action: {
   Pass ;Do Something
   } Passthrough: true)
   """
   
-  explanation: """
-  The IsNone Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional shard is none. 
+  explanation: """The IsNone Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional shard is none. 
   In the solution above, if variable1 is none, the When Shard's Predicate will return true and do what is stated in Action.
   """
   

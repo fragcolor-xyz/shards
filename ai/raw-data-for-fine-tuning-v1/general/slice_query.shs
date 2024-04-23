@@ -1,16 +1,14 @@
 {
   prompt: """How do I get a segment from a sequence?""" 
   
-  solution: """
-  [0 1 2 3 4 5] >= sequence
+  solution: """[0 1 2 3 4 5] >= sequence
   
   sequence
   Slice(0 3 1)
   Log("result")
   """
   
-  explicit: """
-  [0 1 2 3 4 5] >= sequence
+  explicit: """[0 1 2 3 4 5] >= sequence
   
   Get(Name: sequence)
   Slice(
@@ -21,8 +19,7 @@
   Log(Prefix:"result" Level: LogLevel::Info)
   """
   
-  explanation: """
-  Slice is a Shard that will get a segment from a sequence. It takes from the element indicated in the From parameter to the element
+  explanation: """Slice is a Shard that will get a segment from a sequence. It takes from the element indicated in the From parameter to the element
   indicated in the To parameter and every X element in between. Where X is specified in the Step parameter.
   """
   

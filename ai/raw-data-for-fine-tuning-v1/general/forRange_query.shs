@@ -1,8 +1,7 @@
 {
   prompt: """How do I do something cumalatively for a specififed range?""" 
   
-  solution: """
-  0 >= forRange-each-cycle-value
+  solution: """0 >= forRange-each-cycle-value
   
   ForRange
   (
@@ -20,8 +19,7 @@
   )
   """
   
-  explicit: """
-  0 >= forRange-each-cycle-value
+  explicit: """0 >= forRange-each-cycle-value
   
   ForRange
   (
@@ -39,8 +37,7 @@
   )
   """
   
-  explanation: """
-  The ForRange Shard iterates over a range of numbers, feeding each number into the Action parameter and executes the process stated in the Action parameter.
+  explanation: """The ForRange Shard iterates over a range of numbers, feeding each number into the Action parameter and executes the process stated in the Action parameter.
   """
   
   tag: "  #General"

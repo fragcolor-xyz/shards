@@ -1,9 +1,7 @@
 {
   prompt: """How do add something to the front of a sequence?""" 
   
-  solution:
-  """
-  [1 2 3 4 5] >= sequence
+  solution: """[1 2 3 4 5] >= sequence
   0 | PrependTo(sequence)
   
   sequence
@@ -17,8 +15,7 @@
   sequence
   Log(Prefix: "result" Level: LogLevel::Info)"""
   
-  explanation: """
-  PrependTo will add what is inputed to the sequence stated in the Collection parameter. The PrependTo shard will not output the resulting sequence but still modify it.
+  explanation: """PrependTo will add what is inputed to the sequence stated in the Collection parameter. The PrependTo shard will not output the resulting sequence but still modify it.
   Ensure that the input type matches the sequence type.
   """
   

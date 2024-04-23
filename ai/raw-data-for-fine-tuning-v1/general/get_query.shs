@@ -13,8 +13,7 @@
   Get(Name: variable)
   Log(Prefix: "Variable read" Level: LogLevel::Info)"""
   
-  explanation: """
-  Get is used to read the value of an existing variable. All variables that can be created by Set, can be read by Get.
+  explanation: """Get is used to read the value of an existing variable. All variables that can be created by Set, can be read by Get.
   """
   
   tag: "  #General"

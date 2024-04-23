@@ -7,8 +7,7 @@
   explicit:
   """Clear(Name: sequence)"""
   
-  explanation: """
-  Clear removes all the elements of the sequence that has been passed to it in the Name: parameter.
+  explanation: """Clear removes all the elements of the sequence that has been passed to it in the Name: parameter.
   This Shard works on both sequences and tables. 
   Use the Key: parameter to delete all elements of the specified key in a table.
   """

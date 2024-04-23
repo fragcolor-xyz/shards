@@ -7,8 +7,7 @@
   explicit:
   """Msg(Message: "Type your message here" Level: LogLevel::Info)"""
   
-  explanation: """
-  This Shard is used for displaying messages to the user on the standard output (which is usually the console).
+  explanation: """This Shard is used for displaying messages to the user on the standard output (which is usually the console).
   The message to display can be passed to this Shard either as a string or as a string variable holding a value. 
   In case a variable is passed the Shard displays the variable's value.
   Unlike Log, Msg does not print its input.

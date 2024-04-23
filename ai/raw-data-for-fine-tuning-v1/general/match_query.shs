@@ -1,8 +1,7 @@
 {
   prompt: """How do I compare an input with multiple cases an execute ones that are true?""" 
   
-  solution: """
-  1 = value
+  solution: """1 = value
   
   value
   Match([
@@ -21,8 +20,7 @@
   false)
   """
   
-  explicit: """
-  1 = value
+  explicit: """1 = value
   
   value
   Match(Cases: [
@@ -41,8 +39,7 @@
   Passthrough: false)
   """
   
-  explanation: """
-  The Match Shard Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case. If there are no matched
+  explanation: """The Match Shard Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case. If there are no matched
   cases, the program will panic.
   
   The Passthrough parameter set to true will allow the original input (the one that was used to match against every case in the shard) to be returned as the final 

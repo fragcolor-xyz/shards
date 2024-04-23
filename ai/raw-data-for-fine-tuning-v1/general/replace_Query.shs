@@ -1,8 +1,7 @@
 {
   prompt: """How to replace a elements in a sequence?""" 
   
-  solution: """
-  [0 1 2 3 4 5] >= sequence
+  solution: """[0 1 2 3 4 5] >= sequence
   
   sequence
   Replace(
@@ -12,8 +11,7 @@
   Log("result")
   """
   
-  explicit: """
-  [0 1 2 3 4 5] >= sequence
+  explicit: """[0 1 2 3 4 5] >= sequence
   
   Get(Name: sequence)
   Replace(
@@ -23,8 +21,7 @@
   Log(Prefix:"result" Level: LogLevel::Info) 
   """
   
-  explanation: """
-  The Replace Shard will take a sequence as input and replace all elements with indeces specified in the Patterns parameter, with the corresponding
+  explanation: """The Replace Shard will take a sequence as input and replace all elements with indeces specified in the Patterns parameter, with the corresponding
   element in the sequence in the Replacements parameter. The Patterns seqeuence and the Replacements sequence need to be of the same length.
   The Replace shard outputs the resulting modified sequence.
   """

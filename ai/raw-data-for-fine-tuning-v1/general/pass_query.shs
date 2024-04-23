@@ -1,9 +1,7 @@
 {
   prompt: """How to have an action that does nothing?""" 
   
-  solution:
-  """
-  2 = variable
+  solution: """2 = variable
   
   variable
   When({Is(2)} {
@@ -19,8 +17,7 @@
   Pass
   } Passthrough: true)"""
   
-  explanation: """
-  The Pass Shard makes an action parameter do nothing and return back its input.
+  explanation: """The Pass Shard makes an action parameter do nothing and return back its input.
   """
   
   tag: "  #General"

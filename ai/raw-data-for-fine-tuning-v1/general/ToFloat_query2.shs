@@ -1,18 +1,15 @@
 {
   prompt: """How do I convert a string to a float?""" 
   
-  solution: """
-  "5" 
+  solution: """"5" 
   ToFloat
   """
   
-  explicit: """
-  "5" 
+  explicit: """"5" 
   ToFloat
   """
   
-  explanation: """
-  The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If a string that has no numeric value like "Three", "Five"
+  explanation: """The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If a string that has no numeric value like "Three", "Five"
   or "hello" is passed in, the Shard will return 0.0. If the value has more than one dimension, only the first value will be used.
   """
   

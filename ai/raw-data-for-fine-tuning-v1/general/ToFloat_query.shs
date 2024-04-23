@@ -1,18 +1,15 @@
 {
   prompt: """How do I convert an integer to a float?""" 
   
-  solution: """
-  5 
+  solution: """5 
   ToFloat
   """
   
-  explicit: """
-  5 
+  explicit: """5 
   ToFloat
   """
   
-  explanation: """
-  The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If the
+  explanation: """The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If the
   value has more than one dimension, only the first value will be used.
   """
   

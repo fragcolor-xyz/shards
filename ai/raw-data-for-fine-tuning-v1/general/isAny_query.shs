@@ -1,15 +1,13 @@
 {
   prompt: """How do I check if any value in a sequence equals something?""" 
   
-  solution: """
-  [1 2 3 4 5 6] = sequence
+  solution: """[1 2 3 4 5 6] = sequence
   
   sequence
   If(IsAny(2) {Msg("one match")} {Msg("none match")})
   """
   
-  explicit: """
-  [1 2 3 4 5 6] = sequence
+  explicit: """[1 2 3 4 5 6] = sequence
   
   sequence
   If(Predicate: IsAny(Value: 2) Then:{
@@ -20,8 +18,7 @@ Msg(Message: "none match" Level: LogLevel::Info)}
   ) 
   """
   
-  explanation: """
-  The IsAny Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
+  explanation: """The IsAny Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
   It will parse through a sequence and check if any of the elements in the sequence matches the value provided in the Value parameter. 
   If at least one element matches the value, the Shard will return true, otherwise, it will return false. 
   The data type provided as input and provided in the Value Parameter must be of the same type.

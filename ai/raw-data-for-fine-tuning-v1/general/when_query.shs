@@ -1,17 +1,14 @@
 {
-  prompt: """  How to use When in Shards?
-  """
+  prompt: """How to use When in Shards?"""
   
-  solution:"""
-  64
+  solution: """64
   When(
   IsMore(50) 
   Msg("More than 50")
   )
   """
   
-  explicit: """
-  64
+  explicit: """64
   When(
   Predicate: {
   IsMore(50)
@@ -23,8 +20,7 @@
   )
   """
   
-  explanation: """
-  When is a Conditional shard that only executes the action if the predicate is true.
+  explanation: """When is a Conditional shard that only executes the action if the predicate is true.
   <input> is the value that will be passed to the predicate.
   <output> is the input of the shard if Passthrough is true, or the Predicate is false; otherwise the output of the Action.
   Predicate is the condition to be evaluated in order to trigger Action.
