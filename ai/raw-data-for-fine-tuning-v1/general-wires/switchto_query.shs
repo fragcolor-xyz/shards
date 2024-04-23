@@ -1,20 +1,17 @@
 {
   prompt: """How do I suspend a wire and immediately switch execution to a different wire?""" 
   
-  solution: """
-  @wire(main-wire{
+  solution: """@wire(main-wire{
   SwitchTo(wire-to-switch-to false)
   })
   """
   
-  explicit: """
-  @wire(main-wire{
+  explicit: """@wire(main-wire{
   SwitchTo(Wire: wire-to-switch-to Restart: false StopOnCleanup: false)
   })
   """
   
-  explanation: """
-  SwitchTo is a shard that suspends the currennt wire and switches execution to the wire specified in the Wire parameter. If the Restart
+  explanation: """SwitchTo is a shard that suspends the currennt wire and switches execution to the wire specified in the Wire parameter. If the Restart
   parameter is set to true, the wire being switched to will restart instead of resuming from its suspended state.
   
   """
