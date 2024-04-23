@@ -354,6 +354,7 @@ struct Query : public Base {
 
           sqlite3_reset(prepared->get());
           sqlite3_clear_bindings(prepared->get());
+          int expectedNumParameters = sqlite3_bind_parameter_count(prepared->get());
 
           int rc;
 
@@ -387,6 +388,9 @@ struct Query : public Base {
               throw ActivationError(sqlite3_errmsg(_connection->get()));
             }
           }
+
+          if (idx < expectedNumParameters)
+            throw ActivationError("Not enough parameters for query");
 
           return _returnCols ? getOutputCols(output) : getOutputRows(output);
         },
