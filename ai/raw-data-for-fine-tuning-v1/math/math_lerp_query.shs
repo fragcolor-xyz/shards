@@ -1,8 +1,7 @@
 {
   prompt: """How do I linearly interpolate between two values?"""  
   
-  solution: """
-  0 >= x
+  solution: """0 >= x
   
   0.01 ; interpolation factor
   Math.Lerp(x 100)
@@ -12,8 +11,7 @@
   Log("value")
   """
   
-  explicit: """
-  0 >= x
+  explicit: """0 >= x
   
   0.01 ; interpolation factor
   Math.Lerp(First: x Second: 100)
@@ -23,8 +21,7 @@
   Log(Prefix: "value" Level: LogLevel::Info)
   """
   
-  explanation: """
-  Math.Lerp is a Maths Shard which takes the interpolation factor as input and will lineraly interpolate between the the value in the First parameter to
+  explanation: """Math.Lerp is a Maths Shard which takes the interpolation factor as input and will lineraly interpolate between the the value in the First parameter to
   the value in the Second Parameter.
   """
   

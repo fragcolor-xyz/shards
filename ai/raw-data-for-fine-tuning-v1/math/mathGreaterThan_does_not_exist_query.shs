@@ -1,25 +1,21 @@
 {
-  prompt: """How to do greater than math operation?
-  """
+  prompt: """How to do greater than math operation?"""
   
-  solution:"""
-  "z" | IsMore("a")
+  solution: """"z" | IsMore("a")
   
   5 | IsMore(2)
   
   5.0 | IsMore((1.0 | Math.Add(3.0)))
   """
   
-  explicit: """
-  "z" | IsMore(Value: "a")
+  explicit: """"z" | IsMore(Value: "a")
   
   5 | IsMore(Value: 2)
   
   5.0 | IsMore(Value: (1.0 | Math.Add(Operand: 3.0)))
   """
   
-  explanation: """
-  For ‘more than’ > operation, use IsMore Shard.
+  explanation: """For ‘more than’ > operation, use IsMore Shard.
   For string comparison, ’z' is more than 'a' numerically.
   For integer comparison, 5 is more than 2.
   An example is also provided for using IsMore Shard containing a nested addition operation."""

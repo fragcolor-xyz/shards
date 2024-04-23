@@ -1,18 +1,15 @@
 {
   prompt: """How do I divide two values together?"""  
   
-  solution: """
-  6.0 | Math.Divide(2.0)
+  solution: """6.0 | Math.Divide(2.0)
   Log("result") 
   """
   
-  explicit: """
-  6.0 | Math.Divide(Operand: 2.0)
+  explicit: """6.0 | Math.Divide(Operand: 2.0)
   Log(Prefix: "result" Level: LogLevel::Info) 
   """
   
-  explanation: """
-  Math.Divide is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the division
+  explanation: """Math.Divide is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the division
   mathmatical operation. Math.Divide can also take in a sequence of floats or integers as input and as a value for the Operand parameter. In this scenario
   it will divide  the values of each corresponding index and return a sequence. Both the input and the operand needs to be of the same type for the Shard to function.
   """

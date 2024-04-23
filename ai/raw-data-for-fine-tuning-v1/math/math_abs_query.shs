@@ -1,20 +1,17 @@
 {
   prompt: """How do I get the absolute value of a signed variable?"""  
   
-  solution: """
-  -3
+  solution: """-3
   Math.Abs
   Log("result") 
   """
   
-  explicit: """
-  -3
+  explicit: """-3
   Math.Abs
   Log(Prefix: "result" Level: LogLevel::Info) 
   """
   
-  explanation: """
-  Math.Abs is a Maths Shard which takes in a signed numeric value as input and return its absolute value. If a sequence is given as input,
+  explanation: """Math.Abs is a Maths Shard which takes in a signed numeric value as input and return its absolute value. If a sequence is given as input,
   Math.Abs will parse through the sequence and return a sequence of absolute values.
   """
   

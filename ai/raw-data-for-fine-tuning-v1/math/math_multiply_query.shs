@@ -1,18 +1,15 @@
 {
   prompt: """How do I multiply two values together?"""  
   
-  solution: """
-  3 | Math.Multiply(2)
+  solution: """3 | Math.Multiply(2)
   Log("result")
   """
   
-  explicit: """
-  3 | Math.Multiply(Operand: 2)
+  explicit: """3 | Math.Multiply(Operand: 2)
   Log(Prefix: "result" Level: LogLevel::Info)
   """
   
-  explanation: """
-  Math.Multiply is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the multiply
+  explanation: """Math.Multiply is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the multiply
   mathmatical operation. Math.Multiply can also take in a sequence of floats or integers as input and as a value for the Operand parameter. In this scenario
   it will Multiply the values of each corresponding index and return a sequence. Both the input and the operand needs to be of the same type for the Shard to function.
   """

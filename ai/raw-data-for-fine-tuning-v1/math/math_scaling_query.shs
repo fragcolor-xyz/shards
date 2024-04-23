@@ -1,20 +1,17 @@
 {
   prompt: """How do I create a scale matrix?"""  
   
-  solution: """
-  @f3(1.0 1.0 1.0)
+  solution: """@f3(1.0 1.0 1.0)
   Math.Scaling
   Log("result")
   """
   
-  explicit: """
-  @f3(1.0 1.0 1.0)
+  explicit: """@f3(1.0 1.0 1.0)
   Math.Scaling
   Log(Prefix: "result" Level: LogLevel::Info)
   """
   
-  explanation: """
-  Math.Scaling is a Maths Shard that takes a float3 as input and converts it into a scale matrix. 
+  explanation: """Math.Scaling is a Maths Shard that takes a float3 as input and converts it into a scale matrix. 
   The first value in the float3 represents the x scale, the second value the y scale and the third value the z scale.
   """
   
