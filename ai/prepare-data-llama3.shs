@@ -1,4 +1,5 @@
 @define(with-explantion true prompt-type @type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
+@define(with-explantion false prompt-type @type({"instruction": Type::String "code": Type::String}))
 ; @define(prompt-type @<type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
 
 @wire(prepare-csv {
@@ -84,18 +85,18 @@
       ; ; ai-assistant-answer
       ; ; Log("answer")
       ; }
-
-      {Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
-      ExpectSeq
-      Take(1)
-      ExpectTable
-      Take("String")
-      ExpectString
-      Update(temp-chat "explanation") 
-      ; AppendTo(ai-assistant-answer)
-      ; ai-assistant-answer
-      ; Log("answer")
-      }
+      When(with-explantion | IsTrue{Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
+        ExpectSeq
+        Take(1)
+        ExpectTable
+        Take("String")
+        ExpectString
+        Update(temp-chat "explanation") 
+        ; AppendTo(ai-assistant-answer)
+        ; ai-assistant-answer
+        ; Log("answer")
+      })
+      
 
       ; {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
       ; ExpectSeq
