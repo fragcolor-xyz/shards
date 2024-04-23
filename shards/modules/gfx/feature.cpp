@@ -121,7 +121,6 @@ struct BuiltinFeatureShard {
     case BuiltinFeatureId::AlphaBlend:
       *_feature = std::make_shared<Feature>();
       (*_feature)->state.set_blend(BlendState{.color = BlendComponent::Alpha, .alpha = BlendComponent::Opaque});
-      (*_feature)->state.set_depthWrite(false);
       break;
     }
   }
