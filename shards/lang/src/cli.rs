@@ -45,6 +45,11 @@ enum Commands {
     /// Decompress help strings before running the script
     #[arg(long, short = 'd', default_value = "false", action)]
     decompress_strings: bool,
+
+    /// Change the current path to the scripts's path
+    #[arg(long, short = 'c', action)]
+    skip_cwd: bool,
+
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
@@ -153,7 +158,14 @@ pub extern "C" fn shards_process_args(
       file,
       decompress_strings,
       args,
-    } => execute(file, *decompress_strings, args, cancellation_token),
+      skip_cwd,
+    } => execute(
+      file,
+      *decompress_strings,
+      args,
+      cancellation_token,
+      !*skip_cwd,
+    ),
     Commands::Format {
       file,
       output,
@@ -181,7 +193,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
   let mut in_str = if file == "-" {
     std::io::read_to_string(std::io::stdin()).unwrap()
   } else {
-    fs::read_to_string(file.clone())?
+    fs::read_to_string(file)?
   };
 
   // add new line at the end of the file to be able to parse it correctly
@@ -213,7 +225,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
 fn load(
   file: &str,
   args: &Vec<String>,
-  decompress_strings: bool,
+  _decompress_strings: bool,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), Error> {
   shlog!("Loading file");
@@ -377,9 +389,10 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
 
 fn execute(
   file: &str,
-  decompress_strings: bool,
+  _decompress_strings: bool,
   args: &Vec<String>,
   cancellation_token: Arc<AtomicBool>,
+  change_current_path: bool,
 ) -> Result<(), Error> {
   shlog!("Evaluating file: {}", file);
 
@@ -390,11 +403,14 @@ fn execute(
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
 
-    // get absolute parent path of the file
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
-    let c_parent_path = std::ffi::CString::new(parent_path).unwrap();
-    // set it as root path
-    unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
+
+    if change_current_path {
+      // get absolute parent path of the file
+      let c_parent_path = std::ffi::CString::new(parent_path).unwrap();
+      // set it as root path
+      unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
+    }
 
     read(&file_content, file_path.to_str().unwrap(), parent_path).map_err(|e| {
       shlog!("Error: {:?}", e);
