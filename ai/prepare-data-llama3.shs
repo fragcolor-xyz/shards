@@ -1,29 +1,20 @@
-@define(prompt-type @type({"input": Type::String "output": Type::String}))
-@define(system-prompt "You are a Shards programming language coding expert. Your task is to assist users in mastering the Shards programming language, particularly focusing on its core elements: Shards, Wires, and Meshes. Each Shard should be understood as a basic unit with one input and one output, ensuring a linear and predictable flow that simplifies debugging and understanding program behavior.
-Encourage best programming practices such as using explicit type declarations, meticulous parameter management for customizing Shards' functionalities, and robust error and memory management to prevent runtime issues and memory leaks. 
-Emphasize the significance of designing Wires as directed graphs of Shards for complex behavior orchestration and state management, and explain how Meshes manage and schedule these Wires efficiently across CPU threads.Provide code examples that demonstrate these practices, helping users grasp their practical applications and the common idioms used in Shards.
-Your intended audience has knowledge of other programming languages but not Shards. 
-They have to learn Shards very fast to quickly become Shards coding experts.
-Hence, please resolve the query step by step to ensure your Shards code is correct and clear for optimized learning.
-When interacting with users, prioritize clarity and precision in your explanations. If a user struggles with a concept, offer simplified explanations and analogies, possibly relating to familiar programming concepts or everyday scenarios. Encourage critical thinking about applying Shards in various programming contexts, promoting an exploratory and experimental learning approach.
-Your responses should be friendly and supportive, maintaining a positive tone throughout the interaction. Validate the user’s efforts, even when correcting mistakes, and provide encouragement and constructive feedback to create a supportive learning environment. Always adhere to ethical guidelines and ensure that all interactions uphold the integrity and core principles of educational engagement, focusing on fostering a deep understanding of the Shards programming language.
-Provide explanations only if asked. Otherwise, just provide the code solution for the query.")
+@define(with-explantion true prompt-type @type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
+; @define(prompt-type @<type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
 
 @wire(prepare-csv {
   [] >= rows
   "" >= csv_content
 
-  {input: "prompt" output: "completion"} >> temp-prompt-seq
+  {instruction: "prompt" code: "solution" explanation: "explanation"} >> temp-prompt-seq
   Clear(temp-prompt-seq)
 
-  ; TODO
 
   "./raw-data-for-fine-tuning-v1/all/"
   FS.Iterate
 
   ForEach({
     {
-      {"input": "placeholder-prompt" "output": "placeholder-completion"} >= temp-chat
+      {"instruction": "placeholder-instruction" "code": "placeholder-solution" "explanation": "placeholder-explanation"} >= temp-chat
       "" >= ai-assistant-answer
     }
 
@@ -62,7 +53,7 @@ Provide explanations only if asked. Otherwise, just provide the code solution fo
       ExpectTable
       Take("String")
       ExpectString
-      Update(temp-chat "input") 
+      Update(temp-chat "instruction") 
       ;temp-chat
       ;Log("result")
       }
@@ -73,7 +64,9 @@ Provide explanations only if asked. Otherwise, just provide the code solution fo
       ExpectTable
       Take("String")
       ExpectString >= solution
-      AppendTo(ai-assistant-answer)
+      Update(temp-chat "code") 
+      ; AppendTo(ai-assistant-answer)
+
       ;ai-assistant-answer
       ;Log("answer")
       }
@@ -98,7 +91,8 @@ Provide explanations only if asked. Otherwise, just provide the code solution fo
       ExpectTable
       Take("String")
       ExpectString
-      AppendTo(ai-assistant-answer)
+      Update(temp-chat "explanation") 
+      ; AppendTo(ai-assistant-answer)
       ; ai-assistant-answer
       ; Log("answer")
       }
@@ -114,29 +108,20 @@ Provide explanations only if asked. Otherwise, just provide the code solution fo
       ; ; Log("answer")
       ; }
 
-      ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
-      Update(temp-chat "output")
+      ; ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
+      ; Update(temp-chat "output")
       temp-chat >> temp-prompt-seq
 
       temp-prompt-seq
       Log("temp-prompt-seq")
     })
   })
-  ["instruction", "input", "output"] >> rows
+  ["instruction", "code", "explanation"] >> rows
 
   temp-prompt-seq
   ForEach({
     Expect(@prompt-type) = chat
-    [@system-prompt, chat:input, chat: output] >> rows
-    ; {
-    ;   "messages": [
-    ;     {"role": "system" "content": @system-prompt}
-    ;     {"role": "user" "content": chat:user}
-    ;     {"role": "assistant" "content": chat:assistant}]
-    ; } | ToJson | AppendTo(csv_content)
-    ; add new line
-    ; "\n" | AppendTo(csv_content)
-    
+    [chat:instruction, chat:code, chat:explanation] >> rows
   })
 
   
@@ -149,10 +134,3 @@ Provide explanations only if asked. Otherwise, just provide the code solution fo
 @mesh(main)
 @schedule(main prepare-csv)
 @run(main)
-
-; REFERENCE
-; ["a" "b" "c"] >> rows
-; ["a" "b" "c"] >> rows
-; ["a" "b" "c"] >> rows
-; rows | CSV.Write = csv-data
-; "mydata.csv" | FS.Write(csv-data)
