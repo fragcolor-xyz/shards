@@ -2212,6 +2212,9 @@ void SHWire::addTrait(SHTrait inTrait) {
   if (it == traits.end()) {
     SHLOG_TRACE("Adding <{}> to wire \"{}\"", SHVar{.payload = {.traitValue = &inTrait}, .valueType = SHType::Trait}, name);
     traits.emplace_back(inTrait);
+
+    // Make sure to register the trait
+    TraitRegister::instance().insertUnique(inTrait);
   }
 }
 
