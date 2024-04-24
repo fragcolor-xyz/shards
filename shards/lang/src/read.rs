@@ -7,7 +7,7 @@ use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
   Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shard_impl, shccstr, shlog_debug, shlog_error};
+use shards::{cstr, shard_impl, shccstr, shlog, shlog_debug, shlog_error};
 use shards::{shard, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
