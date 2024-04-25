@@ -174,9 +174,9 @@ public:
         };
       }
       if constexpr (detail::HasStaticMember_hash<T, void(const T &, void *outDigest, size_t digestSize)>::value) {
-        info.hash = [](const void *self, void *outDigest, size_t digestSize) {
+        info.hash = [](const void *self, void *outDigest, uint32_t digestSize) {
           auto tself = reinterpret_cast<const T *>(self);
-          return T::hash(*tself, outDigest, digestSize);
+          return T::hash(*tself, outDigest, size_t(digestSize));
         };
       }
       return info;

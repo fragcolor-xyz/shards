@@ -461,7 +461,7 @@ struct SHObjectInfo {
 typedef struct SHTypeInfo SHTypeInfo;
 
 typedef bool(__cdecl *SHExtTypeMatch)(const void *self, const void *other);
-typedef void(__cdecl *SHExtTypeHash)(const void *self, void *outDigest, size_t digestSize);
+typedef void(__cdecl *SHExtTypeHash)(const void *self, void *outDigest, uint32_t digestSize);
 typedef void(__cdecl *SHExtTypeReference)(void *self);
 typedef void(__cdecl *SHExtTypeRelease)(void *self);
 
@@ -1034,7 +1034,7 @@ typedef const struct SHObjectInfo *(__cdecl *SHFindObjectInfo)(int32_t vendorId,
 typedef int64_t(__cdecl *SHFindObjectTypeId)(SHStringWithLen name);
 typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 
-typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, size_t newCap);
+typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, uint32_t newCap);
 typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
 
 typedef struct _SHCore {

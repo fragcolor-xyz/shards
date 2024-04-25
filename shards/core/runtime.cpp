@@ -2487,9 +2487,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
-  result->stringGrow = [](SHStringPayload *str, size_t newCap) {
+  result->stringGrow = [](SHStringPayload *str, uint32_t newCap) {
     size_t oldLen = str->len;
-    if (newCap > str->cap) {
+    if (size_t(newCap) > str->cap) {
       arrayResize(*str, newCap);
       str->len = oldLen;
     }
