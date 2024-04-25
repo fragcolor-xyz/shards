@@ -558,16 +558,22 @@ struct StopWire : public WireBase {
   std::weak_ptr<SHWire> _wire;
   entt::connection _onComposedConn;
 
-  void destroy() { _onComposedConn.release(); }
+  void destroy() {
+    if (_onComposedConn)
+      _onComposedConn.release();
+  }
 
   SHTypeInfo compose(SHInstanceData &data) {
     assert(data.wire);
 
     if (wireref->valueType == SHType::None) {
       _inputType = data.inputType;
+
       if (_onComposedConn)
         _onComposedConn.release();
+
       _wire = data.wire->weak_from_this();
+
       auto mesh = data.wire->mesh.lock();
       if (mesh) {
         _onComposedConn = mesh->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
