@@ -558,10 +558,7 @@ struct StopWire : public WireBase {
   std::weak_ptr<SHWire> _wire;
   entt::connection _onComposedConn;
 
-  void destroy() {
-    if (_onComposedConn && _wire.lock())
-      _onComposedConn.release();
-  }
+  void destroy() { _onComposedConn.release(); }
 
   SHTypeInfo compose(SHInstanceData &data) {
     assert(data.wire);
