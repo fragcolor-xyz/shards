@@ -21,6 +21,7 @@ namespace shards {
 template <typename TDigest> struct HashState {
   std::vector<std::set<TDigest>> hashSets;
   std::unordered_map<SHWire *, TDigest> wireHashes;
+  std::vector<SHWire*> wireStack;
   int hashSetCounter{};
   int depth{};
 

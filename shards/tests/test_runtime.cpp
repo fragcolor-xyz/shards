@@ -610,10 +610,10 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
 
-    auto h1 = deriveTypeHash(v1);
-    auto h2 = deriveTypeHash(v2);
+    auto h1 = deriveTypeHash64(v1);
+    auto h2 = deriveTypeHash64(v2);
     REQUIRE(h1 == h2);
-    auto h6 = deriveTypeHash(v6);
+    auto h6 = deriveTypeHash64(v6);
     REQUIRE(h1 != h6);
 
     SHLOG_INFO(v1);
@@ -803,11 +803,11 @@ TEST_CASE("VarPayload") {
   auto hash3 = hash(vyy);                                      \
   REQUIRE(hash1 == hash2);                                     \
   REQUIRE(hash1 == hash3);                                     \
-  auto typeHash1 = deriveTypeHash(vxx);                        \
+  auto typeHash1 = deriveTypeHash64(vxx);                        \
   auto typeInfo1 = deriveTypeInfo(vxx, data);                  \
   auto typeInfo2 = deriveTypeInfo(vx, data);                   \
   auto typeInfo3 = deriveTypeInfo(Var::Empty, data);           \
-  REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);             \
+  REQUIRE(deriveTypeHash64(typeInfo1) == typeHash1);             \
   auto stypeHash = std::hash<SHTypeInfo>()(typeInfo1);         \
   REQUIRE(stypeHash != 0);                                     \
   REQUIRE(typeInfo1 == typeInfo2);                             \
@@ -815,16 +815,16 @@ TEST_CASE("VarPayload") {
   freeDerivedInfo(typeInfo1);                                  \
   freeDerivedInfo(typeInfo2);                                  \
   freeDerivedInfo(typeInfo3);                                  \
-  auto typeHash2 = deriveTypeHash(vx);                         \
-  auto typeHash3 = deriveTypeHash(vyy);                        \
+  auto typeHash2 = deriveTypeHash64(vx);                         \
+  auto typeHash3 = deriveTypeHash64(vyy);                        \
   SHLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3); \
   REQUIRE(typeHash1 == typeHash2);                             \
   REQUIRE(typeHash1 == typeHash3);                             \
   vyy = vz;                                                    \
   REQUIRE(vyy != vy);                                          \
-  auto typeHash4 = deriveTypeHash(vyy);                        \
+  auto typeHash4 = deriveTypeHash64(vyy);                        \
   REQUIRE(typeHash4 == typeHash3);                             \
-  auto typeHash5 = deriveTypeHash(vz);                         \
+  auto typeHash5 = deriveTypeHash64(vz);                         \
   REQUIRE(typeHash4 == typeHash5)
 
 TEST_CASE("SHMap") {

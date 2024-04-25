@@ -74,17 +74,26 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
     }
   } break;
   case SHType::Table: {
+    // Needed to sort hashes
+    PUSH_TMP_HASH_SET();
+
     auto &t = var.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
     SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      TDigest hk = hash(k);
-      hashUpdate<TDigest>(state, &hk, sizeof(TDigest));
-      TDigest hv = hash(v);
-      hashUpdate<TDigest>(state, &hv, sizeof(TDigest));
+      XXH3_state_t subState{};
+      hashReset<TDigest>(&subState);
+      updateTypeHash(k, &subState);
+      updateTypeHash(v, &subState);
+      TMP_HASH_SET.insert(hashDigest<TDigest>(&subState));
     }
+
+    for (const auto hash : TMP_HASH_SET) {
+      hashUpdate<TDigest>(state, &hash, sizeof(hash));
+    }
+
   } break;
   case SHType::Set: {
     // Needed to sort hashes
@@ -121,7 +130,7 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
   case SHType::Object: {
     hashUpdate<TDigest>(state, &t.object.vendorId, sizeof(t.object.vendorId));
     hashUpdate<TDigest>(state, &t.object.typeId, sizeof(t.object.typeId));
-    if(t.object.extInfo && t.object.extInfo->hash) {
+    if (t.object.extInfo && t.object.extInfo->hash) {
       TDigest digest{};
       t.object.extInfo->hash(t.object.extInfoData, &digest, sizeof(TDigest));
       hashUpdate<TDigest>(state, &digest, sizeof(TDigest));
@@ -409,6 +418,14 @@ template <typename TDigest> inline TDigest HashState<TDigest>::hash(const SHVar 
   return hashDigest<TDigest>(&state);
 }
 template <typename TDigest> inline TDigest HashState<TDigest>::hash(const std::shared_ptr<SHWire> &wire) {
+  auto hashing = std::find_if(wireStack.begin(), wireStack.end(), [&](SHWire *w) { return w == wire.get(); });
+  if (hashing != wireStack.end()) {
+    // Do not hash recursive wires
+    return TDigest{};
+  }
+  wireStack.push_back(wire.get());
+  DEFER({ wireStack.pop_back(); });
+
   auto it = wireHashes.find(wire.get());
   if (it != wireHashes.end()) {
     return it->second;
