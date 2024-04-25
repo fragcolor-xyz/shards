@@ -187,10 +187,10 @@ public:
   // Create a new extended type into the target TypeInfo
   // returns the extened type info created, if one was already set,
   //  the new extended type is constructed from the old one using the copy constructor
-  static inline Extended &makeExtended(TypeInfo &dst) {
+  static inline T &makeExtended(TypeInfo &dst) {
     TypeInfo old;
     std::swap(old, dst);
-    return makeExtended(dst, &old);
+    return makeExtended(dst, &(SHTypeInfo&)old);
   }
   static inline T &makeExtended(TypeInfo &dst, const SHTypeInfo *original) {
     if (dst->basicType != SHType::Object) {

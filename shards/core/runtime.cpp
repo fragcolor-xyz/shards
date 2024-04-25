@@ -34,6 +34,10 @@
 #include "utils.hpp"
 #include "trait.hpp"
 
+#ifdef SH_COMPRESSED_STRINGS
+#include <shards/wire_dsl.hpp>
+#endif
+
 namespace fs = boost::filesystem;
 
 using namespace shards;
