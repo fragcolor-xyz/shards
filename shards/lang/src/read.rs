@@ -700,11 +700,18 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let key = match key.as_rule() {
             Rule::None => Value::None,
             Rule::Iden => Value::String(key.as_str().into()),
-            Rule::Value => process_value(
+            Rule::VarName => process_value(
               key.into_inner().next().unwrap(), // parsed qed
               env,
             )?,
-            _ => unreachable!(),
+            Rule::ConstValue => process_value(
+              key.into_inner().next().unwrap(), // parsed qed
+              env,
+            )?,
+            _ => {
+              eprintln!("Unexpected rule in TableKey: {:?}", key.as_rule());
+              unreachable!()
+            }
           };
 
           let value = inner
