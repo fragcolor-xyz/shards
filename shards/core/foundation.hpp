@@ -137,8 +137,6 @@ inline void destroyVar(SHVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
-using String = TString<InternalCore>;
-
 void decRef(ShardPtr shard);
 void incRef(ShardPtr shard);
 
