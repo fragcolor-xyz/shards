@@ -30,7 +30,7 @@
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
 #include <shards/fast_string/fast_string.hpp>
-#include "hash.hpp"
+#include "hash.inl"
 #include "utils.hpp"
 #include "trait.hpp"
 
