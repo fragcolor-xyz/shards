@@ -86,7 +86,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DARCH=core2 -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DSHARDS_THREAD_FIBER=ON -DUSE_ASAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
+          cmake -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DSHARDS_THREAD_FIBER=ON -DUSE_ASAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           ninja shards
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
