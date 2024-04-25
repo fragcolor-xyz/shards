@@ -700,10 +700,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let key = match key.as_rule() {
             Rule::None => Value::None,
             Rule::Iden => Value::String(key.as_str().into()),
-            Rule::VarName => process_value(
-              key.into_inner().next().unwrap(), // parsed qed
-              env,
-            )?,
+            Rule::VarName => Value::Identifier(extract_identifier(key)?),
             Rule::ConstValue => process_value(
               key.into_inner().next().unwrap(), // parsed qed
               env,
