@@ -1102,15 +1102,6 @@ template <typename E> static E getFlags(SHVar var) {
   return flags;
 };
 
-template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
-          bool ThreadSafe = false>
-class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe> {
-public:
-  ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe>(name, vendorId, objectId) {}
-};
-
 typedef TShardsVar<InternalCore> ShardsVar;
 
 typedef TTableVar<InternalCore> TableVar;

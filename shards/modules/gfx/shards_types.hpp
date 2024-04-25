@@ -3,6 +3,7 @@
 
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
+#include <shards/core/object_type.hpp>
 #include <shards/shards.hpp>
 #include <gfx/enums.hpp>
 #include <gfx/fwd.hpp>

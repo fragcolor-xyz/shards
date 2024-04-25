@@ -18,6 +18,7 @@
 #include "foundation.hpp"
 #include "inline.hpp"
 #include "utils.hpp"
+#include "object_type.hpp"
 
 #include <chrono>
 #include <iostream>
