@@ -995,7 +995,7 @@ struct SwitchTo : public WireBase {
     for (auto &v : _vars) {
       auto &var = v.get();
       std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-      auto &v_ref = pWire->getVariable(ToSWL(name));
+      auto &v_ref = pWire->getVariable(toSWL(name));
       cloneVar(v_ref, var);
     }
 
@@ -1009,7 +1009,7 @@ struct SwitchTo : public WireBase {
         // destroy fresh cloned variables
         for (auto &v : _vars) {
           std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-          destroyVar(pWire->getVariable(ToSWL(name)));
+          destroyVar(pWire->getVariable(toSWL(name)));
         }
         SHLOG_ERROR("Wire {} failed to start.", pWire->name);
         throw ActivationError("Wire failed to start.");
@@ -1659,7 +1659,7 @@ struct ParallelBase : public CapturingSpawners {
           for (auto &v : _vars) {
             // notice, this should be already destroyed by the wire releaseVariable
             std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            destroyVar(cref->wire->getVariable(ToSWL(name)));
+            destroyVar(cref->wire->getVariable(toSWL(name)));
           }
         }
 
@@ -1745,7 +1745,7 @@ struct ParallelBase : public CapturingSpawners {
           for (auto &v : server->_vars) {
             auto &var = v.get();
             std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            cloneVar(cref->wire->getVariable(ToSWL(name)), var);
+            cloneVar(cref->wire->getVariable(toSWL(name)), var);
           }
         }
       } obs{this, cref};

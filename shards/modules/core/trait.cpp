@@ -57,24 +57,31 @@ struct MakeTrait {
       auto &fieldType = *v.payload.typeValue;
 
       SHTraitVariable var{
-          .name = k.payload.stringValue,
+          .name =
+              SHStringWithLen{
+                  .string = k.payload.stringValue,
+                  .len = k.payload.stringLen,
+              },
           .type = fieldType,
       };
       arrayPush(_tmpVariables, var);
     }
 
-    std::sort(begin(_tmpVariables), end(_tmpVariables), [](const SHTraitVariable &a, const SHTraitVariable &b) {
-      return std::string_view(a.name) < std::string_view(b.name);
-    });
+    std::sort(begin(_tmpVariables), end(_tmpVariables),
+              [](const SHTraitVariable &a, const SHTraitVariable &b) { return toStringView(a.name) < toStringView(b.name); });
 
     for (auto &var : _tmpVariables) {
-      XXH3_128bits_update(&hashState, var.name, strlen(var.name));
+      XXH3_128bits_update(&hashState, var.name.string, var.name.len);
       _hashState.updateTypeHash(var.type, &hashState);
     }
 
     auto digest = XXH3_128bits_digest(&hashState);
     memcpy(_tmpTrait.id, &digest, sizeof(SHTrait::id));
-    _tmpTrait.name = _name.payload.stringValue;
+    _tmpTrait.name =
+        SHStringWithLen{
+            .string = _name.payload.stringValue,
+            .len = _name.payload.stringLen,
+        },
     _tmpTrait.variables = _tmpVariables;
     return output;
   }

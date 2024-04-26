@@ -8,21 +8,22 @@
 
 namespace shards {
 void freeTraitVariable(SHTraitVariable &ivar) {
-  std::free((void *)ivar.name);
+  if (ivar.name.string) {
+    delete[] ivar.name.string;
+    ivar.name.string = nullptr;
+    ivar.name.len = 0;
+  }
   freeDerivedInfo(ivar.type);
 }
 SHTraitVariable cloneTraitVariable(const SHTraitVariable &other) {
   SHTraitVariable clone{
-      .name = strdup(other.name),
+      .name = swlDuplicate(other.name),
       .type = cloneTypeInfo(other.type),
   };
   return clone;
 }
 void freeTrait(SHTrait &trait_) {
-  if (trait_.name) {
-    std::free((void *)trait_.name);
-    trait_.name = nullptr;
-  }
+  swlFree(trait_.name);
   for (auto &item : trait_.variables) {
     freeTraitVariable(item);
   }
@@ -30,7 +31,7 @@ void freeTrait(SHTrait &trait_) {
 }
 SHTrait cloneTrait(const SHTrait &other) {
   SHTrait result{
-      .name = strdup(other.name),
+      .name = swlDuplicate(other.name),
   };
 
   result.id[0] = other.id[0];
@@ -53,7 +54,7 @@ bool TraitMatcher::operator()(SHExposedTypesInfo exposedVariables, const SHTrait
 
   error.clear();
   for (auto &v : trait.variables) {
-    auto exposed = findExposedVariable(exposedVariables, v.name);
+    auto exposed = findExposedVariable(exposedVariables, toStringView(v.name));
     if (!exposed) {
       formatLineInto(error, "Trait variable '{}' not found", v.name);
       continue;

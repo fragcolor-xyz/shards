@@ -414,7 +414,7 @@ struct SHTypeInfo {
 
 typedef struct SHTraitVariable {
   // Name of the variable
-  SHString name;
+  SHStringWithLen name;
   // Expected variable type
   struct SHTypeInfo type;
 } SHTraitVariable;
@@ -424,7 +424,7 @@ typedef struct SHTrait {
   // Unique Id of the trait, which is also the hash of the items
   uint64_t id[2];
   // Friendly name given to this trait, unhashed
-  SHString name;
+  SHStringWithLen name;
   // List of variables
   SHTraitVariables variables;
 } SHTrait;

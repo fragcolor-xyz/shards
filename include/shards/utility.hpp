@@ -78,9 +78,10 @@ constexpr std::size_t StrLen(const char *str) {
   return len;
 }
 
-constexpr SHStringWithLen ToSWL(const char *str) { return SHStringWithLen{str, StrLen(str)}; }
+constexpr SHStringWithLen toSWL(const char *str) { return SHStringWithLen{str, StrLen(str)}; }
+constexpr SHStringWithLen toSWL(std::string_view str) { return SHStringWithLen{str.data(), str.size()}; }
 
-constexpr SHStringWithLen ToSWL(std::string_view str) { return SHStringWithLen{str.data(), str.size()}; }
+constexpr std::string_view toStringView(SHStringWithLen swl) { return std::string_view(swl.string, swl.len); }
 
 // SFINAE tests
 #define SH_HAS_MEMBER_TEST(_name_)                               \

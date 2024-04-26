@@ -85,6 +85,8 @@ SHOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 
 SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
+void stringGrow(SHStringPayload *str, uint32_t newCap);
+void stringFree(SHStringPayload *str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
@@ -1001,6 +1003,9 @@ struct InternalCore {
     return shards::referenceVariable(context, std::string_view(name.string, name.len));
   }
 
+  static void stringGrow(SHStringPayload *str, uint32_t size) { shards::stringGrow(str, size); }
+  static void stringFree(SHStringPayload *str) { shards::stringFree(str); }
+
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
   static void cloneVar(SHVar &dst, const SHVar &src) { shards::cloneVar(dst, src); }
@@ -1586,6 +1591,28 @@ inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
 template <typename... TArgs>
 inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, TArgs &&...args) {
   (collectRequiredVariables(exposed, out, std::forward<TArgs>(args)), ...);
+}
+
+inline SHStringWithLen swlDuplicate(SHStringWithLen in) {
+  if(in.len == 0) {
+    return SHStringWithLen{};
+  }
+  SHStringWithLen cpy{
+    .string = new char[in.len],
+    .len = in.len,
+  };
+  memcpy(const_cast<char*>(cpy.string), in.string, in.len);
+  return cpy;
+}
+inline SHStringWithLen swlFromStringView(std::string_view in) {
+  return swlDuplicate(toSWL(in));
+}
+inline void swlFree(SHStringWithLen& in) {
+  if(in.len > 0) {
+    delete[] in.string;
+    in.string = nullptr;
+    in.len = 0;
+  }
 }
 
 }; // namespace shards

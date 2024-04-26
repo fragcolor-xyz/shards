@@ -455,7 +455,7 @@ entt::id_type findId(SHContext *ctx) noexcept {
 }
 
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name) {
-  SHVar &v = wire->getVariable(ToSWL(name));
+  SHVar &v = wire->getVariable(toSWL(name));
   v.refcount++;
   v.flags |= SHVAR_FLAGS_REF_COUNTED;
   return &v;
@@ -470,7 +470,7 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
   auto mesh = ctx->main->mesh.lock();
   shassert(mesh);
 
-  SHVar &v = mesh->getVariable(ToSWL(name));
+  SHVar &v = mesh->getVariable(toSWL(name));
   v.refcount++;
   if (v.refcount == 1) {
     SHLOG_TRACE("Creating a global variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
@@ -487,7 +487,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
     for (; rit != ctx->wireStack.rend(); ++rit) {
       // prioritize local variables
       auto wire = *rit;
-      auto ov = wire->getVariableIfExists(ToSWL(name));
+      auto ov = wire->getVariableIfExists(toSWL(name));
       if (ov) {
         // found, lets get out here
         SHVar &cv = (*ov).get();
@@ -496,7 +496,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
         return &cv;
       }
       // try external variables
-      auto ev = wire->getExternalVariableIfExists(ToSWL(name));
+      auto ev = wire->getExternalVariableIfExists(toSWL(name));
       if (ev) {
         // found, lets get out here
         SHVar &cv = *ev;
@@ -517,7 +517,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 
     // Was not in wires.. find in mesh
     {
-      auto ov = mesh->getVariableIfExists(ToSWL(name));
+      auto ov = mesh->getVariableIfExists(toSWL(name));
       if (ov) {
         // found, lets get out here
         SHVar &cv = (*ov).get();
@@ -529,7 +529,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 
     // Was not in mesh directly.. try find in meshs refs
     {
-      auto rv = mesh->getRefIfExists(ToSWL(name));
+      auto rv = mesh->getRefIfExists(toSWL(name));
       if (rv) {
         SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
         // found, lets get out here
@@ -543,7 +543,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-  SHVar &cv = ctx->wireStack.back()->getVariable(ToSWL(name));
+  SHVar &cv = ctx->wireStack.back()->getVariable(toSWL(name));
   shassert(cv.refcount == 0);
   cv.refcount++;
   // can safely set this here, as we are creating a new variable
@@ -2207,6 +2207,16 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, bool isGlobal, const SH
   OnExposedVarSet ev{w->id, nameStr, *var, isGlobal, w};
   w->mesh.lock()->dispatcher.trigger(ev);
 }
+
+void stringGrow(SHStringPayload *str, uint32_t newCap) {
+  size_t oldLen = str->len;
+  if (size_t(newCap) > str->cap) {
+    arrayResize(*str, newCap);
+    str->len = oldLen;
+  }
+}
+void stringFree(SHStringPayload *str) { arrayFree(*str); }
+
 }; // namespace shards
 
 // NO NAMESPACE here!
@@ -2487,15 +2497,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
-  result->stringGrow = [](SHStringPayload *str, uint32_t newCap) {
-    size_t oldLen = str->len;
-    if (size_t(newCap) > str->cap) {
-      arrayResize(*str, newCap);
-      str->len = oldLen;
-    }
-  };
-
-  result->stringFree = [](SHStringPayload *str) { arrayFree(*str); };
+  result->stringGrow = &shards::stringGrow;
+  result->stringFree = &shards::stringFree;
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)

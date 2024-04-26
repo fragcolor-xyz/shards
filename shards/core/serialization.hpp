@@ -945,15 +945,18 @@ struct Serialization {
   template <class BinaryReader> void deserialize(BinaryReader &read, SHTraitVariable &output) {
     SHStringPayload spl{};
     deserialize(read, spl, false);
-    output.name = spl.elements;
+    output.name = SHStringWithLen{
+        .string = spl.elements,
+        .len = spl.len,
+    };
     deserialize(read, output.type);
   }
 
   template <class BinaryWriter> size_t serialize(const SHTraitVariable &input, BinaryWriter &write) {
     size_t total{};
     SHStringPayload spl{
-        .elements = const_cast<char *>(input.name),
-        .len = uint32_t(strlen(input.name)),
+        .elements = const_cast<char *>(input.name.string),
+        .len = uint32_t(input.name.len),
     };
     total += serialize(spl, write);
     total += serialize(input.type, write);
@@ -966,7 +969,10 @@ struct Serialization {
     // TODO: Don't really need name to be serialized
     SHStringPayload spl{};
     deserialize(read, spl, false);
-    output.name = spl.elements;
+    output.name = SHStringWithLen{
+        .string = spl.elements,
+        .len = spl.len,
+    };
 
     uint32_t len;
     read((uint8_t *)&len, sizeof(uint32_t));
@@ -983,8 +989,8 @@ struct Serialization {
 
     // TODO: Don't really need name to be serialized
     SHStringPayload spl{
-        .elements = const_cast<char *>(input.name),
-        .len = uint32_t(strlen(input.name)),
+        .elements = const_cast<char *>(input.name.string),
+        .len = uint32_t(input.name.len),
     };
     total += serialize(spl, write);
 
