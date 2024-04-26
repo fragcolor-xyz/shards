@@ -555,29 +555,14 @@ struct StopWire : public WireBase {
 
   SHTypeInfo _inputType{};
 
-  std::weak_ptr<SHMesh> _mesh;
-  entt::connection _onComposedConn;
-
-  void destroy() {
-    auto mesh = _mesh.lock();
-    if (mesh && _onComposedConn)
-      _onComposedConn.release();
-  }
+  std::weak_ptr<SHWire> _wire;
 
   SHTypeInfo compose(SHInstanceData &data) {
     assert(data.wire);
 
     if (wireref->valueType == SHType::None) {
       _inputType = data.inputType;
-
-      if (_onComposedConn)
-        _onComposedConn.release();
-
-      _mesh = data.wire->mesh;
-      auto mesh = _mesh.lock();
-      if (mesh) {
-        _onComposedConn = mesh->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
-      }
+      data.wire->getComposeData().outputTypes.push_back(data.inputType);
     } else {
       resolveWire();
       if (wire) {
@@ -587,21 +572,6 @@ struct StopWire : public WireBase {
     }
 
     return data.inputType;
-  }
-
-  void composed(const SHWire::OnComposedEvent &e) {
-    if (e.wire != wire.get())
-      return;
-
-    // this check runs only when (Stop) is called without any params!
-    // meaning it's stopping the wire it is in
-    if (!wire && wireref->valueType == SHType::None && !matchTypes(_inputType, e.wire->outputType, false, true, true)) {
-      SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
-                  "be the same type of the wire's output (regular flow), "
-                  "wire: {} expected: {}",
-                  e.wire->name, e.wire->outputType);
-      throw ComposeError("Stop input and wire output type mismatch");
-    }
   }
 
   void cleanup(SHContext *context) {

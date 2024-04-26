@@ -245,11 +245,6 @@ struct SHTableImpl : public SHAlignedMap<shards::OwnedVar, shards::OwnedVar> {
 
 struct SHWire : public std::enable_shared_from_this<SHWire> {
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
-
-  struct OnComposedEvent {
-    const SHWire *wire;
-  };
-
   struct OnStartEvent {
     const SHWire *wire;
   };
@@ -271,6 +266,20 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     const SHWire *wire;
     const SHWire *childWire;
   };
+
+  // Storage of data used only during compose
+  struct ComposeData {
+    // List of output types used for this wire
+    std::vector<SHTypeInfo> outputTypes;
+  };
+  std::shared_ptr<ComposeData> composeData;
+
+  ComposeData &getComposeData() {
+    if (!composeData) {
+      composeData = std::make_shared<ComposeData>();
+    }
+    return *composeData;
+  }
 
   // Attributes
   bool looped{false};
@@ -1594,21 +1603,19 @@ inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, Expos
 }
 
 inline SHStringWithLen swlDuplicate(SHStringWithLen in) {
-  if(in.len == 0) {
+  if (in.len == 0) {
     return SHStringWithLen{};
   }
   SHStringWithLen cpy{
-    .string = new char[in.len],
-    .len = in.len,
+      .string = new char[in.len],
+      .len = in.len,
   };
-  memcpy(const_cast<char*>(cpy.string), in.string, in.len);
+  memcpy(const_cast<char *>(cpy.string), in.string, in.len);
   return cpy;
 }
-inline SHStringWithLen swlFromStringView(std::string_view in) {
-  return swlDuplicate(toSWL(in));
-}
-inline void swlFree(SHStringWithLen& in) {
-  if(in.len > 0) {
+inline SHStringWithLen swlFromStringView(std::string_view in) { return swlDuplicate(toSWL(in)); }
+inline void swlFree(SHStringWithLen &in) {
+  if (in.len > 0) {
     delete[] in.string;
     in.string = nullptr;
     in.len = 0;

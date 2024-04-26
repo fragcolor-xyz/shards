@@ -33,6 +33,7 @@
 #include "hash.inl"
 #include "utils.hpp"
 #include "trait.hpp"
+#include "type_cache.hpp"
 
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
@@ -1033,14 +1034,8 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       if (extVar.type) {
         type = extVar.type;
       } else {
-        auto hash = deriveTypeHash64(var);
-        TypeInfo *info = nullptr;
-        if (ctx.wire->typesCache.find(hash) == ctx.wire->typesCache.end()) {
-          info = &ctx.wire->typesCache.emplace(hash, TypeInfo(var, data)).first->second;
-        } else {
-          info = &ctx.wire->typesCache.at(hash);
-        }
-        type = &(const SHTypeInfo &)*info;
+        static TypeCache typeCache;
+        type = &typeCache.insertUnique(TypeInfo(var, data));
       }
 
       SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
@@ -1140,15 +1135,17 @@ void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   }
 }
 
-SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const SHWire *wire_, SHValidationCallback callback, void *userData, SHInstanceData data) {
+  SHWire *wire = const_cast<SHWire *>(wire_);
+
   // compare exchange and then shassert we were not composing
   bool expected = false;
-  if (!const_cast<SHWire *>(wire)->composing.compare_exchange_strong(expected, true)) {
+  if (!wire->composing.compare_exchange_strong(expected, true)) {
     SHLOG_ERROR("Wire {} is already being composed", wire->name);
     throw ComposeError("Wire is already being composed");
   }
   // defer reset compose state
-  DEFER(const_cast<SHWire *>(wire)->composing.store(false));
+  DEFER(wire->composing.store(false));
 
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
@@ -1182,7 +1179,18 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   // set output type
   wire->outputType = res.outputType;
 
-  wire->mesh.lock()->dispatcher.trigger(SHWire::OnComposedEvent{wire});
+  // validate wire output types for additional return paths
+  if (wire->composeData) {
+    auto &cd = *wire->composeData.get();
+    DEFER({ wire->composeData.reset(); });
+    for (auto &type : cd.outputTypes) {
+      if (!matchTypes(res.outputType, type, true, true, true)) {
+        std::string err =
+            fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
+        throw ComposeError(err);
+      }
+    }
+  }
 
   return res;
 }

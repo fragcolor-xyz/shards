@@ -2,6 +2,7 @@
 #define D0E98483_F0A4_476F_81F3_8709C5D852D7
 
 #include "hash.inl"
+#include "foundation.hpp"
 #include <map>
 #include <shared_mutex>
 
