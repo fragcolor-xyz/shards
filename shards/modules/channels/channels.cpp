@@ -13,7 +13,7 @@ namespace channels {
 template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const char *name) {
   if (!matchTypes(type, channel.type, false, true, true)) {
     throw SHException(
-        fmt::format("Attempted to change channel type: {}, desired type: {}, actual channel type: {}", name, type, channel.type));
+        fmt::format("Attempted to change channel type: {}, desired type: {}, actual channel type: {}", name, type, (SHTypeInfo&)channel.type));
   }
 }
 
@@ -24,7 +24,7 @@ template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SH
     impl.type = type;
     return impl;
   } else if (T *impl = std::get_if<T>(channel.get())) {
-    if (impl->type.basicType == SHType::None) {
+    if (impl->type->basicType == SHType::None) {
       impl->type = type;
     } else {
       verifyChannelType(*impl, type, name);

@@ -13,7 +13,7 @@ namespace shards {
 namespace channels {
 
 struct ChannelShared {
-  SHTypeInfo type;
+  shards::TypeInfo type;
   std::atomic_bool closed;
 
   virtual void clear() = 0;
