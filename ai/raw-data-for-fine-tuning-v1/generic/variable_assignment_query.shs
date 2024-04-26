@@ -1,15 +1,14 @@
 {
-  prompt: """How to initalize variables in Shards?"""
-  
-  solution: """12.4 >= variable1
-  "Hello" >= variable2
-  """
-  
-  explicit: """12.4 | Set(Name: variable1)
-  
-  ”Hello” | Set(Name: variable2)
-  """
-  
-  explanation: """Assignment of a value to a variable is done via: >=
-  """
+prompt: """How to initalize variables in Shards?"""
+
+solution: """12.4 >= variable1
+"Hello" >= variable2
+"""
+
+explicit: """12.4 | Set(Name: variable1)
+"Hello" | Set(Name: variable2)
+"""
+
+explanation: """Assignment of a value to a variable is done via: >=
+"""
 }
