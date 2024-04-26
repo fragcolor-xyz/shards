@@ -1,19 +1,19 @@
 {
-  prompt: """How do I pause a wire until it is specifically resumed?""" 
-  
-  solution: """@wire(wire{
-  Suspend(wire-to-pause)
-  })
-  """
-  
-  explicit: """@wire(wire{
-  Suspend(Wire: wire-to-pause)
-  })
-  """
-  
-  explanation: """The Suspend shard is a shard that will pause the wire specified in the Wire parameter indefinitely until the Resume or Restart 
-  shards are used to revive the wire. If no wire is fed into the Wire parameter, it will suspend the current wire.
-  """
-  
-  tag: "  #General-Wire"
+prompt: """How do I pause a wire until it is specifically resumed?""" 
+
+solution: """@wire(wire{
+Suspend(wire-to-pause)
+})
+"""
+
+explicit: """@wire(wire{
+Suspend(Wire: wire-to-pause)
+})
+"""
+
+explanation: """The Suspend shard is a shard that will pause the wire specified in the Wire parameter indefinitely until the Resume or Restart 
+shards are used to revive the wire. If no wire is fed into the Wire parameter, it will suspend the current wire.
+"""
+
+tag: "  #General-Wire"
 }

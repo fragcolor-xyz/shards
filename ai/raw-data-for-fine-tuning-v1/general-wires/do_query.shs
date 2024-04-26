@@ -1,19 +1,19 @@
 {
-  prompt: """How to execute a wire from the main wire and continue the main wire after complete execution of the executed wire?""" 
-  
-  solution: """@wire(main-wire{
-  Do(other-wire)
-  })
-  """
-  
-  explicit: """@wire(main-wire{
-  Do(Wire: other-wire)
-  })
-  """
-  
-  explanation: """The Do Shard is a wire executor.  When called, it will run the wire specified in the Wire parameter inline within the current wire.
-  The called wire will execute from the start every time it is called and run synchronously within the context of the parent wire.
-  """
-  
-  tag: "  #General-Wire"
+prompt: """How to execute a wire from the main wire and continue the main wire after complete execution of the executed wire?""" 
+
+solution: """@wire(main-wire{
+Do(other-wire)
+})
+"""
+
+explicit: """@wire(main-wire{
+Do(Wire: other-wire)
+})
+"""
+
+explanation: """The Do Shard is a wire executor.  When called, it will run the wire specified in the Wire parameter inline within the current wire.
+The called wire will execute from the start every time it is called and run synchronously within the context of the parent wire.
+"""
+
+tag: "  #General-Wire"
 }

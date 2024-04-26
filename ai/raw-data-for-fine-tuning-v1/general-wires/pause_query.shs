@@ -1,19 +1,19 @@
 {
-  prompt: """How to stop a wire from executing momentarily for a period of time?""" 
-  
-  solution: """@wire(wire{
-  Pause(0.5)
-  })
-  """
-  
-  explicit: """@wire(wire{
-  Pause(Time: 0.5)
-  })
-  """
-  
-  explanation: """The Pause Shard is a Shard that stops a wire from being executed momentarily for a period of time. If the wire is called by a wire 
-  Executor Shard within the time frame specified in the Time parameter, it will be ignored.
-  """
-  
-  tag: "  #General-Wire"
+prompt: """How to stop a wire from executing momentarily for a period of time?""" 
+
+solution: """@wire(wire{
+Pause(0.5)
+})
+"""
+
+explicit: """@wire(wire{
+Pause(Time: 0.5)
+})
+"""
+
+explanation: """The Pause Shard is a Shard that stops a wire from being executed momentarily for a period of time. If the wire is called by a wire 
+Executor Shard within the time frame specified in the Time parameter, it will be ignored.
+"""
+
+tag: "  #General-Wire"
 }
