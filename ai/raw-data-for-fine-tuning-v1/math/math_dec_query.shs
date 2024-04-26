@@ -1,25 +1,21 @@
 {
-  prompt: """How do I decrease the value of a mutable variable by 1?"""  
-  
-  solution: """10 >= mutable-var
-  
-  Math.Dec(mutable-var)
-  
-  mutable-var
-  Log("result")
-  """
-  
-  explicit: """10 | Set(Name: mutable-var) 
-  
-  Math.Dec(Value: mutable-var)
-  
-  Get(Name: mutable-var)
-  Log(Prefix: "result" Level: LogLevel::Info)
-  """
-  
-  explanation: """Math.Dec is a Maths Shard that will take in inputs with numeric value and decrease the mutable variable passed into Value parameter by 1.
-  
-  """
-  
-  tag: "  #Maths"
+prompt: """How do I decrease the value of a mutable variable by 1?"""  
+
+solution: """10 >= mutable-var
+Math.Dec(mutable-var)
+mutable-var
+Log("result")
+"""
+
+explicit: """10 | Set(Name: mutable-var) 
+Math.Dec(Value: mutable-var)
+Get(Name: mutable-var)
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """Math.Dec is a Maths Shard that will take in inputs with numeric value and decrease the mutable variable passed into Value parameter by 1.
+
+"""
+
+tag: "  #Maths"
 }

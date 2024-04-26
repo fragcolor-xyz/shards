@@ -1,18 +1,18 @@
 {
-  prompt: """How do I use the cosine trigonometric function?"""  
-  
-  solution: """3.1415927
-  Math.Cos
-  Log("result")
-  """
-  
-  explicit: """3.1415927
-  Math.Cos
-  Log(Prefix: "result" Level: LogLevel::Info)
-  """
-  
-  explanation: """Math.Cos is a Maths Shard that will apply the cosine trigonometric function to the float value passed in as input.
-  """
-  
-  tag: "  #Maths"
+prompt: """How do I use the cosine trigonometric function?"""  
+
+solution: """3.1415927
+Math.Cos
+Log("result")
+"""
+
+explicit: """3.1415927
+Math.Cos
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """Math.Cos is a Maths Shard that will apply the cosine trigonometric function to the float value passed in as input.
+"""
+
+tag: "  #Maths"
 }

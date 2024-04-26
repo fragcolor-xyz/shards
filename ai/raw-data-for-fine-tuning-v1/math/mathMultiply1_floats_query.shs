@@ -1,17 +1,17 @@
 {
-  prompt: """How to use Math.Multiply for floats?"""
-  
-  solution: """5.3 
-  Math.Multiply(2.1) 
-  Log
-  Assert.Is(11.13)
-  """
-  
-  explicit: """5.3 
-  Math.Multiply(Operand: 2.1) 
-  Log(Prefix: "" Level: LogLevel::Info)
-  Assert.Is(Value: 11.13)
-  """
-  
-  explanation: """Applies multiplication operation. 2.1 is the operand which is multiplied with the input 5.3 and the output is 11.13"""
+prompt: """How to use Math.Multiply for floats?"""
+
+solution: """5.3 
+Math.Multiply(2.1) 
+Log
+Assert.Is(11.13)
+"""
+
+explicit: """5.3 
+Math.Multiply(Operand: 2.1) 
+Log(Prefix: "" Level: LogLevel::Info)
+Assert.Is(Value: 11.13)
+"""
+
+explanation: """Applies multiplication operation. 2.1 is the operand which is multiplied with the input 5.3 and the output is 11.13"""
 }

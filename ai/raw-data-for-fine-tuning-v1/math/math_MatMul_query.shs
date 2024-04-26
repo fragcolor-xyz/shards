@@ -1,15 +1,15 @@
 {
-  prompt: """How do I do matrix multiplication."""  
-  
-  solution: """tsl-mat | Math.MatMul(rot-mat) | Math.MatMul(scl-mat) = transform-matrix
-  """
-  
-  explicit: """tsl-mat | Math.MatMul(Operand: rot-mat) | Math.MatMul(Operand: scl-mat) = transform-matrix
-  """
-  
-  explanation: """Math.Rotation is a Maths Shard that does matrix multiplication on the input matrix and the matrix provided in the operand parameter. It can be used
-  for example to generate the transformation matrix of an object from its translation, rotation and scale matrices.
-  """
-  
-  tag: "  #Maths"
+prompt: """How do I do matrix multiplication."""  
+
+solution: """tsl-mat | Math.MatMul(rot-mat) | Math.MatMul(scl-mat) = transform-matrix
+"""
+
+explicit: """tsl-mat | Math.MatMul(Operand: rot-mat) | Math.MatMul(Operand: scl-mat) = transform-matrix
+"""
+
+explanation: """Math.Rotation is a Maths Shard that does matrix multiplication on the input matrix and the matrix provided in the operand parameter. It can be used
+for example to generate the transformation matrix of an object from its translation, rotation and scale matrices.
+"""
+
+tag: "  #Maths"
 }

@@ -1,11 +1,11 @@
 {
-  prompt: """How to use RandomFloat in Shards?"""
-  
-  solution: """RandomFloat(2.5) = treeScale
-  """
-  
-  explicit: """RandomFloat(Max: 2.5) = treeScale
-  """
-  
-  explanation: """A shard that generates a random float with the upper bound of the value assigned to the Max parameter (if integer, not including)"""
+prompt: """How to use RandomFloat in Shards?"""
+
+solution: """RandomFloat(2.5) = treeScale
+"""
+
+explicit: """RandomFloat(Max: 2.5) = treeScale
+"""
+
+explanation: """A shard that generates a random float with the upper bound of the value assigned to the Max parameter (if integer, not including)"""
 }

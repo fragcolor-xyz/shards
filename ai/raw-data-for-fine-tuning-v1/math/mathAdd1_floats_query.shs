@@ -1,17 +1,17 @@
 {
-  prompt: """How to use Math.Add for floats?"""
-  
-  solution: """5.3 
-  Math.Add(2.1) 
-  Log
-  Assert.Is(7.4)
-  """
-  
-  explicit: """5.3 
-  Math.Add(Operand: 2.1) 
-  Log(Prefix: "" Level: LogLevel::Info)
-  Assert.Is(Value: 7.4)
-  """
-  
-  explanation: """Applies addition operation. 2.1 is the operand which is added to the input 5.3 and the output is 7.4"""
+prompt: """How to use Math.Add for floats?"""
+
+solution: """5.3 
+Math.Add(2.1) 
+Log
+Assert.Is(7.4)
+"""
+
+explicit: """5.3 
+Math.Add(Operand: 2.1) 
+Log(Prefix: "" Level: LogLevel::Info)
+Assert.Is(Value: 7.4)
+"""
+
+explanation: """Applies addition operation. 2.1 is the operand which is added to the input 5.3 and the output is 7.4"""
 }

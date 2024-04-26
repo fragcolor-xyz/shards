@@ -1,20 +1,20 @@
 {
-  prompt: """How do I round down a float to the lower integer?"""  
-  
-  solution: """2.7
-  Math.Floor
-  Log("result")
-  """
-  
-  explicit: """2.7
-  Math.Floor
-  Log(Prefix: "result" Level: LogLevel::Info)
-  """
-  
-  explanation: """Math.Floor is a Maths Shard that takes a float or a sequence of floats and rounds it down to the nearest integer. Unlike Math.Round which will
-  round a floating-point number to the nearest integer, Math.Floor will round a floating-point number down to the nearest integer that is less than 
-  or equal to it. 
-  """
-  
-  tag: "  #Maths"
+prompt: """How do I round down a float to the lower integer?"""  
+
+solution: """2.7
+Math.Floor
+Log("result")
+"""
+
+explicit: """2.7
+Math.Floor
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """Math.Floor is a Maths Shard that takes a float or a sequence of floats and rounds it down to the nearest integer. Unlike Math.Round which will
+round a floating-point number to the nearest integer, Math.Floor will round a floating-point number down to the nearest integer that is less than 
+or equal to it. 
+"""
+
+tag: "  #Maths"
 }
