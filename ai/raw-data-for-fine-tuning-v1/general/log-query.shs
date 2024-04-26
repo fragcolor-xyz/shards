@@ -1,17 +1,17 @@
 {
-  prompt: """How do I log the type of something in the console?""" 
-  
-  solution: """variable-to-log
-  Log("Is wire running")
-  """
-  
-  explicit: """Get(Name: variable-to-log)
-  Log(Prefix: "Is wire running" Level: LogLevel::Info)
-  """
-  
-  explanation: """This Shard is used for printing information to the console for debugging purposes. 
-  It can also prefix a message string to the logged output while displaying it in the console.
-  """
-  
-  tag: "  #General"
+prompt: """How do I log the type of something in the console?""" 
+
+solution: """variable-to-log
+Log("Is wire running")
+"""
+
+explicit: """Get(Name: variable-to-log)
+Log(Prefix: "Is wire running" Level: LogLevel::Info)
+"""
+
+explanation: """This Shard is used for printing information to the console for debugging purposes. 
+It can also prefix a message string to the logged output while displaying it in the console.
+"""
+
+tag: "  #General"
 }

@@ -1,21 +1,21 @@
 {
-  prompt: """How do I do an action for each element in a sequence?""" 
-  
-  solution: """[element1 element2 element3]
-  | ForEach({
-  Math.Add(1)
-  })
-  """
-  
-  explicit: """[element1 element2 element3]
-  | ForEach(Apply: {
-  Math.Add(Operand: 1)
-  })
-  """
-  
-  explanation: """For each, processes every element or key-value pair of a sequence/table with a given Shard or sequence of Shards. In the example provided in the solution,
-  we will add 1 to element1 then element2 and element3. The ForEach Shard will return its input as its output.
-  """
-  
-  tag: "  #General"
+prompt: """How do I do an action for each element in a sequence?""" 
+
+solution: """[element1 element2 element3]
+| ForEach({
+Math.Add(1)
+})
+"""
+
+explicit: """[element1 element2 element3]
+| ForEach(Apply: {
+Math.Add(Operand: 1)
+})
+"""
+
+explanation: """For each, processes every element or key-value pair of a sequence/table with a given Shard or sequence of Shards. In the example provided in the solution,
+we will add 1 to element1 then element2 and element3. The ForEach Shard will return its input as its output.
+"""
+
+tag: "  #General"
 }

@@ -1,17 +1,17 @@
 {
-  prompt: """How do I convert a float to an integer?""" 
-  
-  solution: """5.0
-  ToInt
-  """
-  
-  explicit: """5.0
-  ToInt
-  """
-  
-  explanation: """The ToInt Shard takes in a float or a string with numeric value and converts it into a integer. The value will always be rounded down to the nearest integer. If the
-  value has more than one dimension, only the first value will be used.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert a float to an integer?""" 
+
+solution: """5.0
+ToInt
+"""
+
+explicit: """5.0
+ToInt
+"""
+
+explanation: """The ToInt Shard takes in a float or a string with numeric value and converts it into a integer. The value will always be rounded down to the nearest integer. If the
+value has more than one dimension, only the first value will be used.
+"""
+
+tag: "  #General"
 }

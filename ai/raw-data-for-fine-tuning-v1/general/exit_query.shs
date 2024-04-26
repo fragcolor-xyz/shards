@@ -1,18 +1,18 @@
 {
-  prompt: """How do I exit the program through code?""" 
-  
-  solution: """0 ; Error Code
-  Exit
-  """
-  
-  explicit: """0 ; Error Code
-  Exit
-  """
-  
-  explanation: """Exit is a Shard that will automatically close the program. It takes in a integer as input. 
-  This integer is usually to denote the error code.
-  If there is no error code to be used as input use 0.
-  """
-  
-  tag: "  #General"
+prompt: """How do I exit the program through code?""" 
+
+solution: """0 ; Error Code
+Exit
+"""
+
+explicit: """0 ; Error Code
+Exit
+"""
+
+explanation: """Exit is a Shard that will automatically close the program. It takes in a integer as input. 
+This integer is usually to denote the error code.
+If there is no error code to be used as input use 0.
+"""
+
+tag: "  #General"
 }

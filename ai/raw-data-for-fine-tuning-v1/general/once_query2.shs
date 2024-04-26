@@ -1,18 +1,16 @@
 {
-  prompt: """How to execute something once every few seconds?""" 
-  
-  solution:
-  """Once({
-  Msg("This will only execute once")
-  } 1.0)"""
-  
-  explicit:
-  """Once(Action: {
-  Msg(Message: "This will only execute once" Level: LogLevel::Info)
-  } Every: 1.0)"""
-  
-  explanation: """The Once shard will execute what is stated in the Action parameter every X amount of seconds, where X is the number stated in the Every parameter.
-  """
-  
-  tag: "  #General"
+prompt: """How to execute something once every few seconds?""" 
+
+solution: """Once({
+Msg("This will only execute once")
+} 1.0)"""
+
+explicit: """Once(Action: {
+Msg(Message: "This will only execute once" Level: LogLevel::Info)
+} Every: 1.0)"""
+
+explanation: """The Once shard will execute what is stated in the Action parameter every X amount of seconds, where X is the number stated in the Every parameter.
+"""
+
+tag: "  #General"
 }

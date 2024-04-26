@@ -1,18 +1,18 @@
 {
-  prompt: """How do I convert bytes to Base58?""" 
-  
-  solution: """5
-  ToBytes
-  ToBase58
-  """
-  
-  explicit: """5
-  ToBytes
-  ToBase58
-  """
-  
-  explanation: """ToBase58 is a Shard that takes in bytes as input and outputs a base58 format string.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert bytes to Base58?""" 
+
+solution: """5
+ToBytes
+ToBase58
+"""
+
+explicit: """5
+ToBytes
+ToBase58
+"""
+
+explanation: """ToBase58 is a Shard that takes in bytes as input and outputs a base58 format string.
+"""
+
+tag: "  #General"
 }

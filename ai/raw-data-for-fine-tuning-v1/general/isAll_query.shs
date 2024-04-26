@@ -1,27 +1,25 @@
 {
-  prompt: """How do I check if every value in a sequence equals something?""" 
-  
-  solution: """[2 2 2 2 2 2 2] = sequence
-  
-  sequence
-  If(IsAll(2) {Msg("all matches")} {Msg("not all matches")})
-  """
-  
-  explicit: """[2 2 2 2 2 2 2] = sequence
-  
-  sequence
-  If(Predicate: IsAll(Value: 2) Then:{
-  Msg(Message: "all matches" Level: LogLevel::Info)
-  } Else: {
+prompt: """How do I check if every value in a sequence equals something?""" 
+
+solution: """[2 2 2 2 2 2 2] = sequence
+sequence
+If(IsAll(2) {Msg("all matches")} {Msg("not all matches")})
+"""
+
+explicit: """[2 2 2 2 2 2 2] = sequence
+sequence
+If(Predicate: IsAll(Value: 2) Then:{
+Msg(Message: "all matches" Level: LogLevel::Info)
+} Else: {
 Msg(Message: "not all matches" Level: LogLevel::Info)}
-  Passthrough: false
-  ) 
-  """
-  
-  explanation: """The IsAll Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through
-  a sequence and check if every element matches the value stated in the Value parameter. If all elements matches, it will return true,
-  otherwise, it will return false.
-  """
-  
-  tag: "  #General"
+Passthrough: false
+) 
+"""
+
+explanation: """The IsAll Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through
+a sequence and check if every element matches the value stated in the Value parameter. If all elements matches, it will return true,
+otherwise, it will return false.
+"""
+
+tag: "  #General"
 }

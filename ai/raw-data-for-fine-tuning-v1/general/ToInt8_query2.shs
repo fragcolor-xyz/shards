@@ -1,19 +1,19 @@
 {
-  prompt: """How do I convert an integer to an int8?""" 
-  
-  solution: """5
-  ToInt8
-  """
-  
-  explicit: """5
-  ToInt8
-  """
-  
-  explanation: """The ToInt8 Shard converts an input with numeric value into 8-dimensional vector represented as eight integers. The value will always be rounded down to the nearest integer. If 
-  the input is one dimensional, the Shard will assign 0 to the second, third and fourth integers and so forth. For example, in the solution provided above, ToInt8 will output 
-  (5 0 0 0 0 0 0 0). If the input is two dimensional, it will assign 0 to the third and fourth integers and so forth. If the value has more than 8 dimensions, only 
-  the first eight values will be used.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert an integer to an int8?""" 
+
+solution: """5
+ToInt8
+"""
+
+explicit: """5
+ToInt8
+"""
+
+explanation: """The ToInt8 Shard converts an input with numeric value into 8-dimensional vector represented as eight integers. The value will always be rounded down to the nearest integer. If 
+the input is one dimensional, the Shard will assign 0 to the second, third and fourth integers and so forth. For example, in the solution provided above, ToInt8 will output 
+(5 0 0 0 0 0 0 0). If the input is two dimensional, it will assign 0 to the third and fourth integers and so forth. If the value has more than 8 dimensions, only 
+the first eight values will be used.
+"""
+
+tag: "  #General"
 }

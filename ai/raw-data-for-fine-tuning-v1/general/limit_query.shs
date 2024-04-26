@@ -1,27 +1,25 @@
 {
-  prompt: """How do process a sequence but process only some parts of a sequence?""" 
-  
-  solution: """[1 2 3 4 5] = sequence 
-  
-  sequence
-  Limit(3)
-  | ForEach({
-  Math.Add(1)
-  })
-  """
-  
-  explicit: """[1 2 3 4 5] = sequence 
-  
-  sequence
-  Limit(Max: 3)
-  | ForEach(Apply: {
-  Math.Add(Operand: 1)
-  })
-  """
-  
-  explanation: """The Limit Shard takes a sequence as an input and outputs a cut sequence whose length is what is stated in the Max parameter. In the scenario provided under solution,
-  the Limit Shard will output [1 2 3] and the ForEach Shard will only process these 3 elements.
-  """
-  
-  tag: "  #General"
+prompt: """How do process a sequence but process only some parts of a sequence?""" 
+
+solution: """[1 2 3 4 5] = sequence 
+sequence
+Limit(3)
+| ForEach({
+Math.Add(1)
+})
+"""
+
+explicit: """[1 2 3 4 5] = sequence 
+sequence
+Limit(Max: 3)
+| ForEach(Apply: {
+Math.Add(Operand: 1)
+})
+"""
+
+explanation: """The Limit Shard takes a sequence as an input and outputs a cut sequence whose length is what is stated in the Max parameter. In the scenario provided under solution,
+the Limit Shard will output [1 2 3] and the ForEach Shard will only process these 3 elements.
+"""
+
+tag: "  #General"
 }

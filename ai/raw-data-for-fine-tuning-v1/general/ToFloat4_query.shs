@@ -1,18 +1,18 @@
 {
-  prompt: """How do I convert an integer to a float4?""" 
-  
-  solution: """5
-  ToFloat4
-  """
-  
-  explicit: """5
-  ToFloat4
-  """
-  
-  explanation: """The ToFloat4 Shard converts an input with numeric value into 4-dimensional vector represented as four floating point numbers. If the input is one dimensional, 
-  the Shard will assign 0.0 to the second, third and fourth floating point number. For example, in the solution provided above, ToFloat4 will output (5.0 0.0 0.0 0.0). If the input is two
-  dimensional, it will assign 0.0 to the third and fourth floating point number. If the input has more than 4 dimensions, the Shard will only use the first 4 values provided.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert an integer to a float4?""" 
+
+solution: """5
+ToFloat4
+"""
+
+explicit: """5
+ToFloat4
+"""
+
+explanation: """The ToFloat4 Shard converts an input with numeric value into 4-dimensional vector represented as four floating point numbers. If the input is one dimensional, 
+the Shard will assign 0.0 to the second, third and fourth floating point number. For example, in the solution provided above, ToFloat4 will output (5.0 0.0 0.0 0.0). If the input is two
+dimensional, it will assign 0.0 to the third and fourth floating point number. If the input has more than 4 dimensions, the Shard will only use the first 4 values provided.
+"""
+
+tag: "  #General"
 }

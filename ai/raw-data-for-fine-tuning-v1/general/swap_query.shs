@@ -1,27 +1,25 @@
 {
-  prompt: """How do I swap the values of two variables?""" 
-  
-  solution: """2 >= variableA
-  4 >= variableB
-  
-  Swap(
-  variableA
-  variableB
-  )
-  """
-  
-  explicit: """2 | Set(Name: variableA)
-  4 | Set(Name: variableB)
-  
-  Swap(
-  First: variableA
-  Second: variableB
-  )
-  """
-  
-  explanation: """The Swap Shard swaps the values of the two variables passed to it via :First and :Second parameters. This Shard can only swap the values
-  of two variables with the same type.
-  """
-  
-  tag: "  #General"
+prompt: """How do I swap the values of two variables?""" 
+
+solution: """2 >= variableA
+4 >= variableB
+Swap(
+variableA
+variableB
+)
+"""
+
+explicit: """2 | Set(Name: variableA)
+4 | Set(Name: variableB)
+Swap(
+First: variableA
+Second: variableB
+)
+"""
+
+explanation: """The Swap Shard swaps the values of the two variables passed to it via :First and :Second parameters. This Shard can only swap the values
+of two variables with the same type.
+"""
+
+tag: "  #General"
 }

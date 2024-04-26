@@ -1,18 +1,18 @@
 {
-  prompt: """How do I convert something to JSON format?""" 
-  
-  solution: """table-of-values
-  ToJson
-  """
-  
-  explicit: """table-of-values
-  ToJson(Pure: true Indent: 0)
-  """
-  
-  explanation: """ToJson is a shard that will convert any data type and output a string in the JSON format. The Pure parameter  is set true or false,
-  depending if the input string is generic pure json rather then shards flavored json. The Indent parameter 
-  dictates how many spaces to use as json prettify indent.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert something to JSON format?""" 
+
+solution: """table-of-values
+ToJson
+"""
+
+explicit: """table-of-values
+ToJson(Pure: true Indent: 0)
+"""
+
+explanation: """ToJson is a shard that will convert any data type and output a string in the JSON format. The Pure parameter  is set true or false,
+depending if the input string is generic pure json rather then shards flavored json. The Indent parameter 
+dictates how many spaces to use as json prettify indent.
+"""
+
+tag: "  #General"
 }

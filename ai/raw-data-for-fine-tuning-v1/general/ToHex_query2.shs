@@ -1,16 +1,16 @@
 {
-  prompt: """How do I convert a byte to an hexidecimal value?""" 
-  
-  solution: """5
-  ToHex
-  """
-  
-  explicit: """5
-  ToHex
-  """
-  
-  explanation: """The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert a byte to an hexidecimal value?""" 
+
+solution: """5
+ToHex
+"""
+
+explicit: """5
+ToHex
+"""
+
+explanation: """The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
+"""
+
+tag: "  #General"
 }

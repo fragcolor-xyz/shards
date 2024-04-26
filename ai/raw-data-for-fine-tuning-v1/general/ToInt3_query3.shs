@@ -1,19 +1,19 @@
 {
-  prompt: """How do I convert a string to an int3?""" 
-  
-  solution: """"5"
-  ToInt3
-  """
-  
-  explicit: """"5"
-  ToInt3
-  """
-  
-  explanation: """The ToInt3 Shard converts an input with numeric value into 3-dimensional vector represented as three integers. The value will always be rounded down to the nearest integer. If 
-  the input is one dimensional, the Shard will assign 0 to the second and third integers. For example, in the solution provided above, ToInt3 will output (5 0 0). If the input is two
-  dimensional, it will assign 0 to the third integer. If the value has more than 3 dimensions, only the first three values will be used. If a string that has no numeric 
-  value like "Three", "Five" or "hello" is passed in, the Shard will return (0 0 0 0). 
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert a string to an int3?""" 
+
+solution: """"5"
+ToInt3
+"""
+
+explicit: """"5"
+ToInt3
+"""
+
+explanation: """The ToInt3 Shard converts an input with numeric value into 3-dimensional vector represented as three integers. The value will always be rounded down to the nearest integer. If 
+the input is one dimensional, the Shard will assign 0 to the second and third integers. For example, in the solution provided above, ToInt3 will output (5 0 0). If the input is two
+dimensional, it will assign 0 to the third integer. If the value has more than 3 dimensions, only the first three values will be used. If a string that has no numeric 
+value like "Three", "Five" or "hello" is passed in, the Shard will return (0 0 0 0). 
+"""
+
+tag: "  #General"
 }

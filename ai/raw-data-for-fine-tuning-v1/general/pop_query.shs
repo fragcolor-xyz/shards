@@ -1,17 +1,17 @@
 {
-  prompt: """How to remove the last element in the sequence and get the element that was removed?""" 
-  
-  solution: """Pop(sequence-to-pop)
-  Log("Popped Last Element")
-  """
-  
-  explicit: """Pop(Name: sequence-to-pop)
-  Log(Prefix: "Popped Last Element" Level: LogLevel::Info)
-  """
-  
-  explanation: """Pop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Drop Shard, which will return 
-  the  modified sequence, Pop will return the popped element as output.
-  """
-  
-  tag: "  #General"
+prompt: """How to remove the last element in the sequence and get the element that was removed?""" 
+
+solution: """Pop(sequence-to-pop)
+Log("Popped Last Element")
+"""
+
+explicit: """Pop(Name: sequence-to-pop)
+Log(Prefix: "Popped Last Element" Level: LogLevel::Info)
+"""
+
+explanation: """Pop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Drop Shard, which will return 
+the modified sequence, Pop will return the popped element as output.
+"""
+
+tag: "  #General"
 }

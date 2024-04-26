@@ -1,16 +1,16 @@
 {
-  prompt: """How do I convert something to Bytes?""" 
-  
-  solution: """5
-  ToBytes
-  """
-  
-  explicit: """5
-  ToBytes
-  """
-  
-  explanation: """ToBytes is a Shard that converts what is fed into input into bytes in its serialized form.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert something to Bytes?""" 
+
+solution: """5
+ToBytes
+"""
+
+explicit: """5
+ToBytes
+"""
+
+explanation: """ToBytes is a Shard that converts what is fed into input into bytes in its serialized form.
+"""
+
+tag: "  #General"
 }

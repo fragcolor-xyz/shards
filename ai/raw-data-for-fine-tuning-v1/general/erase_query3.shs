@@ -1,17 +1,17 @@
 {
-  prompt: """How do I delete keys from a table?""" 
-  
-  solution: """Erase(["key1" "key2"] table-to-delete-from)
-  """
-  
-  explicit: """Erase(Indices: ["key1" "key2"] Name: table-to-delete-from)
-  """
-  
-  explanation: """Erase deletes sequence of single or multiple index elements and key-value pairs (from tables).
-  For a sequence, this Shard expects a sequence of indices of the element(s) to be erased, followed by the 
-  name of the sequence variable in the Name parameter from which the elements are to be deleted from.
-  To delete more keys, add the keys to the sequence in the Keys parameter.
-  """
-  
-  tag: "  #General"
+prompt: """How do I delete keys from a table?""" 
+
+solution: """Erase(["key1" "key2"] table-to-delete-from)
+"""
+
+explicit: """Erase(Indices: ["key1" "key2"] Name: table-to-delete-from)
+"""
+
+explanation: """Erase deletes sequence of single or multiple index elements and key-value pairs (from tables).
+For a sequence, this Shard expects a sequence of indices of the element(s) to be erased, followed by the 
+name of the sequence variable in the Name parameter from which the elements are to be deleted from.
+To delete more keys, add the keys to the sequence in the Keys parameter.
+"""
+
+tag: "  #General"
 }

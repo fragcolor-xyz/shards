@@ -1,18 +1,18 @@
 {
-  prompt: """How do I convert an integer to an int2?""" 
-  
-  solution: """5
-  ToInt2
-  """
-  
-  explicit: """5
-  ToInt2
-  """
-  
-  explanation: """The ToInt2 Shard converts an input with numeric value into 2-dimensional vector represented as two integers. The value will always be rounded down to the nearest integer. If 
-  the input is one dimensional, the Shard will assign 0 to the second integer.For example, in the solution provided above, ToInt2 will output (5 0). If the input is two
-  dimensional, it will assign the integers accordingly. If the value has more than 2 dimensions, only the first two values will be used.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert an integer to an int2?""" 
+
+solution: """5
+ToInt2
+"""
+
+explicit: """5
+ToInt2
+"""
+
+explanation: """The ToInt2 Shard converts an input with numeric value into 2-dimensional vector represented as two integers. The value will always be rounded down to the nearest integer. If 
+the input is one dimensional, the Shard will assign 0 to the second integer.For example, in the solution provided above, ToInt2 will output (5 0). If the input is two
+dimensional, it will assign the integers accordingly. If the value has more than 2 dimensions, only the first two values will be used.
+"""
+
+tag: "  #General"
 }

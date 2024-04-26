@@ -1,33 +1,29 @@
 {
-  prompt: """How do I check if something is Almost a certain value?""" 
-  
-  solution: """0 >= value
-  
-  value | Math.Add(1) > value
-  
-  value
-  If(IsAlmost(10 1) {Msg("almost  10!")} {Msg("not there yet!")})
-  """
-  
-  explicit: """0 >= value
-  
-  value | Math.Add(Operand: 1) > value
-  
-  Get(Name: value)
-  If(Predicate: IsAlmost(Value: 10 Threshold: 1) Then:{
-  Msg(Message: "all matches" Level: LogLevel::Info)
-  } Else: {
+prompt: """How do I check if something is Almost a certain value?""" 
+
+solution: """0 >= value
+value | Math.Add(1) > value
+value
+If(IsAlmost(10 1) {Msg("almost  10!")} {Msg("not there yet!")})
+"""
+
+explicit: """0 >= value
+value | Math.Add(Operand: 1) > value
+Get(Name: value)
+If(Predicate: IsAlmost(Value: 10 Threshold: 1) Then:{
+Msg(Message: "all matches" Level: LogLevel::Info)
+} Else: {
 Msg(Message: "not all matches" Level: LogLevel::Info)}
-  Passthrough: false
-  ) 
-  """
-  
-  explanation: """The IsAlmost Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
-  It will check if the input is near to the value stated in the Value parameter besed on the Treshold parameter. If the input
-  value is nearing the value provided in the Value parameter, the Shard will return true, otherwise, it will return false.
-  The input can be of any number type or a sequence of such types. If the Shard is comparing between two numeric sequences, it will compare the elements
-  of the input sequence with the corresponding indexed element in the sequence provided into the the Value parameter.
-  """
-  
-  tag: "  #General"
+Passthrough: false
+) 
+"""
+
+explanation: """The IsAlmost Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
+It will check if the input is near to the value stated in the Value parameter besed on the Treshold parameter. If the input
+value is nearing the value provided in the Value parameter, the Shard will return true, otherwise, it will return false.
+The input can be of any number type or a sequence of such types. If the Shard is comparing between two numeric sequences, it will compare the elements
+of the input sequence with the corresponding indexed element in the sequence provided into the the Value parameter.
+"""
+
+tag: "  #General"
 }

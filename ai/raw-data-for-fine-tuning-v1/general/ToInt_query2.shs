@@ -1,17 +1,17 @@
 {
-  prompt: """How do I convert a string to an integer?""" 
-  
-  solution: """"5.0"
-  ToInt
-  """
-  
-  explicit: """"5.0"
-  ToInt
-  """
-  
-  explanation: """The ToInt2 Shard converts an input with numeric value into 2-dimensional vector represented as two integers. The value will always be rounded down to the nearest integer. If a string that has no numeric value like "Three", "Five"
-  or "hello" is passed in, the Shard will return 0. If the value has more than one dimension, only the first value will be used.
-  """
-  
-  tag: "  #General"
+prompt: """How do I convert a string to an integer?""" 
+
+solution: """"5.0"
+ToInt
+"""
+
+explicit: """"5.0"
+ToInt
+"""
+
+explanation: """The ToInt2 Shard converts an input with numeric value into 2-dimensional vector represented as two integers. The value will always be rounded down to the nearest integer. If a string that has no numeric value like "Three", "Five"
+or "hello" is passed in, the Shard will return 0. If the value has more than one dimension, only the first value will be used.
+"""
+
+tag: "  #General"
 }
