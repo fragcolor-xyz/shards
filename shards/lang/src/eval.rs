@@ -1217,22 +1217,35 @@ fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) ->
   combined.join("/").into()
 }
 
-struct ResolvedVar {
-  pub is_const: bool,
-  pub var: SVar,
+enum ResolvedVar {
+  Constant(SVar),
+  Variable(SVar),
 }
 
 impl ResolvedVar {
   fn new_variable(sv: SVar) -> Self {
-    Self {
-      is_const: false,
-      var: sv,
-    }
+    Self::Variable(sv)
   }
   fn new_const(sv: SVar) -> Self {
-    Self {
-      is_const: true,
-      var: sv,
+    Self::Constant(sv)
+  }
+  fn is_const(&self) -> bool {
+    if let Self::Constant(_) = self {
+      true
+    } else {
+      false
+    }
+  }
+  fn as_var(&self) -> &SVar {
+    match self {
+      Self::Constant(sv) => sv,
+      Self::Variable(sv) => sv,
+    }
+  }
+  fn into_var(self) -> SVar {
+    match self {
+      Self::Constant(sv) => sv,
+      Self::Variable(sv) => sv,
     }
   }
 }
@@ -1243,7 +1256,7 @@ fn as_var(
   shard: Option<ShardRef>,
   e: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
-  resolve_var(value, line_info, shard, e).map(|v| v.var)
+  resolve_var(value, line_info, shard, e).map(|v| v.into_var())
 }
 
 fn resolve_var(
@@ -2286,24 +2299,26 @@ fn into_get_or_const(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<AutoShardRef, ShardsError> {
-  let ResolvedVar { is_const, var } = resolve_var(&value, line_info, None, e)?;
-  if is_const {
-    let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-    let shard = AutoShardRef(shard);
-    shard
-      .0
-      .set_parameter(0, *var.as_ref())
-      .map_err(|e| (format!("{}", e), line_info).into())?;
-    Ok(shard)
-  } else {
-    let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-    let shard = AutoShardRef(shard);
-    // todo - avoid clone
-    shard
-      .0
-      .set_parameter(0, *var.as_ref())
-      .map_err(|e| (format!("{}", e), line_info).into())?;
-    Ok(shard)
+  match resolve_var(&value, line_info, None, e)? {
+    ResolvedVar::Constant(var) => {
+      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
+      let shard = AutoShardRef(shard);
+      shard
+        .0
+        .set_parameter(0, *var.as_ref())
+        .map_err(|e| (format!("{}", e), line_info).into())?;
+      Ok(shard)
+    }
+    ResolvedVar::Variable(var) => {
+      let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
+      let shard = AutoShardRef(shard);
+      // todo - avoid clone
+      shard
+        .0
+        .set_parameter(0, *var.as_ref())
+        .map_err(|e| (format!("{}", e), line_info).into())?;
+      Ok(shard)
+    }
   }
 }
 
