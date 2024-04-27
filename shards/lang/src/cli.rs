@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Arg, ArgMatches, Command, Parser};
+use clap::{arg, Parser};
 use shards::core::Core;
 use shards::types::Mesh;
 use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};

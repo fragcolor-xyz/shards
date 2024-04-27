@@ -1,7 +1,7 @@
 use std::{
   fs::{self, File},
   io::Read,
-  path::{Path, PathBuf},
+  path::Path,
 };
 
 use crate::ast_visitor::Visitor;
@@ -98,20 +98,9 @@ impl<'a> FormatterVisitor<'a> {
     self.context_stack.last_mut().unwrap()
   }
 
-  fn determine_collection_styling(&self, pair: &Pair<Rule>) -> CollectionStyling {
+  fn determine_collection_styling(&self) -> CollectionStyling {
     let mut styling = CollectionStyling::default();
-    // let (start_line, _start_col) = pair.line_col();
     styling.start_line = self.line_counter;
-    // let mut inner: pest::iterators::Pairs<'_, crate::ast::Rule> = pair.clone().into_inner();
-    // if inner.len() > 0 {
-    //   // let item = inner.next().unwrap();
-    //   // let (item_line, item_col) = item.line_col();
-    //   // if item_line == start_line {
-    //   // let spacing = i32::max(0, item_col as i32 - start_col as i32) as usize;
-    //   // let base_indent = self.get_indent_opts();
-    //   // styling.indent = Some(base_indent + spacing);
-    //   // }
-    // }
     styling
   }
 
@@ -612,7 +601,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_table<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
     self.write("{", FormatterTop::None);
-    let ctx = Context::Table(self.determine_collection_styling(&pair));
+    let ctx = Context::Table(self.determine_collection_styling());
     let ctx = self.with_context(ctx, |_self| {
       _self.depth += 1;
       inner(_self);
@@ -626,7 +615,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.interpolate(&pair);
     self.write("[", FormatterTop::None);
 
-    let ctx = Context::Seq(self.determine_collection_styling(&pair));
+    let ctx = Context::Seq(self.determine_collection_styling());
     let ctx = self.with_context(ctx, |_self| {
       _self.depth += 1;
       inner(_self);

@@ -9,7 +9,6 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
-use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -531,16 +530,6 @@ fn extract_floats_vector_var<const WIDTH: usize>(
   e: &mut EvalEnv,
 ) -> Result<shards::SHVar, ShardsError> {
   let mut vector_values: [SVar; WIDTH] = std::array::from_fn(|_| SVar::NotCloned(Var::default()));
-
-  fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
-    Err(
-      (
-        "vector built-in function requires a floating point number parameter",
-        line_info,
-      )
-        .into(),
-    )
-  }
 
   for i in 0..len {
     vector_values[i] = as_var(&params[i].value, line_info, None, e)?;

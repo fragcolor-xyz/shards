@@ -7,7 +7,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, Lit, LitInt, LitStr, Meta,
+  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
 };
 
 // type Error = boxed::Box<dyn std::error::Error>;
@@ -74,7 +74,7 @@ struct ParamSingle {
 struct ParamSet {
   type_name: syn::Type,
   var_name: syn::Ident,
-  has_custom_interface: bool,
+  has_custom_interface: bool
 }
 
 enum Param {
