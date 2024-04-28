@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 type Rule = crate::ast::Rule;
 use crate::error::*;
 use pest::iterators::Pair;
@@ -234,8 +233,6 @@ fn process_sequence_no_visit<V: Visitor>(
 }
 
 fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
-  let span = pair.as_span();
-
   let matched: Result<bool, Error> = {
     let pair = pair.clone();
     match pair.as_rule() {

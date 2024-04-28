@@ -143,32 +143,32 @@ impl LegacyShard for Console {
 
         if let Some(trace) = style.get_static("trace") {
           let trace: Table = trace.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Trace], trace);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Trace], trace)?;
         }
 
         if let Some(debug) = style.get_static("debug") {
           let debug: Table = debug.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Debug], debug);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Debug], debug)?;
         }
 
         if let Some(error) = style.get_static("error") {
           let error: Table = error.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Error], error);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Error], error)?;
         }
 
         if let Some(warning) = style.get_static("warning") {
           let warning: Table = warning.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Warning], warning);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Warning], warning)?;
         }
 
         if let Some(info) = style.get_static("info") {
           let info: Table = info.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Info], info);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Info], info)?;
         }
 
         if let Some(text) = style.get_static("text") {
           let text: Table = text.try_into()?;
-          style_util::update_text_format(&mut theme.formats[LogLevel::Text], text);
+          style_util::update_text_format(&mut theme.formats[LogLevel::Text], text)?;
         }
       }
 

@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+// silent constant non upper case warning
+#![allow(non_upper_case_globals)]
+
 use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;

@@ -162,7 +162,6 @@ macro_rules! add_pub_key {
     #[derive(Default)]
     struct $shard_name {
       output: ClonedVar,
-      is_string: bool,
     }
 
     impl LegacyShard for $shard_name {
@@ -218,7 +217,6 @@ macro_rules! add_priv_key {
     #[derive(Default)]
     struct $shard_name {
       output: ClonedVar,
-      is_string: bool,
     }
 
     impl LegacyShard for $shard_name {

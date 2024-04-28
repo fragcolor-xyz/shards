@@ -269,7 +269,10 @@ impl LegacyShard for DockArea {
           if let Ok(r) = ShardRef::try_from(s) {
             if r.name() == TAB_NAME {
               let mut title = ParamVar::default();
-              title.set_param(&r.get_parameter(0));
+              match title.set_param(&r.get_parameter(0)) {
+                Ok(_) => {}
+                Err(err) => return Some(Err(err)),
+              }
               let mut contents = ShardsVar::default();
               match contents.set_param(&s) {
                 Ok(_) => Some(Ok((title, contents))),
