@@ -639,7 +639,8 @@ template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_ca
   if (min_cap < 2 * arr.cap)
     min_cap = 2 * arr.cap;
 
-  // TODO investigate realloc
+  // realloc would be nice here but clashes with our alignment requirements, in the end this is the fastest way without a custom
+  // allocator
   auto newbuf = new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
