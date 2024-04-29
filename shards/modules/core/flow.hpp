@@ -447,6 +447,7 @@ struct Maybe : public BaseSubFlow {
                         _self->column);
         }
         if (likely(!context->onLastResume)) {
+          context->resetErrorStack();
           context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);

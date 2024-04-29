@@ -2343,6 +2343,7 @@ struct DoMany : public TryMany {
       } else {
         // we don't want to propagate a (Return)
         if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
+          context->resetErrorStack();
           context->continueFlow();
         }
       }

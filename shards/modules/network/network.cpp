@@ -802,6 +802,7 @@ struct Server : public NetworkBase {
             stop(peer->wire.get());
           }
           // Always adjust the context back to continue, peer wire might have changed it
+          context->resetErrorStack();
           context->continueFlow();
         }
       }
