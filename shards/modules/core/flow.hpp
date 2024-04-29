@@ -443,7 +443,8 @@ struct Maybe : public BaseSubFlow {
       if (state == SHWireState::Error) {
         if (!_silent) {
           shassert(_self);
-          SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}", context->getErrorMessage(), _self->line, _self->column);
+          SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}", context->getErrorMessage(), _self->line,
+                        _self->column);
         }
         if (likely(!context->onLastResume)) {
           context->continueFlow();
@@ -452,7 +453,8 @@ struct Maybe : public BaseSubFlow {
           else
             return input;
         } else {
-          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume, line: {}, column: {}", context->getErrorMessage(), _self->line, _self->column);
+          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume, line: {}, column: {}", context->getErrorMessage(),
+                      _self->line, _self->column);
           // Just continue as the wire is done
           return Var::Empty;
         }
@@ -961,55 +963,6 @@ struct Sub {
     SHVar output{};
     _shards.activate(context, input, output);
     return input;
-  }
-};
-
-struct HashedShards {
-  ShardsVar _shards{};
-  SHComposeResult _composition{};
-
-  Types _outputTableTypes{{CoreInfo::AnyType, CoreInfo::Int2Type}};
-  static inline std::array<SHVar, 2> OutputTableKeys{Var("Result"), Var("Hash")};
-  Type _outputTableType = Type::TableOf(_outputTableTypes, OutputTableKeys);
-
-  TableVar _outputTable{};
-
-  static SHOptionalString help() { return SHCCSTR("Hashes the output of a shard or of a sequence of shards."); }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The value passed to the first shard in the hashed sequence."); }
-
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The hash of the output of the last shard in the hashed sequence."); }
-
-  static SHParametersInfo parameters() {
-    static Parameters params{{"Shards", SHCCSTR("The shards to execute in the hashed flow."), {CoreInfo::ShardsOrNone}}};
-    return params;
-  }
-
-  void setParam(int index, const SHVar &value) { _shards = value; }
-
-  SHVar getParam(int index) { return _shards; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    _composition = _shards.compose(data);
-    _outputTableTypes._types[0] = _composition.outputType;
-    return _outputTableType;
-  }
-
-  SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
-
-  void warmup(SHContext *ctx) { _shards.warmup(ctx); }
-
-  void cleanup(SHContext *context) { _shards.cleanup(context); }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    SHVar hash{};
-    _shards.activateHashed(context, input, output, hash);
-    _outputTable[Var("Result")] = output;
-    _outputTable[Var("Hash")] = hash;
-    return _outputTable;
   }
 };
 } // namespace shards

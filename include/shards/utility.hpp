@@ -364,14 +364,6 @@ public:
       return SH_CORE::runShards(_shards, context, input, output);
   }
 
-  template <bool CALLER_HANDLES_RETURN = false>
-  SHWireState activateHashed(SHContext *context, const SHVar &input, SHVar &output, SHVar &outHash) {
-    if constexpr (CALLER_HANDLES_RETURN)
-      return SH_CORE::runShardsHashed2(_shards, context, input, output, outHash);
-    else
-      return SH_CORE::runShardsHashed(_shards, context, input, output, outHash);
-  }
-
   operator bool() const { return _shardsArray.size() > 0; }
 
   const Shards &shards() const { return _shards; }

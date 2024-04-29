@@ -617,23 +617,9 @@ void hash_update(const SHVar &var, void *state);
 SH_WIRE_SET_STACK(gathering);
 SH_WIRE_SET_STACK(hashing);
 
-template <typename T, bool HANDLES_RETURN, bool HASHED>
+template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
-  XXH3_state_s hashState; // optimized out in release if not HASHED
-  if constexpr (HASHED) {
-    shassert(outHash);
-    XXH3_INITSTATE(&hashState);
-    XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-  }
-  DEFER(if constexpr (HASHED) {
-    auto digest = XXH3_128bits_digest(&hashState);
-    outHash->valueType = SHType::Int2;
-    outHash->payload.int2Value[0] = int64_t(digest.low64);
-    outHash->payload.int2Value[1] = int64_t(digest.high64);
-    SHLOG_TRACE("Hash digested {}", *outHash);
-  });
-
   // store initial input
   auto input = wireInput;
 
@@ -661,27 +647,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
 
-    if constexpr (HASHED) {
-      const auto shardHash = blk->hash(blk);
-      SHLOG_TRACE("Hashing shard {}", shardHash);
-      XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
-
-      SHLOG_TRACE("Hashing input {}", input);
-      hash_update(input, &hashState);
-
-      const auto params = blk->parameters(blk);
-      for (uint32_t nParam = 0; nParam < params.len; nParam++) {
-        const auto param = blk->getParam(blk, nParam);
-        SHLOG_TRACE("Hashing param {}", param);
-        hash_update(param, &hashState);
-      }
-
-      output = activateShard(blk, context, input);
-      SHLOG_TRACE("Hashing output {}", output);
-      hash_update(output, &hashState);
-    } else {
-      output = activateShard(blk, context, input);
-    }
+    output = activateShard(blk, context, input);
 
     // Deal with aftermath of activation
     if (unlikely(!context->shouldContinue())) {
@@ -715,27 +681,19 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 }
 
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<Shards, false, false>(shards, context, wireInput, output);
+  return shardsActivation<Shards, false>(shards, context, wireInput, output);
 }
 
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<Shards, true, false>(shards, context, wireInput, output);
+  return shardsActivation<Shards, true>(shards, context, wireInput, output);
 }
 
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<SHSeq, false, false>(shards, context, wireInput, output);
+  return shardsActivation<SHSeq, false>(shards, context, wireInput, output);
 }
 
 SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<SHSeq, true, false>(shards, context, wireInput, output);
-}
-
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
-  return shardsActivation<Shards, false, true>(shards, context, wireInput, output, &outHash);
-}
-
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
-  return shardsActivation<Shards, true, true>(shards, context, wireInput, output, &outHash);
+  return shardsActivation<SHSeq, true>(shards, context, wireInput, output);
 }
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
@@ -1561,8 +1519,9 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
-                              param.name, value, varType, param.valueTypes, shard->line, shard->column));
+  std::string err(
+      fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
+                  param.name, value, varType, param.valueTypes, shard->line, shard->column));
   callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
 
   return false;
@@ -1702,8 +1661,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->mesh.lock()->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
 
   try {
-    auto state =
-        shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
+    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Returned};
@@ -3180,14 +3138,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->runShards2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
     return shards::activateShards2(shards, context, *input, *output);
-  };
-
-  result->runShardsHashed = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    return shards::activateShards(shards, context, *input, *output, *outHash);
-  };
-
-  result->runShardsHashed2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    return shards::activateShards2(shards, context, *input, *output, *outHash);
   };
 
   result->getWireInfo = [](SHWireRef wireref) noexcept {
