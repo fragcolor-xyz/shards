@@ -1,0 +1,15 @@
+{
+prompt: """How do I do lambda operations?"""  
+
+solution: """@f3(randomX 0.0 (y | Math.Multiply(10.0))) = position
+Log("result") 
+"""
+
+explicit: """@f3(randomX 0.0 (y | Math.Multiply(Operand: 10.0))) = position
+Log(Prefix: "result" Level: LogLevel::Info) 
+"""
+
+explanation: """Lambda operations should be enclosed in ()."""
+
+tag: "  #Maths"
+}

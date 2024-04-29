@@ -1,0 +1,18 @@
+{
+prompt: """How do I create a table in Shards?""" 
+
+solution: """{A: [10, 20]} = tableD
+"""
+
+explicit: """Table(tableD Key: "A" Type:s Type.Int)
+10 | Push(tableD "A")
+tableD | Log
+20 | Push(tableD "A")
+tableD | Log
+"""
+
+explanation: """Instantiated a table with key, single type, local scope, using `Push` (puts sequence values). Tables are instantiated in JSON format in Shards. = indicates immutability of table.
+"""
+
+tag: "  #General"
+}
