@@ -822,7 +822,7 @@ struct SwitchTo : public WireBase {
     // this is triggered by populating requiredVariables variable
     resolveWire();
     if (wire) {
-      if(data.wire == wire.get()) {
+      if (data.wire == wire.get()) {
         SHLOG_ERROR("SwitchTo: wire {} cannot switch to itself", wire->name);
         throw ComposeError("SwitchTo: wire cannot switch to itself");
       }
@@ -1309,16 +1309,17 @@ struct WireLoader : public BaseLoader<WireLoader> {
 };
 
 struct WireRunner : public BaseLoader<WireRunner> {
-  static inline Parameters params{{"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireType, CoreInfo::WireVarType}},
-                                  {"Mode",
-                                   SHCCSTR("The way to run the wire. Inline: will run the sub wire "
-                                           "inline within the root wire, a pause in the child wire will "
-                                           "pause the root too; Detached: will run the wire separately in "
-                                           "the same mesh, a pause in this wire will not pause the root; "
-                                           "Stepped: the wire will run as a child, the root will tick the "
-                                           "wire every activation of this shard and so a child pause "
-                                           "won't pause the root."),
-                                   {RunWireModeEnumInfo::Type}}};
+  static inline Parameters params{
+      {"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireType, CoreInfo::WireVarType}},
+      {"Mode",
+       SHCCSTR("The way to run the wire. Inline: will run the sub wire "
+               "inline within the root wire, a pause in the child wire will "
+               "pause the root too; Detached: will run the wire separately in "
+               "the same mesh, a pause in this wire will not pause the root; "
+               "Stepped: the wire will run as a child, the root will tick the "
+               "wire every activation of this shard and so a child pause "
+               "won't pause the root."),
+       {RunWireModeEnumInfo::Type}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -2044,6 +2045,7 @@ struct Spawn : public CapturingSpawners {
     }
 
     auto c = _pool->acquire(_composer, context);
+    _wireContainers[c->wire.get()] = c;
 
     shassert(c->injectedVariables.empty() && "Spawn: injected variables should be empty");
     for (auto &v : _vars) {
@@ -2105,10 +2107,11 @@ struct WhenDone : Spawn {
         _onCleanupConnection = mesh->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
       } else {
         if (_connectedMesh.lock() != mesh)
-          throw ActivationError("WhenDonw: mesh changed, this is not supported");
+          throw ActivationError("WhenDone: mesh changed, this is not supported");
       }
 
       auto c = _pool->acquire(_composer, context);
+      _wireContainers[c->wire.get()] = c;
 
       for (auto &v : _vars) {
         SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
