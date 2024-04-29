@@ -16,15 +16,15 @@ solution: """@define(calculate {
 """
 
 explicit: """@define(calculate {
-  var1 | Math.Add(var2)
+  var1 | Math.Add(Operand: var2)
 })
 @wire(logic{
-  Once({
+  Once(Action: {
     2 >= var1
     3 >= var2
   })
   @calculate
-  Once(Log(Prefix: "Result?" Level: LogLevel::Info) 2.0)
+  Once(Action: Log(Prefix: "Result?" Level: LogLevel::Info) Every: 2.0)
 } Looped: true)
 {logic-behavior: logic}
 """
