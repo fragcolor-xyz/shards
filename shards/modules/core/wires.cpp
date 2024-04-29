@@ -852,6 +852,11 @@ struct SwitchTo : public WireBase {
     // this is triggered by populating requiredVariables variable
     resolveWire();
     if (wire) {
+      if(data.wire == wire.get()) {
+        SHLOG_ERROR("SwitchTo: wire {} cannot switch to itself", wire->name);
+        throw ComposeError("SwitchTo: wire cannot switch to itself");
+      }
+
       auto dataCopy = data;
       dataCopy.requiredVariables = &wire->requirements;
       for (auto &req : dataCopy.shared) {
