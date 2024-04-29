@@ -1,0 +1,22 @@
+{
+prompt: """How do I execute a wire that continues its state whenever it is called?""" 
+
+solution: """@wire(main-wire{
+Step(other-wire-that-continues)
+})
+"""
+
+explicit: """@wire(main-wire{
+Step(Wire: other-wire-that-continues)
+})
+"""
+
+explanation: """The Step Shard is a wire executor. When called, it will execute the wire specified in the Wire parameter.
+Like the Do Shard, Step will run the specified wire synchronously within the context of the parent wire.
+Unlike the Do Shard, which will execute a wire from the start whenever it is called, the Step Shard will continue executing a wire
+from where it last left off. For example, if a stepped wire is paused using the Pause Shard, the next time it is called, it will
+continue its state from where it last paused.
+"""
+
+tag: "  #General-Wire"
+}

@@ -1,0 +1,18 @@
+{
+prompt: """How do I create a table in Shards?""" 
+
+solution: """{a: 10.2 b: 20.1} = tableB 
+"""
+
+explicit: """Table(tableB Key: "a" Global: true Type: @type({a: Type::Float b: Type::Float}))
+10.2 | Set(tableB "a")
+tableB | Log
+20.1 | Set(tableB "b")
+tableB | Log
+"""
+
+explanation: """Instantiated a table with key, single type, global scope, using `Set`. Tables are instantiated in JSON format in Shards. = indicates immutability of table.
+"""
+
+tag: "  #General"
+}

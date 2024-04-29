@@ -1,0 +1,18 @@
+{
+prompt: """How do I convert an integer to a float3?""" 
+
+solution: """5 
+ToFloat3
+"""
+
+explicit: """5
+ToFloat3
+"""
+
+explanation: """The ToFloat3 Shard converts an input with numeric value into 3-dimensional vector represented as three floating point numbers. If the input is one dimensional, 
+the Shard will assign 0.0 to the second and third floating point number.For example, in the solution provided above, ToFloat3 will out put (5.0 0.0 0.0). If the input is two
+dimensional, it will assign 0.0 to the third floating point number. If the input has more than 3 dimensions, the Shard will only use the first 3 values provided.
+"""
+
+tag: "  #General"
+}

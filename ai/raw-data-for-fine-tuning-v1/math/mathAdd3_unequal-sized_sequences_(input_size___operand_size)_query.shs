@@ -1,0 +1,18 @@
+{
+prompt: """How to use Math.Add when applied to unequal-sized sequences where the input size is larger than the operand size?"""
+
+solution: """[4 2 1 5 8] 
+Math.Add([6 4]) 
+Log 
+Assert.Is([10 6 7 9 14])
+"""
+
+explicit: """[4 2 1 5 8] 
+Math.Add(Operand: [6 4]) 
+Log(Prefix: "" Level: LogLevel::Info)
+Assert.Is(Value: [10 6 7 9 14])
+"""
+
+explanation: """Applies addition operation. When applying addition operation on an input sequence with more elements than the operand sequence,
+Input seq elements compute with corresponding operand seq elements; for (input size > operand size): remaining input seq elements continually loop over operand seq elements. Output is of same size as input size."""
+}

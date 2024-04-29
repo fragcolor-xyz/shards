@@ -1,0 +1,22 @@
+{
+prompt: """How to execute and generate multiple wires that will execute inline to the parent wire?""" 
+
+solution: """@wire(main-wire{
+[1  2  3]
+DoMany(other-wire)
+})
+"""
+
+explicit: """@wire(main-wire{
+[1  2  3]
+Do(Wire: other-wire)
+})
+"""
+
+explanation: """DoMany is a Shard that will generate and execute multiple wires inline to the parent wire. As opposed to Do which will only generate
+one wire that is reused, DoMany will generate a number of wires depending on the number of elements in the sequence passed in as input.
+
+"""
+
+tag: "  #General-Wire"
+}

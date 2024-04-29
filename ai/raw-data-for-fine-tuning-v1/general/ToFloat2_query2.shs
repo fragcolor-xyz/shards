@@ -1,0 +1,18 @@
+{
+prompt: """How do I convert a float to a float2?""" 
+
+solution: """5.0 ; float to convert
+ToFloat2
+"""
+
+explicit: """5.0 ; float to convert
+ToFloat2
+"""
+
+explanation: """The ToFloat2 Shard converts an input with numeric value into 2-dimensional vector represented as two floating point numbers. If the input is one dimensional, 
+the Shard will assign 0.0 to the second floating point number.For example, in the solution provided above, ToFloat2 will out put (5.0 0.0). If the input is two
+dimensional, it will assign the floating point numbers accordingly. If the input has more than 2 dimensions, the Shard will only use the first 2 values provided.
+"""
+
+tag: "  #General"
+}

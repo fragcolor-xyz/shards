@@ -1,0 +1,13 @@
+{
+prompt: """How to use @i3 int3 type?"""
+
+solution: """@i3(1 10 99) | Math.Add( @i3(99 90 1))
+Log
+"""
+
+explicit: """@i3(1 10 99) | Math.Add(Operand: @i3(99 90 1))
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """Type Int3 defines a vector of three 32-bit signed integers."""
+}

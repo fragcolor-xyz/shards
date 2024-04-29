@@ -1,0 +1,18 @@
+{
+prompt: """How do I use the tangent trigonometric function?"""  
+
+solution: """0.785398
+Math.Tan
+Log("result")
+"""
+
+explicit: """0.785398
+Math.Tan
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """Math.Tan is a Maths Shard that will apply the tanget trigonometric function to the float value passed in as input.
+"""
+
+tag: "  #Maths"
+}

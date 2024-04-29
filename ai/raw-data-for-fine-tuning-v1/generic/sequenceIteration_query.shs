@@ -1,0 +1,25 @@
+{
+prompt: """How to iterate through a sequence?"""
+
+solution: """[2 4 8 10]
+ForEach({
+Math.Multiply(10)
+Log
+Math.Multiply(100)
+Log}
+)
+"""
+
+explicit: """[2 4 8 10]
+ForEach(Apply: {
+Math.Multiply(Operand: 10)
+Log(Prefix: "" Level: LogLevel::Info)
+Math.Multiply(Operand: 100)
+Log(Prefix: "" Level: LogLevel::Info)
+}
+)
+"""
+
+explanation: """Iterate through a table with ForEach Shard. It has the Apply parameter. Processes every element in sequential order.
+"""
+}

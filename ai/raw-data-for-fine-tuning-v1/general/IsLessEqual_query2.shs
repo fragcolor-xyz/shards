@@ -1,0 +1,19 @@
+{
+prompt: """How to do less than or equal to math operation?"""
+
+solution: """"a" | IsLessEqual("z")
+2 | IsLessEqual(5)
+2.0 | IsLessEqual((2.0 | Math.Add(2.0)))
+"""
+
+explicit: """"a" | IsLessEqual(Value: "z")
+2 | IsLessEqual(Value: 5)
+2.0 | IsLessEqual(Value: (2.0 | Math.Add(Operand: 2.0)))
+"""
+
+explanation: """For ‘less than or equal to’ ≤ operation, use IsLessEqual Shard. 
+For string comparison, ‘a’ is less than or equal to ‘z’ numerically.
+For integer comparison, 2 is less than or equal to 5.
+An example is also provided for using IsLessEqual Shard containing a nested addition operation.
+"""
+}

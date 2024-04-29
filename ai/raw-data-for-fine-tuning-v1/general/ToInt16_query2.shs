@@ -1,0 +1,19 @@
+{
+prompt: """How do I convert an integer to an int16?""" 
+
+solution: """5
+ToInt16
+"""
+
+explicit: """5
+ToInt16
+"""
+
+explanation: """The ToInt16 Shard converts an input with numeric value into 16-dimensional vector represented as 16 integers. The value will always be rounded down to the nearest integer. If 
+the input is one dimensional, the Shard will assign 0 to the second, third and fourth integers and o forth. For example, in the solution provided above, ToInt16 will output 
+(5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0). If the input is two dimensional, it will assign 0 to the third and fourth integers and so forth. If the value has more than 16 dimensions, 
+only the first 16 values will be used.
+"""
+
+tag: "  #General"
+}

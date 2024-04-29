@@ -1,0 +1,35 @@
+{
+prompt: """How to @define in Shards?"""
+
+solution: """@define(calculate {
+  var1 | Math.Add(var2)
+})
+@wire(logic{
+  Once({
+    2 >= var1
+    3 >= var2
+  })
+  @calculate
+  Once(Log("Result?") 2.0)
+} Looped: true)
+{logic-behavior: logic}
+"""
+
+explicit: """@define(calculate {
+  var1 | Math.Add(Operand: var2)
+})
+@wire(logic{
+  Once(Action: {
+    2 >= var1
+    3 >= var2
+  })
+  @calculate
+  Once(Action: Log(Prefix: "Result?" Level: LogLevel::Info) Every: 2.0)
+} Looped: true)
+{logic-behavior: logic}
+"""
+
+explanation: """define "copies and pastes" the code as is in the location it is called, so it is useful for defining values or snippets of code that you will re-use a lot.
+"""
+}
+

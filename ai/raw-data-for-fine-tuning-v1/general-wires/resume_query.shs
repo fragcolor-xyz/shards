@@ -1,0 +1,18 @@
+{
+prompt: """How do I resume a wire that has been suspended from the point of suspension?""" 
+
+solution: """@wire(wire{
+Resume(wire-paused)
+})
+"""
+
+explicit: """@wire(wire{
+Resume(Wire: wire-paused)
+})
+"""
+
+explanation: """Resume will execute a currently suspended wire from the point of suspension.
+"""
+
+tag: "  #General-Wire"
+}

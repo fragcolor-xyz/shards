@@ -1,0 +1,19 @@
+{
+prompt: """How do I count the total number of key and value pairs that a table has?""" 
+
+solution: """Count(table-to-count)
+"""
+
+explicit: """Count
+(
+Name: table-to-count
+;Key: key-to-count
+)
+"""
+
+explanation: """Count parses the variable passed to it in the :Name parameter, and returns the count of characters, elements, or key-value pairs depending on whether the data type passed to it was a string, a sequence, or a table.
+This Shard works on both sequences and tables. Parameter :Key applies only to tables.
+"""
+
+tag: "  #General"
+}

@@ -1,0 +1,20 @@
+{
+prompt: """How do I convert a integer to a RGBA color value?""" 
+
+solution: """5 
+ToColor
+"""
+
+explicit: """5
+ToColor
+"""
+
+explanation: """The ToColor Shard converts an input with numeric value into 4-dimensional color vector represented as four integers.
+The first integer represents the Red value, the second integer represents the Green value, the third integer represents the Blue value and the last integer represents the Alpha.
+The value will always be rounded down to the nearest integer. If the input is one dimensional, the Shard will assign 0 to the second, third and fourth integers. 
+For example, in the solution provided above, ToInt4 will output (5 0 0 0). If the input is two dimensional, it will assign 0 to the third and fourth integers. 
+If the value has more than 4 dimensions, only the first four values will be used.
+"""
+
+tag: "  #General"
+}

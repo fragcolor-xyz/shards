@@ -1,0 +1,18 @@
+{
+prompt: """How do I calculate the magnitude or length of a vector?"""  
+
+solution: """@f2(2.0 3.0)
+Math.Length
+Log("result")
+"""
+
+explicit: """@f2(2.0 3.0)
+Math.Length
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """The Math.Length Shard is a Maths Shard that takes a vector as input and returns the vector's magnitude/length calculated using Pythagorean theorem.
+"""
+
+tag: "  #Maths"
+}

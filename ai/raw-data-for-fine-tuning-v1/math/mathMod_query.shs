@@ -1,0 +1,15 @@
+{
+prompt: """How to use the Math.Mod Shard?"""
+
+solution: """@i4(1 2 3 4)
+Math.Mod(@i4(2 2 2 2)) | Log
+Assert.Is(@i4(1 0 1 0))
+"""
+
+explicit: """@i4(1 2 3 4)
+Math.Mod(Operand: @i4(2 2 2 2)) | Log(Prefix: "" Level: LogLevel::Info)
+Assert.Is(Value: @i4(1 0 1 0))
+"""
+
+explanation: """Applies the modulo function, binary operation on the input value and the operand and returns the result (or a sequence of results if the input and the operand are sequences)."""
+}

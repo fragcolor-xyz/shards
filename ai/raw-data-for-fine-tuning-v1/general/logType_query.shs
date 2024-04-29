@@ -1,0 +1,17 @@
+{
+prompt: """How do I log the type of a variable in the console?""" 
+
+solution: """variable-to-log
+LogType("Is wire running")
+"""
+
+explicit: """Get(Name: variable-to-log)
+LogType(Prefix: "Is wire running" Level: LogLevel::Info)
+"""
+
+explanation: """Prints the type of the passed variable to the console. 
+It can also prefix a message string to the logged output while displaying it in the console.
+"""
+
+tag: "  #General"
+}

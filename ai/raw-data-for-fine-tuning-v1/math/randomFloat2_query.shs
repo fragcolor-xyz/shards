@@ -1,0 +1,19 @@
+{
+prompt: """How to specify a minimum or lower bound in RandomFloat when needed? RandomFloat does not have Min parameter."""
+
+solution: """@template(rand [a b] {
+RandomFloat((b | Math.Subtract(a))) | Math.Add(a)
+})
+@rand(1.0 2.0)
+Log("result")
+"""
+
+explicit: """@template(rand [a b] {
+RandomFloat(Max: (b | Math.Subtract(Operand: a))) | Math.Add(Operand: a)
+})
+@rand(1.0 2.0)
+Log(Prefix: "result" Level: LogLevel::Info)
+"""
+
+explanation: """Use this workaround template to specify the lower bounds and upper bounds of the RandomFloat"""
+}

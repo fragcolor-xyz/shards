@@ -1,0 +1,16 @@
+{
+prompt: """How do i convert and int to Leb128 format?""" 
+
+solution: """5
+ToLEB128(false)
+"""
+
+explicit: """5
+ToLEB128(Signed: false)
+"""
+
+explanation: """ToLEB128 will convert an int to  a LEB128 format. The Signed parameter is for if the integer to encode/decode is signed and can be negative.
+"""
+
+tag: "  #General"
+}

@@ -1,0 +1,24 @@
+{
+prompt: """How do I check if something is not something else?""" 
+
+solution: """variable1
+When(IsNot(variable2) {
+Pass ;Do Something
+})
+"""
+
+explicit: """Get(Name: variable1)
+When(Predicate: IsNot(Value: variable2) Action: {
+Pass ;Do Something
+} Passthrough: true)
+"""
+
+explanation: """The IsNot Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional Shard does not match with what is
+stated in the Value parameter of the Is Shard. In the solution above, if variable 1 does not equal variable2, the When Shard's Predicate will return true and execute what is stated
+in Action.
+
+If the input and Value parameter have different data types they will be assessed as inequal by default even if they are numerically equal (for example int 5 is not equal to float 5.0).
+"""
+
+tag: "  #General"
+}

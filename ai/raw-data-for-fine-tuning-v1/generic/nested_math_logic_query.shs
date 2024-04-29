@@ -1,0 +1,14 @@
+{
+prompt: """How to implement nested math logic in Shards?"""
+
+solution: """5.2
+Math.Add((RandomFloat | Math.Multiply(2.0)))
+"""
+
+explicit: """5.2
+Math.Add(Operand: (RandomFloat | Math.Multiply(Operand: 2.0)))
+"""
+
+explanation: """Nested Math Logic within a Shard should be enclosed in () parentheses.
+"""
+}

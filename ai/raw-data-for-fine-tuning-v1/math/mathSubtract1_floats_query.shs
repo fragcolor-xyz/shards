@@ -1,0 +1,16 @@
+{
+prompt: """How to use Math.Subtract for floats?"""
+
+solution: """5.3
+Math.Subtract(2.6) ;
+Log
+"""
+
+explicit: """5.3
+Math.Subtract(Operand: 2.6) ;
+Log(Prefix: "" Level: LogLevel::Info)
+
+"""
+
+explanation: """Applies subtraction operation. 2.6 is the operand which is subtracted from the input 5.3 and the output is 2.7"""
+}

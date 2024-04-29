@@ -1,0 +1,26 @@
+{
+prompt: """How do I check if any value in a sequence is of higher value than something?""" 
+
+solution: """[1 1 1 1 3] = sequence
+sequence
+If(IsAnyMore(2) {Msg("one match")} {Msg("none match")})
+"""
+
+explicit: """[1 1 1 1 3] = sequence
+sequence
+If(Predicate: IsAnyMore(Value: 2) Then: {
+Msg(Message: "one match" Level: LogLevel::Info)
+} Else: {
+Msg(Message: "none match" Level: LogLevel::Info)}
+Passthrough: false
+) 
+"""
+
+explanation: """The IsAnyMore is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
+It will parse through a sequence and check if any of the elements in the sequence is of higher value than the value provided in
+the Value parameter. If at least one element is of higher value, the Shard will return true, otherwise, it will return false. 
+The data type provided as input and provided in the Value Parameter must be of the same type.
+"""
+
+tag: "  #General"
+}

@@ -1,0 +1,15 @@
+{
+prompt: """How do I do a clamp operation to modify an input to be within specified upper and lower bounds?
+"""
+
+solution: """3.0 | Clamp(1.0 2.5)
+Log
+"""
+
+explicit: """3.0 | Clamp(Min: 1.0 Max: 2.5)
+Log(Prefix: "" Level: LogLevel::Info)
+"""
+
+explanation: """Clamp Shard clamps the input value between the Min and Max values. In the given example, clamping the input 3.0 between 1.0 and 2.5 will return 2.5
+"""
+}
