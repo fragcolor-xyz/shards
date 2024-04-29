@@ -146,6 +146,18 @@ struct SHContext {
     errorMessage = message;
   }
 
+  void pushError(std::string &&message) { errorStack.emplace_back(std::move(message)); }
+  void resetErrorStack() { errorStack.clear(); }
+  std::string formatErrorStack() {
+    // reverse order
+    std::string out;
+    for (auto it = errorStack.rbegin(); it != errorStack.rend(); ++it) {
+      out += *it;
+      out += "\n";
+    }
+    return out;
+  }
+
   SHStateSnapshot takeStateSnapshot() {
     return SHStateSnapshot{
         state,
@@ -184,6 +196,7 @@ private:
   // to store the previous result
   SHVar flowStorage{};
   std::string errorMessage;
+  std::vector<std::string> errorStack;
 };
 
 namespace shards {

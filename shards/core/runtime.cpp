@@ -660,6 +660,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       case SHWireState::Error:
         SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk),
                     context->getErrorMessage(), blk->line, blk->column);
+        context->pushError(fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), context->getErrorMessage(),
+                                       blk->line, blk->column));
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
@@ -1763,7 +1765,6 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
 
     auto runRes = runWire(wire, &context, wire->currentInput);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
-      SHLOG_DEBUG("Wire {} failed", wire->name);
       wire->state = SHWire::State::Failed;
       failed = true;
       context.stopFlow(runRes.output);
@@ -1799,19 +1800,21 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   }
 
 endOfWire:
-  wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
-
   if (failed || context.failed()) {
     wire->finishedError = context.getErrorMessage();
     if (wire->finishedError.empty()) {
       wire->finishedError = "Generic error";
     }
-    SHLOG_DEBUG("Wire {} failed with error {}", wire->name, wire->finishedError);
+
+    // print our stack log nicely now
+    SHLOG_ERROR("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
 
     if (wire->resumer) {
       // also stop the resumer parent in this case
       wire->resumer->context->cancelFlow(wire->finishedError);
     }
+  } else {
+    wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
   }
 
   // if we have a resumer we return to it
