@@ -92,10 +92,6 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-// caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
-// caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name);
@@ -1032,14 +1028,6 @@ struct InternalCore {
 
   static SHWireState runShards2(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
     return shards::activateShards2(shards, context, input, output);
-  }
-
-  static SHWireState runShardsHashed(Shards shards, SHContext *context, const SHVar &input, SHVar &output, SHVar &outHash) {
-    return shards::activateShards(shards, context, input, output, outHash);
-  }
-
-  static SHWireState runShardsHashed2(Shards shards, SHContext *context, const SHVar &input, SHVar &output, SHVar &outHash) {
-    return shards::activateShards2(shards, context, input, output, outHash);
   }
 
   static SHWireState suspend(SHContext *ctx, double seconds) { return shards::suspend(ctx, seconds); }

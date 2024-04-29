@@ -14,6 +14,5 @@ SHARDS_REGISTER_FN(flow) {
   REGISTER_SHARD("If", IfBlock);
   REGISTER_SHARD("Match", Match);
   REGISTER_SHARD("SubFlow", Sub);
-  REGISTER_SHARD("Hashed", HashedShards);
 }
 }; // namespace shards

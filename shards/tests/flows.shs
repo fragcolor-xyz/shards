@@ -282,23 +282,6 @@
 @schedule(root loop-test)
 @run(root 0.1) | Assert.Is(true)
 
-@wire(hashed {
-  10
-  Hashed({
-    Math.Add(1)
-    Math.Add(2)
-    Math.Add(3)
-    Math.Add(4)
-    Math.Add(5)
-    Math.Add(6)
-  })
-  Log
-  {Take("Hash") | ToBytes | ToHex | Log | Assert.Is("0x0517ed7b7fbe5dbc1311a60edfc55db278") | Log}
-})
-
-@schedule(root hashed)
-@run(root) | Assert.Is(true)
-
 @wire(wire-loop-inline {
   Once({
     0 >= count

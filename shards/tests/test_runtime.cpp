@@ -1069,7 +1069,7 @@ TEST_CASE("linalg compatibility") {
   static_assert(sizeof(SHVar) == sizeof(padded::Int2));
   static_assert(sizeof(SHVar) == sizeof(padded::Int));
   static_assert(sizeof(SHVar) * 4 == sizeof(Mat4));
-  static_assert(sizeof(padded::Float4)*4 == sizeof(Mat4));
+  static_assert(sizeof(padded::Float4) * 4 == sizeof(Mat4));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float4, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float3, valueType));
   static_assert(offsetof(SHVar, valueType) == offsetof(padded::Float2, valueType));
@@ -1145,45 +1145,6 @@ TEST_CASE("TableVar") {
   HandTable hand;
   hand.buttons.push_back(Var(0.6, 1.0, 1.0));
   SHLOG_INFO(hand);
-}
-
-TEST_CASE("HashedActivations") {
-  // we need to hack this in as we run out of context
-  shards::Coroutine foo{};
-  SHFlow flow{};
-  SHContext ctx(&foo, nullptr, &flow);
-  auto input = Var(11);
-  SHVar hash{};
-  Shards shards{};
-  SHVar output;
-  auto b1 = createShard("Assert.Is");
-  DEFER(b1->destroy(b1));
-
-  b1->setParam(b1, 0, &input);
-  shards.len = 1;
-  shards.elements = &b1;
-  b1->warmup(b1, &ctx);
-  activateShards2(shards, &ctx, input, output, hash);
-  b1->cleanup(b1, &ctx);
-  SHLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash.payload.int2Value[0] == -4968190569658619693ll);
-  REQUIRE(hash.payload.int2Value[1] == 243653811690449199ll);
-  REQUIRE(output == input);
-
-  auto wrongValue = Var(12);
-  b1->setParam(b1, 0, &wrongValue);
-  b1->warmup(b1, &ctx);
-  shards.len = 1;
-  shards.elements = &b1;
-  try {
-    activateShards2(shards, &ctx, input, output, hash);
-  } catch (...) {
-  }
-  b1->cleanup(b1, &ctx);
-  SHLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash.payload.int2Value[0] == -4909704308314863430ll);
-  REQUIRE(hash.payload.int2Value[1] == -189837931601462934ll);
-  REQUIRE(output == Var::Empty);
 }
 
 #include <shards/number_types.hpp>
@@ -1484,7 +1445,8 @@ TEST_CASE("shards-lang") {
   TEST_SUCCESS_CASE("Assign 1", "100 = x\n x | Log | Assert.Is(100)");
   TEST_SUCCESS_CASE("SubFlow Shards 1", "1 | Math.Add(2) | SubFlow({Assert.Is(3) | Log}) | Log");
   TEST_SUCCESS_CASE("SubFlow Shards 2", "1 | Math.Add(2) | SubFlow({Assert.Is(Value: 3) | Log}) | Log");
-  TEST_EVAL_ERROR_CASE("SubFlow Shards 3", "1 | Math.Add(2) | SubFlow({Assert.Is(LOL: 3) | Log}) | Log", "Unknown parameter 'LOL'");
+  TEST_EVAL_ERROR_CASE("SubFlow Shards 3", "1 | Math.Add(2) | SubFlow({Assert.Is(LOL: 3) | Log}) | Log",
+                       "Unknown parameter 'LOL'");
   TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log (3 | Log))");
   TEST_SUCCESS_CASE("Exp 2", "[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
   TEST_SUCCESS_CASE("Exp 3", "[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
