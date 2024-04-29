@@ -2328,6 +2328,8 @@ struct Clear : SeqUser {
       // we in that case output the same _cell with adjusted len!
       if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<SHVar &>(input).payload.seqValue.len = 0;
+    } else if(_cell->valueType == SHType::Table) {
+      _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
     }
 
     return input;
