@@ -967,7 +967,10 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData dat
   if (!data.visitedWires) {
     data.visitedWires = visitedWires = new VisitedWires{};
   }
-  DEFER({ delete visitedWires; });
+  DEFER({
+    if (visitedWires)
+      delete visitedWires;
+  });
 
   ValidationContext ctx{};
   ctx.visitedWires = reinterpret_cast<VisitedWires *>(data.visitedWires);

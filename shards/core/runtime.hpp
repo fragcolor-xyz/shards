@@ -706,7 +706,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    // shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
     shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
     shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
