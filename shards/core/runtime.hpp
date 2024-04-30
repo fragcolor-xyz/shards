@@ -470,7 +470,10 @@ struct RuntimeCallbacks {
 };
 }; // namespace shards
 
-using VisitedWires = std::unordered_map<SHWire *, SHTypeInfo>;
+struct CompositionContext {
+  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
+};
+
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static constexpr uint32_t TypeId = 'brcM';
   static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
@@ -502,8 +505,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     SHInstanceData data = instanceData;
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
-    VisitedWires visitedWires;
-    data.visitedWires = &visitedWires;
+    CompositionContext privateContext{};
+    data.privateContext = &privateContext;
     auto validation = shards::composeWire(wire.get(), data); // can throw!
     shards::arrayFree(validation.exposedInfo);
     shards::arrayFree(validation.requiredInfo);

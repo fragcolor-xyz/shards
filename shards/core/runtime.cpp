@@ -686,13 +686,13 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
                                                                                                                    receiverType);
 }
 
-struct ValidationContext {
+struct InternalCompositionContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
   std::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   std::unordered_set<std::string_view> variables;
   std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
-  VisitedWires *visitedWires{};
+  CompositionContext *sharedContext{};
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -706,7 +706,7 @@ struct ValidationContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 };
 
-void validateConnection(ValidationContext &ctx) {
+void validateConnection(InternalCompositionContext &ctx) {
   auto previousOutput = ctx.previousOutputType;
 
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
@@ -743,7 +743,7 @@ void validateConnection(ValidationContext &ctx) {
       data.wire = ctx.wire;
       data.inputType = previousOutput;
       data.requiredVariables = ctx.fullRequired;
-      data.visitedWires = ctx.visitedWires;
+      data.privateContext = ctx.sharedContext;
       if (ctx.next) {
         data.outputTypes = ctx.next->inputTypes(ctx.next);
       }
@@ -809,7 +809,7 @@ void validateConnection(ValidationContext &ctx) {
       }
     }();
 
-    auto blockHasValidOutputTypes =
+    auto shardHasValidOutputTypes =
         flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
           return t.basicType == SHType::Any ||
                  (t.basicType == SHType::Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
@@ -819,9 +819,8 @@ void validateConnection(ValidationContext &ctx) {
                   ctx.previousOutputType.basicType == SHType::Table) || // any table
                  t == ctx.previousOutputType;
         });
-    if (!blockHasValidOutputTypes) {
-      std::string blockName = ctx.bottom->name(ctx.bottom);
-      auto msg = fmt::format("Shard {} doesn't have a valid output type", blockName);
+    if (!shardHasValidOutputTypes) {
+      auto msg = fmt::format("Shard {} doesn't have a valid output type", ctx.bottom->name(ctx.bottom));
       throw ComposeError(msg);
     }
   }
@@ -963,22 +962,22 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData dat
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
-  VisitedWires *visitedWires{};
-  if (!data.visitedWires) {
-    data.visitedWires = visitedWires = new VisitedWires{};
+  CompositionContext *context{};
+  if (!data.privateContext) {
+    data.privateContext = context = new CompositionContext{};
   }
   DEFER({
-    if (visitedWires)
-      delete visitedWires;
+    if (context)
+      delete context;
   });
 
-  ValidationContext ctx{};
-  ctx.visitedWires = reinterpret_cast<VisitedWires *>(data.visitedWires);
+  InternalCompositionContext ctx{};
+  ctx.sharedContext = reinterpret_cast<CompositionContext *>(data.privateContext);
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.wire = data.wire;
   ctx.onWorkerThread = data.onWorkerThread;
-  ctx.fullRequired = reinterpret_cast<decltype(ValidationContext::fullRequired)>(data.requiredVariables);
+  ctx.fullRequired = reinterpret_cast<decltype(InternalCompositionContext::fullRequired)>(data.requiredVariables);
 
   // add externally added variables
   if (ctx.wire) {

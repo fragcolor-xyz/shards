@@ -700,7 +700,7 @@ struct SHInstanceData {
 
   // Internally used
   void *requiredVariables;
-  void *visitedWires;
+  void *privateContext;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();
