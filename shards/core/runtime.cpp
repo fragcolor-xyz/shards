@@ -1041,7 +1041,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       try {
         validateConnection(ctx);
       } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error validating shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+        auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
                                       blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         SHLOG_ERROR("{}", verboseMsg);
         throw ComposeError(verboseMsg);
