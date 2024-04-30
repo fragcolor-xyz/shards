@@ -184,17 +184,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
       wire->requirements.clear();
     }
 
-    wire->composeResult = composeWire(
-        wire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
-            throw ComposeError("RunWire: failed inner wire validation");
-          } else {
-            SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
-          }
-        },
-        this, dataCopy);
+    wire->composeResult = composeWire(wire.get(), dataCopy);
 
     IterableExposedInfo exposing(wire->composeResult->exposedInfo);
     // keep only globals
@@ -1379,17 +1369,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     DEFER(gatheringWires().erase(wire.get()));
 
     // We need to validate the sub wire to figure it out!
-    auto res = composeWire(
-        wire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
-            throw SHException("RunWire: failed inner wire validation");
-          } else {
-            SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
-          }
-        },
-        this, data);
+    auto res = composeWire(wire.get(), data);
 
     shards::arrayFree(res.exposedInfo);
     shards::arrayFree(res.requiredInfo);
@@ -1569,17 +1549,7 @@ struct ParallelBase : public CapturingSpawners {
       }
       data.wire = wire;
       wire->mesh = mesh->shared_from_this();
-      auto res = composeWire(
-          wire,
-          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR(errorTxt);
-              throw ActivationError("Http.Server handler wire compose failed");
-            } else {
-              SHLOG_WARNING(errorTxt);
-            }
-          },
-          nullptr, data);
+      auto res = composeWire(wire, data);
       arrayFree(res.exposedInfo);
       arrayFree(res.requiredInfo);
     }
@@ -1975,17 +1945,7 @@ struct Spawn : public CapturingSpawners {
       }
       data.wire = wire;
       wire->mesh = context->main->mesh;
-      auto res = composeWire(
-          wire,
-          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR(errorTxt);
-              throw ActivationError("Spawn handler wire compose failed");
-            } else {
-              SHLOG_WARNING(errorTxt);
-            }
-          },
-          nullptr, data);
+      auto res = composeWire(wire, data);
       arrayFree(res.exposedInfo);
       arrayFree(res.requiredInfo);
     }

@@ -85,7 +85,9 @@ public:
 
   static void unregisterExitCallback(const char *eventName) { sCore._core->unregisterExitCallback(eventName); }
 
-  static SHVar *referenceVariable(SHContext *context, struct SHStringWithLen name) { return sCore._core->referenceVariable(context, name); }
+  static SHVar *referenceVariable(SHContext *context, struct SHStringWithLen name) {
+    return sCore._core->referenceVariable(context, name);
+  }
 
   static void releaseVariable(SHVar *variable) { return sCore._core->releaseVariable(variable); }
 
@@ -119,17 +121,13 @@ public:
   SH_ARRAY_INTERFACE(SHExposedTypesInfo, SHExposedTypeInfo, expTypes);
   SH_ARRAY_INTERFACE(SHStrings, SHString, strings);
 
-  static SHComposeResult composeWire(SHWireRef wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
-    return sCore._core->composeWire(wire, callback, userData, data);
-  }
+  static SHComposeResult composeWire(SHWireRef wire, SHInstanceData data) { return sCore._core->composeWire(wire, data); }
 
   static SHRunWireOutput runWire(SHWireRef wire, SHContext *context, const SHVar &input) {
     return sCore._core->runWire(wire, context, &input);
   }
 
-  static SHComposeResult composeShards(Shards shards, SHValidationCallback callback, void *userData, SHInstanceData data) {
-    return sCore._core->composeShards(shards, callback, userData, data);
-  }
+  static SHComposeResult composeShards(Shards shards, SHInstanceData data) { return sCore._core->composeShards(shards, data); }
 
   static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
     return sCore._core->runShards(shards, context, &input, &output);

@@ -843,9 +843,6 @@ struct SHWireProvider {
   void *userData;
 };
 
-typedef void(__cdecl *SHValidationCallback)(const struct Shard *errorShard, struct SHStringWithLen errorTxt,
-                                            SHBool nonfatalWarning, void *userData);
-
 typedef void(__cdecl *SHRegisterShard)(SHString fullName, SHShardConstructor constructor);
 
 typedef void(__cdecl *SHRegisterObjectType)(int32_t vendorId, int32_t typeId, struct SHObjectInfo info);
@@ -896,11 +893,9 @@ typedef void(__cdecl *SHDestroyVar)(struct SHVar *var);
 
 typedef struct SHVar(__cdecl *SHHashVar)(const struct SHVar *var);
 
-typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param,
-                                            SHValidationCallback callback, void *userData);
+typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param);
 
-typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValidationCallback callback, void *userData,
-                                                         struct SHInstanceData data);
+typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, struct SHInstanceData data);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
@@ -934,8 +929,7 @@ typedef void(__cdecl *SHAddShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);
 typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
-typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, SHValidationCallback callback, void *userData,
-                                                       struct SHInstanceData data);
+typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, struct SHInstanceData data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
 typedef SHWireRef(__cdecl *SHGetGlobalWire)(struct SHStringWithLen name);
 typedef void(__cdecl *SHSetGlobalWire)(struct SHStringWithLen name, SHWireRef wire);

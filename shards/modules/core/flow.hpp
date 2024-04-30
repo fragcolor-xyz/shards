@@ -177,17 +177,7 @@ struct Cond {
     // Validate condition wires, altho they do not influence anything we need
     // to report errors
     for (const auto &action : _conditions) {
-      auto validation = composeWire(
-          action,
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
-              throw SHException("Cond: failed inner wire validation.");
-            } else {
-              SHLOG_INFO("Cond: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, data);
+      auto validation = composeWire(action, data);
       if (validation.outputType.basicType != SHType::Bool) {
         throw ComposeError("Cond - expected Bool output from predicate shards");
       }
@@ -201,17 +191,7 @@ struct Cond {
     auto first = true;
     auto exposing = true;
     for (const auto &action : _actions) {
-      auto validation = composeWire(
-          action,
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
-              throw SHException("Cond: failed inner wire validation.");
-            } else {
-              SHLOG_INFO("Cond: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, data);
+      auto validation = composeWire(action, data);
 
       if (first) {
         // A first valid exposedInfo array is our gold

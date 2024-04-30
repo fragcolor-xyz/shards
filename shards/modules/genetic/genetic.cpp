@@ -115,17 +115,7 @@ struct Evolve {
     SHInstanceData vdata{};
     vdata.wire = bwire.get();
     bwire->mesh = data.wire->mesh;
-    auto res = composeWire(
-        bwire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("Evolve: failed subject wire validation, error: {}", errorTxt);
-            throw SHException("Evolve: failed subject wire validation");
-          } else {
-            SHLOG_INFO("Evolve: warning during subject wire validation: {}", errorTxt);
-          }
-        },
-        this, vdata);
+    auto res = composeWire(bwire.get(), vdata);
     arrayFree(res.exposedInfo);
     arrayFree(res.requiredInfo);
     // unset the wire->mesh as it's not the same as the one we run on, that will happen later
@@ -135,17 +125,7 @@ struct Evolve {
     vdata.inputType = res.outputType;
     vdata.wire = fwire.get();
     fwire->mesh = data.wire->mesh;
-    res = composeWire(
-        fwire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("Evolve: failed fitness wire validation, error: {}", errorTxt);
-            throw SHException("Evolve: failed fitness wire validation");
-          } else {
-            SHLOG_INFO("Evolve: warning during fitness wire validation: {}", errorTxt);
-          }
-        },
-        this, vdata);
+    res = composeWire(fwire.get(), vdata);
     if (res.outputType.basicType != SHType::Float) {
       throw ComposeError("Evolve: fitness wire should output a Float, but instead got " + type2Name(res.outputType.basicType));
     }
@@ -731,9 +711,7 @@ struct Mutant {
             }
           }
         } else if (mut.valueType == SHType::Seq) {
-          auto res = composeWire(
-              mut.payload.seqValue,
-              [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {}, nullptr, dataCopy);
+          auto res = composeWire(mut.payload.seqValue, dataCopy);
           if (res.outputType != ptype) {
             throw SHException("Expected same type as input in parameter "
                               "mutation wire's output.");
@@ -1041,9 +1019,7 @@ struct DShard {
     // set the wrapped params here
     auto params = _wrapped->parameters(_wrapped);
     for (uint32_t i = 0; i < params.len; i++) {
-      if (!validateSetParam(
-              _wrapped, i, _wrappedParams[i],
-              [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {}, nullptr))
+      if (!validateSetParam(_wrapped, i, _wrappedParams[i]))
         throw SHException("Failed to validate a parameter within a wrapped DShard.");
       _wrapped->setParam(_wrapped, int(i), &_wrappedParams[i]);
     }

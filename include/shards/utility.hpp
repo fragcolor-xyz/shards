@@ -338,22 +338,7 @@ public:
     SH_CORE::expTypesFree(_wireValidation.requiredInfo);
     SH_CORE::destroyVar(_wireValidation.failureMessage);
 
-    _wireValidation = SH_CORE::composeShards(
-        _shards,
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          std::string_view msg(errorTxt.string, size_t(errorTxt.len));
-          if (!nonfatalWarning) {
-            auto fullMsg = fmt::format("Error during inner wire validation: {}, shard: {}, line: {}, column: {}", msg,
-                                       errorShard->name(const_cast<Shard *>(errorShard)), errorShard->line, errorShard->column);
-            SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
-            throw shards::ComposeError("Failed inner wire validation");
-          } else {
-            auto fullMsg = fmt::format("Warning during inner wire validation: {}, shard: {}, line: {}, column: {}", msg,
-                                       errorShard->name(const_cast<Shard *>(errorShard)), errorShard->line, errorShard->column);
-            SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
-          }
-        },
-        this, data);
+    _wireValidation = SH_CORE::composeShards(_shards, data); // can throw
 
     return _wireValidation;
   }

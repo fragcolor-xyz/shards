@@ -87,7 +87,7 @@ SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
 void stringGrow(SHStringPayload *str, uint32_t newCap);
 void stringFree(SHStringPayload *str);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
@@ -1043,9 +1043,7 @@ struct InternalCore {
     shards::registerObjectType(vendorId, objectId, info);
   }
 
-  static SHComposeResult composeShards(Shards shards, SHValidationCallback callback, void *userData, SHInstanceData data) {
-    return shards::composeWire(shards, callback, userData, data);
-  }
+  static SHComposeResult composeShards(Shards shards, SHInstanceData data) { return shards::composeWire(shards, data); }
 
   static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
     return shards::activateShards(shards, context, input, output);

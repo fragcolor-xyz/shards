@@ -201,13 +201,12 @@ private:
 };
 
 namespace shards {
-[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                                          SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);
 
-bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
+bool validateSetParam(Shard *shard, int index, const SHVar &value);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck);
 void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var);
@@ -505,18 +504,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     data.inputType = shards::deriveTypeInfo(input, data);
     VisitedWires visitedWires;
     data.visitedWires = &visitedWires;
-    auto validation = shards::composeWire(
-        wire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          auto blk = const_cast<Shard *>(errorShard);
-          if (!nonfatalWarning) {
-            throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
-                                       ", input shard: " + std::string(blk->name(blk)));
-          } else {
-            SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
-          }
-        },
-        this, data);
+    auto validation = shards::composeWire(wire.get(), data); // can throw!
     shards::arrayFree(validation.exposedInfo);
     shards::arrayFree(validation.requiredInfo);
     shards::freeDerivedInfo(data.inputType);
@@ -555,18 +543,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHInstanceData data = instanceData;
       data.wire = wire.get();
       data.inputType = shards::deriveTypeInfo(input, data);
-      auto validation = shards::composeWire(
-          wire.get(),
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            auto blk = const_cast<Shard *>(errorShard);
-            if (!nonfatalWarning) {
-              throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
-                                         ", input shard: " + std::string(blk->name(blk)));
-            } else {
-              SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
-            }
-          },
-          this, data);
+      auto validation = shards::composeWire(wire.get(), data);
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
       shards::freeDerivedInfo(data.inputType);

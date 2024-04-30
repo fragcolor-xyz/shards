@@ -443,7 +443,7 @@ struct Server : public NetworkBase {
         auto it = _wire2Peer.find(toStop);
         if (it == _wire2Peer.end())
           continue; // Wire is not managed by this server
-        NetworkPeer* container = it->second;
+        NetworkPeer *container = it->second;
         lock.unlock();
 
         SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
@@ -558,17 +558,7 @@ struct Server : public NetworkBase {
       data.shared = SHExposedTypesInfo(server._sharedCopy);
       data.wire = wire;
       wire->mesh = (*server._contextCopy)->main->mesh;
-      auto res = composeWire(
-          wire,
-          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR(errorTxt);
-              throw ActivationError("Network.Server handler wire compose failed");
-            } else {
-              SHLOG_WARNING(errorTxt);
-            }
-          },
-          nullptr, data);
+      auto res = composeWire(wire, data);
       arrayFree(res.exposedInfo);
       arrayFree(res.requiredInfo);
     }
