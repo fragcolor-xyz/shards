@@ -257,7 +257,7 @@ macro_rules! impl_panel {
             let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
             panel
               .show(egui_ctx, |ui| {
-                util::activate_ui_contents(
+                  util::activate_ui_contents(
                   context,
                   input,
                   ui,

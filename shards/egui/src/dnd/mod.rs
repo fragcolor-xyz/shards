@@ -29,7 +29,7 @@ pub fn drag_source<R>(
 ) -> InnerResponse<R> {
   let is_dropped = ui.input(|i| i.pointer.any_released());
   let is_dragging_something = !ctx.dnd_value.borrow().0.is_none();
-  let is_being_dragged = is_dragging_something && ui.memory(|mem| mem.is_being_dragged(id));
+  let is_being_dragged = is_dragging_something && ctx.egui_ctx.is_being_dragged(id); // ui.memory(|mem| mem.is_being_dragged(id));
 
   let cursor_already_set =
     is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
