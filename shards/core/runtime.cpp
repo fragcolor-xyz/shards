@@ -1153,7 +1153,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     auto &cd = *wire->composeData.get();
     DEFER({ wire->composeData.reset(); });
     for (auto &type : cd.outputTypes) {
-      if (!matchTypes(res.outputType, type, true, true, true)) {
+      if (!matchTypes(type, res.outputType, true, true, true)) {
         std::string err =
             fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
         throw ComposeError(err);
