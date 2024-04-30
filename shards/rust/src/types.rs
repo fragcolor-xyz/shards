@@ -58,6 +58,7 @@ use crate::shardsc::SHType_String;
 use crate::shardsc::SHType_Table;
 use crate::shardsc::SHType_Wire;
 use crate::shardsc::SHTypesInfo;
+use crate::shardsc::SHTraits;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHVarPayload;
 use crate::shardsc::SHVarPayload__bindgen_ty_1;
@@ -332,6 +333,10 @@ impl Wire {
 
   pub fn set_looped(&self, looped: bool) {
     unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
+  }
+
+  pub fn set_traits(&self, traits: SHSeq) {
+    unsafe { (*Core).setWireTraits.unwrap()(self.0 .0, traits) }
   }
 
   pub fn set_unsafe(&self, unsafe_: bool) {
@@ -1250,7 +1255,12 @@ impl Type {
     Type {
       basicType: SHType_Object,
       details: SHTypeInfo_Details {
-        object: SHObjectTypeInfo { vendorId, typeId },
+        object: SHObjectTypeInfo {
+          vendorId,
+          typeId,
+          extInfo: core::ptr::null(),
+          extInfoData: core::ptr::null_mut(),
+        },
       },
       fixedSize: 0,
       innerType: SHType_None,
@@ -5339,6 +5349,12 @@ impl Seq {
 impl Default for Seq {
   fn default() -> Self {
     Seq::new()
+  }
+}
+
+impl Into<SHSeq> for &Seq {
+  fn into(self) -> SHSeq {
+    self.s
   }
 }
 

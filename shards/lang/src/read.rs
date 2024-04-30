@@ -7,7 +7,7 @@ use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
   Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shard_impl, shccstr, shlog_debug, shlog_error};
+use shards::{cstr, shard_impl, shccstr, shlog, shlog_debug, shlog_error};
 use shards::{shard, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
@@ -700,11 +700,15 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let key = match key.as_rule() {
             Rule::None => Value::None,
             Rule::Iden => Value::String(key.as_str().into()),
-            Rule::Value => process_value(
+            Rule::VarName => Value::Identifier(extract_identifier(key)?),
+            Rule::ConstValue => process_value(
               key.into_inner().next().unwrap(), // parsed qed
               env,
             )?,
-            _ => unreachable!(),
+            _ => {
+              eprintln!("Unexpected rule in TableKey: {:?}", key.as_rule());
+              unreachable!()
+            }
           };
 
           let value = inner

@@ -222,10 +222,7 @@ fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> 
   result.expect("Visitor didn't call v_shards inner")
 }
 
-fn process_sequence_no_visit<V: Visitor>(
-  pair: Pair<Rule>,
-  v: &mut V,
-) -> Result<(), Error> {
+fn process_sequence_no_visit<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   for stmt in pair.into_inner() {
     process_statement(stmt, v)?;
   }
@@ -339,10 +336,8 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
               key_result = Some((|| {
                 match key.as_rule() {
                   Rule::Iden | Rule::None => process_value(key, v)?,
-                  Rule::Value => process_value(
-                    key.into_inner().next().unwrap(), // parsed qed
-                    v,
-                  )?,
+                  Rule::ConstValue => process_value(key, v)?,
+                  Rule::VarName => process_value(key, v)?,
                   _ => unreachable!(),
                 };
                 Ok(())

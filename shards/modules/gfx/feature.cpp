@@ -789,7 +789,7 @@ public:
     };
 
     // Override render context
-    static auto swl_context = ToSWL(GraphicsRendererContext::VariableName);
+    static auto swl_context = toSWL(GraphicsRendererContext::VariableName);
     externalContextVar = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
     externalContextVar.flags = SHVAR_FLAGS_EXTERNAL;
 

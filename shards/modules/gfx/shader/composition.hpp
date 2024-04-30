@@ -6,6 +6,7 @@
 #include <shards/ops.hpp>
 #include <gfx/shader/generator.hpp>
 #include <shards/core/runtime.hpp>
+#include <shards/core/hash.inl>
 #include "../shards_utils.hpp"
 
 namespace gfx::shader {
@@ -51,6 +52,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
                             T apply) {
   checkType(input.valueType, SHType::Table, "ComposeWith table");
 
+  static thread_local shards::HashState<XXH128_hash_t> shHashState;
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
   XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
@@ -58,7 +60,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
     if (v.valueType == SHType::ContextVar) {
       shards::ParamVar pv(v);
       pv.warmup(context);
-      shards::hash_update(pv.get(), &hashState);
+      shHashState.updateHash(pv.get(), &hashState);
     } else {
       uint8_t constData = 0xff;
       XXH3_128bits_update(&hashState, &constData, 1);

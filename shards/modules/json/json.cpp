@@ -270,6 +270,8 @@ void to_json(json &j, const SHVar &var) {
   }
   case SHType::Type:
     throw shards::ActivationError("Type can not be serialized to json.");
+  case SHType::Trait:
+    throw shards::ActivationError("Trait can not be serialized to json.");
   };
 }
 
@@ -551,6 +553,8 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::Type:
     throw shards::ActivationError("Type can not be deserialized from json.");
+  case SHType::Trait:
+    throw shards::ActivationError("Trait can not be serialized to json.");
   }
 }
 
@@ -706,7 +710,7 @@ struct FromJson {
 
   SHVar getParam(int index) { return Var(_pure); }
 
-  void cleanup(SHContext* context) { _releaseMemory(_output); }
+  void cleanup(SHContext *context) { _releaseMemory(_output); }
 
   void anyParse(json &j, SHVar &storage) {
     if (j.is_array()) {

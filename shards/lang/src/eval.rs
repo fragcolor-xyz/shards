@@ -9,6 +9,9 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
+use shards::types::Seq;
+use shards::SHType_Trait;
+use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -82,6 +85,8 @@ enum Definition {
   Constant(SVar),
 }
 
+type RawDefinition = ();
+
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
@@ -97,9 +102,15 @@ pub struct EvalEnv {
   shards_groups: HashMap<Identifier, ShardsGroup>,
   macro_groups: HashMap<Identifier, ShardsGroup>,
   definitions: HashMap<Identifier, Definition>,
+  // Used identifiers for templates/defines (with @ sign)
+  identifiers: HashMap<Identifier, LineInfo>,
+  // Used identifiers for wires/interfaces (without @ sign)
+  raw_identifiers: HashMap<Identifier, LineInfo>,
 
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
+
+  traits: HashMap<Identifier, ClonedVar>,
 
   // used during @template evaluation
   suffix: Option<RcStrWrapper>,
@@ -139,12 +150,15 @@ impl EvalEnv {
       macro_groups: HashMap::new(),
       definitions: HashMap::new(),
       replacements: HashMap::new(),
+      identifiers: HashMap::new(),
+      raw_identifiers: HashMap::new(),
       suffix: None,
       suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
       settings: Vec::new(),
       meshes: HashMap::new(),
       extensions: HashMap::new(),
+      traits: HashMap::new(),
     };
 
     if let Some(parent) = parent {
@@ -166,6 +180,41 @@ impl EvalEnv {
     }
 
     env
+  }
+
+  pub(crate) fn insert_identifier(
+    &mut self,
+    id: &Identifier,
+    li: LineInfo,
+  ) -> Result<(), ShardsError> {
+    if let Some(prev) = self.identifiers.insert(id.clone(), li) {
+      Err(
+        (
+          format!("Identifier {} already used at {:?}", id.resolve(), prev),
+          li,
+        )
+          .into(),
+      )
+    } else {
+      Ok(())
+    }
+  }
+  pub(crate) fn insert_raw_identifier(
+    &mut self,
+    id: &Identifier,
+    li: LineInfo,
+  ) -> Result<(), ShardsError> {
+    if let Some(prev) = self.raw_identifiers.insert(id.clone(), li) {
+      Err(
+        (
+          format!("Identifier {} already used at {:?}", id.resolve(), prev),
+          li,
+        )
+          .into(),
+      )
+    } else {
+      Ok(())
+    }
   }
 }
 
@@ -784,6 +833,16 @@ fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut M
   }
 }
 
+fn find_trait<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<Var> {
+  if let Some(trait_) = env.traits.get(name) {
+    Some(trait_.0.into())
+  } else if let Some(parent) = env.parent {
+    find_trait(name, unsafe { &mut *(parent as *mut EvalEnv) })
+  } else {
+    None
+  }
+}
+
 fn find_wire<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<(Var, bool)> {
   if let Some(wire) = env.finalized_wires.get(name) {
     Some((wire.0.into(), true))
@@ -836,8 +895,34 @@ fn finalize_wire(
     wire.add_shard(shard.0);
   }
 
+  let traits = param_helper
+    .get_param_by_name_or_index("Traits", 2)
+    .map(|param| match &param.value {
+      Value::Seq(s) => Ok(s.clone()),
+      _ => Err(("Traits parameter must be a sequence", line_info).into()),
+    })
+    .unwrap_or(Ok(Vec::new()))?;
+  let mut s = AutoSeqVar::new();
+  for value in traits {
+    let v = as_var(&value, line_info, None, env)?;
+    if v.as_ref().valueType != SHType_Trait {
+      return Err(
+        ((
+          format!(
+            "Traits parameter must be a sequence of traits ({:?} is invalid)",
+            value
+          ),
+          line_info,
+        )
+          .into()),
+      );
+    }
+    s.0.push(v.as_ref());
+  }
+  wire.set_traits(unsafe { s.0 .0.payload.__bindgen_anon_1.seqValue });
+
   let looped = param_helper
-    .get_param_by_name_or_index("Looped", 2)
+    .get_param_by_name_or_index("Looped", 3)
     .map(|param| match &param.value {
       Value::Boolean(b) => Ok(*b),
       _ => Err(("Looped parameter must be a boolean", line_info).into()),
@@ -849,7 +934,7 @@ fn finalize_wire(
     wire.set_pure(true);
   } else {
     let pure = param_helper
-      .get_param_by_name_or_index("Pure", 3)
+      .get_param_by_name_or_index("Pure", 4)
       .map(|param| match &param.value {
         Value::Boolean(b) => Ok(*b),
         _ => Err(("Pure parameter must be a boolean", line_info).into()),
@@ -1132,31 +1217,75 @@ fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) ->
   combined.join("/").into()
 }
 
+enum ResolvedVar {
+  Constant(SVar),
+  Variable(SVar),
+}
+
+impl ResolvedVar {
+  fn new_variable(sv: SVar) -> Self {
+    Self::Variable(sv)
+  }
+  fn new_const(sv: SVar) -> Self {
+    Self::Constant(sv)
+  }
+  fn is_const(&self) -> bool {
+    if let Self::Constant(_) = self {
+      true
+    } else {
+      false
+    }
+  }
+  fn as_var(&self) -> &SVar {
+    match self {
+      Self::Constant(sv) => sv,
+      Self::Variable(sv) => sv,
+    }
+  }
+  fn into_var(self) -> SVar {
+    match self {
+      Self::Constant(sv) => sv,
+      Self::Variable(sv) => sv,
+    }
+  }
+}
+
 fn as_var(
   value: &Value,
   line_info: LineInfo,
   shard: Option<ShardRef>,
   e: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
+  resolve_var(value, line_info, shard, e).map(|v| v.into_var())
+}
+
+fn resolve_var(
+  value: &Value,
+  line_info: LineInfo,
+  shard: Option<ShardRef>,
+  e: &mut EvalEnv,
+) -> Result<ResolvedVar, ShardsError> {
   match value {
-    Value::None => Ok(SVar::NotCloned(Var::default())),
-    Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
+    Value::None => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
+    Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
     Value::Identifier(ref name) => {
-      // could be wire or mesh as "special" cases
-      if let Some((wire, _finalized)) = find_wire(name, e) {
-        Ok(SVar::Cloned(wire.into()))
+      // could be wire, trait or mesh as "special" cases
+      if let Some(trait_) = find_trait(name, e) {
+        Ok(ResolvedVar::new_const(SVar::Cloned(trait_.into())))
+      } else if let Some((wire, _finalized)) = find_wire(name, e) {
+        Ok(ResolvedVar::new_const(SVar::Cloned(wire.into())))
       } else if let Some(mesh) = find_mesh(name, e) {
-        Ok(SVar::NotCloned(mesh.0 .0))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(mesh.0 .0)))
       } else if let Some(replacement) = find_replacement(name, e) {
         if let Value::Identifier(current) = replacement {
           if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
             // prevent infinite recursion
-            return qualify_variable(name, line_info, e);
+            return qualify_variable(name, line_info, e).map(ResolvedVar::new_variable);
           }
         }
-        as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
+        resolve_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        qualify_variable(name, line_info, e)
+        qualify_variable(name, line_info, e).map(ResolvedVar::new_variable)
       }
     }
     Value::Enum(prefix, value) => {
@@ -1187,7 +1316,7 @@ fn as_var(
               .__bindgen_anon_1
               .__bindgen_anon_3
               .enumTypeId = type_id;
-            return Ok(SVar::NotCloned(enum_var));
+            return Ok(ResolvedVar::new_const(SVar::NotCloned(enum_var)));
           }
         }
         Err(
@@ -1202,38 +1331,38 @@ fn as_var(
       }
     }
     Value::Number(num) => match num {
-      Number::Integer(n) => Ok(SVar::NotCloned((*n).into())),
-      Number::Float(n) => Ok(SVar::NotCloned((*n).into())),
+      Number::Integer(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
+      Number::Float(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
       Number::Hexadecimal(s) => {
         let s = s.as_str();
         let s = &s[2..]; // remove 0x
         let z = i64::from_str_radix(s, 16).expect("Invalid hexadecimal number"); // read should have caught this
-        Ok(SVar::NotCloned(z.into()))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(z.into())))
       }
     },
     Value::String(ref s) => {
       let s = Var::ephemeral_string(s.as_str());
-      Ok(SVar::NotCloned(s))
+      Ok(ResolvedVar::new_const(SVar::NotCloned(s)))
     }
     Value::Bytes(ref b) => {
       let bytes = b.0.as_ref();
-      Ok(SVar::NotCloned(bytes.into()))
+      Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
     }
-    Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Float4(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int2(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int3(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int4(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int8(ref val) => Ok(SVar::NotCloned(val.into())),
-    Value::Int16(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Float3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Float4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int8(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+    Value::Int16(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
     Value::Seq(vec) => {
       let mut seq = AutoSeqVar::new();
       for value in vec {
         let value = as_var(value, line_info, shard, e)?;
         seq.0.push(value.as_ref());
       }
-      Ok(SVar::Cloned(ClonedVar(seq.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
     }
     Value::Table(value) => {
       let mut table = AutoTableVar::new();
@@ -1249,7 +1378,9 @@ fn as_var(
         let value_ref = value.as_ref();
         table.0.insert_fast(*key_ref, value_ref);
       }
-      Ok(SVar::Cloned(ClonedVar(table.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(
+        table.leak(),
+      ))))
     }
     Value::Shards(seq) => {
       let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
@@ -1268,17 +1399,17 @@ fn as_var(
         debug_assert!(s.valueType == SHType_ShardRef);
         seq.0.push(&s);
       }
-      Ok(SVar::Cloned(ClonedVar(seq.leak())))
+      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
     }
     Value::Shard(shard) => {
       let s = create_shard(shard, line_info, e)?;
       let s: Var = s.0 .0.into();
       debug_assert!(s.valueType == SHType_ShardRef);
-      Ok(SVar::Cloned(s.into()))
+      Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
     }
     Value::EvalExpr(seq) => {
       let value = eval_eval_expr(&seq, e)?;
-      Ok(SVar::Cloned(value.0))
+      Ok(ResolvedVar::new_const(SVar::Cloned(value.0)))
     }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
@@ -1304,9 +1435,9 @@ fn as_var(
         // now add a get shard to get the temporary at the end of the pipeline
         let mut s = Var::ephemeral_string(&tmp_name);
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
-        Ok(SVar::NotCloned(().into()))
+        Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
       }
     }
     Value::TakeTable(var_name, path) => {
@@ -1329,7 +1460,7 @@ fn as_var(
         // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
         panic!("TakeTable should always return a shard")
       }
@@ -1354,7 +1485,7 @@ fn as_var(
         // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
-        Ok(SVar::Cloned(s.into()))
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
       } else {
         panic!("TakeTable should always return a shard")
       }
@@ -1402,7 +1533,8 @@ fn as_var(
           |_e| Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i2", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1412,7 +1544,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i3", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1422,7 +1555,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i4", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1432,7 +1566,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i8", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1442,7 +1577,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("i16", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1452,7 +1588,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f2", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1462,7 +1599,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f3", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1472,7 +1610,8 @@ fn as_var(
           },
           line_info,
           e,
-        ),
+        )
+        .map(ResolvedVar::new_const),
         ("f4", true) => eval_as_const_or_expr(
           func,
           |e| {
@@ -1482,18 +1621,21 @@ fn as_var(
           },
           line_info,
           e,
-        ),
-        ("platform", true) => Ok(SVar::NotCloned(process_platform_built_in())),
-        ("type", true) => process_type(func, line_info, e),
-        ("ast", true) => process_ast(func, line_info, e),
+        )
+        .map(ResolvedVar::new_const),
+        ("platform", true) => Ok(ResolvedVar::new_const(SVar::NotCloned(
+          process_platform_built_in(),
+        ))),
+        ("type", true) => process_type(func, line_info, e).map(ResolvedVar::new_const),
+        ("ast", true) => process_ast(func, line_info, e).map(ResolvedVar::new_const),
         _ => {
           if let Some(defined_value) = find_defined(&func.name, e).map(|x| x.clone()) {
             match defined_value {
               Definition::Value(value) => {
                 let replacement = unsafe { &*value };
-                as_var(replacement, line_info, shard, e)
+                resolve_var(replacement, line_info, shard, e)
               }
-              Definition::Constant(var) => Ok(var),
+              Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
             }
           } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
             // @template
@@ -1524,8 +1666,11 @@ fn as_var(
             for (id, mesh) in shards_env.meshes.drain() {
               e.meshes.insert(id, mesh);
             }
+            for (id, t) in shards_env.traits.drain() {
+              e.traits.insert(id, t);
+            }
 
-            Ok(SVar::Cloned(ClonedVar(seq.leak())))
+            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
           } else if let Some(ast_json) = process_macro(func, line_info, e)? {
             let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
               (
@@ -1554,7 +1699,7 @@ fn as_var(
             TMP_VALUE.with(|f| {
               let mut v = f.borrow_mut();
               *v = Some(decoded_json.clone());
-              as_var(
+              resolve_var(
                 v.as_ref().unwrap(), // should be valid
                 line_info,
                 shard,
@@ -1563,7 +1708,7 @@ fn as_var(
             })
           } else if let Some(extension) = find_extension(&func.name, e) {
             let v = extension.process_to_var(func, line_info)?;
-            Ok(SVar::Cloned(v))
+            Ok(ResolvedVar::new_const(SVar::Cloned(v)))
           } else {
             Err(
               (
@@ -2149,6 +2294,34 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(())
 }
 
+fn into_get_or_const(
+  value: Value,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
+  match resolve_var(&value, line_info, None, e)? {
+    ResolvedVar::Constant(var) => {
+      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
+      let shard = AutoShardRef(shard);
+      shard
+        .0
+        .set_parameter(0, *var.as_ref())
+        .map_err(|e| (format!("{}", e), line_info).into())?;
+      Ok(shard)
+    }
+    ResolvedVar::Variable(var) => {
+      let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
+      let shard = AutoShardRef(shard);
+      // todo - avoid clone
+      shard
+        .0
+        .set_parameter(0, *var.as_ref())
+        .map_err(|e| (format!("{}", e), line_info).into())?;
+      Ok(shard)
+    }
+  }
+}
+
 fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = match value {
     Value::Identifier(name) => {
@@ -2186,17 +2359,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
               .map_err(|e| (format!("{}", e), line_info).into())?;
             Some(shard)
           }
-          Value::Identifier(_) => {
-            let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-            let shard = AutoShardRef(shard);
-            // todo - avoid clone
-            let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
-            shard
-              .0
-              .set_parameter(0, *value.as_ref())
-              .map_err(|e| (format!("{}", e), line_info).into())?;
-            Some(shard)
-          }
+          Value::Identifier(_) => Some(into_get_or_const(replacement.clone(), line_info, e)?),
           Value::Shard(shard) => {
             // add ourselves
             // todo - avoid clone
@@ -2212,14 +2375,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
         }
       } else {
-        let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-        let shard = AutoShardRef(shard);
-        let value = as_var(value, line_info, Some(shard.0), e)?;
-        shard
-          .0
-          .set_parameter(0, *value.as_ref())
-          .map_err(|e| (format!("{}", e), line_info).into())?;
-        Some(shard)
+        Some(into_get_or_const(value.clone(), line_info, e)?)
       }
     }
     _ => {
@@ -2692,6 +2848,81 @@ fn eval_pipeline(
             // ignore is a special function that does nothing
             Ok(())
           }
+          ("trait", true) => {
+            if let Some(ref params) = func.params {
+              let param_helper = ParamHelper::new(params);
+
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "trait built-in function requires Name parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              let types = param_helper.get_param_by_name_or_index("Types", 1).ok_or(
+                (
+                  "trait built-in function requires Types parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              match (name, types) {
+                (
+                  Param {
+                    value: Value::Identifier(name),
+                    ..
+                  },
+                  types,
+                ) => {
+                  e.insert_raw_identifier(name, block.line_info.unwrap_or_default())?;
+
+                  let make_trait_shards = Sequence {
+                    statements: vec![Statement::Pipeline(Pipeline {
+                      blocks: vec![Block {
+                        content: BlockContent::Shard(Function {
+                          name: Identifier {
+                            name: "MakeTrait".into(),
+                            namespaces: vec![],
+                          },
+                          params: Some(vec![
+                            Param {
+                              name: None,
+                              value: Value::String(name.resolve()),
+                            },
+                            types.clone(),
+                          ]),
+                        }),
+                        line_info: block.line_info,
+                      }],
+                    })],
+                  };
+
+                  let cvar = eval_eval_expr(&make_trait_shards, e)?;
+                  eprintln!("trait {:?}: {:?}", name, cvar.0);
+                  e.traits.insert(name.clone(), cvar.0);
+
+                  Ok(())
+                }
+                _ => Err(
+                  (
+                    "trait built-in function requires Name parameter to be an identifier",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                ),
+              }
+            } else {
+              Err(
+                (
+                  "trait built-in function requires proper parameters",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )
+            }
+          }
           ("define", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
@@ -2731,7 +2962,10 @@ fn eval_pipeline(
                   },
                   value,
                 ) => {
-                  if let Some(_) = find_defined(name, e) {
+                  if let Some(_) = e
+                    .raw_identifiers
+                    .insert(name.clone(), block.line_info.clone().unwrap_or_default())
+                  {
                     if !ignore_redefined {
                       return Err(
                         (
@@ -2740,8 +2974,6 @@ fn eval_pipeline(
                         )
                           .into(),
                       );
-                    } else {
-                      return Ok(()); // just do nothing
                     }
                   }
 
@@ -2813,15 +3045,7 @@ fn eval_pipeline(
                 name.clone()
               };
 
-              if let Some(_) = find_wire(&name, e) {
-                return Err(
-                  (
-                    format!("wire {} already exists", name.name),
-                    block.line_info.unwrap_or_default(),
-                  )
-                    .into(),
-                );
-              }
+              e.insert_raw_identifier(&name, block.line_info.clone().unwrap_or_default())?;
 
               let params_ptr = func.params.as_ref().ok_or(
                 (
@@ -2895,6 +3119,8 @@ fn eval_pipeline(
                         .into(),
                     );
                   }
+
+                  e.insert_identifier(name, block.line_info.clone().unwrap_or_default())?;
 
                   let args_ptr = args as *const _;
                   let shards_ptr = shards as *const _;
@@ -3342,6 +3568,9 @@ fn eval_pipeline(
                 for (id, mesh) in shards_env.meshes.drain() {
                   e.meshes.insert(id, mesh);
                 }
+                for (id, t) in shards_env.traits.drain() {
+                  e.traits.insert(id, t);
+                }
                 Ok(())
               }
               (None, None, Some(ast_json), _) => {
@@ -3655,6 +3884,12 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) -> Result<(), ShardsError
       name.namespaces.push(env.namespace.clone());
     }
     into.meshes.insert(name, mesh);
+  }
+  for (mut name, trait_) in env.traits.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.traits.insert(name, trait_);
   }
 
   Ok(())

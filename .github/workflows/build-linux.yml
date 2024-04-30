@@ -128,7 +128,7 @@ jobs:
           ./shards new ../shards/tests/snappy.shs
           ./shards new ../shards/tests/expect.shs
           ./shards new ../shards/tests/failures.shs
-          ./shards new ../shards/tests/wasm.shs
+          LOG_SHARDS=trace ./shards new ../shards/tests/wasm.shs
           ./shards new ../shards/tests/rust.shs
           ./shards new ../shards/tests/crypto.shs
           ./shards new ../shards/tests/wire-macro.shs
@@ -151,6 +151,7 @@ jobs:
           ./shards new ../shards/tests/return.shs
           ./shards new ../shards/tests/table-seq-push.shs
           ./shards new ../shards/tests/crdts.shs
+          ./shards new ../shards/tests/traits.shs
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

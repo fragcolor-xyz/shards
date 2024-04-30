@@ -2,6 +2,7 @@
 #define C51922C9_A0A1_463B_86AB_B786E4F226F9
 
 #include "runtime.hpp"
+#include "serialization.hpp"
 #include <type_traits>
 #include <concepts>
 #include <deque>

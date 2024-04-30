@@ -90,14 +90,7 @@ lazy_static! {
     INT_TYPES_SLICE
   )
     .into()];
-  static ref METADATA_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"subM"),
-    };
-    t
-  };
+  static ref METADATA_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"subM"));
   static ref METADATA_TYPES: Vec<Type> = vec![*METADATA_TYPE];
 }
 

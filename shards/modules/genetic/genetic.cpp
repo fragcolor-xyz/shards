@@ -7,6 +7,7 @@
 #include <shards/shards.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
+#include <shards/core/serialization.hpp>
 #include <limits>
 #include <memory>
 #include <pdqsort.h>

@@ -2,6 +2,7 @@
 #define D21D6CFA_EF1C_4BC8_A578_131D78F4D38F
 
 #include <shards/shards.hpp>
+#include <shards/iterator.hpp>
 
 namespace shards {
 struct TypeMatcher {
@@ -10,6 +11,7 @@ struct TypeMatcher {
   bool relaxEmptyTableCheck = true;
   bool relaxEmptySeqCheck = false;
   bool checkVarTypes = false;
+  bool ignoreFixedSeq = false;
 
   bool match(const SHTypeInfo &inputType, const SHTypeInfo &receiverType) {
     if (receiverType.basicType == SHType::Any)
@@ -24,6 +26,12 @@ struct TypeMatcher {
     case SHType::Object: {
       if (inputType.object.vendorId != receiverType.object.vendorId || inputType.object.typeId != receiverType.object.typeId) {
         return false;
+      }
+      if (receiverType.object.extInfo && receiverType.object.extInfo->match) {
+        shassert(receiverType.object.extInfo == inputType.object.extInfo);
+        if (!receiverType.object.extInfo->match(receiverType.object.extInfoData, inputType.object.extInfoData)) {
+          return false;
+        }
       }
       break;
     }
@@ -40,7 +48,7 @@ struct TypeMatcher {
     }
     case SHType::Seq: {
       if (strict) {
-        if(inputType.seqTypes.len == 0 && receiverType.seqTypes.len == 0) {
+        if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len == 0) {
           return true;
         } else if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
           // all input types must be in receiver, receiver can have more ofc
@@ -66,7 +74,7 @@ struct TypeMatcher {
           return false;
         }
         // if a fixed size is requested make sure it fits at least enough elements
-        if (receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
+        if (!ignoreFixedSeq && receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
           return false;
         }
       }
