@@ -58,10 +58,13 @@ struct Rect {
   Rect(int2 pos, int2 size) : x(pos.x), y(pos.y), width(size.x), height(size.y) {}
 
   int getX1() const { return x + width; }
-  int getY1() const { return x + height; }
+  int getY1() const { return y + height; }
   int2 getSize() const { return int2(width, height); }
 
+  int4 toCorners() const { return int4(x, y, x + width, y + height); }
+
   static Rect fromCorners(int x0, int y0, int x1, int y1) { return Rect(x0, y0, x1 - x0, y1 - y0); }
+  static Rect fromCorners(int4 corners) { return fromCorners(corners.x, corners.y, corners.z, corners.w); }
 };
 
 } // namespace gfx

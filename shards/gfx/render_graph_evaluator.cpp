@@ -198,20 +198,24 @@ void RenderGraphEvaluator::computeFrameSizes(const RenderGraph &graph, std::span
           if constexpr (std::is_same_v<T, RenderGraphFrameSize::Manual>) {
             const RenderGraph::Frame &frame = graph.frames[size.frame];
             ResolvedBinding resolvedBinding = resolveBinding(frame.binding, outputs);
-            return FrameSize(resolvedBinding.subResource.getResolution(), false);
+            return FrameSize(resolvedBinding.subResource.getResolution(), float2(1.0f), false);
           } else if constexpr (std::is_same_v<T, RenderGraphFrameSize::RelativeToMain>) {
             double2 inSize = double2(refSize);
+            float2 vpScale{1.0f};
             if (size.scale) {
               inSize *= double2(*size.scale);
+              vpScale *= *size.scale;
             }
-            return FrameSize(int2(linalg::round(inSize)), true);
+            return FrameSize(int2(linalg::round(inSize)), vpScale, true);
           } else if constexpr (std::is_same_v<T, RenderGraphFrameSize::RelativeToFrame>) {
             auto otherSizeIndex = graph.frames[size.frame].size;
             double2 inSize = double2(frameSizes[otherSizeIndex].size);
+            float2 vpScale = frameSizes[otherSizeIndex].viewportScale;
             if (size.scale) {
               inSize *= double2(*size.scale);
+              vpScale *= *size.scale;
             }
-            return FrameSize(int2(linalg::round(inSize)), true);
+            return FrameSize(int2(linalg::round(inSize)), vpScale, true);
           } else {
             throw std::logic_error("Invalid variant");
           }
@@ -258,25 +262,33 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   WgpuHandle<WGPUCommandEncoder> commandEncoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc));
 
   for (const auto &node : graph.nodes) {
-    const ViewData &viewData = evaluationData.getViewData(node.queueDataIndex);
+    ViewData viewData(evaluationData.getViewData(node.queueDataIndex));
 
     WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node);
     std::string nameBuffer = getPipelineStepName(node.originalStep);
     renderPassDesc.label = nameBuffer.c_str();
     if (node.setupPass)
       node.setupPass(renderPassDesc);
-    WgpuHandle<WGPURenderPassEncoder> renderPassEncoder( wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc));
+    WgpuHandle<WGPURenderPassEncoder> renderPassEncoder(wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc));
 
     int2 targetSize = fallbackSize;
+    float2 vpScale(1.0f);
     if (!node.outputs.empty()) {
       auto &outFrame = graph.frames[node.outputs[0].frameIndex];
       targetSize = frameSizes[outFrame.size].size;
+      vpScale = frameSizes[outFrame.size].viewportScale;
+      if (viewData.viewport) {
+        float4 vp4(viewData.viewport->toCorners());
+        vp4 *= float4(vpScale.x, vpScale.y, vpScale.x, vpScale.y);
+        viewData.viewport = Rect::fromCorners(int4(linalg::floor(vp4)));
+      }
     }
 
     RenderGraphEncodeContext ctx{
-        .encoder = renderPassEncoder,
+        .encoder = renderPassEncoder, 
         .viewData = viewData,
         .outputSize = targetSize,
+        .viewportScale = vpScale,
         .evaluator = *this,
         .graph = graph,
         .node = node,

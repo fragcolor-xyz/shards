@@ -20,7 +20,8 @@ struct RendererShard {
             "When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
             "render at all.",
             {CoreInfo::BoolType});
-  PARAM_PARAMVAR(_debug, "Debug", "Enable debug visualization mode.", {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_debug, "Debug", "Enable debug visualization mode.",
+                 {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors),
              PARAM_IMPL_FOR(_debug));
 
@@ -140,8 +141,55 @@ struct EndFrame {
   }
 };
 
+struct ViewportShard {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Int4Type; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  // PARAM_PARAMVAR(_someParam, "RenameThis", "AddDescriptionHere", {shards::CoreInfo::AnyType});
+  PARAM_IMPL();
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto vs = _requiredGraphicsContext->renderer->getViewStack().getOutput();
+    SHVar out{.valueType = SHType::Int4};
+    auto &i4out = out.payload.int4Value;
+    if (vs.viewport) {
+      i4out[0] = vs.viewport->x;
+      i4out[1] = vs.viewport->y;
+      i4out[2] = i4out[0] + vs.viewport->width;
+      i4out[3] = i4out[1] + vs.viewport->height;
+    } else {
+      i4out[0] = 0;
+      i4out[1] = 0;
+      i4out[2] = vs.size.x;
+      i4out[3] = vs.size.y;
+    }
+    return out;
+  }
+};
+
 void registerRendererShards() {
   REGISTER_SHARD("GFX.Renderer", RendererShard);
   REGISTER_SHARD("GFX.EndFrame", EndFrame);
+  REGISTER_SHARD("GFX.Viewport", ViewportShard);
 }
 } // namespace gfx

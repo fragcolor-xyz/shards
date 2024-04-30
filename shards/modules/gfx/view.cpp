@@ -222,7 +222,7 @@ struct RenderIntoShard {
             {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::NoneType, CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
-                 {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
+                 {CoreInfo::NoneType, CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
              PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport), PARAM_IMPL_FOR(_windowRegion));
 
@@ -313,7 +313,8 @@ struct RenderIntoShard {
     ViewStack::Item viewItem{};
     input::InputStack::Item inputItem;
 
-    viewItem.renderTarget = _renderTarget;
+    if (!_textures->isNone())
+      viewItem.renderTarget = _renderTarget;
 
     GraphicsRendererContext &ctx = _graphicsRendererContext;
     const ViewStack &viewStack = ctx.renderer->getViewStack();
@@ -339,8 +340,7 @@ struct RenderIntoShard {
       Var windowRegionVar{_windowRegion.get()};
       if (!windowRegionVar.isNone()) {
         // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
-        float4 v = toVec<float4>(windowRegionVar);
-        int4 region(v[0], v[1], v[2], v[3]);
+        int4 region = toVec<int4>(windowRegionVar);
 
         // This is used for translating cursor inputs from window to view space
         // TODO: Adjust relative to parent region, for now always assume this is in global window coordinates
@@ -354,18 +354,22 @@ struct RenderIntoShard {
       }
     }
 
-    viewItem.referenceSize = referenceSize;
-
-    if (referenceSize.x == 0 || referenceSize.y == 0)
-      throw formatException("Invalid texture size for RenderInto: {}", referenceSize);
-
     // (optional) set viewport rectangle
     Var viewportVar = (Var &)_viewport.get();
     if (!viewportVar.isNone()) {
       auto &v = viewportVar.payload.int4Value;
       // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
+
+      if (referenceSize.x == 0 || referenceSize.y == 0) {
+        referenceSize = int2(viewItem.viewport->width, viewItem.viewport->height);
+      }
     }
+
+    if (referenceSize.x == 0 || referenceSize.y == 0)
+      throw formatException("Invalid texture size for RenderInto: {}", referenceSize);
+
+    viewItem.referenceSize = referenceSize;
 
     // Make render target fixed size
     rt->size = RenderTargetSize::Fixed{.size = referenceSize};

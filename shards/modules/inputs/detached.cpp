@@ -7,6 +7,7 @@
 #include <shards/iterator.hpp>
 #include <shards/modules/core/time.hpp>
 #include <shards/input/window_input.hpp>
+#include <shards/input/window_mapping.hpp>
 #include <shards/input/debug.hpp>
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
@@ -262,9 +263,11 @@ struct Detached {
   PARAM(ShardsVar, _mainShards, "Then", "Runs inline after data has been output from the Input callback",
         {CoreInfo::ShardsOrNone});
   PARAM_VAR(_priority, "Priority", "The order in which this input handler is run", {CoreInfo::IntType});
+  PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
+                 {CoreInfo::NoneType, CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_VAR(_name, "Name", "Name used for logging/debugging purposes", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_inputShards), PARAM_IMPL_FOR(_mainShards), PARAM_IMPL_FOR(_priority),
-             PARAM_IMPL_FOR(_name));
+             PARAM_IMPL_FOR(_windowRegion), PARAM_IMPL_FOR(_name));
 
   std::shared_ptr<InputThreadHandler> _handler;
   VariableRefs _capturedVariables;
@@ -377,6 +380,12 @@ struct Detached {
         inputStackState = input::InputStack::Item{
             .windowMapping = input::WindowSubRegion::fromEntireWindow(*getWindowContext().window.get()),
         };
+      }
+
+      Var &windowRegionVar = (Var &)_windowRegion.get();
+      if (!windowRegionVar.isNone()) {
+        int4 region = toVec<int4>(windowRegionVar);
+        inputStackState.windowMapping = input::WindowSubRegion{.region = region};
       }
 
       if (!_initialized) {
