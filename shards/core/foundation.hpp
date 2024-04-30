@@ -258,6 +258,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     const SHWire *wire;
   };
 
+  struct OnErrorEvent {
+    const SHWire *wire;
+    std::string error;
+  };
+
   // Triggered whenever a new wire is detached from this wire
   struct OnWireDetachedEvent {
     const SHWire *wire;

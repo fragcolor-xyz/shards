@@ -1807,7 +1807,9 @@ endOfWire:
     }
 
     // print our stack log nicely now
-    SHLOG_ERROR("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
+    auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
+    SHLOG_ERROR(msg);
+    mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, std::move(msg)});
 
     if (wire->resumer) {
       // also stop the resumer parent in this case
