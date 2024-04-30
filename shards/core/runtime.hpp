@@ -472,6 +472,7 @@ struct RuntimeCallbacks {
 
 struct CompositionContext {
   std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
+  std::vector<std::string> errorStack;
 };
 
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {

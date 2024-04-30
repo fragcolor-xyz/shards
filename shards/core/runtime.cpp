@@ -956,20 +956,11 @@ void validateConnection(InternalCompositionContext &ctx) {
   }
 }
 
-SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   ZoneScoped;
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
-
-  CompositionContext *context{};
-  if (!data.privateContext) {
-    data.privateContext = context = new CompositionContext{};
-  }
-  DEFER({
-    if (context)
-      delete context;
-  });
 
   InternalCompositionContext ctx{};
   ctx.sharedContext = reinterpret_cast<CompositionContext *>(data.privateContext);
@@ -1041,7 +1032,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData dat
       try {
         validateConnection(ctx);
       } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error validating shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+        auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
                                       blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         SHLOG_ERROR("{}", verboseMsg);
         throw ComposeError(verboseMsg);
@@ -1082,6 +1073,32 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData dat
   return result;
 }
 
+SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+  CompositionContext *context{};
+  if (!data.privateContext) {
+    data.privateContext = context = new CompositionContext{};
+  }
+  DEFER({
+    if (context) {
+      // also print out any errors in the stack in reverse order!
+      for (auto it = context->errorStack.rbegin(); it != context->errorStack.rend(); ++it) {
+        SHLOG_ERROR("{}", *it);
+      }
+      delete context;
+    }
+  });
+
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      context->errorStack.push_back(ex.what());
+    }
+    throw;
+  }
+}
+
 void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
@@ -1091,7 +1108,7 @@ void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   }
 }
 
-SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
+SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   SHWire *wire = const_cast<SHWire *>(wire_);
 
   // compare exchange and then shassert we were not composing
@@ -1128,7 +1145,7 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
 
   shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
-  auto res = composeWire(wire->shards, data);
+  auto res = internalComposeWire(wire->shards, data);
 
   validateWireTraits(wire, res);
 
@@ -1149,6 +1166,32 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
   }
 
   return res;
+}
+
+SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
+  CompositionContext *context{};
+  if (!data.privateContext) {
+    data.privateContext = context = new CompositionContext{};
+  }
+  DEFER({
+    if (context) {
+      // also print out any errors in the stack in reverse order!
+      for (auto it = context->errorStack.rbegin(); it != context->errorStack.rend(); ++it) {
+        SHLOG_ERROR("{}", *it);
+      }
+      delete context;
+    }
+  });
+
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire_, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      context->errorStack.push_back(ex.what());
+    }
+    throw;
+  }
 }
 
 SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
