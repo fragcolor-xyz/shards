@@ -555,29 +555,14 @@ struct StopWire : public WireBase {
 
   SHTypeInfo _inputType{};
 
-  std::weak_ptr<SHMesh> _mesh;
-  entt::connection _onComposedConn;
-
-  void destroy() {
-    auto mesh = _mesh.lock();
-    if (mesh && _onComposedConn)
-      _onComposedConn.release();
-  }
+  std::weak_ptr<SHWire> _wire;
 
   SHTypeInfo compose(SHInstanceData &data) {
     assert(data.wire);
 
     if (wireref->valueType == SHType::None) {
       _inputType = data.inputType;
-
-      if (_onComposedConn)
-        _onComposedConn.release();
-
-      _mesh = data.wire->mesh;
-      auto mesh = _mesh.lock();
-      if (mesh) {
-        _onComposedConn = mesh->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
-      }
+      data.wire->getComposeData().outputTypes.push_back(data.inputType);
     } else {
       resolveWire();
       if (wire) {
@@ -587,21 +572,6 @@ struct StopWire : public WireBase {
     }
 
     return data.inputType;
-  }
-
-  void composed(const SHWire::OnComposedEvent &e) {
-    if (e.wire != wire.get())
-      return;
-
-    // this check runs only when (Stop) is called without any params!
-    // meaning it's stopping the wire it is in
-    if (!wire && wireref->valueType == SHType::None && !matchTypes(_inputType, e.wire->outputType, false, true, true)) {
-      SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
-                  "be the same type of the wire's output (regular flow), "
-                  "wire: {} expected: {}",
-                  e.wire->name, e.wire->outputType);
-      throw ComposeError("Stop input and wire output type mismatch");
-    }
   }
 
   void cleanup(SHContext *context) {
@@ -995,7 +965,7 @@ struct SwitchTo : public WireBase {
     for (auto &v : _vars) {
       auto &var = v.get();
       std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-      auto &v_ref = pWire->getVariable(ToSWL(name));
+      auto &v_ref = pWire->getVariable(toSWL(name));
       cloneVar(v_ref, var);
     }
 
@@ -1009,7 +979,7 @@ struct SwitchTo : public WireBase {
         // destroy fresh cloned variables
         for (auto &v : _vars) {
           std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-          destroyVar(pWire->getVariable(ToSWL(name)));
+          destroyVar(pWire->getVariable(toSWL(name)));
         }
         SHLOG_ERROR("Wire {} failed to start.", pWire->name);
         throw ActivationError("Wire failed to start.");
@@ -1339,7 +1309,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
 };
 
 struct WireRunner : public BaseLoader<WireRunner> {
-  static inline Parameters params{{"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireVarType}},
+  static inline Parameters params{{"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireType, CoreInfo::WireVarType}},
                                   {"Mode",
                                    SHCCSTR("The way to run the wire. Inline: will run the sub wire "
                                            "inline within the root wire, a pause in the child wire will "
@@ -1659,7 +1629,7 @@ struct ParallelBase : public CapturingSpawners {
           for (auto &v : _vars) {
             // notice, this should be already destroyed by the wire releaseVariable
             std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            destroyVar(cref->wire->getVariable(ToSWL(name)));
+            destroyVar(cref->wire->getVariable(toSWL(name)));
           }
         }
 
@@ -1745,7 +1715,7 @@ struct ParallelBase : public CapturingSpawners {
           for (auto &v : server->_vars) {
             auto &var = v.get();
             std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            cloneVar(cref->wire->getVariable(ToSWL(name)), var);
+            cloneVar(cref->wire->getVariable(toSWL(name)), var);
           }
         }
       } obs{this, cref};

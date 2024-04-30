@@ -16,7 +16,7 @@
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
 #include <shards/modules/inputs/inputs.hpp>
-#include <shards/modules/core/serialization.hpp>
+#include <shards/core/serialization.hpp>
 #include "window.hpp"
 
 using namespace shards;

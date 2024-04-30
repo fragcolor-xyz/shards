@@ -1,0 +1,84 @@
+@trait(toggleable {
+  enabled: @type(Type::Bool)
+})
+
+@trait(shared/toggleable {
+  enabled: @type(Type::Bool)
+})
+
+@trait(card-owner {
+  cards: @type({
+    name: Type::String
+    flags: @type([Type::String])
+  })
+})
+
+@wire(valid-0-global {
+  Once({
+    false >= enabled
+  })
+} [shared/toggleable])
+Do(valid-0-global)
+
+@wire(valid-0 {
+  Once({
+    false >= enabled
+  })
+} [toggleable])
+Do(valid-0)
+
+@wire(invalid-0 {
+  Once({
+    false >= enabled
+    ; Missing card-owner fields
+  })
+} [toggleable card-owner])
+Maybe({
+  WireRunner(invalid-0)
+  "Expected invalid-0 to fail" | Fail
+})
+@wire(invalid-1 {
+  Once({
+    false = enabled ; Needs to be mutable
+  })
+} [toggleable card-owner])
+Maybe({
+  WireRunner(invalid-1)
+  "Expected invalid-1 to fail" | Fail
+})
+
+@wire(valid-1 {
+  Once({
+    false >= enabled
+    {name: "j" flags: ["a"]} >= cards
+  })
+} [toggleable card-owner])
+Do(valid-1)
+
+@wire(invalid-2 {
+  Once({
+    false >= enabled
+    {name: "j" flags: []} >= cards ; Wrong sequence type
+  })
+} [toggleable card-owner])
+Maybe({
+  WireRunner(invalid-2)
+  "Expected invalid-2 to fail" | Fail
+})
+
+; Check trait table hashing
+@trait(trait-tbl-0 {
+  cards: @type({
+    name: Type::String
+    val: Type::Int
+  })
+})
+@trait(trait-tbl-1 {
+  cards: @type({
+    val: Type::Int
+    name: Type::String
+  })
+})
+TraitId(trait-tbl-0) = id-0 | Log("Trait id 0")
+TraitId(trait-tbl-1) = id-1 | Log("Trait id 1")
+id-0 | Assert.Is(id-1)

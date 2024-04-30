@@ -145,10 +145,10 @@ public:
   void initVariableReferences(SHContext *context) {
     for (const auto &req : _mergedRequirements._innerInfo) {
       std::string_view name = req.name; // calls strlen :(
-      if (!mesh->hasRef(ToSWL(name))) {
+      if (!mesh->hasRef(toSWL(name))) {
         SHLOG_TRACE("Branch: referencing required variable: {}", name);
         auto vp = referenceVariable(context, name);
-        mesh->addRef(ToSWL(name), vp);
+        mesh->addRef(toSWL(name), vp);
       }
     }
   }

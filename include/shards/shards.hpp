@@ -122,6 +122,7 @@ struct Type {
   }
 
   operator const SHTypeInfo &() const { return _type; }
+  const SHTypeInfo *operator->() const { return &_type; }
 
   static Type SeqOf(SHTypesInfo types) {
     Type res;
@@ -1158,21 +1159,5 @@ inline const SHVar *end(const SHVar &a) {
   }
   return begin(a) + a.payload.seqValue.len;
 }
-
-inline SHExposedTypeInfo *begin(SHExposedTypesInfo &a) { return &a.elements[0]; }
-
-inline const SHExposedTypeInfo *begin(const SHExposedTypesInfo &a) { return &a.elements[0]; }
-
-inline SHExposedTypeInfo *end(SHExposedTypesInfo &a) { return begin(a) + a.len; }
-
-inline const SHExposedTypeInfo *end(const SHExposedTypesInfo &a) { return begin(a) + a.len; }
-
-inline SHTypeInfo *begin(SHTypesInfo &a) { return &a.elements[0]; }
-
-inline const SHTypeInfo *begin(const SHTypesInfo &a) { return &a.elements[0]; }
-
-inline SHTypeInfo *end(SHTypesInfo &a) { return begin(a) + a.len; }
-
-inline const SHTypeInfo *end(const SHTypesInfo &a) { return begin(a) + a.len; }
 
 #endif

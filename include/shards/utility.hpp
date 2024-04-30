@@ -78,9 +78,10 @@ constexpr std::size_t StrLen(const char *str) {
   return len;
 }
 
-constexpr SHStringWithLen ToSWL(const char *str) { return SHStringWithLen{str, StrLen(str)}; }
+constexpr SHStringWithLen toSWL(const char *str) { return SHStringWithLen{str, StrLen(str)}; }
+constexpr SHStringWithLen toSWL(std::string_view str) { return SHStringWithLen{str.data(), str.size()}; }
 
-constexpr SHStringWithLen ToSWL(std::string_view str) { return SHStringWithLen{str.data(), str.size()}; }
+constexpr std::string_view toStringView(SHStringWithLen swl) { return std::string_view(swl.string, swl.len); }
 
 // SFINAE tests
 #define SH_HAS_MEMBER_TEST(_name_)                               \
@@ -414,127 +415,6 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     TOwnedVar res{};
     std::swap<SHVar>(res, s);
     res.flags |= SHVAR_FLAGS_FOREIGN;
-    return res;
-  }
-};
-
-template <bool Atomic> struct RefCount {
-  uint32_t count;
-
-  void reference() { ++count; }
-  bool release() {
-    --count;
-    return count == 0;
-  }
-};
-
-template <> struct RefCount<true> {
-  std::atomic<uint32_t> count;
-
-  void reference() { ++count; }
-  bool release() { return count.fetch_sub(1) == 1; }
-};
-
-template <class SH_CORE, typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
-          bool IsThreadSafe = false>
-class TObjectVar {
-private:
-  SHObjectInfo info;
-  int32_t vendorId;
-  int32_t typeId;
-
-  struct ObjectRef {
-    E shared;
-    RefCount<IsThreadSafe> refcount;
-  };
-
-public:
-  TObjectVar(const char *name, int32_t vendorId, int32_t typeId) : vendorId(vendorId), typeId(typeId) {
-    info = {};
-    info.name = name;
-    info.isThreadSafe = IsThreadSafe;
-    info.reference = [](SHPointer ptr) {
-      auto p = reinterpret_cast<ObjectRef *>(ptr);
-      p->refcount.reference();
-    };
-    info.release = [](SHPointer ptr) {
-      auto p = reinterpret_cast<ObjectRef *>(ptr);
-      if (p->refcount.release()) {
-        delete p;
-      }
-    };
-    if (Serializer != nullptr && Deserializer != nullptr) {
-      info.serialize = [](SHPointer obj, uint8_t **outData, uint64_t *outLen, SHPointer *customHandle) {
-        auto tobj = reinterpret_cast<E *>(obj);
-        auto holder = new std::vector<uint8_t>();
-        *holder = Serializer(*tobj);
-        *customHandle = holder;
-        *outData = holder->data();
-        *outLen = holder->size();
-        return true;
-      };
-      info.free = [](SHPointer handle) {
-        auto holder = reinterpret_cast<std::vector<uint8_t> *>(handle);
-        delete holder;
-      };
-      info.deserialize = [](uint8_t *data, uint64_t len) {
-        auto r = new ObjectRef();
-        r->shared = Deserializer(std::string_view((char *)data, len));
-        // don't bump ref count, deserializer is supposed to do that
-        return (SHPointer)r;
-      };
-    }
-    SH_CORE::registerObjectType(vendorId, typeId, info);
-  }
-
-  // the following methods are generally used by the shard
-  // that creates the object, that's it.
-  // other shards use regular referenceVariable etc.
-
-  E *New() {
-    auto r = new ObjectRef();
-    r->refcount.count = 1;
-    return &r->shared;
-  }
-
-  std::tuple<E &, TOwnedVar<SH_CORE>> NewOwnedVar() {
-    E *ptr = New();
-    SHVar v = Get(ptr);
-    return {*ptr, std::move((TOwnedVar<SH_CORE> &)v)};
-  }
-
-  Type GetObjectType() { return Type::Object(vendorId, typeId); }
-  operator Type() { return GetObjectType(); }
-
-  template <typename ST> E *Emplace(std::shared_ptr<ST> &&obj) {
-    auto r = new ObjectRef{.shared = E(std::move(obj)), .refcount = RefCount<IsThreadSafe>{.count = 1}};
-    return &r->shared;
-  }
-
-  void Release(E *obj) {
-    auto r = reinterpret_cast<ObjectRef *>(obj);
-    if (r->refcount.release()) {
-      if constexpr (BeforeDelete != nullptr) {
-        BeforeDelete(*obj);
-      }
-      delete r;
-    }
-  }
-
-  uint32_t GetRefCount(E *obj) {
-    auto r = reinterpret_cast<ObjectRef *>(obj);
-    return r->refcount.count;
-  }
-
-  SHVar Get(E *obj) {
-    SHVar res;
-    res.valueType = SHType::Object;
-    res.payload.objectValue = obj;
-    res.payload.objectVendorId = vendorId;
-    res.payload.objectTypeId = typeId;
-    res.flags = SHVAR_FLAGS_USES_OBJINFO;
-    res.objectInfo = &info;
     return res;
   }
 };

@@ -9,7 +9,7 @@
 #include <shards/common_types.hpp>
 #include <shards/core/async.hpp>
 #include <shards/core/runtime.hpp>
-#include <shards/modules/core/serialization.hpp>
+#include <shards/core/serialization.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/wire_dsl.hpp>
 
@@ -610,10 +610,10 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
 
-    auto h1 = deriveTypeHash(v1);
-    auto h2 = deriveTypeHash(v2);
+    auto h1 = deriveTypeHash64(v1);
+    auto h2 = deriveTypeHash64(v2);
     REQUIRE(h1 == h2);
-    auto h6 = deriveTypeHash(v6);
+    auto h6 = deriveTypeHash64(v6);
     REQUIRE(h1 != h6);
 
     SHLOG_INFO(v1);
@@ -803,11 +803,11 @@ TEST_CASE("VarPayload") {
   auto hash3 = hash(vyy);                                      \
   REQUIRE(hash1 == hash2);                                     \
   REQUIRE(hash1 == hash3);                                     \
-  auto typeHash1 = deriveTypeHash(vxx);                        \
+  auto typeHash1 = deriveTypeHash64(vxx);                      \
   auto typeInfo1 = deriveTypeInfo(vxx, data);                  \
   auto typeInfo2 = deriveTypeInfo(vx, data);                   \
   auto typeInfo3 = deriveTypeInfo(Var::Empty, data);           \
-  REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);             \
+  REQUIRE(deriveTypeHash64(typeInfo1) == typeHash1);           \
   auto stypeHash = std::hash<SHTypeInfo>()(typeInfo1);         \
   REQUIRE(stypeHash != 0);                                     \
   REQUIRE(typeInfo1 == typeInfo2);                             \
@@ -815,16 +815,16 @@ TEST_CASE("VarPayload") {
   freeDerivedInfo(typeInfo1);                                  \
   freeDerivedInfo(typeInfo2);                                  \
   freeDerivedInfo(typeInfo3);                                  \
-  auto typeHash2 = deriveTypeHash(vx);                         \
-  auto typeHash3 = deriveTypeHash(vyy);                        \
+  auto typeHash2 = deriveTypeHash64(vx);                       \
+  auto typeHash3 = deriveTypeHash64(vyy);                      \
   SHLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3); \
   REQUIRE(typeHash1 == typeHash2);                             \
   REQUIRE(typeHash1 == typeHash3);                             \
   vyy = vz;                                                    \
   REQUIRE(vyy != vy);                                          \
-  auto typeHash4 = deriveTypeHash(vyy);                        \
+  auto typeHash4 = deriveTypeHash64(vyy);                      \
   REQUIRE(typeHash4 == typeHash3);                             \
-  auto typeHash5 = deriveTypeHash(vz);                         \
+  auto typeHash5 = deriveTypeHash64(vz);                       \
   REQUIRE(typeHash4 == typeHash5)
 
 TEST_CASE("SHMap") {
@@ -2039,4 +2039,54 @@ TEST_CASE("Pool") {
   // Test this to be the last item, and that the pool has released it's reference
   CHECK(t3->refCount == 1);
   t3->dec();
+}
+
+#include <shards/core/hash.inl>
+
+struct SimpleExtType {
+  static inline shards::Type Type{shards::Type::Object('abcd', 'efgh')};
+  size_t index{};
+
+  static void hash(const SimpleExtType &self, void *outDigest, size_t digestSize) {
+    static thread_local shards::HashState<XXH128_hash_t> hs;
+    XXH3_state_t state;
+    shards::hashReset<XXH128_hash_t>(&state);
+    XXH3_128bits_update(&state, &self.index, sizeof(size_t));
+    XXH128_hash_t digest = shards::hashDigest<XXH128_hash_t>(&state);
+    memcpy(outDigest, &digest, std::min(sizeof(XXH128_hash_t), digestSize));
+  }
+
+  static bool match(const SimpleExtType &self, const SimpleExtType &other) { return self.index == other.index; }
+};
+using SimpleExtTypeInfo = shards::TExtendedObjectType<shards::InternalCore, SimpleExtType>;
+
+TEST_CASE("ExtType") {
+  static thread_local shards::HashState<XXH128_hash_t> hs;
+  shards::TypeInfo t0, t1;
+  {
+    auto &e = SimpleExtTypeInfo::makeExtended(t0);
+    e.index = 1;
+  }
+  {
+    t1 = (SHTypeInfo &)t0; // Attempt extend from existing
+    (void)SimpleExtTypeInfo::makeExtended(t1);
+  }
+
+  auto h0 = hs.deriveTypeHash((SHTypeInfo &)t0);
+  auto h1 = hs.deriveTypeHash((SHTypeInfo &)t1);
+  REQUIRE(h0.low64 == h1.low64);
+  REQUIRE(h0.high64 == h1.high64);
+
+  bool matched = matchTypes(t1, t0, true, true, true);
+  CHECK(matched);
+
+  shards::TypeInfo t2;
+  auto &e2 = SimpleExtTypeInfo::makeExtended(t2);
+  e2.index = 0;
+
+  auto h2 = hs.deriveTypeHash((SHTypeInfo &)t2);
+  REQUIRE((h0.low64 != h2.low64 || h0.high64 != h2.high64));
+
+  bool matched2 = matchTypes(t1, t2, true, true, true);
+  CHECK(!matched2);
 }

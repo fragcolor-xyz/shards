@@ -5,6 +5,9 @@ set(core_SOURCES
   utils.cpp
   coro.cpp
   wire_dsl.cpp
+  trait.cpp
+  type_info.cpp
+  hash.cpp
 )
 
 add_library(shards-core STATIC ${core_SOURCES})
@@ -81,7 +84,7 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread)
+target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
 
 if(NOT EMSCRIPTEN)
   target_link_libraries(shards-core Boost::beast Boost::asio Boost::context)

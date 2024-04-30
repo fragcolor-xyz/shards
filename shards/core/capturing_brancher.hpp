@@ -4,7 +4,7 @@
 #include "brancher.hpp"
 #include "core/foundation.hpp"
 #include "shards/shards.h"
-#include <shards/modules/core/serialization.hpp>
+#include <shards/core/serialization.hpp>
 #include <string_view>
 #include <unordered_map>
 
@@ -115,13 +115,13 @@ public:
         SHVar &var = variableStorage[vr.first];
         var.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
         var.refcount = 1;
-        brancher.mesh->addRef(ToSWL(vr.first), &var);
+        brancher.mesh->addRef(toSWL(vr.first), &var);
       }
       _variablesApplied = true;
     }
 
     for (auto &vr : variableState) {
-      auto ref = brancher.mesh->getRefIfExists(ToSWL(vr.first));
+      auto ref = brancher.mesh->getRefIfExists(toSWL(vr.first));
       assert(ref != nullptr);
       assignVariableValue(*ref, vr.second);
     }

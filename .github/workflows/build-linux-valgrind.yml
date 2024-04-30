@@ -54,3 +54,4 @@ jobs:
           valgrind --exit-on-first-error=no --error-exitcode=1 --fair-sched=yes --leak-check=full ./test-runtime
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/complex-deserialize.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-seq-push.shs
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/traits.shs

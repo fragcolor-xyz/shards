@@ -17,6 +17,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHObjectTypeInfo;
+use shards::SHTraits;
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ffi::CString;
@@ -60,14 +61,7 @@ static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 
 lazy_static! {
-  static ref LAYOUTCLASS_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: fourCharacterCode(*b"layo")
-    };
-    t
-  };
+  static ref LAYOUTCLASS_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"layc"));
   static ref GFX_CONTEXT_TYPE: Type =
     unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
   static ref WINDOW_CONTEXT_TYPE: Type =

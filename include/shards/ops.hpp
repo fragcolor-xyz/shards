@@ -73,6 +73,8 @@ inline const char *type2Name_raw(SHType type) {
     return "Set";
   case SHType::Array:
     return "Array";
+  case SHType::Trait:
+    return "Trait";
   }
   return "";
 }
@@ -262,6 +264,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
            (a.payload.arrayValue.elements == b.payload.arrayValue.elements ||
             memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
                    a.payload.arrayValue.len * sizeof(SHVarPayload)) == 0);
+  case SHType::Trait:
+    return memcmp(a.payload.traitValue->id, b.payload.traitValue->id, sizeof(SHTrait::id)) == 0;
   }
 
   return false;
@@ -378,6 +382,13 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     return a.payload.audioValue.samples < b.payload.audioValue.samples;
   case SHType::Type:
     return a.payload.typeValue < b.payload.typeValue;
+  case SHType::Trait: {
+    auto &id0 = a.payload.traitValue->id;
+    auto &id1 = b.payload.traitValue->id;
+    if (id0[0] == id1[0])
+      return id0[1] < id1[1];
+    return id0[0] < id1[0];
+  }
   case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
@@ -482,6 +493,13 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     return a.payload.audioValue.samples <= b.payload.audioValue.samples;
   case SHType::Type:
     return a.payload.typeValue <= b.payload.typeValue;
+  case SHType::Trait: {
+    auto &id0 = a.payload.traitValue->id;
+    auto &id1 = b.payload.traitValue->id;
+    if (id0[0] == id1[0])
+      return id0[1] <= id1[1];
+    return id0[0] <= id1[0];
+  }
   case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
@@ -518,7 +536,6 @@ bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e);
 
 namespace shards {
 SHVar hash(const SHVar &var);
-void hash_update(const SHVar &var, void *state);
 } // namespace shards
 
 namespace std {

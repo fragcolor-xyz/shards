@@ -166,7 +166,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     inputContextVar = Var::Object(&inputContext, IInputContext::Type);
     inputContextVar.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
     inputContextVar.refcount = 1;
-    brancher.mesh()->addRef(ToSWL(RequiredInputContext::variableName()), &inputContextVar);
+    brancher.mesh()->addRef(toSWL(RequiredInputContext::variableName()), &inputContextVar);
 
     inputContext.handler = this->weak_from_this();
 

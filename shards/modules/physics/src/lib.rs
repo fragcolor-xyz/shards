@@ -13,8 +13,8 @@ use shards::fourCharacterCode;
 use shards::shardsc::SHObjectTypeInfo;
 use shards::shardsc::SHType_Float4;
 
-use shards::types::ClonedVar;
 use shards::types::common_type;
+use shards::types::ClonedVar;
 
 use shards::types::ExposedInfo;
 
@@ -23,14 +23,12 @@ use shards::types::Seq;
 use shards::types::Type;
 use shards::types::FRAG_CC;
 
-
 use rapier3d::dynamics::{
   CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
   RigidBodyHandle, RigidBodySet,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderHandle, ColliderSet, ContactForceEvent, NarrowPhase,
-  SharedShape,
+  BroadPhase, ColliderHandle, ColliderSet, ContactForceEvent, NarrowPhase, SharedShape,
 };
 
 use rapier3d::geometry::CollisionEvent as RapierCollisionEvent;
@@ -52,40 +50,19 @@ lazy_static! {
 }
 
 lazy_static! {
-  static ref SIMULATION_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phys"),
-    };
-    t
-  };
+  static ref SIMULATION_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"phys"));
   static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![ExposedInfo::new_static_with_help(
     SIMULATION_NAME_CSTR.to_str().unwrap(),
     shccstr!("The physics simulation subsystem."),
     *SIMULATION_TYPE
   )];
-  static ref SHAPE_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phyS"),
-    };
-    t
-  };
+  static ref SHAPE_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"phyS"));
   static ref SHAPE_TYPE_VEC: Vec<Type> = vec![*SHAPE_TYPE];
   static ref SHAPES_TYPE: Type = Type::seq(&SHAPE_TYPE_VEC);
   static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
-  static ref RIGIDBODY_TYPE: Type = {
-    let mut t = common_type::object;
-    t.details.object = SHObjectTypeInfo {
-      vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phyR"),
-    };
-    t
-  };
+  static ref RIGIDBODY_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"phyR"));
   static ref RIGIDBODY_TYPE_VEC: Vec<Type> = vec![*RIGIDBODY_TYPE];
   static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
   static ref RIGIDBODY_VAR_TYPE: Type = Type::context_variable(&RIGIDBODY_TYPE_VEC);

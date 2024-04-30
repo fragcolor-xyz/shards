@@ -17,6 +17,8 @@
 
 #include "spdlog/spdlog.h"
 #include "type_matcher.hpp"
+#include "type_info.hpp"
+#include "trait.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -83,6 +85,8 @@ SHOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 
 SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
+void stringGrow(SHStringPayload *str, uint32_t newCap);
+void stringFree(SHStringPayload *str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
@@ -172,14 +176,6 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
 
-void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
-                          bool resolveContextVariables = true);
-SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
-
-uint64_t deriveTypeHash(const SHVar &value);
-uint64_t deriveTypeHash(const SHTypeInfo &value);
-
 struct TypeInfo {
   TypeInfo() {}
 
@@ -196,18 +192,26 @@ struct TypeInfo {
   }
 
   TypeInfo &operator=(const SHTypeInfo &info) {
-    freeDerivedInfo(_info);
+    freeTypeInfo(_info);
     _info = cloneTypeInfo(info);
     return *this;
   }
 
-  ~TypeInfo() { freeDerivedInfo(_info); }
+  TypeInfo &operator=(TypeInfo &&info) {
+    freeTypeInfo(_info);
+    _info = info._info;
+    info._info = {};
+    return *this;
+  }
+
+  ~TypeInfo() { freeTypeInfo(_info); }
 
   operator const SHTypeInfo &() { return _info; }
 
   const SHTypeInfo *operator->() const { return &_info; }
-
   const SHTypeInfo &operator*() const { return _info; }
+  SHTypeInfo *operator->() { return &_info; }
+  SHTypeInfo &operator*() { return _info; }
 
 private:
   SHTypeInfo _info{};
@@ -237,11 +241,6 @@ struct SHTableImpl : public SHAlignedMap<shards::OwnedVar, shards::OwnedVar> {
 
 struct SHWire : public std::enable_shared_from_this<SHWire> {
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
-
-  struct OnComposedEvent {
-    const SHWire *wire;
-  };
-
   struct OnStartEvent {
     const SHWire *wire;
   };
@@ -263,6 +262,20 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     const SHWire *wire;
     const SHWire *childWire;
   };
+
+  // Storage of data used only during compose
+  struct ComposeData {
+    // List of output types used for this wire
+    std::vector<SHTypeInfo> outputTypes;
+  };
+  std::shared_ptr<ComposeData> composeData;
+
+  ComposeData &getComposeData() {
+    if (!composeData) {
+      composeData = std::make_shared<ComposeData>();
+    }
+    return *composeData;
+  }
 
   // Attributes
   bool looped{false};
@@ -322,9 +335,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 #endif
 
   ~SHWire() {
-    destroy();
-
     SHLOG_TRACE("Destroying wire {}", name);
+    destroy();
   }
 
   void warmup(SHContext *context);
@@ -420,6 +432,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     }
   }
 
+  void addTrait(SHTrait trait);
+  const std::vector<shards::Trait> &getTraits() const { return traits; }
+
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
 
@@ -431,6 +446,8 @@ private:
   std::unordered_map<shards::OwnedVar, SHExternalVariable, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHExternalVariable>, 16>>
       externalVariables;
+
+  std::vector<shards::Trait> traits;
 
 private:
   void destroy();
@@ -991,6 +1008,9 @@ struct InternalCore {
     return shards::referenceVariable(context, std::string_view(name.string, name.len));
   }
 
+  static void stringGrow(SHStringPayload *str, uint32_t size) { shards::stringGrow(str, size); }
+  static void stringFree(SHStringPayload *str) { shards::stringFree(str); }
+
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
   static void cloneVar(SHVar &dst, const SHVar &src) { shards::cloneVar(dst, src); }
@@ -1080,15 +1100,6 @@ template <typename E> static E getFlags(SHVar var) {
     break;
   }
   return flags;
-};
-
-template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
-          bool ThreadSafe = false>
-class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe> {
-public:
-  ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe>(name, vendorId, objectId) {}
 };
 
 typedef TShardsVar<InternalCore> ShardsVar;
@@ -1577,6 +1588,26 @@ inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
 template <typename... TArgs>
 inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, TArgs &&...args) {
   (collectRequiredVariables(exposed, out, std::forward<TArgs>(args)), ...);
+}
+
+inline SHStringWithLen swlDuplicate(SHStringWithLen in) {
+  if (in.len == 0) {
+    return SHStringWithLen{};
+  }
+  SHStringWithLen cpy{
+      .string = new char[in.len],
+      .len = in.len,
+  };
+  memcpy(const_cast<char *>(cpy.string), in.string, in.len);
+  return cpy;
+}
+inline SHStringWithLen swlFromStringView(std::string_view in) { return swlDuplicate(toSWL(in)); }
+inline void swlFree(SHStringWithLen &in) {
+  if (in.len > 0) {
+    delete[] in.string;
+    in.string = nullptr;
+    in.len = 0;
+  }
 }
 
 }; // namespace shards

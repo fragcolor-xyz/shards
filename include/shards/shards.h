@@ -53,7 +53,8 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Array, // Notice: of just blittable types/WIP!
   Set,
   Audio,
-  Type // Describes a type
+  Type, // Describes a type
+  Trait // A wire trait
 };
 
 enum SH_ENUM_CLASS SHWireState : uint8_t {
@@ -320,6 +321,8 @@ struct SHSetInterface {
 #define SH_UNION_NAME(_name_)
 #endif
 
+SH_ARRAY_DECL(SHTraits, struct SHTrait);
+
 typedef struct SHTableTypeInfo {
   // If tableKeys is populated, it is expected that
   // tableTypes will be populated as well and that at the same
@@ -331,9 +334,14 @@ typedef struct SHTableTypeInfo {
   SHTypesInfo types;
 } SHTableTypeInfo;
 
+typedef struct SHExtendedObjectTypeInfo SHExtendedObjectTypeInfo;
 typedef struct SHObjectTypeInfo {
   int32_t vendorId;
   int32_t typeId;
+  // Provides additional object behaviors, such as comparision, special types
+  const SHExtendedObjectTypeInfo *extInfo;
+  // User data passed that can be used by the extended object type functions
+  void *extInfoData;
 } SHObjectTypeInfo;
 
 typedef struct SHEnumTypeInfo {
@@ -404,6 +412,23 @@ struct SHTypeInfo {
   SHBool recursiveSelf;
 };
 
+typedef struct SHTraitVariable {
+  // Name of the variable
+  SHStringWithLen name;
+  // Expected variable type
+  struct SHTypeInfo type;
+} SHTraitVariable;
+SH_ARRAY_DECL(SHTraitVariables, struct SHTraitVariable);
+
+typedef struct SHTrait {
+  // Unique Id of the trait, which is also the hash of the items
+  uint64_t id[2];
+  // Friendly name given to this trait, unhashed
+  SHStringWithLen name;
+  // List of variables
+  SHTraitVariables variables;
+} SHTrait;
+
 struct SHShardComposeResult {
   struct SHError error;
   struct SHTypeInfo result;
@@ -432,6 +457,20 @@ struct SHObjectInfo {
 
   bool isThreadSafe;
 };
+
+typedef struct SHTypeInfo SHTypeInfo;
+
+typedef bool(__cdecl *SHExtTypeMatch)(const void *self, const void *other);
+typedef void(__cdecl *SHExtTypeHash)(const void *self, void *outDigest, uint32_t digestSize);
+typedef void(__cdecl *SHExtTypeReference)(void *self);
+typedef void(__cdecl *SHExtTypeRelease)(void *self);
+
+typedef struct SHExtendedObjectTypeInfo {
+  SHExtTypeMatch match;
+  SHExtTypeHash hash;
+  SHExtTypeReference reference;
+  SHExtTypeRelease release;
+} SHExtendedObjectTypeInfo;
 
 struct SHEnumInfo {
   SHString name;
@@ -468,6 +507,17 @@ struct SHExposedTypeInfo {
   // If the variable is market as exposed, apps building on top will can use this feature
   SHBool exposed;
 };
+
+typedef struct SHStringPayload {
+  char *elements;
+  // this field is an optional optimization
+  // if 0 strlen should be called to find the string length
+  // if not 0 should be assumed valid
+  uint32_t len;
+  // this is mostly used internal
+  // useful when serializing, recycling memory
+  uint32_t cap;
+} SHStringPayload;
 
 // # Of SHVars and memory
 
@@ -523,6 +573,9 @@ struct SHVarPayload {
 
     struct SHSet setValue;
 
+    SHStringPayload string;
+
+    // WARNING: Keep this in sync with SHStringPayload
     struct {
       SHString stringValue;
       // this field is an optional optimization
@@ -561,6 +614,7 @@ struct SHVarPayload {
     SHPayloadArray arrayValue;
 
     struct SHTypeInfo *typeValue;
+    struct SHTrait *traitValue;
   };
 } __attribute__((aligned(16)));
 
@@ -875,6 +929,7 @@ typedef void(__cdecl *SHSetWireLooped)(SHWireRef wire, SHBool looped);
 typedef void(__cdecl *SHSetWireUnsafe)(SHWireRef wire, SHBool unsafe);
 typedef void(__cdecl *SHSetWirePure)(SHWireRef wire, SHBool pure);
 typedef void(__cdecl *SHSetWireStackSize)(SHWireRef wire, uint64_t stackSize);
+typedef void(__cdecl *SHSetWireTraits)(SHWireRef wire, SHSeq traits);
 typedef void(__cdecl *SHAddShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);
@@ -913,6 +968,8 @@ SH_ARRAY_TYPE(Shards, ShardPtr);
 SH_ARRAY_TYPE(SHExposedTypesInfo, struct SHExposedTypeInfo);
 SH_ARRAY_TYPE(SHEnums, SHEnum);
 SH_ARRAY_TYPE(SHStrings, SHString);
+SH_ARRAY_TYPE(SHTraitVariables, SHTraitVariable);
+SH_ARRAY_TYPE(SHTraits, SHTrait);
 
 #define SH_ARRAY_PROCS(_array_, _short_)   \
   _array_##Free _short_##Free;             \
@@ -977,10 +1034,17 @@ typedef const struct SHObjectInfo *(__cdecl *SHFindObjectInfo)(int32_t vendorId,
 typedef int64_t(__cdecl *SHFindObjectTypeId)(SHStringWithLen name);
 typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 
+typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, uint32_t newCap);
+typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
+
 typedef struct _SHCore {
   // Aligned allocator
   SHAlloc alloc;
   SHFree free;
+
+  // String interface
+  SHStringGrow stringGrow;
+  SHStringFree stringFree;
 
   // SHTable interface
   SHTableNew tableNew;
@@ -1013,6 +1077,7 @@ typedef struct _SHCore {
   SHSetWireUnsafe setWireUnsafe;
   SHSetWirePure setWirePure;
   SHSetWireStackSize setWireStackSize;
+  SHSetWireTraits setWireTraits;
   SHAddShard addShard;
   SHRemShard removeShard;
   SHDestroyWire destroyWire;
@@ -1128,6 +1193,12 @@ typedef struct _SHCore {
 
   // Utility to deal with SHStrings
   SH_ARRAY_PROCS(SHStrings, strings);
+
+  // Utility to deal with SHTraitVariables
+  SH_ARRAY_PROCS(SHTraitVariables, traitVariables);
+
+  // Utility to deal with SHTraits
+  SH_ARRAY_PROCS(SHTraits, traits);
 } SHCore;
 
 typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);

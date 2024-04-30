@@ -6,6 +6,7 @@
 #include <shards/core/params.hpp>
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/hash.hpp>
 #include <shards/shards.h>
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
@@ -330,7 +331,7 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
     return;
   } else if (!unsafe) {
     static thread_local std::unordered_map<uint64_t, TypeInfo> typeCache;
-    auto inputTypeHash = deriveTypeHash(input);
+    auto inputTypeHash = deriveTypeHash64(input);
     if (inputTypeHash != expectedTypeHash) {
       // Do an even deeper type check
       auto it = typeCache.find(inputTypeHash);
@@ -380,7 +381,7 @@ template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
                                    SHCCSTR("If we should skip performing deep type hashing and comparison. "
                                            "(generally fast but this might improve performance)"),
                                    {CoreInfo::BoolType}}};
-  static inline uint64_t ExpectedHash = deriveTypeHash(ET);
+  static inline uint64_t ExpectedHash = deriveTypeHash64(ET);
 
   bool _unsafe{UNSAFE};
 
@@ -425,7 +426,7 @@ struct Expect {
     }
 
     _expectedType = *_type->payload.typeValue;
-    _expectedTypeHash = deriveTypeHash(_expectedType);
+    _expectedTypeHash = deriveTypeHash64(_expectedType);
 
     return _expectedType;
   }
@@ -493,7 +494,7 @@ struct ExpectLike {
       throw ComposeError("One of TypeOf or OutputOf is required");
     }
 
-    _expectedTypeHash = deriveTypeHash(_expectedType);
+    _expectedTypeHash = deriveTypeHash64(_expectedType);
 
     return _expectedType;
   }
