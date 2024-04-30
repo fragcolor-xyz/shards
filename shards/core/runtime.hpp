@@ -508,10 +508,21 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     data.inputType = shards::deriveTypeInfo(input, data);
     CompositionContext privateContext{};
     data.privateContext = &privateContext;
-    auto validation = shards::composeWire(wire.get(), data); // can throw!
-    shards::arrayFree(validation.exposedInfo);
-    shards::arrayFree(validation.requiredInfo);
-    shards::freeDerivedInfo(data.inputType);
+    try {
+      auto validation = shards::composeWire(wire.get(), data);
+      shards::arrayFree(validation.exposedInfo);
+      shards::arrayFree(validation.requiredInfo);
+      shards::freeDerivedInfo(data.inputType);
+    } catch (const std::exception &e) {
+      // build a reverse stack error log from privateContext.errorStack
+      std::string errors;
+      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
+        errors += *it;
+        errors += "\n";
+      }
+      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
+      throw;
+    }
 
     SHLOG_TRACE("Wire {} composed", wire->name);
   }
