@@ -1,5 +1,5 @@
 ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte.
+; Copyright © 2020 Fragcolor Pte
 
 @mesh(root)
 
@@ -18,7 +18,7 @@
 
 ; fail during await, uses awaitne(...)
 @wire(test-1 {
-Await({false | Assert.Is(true)})
+  Await({false | Assert.Is(true)})
 })
 
 @schedule(root test-1)
@@ -26,7 +26,7 @@ Await({false | Assert.Is(true)})
 
 ; fail during http resolver, uses await(...)
 @wire(test-2 {
-Http.Get("abc.abcdefg")
+  Http.Get("abc.abcdefg")
 })
 
 @schedule(root test-2)
@@ -34,9 +34,9 @@ Http.Get("abc.abcdefg")
 
 ; out of range
 @wire(test-4 {
-[10 20 1000 40 50] |
-IntsToBytes |
-Log
+  [10 20 1000 40 50]
+  IntsToBytes
+  Log
 })
 
 @schedule(root test-4)
@@ -44,10 +44,10 @@ Log
 
 ; wrong type
 @wire(test-5 {
-[10 20 2.0 40 50] |
-ExpectIntSeq |
-IntsToBytes |
-Log
+  [10 20 2.0 40 50]
+  ExpectIntSeq
+  IntsToBytes
+  Log
 })
 
 @schedule(root test-5)
@@ -55,11 +55,11 @@ Log
 
 ; wrong type
 @wire(test-6 {
-[10 20 20 40 50] |
-ExpectIntSeq |
-IntsToBytes |
-ExpectLike([1 2 3]) |
-Log
+  [10 20 20 40 50]
+  ExpectIntSeq
+  IntsToBytes
+  ExpectLike([1 2 3])
+  Log
 })
 
 @schedule(root test-6)
@@ -67,9 +67,9 @@ Log
 
 ; fail the root wire propagated from Wait
 @wire(test-7 {
-Detach(test-1) |
-Wait(test-1) |
-Assert.Is(true false)
+  Detach(test-1)
+  Wait(test-1)
+  Assert.Is(true false)
 })
 
 @schedule(root test-7)
@@ -78,9 +78,9 @@ Assert.Is(true false)
 
 ; fail the root wire propagated from Wait
 @wire(test-8 {
-"""4qjwieouqjweiouqweoi\") exit""" |
-ParseFloat |
-Log
+  """4qjwieouqjweiouqweoi\") exit"""
+  ParseFloat
+  Log
 })
 
 @schedule(root test-8)
@@ -89,46 +89,48 @@ Log
 @mesh(main)
 
 @wire(c1 {
-msg1 | Log
+  msg1 | Log
 } Looped: true)
 
 @wire(c2 {
-msg2 | Log
+  msg2 | Log
 } Looped: true)
 
 @wire(cDead {
-"Failed" | Fail
+  "Failed" | Fail
 } Looped: true)
 
 @wire(c {
-"Hello" = msg1
-"World" = msg2
-Branch([c1 c2 cDead] BranchFailure::Known) |
-Msg("And Universe")
+  "Hello" = msg1
+  "World" = msg2
+  Branch([c1 c2 cDead] BranchFailure::Known)
+  Msg("And Universe")
 } Looped: true)
 
 @schedule(root c)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @wire(cc {
-"Hello" = msg1
-"World" = msg2
-Branch([c1 c2 cDead] BranchFailure::Ignore) |
-Msg("And Universe")
+  "Hello" = msg1
+  "World" = msg2
+  Branch([c1 c2 cDead] BranchFailure::Ignore)
+  Msg("And Universe")
 } Looped: true)
 
 @schedule(root cc)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(true)
 
 @wire(too-long-wire {
-Pause(120)
+  Pause(120)
 })
 
 @wire(short-wire {
-Detach(too-long-wire) |
-Maybe({Wait(too-long-wire Timeout: 1.0)}
-{Stop(too-long-wire)
-"time out" | Fail})
+  Detach(too-long-wire)
+  Maybe({Wait(too-long-wire Timeout: 1.0)}
+    {Stop(too-long-wire)
+      "time out" | Fail
+    }
+  )
 } Looped: true)
 
 @schedule(root short-wire)
@@ -136,12 +138,12 @@ Maybe({Wait(too-long-wire Timeout: 1.0)}
 
 ; Failure from Do should propagate to main wire
 @wire(do-inner {
-"Intentional fail" | Fail
+  "Intentional fail" | Fail
 })
 
 @wire(do-outer {
-Do(do-inner)
-true | Assert.Is(false)
+  Do(do-inner)
+  true | Assert.Is(false)
 })
 
 @schedule(root do-outer)
@@ -179,7 +181,7 @@ true | Assert.Is(false)
 @schedule(root clear-non-mutable-wrapper)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
-@compose-failure( event-read-used-before-send event-read-used-before-send-wrapper {
+@compose-failure(event-read-used-before-send event-read-used-before-send-wrapper {
   Events.Receive("Hello")
 })
 
@@ -192,4 +194,11 @@ true | Assert.Is(false)
 })
 
 @schedule(root append-type1-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@wire(fail-on-await-thread {
+  Await({1.0 | SleepBlocking! | false | Assert.Is(true)})
+})
+
+@schedule(root fail-on-await-thread)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)

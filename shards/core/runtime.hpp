@@ -115,9 +115,6 @@ struct SHContext {
   bool onWorkerThread{false};
   uint64_t stepCounter{};
 
-  std::mutex anyStorageLock;
-  std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
-
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
@@ -190,6 +187,13 @@ struct SHContext {
   constexpr SHWireState getState() const { return state; }
 
   constexpr SHVar getFlowStorage() const { return flowStorage; }
+
+  void mirror(const SHContext *other) {
+    state = other->state;
+    flowStorage = other->flowStorage;
+    errorMessage = other->errorMessage;
+    errorStack = other->errorStack;
+  }
 
 private:
   SHWireState state = SHWireState::Continue; // don't make this atomic! it's used a lot!

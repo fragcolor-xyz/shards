@@ -482,6 +482,23 @@ struct Await : public BaseSubFlow {
     return BaseSubFlow::compose(dataCopy);
   }
 
+  std::optional<SHContext> _context;
+
+  void warmup(SHContext *ctx) {
+    BaseSubFlow::warmup(ctx);
+    _context.emplace(nullptr, ctx->currentWire(), ctx->flow);
+    _context->wireStack = ctx->wireStack;
+    _context->parent = ctx;
+  }
+
+  void cleanup(SHContext *context) {
+    BaseSubFlow::cleanup(context);
+    if (_context.has_value()) {
+      _context->stopFlow(Var::Empty);
+      _context.reset();
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     bool locked = false;
     DEFER({
@@ -502,10 +519,17 @@ struct Await : public BaseSubFlow {
         context,
         [&] {
           SHVar output{};
-          _shards.activate(context, inputCopy, output);
+          _shards.activate(&*_context, inputCopy, output);
           return output;
         },
         [] {});
+
+    // need to replicate things that happened in the context
+    if (!_context->shouldContinue()) {
+      SHLOG_DEBUG("Await shard stopped by context");
+      context->mirror(&*_context);
+    }
+
     return _output;
   }
 };
