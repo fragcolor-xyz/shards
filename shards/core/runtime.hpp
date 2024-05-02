@@ -124,9 +124,7 @@ struct SHContext {
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
 
-  constexpr void stopFlow() {
-    state = SHWireState::Stop;
-  }
+  constexpr void stopFlow() { state = SHWireState::Stop; }
 
   constexpr void stopFlow(const SHVar &lastValue) {
     state = SHWireState::Stop;
@@ -514,18 +512,20 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     SHInstanceData data = instanceData;
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
+    DEFER({ shards::freeDerivedInfo(data.inputType); });
     CompositionContext privateContext{};
     data.privateContext = &privateContext;
     try {
       auto validation = shards::composeWire(wire.get(), data);
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
-      shards::freeDerivedInfo(data.inputType);
     } catch (const std::exception &e) {
       // build a reverse stack error log from privateContext.errorStack
       std::string errors;
       for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
         errors += *it;
+        if (++it == privateContext.errorStack.rend())
+          break;
         errors += "\n";
       }
       SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);

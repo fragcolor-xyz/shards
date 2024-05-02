@@ -594,11 +594,6 @@ SHWireState suspend(SHContext *context, double seconds) {
   return context->getState();
 }
 
-static HashState<XXH128_hash_t> &wireHashState() {
-  static thread_local HashState<XXH128_hash_t> hashState;
-  return hashState;
-}
-
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
@@ -689,8 +684,6 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 struct InternalCompositionContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
   std::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
-  std::unordered_set<std::string_view> variables;
-  std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
   CompositionContext *sharedContext{};
 
@@ -826,63 +819,13 @@ void validateConnection(InternalCompositionContext &ctx) {
   }
 #endif
 
-  // Grab those after type inference!
+  // Grab those after type inference in compose!
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
     ctx.exposed[name] = exposed_param;
-
-    // Reference mutability checks
-    if (strcmp(ctx.bottom->name(ctx.bottom), "Ref") == 0) {
-      // make sure we are not Ref-ing a Set
-      // meaning target would be overwritten, yet Set will try to deallocate
-      // it/manage it
-      if (ctx.variables.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Ref variable name already used as Set. Overwriting a previously Set variable with Ref is not allowed, name: {}",
-            name);
-        throw ComposeError(err);
-      }
-      ctx.references.insert(name);
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Set") == 0) {
-      // make sure we are not Set-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Set will
-      // try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Set variable name already used as Ref. Overwriting a previously Ref variable with Set is not allowed, name: {}",
-            name);
-        throw ComposeError(err);
-      }
-      ctx.variables.insert(name);
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Update") == 0) {
-      // make sure we are not Set-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Set will
-      // try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format("Update variable name already used as Ref. Overwriting a previously Ref variable with Update is "
-                               "not allowed, name: {}",
-                               name);
-        throw ComposeError(err);
-      }
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Push") == 0) {
-      // make sure we are not Push-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Push
-      // will try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Push variable name already used as Ref. Overwriting a previously Ref variable with Push is not allowed, name: {}",
-            name);
-        throw ComposeError(err);
-      }
-      ctx.variables.insert(name);
-    }
   }
 
   // Finally do checks on what we consume
@@ -901,11 +844,8 @@ void validateConnection(InternalCompositionContext &ctx) {
     SHExposedTypeInfo match{};
 
     const auto &required_param = required.second;
+
     std::string_view name(required_param.name);
-    if (name.find(' ') != std::string::npos) { // take only the first part of variable name
-      // the remaining should be a table key which we don't care here
-      name = name.substr(0, name.find(' '));
-    }
 
     auto end = ctx.exposed.end();
     auto findIt = ctx.exposed.find(name);
@@ -1142,6 +1082,10 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
   auto res = internalComposeWire(wire->shards, data);
+  DEFER({
+    shards::arrayFree(res.exposedInfo);
+    shards::arrayFree(res.requiredInfo);
+  });
 
   validateWireTraits(wire, res);
 
@@ -1161,7 +1105,10 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     }
   }
 
-  return res;
+  SHComposeResult result{};
+  // swap to avoid deferred free
+  std::swap(result, res);
+  return result;
 }
 
 SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {

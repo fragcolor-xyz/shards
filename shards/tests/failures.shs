@@ -201,3 +201,24 @@
 
 @schedule(root fail-on-await-thread)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure(compose-fail-1 compose-fail-1-wrapper {
+  1 | Is(hello)
+})
+
+@schedule(root compose-fail-1-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure(compose-fail-2 compose-fail-2-wrapper {
+  1 | Is(hello)
+})
+
+@schedule(root compose-fail-2-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
+
+@compose-failure(compose-fail-3 compose-fail-3-wrapper {
+  1 | String.ToLower
+})
+
+@schedule(root compose-fail-3-wrapper)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
