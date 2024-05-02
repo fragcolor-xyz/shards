@@ -493,10 +493,13 @@ struct Await : public BaseSubFlow {
 
   void cleanup(SHContext *context) {
     BaseSubFlow::cleanup(context);
+#if 0 // so we don't do this actually even if we should cos we would race if we do, the reality is that it's fine like this cos
+      // awaitne will check real context anyway and stop executing eventually
     if (_context.has_value()) {
       _context->stopFlow(Var::Empty);
       _context.reset();
     }
+#endif
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -518,6 +521,8 @@ struct Await : public BaseSubFlow {
     _output = awaitne(
         context,
         [&] {
+          // we cannot give the real context to the other thread or we will have race conditions
+          // it's fine though cos awaitne will check the actual real context anyway!
           SHVar output{};
           _shards.activate(&*_context, inputCopy, output);
           return output;
