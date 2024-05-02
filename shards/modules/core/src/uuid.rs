@@ -19,7 +19,6 @@ use shards::types::INT_TYPES;
 use shards::types::INT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 
-use shards::types::ParamVar;
 use shards::types::Parameters;
 
 use shards::types::Type;

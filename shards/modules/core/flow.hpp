@@ -177,17 +177,7 @@ struct Cond {
     // Validate condition wires, altho they do not influence anything we need
     // to report errors
     for (const auto &action : _conditions) {
-      auto validation = composeWire(
-          action,
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
-              throw SHException("Cond: failed inner wire validation.");
-            } else {
-              SHLOG_INFO("Cond: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, data);
+      auto validation = composeWire(action, data);
       if (validation.outputType.basicType != SHType::Bool) {
         throw ComposeError("Cond - expected Bool output from predicate shards");
       }
@@ -201,17 +191,7 @@ struct Cond {
     auto first = true;
     auto exposing = true;
     for (const auto &action : _actions) {
-      auto validation = composeWire(
-          action,
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
-              throw SHException("Cond: failed inner wire validation.");
-            } else {
-              SHLOG_INFO("Cond: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, data);
+      auto validation = composeWire(action, data);
 
       if (first) {
         // A first valid exposedInfo array is our gold
@@ -447,6 +427,7 @@ struct Maybe : public BaseSubFlow {
                         _self->column);
         }
         if (likely(!context->onLastResume)) {
+          context->resetErrorStack();
           context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
@@ -501,6 +482,25 @@ struct Await : public BaseSubFlow {
     return BaseSubFlow::compose(dataCopy);
   }
 
+  std::optional<SHContext> _context;
+
+  void warmup(SHContext *ctx) {
+    BaseSubFlow::warmup(ctx);
+    _context.emplace(nullptr, ctx->currentWire(), ctx->flow);
+    _context->wireStack = ctx->wireStack;
+    _context->parent = ctx;
+  }
+
+  void cleanup(SHContext *context) {
+    BaseSubFlow::cleanup(context);
+    if (_context.has_value()) {
+      // this will trigger benign TSAN race condition warning
+      // we cannot make the bool inside the context atomic, simple, but it's fine
+      _context->stopFlow();
+      // Don't .reset() _context, it's still running on the worker thread
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     bool locked = false;
     DEFER({
@@ -515,16 +515,31 @@ struct Await : public BaseSubFlow {
         return Var::Empty; // return as there is some error or so going on
     } while (true);
 
+    // check if we should continue though!
+    if (!context->shouldContinue()) {
+      SHLOG_DEBUG("Await shard aborted before starting");
+      return input;
+    }
+
     // copy around to avoid race conditions
     OwnedVar inputCopy = input;
     _output = awaitne(
         context,
         [&] {
+          // we cannot give the real context to the other thread or we will have race conditions
+          // it's fine though cos awaitne will check the actual real context anyway!
           SHVar output{};
-          _shards.activate(context, inputCopy, output);
+          _shards.activate(&*_context, inputCopy, output);
           return output;
         },
         [] {});
+
+    // need to replicate things that happened in the context
+    if (!_context->shouldContinue()) {
+      SHLOG_DEBUG("Await shard stopped by context");
+      context->mirror(&*_context);
+    }
+
     return _output;
   }
 };

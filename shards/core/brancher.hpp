@@ -133,7 +133,7 @@ public:
   // Calls initVariableReferences, then schedule (in that order)
   void warmup(SHContext *context, const SHVar &input = Var::Empty) {
     auto parentMesh = context->main->mesh.lock();
-    if(parentMesh) {
+    if (parentMesh) {
       mesh->parent = parentMesh.get();
       shassert(mesh->parent != mesh.get());
     }
@@ -160,7 +160,7 @@ public:
     }
   }
 
-  void cleanup(SHContext* context = nullptr) {
+  void cleanup(SHContext *context = nullptr) {
     mesh->releaseAllRefs();
     mesh->terminate();
     mesh->parent = nullptr;
@@ -208,17 +208,7 @@ private:
     // this is triggered by populating requiredVariables variable
     dataCopy.requiredVariables = &_collectedRequirements;
 
-    wire->composeResult = composeWire(
-        wire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("Branch: failed inner wire validation, error: {}", errorTxt);
-            throw ComposeError("RunWire: failed inner wire validation");
-          } else {
-            SHLOG_INFO("Branch: warning during inner wire validation: {}", errorTxt);
-          }
-        },
-        this, dataCopy);
+    wire->composeResult = composeWire(wire.get(), dataCopy);
   }
 };
 } // namespace shards

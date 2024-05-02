@@ -28,6 +28,7 @@ use crate::shardsc::SHStrings;
 use crate::shardsc::SHTable;
 use crate::shardsc::SHTableIterator;
 use crate::shardsc::SHTableTypeInfo;
+use crate::shardsc::SHTraits;
 use crate::shardsc::SHTypeInfo;
 use crate::shardsc::SHTypeInfo_Details;
 use crate::shardsc::SHType_Any;
@@ -58,7 +59,6 @@ use crate::shardsc::SHType_String;
 use crate::shardsc::SHType_Table;
 use crate::shardsc::SHType_Wire;
 use crate::shardsc::SHTypesInfo;
-use crate::shardsc::SHTraits;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHVarPayload;
 use crate::shardsc::SHVarPayload__bindgen_ty_1;
@@ -482,15 +482,8 @@ impl ShardRef {
 
   pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &'static str> {
     unsafe {
-      let mut failed = false;
-      (*Core).validateSetParam.unwrap()(
-        self.0,
-        index,
-        &value,
-        Some(error_cb),
-        &mut failed as *mut _ as *mut _,
-      );
-      if failed {
+      let success = (*Core).validateSetParam.unwrap()(self.0, index, &value);
+      if !success {
         Err("Set parameter validation failed")
       } else {
         (*self.0).setParam.unwrap()(self.0, index, &value);
@@ -4122,7 +4115,7 @@ impl ParamVar {
     var
   }
 
-  pub fn cleanup(&mut self, ctx: Option<&Context>) {
+  pub fn cleanup(&mut self, _ctx: Option<&Context>) {
     unsafe {
       if self.parameter.0.valueType == SHType_ContextVar {
         (*Core).releaseVariable.unwrap()(self.pointee);
@@ -4377,14 +4370,7 @@ impl ShardsVar {
 
     let failed = false;
 
-    let mut result = unsafe {
-      (*Core).composeShards.unwrap()(
-        self.native_shards,
-        Some(shardsvar_compose_cb),
-        &failed as *const _ as *mut _,
-        *data,
-      )
-    };
+    let mut result = unsafe { (*Core).composeShards.unwrap()(self.native_shards, *data) };
 
     if result.failed {
       let msg: &str = (&result.failureMessage).try_into().unwrap();

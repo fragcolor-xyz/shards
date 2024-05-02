@@ -487,6 +487,7 @@ struct Server {
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       _pool->release(it->second);
+      _wireContainers.erase(it);
     }
   }
 
@@ -562,17 +563,7 @@ struct Server {
       data.shared = server._sharedCopy;
       data.wire = wire;
       wire->mesh = context->main->mesh;
-      auto res = composeWire(
-          wire,
-          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR(errorTxt);
-              throw ActivationError("Http.Server handler wire compose failed");
-            } else {
-              SHLOG_WARNING(errorTxt);
-            }
-          },
-          nullptr, data);
+      auto res = composeWire(wire, data);
       arrayFree(res.exposedInfo);
       arrayFree(res.requiredInfo);
     }

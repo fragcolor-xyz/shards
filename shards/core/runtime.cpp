@@ -594,11 +594,6 @@ SHWireState suspend(SHContext *context, double seconds) {
   return context->getState();
 }
 
-static HashState<XXH128_hash_t> &wireHashState() {
-  static thread_local HashState<XXH128_hash_t> hashState;
-  return hashState;
-}
-
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
@@ -642,6 +637,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       case SHWireState::Error:
         SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk),
                     context->getErrorMessage(), blk->line, blk->column);
+        context->pushError(fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), context->getErrorMessage(),
+                                       blk->line, blk->column));
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
@@ -684,13 +681,11 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
                                                                                                                    receiverType);
 }
 
-struct ValidationContext {
+struct InternalCompositionContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
   std::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
-  std::unordered_set<std::string_view> variables;
-  std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
-  VisitedWires *visitedWires{};
+  CompositionContext *sharedContext{};
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -699,15 +694,12 @@ struct ValidationContext {
   Shard *next{};
   SHWire *wire{};
 
-  SHValidationCallback cb{};
-  void *userData{};
-
   bool onWorkerThread{false};
 
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 };
 
-void validateConnection(ValidationContext &ctx) {
+void validateConnection(InternalCompositionContext &ctx) {
   auto previousOutput = ctx.previousOutputType;
 
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
@@ -730,7 +722,7 @@ void validateConnection(ValidationContext &ctx) {
     const auto msg =
         fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
                     ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
-    ctx.cb(ctx.bottom, SHStringWithLen{msg.data(), msg.size()}, false, ctx.userData);
+    throw ComposeError(msg);
   }
 
   // infer and specialize types if we need to
@@ -744,7 +736,7 @@ void validateConnection(ValidationContext &ctx) {
       data.wire = ctx.wire;
       data.inputType = previousOutput;
       data.requiredVariables = ctx.fullRequired;
-      data.visitedWires = ctx.visitedWires;
+      data.privateContext = ctx.sharedContext;
       if (ctx.next) {
         data.outputTypes = ctx.next->inputTypes(ctx.next);
       }
@@ -810,7 +802,7 @@ void validateConnection(ValidationContext &ctx) {
       }
     }();
 
-    auto blockHasValidOutputTypes =
+    auto shardHasValidOutputTypes =
         flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
           return t.basicType == SHType::Any ||
                  (t.basicType == SHType::Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
@@ -820,71 +812,20 @@ void validateConnection(ValidationContext &ctx) {
                   ctx.previousOutputType.basicType == SHType::Table) || // any table
                  t == ctx.previousOutputType;
         });
-    if (!blockHasValidOutputTypes) {
-      std::string blockName = ctx.bottom->name(ctx.bottom);
-      auto msg = fmt::format("Shard {} doesn't have a valid output type", blockName);
+    if (!shardHasValidOutputTypes) {
+      auto msg = fmt::format("Shard {} doesn't have a valid output type", ctx.bottom->name(ctx.bottom));
       throw ComposeError(msg);
     }
   }
 #endif
 
-  // Grab those after type inference!
+  // Grab those after type inference in compose!
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
     ctx.exposed[name] = exposed_param;
-
-    // Reference mutability checks
-    if (strcmp(ctx.bottom->name(ctx.bottom), "Ref") == 0) {
-      // make sure we are not Ref-ing a Set
-      // meaning target would be overwritten, yet Set will try to deallocate
-      // it/manage it
-      if (ctx.variables.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Ref variable name already used as Set. Overwriting a previously Set variable with Ref is not allowed, name: {}",
-            name);
-        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
-      }
-      ctx.references.insert(name);
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Set") == 0) {
-      // make sure we are not Set-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Set will
-      // try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Set variable name already used as Ref. Overwriting a previously Ref variable with Set is not allowed, name: {}",
-            name);
-        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
-      }
-      ctx.variables.insert(name);
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Update") == 0) {
-      // make sure we are not Set-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Set will
-      // try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format("Update variable name already used as Ref. Overwriting a previously Ref variable with Update is "
-                               "not allowed, name: {}",
-                               name);
-        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
-      }
-    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Push") == 0) {
-      // make sure we are not Push-ing a Ref
-      // meaning target memory could be any shard temporary buffer, yet Push
-      // will try to deallocate it/manage it
-      if (ctx.references.count(name)) {
-        // Error
-        auto err = fmt::format(
-            "Push variable name already used as Ref. Overwriting a previously Ref variable with Push is not allowed, name: {}",
-            name);
-        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
-      }
-      ctx.variables.insert(name);
-    }
   }
 
   // Finally do checks on what we consume
@@ -903,11 +844,8 @@ void validateConnection(ValidationContext &ctx) {
     SHExposedTypeInfo match{};
 
     const auto &required_param = required.second;
+
     std::string_view name(required_param.name);
-    if (name.find(' ') != std::string::npos) { // take only the first part of variable name
-      // the remaining should be a table key which we don't care here
-      name = name.substr(0, name.find(' '));
-    }
 
     auto end = ctx.exposed.end();
     auto findIt = ctx.exposed.find(name);
@@ -917,8 +855,8 @@ void validateConnection(ValidationContext &ctx) {
     }
     if (findIt == end) {
       auto err = fmt::format("Required variable not found: {}", name);
-      // Warning only, delegate compose to decide
-      ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, true, ctx.userData);
+      // Warning only, delegate compose to decide if it's an error
+      SHLOG_WARNING("{}", err);
     } else {
       auto exposedType = findIt->second.exposedType;
       auto requiredType = required_param.exposedType;
@@ -949,7 +887,7 @@ void validateConnection(ValidationContext &ctx) {
         ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
       }
       auto sss = ss.str();
-      ctx.cb(ctx.bottom, SHStringWithLen{sss.data(), sss.size()}, false, ctx.userData);
+      throw ComposeError(sss);
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())
@@ -958,28 +896,28 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                            SHInstanceData data) {
+SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   ZoneScoped;
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
-  VisitedWires *visitedWires{};
-  if (!data.visitedWires) {
-    data.visitedWires = visitedWires = new VisitedWires{};
+  CompositionContext *context{};
+  if (!data.privateContext) {
+    data.privateContext = context = new CompositionContext{};
   }
-  DEFER({ delete visitedWires; });
+  DEFER({
+    if (context)
+      delete context;
+  });
 
-  ValidationContext ctx{};
-  ctx.visitedWires = reinterpret_cast<VisitedWires *>(data.visitedWires);
+  InternalCompositionContext ctx{};
+  ctx.sharedContext = reinterpret_cast<CompositionContext *>(data.privateContext);
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
-  ctx.cb = callback;
   ctx.wire = data.wire;
-  ctx.userData = userData;
   ctx.onWorkerThread = data.onWorkerThread;
-  ctx.fullRequired = reinterpret_cast<decltype(ValidationContext::fullRequired)>(data.requiredVariables);
+  ctx.fullRequired = reinterpret_cast<decltype(InternalCompositionContext::fullRequired)>(data.requiredVariables);
 
   // add externally added variables
   if (ctx.wire) {
@@ -1043,7 +981,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       try {
         validateConnection(ctx);
       } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error validating shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+        auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
                                       blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         SHLOG_ERROR("{}", verboseMsg);
         throw ComposeError(verboseMsg);
@@ -1084,6 +1022,19 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   return result;
 }
 
+SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+      context->errorStack.push_back(ex.what());
+    }
+    throw;
+  }
+}
+
 void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
@@ -1093,7 +1044,7 @@ void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   }
 }
 
-SHComposeResult composeWire(const SHWire *wire_, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   SHWire *wire = const_cast<SHWire *>(wire_);
 
   // compare exchange and then shassert we were not composing
@@ -1130,7 +1081,11 @@ SHComposeResult composeWire(const SHWire *wire_, SHValidationCallback callback, 
 
   shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
-  auto res = composeWire(wire->shards, callback, userData, data);
+  auto res = internalComposeWire(wire->shards, data);
+  DEFER({
+    shards::arrayFree(res.exposedInfo);
+    shards::arrayFree(res.requiredInfo);
+  });
 
   validateWireTraits(wire, res);
 
@@ -1150,30 +1105,45 @@ SHComposeResult composeWire(const SHWire *wire_, SHValidationCallback callback, 
     }
   }
 
-  return res;
+  SHComposeResult result{};
+  // swap to avoid deferred free
+  std::swap(result, res);
+  return result;
 }
 
-SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire_, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+      context->errorStack.push_back(ex.what());
+    }
+    throw;
+  }
+}
+
+SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
   std::vector<Shard *> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i]);
   }
-  return composeWire(shards, callback, userData, data);
+  return composeWire(shards, data);
 }
 
-SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
   std::vector<Shard *> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i].payload.shardValue);
   }
-  return composeWire(shards, callback, userData, data);
+  return composeWire(shards, data);
 }
 
-bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData) {
+bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   auto params = shard->parameters(shard);
   if (params.len <= (uint32_t)index) {
-    std::string_view err("Parameter index out of range");
-    callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
+    SHLOG_ERROR("Parameter index out of range, shard: {}, line: {}, column: {}", shard->name(shard), shard->line, shard->column);
     return false;
   }
 
@@ -1192,11 +1162,9 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err(
-      fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
-                  param.name, value, varType, param.valueTypes, shard->line, shard->column));
-  callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
-
+  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
+                         param.name, value, varType, param.valueTypes, shard->line, shard->column);
+  SHLOG_ERROR("{}", err);
   return false;
 }
 
@@ -1436,7 +1404,6 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
 
     auto runRes = runWire(wire, &context, wire->currentInput);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
-      SHLOG_DEBUG("Wire {} failed", wire->name);
       wire->state = SHWire::State::Failed;
       failed = true;
       context.stopFlow(runRes.output);
@@ -1472,19 +1439,23 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   }
 
 endOfWire:
-  wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
-
   if (failed || context.failed()) {
     wire->finishedError = context.getErrorMessage();
     if (wire->finishedError.empty()) {
       wire->finishedError = "Generic error";
     }
-    SHLOG_DEBUG("Wire {} failed with error {}", wire->name, wire->finishedError);
+
+    // print our stack log nicely now
+    auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
+    SHLOG_ERROR(msg);
+    mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, std::move(msg)});
 
     if (wire->resumer) {
       // also stop the resumer parent in this case
       wire->resumer->context->cancelFlow(wire->finishedError);
     }
+  } else {
+    wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
   }
 
   // if we have a resumer we return to it
@@ -2597,10 +2568,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return res;
   };
 
-  result->composeWire = [](SHWireRef wire, SHValidationCallback callback, void *userData, SHInstanceData data) noexcept {
+  result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     try {
-      return composeWire(sc.get(), callback, userData, data);
+      return composeWire(sc.get(), data);
     } catch (const std::exception &e) {
       SHComposeResult res{};
       res.failed = true;
@@ -2621,9 +2592,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return shards::runSubWire(sc.get(), context, *input);
   };
 
-  result->composeShards = [](Shards shards, SHValidationCallback callback, void *userData, SHInstanceData data) noexcept {
+  result->composeShards = [](Shards shards, SHInstanceData data) noexcept {
     try {
-      return shards::composeWire(shards, callback, userData, data);
+      return shards::composeWire(shards, data);
     } catch (const std::exception &e) {
       SHLOG_TRACE("composeShards failed: {}", e.what());
       SHComposeResult res{};
@@ -2641,9 +2612,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     }
   };
 
-  result->validateSetParam = [](Shard *shard, int index, const SHVar *param, SHValidationCallback callback,
-                                void *userData) noexcept {
-    return shards::validateSetParam(shard, index, *param, callback, userData);
+  result->validateSetParam = [](Shard *shard, int index, const SHVar *param) noexcept {
+    try {
+      return shards::validateSetParam(shard, index, *param);
+    } catch (...) {
+      // validateSetParam prints logs on failure so we don't need to do anything here
+      return false;
+    }
   };
 
   result->runShards = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {

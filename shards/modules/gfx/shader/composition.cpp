@@ -40,12 +40,6 @@ struct DynamicBlockFromShards : public blocks::Block {
   virtual void apply(IGeneratorContext &context) const {
     auto &definitions = context.getDefinitions();
 
-    // Compose the shards
-    auto composeCallback = [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
-      auto shardName = errorShard->name(const_cast<Shard *>(errorShard));
-      throw formatException("Failed to compose shader shards: {} ({})", errorTxt, shardName);
-    };
-
     std::shared_ptr<SHMesh> tempMesh = SHMesh::make();
     std::shared_ptr<SHWire> tempWire = SHWire::make("<shader wire>");
     tempWire->mesh = tempMesh;
@@ -80,7 +74,7 @@ struct DynamicBlockFromShards : public blocks::Block {
 
     ShaderCompositionContext shaderCompositionContext(context, composeWith);
     ShaderCompositionContext::withContext(shaderCompositionContext, [&]() {
-      SHComposeResult composeResult = composeWire(shards, composeCallback, nullptr, instanceData);
+      SHComposeResult composeResult = composeWire(shards, instanceData);
       DEFER(shards::arrayFree(composeResult.exposedInfo));
       DEFER(shards::arrayFree(composeResult.requiredInfo));
 

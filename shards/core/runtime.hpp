@@ -115,9 +115,6 @@ struct SHContext {
   bool onWorkerThread{false};
   uint64_t stepCounter{};
 
-  std::mutex anyStorageLock;
-  std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
-
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
@@ -126,6 +123,8 @@ struct SHContext {
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
+
+  constexpr void stopFlow() { state = SHWireState::Stop; }
 
   constexpr void stopFlow(const SHVar &lastValue) {
     state = SHWireState::Stop;
@@ -145,6 +144,18 @@ struct SHContext {
   void cancelFlow(std::string_view message) {
     state = SHWireState::Error;
     errorMessage = message;
+  }
+
+  void pushError(std::string &&message) { errorStack.emplace_back(std::move(message)); }
+  void resetErrorStack() { errorStack.clear(); }
+  std::string formatErrorStack() {
+    // reverse order
+    std::string out;
+    for (auto it = errorStack.rbegin(); it != errorStack.rend(); ++it) {
+      out += *it;
+      out += "\n";
+    }
+    return out;
   }
 
   SHStateSnapshot takeStateSnapshot() {
@@ -179,22 +190,29 @@ struct SHContext {
 
   constexpr SHVar getFlowStorage() const { return flowStorage; }
 
+  void mirror(const SHContext *other) {
+    state = other->state;
+    flowStorage = other->flowStorage;
+    errorMessage = other->errorMessage;
+    errorStack = other->errorStack;
+  }
+
 private:
   SHWireState state = SHWireState::Continue; // don't make this atomic! it's used a lot!
   // Used when flow is stopped/restart/return
   // to store the previous result
   SHVar flowStorage{};
   std::string errorMessage;
+  std::vector<std::string> errorStack;
 };
 
 namespace shards {
-[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                                          SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);
 
-bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
+bool validateSetParam(Shard *shard, int index, const SHVar &value);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck);
 void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var);
@@ -458,7 +476,11 @@ struct RuntimeCallbacks {
 };
 }; // namespace shards
 
-using VisitedWires = std::unordered_map<SHWire *, SHTypeInfo>;
+struct CompositionContext {
+  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
+  std::vector<std::string> errorStack;
+};
+
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static constexpr uint32_t TypeId = 'brcM';
   static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
@@ -490,23 +512,25 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     SHInstanceData data = instanceData;
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
-    VisitedWires visitedWires;
-    data.visitedWires = &visitedWires;
-    auto validation = shards::composeWire(
-        wire.get(),
-        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          auto blk = const_cast<Shard *>(errorShard);
-          if (!nonfatalWarning) {
-            throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
-                                       ", input shard: " + std::string(blk->name(blk)));
-          } else {
-            SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
-          }
-        },
-        this, data);
-    shards::arrayFree(validation.exposedInfo);
-    shards::arrayFree(validation.requiredInfo);
-    shards::freeDerivedInfo(data.inputType);
+    DEFER({ shards::freeDerivedInfo(data.inputType); });
+    CompositionContext privateContext{};
+    data.privateContext = &privateContext;
+    try {
+      auto validation = shards::composeWire(wire.get(), data);
+      shards::arrayFree(validation.exposedInfo);
+      shards::arrayFree(validation.requiredInfo);
+    } catch (const std::exception &e) {
+      // build a reverse stack error log from privateContext.errorStack
+      std::string errors;
+      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
+        errors += *it;
+        if (++it == privateContext.errorStack.rend())
+          break;
+        errors += "\n";
+      }
+      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
+      throw;
+    }
 
     SHLOG_TRACE("Wire {} composed", wire->name);
   }
@@ -542,18 +566,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHInstanceData data = instanceData;
       data.wire = wire.get();
       data.inputType = shards::deriveTypeInfo(input, data);
-      auto validation = shards::composeWire(
-          wire.get(),
-          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-            auto blk = const_cast<Shard *>(errorShard);
-            if (!nonfatalWarning) {
-              throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
-                                         ", input shard: " + std::string(blk->name(blk)));
-            } else {
-              SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
-            }
-          },
-          this, data);
+      auto validation = shards::composeWire(wire.get(), data);
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
       shards::freeDerivedInfo(data.inputType);
@@ -716,7 +729,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    // shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
     shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
     shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
