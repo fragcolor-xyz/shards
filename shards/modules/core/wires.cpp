@@ -122,9 +122,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   wire->id = data.wire->id;
 
   shassert(data.privateContext && "Visited wires should be set");
-  auto &composeCtx = *reinterpret_cast<CompositionContext *>(data.privateContext);
-  auto visitedIt = composeCtx.visitedWires.find(wire.get()); // should be race free
-  if (visitedIt != composeCtx.visitedWires.end()) {
+  auto composeCtx = reinterpret_cast<CompositionContext *>(data.privateContext);
+  shassert(composeCtx && "Composition context should be set");
+  auto visitedIt = composeCtx->visitedWires.find(wire.get()); // should be race free
+  if (visitedIt != composeCtx->visitedWires.end()) {
     // but visited does not mean composed...
     if (wire->composeResult && activating) {
       IterableExposedInfo shared(data.shared);
@@ -144,12 +145,12 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // we can add early in this case!
   // useful for Resume/Start
   if (passthrough) {
-    auto [_, done] = composeCtx.visitedWires.emplace(wire.get(), data.inputType);
+    auto [_, done] = composeCtx->visitedWires.emplace(wire.get(), data.inputType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
   } else if (mode == Stepped) {
-    auto [_, done] = composeCtx.visitedWires.emplace(wire.get(), CoreInfo::AnyType);
+    auto [_, done] = composeCtx->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
@@ -617,7 +618,7 @@ struct StopWire : public WireBase {
         wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
-    }
+      }
     }
 
     if (unlikely(!wire || context == wire->context)) {
