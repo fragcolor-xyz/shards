@@ -94,8 +94,6 @@ SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireIn
 SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller does not handle return
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-SHWireState activateShardsCancellable(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                      std::atomic_bool &token) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);

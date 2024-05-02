@@ -594,9 +594,14 @@ SHWireState suspend(SHContext *context, double seconds) {
   return context->getState();
 }
 
-template <typename T, bool HANDLES_RETURN, typename CANCELLATION_TOKEN = bool>
+static HashState<XXH128_hash_t> &wireHashState() {
+  static thread_local HashState<XXH128_hash_t> hashState;
+  return hashState;
+}
+
+template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                           CANCELLATION_TOKEN token = false) noexcept {
+                                           SHVar *outHash = nullptr) noexcept {
   // store initial input
   auto input = wireInput;
 
@@ -625,12 +630,6 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     }
 
     output = activateShard(blk, context, input);
-
-    if constexpr (std::is_same<CANCELLATION_TOKEN, std::atomic_bool &>::value) {
-      if (unlikely(bool(token))) {
-        context->stopFlow(Var::Empty);
-      }
-    }
 
     // Deal with aftermath of activation
     if (unlikely(!context->shouldContinue())) {
@@ -667,11 +666,6 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<Shards, false>(shards, context, wireInput, output);
-}
-
-SHWireState activateShardsCancellable(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                      std::atomic_bool &token) noexcept {
-  return shardsActivation<Shards, false, std::atomic_bool &>(shards, context, wireInput, output, token);
 }
 
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
