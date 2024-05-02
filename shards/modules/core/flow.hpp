@@ -515,6 +515,12 @@ struct Await : public BaseSubFlow {
         return Var::Empty; // return as there is some error or so going on
     } while (true);
 
+    // check if we should continue though!
+    if (!context->shouldContinue()) {
+      SHLOG_DEBUG("Await shard aborted before starting");
+      return input;
+    }
+
     // copy around to avoid race conditions
     OwnedVar inputCopy = input;
     _output = awaitne(
