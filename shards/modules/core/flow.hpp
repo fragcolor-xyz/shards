@@ -493,13 +493,12 @@ struct Await : public BaseSubFlow {
 
   void cleanup(SHContext *context) {
     BaseSubFlow::cleanup(context);
-#if 0 // so we don't do this actually even if we should cos we would race if we do, the reality is that it's fine like this cos
-      // awaitne will check real context anyway and stop executing eventually
     if (_context.has_value()) {
-      _context->stopFlow(Var::Empty);
-      _context.reset();
+      // this will trigger benign TSAN race condition warning
+      // we cannot make the bool inside the context atomic, simple, but it's fine
+      _context->stopFlow();
+      // Don't .reset() _context, it's still running on the worker thread
     }
-#endif
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

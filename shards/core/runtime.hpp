@@ -124,6 +124,10 @@ struct SHContext {
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
 
+  constexpr void stopFlow() {
+    state = SHWireState::Stop;
+  }
+
   constexpr void stopFlow(const SHVar &lastValue) {
     state = SHWireState::Stop;
     flowStorage = lastValue;
