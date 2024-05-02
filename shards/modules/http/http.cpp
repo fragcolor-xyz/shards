@@ -487,6 +487,7 @@ struct Server {
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       _pool->release(it->second);
+      _wireContainers.erase(it);
     }
   }
 

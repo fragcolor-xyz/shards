@@ -617,7 +617,7 @@ struct StopWire : public WireBase {
         wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
-      }
+    }
     }
 
     if (unlikely(!wire || context == wire->context)) {
@@ -1988,6 +1988,7 @@ struct Spawn : public CapturingSpawners {
       container->injectedVariables.clear();
 
       _pool->release(container);
+      _wireContainers.erase(it);
     }
   }
 
@@ -2005,6 +2006,7 @@ struct Spawn : public CapturingSpawners {
     }
 
     auto c = _pool->acquire(_composer, context);
+    shassert(!_wireContainers.contains(c->wire.get()));
     _wireContainers[c->wire.get()] = c;
 
     shassert(c->injectedVariables.empty() && "Spawn: injected variables should be empty");
