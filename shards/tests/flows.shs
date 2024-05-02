@@ -560,3 +560,21 @@
 
 @schedule(root detach-restart)
 @run(root) | Assert.Is(true)
+
+@wire(test-await-cancel {
+  Await({
+    Msg("test-await-cancel")
+    4.0 | SleepBlocking!
+  })
+  ; it will wait 4 secs and stop execution of all, yes sure but we will never reach here
+  true | Assert.Is(false) ; shoul never reach here
+})
+
+@wire(test-await-cancel-root {
+  Detach(test-await-cancel)
+  Pause(1.0)
+  Stop(test-await-cancel)
+})
+
+@schedule(root test-await-cancel-root)
+@run(root) | Assert.Is(true)

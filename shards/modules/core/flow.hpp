@@ -518,16 +518,17 @@ struct Await : public BaseSubFlow {
 
     // copy around to avoid race conditions
     OwnedVar inputCopy = input;
+    std::atomic_bool token{false};
     _output = awaitne(
         context,
         [&] {
           // we cannot give the real context to the other thread or we will have race conditions
           // it's fine though cos awaitne will check the actual real context anyway!
           SHVar output{};
-          _shards.activate(&*_context, inputCopy, output);
+          activateShardsCancellable(_shards.shards(), &*_context, inputCopy, output, token);
           return output;
         },
-        [] {});
+        [&] { token = true; });
 
     // need to replicate things that happened in the context
     if (!_context->shouldContinue()) {
