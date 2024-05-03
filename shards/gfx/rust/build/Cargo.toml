@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bindgen = "0.64.0"
+bindgen = "0.69"
