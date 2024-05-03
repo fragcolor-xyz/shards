@@ -944,7 +944,7 @@ typedef void(__cdecl *SHUnSchedule)(SHMeshRef mesh, SHWireRef wire);
 typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire, SHBool compose);
 typedef SHBool(__cdecl *SHTick)(SHMeshRef mesh);
 typedef void(__cdecl *SHTerminate)(SHMeshRef mesh);
-typedef void(__cdecl *SHSleep)(double seconds, SHBool runCallbacks);
+typedef void(__cdecl *SHSleep)(double seconds);
 
 #define SH_ARRAY_TYPE(_array_, _value_)                                          \
   typedef void(__cdecl * _array_##Free)(_array_ *);                              \
@@ -1112,18 +1112,6 @@ typedef struct _SHCore {
   SHRegisterObjectType registerObjectType;
   // Adds a custom enumeration type to the runtime database
   SHRegisterEnumType registerEnumType;
-
-  // Adds a custom call to call every shards sleep/yield internally
-  // These call will run on a single thread, usually the main, but they are safe
-  // due to the fact it runs after all SHMeshs ticked once
-  SHRegisterRunLoopCallback registerRunLoopCallback;
-  // Removes a previously added run loop callback
-  SHUnregisterRunLoopCallback unregisterRunLoopCallback;
-
-  // Adds a custom call to be called on final application exit
-  SHRegisterExitCallback registerExitCallback;
-  // Removes a previously added exit callback
-  SHUnregisterExitCallback unregisterExitCallback;
 
   // To be used within shards, to manipulate variables
   SHReferenceVariable referenceVariable;

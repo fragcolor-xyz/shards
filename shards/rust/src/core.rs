@@ -268,7 +268,7 @@ macro_rules! shlog_warn {
 #[inline(always)]
 pub fn sleep(seconds: f64) {
   unsafe {
-    (*Core).sleep.unwrap()(seconds, true);
+    (*Core).sleep.unwrap()(seconds);
   }
 }
 
