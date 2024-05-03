@@ -73,8 +73,8 @@ jobs:
           rustup toolchain install $RUSTUP_TOOLCHAIN
           rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
           cd emsdk
-          ./emsdk install 3.1.47
-          ./emsdk activate 3.1.47
+          ./emsdk install 3.1.59
+          ./emsdk activate 3.1.59
       - name: Set up rust (mt)
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |
