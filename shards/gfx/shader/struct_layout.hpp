@@ -400,7 +400,7 @@ private:
     if (sl.fieldNames.empty())
       return false;
     auto &last = sl.items.back();
-    if (auto at = std::get_if<ArrayType>(&last.type)) {
+    if (std::get_if<ArrayType>(&last.type)) {
       r.path.push_back(sl.fieldNames.back());
       r.offset += last.offset;
       r.size = last.size;

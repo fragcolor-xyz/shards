@@ -2,7 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "nlohmann/json.hpp"
-#include "core/module.hpp"
+#include <shards/core/module.hpp>
 #include <shards/core/runtime.hpp>
 #include <shards/shards.h>
 #include <shards/core/shared.hpp>

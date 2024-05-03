@@ -8,11 +8,20 @@
 #include "platform.hpp"
 
 // TODO make it into a run-time param
+#if SH_EMSCRIPTEN
+#define SH_BASE_STACK_SIZE 2 * 1024 * 1024
+#else
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
 #else
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
+#endif // SH_EMSCRIPTEN
+
+// Enable to assert on consistent resuming
+// this is required to pass for the emscripten version to work correctly
+// since fiber state is stored on the calling JS stack
+#define SH_DEBUG_CONSISTENT_RESUMER 1
 
 // Enable to assert on consistent resuming
 // this is required to pass for the emscripten version to work correctly

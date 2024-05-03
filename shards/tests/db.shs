@@ -1,7 +1,9 @@
 @mesh(root)
 
 @wire(extra-queries {
-  Pause(1.0)
+  Log("AAAAA")
+  Pause(5.0)
+  Log("HHHHHH")
   Repeat({
     Math.Inc(x)
     Math.Inc(y)
@@ -33,19 +35,19 @@
     @db-file-2 | FS.Remove
     @db-file-3 | FS.Remove
   })
-  
+
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery(@db-file)
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" @db-file)
   [] | DB.Query("SELECT * FROM integers" @db-file) | Log
   Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 1 passed")
-  
+
   [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" @db-file-2)
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" @db-file-2)
   [] | DB.Query("SELECT * FROM integers" @db-file-2) | Log
   Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 2 passed")
-  
+
   11 >= x
   22 >= y
   DB.Transaction({
@@ -58,17 +60,17 @@
   [] | DB.Query("SELECT * FROM integers" @db-file) | Log
   Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   Msg("Test 3 passed")
-  
+
   Do(failing-transaction)
-  
+
   Repeat({
     [] | DB.Query("SELECT * FROM integers" @db-file) | Log("Queried after detach")
     Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   } Times: 10)
   Msg("Test 4 passed")
-  
+
   DB.Backup(@db-file-3 @db-file)
-  
+
   ; test CRDT capabilities
   DB.LoadExtension("crsqlite" @db-file)
   [] | DB.Query("create table foo (a primary key not null, b)" @db-file)
@@ -81,7 +83,7 @@
   [] | DB.Query("select * from foo" @db-file) | Log
   [] | DB.Query("select * from baz" @db-file) | Log
   [] | DB.Query("select * from crsql_changes" @db-file) | Log
-  
+
   ; Test AsRows
   Repeat({
     [] | DB.Query("SELECT * FROM integers" @db-file AsRows: true) | Log

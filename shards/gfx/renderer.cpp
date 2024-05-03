@@ -45,6 +45,7 @@
 #include "pmr/vector.hpp"
 #include "pmr/unordered_map.hpp"
 #include "frame_queue.hpp"
+#include "gfx_wgpu.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -343,7 +344,12 @@ struct RendererImpl final : public ContextData {
   bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
+
+#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
@@ -371,7 +377,12 @@ struct RendererImpl final : public ContextData {
   bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
+
+#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.stagingBuffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
 
       wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
@@ -549,8 +560,6 @@ struct RendererImpl final : public ContextData {
     queueTextureCopies();
     queueBufferCopies();
 
-    clearOldCacheItems();
-
     processTransientPtrCleanupQueue();
 
 #ifdef TRACY_ENABLE
@@ -606,6 +615,8 @@ struct RendererImpl final : public ContextData {
 
     auto &debugVisualizers = storage.debugVisualizers.get(storage.frameCounter % 2);
     debugVisualizers.clear();
+
+    clearOldCacheItems();
   }
 };
 

@@ -3,7 +3,7 @@
 #include "wgsl.hpp"
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/temp_variable.hpp>
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 #include <map>
 #include <shards/shards.hpp>
 #include <spdlog/spdlog.h>

@@ -1,4 +1,4 @@
-#include "core/runtime.hpp"
+#include "shards/core/runtime.hpp"
 #include "gfx.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
@@ -10,10 +10,7 @@
 #include <shards/modules/core/time.hpp>
 #include <shards/modules/inputs/inputs.hpp>
 #include <shards/modules/gfx/gfx.hpp>
-#include <SDL_events.h>
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
-#include <SDL_scancode.h>
+#include <shards/input/sdl.hpp>
 #include <gfx/context.hpp>
 #include <gfx/platform_surface.hpp>
 #include <gfx/window.hpp>
@@ -24,7 +21,6 @@ using namespace shards::input;
 namespace shards {
 void WindowContext::nextFrame() {}
 gfx::Window &WindowContext::getWindow() { return *window.get(); }
-SDL_Window *WindowContext::getSdlWindow() { return getWindow().window; }
 } // namespace shards
 
 namespace gfx {
@@ -262,7 +258,10 @@ struct MainWindow final {
 
     if (shouldRun) {
       // Poll & distribute input events
-      callOnMeshThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMeshThread(shContext, [&]() {
+        window->maybeAutoResize();
+        _windowContext->inputMaster.update(*window.get());
+      });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event.event)) {

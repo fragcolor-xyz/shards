@@ -3,16 +3,10 @@
 
 #include "linalg.hpp"
 #include "../core/platform.hpp"
-#include <SDL_events.h>
 #include <string>
 #include <vector>
 #include <optional>
 
-#if SH_APPLE
-#include "platform_surface.hpp"
-#endif
-
-struct SDL_Window;
 namespace gfx {
 /// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
@@ -21,7 +15,19 @@ struct WindowCreationOptions {
   bool fullscreen = false;
   std::string title;
 };
+} // namespace gfx
 
+#if SH_EMSCRIPTEN
+#include "window_em.hpp"
+#else
+#include <SDL_events.h>
+
+#if SH_APPLE
+#include "platform_surface.hpp"
+#endif
+
+struct SDL_Window;
+namespace gfx {
 struct Window {
   SDL_Window *window = nullptr;
 
@@ -43,6 +49,9 @@ struct Window {
 
   void pollEvents(std::vector<SDL_Event> &events);
   bool pollEvent(SDL_Event &outEvent);
+
+  // Only for platforms that automatically size the output window
+  void maybeAutoResize();
 
   void *getNativeWindowHandle();
 
@@ -71,5 +80,6 @@ struct Window {
   ~Window();
 };
 }; // namespace gfx
+#endif
 
 #endif /* AEC3EB9B_7819_42B0_BB31_40818880ECE2 */

@@ -9,13 +9,14 @@
 #include "window.hpp"
 #include "log.hpp"
 #include "texture.hpp"
-#include <SDL_video.h>
 #include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+#if SHARDS_GFX_SDL
 #include <SDL_stdinc.h>
+#endif
 
 #if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -105,9 +106,11 @@ struct ContextMainOutput {
   TexturePtr texture;
 
   ContextFlushTextureReferencesRegistry onFlushTextureReferences;
+  
+  std::vector<WGPUTexture> inflightTextures;
 
 #ifndef WEBGPU_NATIVE
-  WGPUSwapChain wgpuSwapChain;
+  WGPUSwapChain wgpuSwapChain{};
 #endif
 
   ContextMainOutput(Window &window, ContextFlushTextureReferencesRegistry onFlushTextureReferences)
@@ -116,6 +119,7 @@ struct ContextMainOutput {
   }
 
   ~ContextMainOutput() {
+    flushInFlightTextures();
 #ifndef WEBGPU_NATIVE
     releaseSwapchain();
 #endif
@@ -134,7 +138,7 @@ struct ContextMainOutput {
       }
 #endif
 
-      WGPUPlatformSurfaceDescriptor surfDesc(window->window, surfaceHandle);
+      WGPUPlatformSurfaceDescriptor surfDesc(*window, surfaceHandle);
       wgpuSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
     }
 
@@ -162,7 +166,9 @@ struct ContextMainOutput {
     }
     wgpuCurrentTexture = st.texture;
 #else
-    wgpuCurrentTexture = gfxWgpuSwapChainGetCurrentTexture(wgpuSwapChain);
+    if (!wgpuSwapChain)
+      return false;
+    wgpuCurrentTexture = wgpuSwapChainGetCurrentTexture(wgpuSwapChain);
 #endif
 
     auto desc = texture->getDesc();
@@ -178,6 +184,13 @@ struct ContextMainOutput {
     return texture;
   }
 
+  void flushInFlightTextures() {
+    for (auto &t : inflightTextures) {
+      wgpuTextureRelease(t);
+    }
+    inflightTextures.clear();
+  }
+
   void present() {
     shassert(wgpuCurrentTexture);
 
@@ -185,7 +198,8 @@ struct ContextMainOutput {
     wgpuSurfacePresent(wgpuSurface);
 #endif
 
-    wgpuTextureRelease(wgpuCurrentTexture);
+    flushInFlightTextures();
+    inflightTextures.push_back(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
 
     FrameMark;
@@ -193,10 +207,15 @@ struct ContextMainOutput {
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
     int2 mainOutputSize = window->getDrawableSize();
+    if (mainOutputSize.x <= 0 || mainOutputSize.y <= 0) {
+      return;
+    }
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
+    flushInFlightTextures();
+
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
     // WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
@@ -272,7 +291,7 @@ struct ContextMainOutput {
         .presentMode = WGPUPresentMode_Fifo,
     };
     releaseSwapchain();
-    wgpuSwapChain = wgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
+    wgpuSwapChain = gfxWgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
 #endif
 
     texture
@@ -402,20 +421,22 @@ bool Context::beginFrame() {
 
   // collectContextData();
   if (!isHeadless()) {
-    const int maxAttempts = 2;
-    bool success = false;
+    bool attemptedRecreate = false;
 
-    // Try to request the swapchain texture, automatically recreate swapchain on failure
-    for (size_t i = 0; !success && i < maxAttempts; i++) {
+    bool success{};
+    do {
+      // Try to request the swapchain texture, automatically recreate swapchain on failure once
       success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
-        SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
-        mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
+        if (!attemptedRecreate) {
+          SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
+          mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
+          attemptedRecreate = true;
+        } else {
+          return false;
+        }
       }
-    }
-
-    if (!success)
-      return false;
+    } while (!success);
   }
 
   frameState = ContextFrameState::WaitingForEnd;
@@ -444,7 +465,7 @@ void Context::poll(bool wait) {
     wgpuDevicePoll(wgpuDevice, false, nullptr);
   }
 #else
-  emscripten_sleep(0);
+  // emscripten_sleep(0);
 #endif
 }
 
@@ -616,6 +637,7 @@ void Context::requestAdapter() {
   state = ContextState::Requesting;
 
   std::optional<WGPUBackendType> backend;
+#if SHARDS_GFX_SDL
   if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
     backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
@@ -623,10 +645,11 @@ void Context::requestAdapter() {
       SPDLOG_LOGGER_DEBUG(logger, "Using backend {}", magic_enum::enum_name(*backend));
     }
   }
+#endif
 
   if (!wgpuInstance) {
-    WGPUInstanceDescriptor desc{};
 #if WEBGPU_NATIVE
+    WGPUInstanceDescriptor desc{};
     WGPUInstanceExtras extras{
         .chain = {.sType = (WGPUSType)WGPUSType_InstanceExtras},
     };
@@ -659,8 +682,11 @@ void Context::requestAdapter() {
       extras.flags |= WGPUInstanceFlag_Validation;
     }
     desc.nextInChain = &extras.chain;
-#endif
     wgpuInstance = wgpuCreateInstance(&desc);
+#else
+    // Must be passed nullptr, until supported
+    wgpuInstance = wgpuCreateInstance(nullptr);
+#endif
   }
 
 #if WEBGPU_NATIVE

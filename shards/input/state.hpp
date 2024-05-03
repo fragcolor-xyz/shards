@@ -2,15 +2,16 @@
 #define AAC121E8_D624_4AD0_81F6_587EB5F716DC
 #include "input.hpp"
 #include "../core/platform.hpp"
-#include <SDL_events.h>
-#include <SDL_keycode.h>
-#include <SDL_mouse.h>
-#include <SDL_touch.h>
+#include "sdl.hpp"
 #include <functional>
 #include <optional>
 #include <boost/container/flat_set.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/small_vector.hpp>
+
+#if !SHARDS_GFX_SDL
+#include <shards/gfx/gfx_events_em.hpp>
+#endif
 
 namespace shards::input {
 
@@ -115,6 +116,7 @@ struct InputState {
   }
 
   void update() { // Retrieve up-to-date keyboard state
+#if SHARDS_GFX_SDL
     int numKeys{};
     auto keyStates = SDL_GetKeyboardState(&numKeys);
     heldKeys.clear();
@@ -150,6 +152,9 @@ struct InputState {
         }
       }
     }
+#else
+  modifiers = SDL_Keymod(gfx::em::getEventHandler()->serverInputState.modKeyState);
+#endif
   }
 };
 } // namespace shards::input
