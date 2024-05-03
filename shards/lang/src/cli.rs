@@ -4,7 +4,7 @@ use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
-use shards::core::Core;
+use shards::core::{sleep, Core};
 use shards::types::Mesh;
 use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};
 use std::collections::HashMap;
@@ -299,6 +299,9 @@ fn execute_seq(
     if !mesh.tick() || mesh.is_empty() {
       break;
     }
+
+    // still yield to other threads
+    sleep(0.0);
   }
 
   let info = wire.get_info();

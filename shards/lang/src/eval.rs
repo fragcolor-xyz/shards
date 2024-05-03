@@ -3390,6 +3390,8 @@ fn eval_pipeline(
                   if !mesh.tick() {
                     no_errors = false;
                   }
+                  // still yield to other threads
+                  sleep(0.0);
                 }
 
                 iteration += 1;
