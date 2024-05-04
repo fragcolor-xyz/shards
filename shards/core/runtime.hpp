@@ -415,34 +415,9 @@ inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::Iterati
 
 inline bool isCanceled(SHContext *context) { return context->shouldStop(); }
 
-inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
-  // negative = no sleep, just run callbacks
-
-  // Run callbacks first if needed
-  // Take note of how long it took and subtract from sleep time! if some time is
-  // left sleep
-  if (runCallbacks) {
-    SHDuration sleepTime(seconds);
-    auto pre = SHClock::now();
-    for (auto &shInfo : GetGlobals().RunLoopHooks) {
-      if (shInfo.second) {
-        shInfo.second();
-      }
-    }
-    auto post = SHClock::now();
-
-    SHDuration shsTime = post - pre;
-    SHDuration realSleepTime = sleepTime - shsTime;
-    if (seconds != -1.0 && realSleepTime.count() > 0.0) {
-      // Sleep actual time minus stuff we did in shs
-      seconds = realSleepTime.count();
-    } else {
-      // Don't yield to kernel at all in this case!
-      seconds = -1.0;
-    }
-  }
-
-  if (seconds >= 0.0) {
+inline void sleep(double seconds = -1.0) {
+  // negative = no sleep
+  if (seconds > 0.0) {
 #ifdef _WIN32
     HANDLE timer;
     LARGE_INTEGER ft;
@@ -462,10 +437,10 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
     while (nanosleep(&delay, &delay))
       (void)0;
 #endif
+  } else if (0.0) {
+    // just yield to kernel
+    std::this_thread::yield();
   }
-
-  if (runCallbacks)
-    FrameMarkNamed("Main Shards Yield");
 }
 
 struct RuntimeCallbacks {

@@ -394,28 +394,6 @@ int64_t findEnumId(std::string_view name) {
   return 0;
 }
 
-void registerRunLoopCallback(std::string_view eventName, SHCallback callback) {
-  shards::GetGlobals().RunLoopHooks[eventName] = callback;
-}
-
-void unregisterRunLoopCallback(std::string_view eventName) {
-  auto findIt = shards::GetGlobals().RunLoopHooks.find(eventName);
-  if (findIt != shards::GetGlobals().RunLoopHooks.end()) {
-    shards::GetGlobals().RunLoopHooks.erase(findIt);
-  }
-}
-
-void registerExitCallback(std::string_view eventName, SHCallback callback) {
-  shards::GetGlobals().ExitHooks[eventName] = callback;
-}
-
-void unregisterExitCallback(std::string_view eventName) {
-  auto findIt = shards::GetGlobals().ExitHooks.find(eventName);
-  if (findIt != shards::GetGlobals().ExitHooks.end()) {
-    shards::GetGlobals().ExitHooks.erase(findIt);
-  }
-}
-
 void registerWire(SHWire *wire) {
   std::shared_ptr<SHWire> sc(wire);
   shards::GetGlobals().GlobalWires[wire->name] = sc;
@@ -425,13 +403,6 @@ void unregisterWire(SHWire *wire) {
   auto findIt = shards::GetGlobals().GlobalWires.find(wire->name);
   if (findIt != shards::GetGlobals().GlobalWires.end()) {
     shards::GetGlobals().GlobalWires.erase(findIt);
-  }
-}
-
-void callExitCallbacks() {
-  // Iterate backwards
-  for (auto it = shards::GetGlobals().ExitHooks.begin(); it != shards::GetGlobals().ExitHooks.end(); ++it) {
-    it->second();
   }
 }
 
@@ -2448,22 +2419,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return shards::findEnumId(std::string_view{name.string, size_t(name.len)});
   };
 
-  result->registerRunLoopCallback = [](const char *eventName, SHCallback callback) noexcept {
-    API_TRY_CALL(registerRunLoopCallback, shards::registerRunLoopCallback(eventName, callback);)
-  };
-
-  result->registerExitCallback = [](const char *eventName, SHCallback callback) noexcept {
-    API_TRY_CALL(registerExitCallback, shards::registerExitCallback(eventName, callback);)
-  };
-
-  result->unregisterRunLoopCallback = [](const char *eventName) noexcept {
-    API_TRY_CALL(unregisterRunLoopCallback, shards::unregisterRunLoopCallback(eventName);)
-  };
-
-  result->unregisterExitCallback = [](const char *eventName) noexcept {
-    API_TRY_CALL(unregisterExitCallback, shards::unregisterExitCallback(eventName);)
-  };
-
   result->referenceVariable = [](SHContext *context, SHStringWithLen name) noexcept {
     std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceVariable(context, nameView);
@@ -2823,7 +2778,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     (*smesh)->terminate();
   };
 
-  result->sleep = [](double seconds, bool runCallbacks) noexcept { shards::sleep(seconds, runCallbacks); };
+  result->sleep = [](double seconds) noexcept { shards::sleep(seconds); };
 
   result->getRootPath = []() noexcept { return shards::GetGlobals().RootPath.c_str(); };
 

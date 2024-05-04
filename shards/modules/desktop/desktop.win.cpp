@@ -399,25 +399,6 @@ struct PixelBase {
       Grabbers.emplace_back(grabber);
       info.adapter->Release();
       info.output->Release();
-
-      // should we also start the global loop?
-      if (Grabbers.size() == 1) {
-        shards::registerRunLoopCallback("fragcolor.desktop.grabber", [] {
-          int len = Grabbers.size();
-          for (int i = len - 1; i >= 0; i--) {
-            auto &grabber = Grabbers[i];
-            auto state = grabber->capture();
-            if (state != DXGIDesktopCapture::Timeout && state != DXGIDesktopCapture::Normal) {
-              Grabbers.erase(Grabbers.begin() + i);
-            } else {
-              grabber->update();
-            }
-          }
-        });
-
-        shards::registerExitCallback("fragcolor.desktop.grabber", [] { Grabbers.clear(); });
-      }
-
       return grabber;
     }
 
@@ -444,6 +425,25 @@ struct PixelBase {
     }
 
     return findOrCreate(x, y);
+  }
+};
+
+struct CaptureFrame {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    int len = PixelBase::Grabbers.size();
+    for (int i = len - 1; i >= 0; i--) {
+      auto &grabber = PixelBase::Grabbers[i];
+      auto state = grabber->capture();
+      if (state != DXGIDesktopCapture::Timeout && state != DXGIDesktopCapture::Normal) {
+        PixelBase::Grabbers.erase(PixelBase::Grabbers.begin() + i);
+      } else {
+        grabber->update();
+      }
+    }
+    return input;
   }
 };
 
@@ -598,11 +598,6 @@ struct WaitKeyEvent : public WaitKeyEventBase {
         hookState->receivers.push_back(this);
         hookState->hook = SetWindowsHookEx(WH_KEYBOARD_LL, Hookproc, NULL, 0);
         assert(hookState->hook);
-        // also add a empty os pump
-        registerRunLoopCallback("fragcolor.desktop.keys-ospump", [] {
-          MSG msg;
-          PeekMessage(&msg, 0, 0, 0, 0);
-        });
       } else {
         hookState->refCount++;
         hookState->receivers.push_back(this);
@@ -611,6 +606,9 @@ struct WaitKeyEvent : public WaitKeyEventBase {
     }
 
     while (events.empty()) {
+      // We need to do this to allow the hook to work, when there is no message loop/window
+      MSG msg;
+      PeekMessage(&msg, 0, 0, 0, 0);
       // Wait for events
       SH_SUSPEND(context, 0);
     }
@@ -984,8 +982,7 @@ typedef Click<MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP> LeftClick;
 typedef Click<MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP> RightClick;
 typedef Click<MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP> MiddleClick;
 
-template <bool HORIZONTAL>
-struct Scroll : public MousePosBase {
+template <bool HORIZONTAL> struct Scroll : public MousePosBase {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -1394,4 +1391,5 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD("Desktop.ScrollHorizontal", ScrollHorizontal);
   REGISTER_SHARD("Desktop.ScrollVertical", ScrollVertical);
   REGISTER_SHARD("Desktop.MoveMouse", SetMouseRelativePos);
+  REGISTER_SHARD("Desktop.CaptureFrame", CaptureFrame);
 }

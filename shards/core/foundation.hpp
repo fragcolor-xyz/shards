@@ -115,11 +115,6 @@ const SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
 int64_t findObjectTypeId(std::string_view name);
 const SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId);
 int64_t findEnumId(std::string_view name);
-void registerRunLoopCallback(std::string_view eventName, SHCallback callback);
-void unregisterRunLoopCallback(std::string_view eventName);
-void registerExitCallback(std::string_view eventName, SHCallback callback);
-void unregisterExitCallback(std::string_view eventName);
-void callExitCallbacks();
 void registerWire(SHWire *wire);
 void unregisterWire(SHWire *wire);
 
@@ -490,10 +485,6 @@ public:
   std::unordered_map<std::string_view, int64_t> ObjectTypesRegisterByName;
   std::unordered_map<int64_t, SHEnumInfo> EnumTypesRegister;
   std::unordered_map<std::string_view, int64_t> EnumTypesRegisterByName;
-
-  // map = ordered! we need that for those
-  std::map<std::string_view, SHCallback> RunLoopHooks;
-  std::map<std::string_view, SHCallback> ExitHooks;
 
   std::unordered_map<std::string, std::shared_ptr<SHWire>> GlobalWires;
 

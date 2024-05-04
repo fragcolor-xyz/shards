@@ -1984,9 +1984,9 @@ SHVar hashActivation(const SHVar &input) { return shards::hash(input); }
 
 SHVar blockingSleepActivation(const SHVar &input) {
   if (input.valueType == SHType::Int) {
-    sleep(double(input.payload.intValue) / 1000.0, false);
+    sleep(double(input.payload.intValue) / 1000.0);
   } else if (input.valueType == SHType::Float) {
-    sleep(input.payload.floatValue, false);
+    sleep(input.payload.floatValue);
   } else {
     throw ActivationError("Expected either SHType::Int (ms) or SHType::Float (seconds)");
   }
