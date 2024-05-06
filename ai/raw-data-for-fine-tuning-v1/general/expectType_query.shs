@@ -47,7 +47,7 @@ Expect(Type:@type(Type::Image))
 Expect(Type:@type(Type::Audio))
 """
 
-explanation: """The expect Shard will take an input and check if it is the stipulated type in the Type  parameter.If it is, it will return the input as the stipulated type.
+explanation: """The expect Shard will take an input and check if it is the stipulated type in the Type parameter. If it is, it will return the input as the stipulated type.
 Otherwise, the program will fail.
 """
 

@@ -24,6 +24,6 @@ Log(Prefix: "result" Level: LogLevel::Info)
 """
 
 explanation: """Maybe attempts to activate a shard or a sequence of shards specified in the Shards parameter. Upon failure, activate another shard or sequence of shards in the Else parameter. 
-If Silent boolean parameter is assigned the value true, it will disable Log and Msg shards and no warning message would be printed upon failure
+If Silent boolean parameter is assigned the value true, it will disable Log and Msg shards and no warning message would be printed upon failure.
 """
 }

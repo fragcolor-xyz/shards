@@ -22,7 +22,6 @@ explanation: """Sort is a Shard that will parse through the sequence specified i
 If :Desc is set to true the sequence is sorted in descending order, else it's sorted in the ascending order
 If another sequence is passed  into the Join parameter. The sequence in the Join parameter will mirror the final arrangement
 of the sequence passed into the From parameter. For this to work, both sequences need to be of the same length.
-
 """
 
 tag: "  #General"

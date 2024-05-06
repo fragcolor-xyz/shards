@@ -14,7 +14,7 @@ When(Predicate:{Is(Value: 2)}  Action: {
 Pass
 } Passthrough: true)"""
 
-explanation: """The Pass Shard makes an action parameter do nothing and return back its input.
+explanation: """The Pass Shard makes an action parameter do nothing and return its input.
 """
 
 tag: "  #General"

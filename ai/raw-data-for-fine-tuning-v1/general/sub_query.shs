@@ -19,7 +19,6 @@ Log(Prefix: "result2" Level: LogLevel::Info)
 
 explanation: """Sub is a Shard that activates a Shard or a sequence of Shards independently, without consuming the input. 
 I.e. the input of the Sub flow will also be its output regardless of the Shards activated in this Sub flow.
-
 """
 
 tag: "  #General"

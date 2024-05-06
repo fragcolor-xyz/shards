@@ -10,7 +10,7 @@ AppendTo(Collection: sequence)"""
 
 explanation: """The AppendTo Shard adds an element that is passed as input to the end of a sequence specified in the Collection parameter.
 This Shard works on both string and sequence variables.
-The type  of element being appended needs to be of the same type as the sequence.
+The type of element being appended needs to be of the same type as the sequence.
 """
 
 tag: "  #General"

@@ -13,7 +13,7 @@ When(Predicate: {Is(Value: 1) | Or | Get(Name: variable) | Is(Value: 2)}  Action
 Log(Prefix: "condition met" Level: LogLevel::Info)
 })"""
 
-explanation: """The Or statement is a Shard that is used to chain multiple  Conditional statements together. If either of the conditions chained are met,
+explanation: """The Or statement is a Shard that is used to chain multiple Conditional statements together. If either of the conditions chained are met,
 the Predicate parameter  will  return true and execute what is dictated in the Action Parameter.
 """
 
