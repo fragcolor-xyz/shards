@@ -821,7 +821,9 @@
   "text-copy.txt"
   FS.Remove
   Assert.Is(true true)
-  "text-copy2.txt" | FS.Absolute
+  "text-copy2.txt"
+  FS.Rename("text-copy3.txt")
+  "text-copy3.txt" | FS.Absolute
   FS.Remove
   Assert.Is(true true)
 

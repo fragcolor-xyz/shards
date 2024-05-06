@@ -580,6 +580,37 @@ struct Absolute {
     return Var(_output);
   }
 };
+
+struct Rename {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  PARAM_PARAMVAR(_newName, "NewName", "The new name for the file", {CoreInfo::StringOrStringVar});
+  PARAM_IMPL(PARAM_IMPL_FOR(_newName));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    // check exists
+    if (!fs::exists(p)) {
+      throw ActivationError(fmt::format("FS.Rename, file {} does not exist.", p));
+    }
+    auto newName = SHSTRING_PREFER_SHSTRVIEW(_newName.get());
+    // check if exists
+    if (fs ::exists(newName)) {
+      throw ActivationError(fmt::format("FS.Rename, file {} already exists.", newName));
+    }
+    fs::rename(p, newName);
+    return input;
+  }
+};
 }; // namespace FS
 
 SHARDS_REGISTER_FN(fs) {
@@ -602,5 +633,6 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
   REGISTER_SHARD("FS.CreateDirectories", FS::CreateDirectories);
   REGISTER_SHARD("FS.Absolute", FS::Absolute);
+  REGISTER_SHARD("FS.Rename", FS::Rename);
 }
 }; // namespace shards
