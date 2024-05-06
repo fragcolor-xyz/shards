@@ -1456,6 +1456,14 @@ TEST_CASE("shards-lang") {
   TEST_SUCCESS_CASE("SeqTake 2", "[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
   TEST_SUCCESS_CASE("TableTake 1", "{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
 
+  TEST_EVAL_ERROR_CASE("Fail redefine", "@define(a 2) @define(a 3)", "a already defined");
+  TEST_SUCCESS_CASE("Successful redefine", "@define(a 2) @define(a 3 IgnoreRedefined: true)");
+  TEST_SUCCESS_CASE("Define over wire", "@wire(a {Pass}) @define(a 3)");
+  TEST_EVAL_ERROR_CASE("Redefine wire", "@wire(a {Pass}) @wire(a {Pass})",
+                       "Identifier a already used at LineInfo { line: 1, column: 1 }");
+  TEST_EVAL_ERROR_CASE("Define over template", "@template(a [] {Pass}) @define(a 2)", "a already defined");
+  TEST_SUCCESS_CASE("Redefine over template", "@template(a [] {Pass}) @define(a 2 IgnoreRedefined: true)");
+
   SECTION("TableTake 2") {
     auto code = "{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});

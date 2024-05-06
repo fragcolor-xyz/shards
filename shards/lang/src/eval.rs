@@ -2963,7 +2963,7 @@ fn eval_pipeline(
                   value,
                 ) => {
                   if let Some(_) = e
-                    .raw_identifiers
+                    .identifiers
                     .insert(name.clone(), block.line_info.clone().unwrap_or_default())
                   {
                     if !ignore_redefined {
