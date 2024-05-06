@@ -125,9 +125,9 @@ if(EMSCRIPTEN)
     "SHELL:-s STACK_SIZE=1000000"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s LLD_REPORT_UNDEFINED"
-    "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_shardsInterface', '_malloc', '_free', '_emscripten_get_now']\""
+    "SHELL:-s \"EXPORTED_FUNCTIONS=['_shardsInterface', '_malloc', '_free', '_emscripten_get_now']\""
     "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
-    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
+    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
 
   target_link_options(shards-core PUBLIC "SHELL:-s ASYNCIFY=1")
