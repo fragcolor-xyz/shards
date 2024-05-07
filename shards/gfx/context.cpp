@@ -155,9 +155,6 @@ struct ContextMainOutput {
       resizeSwapchain(device, adapter, drawableSize);
     }
 
-    if (!wgpuSwapChain)
-      return false;
-
 #ifdef WEBGPU_NATIVE
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
@@ -171,6 +168,8 @@ struct ContextMainOutput {
     }
     wgpuCurrentTexture = st.texture;
 #else
+    if (!wgpuSwapChain)
+      return false;
     wgpuCurrentTexture = wgpuSwapChainGetCurrentTexture(wgpuSwapChain);
 #endif
 
