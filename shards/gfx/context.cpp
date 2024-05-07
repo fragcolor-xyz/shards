@@ -598,8 +598,8 @@ void Context::requestAdapter() {
   }
 
   if (!wgpuInstance) {
-    WGPUInstanceDescriptor desc{};
 #if WEBGPU_NATIVE
+    WGPUInstanceDescriptor desc{};
     WGPUInstanceExtras extras{
         .chain = {.sType = (WGPUSType)WGPUSType_InstanceExtras},
     };
@@ -632,8 +632,11 @@ void Context::requestAdapter() {
       extras.flags |= WGPUInstanceFlag_Validation;
     }
     desc.nextInChain = &extras.chain;
-#endif
     wgpuInstance = wgpuCreateInstance(&desc);
+#else
+    // Must be passed nullptr, until supported
+    wgpuInstance = wgpuCreateInstance(nullptr);
+#endif
   }
 
 #if WEBGPU_NATIVE

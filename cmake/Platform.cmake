@@ -79,12 +79,13 @@ endif()
 if(EMSCRIPTEN)
   add_compile_options(-fdeclspec)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_compile_options(-g1 -Os)
-  endif()
+  # if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  #   add_compile_options(-g1 -Os)
+  # endif()
 
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("SHELL:-s ASSERTIONS=2")
+    # add_link_options(-gsource-map)
   endif()
 
   add_compile_definitions(NO_FORCE_INLINE)
