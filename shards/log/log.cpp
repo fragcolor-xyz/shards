@@ -227,7 +227,9 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
 
   {
     auto l = sinks.lockUnique();
-    sinks.initLogFile(fileName);
+    if (!fileName.empty()) {
+      sinks.initLogFile(fileName);
+    }
     // Reset this sink in case stderr handle changed
     sinks.initStdErrSink();
   }
