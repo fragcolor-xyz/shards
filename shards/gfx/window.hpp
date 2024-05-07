@@ -22,6 +22,12 @@ struct WindowCreationOptions {
   std::string title;
 };
 
+#if SH_EMSCRIPTEN
+struct EmscriptenWindow {
+  static void setCanvasContainer(const char* tag);
+};
+#endif
+
 struct Window {
   SDL_Window *window = nullptr;
 

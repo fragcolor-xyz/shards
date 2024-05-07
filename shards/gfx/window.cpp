@@ -19,6 +19,27 @@
 #endif
 
 namespace gfx {
+
+struct EmscriptenInternal {
+  std::string canvasContainerTag;
+
+  static EmscriptenInternal &get() {
+    static EmscriptenInternal instance;
+    return instance;
+  }
+
+  int2 getCanvasContainerSize() {
+    if (canvasContainerTag.empty())
+      throw std::logic_error("Emscripten canvas container tag not set");
+
+    double cw{}, ch{};
+    emscripten_get_element_css_size(canvasContainerTag.c_str(), &cw, &ch);
+    return int2(cw, ch);
+  }
+};
+
+void EmscriptenWindow::setCanvasContainer(const char *tag) { EmscriptenInternal::get().canvasContainerTag = tag; }
+
 void Window::init(const WindowCreationOptions &options) {
   if (window)
     throw std::logic_error("Already initialized");
@@ -56,6 +77,12 @@ void Window::init(const WindowCreationOptions &options) {
 #endif
 
   SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+
+#if SH_EMSCRIPTEN
+  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
+  width = canvasContainerSize.x;
+  height = canvasContainerSize.y;
+#endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
   SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
