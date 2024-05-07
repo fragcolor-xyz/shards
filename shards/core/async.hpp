@@ -7,12 +7,20 @@
 #include <deque>
 
 #include <shards/shards.h>
+#include "platform.hpp"
 #include "utils.hpp"
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
 
 #include <tracy/Wrapper.hpp>
+
+// Can not create this many workers, create on demand instead
+#if SH_EMSCRIPTEN
+#define SH_ENABLE_TIDE_POOL 0
+#else
+#define SH_ENABLE_TIDE_POOL 1
+#endif
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
 #define HAS_ASYNC_SUPPORT 0
@@ -50,12 +58,12 @@ namespace shards {
  * - Schedule tasks using the schedule() function.
  * - The pool will automatically adjust the number of worker threads based on the workload.
  */
-
 struct TidePool {
   struct Work {
     virtual void call() = 0;
   };
 
+#if SH_ENABLE_TIDE_POOL
   struct Worker {
     Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter, std::mutex &condMutex,
            std::condition_variable &cond)
@@ -158,6 +166,11 @@ struct TidePool {
         worker._thread.join();
     }
   }
+#else // Dummy implementation
+  void schedule(Work *work) {
+    std::thread([work]() { work->call(); }).detach();
+  }
+#endif
 };
 
 TidePool &getTidePool();

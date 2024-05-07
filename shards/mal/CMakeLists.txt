@@ -15,7 +15,7 @@ function(setup_shards_target TARGET)
   if(NOT EMSCRIPTEN)
     target_link_libraries(${TARGET} Boost::process)
   endif()
-  target_link_libraries(${TARGET} replxx shards-lang-rust shards-core)
+  target_link_libraries(${TARGET} replxx shards-core)
 endfunction()
 
 function(setup_shards_library_target TARGET)
@@ -47,5 +47,8 @@ if(EMSCRIPTEN)
     "SHELL:-s MODULARIZE=1"
     "SHELL:-s EXPORT_NAME=shards"
     "SHELL:-s NO_EXIT_RUNTIME=1"
+    "SHELL:-s \"EXPORTED_FUNCTIONS=['_shardsInterface', '_malloc', '_free', '_emscripten_get_now']\""
+    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
+    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
 endif()

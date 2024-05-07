@@ -10,6 +10,7 @@ var shards_core = {
   _emscripten_get_now: function () {
     return Date.now() / 1000.0;
   }, // work around for emscripten and rust crate "instant"
+  emEval__deps: ['$stringToUTF8', '$lengthBytesUTF8', '$UTF8ToString'],
   emEval: function (code) {
     try {
       const scode = UTF8ToString(code);
