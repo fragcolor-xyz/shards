@@ -2924,6 +2924,9 @@ fn eval_pipeline(
                         )
                           .into(),
                       );
+                    } else {
+                      // ok we are ignoring redefined, so we just skip
+                      return Ok(());
                     }
                   }
 
