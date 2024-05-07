@@ -20,6 +20,7 @@
 
 namespace gfx {
 
+#if SH_EMSCRIPTEN
 struct EmscriptenInternal {
   std::string canvasContainerTag;
 
@@ -37,8 +38,8 @@ struct EmscriptenInternal {
     return int2(cw, ch);
   }
 };
-
 void EmscriptenWindow::setCanvasContainer(const char *tag) { EmscriptenInternal::get().canvasContainerTag = tag; }
+#endif
 
 void Window::init(const WindowCreationOptions &options) {
   if (window)
