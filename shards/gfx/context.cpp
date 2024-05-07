@@ -113,7 +113,7 @@ struct ContextMainOutput {
   ContextFlushTextureCallback onFlushTextureReferences;
 
 #ifndef WEBGPU_NATIVE
-  WGPUSwapChain wgpuSwapChain;
+  WGPUSwapChain wgpuSwapChain{};
 #endif
 
   ContextMainOutput(Window &window, ContextFlushTextureCallback onFlushTextureReferences)
@@ -155,6 +155,9 @@ struct ContextMainOutput {
       resizeSwapchain(device, adapter, drawableSize);
     }
 
+    if (!wgpuSwapChain)
+      return false;
+
 #ifdef WEBGPU_NATIVE
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
@@ -168,7 +171,7 @@ struct ContextMainOutput {
     }
     wgpuCurrentTexture = st.texture;
 #else
-    wgpuCurrentTexture = gfxWgpuSwapChainGetCurrentTexture(wgpuSwapChain);
+    wgpuCurrentTexture = wgpuSwapChainGetCurrentTexture(wgpuSwapChain);
 #endif
 
     auto desc = texture->getDesc();
@@ -199,6 +202,9 @@ struct ContextMainOutput {
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
     int2 mainOutputSize = window->getDrawableSize();
+    if (mainOutputSize.x <= 0 || mainOutputSize.y <= 0) {
+      return;
+    }
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
@@ -382,20 +388,22 @@ bool Context::beginFrame() {
 
   collectContextData();
   if (!isHeadless()) {
-    const int maxAttempts = 2;
-    bool success = false;
+    bool attemptedRecreate = false;
 
-    // Try to request the swapchain texture, automatically recreate swapchain on failure
-    for (size_t i = 0; !success && i < maxAttempts; i++) {
+    bool success{};
+    do {
+      // Try to request the swapchain texture, automatically recreate swapchain on failure once
       success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
-        SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
-        mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
+        if (!attemptedRecreate) {
+          SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
+          mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
+          attemptedRecreate = true;
+        } else {
+          return false;
+        }
       }
-    }
-
-    if (!success)
-      return false;
+    } while (!success);
   }
 
   frameState = ContextFrameState::WaitingForEnd;

@@ -11,8 +11,40 @@
 #include <spdlog/sinks/dist_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#ifdef __ANDROID__
+#include "../core/platform.hpp"
+#if SH_ANDROID
 #include <spdlog/sinks/android_sink.h>
+#elif SH_EMSCRIPTEN
+#include <emscripten.h>
+
+struct EmscriptenSink : public spdlog::sinks::base_sink<std::mutex> {
+  void sink_it_(const spdlog::details::log_msg &msg) override {
+    int lv = EM_LOG_CONSOLE;
+    switch (msg.level) {
+    case spdlog::level::trace:
+    case spdlog::level::debug:
+      lv |= EM_LOG_DEBUG;
+      break;
+    case spdlog::level::critical:
+    case spdlog::level::err:
+      lv |= EM_LOG_ERROR;
+      break;
+    case spdlog::level::warn:
+      lv |= EM_LOG_WARN;
+      break;
+    default:
+    case spdlog::level::info:
+      lv |= EM_LOG_INFO;
+      break;
+    }
+
+    tmpBuffer.assign(msg.payload.data(), msg.payload.size());
+    emscripten_log(lv, "%s", tmpBuffer.data());
+  }
+  void flush_() override {}
+  std::string tmpBuffer;
+};
+
 #endif
 
 namespace shards::logging {
@@ -94,8 +126,10 @@ struct Sinks {
   std::shared_ptr<spdlog::sinks::dist_sink_mt> distSink;
   std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> stdErrSink;
   std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logFileSink;
-#ifdef __ANDROID__
+#if SH_ANDROID
   std::shared_ptr<spdlog::sinks::android_sink_mt> androidSink;
+#elif SH_EMSCRIPTEN
+  std::shared_ptr<EmscriptenSink> emscriptenSink;
 #endif
 
   bool logLevelOverriden{};
@@ -103,10 +137,15 @@ struct Sinks {
   Sinks() {
     distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
+#if SH_EMSCRIPTEN
+    emscriptenSink = std::make_shared<EmscriptenSink>();
+    distSink->add_sink(emscriptenSink);
+#endif
+
     initStdErrSink();
 
     // Setup android logcat output
-#ifdef __ANDROID__
+#if SH_ANDROID
     androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
     distSink->add_sink(androidSink);
 #endif
@@ -124,10 +163,12 @@ struct Sinks {
   std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
 
   void initStdErrSink() {
+#if !SH_EMSCRIPTEN
     if (stdErrSink)
       distSink->remove_sink(stdErrSink);
     stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     distSink->add_sink(stdErrSink);
+#endif
   }
 
   void initLogFile(std::string fileName) {
