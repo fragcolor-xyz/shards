@@ -9,9 +9,7 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
-use shards::types::Seq;
 use shards::SHType_Trait;
-use std::char::REPLACEMENT_CHARACTER;
 
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -85,8 +83,6 @@ enum Definition {
   Constant(SVar),
 }
 
-type RawDefinition = ();
-
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
@@ -102,10 +98,6 @@ pub struct EvalEnv {
   shards_groups: HashMap<Identifier, ShardsGroup>,
   macro_groups: HashMap<Identifier, ShardsGroup>,
   definitions: HashMap<Identifier, Definition>,
-  // Used identifiers for templates/defines (with @ sign)
-  identifiers: HashMap<Identifier, LineInfo>,
-  // Used identifiers for wires/interfaces (without @ sign)
-  raw_identifiers: HashMap<Identifier, LineInfo>,
 
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
@@ -150,8 +142,6 @@ impl EvalEnv {
       macro_groups: HashMap::new(),
       definitions: HashMap::new(),
       replacements: HashMap::new(),
-      identifiers: HashMap::new(),
-      raw_identifiers: HashMap::new(),
       suffix: None,
       suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
@@ -180,41 +170,6 @@ impl EvalEnv {
     }
 
     env
-  }
-
-  pub(crate) fn insert_identifier(
-    &mut self,
-    id: &Identifier,
-    li: LineInfo,
-  ) -> Result<(), ShardsError> {
-    if let Some(prev) = self.identifiers.insert(id.clone(), li) {
-      Err(
-        (
-          format!("Identifier {} already used at {:?}", id.resolve(), prev),
-          li,
-        )
-          .into(),
-      )
-    } else {
-      Ok(())
-    }
-  }
-  pub(crate) fn insert_raw_identifier(
-    &mut self,
-    id: &Identifier,
-    li: LineInfo,
-  ) -> Result<(), ShardsError> {
-    if let Some(prev) = self.raw_identifiers.insert(id.clone(), li) {
-      Err(
-        (
-          format!("Identifier {} already used at {:?}", id.resolve(), prev),
-          li,
-        )
-          .into(),
-      )
-    } else {
-      Ok(())
-    }
   }
 }
 
@@ -2876,8 +2831,6 @@ fn eval_pipeline(
                   },
                   types,
                 ) => {
-                  e.insert_raw_identifier(name, block.line_info.unwrap_or_default())?;
-
                   let make_trait_shards = Sequence {
                     statements: vec![Statement::Pipeline(Pipeline {
                       blocks: vec![Block {
@@ -2962,10 +2915,7 @@ fn eval_pipeline(
                   },
                   value,
                 ) => {
-                  if let Some(_) = e
-                    .raw_identifiers
-                    .insert(name.clone(), block.line_info.clone().unwrap_or_default())
-                  {
+                  if let Some(_) = find_defined(name, e) {
                     if !ignore_redefined {
                       return Err(
                         (
@@ -3045,8 +2995,6 @@ fn eval_pipeline(
                 name.clone()
               };
 
-              e.insert_raw_identifier(&name, block.line_info.clone().unwrap_or_default())?;
-
               let params_ptr = func.params.as_ref().ok_or(
                 (
                   "wire built-in function requires a Params parameter",
@@ -3119,8 +3067,6 @@ fn eval_pipeline(
                         .into(),
                     );
                   }
-
-                  e.insert_identifier(name, block.line_info.clone().unwrap_or_default())?;
 
                   let args_ptr = args as *const _;
                   let shards_ptr = shards as *const _;
