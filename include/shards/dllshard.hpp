@@ -73,18 +73,6 @@ public:
     sCore._core->registerEnumType(vendorId, typeId, info);
   }
 
-  static void registerRunLoopCallback(const char *eventName, SHCallback callback) {
-    sCore._core->registerRunLoopCallback(eventName, callback);
-  }
-
-  static void registerExitCallback(const char *eventName, SHCallback callback) {
-    sCore._core->registerExitCallback(eventName, callback);
-  }
-
-  static void unregisterRunLoopCallback(const char *eventName) { sCore._core->unregisterRunLoopCallback(eventName); }
-
-  static void unregisterExitCallback(const char *eventName) { sCore._core->unregisterExitCallback(eventName); }
-
   static SHVar *referenceVariable(SHContext *context, struct SHStringWithLen name) {
     return sCore._core->referenceVariable(context, name);
   }
@@ -333,11 +321,6 @@ class EnumInfo : public TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_> 
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
       : TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
-};
-
-template <typename E> class ObjectVar : public TObjectVar<Core, E> {
-public:
-  ObjectVar(const char *name, int32_t vendorId, int32_t objectId) : TObjectVar<Core, E>(name, vendorId, objectId) {}
 };
 
 inline void registerShard(const char *fullName, SHShardConstructor constructor, std::string_view _) {
