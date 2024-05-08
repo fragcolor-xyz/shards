@@ -59,6 +59,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 endif()
 
 option(SHARDS_MIN_DEBUG_INFO "Use minimal debug info" OFF)
+
 function(fixup_debug_flags VARNAME)
   string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UPPER)
   set(TMP_VARNAME "${VARNAME}_${CMAKE_BUILD_TYPE_UPPER}")
@@ -80,11 +81,11 @@ if(EMSCRIPTEN)
   add_compile_options(-fdeclspec)
 
   # if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  #   add_compile_options(-g1 -Os)
+  # add_compile_options(-g1 -Os)
   # endif()
-
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("SHELL:-s ASSERTIONS=2")
+
     # add_link_options(-gsource-map)
   endif()
 
@@ -175,6 +176,7 @@ endif()
 add_compile_options(
   ${INLINING_FLAGS}
   $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+  $<$<COMPILE_LANGUAGE:CXX>:-Werror=return-type>
 )
 
 if(NOT MSVC)

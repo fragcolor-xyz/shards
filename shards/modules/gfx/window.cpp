@@ -262,7 +262,10 @@ struct MainWindow final {
 
     if (shouldRun) {
       // Poll & distribute input events
-      callOnMeshThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMeshThread(shContext, [&]() {
+        window->maybeAutoResize();
+        _windowContext->inputMaster.update(*window.get());
+      });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event.event)) {

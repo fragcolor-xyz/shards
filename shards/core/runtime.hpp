@@ -19,6 +19,7 @@
 #include "inline.hpp"
 #include "utils.hpp"
 #include "object_type.hpp"
+#include "platform.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -43,7 +44,8 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <time.h>
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
 #include <emscripten/val.h>
 #endif
 
@@ -897,6 +899,10 @@ inline SHContext *getRootContext(SHContext *current) {
 }
 
 template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+#if SH_EMSCRIPTEN
+  // Context always runs on the mesh thread already
+  func.action();
+#else
   if (context) {
     if (unlikely(context->onWorkerThread)) {
       throw ActivationError("Trying to callOnMeshThread from a worker thread!");
@@ -925,6 +931,7 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
     SHLOG_WARNING("NO Context, not running on mesh thread");
     func.action();
   }
+#endif
 }
 
 template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext *context, L &&func) {

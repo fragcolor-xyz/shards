@@ -54,6 +54,10 @@
 
 #include "coro.hpp"
 
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
+#endif
+
 #ifdef NDEBUG
 #define SH_COMPRESSED_STRINGS 1
 #endif

@@ -526,8 +526,6 @@ struct RendererImpl final : public ContextData {
     queueTextureCopies();
     queueBufferCopies();
 
-    clearOldCacheItems();
-
     processTransientPtrCleanupQueue();
 
 #ifdef TRACY_ENABLE
@@ -577,6 +575,8 @@ struct RendererImpl final : public ContextData {
 
     auto &debugVisualizers = storage.debugVisualizers.get(storage.frameCounter % 2);
     debugVisualizers.clear();
+
+    clearOldCacheItems();
   }
 };
 

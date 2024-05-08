@@ -9,7 +9,7 @@
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
 #else
-#define SH_BASE_STACK_SIZE 128 * 1024
+#define SH_BASE_STACK_SIZE 1024 * 1024
 #endif
 
 // Defining SH_USE_THREAD_FIBER uses threads as fibers to aid in debugging
