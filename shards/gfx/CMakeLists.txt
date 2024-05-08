@@ -70,7 +70,7 @@ target_link_libraries(gfx
   shards-logging
   shards-fast-string
 )
-target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+target_precompile_headers(gfx PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 target_link_libraries(gfx Tracy::TracyClient)
 
 if(HAVE_THREADS)
@@ -101,25 +101,11 @@ endif()
 
 if(EMSCRIPTEN)
   # Use builtin SDL2 port
-  target_compile_options(gfx PUBLIC
-    "SHELL:-s USE_SDL=2"
-  )
-
   target_link_options(gfx PUBLIC
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
-    "SHELL:-s USE_SDL=2"
-    "SHELL:-s USE_WEBGPU=1"
-    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
-    "SHELL:-s NO_DISABLE_EXCEPTION_CATCHING"
-    "SHELL:-s ASYNCIFY=1"
+    "-sUSE_WEBGPU=1"
+    "-sALLOW_MEMORY_GROWTH=1"
+    # "-sASYNCIFY=1"
   )
-
-  if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    target_link_options(gfx PUBLIC
-      "SHELL:-s EXCEPTION_DEBUG=1"
-    )
-  endif()
 
   if(EMSCRIPTEN)
     em_link_js_library(gfx gfx_wgpu.js)

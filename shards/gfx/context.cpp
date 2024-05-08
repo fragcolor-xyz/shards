@@ -110,6 +110,8 @@ struct ContextMainOutput {
   WGPUTexture wgpuCurrentTexture{};
   TexturePtr texture;
 
+  std::vector<WGPUTexture> inflightTextures;
+
   ContextFlushTextureCallback onFlushTextureReferences;
 
 #ifndef WEBGPU_NATIVE
@@ -122,6 +124,7 @@ struct ContextMainOutput {
   }
 
   ~ContextMainOutput() {
+    flushInFlightTextures();
 #ifndef WEBGPU_NATIVE
     releaseSwapchain();
 #endif
@@ -186,6 +189,13 @@ struct ContextMainOutput {
     return texture;
   }
 
+  void flushInFlightTextures() {
+    for (auto &t : inflightTextures) {
+      wgpuTextureRelease(t);
+    }
+    inflightTextures.clear();
+  }
+
   void present() {
     shassert(wgpuCurrentTexture);
 
@@ -193,7 +203,8 @@ struct ContextMainOutput {
     wgpuSurfacePresent(wgpuSurface);
 #endif
 
-    wgpuTextureRelease(wgpuCurrentTexture);
+    flushInFlightTextures();
+    inflightTextures.push_back(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
 
     FrameMark;
@@ -208,6 +219,8 @@ struct ContextMainOutput {
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
+    flushInFlightTextures();
+
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
@@ -431,7 +444,7 @@ void Context::poll(bool wait) {
     wgpuDevicePoll(wgpuDevice, false, nullptr);
   }
 #else
-  emscripten_sleep(0);
+  // emscripten_sleep(0);
 #endif
 }
 

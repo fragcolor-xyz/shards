@@ -34,6 +34,7 @@
 #include "utils.hpp"
 #include "trait.hpp"
 #include "type_cache.hpp"
+#include "platform.hpp"
 
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
@@ -43,7 +44,8 @@ namespace fs = boost::filesystem;
 
 using namespace shards;
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
 // clang-format off
 EM_JS(void, sh_emscripten_init, (), {
   // inject some of our types
@@ -2319,7 +2321,7 @@ void shInit() {
 
   shards::registerShards();
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
   sh_emscripten_init();
   // fill up some interface so we don't need to know mem offsets JS side
   EM_ASM({ Module["SHCore"] = {}; });

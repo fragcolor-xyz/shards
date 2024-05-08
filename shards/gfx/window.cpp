@@ -80,9 +80,9 @@ void Window::init(const WindowCreationOptions &options) {
   SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
 #if SH_EMSCRIPTEN
-  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
-  width = canvasContainerSize.x;
-  height = canvasContainerSize.y;
+  lastSize =  EmscriptenInternal::get().getCanvasContainerSize();
+  width = lastSize.x;
+  height = lastSize.y;
 #endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
@@ -119,6 +119,16 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 }
 
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
+
+void Window::maybeAutoResize() {
+#if SH_EMSCRIPTEN
+  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
+  if(lastSize != canvasContainerSize) {
+    resize(canvasContainerSize);
+    lastSize = canvasContainerSize;
+  }
+#endif
+}
 
 void *Window::getNativeWindowHandle() {
 #if SH_APPLE

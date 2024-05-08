@@ -24,11 +24,15 @@ struct WindowCreationOptions {
 
 #if SH_EMSCRIPTEN
 struct EmscriptenWindow {
-  static void setCanvasContainer(const char* tag);
+  static void setCanvasContainer(const char *tag);
 };
 #endif
 
 struct Window {
+#if SH_EMSCRIPTEN
+#define SH_WINDOW_AUTOSIZE 1
+  int2 lastSize{};
+#endif
   SDL_Window *window = nullptr;
 
 #if SH_APPLE
@@ -49,6 +53,9 @@ struct Window {
 
   void pollEvents(std::vector<SDL_Event> &events);
   bool pollEvent(SDL_Event &outEvent);
+
+  // Only for platforms that automatically size the output window
+  void maybeAutoResize();
 
   void *getNativeWindowHandle();
 
