@@ -80,9 +80,10 @@ void Window::init(const WindowCreationOptions &options) {
   SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
 #if SH_EMSCRIPTEN
-  lastSize =  EmscriptenInternal::get().getCanvasContainerSize();
-  width = lastSize.x;
-  height = lastSize.y;
+  int2 canvasContainerSize =  EmscriptenInternal::get().getCanvasContainerSize();
+  width = canvasContainerSize.x;
+  height = canvasContainerSize.y;
+  lastSize = int2(0);
 #endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
