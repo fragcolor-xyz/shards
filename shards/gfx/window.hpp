@@ -31,7 +31,7 @@ struct EmscriptenWindow {
 struct Window {
 #if SH_EMSCRIPTEN
 #define SH_WINDOW_AUTOSIZE 1
-  int2 lastSize{};
+  int2 lastContainerSize{};
 #endif
   SDL_Window *window = nullptr;
 

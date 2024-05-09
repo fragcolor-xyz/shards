@@ -84,17 +84,17 @@ if(EMSCRIPTEN)
   # add_compile_options(-g1 -Os)
   # endif()
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_link_options("SHELL:-s ASSERTIONS=2")
+    add_link_options("-sASSERTIONS=2")
 
     # add_link_options(-gsource-map)
   endif()
 
   add_compile_definitions(NO_FORCE_INLINE)
-  add_link_options(--bind)
+  add_link_options(-lembind)
 
   # # if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)
-    add_link_options("SHELL:-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=6")
+    add_link_options("-sUSE_PTHREADS=1")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
     set(HAVE_THREADS ON)

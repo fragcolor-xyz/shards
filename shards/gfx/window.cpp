@@ -7,6 +7,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include "fmt.hpp"
+#include "log.hpp"
 
 #if SH_WINDOWS
 #include <Windows.h>
@@ -37,6 +38,12 @@ struct EmscriptenInternal {
     emscripten_get_element_css_size(canvasContainerTag.c_str(), &cw, &ch);
     return int2(cw, ch);
   }
+
+  int2 getDrawableSize() {
+    double pixelRatio = emscripten_get_device_pixel_ratio();
+    int2 canvasContainerSize = getCanvasContainerSize();
+    return int2(linalg::floor(double2(canvasContainerSize) * pixelRatio));
+  }
 };
 void EmscriptenWindow::setCanvasContainer(const char *tag) { EmscriptenInternal::get().canvasContainerTag = tag; }
 #endif
@@ -54,9 +61,15 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_Init failed: {}", SDL_GetError());
   }
 
-  uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+  uint32_t flags = SDL_WINDOW_SHOWN;
 
-  int width{options.width}, height{options.height};
+  // Don't add resize flag for emscripten, as size will be managed externally
+#if !SH_EMSCRIPTEN
+  flags |= SDL_WINDOW_RESIZABLE
+#endif
+
+      int width{options.width},
+      height{options.height};
 
 // Base OS flags
 #if SH_IOS || SH_ANDROID
@@ -70,9 +83,8 @@ void Window::init(const WindowCreationOptions &options) {
     height = 0;
   }
 
-#if !SH_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
-#endif
+
 #if SH_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
@@ -80,10 +92,14 @@ void Window::init(const WindowCreationOptions &options) {
   SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
 #if SH_EMSCRIPTEN
-  int2 canvasContainerSize =  EmscriptenInternal::get().getCanvasContainerSize();
+  // int2 drawableSize = EmscriptenInternal::get().getDrawableSize();
+  // width = drawableSize.x;
+  // height = drawableSize.y;
+  lastContainerSize = int2(0);
+  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
   width = canvasContainerSize.x;
   height = canvasContainerSize.y;
-  lastSize = int2(0);
+  // emscripten_set_element_css_size("#canvas", canvasContainerSize.x, canvasContainerSize.y);
 #endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
@@ -124,9 +140,11 @@ bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 void Window::maybeAutoResize() {
 #if SH_EMSCRIPTEN
   int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
-  if(lastSize != canvasContainerSize) {
+  if (lastContainerSize != canvasContainerSize) {
+    // int2 drawableSize = EmscriptenInternal::get().getDrawableSize();
     resize(canvasContainerSize);
-    lastSize = canvasContainerSize;
+    // emscripten_set_element_css_size("#canvas", canvasContainerSize.x, canvasContainerSize.y);
+    lastContainerSize = canvasContainerSize;
   }
 #endif
 }
@@ -149,6 +167,8 @@ int2 Window::getDrawableSize() const {
   ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
   r.x = ANativeWindow_getWidth(nativeWindow);
   r.y = ANativeWindow_getHeight(nativeWindow);
+#elif SH_EMSCRIPTEN
+  SDL_GetWindowSizeInPixels(window, &r.x, &r.y);
 #else
   r = getSize();
 #endif

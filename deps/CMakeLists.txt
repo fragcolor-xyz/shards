@@ -176,8 +176,8 @@ else()
     "-sUSE_SDL=2"
   )
   target_link_options(SDL2 INTERFACE
-    "-sMIN_WEBGL_VERSION=2"
-    "-sMAX_WEBGL_VERSION=2"
+    # "-sMIN_WEBGL_VERSION=2"
+    # "-sMAX_WEBGL_VERSION=2"
     "-sUSE_SDL=2"
   )
 endif()
