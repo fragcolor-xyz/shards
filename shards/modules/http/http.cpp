@@ -104,7 +104,9 @@ struct Base {
       {"FullResponse",
        SHCCSTR("If the output should be a table with the full response, "
                "including headers and status."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"AcceptInvalidCerts", SHCCSTR("Not implemented."), {CoreInfo::NoneType, CoreInfo::BoolType}},
+  };
   static SHParametersInfo parameters() { return params; }
 
   SHTypesInfo outputTypes() { return AllOutputTypes; }
@@ -129,6 +131,8 @@ struct Base {
         outMap["headers"] = TableVar{};
       }
       break;
+    case 5:
+      break;
     default:
       break;
     }
@@ -146,6 +150,8 @@ struct Base {
       return Var(asBytes);
     case 4:
       return Var(fullResponse);
+    case 5:
+      return Var(false);
     default:
       throw InvalidParameterIndex();
     }

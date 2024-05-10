@@ -65,11 +65,10 @@ void Window::init(const WindowCreationOptions &options) {
 
   // Don't add resize flag for emscripten, as size will be managed externally
 #if !SH_EMSCRIPTEN
-  flags |= SDL_WINDOW_RESIZABLE
+  flags |= SDL_WINDOW_RESIZABLE;
 #endif
 
-      int width{options.width},
-      height{options.height};
+  int width{options.width}, height{options.height};
 
 // Base OS flags
 #if SH_IOS || SH_ANDROID
