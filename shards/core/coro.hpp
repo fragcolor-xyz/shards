@@ -4,6 +4,7 @@
 #include <cassert>
 #include <variant>
 #include <functional>
+#include <thread>
 
 // TODO make it into a run-time param
 #ifndef NDEBUG
@@ -81,6 +82,7 @@ struct Fiber {
 private:
   SHStackAllocator allocator;
   std::optional<boost::context::continuation> continuation;
+  std::optional<std::thread::id> consistentResumer;
 
 public:
   Fiber(SHStackAllocator allocator);

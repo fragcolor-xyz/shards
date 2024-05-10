@@ -7,13 +7,19 @@
 #include <deque>
 
 #include <shards/shards.h>
+#include <shards/utility.hpp>
 #include "platform.hpp"
 #include "utils.hpp"
+#include "runtime.hpp"
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
 
 #include <tracy/Wrapper.hpp>
+
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
+#endif
 
 // Can not create this many workers, create on demand instead
 #if SH_EMSCRIPTEN
@@ -37,8 +43,26 @@
 #endif
 
 namespace shards {
-#if HAS_ASYNC_SUPPORT
 
+struct MainThread {
+  std::optional<std::thread::id> mainThreadId;
+
+  static inline MainThread &instance() {
+    static MainThread instance;
+    return instance;
+  }
+
+  static inline void init() { instance().mainThreadId.emplace(std::this_thread::get_id()); }
+  static inline bool isMainThread() {
+    auto &inst = instance();
+    if (!inst.mainThreadId) {
+      SHLOG_FATAL("Trying to check if main thread without calling MainThread::init() first");
+    }
+    return *inst.mainThreadId == std::this_thread::get_id();
+  };
+};
+
+#if HAS_ASYNC_SUPPORT
 /*
  * The TidePool class is a simple C++ thread pool implementation designed to manage
  * worker threads and distribute tasks to them. The class supports dynamic adjustment
@@ -168,13 +192,13 @@ struct TidePool {
   }
 #else // Dummy implementation
   void schedule(Work *work) {
-    SHLOG_INFO("TidePool: spawning thread");
+    // SHLOG_INFO("TidePool: spawning thread");
     std::thread([work]() {
-      SHLOG_INFO("TidePool: thread spawned");
+      // SHLOG_INFO("TidePool: thread spawned");
       work->call();
-      SHLOG_INFO("TidePool: thread finishing");
+      // SHLOG_INFO("TidePool: thread finishing");
     }).detach();
-    SHLOG_INFO("TidePool: detached thread");
+    // SHLOG_INFO("TidePool: detached thread");
   }
 #endif
 };
@@ -218,6 +242,14 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));
 
   getTidePool().schedule(&call);
+
+  // When suspending on the main js thread, make sure to yield to the event loop to cause threads to launch
+#if SH_EMSCRIPTEN
+  if (MainThread::isMainThread()) {
+    SHLOG_DEBUG("awaitne: Forcing suspend on main thread");
+    emscripten_sleep(0);
+  }
+#endif
 
   while (!call.complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)

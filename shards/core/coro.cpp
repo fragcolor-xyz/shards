@@ -83,6 +83,7 @@ ThreadFiber::operator bool() const { return !finished; }
 
 Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
 void Fiber::init(std::function<void()> fn) {
+  consistentResumer.emplace(std::this_thread::get_id());
   continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [=](boost::context::continuation &&sink) {
     continuation.emplace(std::move(sink));
     fn();
@@ -91,6 +92,8 @@ void Fiber::init(std::function<void()> fn) {
 }
 void Fiber::resume() {
   shassert(continuation);
+  if (!consistentResumer || *consistentResumer != std::this_thread::get_id())
+    throw std::runtime_error("Fiber::resume() called from different thread");
   continuation = continuation->resume();
 }
 void Fiber::suspend() {
@@ -106,7 +109,7 @@ thread_local emscripten_fiber_t em_main_coro{};
 thread_local uint8_t em_asyncify_main_stack[Fiber::as_stack_size];
 
 [[noreturn]] static void action(void *p) {
-  SHLOG_TRACE("EM FIBER ACTION RUN");
+  // SHLOG_TRACE("EM FIBER ACTION RUN");
   auto coro = reinterpret_cast<Fiber *>(p);
   coro->func();
   // If entry_func returns, the entire program will end, as if main had
@@ -115,7 +118,7 @@ thread_local uint8_t em_asyncify_main_stack[Fiber::as_stack_size];
 }
 
 void Fiber::init(const std::function<void()> &func) {
-  SHLOG_TRACE("EM FIBER INIT");
+  // SHLOG_TRACE("EM FIBER INIT");
   this->func = func;
   c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size, asyncify_stack, as_stack_size);
@@ -125,7 +128,7 @@ void Fiber::init(const std::function<void()> &func) {
 }
 
 NO_INLINE void Fiber::resume() {
-  SHLOG_TRACE("EM FIBER SWAP RESUME {}", reinterpret_cast<uintptr_t>(&em_fiber));
+  // SHLOG_TRACE("EM FIBER SWAP RESUME {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // ensure local thread is setup
   if (!em_main_coro.stack_ptr) {
     SHLOG_DEBUG("Fiber - initialization of new thread");
@@ -142,7 +145,7 @@ NO_INLINE void Fiber::resume() {
 }
 
 NO_INLINE void Fiber::suspend() {
-  SHLOG_TRACE("EM FIBER SWAP SUSPEND {}", reinterpret_cast<uintptr_t>(&em_fiber));
+  // SHLOG_TRACE("EM FIBER SWAP SUSPEND {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // always yields to main
   shassert(em_parent_fiber);
   em_local_coro = em_parent_fiber;

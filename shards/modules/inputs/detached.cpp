@@ -135,6 +135,8 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   CapturingBrancher::CloningContext brancherCloningContext;
 
+  bool warmedUp{};
+
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
   ~InputThreadHandler() {
     brancher.cleanup();
@@ -163,7 +165,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     inputQueue.push(input);
   }
 
-  void warmup(const VariableRefs &initialVariableRefs, const InputStack::Item &inputStackState) {
+  void warmup() {
     inputContextVar = Var::Object(&inputContext, IInputContext::Type);
     inputContextVar.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
     inputContextVar.refcount = 1;
@@ -171,9 +173,8 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
     inputContext.handler = this->weak_from_this();
 
-    pushInputs(initialVariableRefs, inputStackState);
-    applyCapturedVariables();
     brancher.warmup();
+    warmedUp = true;
   }
 
   bool isCursorWithinRegion{};
@@ -182,6 +183,10 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   void handle(InputMaster &master) override {
     // Update captured variable references
     applyCapturedVariables();
+
+    if (!warmedUp) {
+      warmup();
+    }
 
     auto &inputStack = inputContext.inputStack;
     inputStack.push(InputStack::Item(lastInputStackState));
@@ -344,7 +349,7 @@ struct Detached {
 
     // Setup input thread callback
     _handler->brancher.intializeCaptures(_capturedVariables, context, IgnoredVariables);
-    _handler->warmup(_capturedVariables, inputStackState);
+    _handler->pushInputs(_capturedVariables, inputStackState);
     _handler->name = !_name->isNone() ? SHSTRVIEW(*_name) : "";
     _handler->inputContext.window = windowCtx.window;
     _handler->inputContext.master = &windowCtx.inputMaster;
