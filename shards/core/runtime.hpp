@@ -308,28 +308,51 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
+#define SH_CORO_RESUMED_LOG(_wire) \
+  { SHLOG_TRACE("> Resumed wire {}", (_wire)->name); }
+#define SH_CORO_SUSPENDED_LOG(_wire) \
+  { SHLOG_TRACE("> Suspended wire {}", (_wire)->name); }
+#define SH_CORO_EXT_RESUME_LOG(_wire) \
+  { SHLOG_TRACE("Resuming wire {}", (_wire)->name); }
+#define SH_CORO_EXT_SUSPEND_LOG(_wire) \
+  { SHLOG_TRACE("Suspending wire {}", (_wire)->name); }
+
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire) \
-  { shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
+#define SH_CORO_RESUMED(_wire)                                         \
+  {                                                                    \
+    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); \
+    SH_CORO_RESUMED_LOG(_wire)                                         \
+  }
 #define SH_CORO_SUSPENDED(_wire) \
-  { shards::popThreadName(); }
+  {                              \
+    shards::popThreadName();     \
+    SH_CORO_EXT_SUSPEND_LOG(_wire)   \
+  }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
-    TracyCoroEnter(wire);                                                         \
+    TracyCoroEnter(_wire);                                                        \
+    SH_CORO_EXT_RESUME_LOG(_wire);                                                    \
   }
 #define SH_CORO_EXT_SUSPEND(_wire) \
   {                                \
     shards::popThreadName();       \
     TracyCoroExit(_wire);          \
+    SH_CORO_EXT_SUSPEND_LOG(_wire)     \
   }
 #else
-#define SH_CORO_RESUMED(_wire)
-#define SH_CORO_SUSPENDED(_)
-#define SH_CORO_EXT_RESUME(_) \
-  { TracyCoroEnter(wire); }
-#define SH_CORO_EXT_SUSPEND(_) \
-  { TracyCoroExit(_wire); }
+#define SH_CORO_RESUMED(_wire) SH_CORO_RESUMED_LOG(_wire)
+#define SH_CORO_SUSPENDED(_wire) SH_CORO_SUSPENDED_LOG(_wire)
+#define SH_CORO_EXT_RESUME(_wire) \
+  {                               \
+    TracyCoroEnter(_wire);        \
+    SH_CORO_EXT_RESUME_LOG(_wire)     \
+  }
+#define SH_CORO_EXT_SUSPEND(_wire) \
+  {                                \
+    TracyCoroExit(_wire);          \
+    SH_CORO_EXT_SUSPEND_LOG(_wire)     \
+  }
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
