@@ -646,7 +646,7 @@ struct Loader {
     loadMeshes();
     loadNodes();
 
-    // Unify everyhing into a single node per scene
+    // Unify everything into a single node per scene
     // needs to be done before computing animation paths in skins
     size_t numScenes = model.scenes.size();
     sceneMap.resize(numScenes);
@@ -674,6 +674,57 @@ struct Loader {
   }
 };
 
+// Helper function to convert tinygltf matrix to linalg matrix
+linalg::mat<double, 4, 4> convertMatrix(const std::vector<double> &m) {
+  return {{m[0], m[1], m[2], m[3]}, {m[4], m[5], m[6], m[7]}, {m[8], m[9], m[10], m[11]}, {m[12], m[13], m[14], m[15]}};
+}
+
+// Compute the model matrix for a node
+linalg::mat<double, 4, 4> getModelMatrix(const tinygltf::Node &node) {
+  auto translation = node.translation.empty()
+                         ? linalg::vec<double, 3>{0, 0, 0}
+                         : linalg::vec<double, 3>{node.translation[0], node.translation[1], node.translation[2]};
+  auto rotation = node.rotation.empty()
+                      ? linalg::vec<double, 4>{0, 0, 0, 1}
+                      : linalg::vec<double, 4>{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
+  auto scale =
+      node.scale.empty() ? linalg::vec<double, 3>{1, 1, 1} : linalg::vec<double, 3>{node.scale[0], node.scale[1], node.scale[2]};
+  auto matrix = node.matrix.empty() ? linalg::identity_t{4} : convertMatrix(node.matrix);
+
+  // Combine transformations
+  auto T = linalg::translation_matrix(translation);
+  auto R = linalg::rotation_matrix(rotation);
+  auto S = linalg::scaling_matrix(scale);
+  return linalg::mul(linalg::mul(linalg::mul(matrix, T), R), S);
+}
+
+void computeBoundingBox(const tinygltf::Node &node, const tinygltf::Model &model, linalg::vec<double, 3> &global_min,
+                        linalg::vec<double, 3> &global_max,
+                        const linalg::mat<double, 4, 4> &parentTransform = linalg::identity_t{4}) {
+  linalg::mat<double, 4, 4> modelMatrix = linalg::mul(parentTransform, getModelMatrix(node));
+
+  if (node.mesh != -1) {
+    const tinygltf::Mesh &mesh = model.meshes[node.mesh];
+    for (const auto &primitive : mesh.primitives) {
+      const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.find("POSITION")->second];
+      const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+      const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
+
+      const double *positions = reinterpret_cast<const double *>(&(buffer.data[bufferView.byteOffset + accessor.byteOffset]));
+      for (size_t i = 0; i < accessor.count; ++i) {
+        linalg::vec<double, 3> vertex(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+        vertex = linalg::mul(modelMatrix, linalg::vec<double, 4>{vertex, 1}).xyz();
+        global_min = linalg::min(global_min, vertex);
+        global_max = linalg::max(global_max, vertex);
+      }
+    }
+  }
+
+  for (int child : node.children) {
+    computeBoundingBox(model.nodes[child], model, global_min, global_max, modelMatrix);
+  }
+}
+
 template <typename T> glTF load(T loader) {
   tinygltf::Model model;
   loader(model);
@@ -693,6 +744,11 @@ template <typename T> glTF load(T loader) {
   result.root = std::move(gfxLoader.sceneMap[model.defaultScene]);
   result.animations = std::move(gfxLoader.animations);
   result.materials = std::move(gfxLoader.materials);
+
+  // compute bounding box
+  if (model.scenes[model.defaultScene].nodes.size() > 0)
+    computeBoundingBox(model.nodes[model.scenes[model.defaultScene].nodes[0]], model, result.boundsMin, result.boundsMax);
+
   return result;
 }
 
