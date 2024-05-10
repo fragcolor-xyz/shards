@@ -674,22 +674,17 @@ struct Loader {
   }
 };
 
-// Helper function to convert tinygltf matrix to linalg matrix
-linalg::mat<double, 4, 4> convertMatrix(const std::vector<double> &m) {
-  return {{m[0], m[1], m[2], m[3]}, {m[4], m[5], m[6], m[7]}, {m[8], m[9], m[10], m[11]}, {m[12], m[13], m[14], m[15]}};
-}
-
 // Compute the model matrix for a node
-linalg::mat<double, 4, 4> getModelMatrix(const tinygltf::Node &node) {
+linalg::mat<float, 4, 4> getModelMatrix(const tinygltf::Node &node) {
   auto translation = node.translation.empty()
-                         ? linalg::vec<double, 3>{0, 0, 0}
-                         : linalg::vec<double, 3>{node.translation[0], node.translation[1], node.translation[2]};
+                         ? linalg::vec<float, 3>{0, 0, 0}
+                         : linalg::vec<float, 3>{node.translation[0], node.translation[1], node.translation[2]};
   auto rotation = node.rotation.empty()
-                      ? linalg::vec<double, 4>{0, 0, 0, 1}
-                      : linalg::vec<double, 4>{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
+                      ? linalg::vec<float, 4>{0, 0, 0, 1}
+                      : linalg::vec<float, 4>{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
   auto scale =
-      node.scale.empty() ? linalg::vec<double, 3>{1, 1, 1} : linalg::vec<double, 3>{node.scale[0], node.scale[1], node.scale[2]};
-  auto matrix = node.matrix.empty() ? linalg::identity_t{4} : convertMatrix(node.matrix);
+      node.scale.empty() ? linalg::vec<float, 3>{1, 1, 1} : linalg::vec<float, 3>{node.scale[0], node.scale[1], node.scale[2]};
+  auto matrix = node.matrix.empty() ? linalg::identity_t{4} : convertNodeTransform(node).getMatrix();
 
   // Combine transformations
   auto T = linalg::translation_matrix(translation);
@@ -698,10 +693,10 @@ linalg::mat<double, 4, 4> getModelMatrix(const tinygltf::Node &node) {
   return linalg::mul(linalg::mul(linalg::mul(matrix, T), R), S);
 }
 
-void computeBoundingBox(const tinygltf::Node &node, const tinygltf::Model &model, linalg::vec<double, 3> &global_min,
-                        linalg::vec<double, 3> &global_max,
-                        const linalg::mat<double, 4, 4> &parentTransform = linalg::identity_t{4}) {
-  linalg::mat<double, 4, 4> modelMatrix = linalg::mul(parentTransform, getModelMatrix(node));
+void computeBoundingBox(const tinygltf::Node &node, const tinygltf::Model &model, linalg::vec<float, 3> &global_min,
+                        linalg::vec<float, 3> &global_max,
+                        const linalg::mat<float, 4, 4> &parentTransform = linalg::identity_t{4}) {
+  linalg::mat<float, 4, 4> modelMatrix = linalg::mul(parentTransform, getModelMatrix(node));
 
   if (node.mesh != -1) {
     const tinygltf::Mesh &mesh = model.meshes[node.mesh];
@@ -710,10 +705,12 @@ void computeBoundingBox(const tinygltf::Node &node, const tinygltf::Model &model
       const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
       const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
 
-      const double *positions = reinterpret_cast<const double *>(&(buffer.data[bufferView.byteOffset + accessor.byteOffset]));
+      // Adjusting buffer data interpretation to float instead of double
+      const float *positions = reinterpret_cast<const float *>(&(buffer.data[bufferView.byteOffset + accessor.byteOffset]));
       for (size_t i = 0; i < accessor.count; ++i) {
-        linalg::vec<double, 3> vertex(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-        vertex = linalg::mul(modelMatrix, linalg::vec<double, 4>{vertex, 1}).xyz();
+        linalg::vec<float, 3> vertex(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+        linalg::vec<float, 4> vertex_homogeneous(vertex, 1.0f);      // Homogenize the vertex for transformation
+        vertex = linalg::mul(modelMatrix, vertex_homogeneous).xyz(); // Apply transformation and reduce back to 3D
         global_min = linalg::min(global_min, vertex);
         global_max = linalg::max(global_max, vertex);
       }
