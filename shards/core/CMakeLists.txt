@@ -118,8 +118,6 @@ if(EMSCRIPTEN)
   target_compile_options(shards-core PUBLIC)
 
   target_link_options(shards-core PUBLIC
-    "-sINITIAL_MEMORY=209715200"
-    "-sSTACK_SIZE=1000000"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sLLD_REPORT_UNDEFINED"
   )

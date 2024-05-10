@@ -89,6 +89,10 @@ if(EMSCRIPTEN)
     # add_link_options(-gsource-map)
   endif()
 
+
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-sDISABLE_EXCEPTION_CATCHING=0>")
+  add_link_options("-sDISABLE_EXCEPTION_CATCHING=0")
+
   add_compile_definitions(NO_FORCE_INLINE)
   add_link_options(-lembind)
 
