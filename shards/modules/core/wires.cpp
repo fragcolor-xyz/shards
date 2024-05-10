@@ -2263,8 +2263,16 @@ struct DoMany : public TryMany {
     for (uint32_t i = 0; i < len; i++) {
       auto &cref = _wires[i];
       if (!cref) {
-        cref = _pool->acquire(_composer, _meshes[0].get());
-        cref->wire->warmup(context);
+        // compose on a worker thread!
+        await(
+            context,
+            [this, i]() {
+              auto &cref = _wires[i];
+              cref = _pool->acquire(_composer, _meshes[0].get());
+            },
+            [] {});
+        cref->wire->warmup(context); // have to run this outside or:
+        // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.
       }
 
       const SHVar &inputElement = input.payload.seqValue.elements[i];
