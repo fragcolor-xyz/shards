@@ -120,7 +120,7 @@ struct DrawShard {
   PARAM_IMPL(PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return DrawableTypes; }
 
   DrawShard() {}
 
@@ -141,7 +141,7 @@ struct DrawShard {
       OVERRIDE_ACTIVATE(data, activateSingle);
     }
 
-    return CoreInfo::NoneType;
+    return data.inputType;
   }
 
   DrawQueue &getDrawQueue() { return *varAsObjectChecked<SHDrawQueue>(_queue.get(), ShardsTypes::DrawQueue).queue.get(); }
@@ -158,7 +158,7 @@ struct DrawShard {
           }
         },
         varAsObjectChecked<SHDrawable>(input, ShardsTypes::Drawable).drawable);
-    return SHVar{};
+    return input;
   }
 
   SHVar activateSeq(SHContext *shContext, const SHVar &input) {
@@ -166,7 +166,7 @@ struct DrawShard {
     for (size_t i = 0; i < seq.len; i++) {
       (void)activateSingle(shContext, seq.elements[i]);
     }
-    return SHVar{};
+    return input;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
