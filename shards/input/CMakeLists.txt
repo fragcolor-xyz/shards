@@ -1,6 +1,6 @@
 add_library(input
   input_stack.cpp window_mapping.cpp master.cpp
-  gestures.cpp
+  gestures.cpp clipboard.cpp
 )
 target_include_directories(input PUBLIC ${CMAKE_CURRENT_LIST_DIR}/..)
 target_link_libraries(input SDL2 linalg spdlog Boost::lockfree)

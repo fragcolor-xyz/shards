@@ -11,10 +11,17 @@
 #include <shards/input/master.hpp>
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/window.hpp>
+#include <shards/core/platform.hpp>
+#include <shards/input/log.hpp>
 #include <SDL_keyboard.h>
 #include <SDL_keycode.h>
 #include <shards/core/params.hpp>
 #include <variant>
+#include <boost/filesystem.hpp>
+
+#if SH_EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
 
 using namespace linalg::aliases;
 
@@ -650,6 +657,32 @@ struct HandleURL : public Base {
       }
     }
 
+#if SH_EMSCRIPTEN
+    // clang-format off
+    const char* droppedPath = (const char*)MAIN_THREAD_EM_ASM_PTR({
+      const dropHandler =  Module["fblDropHandler"];
+      if(dropHandler.droppedDataPath && dropHandler.droppedDataPath !== dropHandler.lastCheckedDroppedDataPath) {
+        console.log(`Drop handler queried for ${dropHandler.droppedDataPath}`);
+        dropHandler.lastCheckedDroppedDataPath = dropHandler.droppedDataPath;
+        return stringToNewUTF8(dropHandler.droppedDataPath);
+      }
+      return null;
+    });
+    // clang-format on
+
+    if (droppedPath) {
+      boost::filesystem::directory_iterator it(droppedPath);
+      for (auto &sub : it) {
+        auto str = sub.path().string();
+        boost::container::string path(str.c_str());
+        DropFileEvent evt;
+        tmpEvents.push_back(DropFileEvent{.path = path});
+        SPDLOG_LOGGER_DEBUG(shards::input::getLogger(), "Dropped file: {}", path);
+      }
+      free((void *)droppedPath);
+    }
+#endif
+
     for (auto &evt : tmpEvents) {
       SHVar dummy{};
       SHWireState res = _action.activate(context, Var(evt.path.c_str()), dummy);
@@ -659,6 +692,43 @@ struct HandleURL : public Base {
     }
     tmpEvents.clear();
 
+    return input;
+  }
+};
+
+struct DiscardTempFiles : public Base {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Discard temporary files created by open & drag-drop operations"); }
+
+  PARAM_IMPL();
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    Base::cleanup(context);
+  }
+
+  void warmup(SHContext *context) {
+    Base::warmup(context);
+    PARAM_WARMUP(context);
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose(data, _requiredVariables);
+    return data.inputType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+#if SH_EMSCRIPTEN
+    // clang-format off
+    MAIN_THREAD_ASYNC_EM_ASM({
+      const dropHandler =  Module["fblDropHandler"];
+      dropHandler.discardData();
+    });
+// clang-format on
+#endif
     return input;
   }
 };
@@ -679,6 +749,7 @@ SHARDS_REGISTER_FN(inputs) {
   REGISTER_SHARD("Inputs.Mouse", Mouse);
   REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
   REGISTER_SHARD("Inputs.HandleURL", HandleURL);
+  REGISTER_SHARD("Inputs.DiscardTempFiles", DiscardTempFiles);
 
   using MouseDown = MouseUpDown<true>;
   using MouseUp = MouseUpDown<false>;
