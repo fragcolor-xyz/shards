@@ -3,8 +3,9 @@ set(SOURCES
   detached.cpp
 )
 
-if(SHARDS_WITH_EGUI) 
-  add_rust_library(NAME shards-inputs-debug-ui 
+is_module_enabled(HAS_EGUI egui)
+if(HAS_EGUI)
+  add_rust_library(NAME shards-inputs-debug-ui
     PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/debug_ui
     DEPENDS debug_ui.hpp)
   set(INPUT_RUST_TARGETS shards-inputs-debug-ui-rust)
