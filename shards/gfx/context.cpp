@@ -211,8 +211,11 @@ struct ContextMainOutput {
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
+<<<<<<< HEAD
     flushInFlightTextures();
 
+=======
+>>>>>>> 2218079ee (Restore preferredFormat)
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
     // WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
