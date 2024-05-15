@@ -195,8 +195,8 @@ struct ContextMainOutput {
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
-    // WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
-    WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
+    WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
+    // WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
       throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
