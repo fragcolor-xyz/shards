@@ -8,6 +8,7 @@
 #include "renderer_cache.hpp"
 #include "texture.hpp"
 #include "gfx_wgpu.hpp"
+#include "log.hpp"
 #include <compare>
 #include <shared_mutex>
 #include <unordered_map>
@@ -36,6 +37,23 @@ struct TextureViewDesc {
     return result;
   }
 };
+
+// Automatically determinal what format the texture should be viewed as
+template <typename T>
+inline WGPUTextureFormat deriveTextureViewFormat(WGPUTextureFormat pixelFormat, TextureFormatFlags flags, const T &logId = T()) {
+  if (textureFormatFlagsContains(flags, TextureFormatFlags ::IsSecretlySrgb)) {
+    auto upgradedFormat = upgradeToSrgbFormat(pixelFormat);
+    if (upgradedFormat) {
+      pixelFormat = *upgradedFormat;
+    } else {
+      SPDLOG_LOGGER_ERROR(getLogger(), "Failed create sRGB texture view for texture in sRGB color space ({})", logId);
+    }
+  }
+  return pixelFormat;
+}
+inline WGPUTextureFormat deriveTextureViewFormat(const TextureContextData &textureData) {
+  return deriveTextureViewFormat(textureData.format.pixelFormat, textureData.format.flags, textureData.id);
+}
 
 struct TextureViewKey {
   UniqueId id;
@@ -118,7 +136,7 @@ struct TextureViewCache {
 
   WGPUTextureView getDefaultTextureView(size_t frameCounter, const TextureContextData &textureData) {
     TextureViewDesc defaultDesc{
-        .format = textureData.format.pixelFormat,
+        .format = deriveTextureViewFormat(textureData),
         .baseMipLevel = 0,
         .mipLevelCount = textureData.format.mipLevels,
         .baseArrayLayer = 0,
