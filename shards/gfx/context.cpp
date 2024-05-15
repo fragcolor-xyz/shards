@@ -104,13 +104,13 @@ struct ContextMainOutput {
   WGPUTexture wgpuCurrentTexture{};
   TexturePtr texture;
 
-  ContextFlushTextureCallback onFlushTextureReferences;
+  ContextFlushTextureReferencesRegistry onFlushTextureReferences;
 
 #ifndef WEBGPU_NATIVE
   WGPUSwapChain wgpuSwapChain;
 #endif
 
-  ContextMainOutput(Window &window, ContextFlushTextureCallback onFlushTextureReferences)
+  ContextMainOutput(Window &window, ContextFlushTextureReferencesRegistry onFlushTextureReferences)
       : window(&window), onFlushTextureReferences(onFlushTextureReferences) {
     texture = std::make_shared<Texture>();
   }
@@ -219,7 +219,7 @@ struct ContextMainOutput {
 
     // Force flush all texture references before resizing
     // this should cause all references to the surface texture to be released
-    onFlushTextureReferences->call();
+    onFlushTextureReferences->forEach([](ContextFlushTextureReferencesHandler &target) { target.flushTextureReferences(); });
 
     TextureFormatFlags textureFormatFlags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding;
 
@@ -382,44 +382,6 @@ TexturePtr Context::getMainOutputTexture() {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
-  ZoneScoped;
-  shassert(!ptr.expired());
-
-  std::shared_ptr<ContextData> sharedPtr = ptr.lock();
-  if (sharedPtr) {
-    std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-    contextDatas.insert_or_assign(sharedPtr.get(), ptr);
-  }
-}
-
-void Context::removeContextDataInternal(ContextData *ptr) {
-  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-  contextDatas.erase(ptr);
-}
-
-void Context::collectContextData() {
-  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-  for (auto it = contextDatas.begin(); it != contextDatas.end();) {
-    if (it->second.expired()) {
-      it = contextDatas.erase(it);
-    } else {
-      it++;
-    }
-  }
-}
-
-void Context::releaseAllContextData() {
-  contextDataLock.lock();
-  auto contextDatas = std::move(this->contextDatas);
-  contextDataLock.unlock();
-  for (auto &obj : contextDatas) {
-    if (!obj.second.expired()) {
-      obj.first->releaseContextDataConditional();
-    }
-  }
-}
-
 bool Context::beginFrame() {
   ZoneScoped;
   shassert(frameState == ContextFrameState::Ok);
@@ -438,7 +400,7 @@ bool Context::beginFrame() {
   if (suspended)
     return false;
 
-  collectContextData();
+  // collectContextData();
   if (!isHeadless()) {
     const int maxAttempts = 2;
     bool success = false;
@@ -572,6 +534,8 @@ void Context::deviceObtained() {
     getOrCreateSurface();
     mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
+
+  onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceAcquired(); });
 }
 
 void Context::requestDevice() {
@@ -624,8 +588,9 @@ void Context::requestDevice() {
 
 void Context::releaseDevice() {
   ZoneScoped;
-  releaseAllContextData();
 
+  onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceLost(); });
+  
   if (mainOutput) {
     mainOutput->releaseSurface();
   }
