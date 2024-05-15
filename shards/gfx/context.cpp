@@ -25,14 +25,6 @@ namespace gfx {
 static auto logger = getLogger();
 static auto wgpuLogger = getWgpuLogger();
 
-static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
-#if SH_ANDROID
-  return WGPUTextureFormat_RGBA8UnormSrgb;
-#else
-  return WGPUTextureFormat_BGRA8UnormSrgb;
-#endif
-}
-
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if SH_WINDOWS
@@ -203,7 +195,8 @@ struct ContextMainOutput {
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
-    WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
+    // WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
+    WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
       throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
@@ -226,11 +219,32 @@ struct ContextMainOutput {
     // this should cause all references to the surface texture to be released
     onFlushTextureReferences->call();
 
+    TextureFormatFlags textureFormatFlags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding;
+
+    WGPUTextureFormat viewFormats[1];
+    size_t viewFormatCount = 0;
+
+    auto pixelFormatDesc = getTextureFormatDescription(swapchainFormat);
+    // When using non-srgb integer storage types, assume that the device interprets it as sRGB
+    if (pixelFormatDesc.colorSpace != ColorSpace::Srgb && isIntegerStorageType(pixelFormatDesc.storageType)) {
+      auto upgradedFormat = upgradeToSrgbFormat(swapchainFormat);
+      if (upgradedFormat) {
+        viewFormats[0] = *upgradedFormat;
+        viewFormatCount = 1;
+        textureFormatFlags = textureFormatFlags | TextureFormatFlags::IsSecretlySrgb;
+      } else {
+        SPDLOG_LOGGER_ERROR(logger, "Failed to add sRGB view format to surface format {}",
+                            magic_enum::enum_name(swapchainFormat));
+      }
+    }
+
 #if WEBGPU_NATIVE
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
     surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
     surfaceConf.device = device;
+    surfaceConf.viewFormats = viewFormats;
+    surfaceConf.viewFormatCount = viewFormatCount;
 
     // Canvas size should't be set when configuring, instead resize the element
     // https://github.com/emscripten-core/emscripten/issues/17416
@@ -263,7 +277,7 @@ struct ContextMainOutput {
         ->initWithPixelFormat(swapchainFormat) //
         .initWithLabel("<main output>")
         .initWithResolution(currentSize)
-        .initWithFlags(TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding);
+        .initWithFlags(textureFormatFlags);
   }
 
   void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface); }

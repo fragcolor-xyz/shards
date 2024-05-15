@@ -56,7 +56,7 @@ struct RendererStorage {
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     shassert((textureData.texture || textureData.externalTexture) && "Invalid texture");
     TextureViewDesc desc{
-        .format = textureData.format.pixelFormat,
+        .format = deriveTextureViewFormat(textureData),
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = mipIndex,
         .mipLevelCount = 1,
