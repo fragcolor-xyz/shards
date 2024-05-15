@@ -2049,6 +2049,8 @@ struct SimpleExtType {
 
   static void hash(const SimpleExtType &self, void *outDigest, size_t digestSize) {
     static thread_local shards::HashState<XXH128_hash_t> hs;
+    hs.reset();
+
     XXH3_state_t state;
     shards::hashReset<XXH128_hash_t>(&state);
     XXH3_128bits_update(&state, &self.index, sizeof(size_t));
@@ -2062,6 +2064,8 @@ using SimpleExtTypeInfo = shards::TExtendedObjectType<shards::InternalCore, Simp
 
 TEST_CASE("ExtType") {
   static thread_local shards::HashState<XXH128_hash_t> hs;
+  hs.reset();
+
   shards::TypeInfo t0, t1;
   {
     auto &e = SimpleExtTypeInfo::makeExtended(t0);

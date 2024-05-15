@@ -53,6 +53,8 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
   checkType(input.valueType, SHType::Table, "ComposeWith table");
 
   static thread_local shards::HashState<XXH128_hash_t> shHashState;
+  shHashState.reset();
+
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
   XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);

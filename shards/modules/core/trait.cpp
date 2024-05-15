@@ -39,6 +39,8 @@ struct MakeTrait {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SPDLOG_TRACE("MakeTrait: {} {}", _name, _types);
 
+    _hashState.reset();
+
     SHVar output{
         .payload =
             SHVarPayload{
