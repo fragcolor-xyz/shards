@@ -108,7 +108,6 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   shassert(device);
 
   contextData.id = id;
-  contextData.version = version;
   contextData.size.width = desc.resolution.x;
   contextData.size.height = desc.resolution.y;
   contextData.size.depthOrArrayLayers = 1;
@@ -156,7 +155,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     wgpuDesc.mipLevelCount = desc.format.mipLevels;
     wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
 
-    contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc);
+    contextData.texture.reset(wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc));
     shassert(contextData.texture);
 
     if (desc.data)
@@ -165,7 +164,9 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   }
 }
 
-void Texture::updateContextData(Context &context, TextureContextData &contextData) {}
+void Texture::updateContextData(Context &context, TextureContextData &contextData) {
+  initContextData(context, contextData);
+}
 
 UniqueId Texture::getNextId() {
   static UniqueIdGenerator gen(UniqueIdTag::Texture);
@@ -174,7 +175,6 @@ UniqueId Texture::getNextId() {
 
 void Texture::update() {
   ++version;
-  resetContextData();
 }
 
 } // namespace gfx

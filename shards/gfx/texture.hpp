@@ -2,6 +2,7 @@
 #define GFX_TEXTURE
 
 #include "context_data.hpp"
+#include "wgpu_handle.hpp"
 #include "gfx_wgpu.hpp"
 #include "isb.hpp"
 #include "linalg.hpp"
@@ -57,18 +58,13 @@ struct InputTextureFormat {
 
 /// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
-  TextureFormat format;
+  TextureFormat format{};
   // Only set for managed textures
-  WGPUTexture texture{};
+  WgpuHandle<WGPUTexture> texture{};
   // Only set for externally managed textures, not freed
   WGPUTexture externalTexture{};
   WGPUExtent3D size{};
-  UniqueId id;
-  size_t version;
-
-  ~TextureContextData() { releaseContextDataConditional(); }
-
-  void releaseContextData() override { WGPU_SAFE_RELEASE(wgpuTextureRelease, texture); }
+  UniqueId id{};
 };
 
 /// <div rustbindgen opaque></div>
@@ -87,7 +83,9 @@ struct TextureDesc {
 };
 
 /// <div rustbindgen opaque></div>
-struct Texture final : public TWithContextData<TextureContextData> {
+struct Texture final {
+  using ContextDataType = TextureContextData;
+
 private:
   UniqueId id = getNextId();
   TextureDesc desc = TextureDesc::getDefault();
@@ -125,10 +123,10 @@ public:
   /// <div rustbindgen hide></div>
   static TexturePtr makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
 
-protected:
   void initContextData(Context &context, TextureContextData &contextData);
   void updateContextData(Context &context, TextureContextData &contextData);
 
+protected:
   static UniqueId getNextId();
 
 private:
