@@ -107,7 +107,9 @@ public:
     outputMap.clear();
     if (mainOutput) {
       for (auto &attachment : mainOutput->attachments) {
-        builder.outputs.emplace_back(attachment.first, attachment.second.texture->getFormat().pixelFormat);
+        auto outputFormat = attachment.second.texture->getFormat();
+        auto pixelFormat = deriveTextureViewFormat(outputFormat.pixelFormat, outputFormat.flags, attachment.second.texture->getLabel());
+        builder.outputs.emplace_back(attachment.first, pixelFormat);
         outputMap.emplace(outputMap.size(), Output{attachment.first, attachment.second});
       }
     }
@@ -129,7 +131,7 @@ public:
         if (!builder.isOutputWrittenTo(outputIndex)) {
           auto format = output.subResource.texture->getFormat().pixelFormat;
           auto &formatDesc = getTextureFormatDescription(format);
-          if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
+          if (textureFormatUsageContains(formatDesc.usage, TextureFormatUsage::Color)) {
             NoopStep clear;
             clear.output = RenderStepOutput{};
             clear.output->attachments.emplace_back(
