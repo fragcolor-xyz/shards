@@ -23,14 +23,14 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
 
   // Entire texture view
   auto resolve = [&](TexturePtr texture) {
-    return ResolvedFrameTexture(texture, storage.getTextureView(texture->createContextDataConditionalRefUNSAFE(context), 0, 0));
+    TextureContextData &cd = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, texture);
+    return ResolvedFrameTexture(texture, storage.getTextureView(cd, 0, 0));
   };
 
   // Subresource texture view
   auto resolveSubResourceView = [&](const TextureSubResource &resource) {
-    return ResolvedFrameTexture(resource.texture,
-                                storage.getTextureView(resource.texture->createContextDataConditionalRefUNSAFE(context),
-                                                       resource.faceIndex, resource.mipIndex));
+    TextureContextData &cd = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, resource.texture);
+    return ResolvedFrameTexture(resource.texture, storage.getTextureView(cd, resource.faceIndex, resource.mipIndex));
   };
 
   for (auto &frame : graph.frames) {
@@ -288,7 +288,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     }
 
     RenderGraphEncodeContext ctx{
-        .encoder = renderPassEncoder, 
+        .encoder = renderPassEncoder,
         .viewData = viewData,
         .outputSize = targetSize,
         .viewportScale = vpScale,

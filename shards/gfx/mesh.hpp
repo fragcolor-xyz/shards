@@ -66,16 +66,12 @@ struct MeshContextData : public ContextData {
   size_t vertexBufferLength = 0;
   WgpuHandle<WGPUBuffer> indexBuffer;
   size_t indexBufferLength = 0;
-
-  ~MeshContextData() { releaseContextDataConditional(); }
-  void releaseContextData() override {
-    vertexBuffer.release();
-    indexBuffer.release();
-  }
 };
 
 /// <div rustbindgen opaque></div>
-struct Mesh final : public TWithContextData<MeshContextData> {
+struct Mesh final {
+  using ContextDataType = MeshContextData;
+
 private:
   UniqueId id = getNextId();
   MeshFormat format;
@@ -83,7 +79,6 @@ private:
   size_t numIndices = 0;
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
-  bool updateData{};
   size_t version{};
 
   friend struct gfx::UpdateUniqueId<Mesh>;
@@ -110,11 +105,12 @@ public:
 
   void pipelineHashCollect(detail::PipelineHashCollector &) const;
 
+  void initContextData(Context &context, MeshContextData &contextData);
+  void updateContextData(Context &context, MeshContextData &contextData);
+
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);
   void update();
-  void initContextData(Context &context, MeshContextData &contextData);
-  void updateContextData(Context &context, MeshContextData &contextData);
 
   static UniqueId getNextId();
 };

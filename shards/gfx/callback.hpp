@@ -61,6 +61,7 @@ template <typename... TArgs> struct CallbackRegistry : public std::enable_shared
     return e;
   }
 };
+
 } // namespace gfx
 
 #endif /* D4FAACAD_67D3_4842_BC01_84850DA74232 */
