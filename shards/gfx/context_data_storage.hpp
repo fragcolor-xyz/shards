@@ -11,7 +11,7 @@ namespace gfx::detail {
 template <typename T>
   requires gfx::TWithContextData<T>
 struct SubContextDataStorage {
-  using ContextDataType = T::ContextDataType;
+  using ContextDataType = typename T::ContextDataType;
   boost::container::flat_map<size_t, ContextDataType, std::less<size_t>,
                              boost::container::stable_vector<std::pair<size_t, ContextDataType>>>
       map;
