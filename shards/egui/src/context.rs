@@ -190,7 +190,8 @@ impl Shard for ContextShard {
       ) as *const bindings::egui_Input)
     };
 
-    let full_output = if egui_input.pixelsPerPoint > 0.0 {
+    // Need to check pixelsPerPoint range otherwise egui will panic (at >100.0)
+    let full_output = if egui_input.pixelsPerPoint > 0.0 && egui_input.pixelsPerPoint <= 75.0 {
       self
         .host
         .activate(&egui_input, &(&self.contents).into(), context, input)?;

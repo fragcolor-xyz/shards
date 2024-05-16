@@ -5,6 +5,7 @@
 #include <SDL.h>
 #include <SDL_keycode.h>
 #include <gfx/window.hpp>
+#include <gfx/types.hpp>
 #include "input/events.hpp"
 #include "input/state.hpp"
 #include "renderer.hpp"
@@ -85,10 +86,10 @@ void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &reg
   // Convert from pixel to window coordinatesmapping
   this->mappedWindowRegion = float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
-  // Take viewport size and scale it by the draw scale
-  float2 viewportSizeFloat = float2(float(region.pixelSize.x), float(region.pixelSize.y));
-  float2 eguiScreenSize = viewportSizeFloat / eguiDrawScale;
+  int2 mappedRegionSize = gfx::Rect::fromCorners(mappedWindowRegion).getSize();
+  float2 eguiScreenSize = float2(mappedRegionSize) * windowToEguiScale;
 
+  // Convert mapped window region to render area
   input.screenRect = egui::Rect{
       .min = egui::Pos2{0, 0},
       .max = egui::Pos2{eguiScreenSize.x, eguiScreenSize.y},

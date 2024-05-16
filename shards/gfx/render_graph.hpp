@@ -143,6 +143,7 @@ struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
   const ViewData &viewData;
   int2 outputSize;
+  float2 viewportScale;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
@@ -297,12 +298,14 @@ private:
 
   struct FrameSize {
     int2 size;
+    float2 viewportScale{};
     // Should the frames referencing this size be auto sized
     // When false, the size of the texture is taken as is
     bool isAutoSize;
 
     FrameSize() = default;
-    FrameSize(int2 size, bool isAutoSize) : size(size), isAutoSize(isAutoSize) {}
+    FrameSize(int2 size, float2 viewportScale, bool isAutoSize)
+        : size(size), viewportScale(viewportScale), isAutoSize(isAutoSize) {}
   };
   shards::pmr::vector<FrameSize> frameSizes;
 
@@ -351,7 +354,8 @@ public:
   void computeFrameSizes(const RenderGraph &graph, std::span<TextureSubResource> outputs, int2 fallbackSize);
   void validateOutputSizes(const RenderGraph &graph);
 
-  void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs, int2 fallbackSize);
+  void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs,
+                int2 fallbackSize);
 };
 
 struct CachedRenderGraph {

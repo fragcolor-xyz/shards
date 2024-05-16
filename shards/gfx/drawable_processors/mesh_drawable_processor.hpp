@@ -777,11 +777,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         int2 viewportMin = int2(context.viewport.x, context.viewport.y);
         int2 viewportMax = int2(context.viewport.getX1(), context.viewport.getY1());
 
-        // Clamp to viewport
-        clipRect.x = linalg::clamp(clipRect.x, viewportMin.x, viewportMax.x);
-        clipRect.y = linalg::clamp(clipRect.y, viewportMin.y, viewportMax.y);
-        clipRect.z = linalg::clamp(clipRect.z, viewportMin.x, viewportMax.x);
-        clipRect.w = linalg::clamp(clipRect.w, viewportMin.y, viewportMax.y);
+        // Clamp and make relative to viewport
+        clipRect.x = linalg::clamp(clipRect.x + viewportMin.x, viewportMin.x, viewportMax.x);
+        clipRect.y = linalg::clamp(clipRect.y + viewportMin.y, viewportMin.y, viewportMax.y);
+        clipRect.z = linalg::clamp(clipRect.z + viewportMin.x, viewportMin.x, viewportMax.x);
+        clipRect.w = linalg::clamp(clipRect.w + viewportMin.y, viewportMin.y, viewportMax.y);
         int w = clipRect.z - clipRect.x;
         int h = clipRect.w - clipRect.y;
         if (w == 0 || h == 0)
