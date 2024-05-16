@@ -15,7 +15,7 @@
 } Looped: true)
 
 @wire(network-test-server {
-  Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
+  Network.WS.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
   Once({"Smaller" | Network.Broadcast | Log("Send random")} Every: 0.5)
   Once({@random1 | Network.Broadcast | Log("Send random")} Every: 0.5)
 } Looped: true)
@@ -36,7 +36,7 @@
 
 @wire(network-test-client {
   Maybe({
-    Network.Client("127.0.0.1" 9191 {
+    Network.WS.Client("ws://127.0.0.1" 9191 {
       Log("Client received")
       When(Is("Smaller") {
         true > test/client-received-smaller
