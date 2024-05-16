@@ -90,9 +90,6 @@ Writer &getSendWriter();
 
 struct Peer {
   virtual ~Peer() = default;
-#if SH_USE_BOOST_ASIO
-// boost::asio::ip::udp::endpoint endpoint;
-#endif
 
   virtual void send(boost::span<const uint8_t> data) = 0;
   virtual bool disconnected() const = 0;

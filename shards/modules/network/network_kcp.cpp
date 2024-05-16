@@ -31,7 +31,9 @@
 
 namespace shards {
 namespace Network {
-  
+
+using namespace boost::asio::ip::udp;
+
 struct NetworkContext {
   boost::asio::io_context _io_context;
   std::thread _io_context_thread;
@@ -1033,84 +1035,6 @@ struct Client : public NetworkBase {
   }
 };
 
-struct PeerBase {
-  std::array<SHExposedTypeInfo, 1> _requiring;
-  SHVar *_peerVar = nullptr;
-  ParamVar _peerParam;
-
-  void cleanup(SHContext *context) {
-    // clean context vars
-    if (_peerVar) {
-      releaseVariable(_peerVar);
-      _peerVar = nullptr;
-    }
-
-    _peerParam.cleanup();
-  }
-
-  void warmup(SHContext *context) { _peerParam.warmup(context); }
-
-  NetworkPeer *getPeer(SHContext *context) {
-    auto &fixedPeer = _peerParam.get();
-    NetworkPeer *peer = nullptr;
-    if (fixedPeer.valueType == SHType::Object) {
-      assert(fixedPeer.payload.objectVendorId == CoreCC);
-      assert(fixedPeer.payload.objectTypeId == PeerCC);
-      peer = reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
-    } else {
-      if (!_peerVar) {
-        _peerVar = referenceVariable(context, "Network.Peer");
-      }
-      assert(_peerVar->payload.objectVendorId == CoreCC);
-      assert(_peerVar->payload.objectTypeId == PeerCC);
-      peer = reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
-    }
-
-    if (peer->disconnected)
-      throw ActivationError("Peer is disconnected");
-
-    return peer;
-  }
-
-  static inline Parameters params{
-      {"Peer", SHCCSTR("The optional explicit peer to send packets to."), {CoreInfo::NoneType, Client::PeerObjectType}}};
-
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _peerParam = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _peerParam;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  SHExposedTypesInfo requiredVariables() {
-    if (_peerParam.isVariable()) {
-      _requiring[0].name = _peerParam.variableName();
-      _requiring[0].help = SHCCSTR("The required peer.");
-      _requiring[0].exposedType = Client::PeerType;
-      return {_requiring.data(), 1, 0};
-    } else {
-      _requiring[0].name = "Network.Peer";
-      _requiring[0].help = SHCCSTR("The required peer.");
-      _requiring[0].exposedType = Client::PeerType;
-      return {_requiring.data(), 1, 0};
-    }
-  }
-};
-
 }; // namespace Network
 }; // namespace shards
 
@@ -1118,7 +1042,4 @@ SHARDS_REGISTER_FN(network_kcp) {
   using namespace shards::Network;
   REGISTER_SHARD("Network.Server", Server);
   REGISTER_SHARD("Network.Broadcast", Broadcast);
-  REGISTER_SHARD("Network.Client", Client);
-  REGISTER_SHARD("Network.Send", Send);
-  REGISTER_SHARD("Network.PeerID", PeerID);
 }
