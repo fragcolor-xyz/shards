@@ -20,7 +20,7 @@ template <typename T>
 concept TContextData = std::is_base_of_v<ContextData, T>;
 
 template <typename T>
-concept TWithContextData = requires(T t, T::ContextDataType &cd, Context &ctx) {
+concept TWithContextData = requires(T t, typename T::ContextDataType &cd, Context &ctx) {
   typename T::ContextDataType;
   { t.initContextData(ctx, cd) };
   { t.updateContextData(ctx, cd) };
