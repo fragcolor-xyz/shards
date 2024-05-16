@@ -3,8 +3,8 @@ set(NETWORK_REGISTER_SHARDS network_common)
 set(NETWORK_SOURCES network_common.cpp)
 
 if(NOT EMSCRIPTEN)
-  # list(APPEND NETWORK_SOURCES network_kcp.cpp)
-  # list(APPEND NETWORK_REGISTER_SHARDS network_kcp)
+  list(APPEND NETWORK_SOURCES network_kcp.cpp)
+  list(APPEND NETWORK_REGISTER_SHARDS network_kcp)
 endif()
 
 list(APPEND NETWORK_SOURCES network_ws.cpp)
