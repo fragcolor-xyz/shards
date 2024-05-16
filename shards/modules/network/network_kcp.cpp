@@ -37,9 +37,7 @@
 
 namespace shards {
 namespace Network {
-constexpr uint32_t PeerCC = 'netP';
-constexpr uint32_t ServerCC = 'netS';
-
+  
 struct NetworkContext {
   boost::asio::io_context _io_context;
   std::thread _io_context_thread;
@@ -47,7 +45,7 @@ struct NetworkContext {
   NetworkContext() {
     _io_context_thread = std::thread([this] {
       // Force run to run even without work
-      boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g = boost::asio::make_work_guard(_io_context);
+      boost::asio::executor_work_guard<boost::asio::io_context::executor_type> _guard = boost::asio::make_work_guard(_io_context);
       try {
         SHLOG_DEBUG("Boost asio context running...");
         _io_context.run();
@@ -133,55 +131,6 @@ struct NetworkBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  struct Reader {
-    char *buffer;
-    size_t offset;
-    size_t max;
-
-    Reader(char *buf, size_t size) : buffer(buf), offset(0), max(size) {}
-
-    void operator()(uint8_t *buf, size_t size) {
-      auto newOffset = offset + size;
-      if (newOffset > max) {
-        throw ActivationError("Overflow requested");
-      }
-      memcpy(buf, buffer + offset, size);
-      offset = newOffset;
-    }
-  };
-
-  struct Writer {
-    // let's make this growable on demand
-    std::vector<uint8_t> buffer;
-    size_t offset;
-
-    Writer() {}
-
-    void operator()(const uint8_t *buf, size_t size) {
-      auto newOffset = offset + size;
-      // resize buffer if needed but it (*2) so to avoid too many resizes
-      if (newOffset > buffer.size()) {
-        buffer.resize(newOffset * 2);
-      }
-      memcpy(buffer.data() + offset, buf, size);
-      offset = newOffset;
-    }
-
-    void reset() {
-      offset = 4; // we reserve 4 bytes for size
-      buffer.resize(offset);
-    }
-
-    void finalize() {
-      // write size
-      *(uint32_t *)buffer.data() = offset;
-    }
-
-    // expose data and size
-    char *data() { return (char *)buffer.data(); }
-    size_t size() { return offset; }
-  };
 
   void setPeer(SHContext *context, NetworkPeer &peer) {
     if (!_peerVar) {
@@ -807,8 +756,6 @@ struct Server : public NetworkBase {
 
     return input;
   }
-
-  static inline Type ServerType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = ServerCC}}}};
 };
 
 struct Broadcast {
@@ -1170,56 +1117,14 @@ struct PeerBase {
   }
 };
 
-struct Send : public PeerBase {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto peer = getPeer(context);
-
-    peer->sendVar(input);
-
-    return input;
-  }
-};
-
-struct PeerID : public PeerBase {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
-
-  static inline Parameters params{
-      {"Peer", SHCCSTR("The optional explicit peer to identify."), {CoreInfo::NoneType, Client::PeerObjectType}}};
-
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto peer = getPeer(context);
-    return Var(reinterpret_cast<int64_t>(peer));
-  }
-};
-
-struct GetPeer : public PeerBase {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return Client::PeerType; }
-
-  // override parent
-  static SHParametersInfo parameters() { return SHParametersInfo{}; }
-  void setParam(int index, const SHVar &value) {}
-  SHVar getParam(int index) { return Var::Empty; }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto peer = getPeer(context);
-    return Var::Object(peer, CoreCC, PeerCC);
-  }
-};
 }; // namespace Network
 }; // namespace shards
-SHARDS_REGISTER_FN(network) {
+
+SHARDS_REGISTER_FN(network_kcp) {
   using namespace shards::Network;
   REGISTER_SHARD("Network.Server", Server);
   REGISTER_SHARD("Network.Broadcast", Broadcast);
   REGISTER_SHARD("Network.Client", Client);
   REGISTER_SHARD("Network.Send", Send);
   REGISTER_SHARD("Network.PeerID", PeerID);
-  REGISTER_SHARD("Network.Peer", GetPeer);
 }

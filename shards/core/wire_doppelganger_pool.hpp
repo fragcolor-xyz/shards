@@ -45,8 +45,8 @@ template <typename T> struct WireDoppelgangerPool {
     }
   }
 
-  template <class Composer, typename Anything>
-  T *acquire(Composer &composer, Anything *anything)
+  template <class Composer, typename Anything = void>
+  T *acquire(Composer &composer, Anything *anything = nullptr)
     requires WireData<T>
   {
     ZoneScoped;

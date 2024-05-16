@@ -151,7 +151,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
         }
       }
       SHLOG_ERROR("Could not find variable {} when deriving type info", varName);
-      throw std::runtime_error("Could not find variable when deriving type info");
+      throw std::runtime_error(fmt::format("Could not find variable {} when deriving type info", varName));
     }
     // if we reach this point, no variable was found...
     // not our job to trigger errors, just continue
