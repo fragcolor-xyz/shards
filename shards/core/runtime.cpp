@@ -2069,7 +2069,7 @@ void gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out) {
 
 SHVar hash(const SHVar &var) {
   static thread_local HashState<XXH128_hash_t> hasher;
-
+  hasher.reset();
   auto digest = hasher.hash(var);
   return Var(int64_t(digest.low64), int64_t(digest.high64));
 }

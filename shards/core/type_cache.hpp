@@ -24,7 +24,9 @@ public:
   }
 
   const SHTypeInfo &insertUnique(shards::TypeInfo &&ti) {
-    shards::HashState<XXH128_hash_t> hs;
+    static thread_local shards::HashState<XXH128_hash_t> hs;
+    hs.reset();
+
     auto hash = hs.deriveTypeHash(ti);
 
     std::shared_lock<decltype(mutex)> lock(mutex);
@@ -42,7 +44,7 @@ public:
     }
     return (SHTypeInfo &)*it->second;
   }
-  
+
   static TypeCache &instance() {
     static TypeCache tc;
     return tc;
