@@ -5,13 +5,18 @@
 #include <variant>
 #include <functional>
 #include <thread>
+#include "platform.hpp"
 
 // TODO make it into a run-time param
+#if SH_EMSCRIPTEN
+#define SH_BASE_STACK_SIZE 2 * 1024 * 1024
+#else
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
 #else
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
+#endif // SH_EMSCRIPTEN
 
 // Defining SH_USE_THREAD_FIBER uses threads as fibers to aid in debugging
 // Set SHARDS_THREAD_FIBER=ON in cmake to enable
