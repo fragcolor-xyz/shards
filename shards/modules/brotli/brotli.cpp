@@ -51,8 +51,26 @@ struct Decompress {
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
+  static void decompressLengthSanityCheck(uint32_t decompressedLength, uint32_t compressedLength) {
+    if (compressedLength == 0 && decompressedLength != 0) {
+      throw ActivationError("Decompressed length is non-zero but compressed length is zero");
+    }
+    uint32_t largeAllocThreshold = (1 << 24); // 16M threshold
+    if (decompressedLength > largeAllocThreshold) {
+      double ratio = double(decompressedLength) / double(compressedLength);
+      if (ratio > 8.0) {
+        throw ActivationError("Decompression ratio too large, possibly corrupted data");
+      }
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.payload.bytesSize < sizeof(uint32_t)) {
+      throw ActivationError("Failed to decompress, not enough input bytes");
+    }
     auto len = reinterpret_cast<uint32_t *>(input.payload.bytesValue);
+    decompressLengthSanityCheck(*len, input.payload.bytesSize - sizeof(uint32_t));
+
     auto buffer = &input.payload.bytesValue[sizeof(uint32_t)];
     auto bufferSize = input.payload.bytesSize - sizeof(uint32_t);
     _buffer.resize((*len) + 1);

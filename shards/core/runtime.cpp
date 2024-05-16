@@ -682,7 +682,7 @@ void validateConnection(InternalCompositionContext &ctx) {
   } else {
     for (uint32_t i = 0; inputInfos.len > i; i++) {
       auto &inputInfo = inputInfos.elements[i];
-      if (matchTypes(previousOutput, inputInfo, false, true, false)) {
+      if (matchTypes(previousOutput, inputInfo, false, true, true)) {
         inputMatches = true;
         break;
       }

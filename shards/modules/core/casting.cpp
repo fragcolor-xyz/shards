@@ -74,10 +74,6 @@ struct FromSeq {
   }
 
   template <SHType OF> void toBytes(std::vector<uint8_t> &buffer, const SHVar &input) {
-    // TODO SIMD this
-    if (input.payload.seqValue.len == 0)
-      throw ActivationError("Input sequence was empty.");
-
     buffer.resize(size_t(input.payload.seqValue.len));
 
     if constexpr (OF == SHType::Int) {
