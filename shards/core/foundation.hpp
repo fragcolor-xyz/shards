@@ -684,6 +684,14 @@ template <typename T> inline void arrayResize(T &arr, uint32_t size) {
 }
 
 template <typename T> inline void arrayShuffle(T &arr) {
+  // Edge case: If the array length is 0 or 1, no need to shuffle
+  if (arr.len <= 1) {
+    return;
+  }
+
+  // Seed the random number generator for different results each time
+  std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
   // Fisher-Yates shuffle
   for (uint32_t i = arr.len - 1; i > 0; i--) {
     uint32_t j = rand() % (i + 1);
