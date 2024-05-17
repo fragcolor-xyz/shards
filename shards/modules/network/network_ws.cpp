@@ -42,7 +42,7 @@ struct WSServer final : public Server {
     socket = pollnet_invalid_handle();
   }
 
-  void broadcast(boost::span<const uint8_t> data);
+  void broadcast(boost::span<const uint8_t> data) override;
 };
 
 struct WSPeer : public Peer {
@@ -63,10 +63,10 @@ struct WSPeer : public Peer {
     socket = pollnet_invalid_handle();
   }
 
-  void send(boost::span<const uint8_t> data) { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
-  bool disconnected() const { return disconnected_; }
-  int64_t getId() const { return int64_t(socket); }
-  std::string_view getDebugName() const { return debugName; }
+  void send(boost::span<const uint8_t> data) override { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
+  bool disconnected() const override { return disconnected_; }
+  int64_t getId() const override { return int64_t(socket); }
+  std::string_view getDebugName() const override { return debugName; }
 };
 struct WSHandler : public WSPeer {
   entt::connection onStopConnection;
@@ -138,7 +138,7 @@ struct WSServerShard {
 
   struct Composer {
     WSServerShard &server;
-    
+
     Composer(WSServerShard &server) : server(server) {}
     void compose(SHWire *wire, void *nothing, bool recycling) {
       if (recycling)
