@@ -323,22 +323,22 @@ std::vector<SHWire *> &getCoroWireStack();
     shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); \
     SH_CORO_RESUMED_LOG(_wire)                                         \
   }
-#define SH_CORO_SUSPENDED(_wire) \
-  {                              \
-    shards::popThreadName();     \
-    SH_CORO_EXT_SUSPEND_LOG(_wire)   \
+#define SH_CORO_SUSPENDED(_wire)   \
+  {                                \
+    shards::popThreadName();       \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
   }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
     TracyCoroEnter(_wire);                                                        \
-    SH_CORO_EXT_RESUME_LOG(_wire);                                                    \
+    SH_CORO_EXT_RESUME_LOG(_wire);                                                \
   }
 #define SH_CORO_EXT_SUSPEND(_wire) \
   {                                \
     shards::popThreadName();       \
     TracyCoroExit(_wire);          \
-    SH_CORO_EXT_SUSPEND_LOG(_wire)     \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
   }
 #else
 #define SH_CORO_RESUMED(_wire) SH_CORO_RESUMED_LOG(_wire)
@@ -346,12 +346,12 @@ std::vector<SHWire *> &getCoroWireStack();
 #define SH_CORO_EXT_RESUME(_wire) \
   {                               \
     TracyCoroEnter(_wire);        \
-    SH_CORO_EXT_RESUME_LOG(_wire)     \
+    SH_CORO_EXT_RESUME_LOG(_wire) \
   }
 #define SH_CORO_EXT_SUSPEND(_wire) \
   {                                \
     TracyCoroExit(_wire);          \
-    SH_CORO_EXT_SUSPEND_LOG(_wire)     \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
   }
 #endif
 
@@ -891,11 +891,12 @@ inline bool stop(SHWire *wire, SHVar *result, SHContext *currentContext) {
     // delete also the coro ptr
     wire->coro.reset();
   } else {
+    auto mesh = wire->mesh.lock();
+
     // if we had a coro this will run inside it!
     wire->cleanup(true);
 
     // let's not forget to call events, those are called inside coro handler for the above case
-    std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
     if (mesh) {
       mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
     }
