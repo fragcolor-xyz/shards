@@ -34,6 +34,7 @@
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
+#include <random>
 
 #ifdef SHARDS_TRACKING
 #include "tracking.hpp"
@@ -683,18 +684,19 @@ template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   arr.len = size;
 }
 
-template <typename T> inline void arrayShuffle(T &arr) {
-  // Edge case: If the array length is 0 or 1, no need to shuffle
-  if (arr.len <= 1) {
-    return;
-  }
+template <typename T>
+inline void arrayShuffle(T &arr) {
+  // Check if the array is empty
+  if (arr.len == 0) return;
 
-  // Seed the random number generator for different results each time
-  std::srand(static_cast<unsigned int>(std::time(nullptr)));
+  // Random number generator
+  static thread_local std::random_device rd;
+  static thread_local std::mt19937 gen(rd());
 
   // Fisher-Yates shuffle
   for (uint32_t i = arr.len - 1; i > 0; i--) {
-    uint32_t j = rand() % (i + 1);
+    std::uniform_int_distribution<uint32_t> dis(0, i);
+    uint32_t j = dis(gen);
     std::swap(arr.elements[i], arr.elements[j]);
   }
 }
