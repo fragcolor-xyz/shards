@@ -28,4 +28,6 @@ if(NOT EMSCRIPTEN)
 
   target_link_libraries(shards-network-rust INTERFACE OpenSSL)
   target_link_libraries(shards-module-network OpenSSL kcp-wrapper)
+else()
+  target_link_libraries(shards-module-network websocket.js)
 endif()
