@@ -1,25 +1,13 @@
 #ifndef DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
 #define DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
 
-#include <memory>
 #include <shards/core/platform.hpp>
-
-// ASIO must go first!!
-#if !SH_EMSCRIPTEN
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
-#include <boost/asio.hpp>
-#ifdef __clang__
-#pragma clang attribute pop
-#endif
-#endif
-
 #include <boost/core/span.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <vector>
+#include <memory>
 #include "log.hpp"
 
 namespace shards {

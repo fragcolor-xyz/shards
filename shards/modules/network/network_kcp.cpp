@@ -1,8 +1,20 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "network.hpp"
+// ASIO must go first!!
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wignored-attributes"
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+#include <boost/asio.hpp>
+#include <ikcp.h>
+#ifdef __clang__
+#pragma clang attribute pop
+#pragma clang diagnostic pop
+#endif
 
+#include "network.hpp"
 #include <shards/core/shared.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/shards.hpp>
@@ -22,16 +34,6 @@
 #include <utility>
 
 #include "core/async.hpp"
-
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
-
-#include <ikcp.h>
-
-#ifdef __clang__
-#pragma clang attribute pop
-#endif
 
 #define IKCP_MAX_PKT_SIZE 10000
 
