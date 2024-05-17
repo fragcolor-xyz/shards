@@ -1,14 +1,16 @@
 #ifndef DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
 #define DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
 
-#include <memory>
 #include <shards/core/platform.hpp>
 
 #if !SH_EMSCRIPTEN
 // ASIO must go first!!
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wignored-attributes"
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <boost/asio.hpp>
 #pragma clang attribute pop
+#pragma clang diagnostic pop
 #define SH_USE_BOOST_ASIO 1
 #endif
 
@@ -17,6 +19,7 @@
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <vector>
+#include <memory>
 #include "log.hpp"
 
 namespace shards {
