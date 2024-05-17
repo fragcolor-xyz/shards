@@ -32,7 +32,7 @@
 namespace shards {
 namespace Network {
 
-using namespace boost::asio::ip::udp;
+using boost::asio::ip::udp;
 
 struct NetworkContext {
   boost::asio::io_context _io_context;
@@ -209,24 +209,20 @@ struct NetworkPeer {
     expectedSize = 0;
   }
 
-  static inline thread_local NetworkBase::Writer _sendWriter;
-
-  Serialization serializer;
-
-  void sendVar(const SHVar &input) {
-    _sendWriter.reset();
-    serializer.reset();
-    serializer.serialize(input, _sendWriter);
-    _sendWriter.finalize();
-    auto size = _sendWriter.size();
-
+  virtual bool disconnected() { return disconnected_; }
+  virtual int64_t getId() const { return reinterpret_cast<int64_t>(this); }
+  virtual std::string_view getDebugName() const {
+    return ""; // TODO
+  }
+  void send(boost::span<const uint8_t> data) {
     std::scoped_lock lock(mutex); // prevent concurrent sends
+    auto size = data.size();
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // send in chunks
       size_t chunks = size / IKCP_MAX_PKT_SIZE;
       size_t remaining = size % IKCP_MAX_PKT_SIZE;
-      auto ptr = _sendWriter.data();
+      auto ptr = (char *)data.data();
       for (size_t i = 0; i < chunks; ++i) {
         auto err = ikcp_send(kcp, ptr, IKCP_MAX_PKT_SIZE);
         if (err < 0) {
@@ -244,7 +240,7 @@ struct NetworkPeer {
       }
     } else {
       // directly send as it's small enough
-      auto err = ikcp_send(kcp, _sendWriter.data(), _sendWriter.size());
+      auto err = ikcp_send(kcp, (char *)data.data(), data.size());
       if (err < 0) {
         SHLOG_ERROR("ikcp_send error: {}", err);
         throw ActivationError("ikcp_send error");
@@ -263,7 +259,7 @@ struct NetworkPeer {
 
     _start = SHClock::now();
     _lastContact = SHClock::now();
-    disconnected = false;
+    disconnected_ = false;
     networkError.reset();
     recvBuffer.clear();
     expectedSize = 0;
@@ -290,10 +286,10 @@ struct NetworkPeer {
 
   std::optional<boost::system::error_code> networkError;
 
-  std::atomic_bool disconnected = false;
+  std::atomic_bool disconnected_ = false;
 };
 
-struct Server : public NetworkBase {
+struct ServerShard : public NetworkBase {
   std::shared_mutex peersMutex;
   udp::endpoint _sender;
 
@@ -1040,6 +1036,6 @@ struct Client : public NetworkBase {
 
 SHARDS_REGISTER_FN(network_kcp) {
   using namespace shards::Network;
-  REGISTER_SHARD("Network.Server", Server);
-  REGISTER_SHARD("Network.Broadcast", Broadcast);
+  REGISTER_SHARD("Network.Server", ServerShard);
+  REGISTER_SHARD("Network.Client", ClientShard);
 }

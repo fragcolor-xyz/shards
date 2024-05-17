@@ -23,7 +23,7 @@ boost::span<const uint8_t> pollnet_unsafe_get_data_span(pollnet_ctx *ctx, socket
   return boost::span((const uint8_t *)pollnet_unsafe_get_data_ptr(ctx, handle), len);
 }
 
-struct WSServer : public Server {
+struct WSServer final : public Server {
   pollnet_ctx *ctx{};
   sockethandle_t socket{};
   std::unordered_map<sockethandle_t, struct WSHandler *> handle2Peer;
@@ -138,7 +138,8 @@ struct WSServerShard {
 
   struct Composer {
     WSServerShard &server;
-
+    
+    Composer(WSServerShard &server) : server(server) {}
     void compose(SHWire *wire, void *nothing, bool recycling) {
       if (recycling)
         return;
