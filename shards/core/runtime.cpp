@@ -78,6 +78,14 @@ EM_JS(void, sh_emscripten_init, (), {
 #endif
 
 namespace shards {
+
+inline shards::logging::Logger getPerfLogger() { return shards::logging::getOrCreate("perf"); }
+#ifndef NDEBUG
+#define SHLOG_PERF_WARN(...) SPDLOG_LOGGER_DEBUG(shards::getPerfLogger(), __VA_ARGS__)
+#else
+#define SHLOG_PERF_WARN(...) (void)0
+#endif
+
 #ifdef SH_COMPRESSED_STRINGS
 SHOptionalString getCompiledCompressedString(uint32_t id) {
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
@@ -1721,7 +1729,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
       // Slower stable update
       if (!fastUpdateSuccessful) {
-        SPDLOG_WARN("Perfoming slow table clone on {} => {}", src, dst);
+        SHLOG_PERF_WARN("Perfoming slow table clone on {} => {}", src, dst);
 
         // Delete/update set
         for (; dstIt != map->end();) {
