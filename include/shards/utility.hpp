@@ -550,6 +550,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
   const TOwnedVar<SH_CORE> &operator[](int index) const { return (TOwnedVar<SH_CORE> &)payload.seqValue.elements[index]; }
 
   SHVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
+  const SHVar *data() const { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
 
   size_t size() const { return payload.seqValue.len; }
 
