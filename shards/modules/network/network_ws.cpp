@@ -7,13 +7,18 @@
 #include <shards/core/object_var_util.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#if SH_EMSCRIPTEN
+#include <emscripten/websocket.h>
+#else
 extern "C" {
 #include "pollnet.h"
 }
+#endif
 
 namespace shards {
 namespace Network {
 
+#if !SH_EMSCRIPTEN
 std::string_view pollnet_unsafe_get_data_string_view(pollnet_ctx *ctx, sockethandle_t handle) {
   size_t len = pollnet_get_data_size(ctx, handle);
   return std::string_view((const char *)pollnet_unsafe_get_data_ptr(ctx, handle), len);
@@ -479,15 +484,192 @@ struct WSClientShard {
   }
 };
 
+#else // SH_EMSCRIPTEN
+
+struct WSPeer : public Peer {
+  struct Message {
+    std::vector<uint8_t> data;
+    bool isText{};
+  };
+
+  EMSCRIPTEN_WEBSOCKET_T socket{};
+  std::string debugName;
+  bool disconnected_{};
+  OwnedVar recvBuffer;
+  boost::lockfree::queue<Message *> recvQueue{16};
+
+  void init(std::string_view addr, uint16_t port) {
+    debugName = "WSPeer";
+
+    std::string fullAddr = fmt::format("{}:{}", addr, port);
+    // socket = pollnet_listen_ws(ctx, toSWL(fullAddr));
+    EmscriptenWebSocketCreateAttributes attribs{
+        .url = fullAddr.c_str(),
+        .protocols = nullptr,
+        .createOnMainThread = false,
+    };
+    socket = emscripten_websocket_new(&attribs);
+    emscripten_websocket_set_onclose_callback(socket, this, &handleClose);
+    emscripten_websocket_set_onerror_callback(socket, this, &handleError);
+    emscripten_websocket_set_onmessage_callback(socket, this, &handleMessage);
+    emscripten_websocket_set_onopen_callback(socket, this, &handleOpen);
+  }
+
+  static EM_BOOL handleOpen(int eventType, const EmscriptenWebSocketOpenEvent *e __attribute__((nonnull)), void *userData) {
+    auto &peer = *(WSPeer *)userData;
+    SPDLOG_LOGGER_TRACE(getLogger(), "{}> Opened", peer.debugName);
+    return true;
+  }
+
+  static EM_BOOL handleClose(int eventType, const EmscriptenWebSocketCloseEvent *e __attribute__((nonnull)), void *userData) {
+    auto &peer = *(WSPeer *)userData;
+    SPDLOG_LOGGER_TRACE(getLogger(), "{}> Closed", peer.debugName);
+    peer.disconnected_ = true;
+    return true;
+  }
+
+  static EM_BOOL handleMessage(int eventType, const EmscriptenWebSocketMessageEvent *e __attribute__((nonnull)), void *userData) {
+    auto &peer = *(WSPeer *)userData;
+    SPDLOG_LOGGER_TRACE(getLogger(), "{}> Message, {} bytes, {}", peer.debugName, e->numBytes, e->isText ? "text" : "binary");
+    Message *newMsg = new Message();
+    newMsg->data.assign(e->data, e->data + e->numBytes);
+    newMsg->isText = e->isText;
+    peer.recvQueue.push(newMsg);
+    return true;
+  }
+
+  static EM_BOOL handleError(int eventType, const EmscriptenWebSocketErrorEvent *e __attribute__((nonnull)), void *userData) {
+    auto &peer = *(WSPeer *)userData;
+    SPDLOG_LOGGER_ERROR(getLogger(), "{}> Error", peer.debugName);
+    peer.disconnected_ = true;
+    return true;
+  }
+
+  void close() {
+    emscripten_websocket_close(socket, 0, "closed");
+    disconnected_ = true;
+    socket = 0;
+    drainMessageQueue();
+  }
+
+  void drainMessageQueue() {
+    // Drain the message queue
+    Message *msg{};
+    while (recvQueue.pop(msg)) {
+      delete msg;
+    }
+  }
+
+  void send(boost::span<const uint8_t> data) override {
+    emscripten_websocket_send_binary(socket, const_cast<uint8_t *>(data.data()), data.size());
+  }
+  bool disconnected() const override { return disconnected_; }
+  int64_t getId() const override { return int64_t(socket); }
+  std::string_view getDebugName() const override { return debugName; }
+};
+
+struct WSClient {
+  WSPeer peer;
+};
+
+struct WSClientShard {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Peer; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
+  PARAM_PARAMVAR(_port, "Port", ("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar});
+  PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_port), PARAM_IMPL_FOR(_handler));
+
+  std::shared_ptr<WSClient> _client;
+  SHVar _peerVar;
+  SHVar *_peerVarRef{};
+
+  std::array<SHExposedTypeInfo, 1> _exposing;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _peerVarRef = referenceVariable(context, "Network.Peer");
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
+    if (_client) {
+      _client->peer.close();
+      _client.reset();
+    }
+
+    if (_peerVarRef) {
+      releaseVariable(_peerVarRef);
+      _peerVarRef = nullptr;
+    }
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_handler) {
+      SHInstanceData dataCopy = data;
+      ExposedInfo sharedCopy(data.shared);
+      sharedCopy.push_back(ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), Types::Peer));
+      dataCopy.shared = (SHExposedTypesInfo)sharedCopy;
+      dataCopy.inputType = CoreInfo::AnyType;
+      _handler.compose(dataCopy);
+    }
+
+    return outputTypes().elements[0];
+  }
+
+  SHExposedTypesInfo exposedVariables() {
+    _exposing[0].name = "Network.Peer";
+    _exposing[0].help = SHCCSTR("The exposed peer.");
+    _exposing[0].exposedType = Types::Peer;
+    _exposing[0].isProtected = true;
+    return {_exposing.data(), 1, 0};
+  }
+
+  void recvClientData(WSClient &client, WSPeer::Message &msg, SHContext *context) {
+    auto &peer = client.peer;
+
+    withObjectVariable(*_peerVarRef, &peer, Types::Peer, [&]() {
+      Reader r((char *)msg.data.data() + 4, msg.data.size() - 4);
+      r.deserializeInto(client.peer.recvBuffer);
+
+      SHVar output{};
+      if (_handler) {
+        _handler.activate(context, client.peer.recvBuffer, output);
+      }
+    });
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    if (!_client) {
+      _client = std::make_shared<WSClient>();
+      _client->peer.init(SHSTRVIEW(_address.get()), _port.get().payload.intValue);
+      _peerVar = Var::Object(&_client->peer, Types::Peer);
+      assignVariableValue(*_peerVarRef, _peerVar);
+    }
+
+    auto &peer = _client->peer;
+    WSPeer::Message *msg{};
+    if (peer.recvQueue.pop(msg)) {
+      DEFER({ delete msg; });
+      recvClientData(*_client.get(), *msg, shContext);
+    }
+
+    return _peerVar;
+  }
+};
+
+#endif
+
 } // namespace Network
 } // namespace shards
 
 SHARDS_REGISTER_FN(network_ws) {
   using namespace shards::Network;
-  REGISTER_SHARD("Network.WS.Server", WSServerShard);
   REGISTER_SHARD("Network.WS.Client", WSClientShard);
-  // REGISTER_SHARD("Network.Broadcast", Broadcast);
-  // REGISTER_SHARD("Network.Send", Send);
-  // REGISTER_SHARD("Network.PeerID", PeerID);
-  // REGISTER_SHARD("Network.Peer", GetPeer);
 }
