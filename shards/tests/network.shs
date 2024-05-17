@@ -16,8 +16,8 @@
 
 @wire(network-test-server {
   Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
-  Once({"Smaller" | Network.Broadcast | Log("Send random")} Every: 0.5)
-  Once({@random1 | Network.Broadcast | Log("Send random")} Every: 0.5)
+  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 0.5)
+  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 0.5)
 } Looped: true)
 
 @wire(client-init {
@@ -30,7 +30,7 @@
   @random1 | Network.Send | Log("Big load")
   @random2 | Network.Send | Log("Even bigger load")
   
-  "The End" | Network.Send(peer)
+  "The End" | Network.Send(peer) | Log("Sent end")
   true > test/client-init-success
 })
 
@@ -49,12 +49,17 @@
   })
 } Looped: true)
 
+@define(tick-count 200)
+@define(tick-count-1 #(@tick-count | Sub(1)))
 @wire(test-assert {
   false | Set(test/client-init-success Global: true)
   false | Set(test/client-received-smaller Global: true)
   false | Set(test/client-received-random1 Global: true)
   false | Set(test/server-received-end Global: true)
-  Pause(2.0)
+  ForRange(1 @tick-count-1 {
+    Pause(0)
+  })
+  Log("Checking conditions")
   test/client-init-success | Log("client-init-success") | Assert.Is(true)
   test/server-received-end | Log("server-received-end") | Assert.Is(true)
   test/client-received-smaller | Log("client-received-smaller") | Assert.Is(true)
@@ -65,4 +70,4 @@
 @schedule(main test-assert)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main 0.125 32) | Assert.Is(true)
+@run(main #(10.0 | Div(1000.0)) @tick-count) | Assert.Is(true)
