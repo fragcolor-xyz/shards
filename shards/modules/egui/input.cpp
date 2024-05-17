@@ -86,7 +86,7 @@ void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &reg
   // Convert from pixel to window coordinatesmapping
   this->mappedWindowRegion = float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
-  int2 mappedRegionSize = gfx::Rect::fromCorners(mappedWindowRegion).getSize();
+  int2 mappedRegionSize{float2(gfx::Rect::fromCorners(mappedWindowRegion).getSize()) / inputScale};
   float2 eguiScreenSize = float2(mappedRegionSize) * windowToEguiScale;
 
   // Convert mapped window region to render area
