@@ -394,6 +394,8 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     shassert("Invalid type");
     return false;
   }
+
+  return false;
 }
 
 bool _seqLessEq(const SHVar &a, const SHVar &b);
