@@ -17,6 +17,10 @@ using namespace boost::filesystem;
 #include "sqlite3.h"
 #pragma clang attribute pop
 
+extern "C" {
+int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+}
+
 namespace shards {
 namespace DB {
 struct Connection {
@@ -62,6 +66,11 @@ struct Connection {
   sqlite3 *get() { return db; }
 
   void loadExtension(const std::string &path_) {
+    if (path_ == "crsqlite") {
+      loadCRSQlite();
+      return;
+    }
+
     char *errorMsg = nullptr;
     DEFER({
       if (errorMsg)
@@ -74,6 +83,17 @@ struct Connection {
       if (sqlite3_load_extension(db, str.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
         throw ActivationError(errorMsg);
       }
+    }
+  }
+
+  void loadCRSQlite() {
+    char *errorMsg = nullptr;
+    DEFER({
+      if (errorMsg)
+        sqlite3_free(errorMsg);
+    });
+    if (sqlite3_crsqlite_init(db, &errorMsg, nullptr) != SQLITE_OK) {
+      throw ActivationError(errorMsg);
     }
   }
 };
