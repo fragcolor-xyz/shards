@@ -389,7 +389,7 @@ bool Context::beginFrame() {
     for (size_t i = 0; !success && i < maxAttempts; i++) {
       success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
-        SPDLOG_LOGGER_INFO(logger, "Failed to get current swapchain texture, forcing recreate");
+        SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
         mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
       }
     }
