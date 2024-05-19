@@ -58,6 +58,7 @@ struct WSPeer : public Peer {
 
   void init(pollnet_ctx *ctx_, sockethandle_t handle, bool isServerSide) {
     ctx = ctx_;
+    disconnected_ = false;
     socket = handle;
     debugName = isServerSide ? fmt::format("WSServerPeer({})", socket) : fmt::format("WSClientPeer({})", socket);
   }
@@ -347,8 +348,6 @@ struct WSServerShard {
       case POLLNET_INVALID:
       case POLLNET_CLOSED:
         peer->disconnected_ = true;
-        clientDisconnectedNoUnmap(*peer, shContext);
-        _server->handle2Peer.erase(handle);
         break;
       case POLLNET_OPEN_HASDATA: {
         recvClientData(*peer, shContext);
@@ -494,9 +493,11 @@ struct WSPeer : public Peer {
 
   EMSCRIPTEN_WEBSOCKET_T socket{};
   std::string debugName;
+  bool connected_{};
   bool disconnected_{};
   OwnedVar recvBuffer;
   boost::lockfree::queue<Message *> recvQueue{16};
+  boost::lockfree::queue<Message *> sendQueue{16};
 
   void init(std::string_view addr, uint16_t port) {
     debugName = "WSPeer";
@@ -518,6 +519,7 @@ struct WSPeer : public Peer {
   static EM_BOOL handleOpen(int eventType, const EmscriptenWebSocketOpenEvent *e __attribute__((nonnull)), void *userData) {
     auto &peer = *(WSPeer *)userData;
     SPDLOG_LOGGER_TRACE(getLogger(), "{}> Opened", peer.debugName);
+    peer.connected_ = true;
     return true;
   }
 
@@ -558,10 +560,29 @@ struct WSPeer : public Peer {
     while (recvQueue.pop(msg)) {
       delete msg;
     }
+    while (sendQueue.pop(msg)) {
+      delete msg;
+    }
+  }
+
+  void processSendQueue() {
+    Message *msg{};
+    while (sendQueue.pop(msg)) {
+      // NOTE: Don't support text format
+      emscripten_websocket_send_binary(socket, msg->data.data(), msg->data.size());
+      delete msg;
+    }
   }
 
   void send(boost::span<const uint8_t> data) override {
-    emscripten_websocket_send_binary(socket, const_cast<uint8_t *>(data.data()), data.size());
+    if (disconnected_)
+      return;
+    if (!connected_) {
+      SPDLOG_LOGGER_ERROR(getLogger(), "{}> Defering send until connection, {} bytes", debugName, data.size());
+      sendQueue.push(new Message{std::vector<uint8_t>(data.begin(), data.end()), false});
+    } else {
+      emscripten_websocket_send_binary(socket, const_cast<uint8_t *>(data.data()), data.size());
+    }
   }
   bool disconnected() const override { return disconnected_; }
   int64_t getId() const override { return int64_t(socket); }
@@ -654,10 +675,15 @@ struct WSClientShard {
     }
 
     auto &peer = _client->peer;
-    WSPeer::Message *msg{};
-    if (peer.recvQueue.pop(msg)) {
-      DEFER({ delete msg; });
-      recvClientData(*_client.get(), *msg, shContext);
+    if (peer.connected_) {
+      if (!peer.disconnected_) {
+        peer.processSendQueue();
+      }
+      WSPeer::Message *msg{};
+      if (peer.recvQueue.pop(msg)) {
+        DEFER({ delete msg; });
+        recvClientData(*_client.get(), *msg, shContext);
+      }
     }
 
     return _peerVar;
@@ -671,5 +697,8 @@ struct WSClientShard {
 
 SHARDS_REGISTER_FN(network_ws) {
   using namespace shards::Network;
+#if !SH_EMSCRIPTEN
+  REGISTER_SHARD("Network.WS.Server", WSServerShard);
+#endif
   REGISTER_SHARD("Network.WS.Client", WSClientShard);
 }
