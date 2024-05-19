@@ -5,4 +5,4 @@ set(SOURCES
 add_shards_module(sqlite SOURCES ${SOURCES}
   REGISTER_SHARDS sqlite)
 
-target_link_libraries(shards-module-sqlite sqlite-static crsqlite-extension)
+target_link_libraries(shards-module-sqlite crsqlite-extension sqlite-static)
