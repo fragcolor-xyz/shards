@@ -25,6 +25,12 @@
 })
 
 @wire(db-test-1 {
+  Maybe({
+    "shards.db" | FS.Remove
+    "backup.db" | FS.Remove
+    "custom.db" | FS.Remove
+  })
+
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
   [] | DB.Query("SELECT * FROM integers") | Log
@@ -62,17 +68,17 @@
   DB.Backup("backup.db")
 
   ; test CRDT capabilities
-  ; (DB.LoadExtension "./crsqlite.so")
-  ; [] | DB.Query("create table foo (a primary key, b)")
-  ; [] | DB.Query("create table bar (a primary key, b, c, d)")
-  ; [] | DB.Query("create table baz (a primary key, b, c, d)")
-  ; [] | DB.Query("select crsql_as_crr('foo')")
-  ; [] | DB.Query("select crsql_as_crr('baz')")
-  ; [] | DB.Query("insert into foo (a,b) values (1,2)")
-  ; [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')")
-  ; [] | DB.Query("select * from foo") | Log
-  ; [] | DB.Query("select * from baz") | Log
-  ; [] | DB.Query("select * from crsql_changes") | Log
+  DB.LoadExtension("crsqlite")
+  [] | DB.Query("create table foo (a primary key not null, b)")
+  [] | DB.Query("create table bar (a primary key not null, b, c, d)")
+  [] | DB.Query("create table baz (a primary key not null, b, c, d)")
+  [] | DB.Query("select crsql_as_crr('foo')")
+  [] | DB.Query("select crsql_as_crr('baz')")
+  [] | DB.Query("insert into foo (a,b) values (1,2)")
+  [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')")
+  [] | DB.Query("select * from foo") | Log
+  [] | DB.Query("select * from baz") | Log
+  [] | DB.Query("select * from crsql_changes") | Log
 
   ; Test AsRows
   Repeat({
@@ -81,12 +87,6 @@
   } Times: 10)
   Msg("Test 5 passed")
 })
-
-; Run cleanup after running tests
-"shards.db" | FS.Remove
-"backup.db" | FS.Remove
-"custom.db" | FS.Remove
-Msg("Cleanup done")
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)
