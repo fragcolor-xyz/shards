@@ -377,10 +377,12 @@ struct Write {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto type = findParamVarExposedType(data, _contents);
-    if (!type)
-      throw ComposeError("Content missing");
-    _requiring = *type;
+    if (_contents.isVariable()) {
+      auto type = findParamVarExposedType(data, _contents);
+      if (!type)
+        throw ComposeError("Content missing");
+      _requiring = *type;
+    }
     return outputTypes().elements[0];
   }
 
