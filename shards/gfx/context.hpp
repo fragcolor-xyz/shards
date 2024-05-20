@@ -8,7 +8,7 @@
 #include "fwd.hpp"
 #include "user_data.hpp"
 #ifndef RUST_BINDGEN
-#include "callback2.hpp"
+#include "callback.hpp"
 #endif
 #include <cassert>
 #include <list>
