@@ -16,16 +16,13 @@ namespace gfx {
 struct BufferContextData : public ContextData {
   WgpuHandle<WGPUBuffer> buffer;
   size_t bufferLength{};
-  size_t version{};
-
-  ~BufferContextData() { releaseContextDataConditional(); }
-  void releaseContextData() override {
-    buffer.release();
-  }
+  WGPUBufferUsage currentUsage{};
 };
 
 /// <div rustbindgen opaque></div>
-struct Buffer final : public TWithContextData<BufferContextData> {
+struct Buffer final {
+  using ContextDataType = BufferContextData;
+
 private:
   UniqueId id = getNextId();
   ImmutableSharedBuffer data;
@@ -42,18 +39,18 @@ public:
   size_t getVersion() const { return version; }
 
   Buffer &setAddressSpaceUsage(shader::AddressSpace addressSpaceUsage);
-  Buffer& setLabel(const std::string&);
+  Buffer &setLabel(const std::string &);
 
   // Updates buffer data with length in bytes
-  Buffer& update(ImmutableSharedBuffer data);
+  Buffer &update(ImmutableSharedBuffer data);
 
   UniqueId getId() const { return id; }
   BufferPtr clone() const;
 
-protected:
   void initContextData(Context &context, BufferContextData &contextData);
   void updateContextData(Context &context, BufferContextData &contextData);
 
+protected:
   static UniqueId getNextId();
 };
 

@@ -870,7 +870,7 @@ public:
         auto &target = outNode.renderTargetLayout.targets.emplace_back();
         target.name = output->name;
         target.format = output->format;
-        if (hasAnyTextureFormatUsage(getTextureFormatDescription(output->format).usage, TextureFormatUsage::Depth)) {
+        if (textureFormatUsageContains(getTextureFormatDescription(output->format).usage, TextureFormatUsage::Depth)) {
           outNode.renderTargetLayout.depthTargetIndex = outNode.renderTargetLayout.targets.size() - 1;
         }
       }

@@ -114,7 +114,7 @@ void applyOutputs(SHContext *context, RenderStepOutput &output, const SHVar &inp
         if (clearValueVar.payload.boolValue) {
           // Set clear value based on texture usage
           bool isDepthStencil =
-              hasAnyTextureFormatUsage(textureFormatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil);
+              textureFormatUsageContains(textureFormatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil);
           clearValues = isDepthStencil ? ClearValues::getDefaultDepthStencil() : ClearValues::getDefaultColor();
         }
       } else {

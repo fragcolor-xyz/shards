@@ -6,6 +6,7 @@
 #include "render_graph.hpp"
 #include "texture_view_cache.hpp"
 #include "drawable_processor.hpp"
+#include "context_data_storage.hpp"
 #include "gizmos/shapes.hpp"
 
 namespace gfx::detail {
@@ -30,6 +31,7 @@ struct RendererStorage {
   PipelineCache pipelineCache;
   RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;
+  ContextDataStorage contextDataStorage;
 
   // Enable debug visualization
   bool debug{};
@@ -56,7 +58,7 @@ struct RendererStorage {
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     shassert((textureData.texture || textureData.externalTexture) && "Invalid texture");
     TextureViewDesc desc{
-        .format = textureData.format.pixelFormat,
+        .format = deriveTextureViewFormat(textureData),
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = mipIndex,
         .mipLevelCount = 1,

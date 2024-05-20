@@ -25,14 +25,6 @@ namespace gfx {
 static auto logger = getLogger();
 static auto wgpuLogger = getWgpuLogger();
 
-static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
-#if SH_ANDROID
-  return WGPUTextureFormat_RGBA8UnormSrgb;
-#else
-  return WGPUTextureFormat_BGRA8UnormSrgb;
-#endif
-}
-
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if SH_WINDOWS
@@ -112,13 +104,13 @@ struct ContextMainOutput {
 
   std::vector<WGPUTexture> inflightTextures;
 
-  ContextFlushTextureCallback onFlushTextureReferences;
+  ContextFlushTextureReferencesRegistry onFlushTextureReferences;
 
 #ifndef WEBGPU_NATIVE
   WGPUSwapChain wgpuSwapChain{};
 #endif
 
-  ContextMainOutput(Window &window, ContextFlushTextureCallback onFlushTextureReferences)
+  ContextMainOutput(Window &window, ContextFlushTextureReferencesRegistry onFlushTextureReferences)
       : window(&window), onFlushTextureReferences(onFlushTextureReferences) {
     texture = std::make_shared<Texture>();
   }
@@ -222,6 +214,7 @@ struct ContextMainOutput {
     flushInFlightTextures();
 
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
+    // WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
       throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
@@ -242,13 +235,34 @@ struct ContextMainOutput {
 
     // Force flush all texture references before resizing
     // this should cause all references to the surface texture to be released
-    onFlushTextureReferences->call();
+    onFlushTextureReferences->forEach([](ContextFlushTextureReferencesHandler &target) { target.flushTextureReferences(); });
+
+    TextureFormatFlags textureFormatFlags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding;
+
+    WGPUTextureFormat viewFormats[1];
+    size_t viewFormatCount = 0;
+
+    auto pixelFormatDesc = getTextureFormatDescription(swapchainFormat);
+    // When using non-srgb integer storage types, assume that the device interprets it as sRGB
+    if (pixelFormatDesc.colorSpace != ColorSpace::Srgb && isIntegerStorageType(pixelFormatDesc.storageType)) {
+      auto upgradedFormat = upgradeToSrgbFormat(swapchainFormat);
+      if (upgradedFormat) {
+        viewFormats[0] = *upgradedFormat;
+        viewFormatCount = 1;
+        textureFormatFlags = textureFormatFlags | TextureFormatFlags::IsSecretlySrgb;
+      } else {
+        SPDLOG_LOGGER_ERROR(logger, "Failed to add sRGB view format to surface format {}",
+                            magic_enum::enum_name(swapchainFormat));
+      }
+    }
 
 #if WEBGPU_NATIVE
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
     surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
     surfaceConf.device = device;
+    surfaceConf.viewFormats = viewFormats;
+    surfaceConf.viewFormatCount = viewFormatCount;
 
     // Canvas size should't be set when configuring, instead resize the element
     // https://github.com/emscripten-core/emscripten/issues/17416
@@ -281,7 +295,7 @@ struct ContextMainOutput {
         ->initWithPixelFormat(swapchainFormat) //
         .initWithLabel("<main output>")
         .initWithResolution(currentSize)
-        .initWithFlags(TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding);
+        .initWithFlags(textureFormatFlags);
   }
 
   void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface); }
@@ -342,44 +356,6 @@ TexturePtr Context::getMainOutputTexture() {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
-  ZoneScoped;
-  shassert(!ptr.expired());
-
-  std::shared_ptr<ContextData> sharedPtr = ptr.lock();
-  if (sharedPtr) {
-    std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-    contextDatas.insert_or_assign(sharedPtr.get(), ptr);
-  }
-}
-
-void Context::removeContextDataInternal(ContextData *ptr) {
-  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-  contextDatas.erase(ptr);
-}
-
-void Context::collectContextData() {
-  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
-  for (auto it = contextDatas.begin(); it != contextDatas.end();) {
-    if (it->second.expired()) {
-      it = contextDatas.erase(it);
-    } else {
-      it++;
-    }
-  }
-}
-
-void Context::releaseAllContextData() {
-  contextDataLock.lock();
-  auto contextDatas = std::move(this->contextDatas);
-  contextDataLock.unlock();
-  for (auto &obj : contextDatas) {
-    if (!obj.second.expired()) {
-      obj.first->releaseContextDataConditional();
-    }
-  }
-}
-
 bool Context::beginFrame() {
   ZoneScoped;
   shassert(frameState == ContextFrameState::Ok);
@@ -398,7 +374,7 @@ bool Context::beginFrame() {
   if (suspended)
     return false;
 
-  collectContextData();
+  // collectContextData();
   if (!isHeadless()) {
     bool attemptedRecreate = false;
 
@@ -534,6 +510,8 @@ void Context::deviceObtained() {
     getOrCreateSurface();
     mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
+
+  onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceAcquired(); });
 }
 
 void Context::requestDevice() {
@@ -586,7 +564,8 @@ void Context::requestDevice() {
 
 void Context::releaseDevice() {
   ZoneScoped;
-  releaseAllContextData();
+
+  onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceLost(); });
 
   if (mainOutput) {
     mainOutput->releaseSurface();
