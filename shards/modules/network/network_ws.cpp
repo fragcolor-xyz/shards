@@ -548,7 +548,7 @@ struct WSPeer : public Peer {
   }
 
   void close() {
-    emscripten_websocket_close(socket, 0, "closed");
+    emscripten_websocket_close(socket, 1000, "closed");
     disconnected_ = true;
     socket = 0;
     drainMessageQueue();
