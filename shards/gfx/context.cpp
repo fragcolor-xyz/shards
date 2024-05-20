@@ -288,7 +288,7 @@ struct ContextMainOutput {
         .presentMode = WGPUPresentMode_Fifo,
     };
     releaseSwapchain();
-    wgpuSwapChain = wgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
+    wgpuSwapChain = gfxWgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
 #endif
 
     texture
