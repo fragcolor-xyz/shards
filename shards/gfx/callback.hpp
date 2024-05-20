@@ -33,20 +33,21 @@ struct CallbackRegistry final : public CallbackRegistryBase {
   std::vector<std::weak_ptr<Item>> callbacks;
 
   template <typename T> void forEach(T &&action_) {
-    std::shared_lock<std::shared_mutex> lock(this->lock);
     bool needCleanup{};
+    {
+      std::shared_lock<std::shared_mutex> _l(this->lock);
 
-    for (auto it = callbacks.begin(); it != callbacks.end(); ++it) {
-      if (auto cb = it->lock()) {
-        action_(*cb.get());
-      } else {
-        needCleanup = true;
+      for (auto it = callbacks.begin(); it != callbacks.end(); ++it) {
+        if (auto cb = it->lock()) {
+          action_(*cb.get());
+        } else {
+          needCleanup = true;
+        }
       }
     }
 
     if (needCleanup) {
-      lock.release();
-      std::unique_lock<std::shared_mutex> lock(this->lock);
+      std::unique_lock<std::shared_mutex> _l(this->lock);
       for (auto it = callbacks.begin(); it != callbacks.end();) {
         if (it->expired()) {
           it = callbacks.erase(it);
