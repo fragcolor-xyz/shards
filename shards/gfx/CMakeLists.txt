@@ -104,7 +104,6 @@ if(EMSCRIPTEN)
   target_link_options(gfx PUBLIC
     "-sUSE_WEBGPU=1"
     "-sALLOW_MEMORY_GROWTH=1"
-    # "-sASYNCIFY=1"
   )
 
   if(EMSCRIPTEN)
