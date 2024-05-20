@@ -3,57 +3,46 @@
 
 #include "file_base.hpp"
 #include <shards/core/serialization.hpp>
+#include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
+#include <shards/common_types.hpp>
 #include <fstream>
 #include <future>
 #include <string>
 
 namespace shards {
-struct WriteFile : public FileBase {
+
+struct WriteFile {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  PARAM_PARAMVAR(_filename, "Filename", "The file to write to.", {CoreInfo::StringStringVarOrNone});
+  PARAM_VAR(_append, "Append", "If we should append to the file if existed already or truncate. (default: false).",
+            {CoreInfo::BoolType});
+  PARAM_VAR(_flush, "Flush", "If the file should be flushed to disk after every write.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filename), PARAM_IMPL_FOR(_append), PARAM_IMPL_FOR(_flush));
+
   std::ofstream _fileStream;
-  bool _append = false;
-  bool _flush = false;
+  Serialization serial;
 
-  static inline Parameters params{
-      FileBase::params,
-      {{"Append",
-        SHCCSTR("If we should append to the file if existed already or "
-                "truncate. (default: false)."),
-        {CoreInfo::BoolType}},
-       {"Flush", SHCCSTR("If the file should be flushed to disk after every write."), {CoreInfo::BoolType}}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 1:
-      _append = value.payload.boolValue;
-      break;
-    case 2:
-      _flush = value.payload.boolValue;
-      break;
-    default:
-      FileBase::setParam(index, value);
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 1:
-      return Var(_append);
-    case 2:
-      return Var(_flush);
-    default:
-      return FileBase::getParam(index);
-    }
-  }
-
-  void cleanup(SHContext* context) {
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) {
     if (_fileStream.good()) {
       _fileStream.flush();
     }
     _fileStream = {};
-    FileBase::cleanup(context);
+    PARAM_CLEANUP(context);
   }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  bool getAppend() const { return _append->isNone() ? false : _append->payload.boolValue; }
+  bool getFlush() const { return _flush->isNone() ? false : _flush->payload.boolValue; }
 
   struct Writer {
     std::ofstream &_fileStream;
@@ -61,12 +50,10 @@ struct WriteFile : public FileBase {
     void operator()(const uint8_t *buf, size_t size) { _fileStream.write((const char *)buf, size); }
   };
 
-  Serialization serial;
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_fileStream.is_open() || (_filename.isVariable() && _filename.get() != _currentFileName)) {
+    if (!_fileStream.is_open() || _filename.isVariable()) {
       std::string filename;
-      if (!getFilename(context, filename, false)) {
+      if (!getPathChecked(filename, _filename, false)) {
         return input;
       }
 
@@ -78,7 +65,7 @@ struct WriteFile : public FileBase {
       if (!parent_path.empty() && !fs::exists(parent_path))
         fs::create_directories(p.parent_path());
 
-      if (_append)
+      if (getAppend())
         _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
       else
         _fileStream = std::ofstream(filename, std::ios::trunc | std::ios::binary);
@@ -87,23 +74,36 @@ struct WriteFile : public FileBase {
     Writer s(_fileStream);
     serial.reset();
     serial.serialize(input, s);
-    if (_flush) {
+    if (getFlush()) {
       _fileStream.flush();
     }
     return input;
   }
 };
 
-struct ReadFile : public FileBase {
+struct ReadFile {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  PARAM_PARAMVAR(_filename, "Filename", "The file to read from.", {CoreInfo::StringStringVarOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filename));
 
   std::ifstream _fileStream;
   SHVar _output{};
+  Serialization serial;
 
-  void cleanup(SHContext* context) {
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) {
     destroyVar(_output);
     _fileStream = {};
-    FileBase::cleanup(context);
+    PARAM_CLEANUP(context);
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
   struct Reader {
@@ -112,12 +112,10 @@ struct ReadFile : public FileBase {
     void operator()(uint8_t *buf, size_t size) { _fileStream.read((char *)buf, size); }
   };
 
-  Serialization serial;
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_fileStream.is_open() || (_filename.isVariable() && _filename.get() != _currentFileName)) {
+    if (!_fileStream.is_open() || _filename.isVariable()) {
       std::string filename;
-      if (!getFilename(context, filename)) {
+      if (!getPathChecked(filename, _filename, true)) {
         return Var::Empty;
       }
 
@@ -141,7 +139,7 @@ struct ToBytes {
   Serialization serial;
   std::vector<uint8_t> _buffer;
 
-  void cleanup(SHContext* context) { _buffer.clear(); }
+  void cleanup(SHContext *context) { _buffer.clear(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     BufferRefWriter s(_buffer);
