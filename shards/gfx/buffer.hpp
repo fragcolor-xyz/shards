@@ -37,7 +37,10 @@ struct BufferContextData : public ContextData {
   }
 
 #if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
-  ~BufferContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data destroyed", getLabel()); }
+  ~BufferContextData() {
+    if (buffer)
+      SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data destroyed", getLabel());
+  }
 #endif
 };
 

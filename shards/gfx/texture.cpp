@@ -101,10 +101,10 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
   wgpuQueueWriteTexture(context.wgpuQueue, &dst, isb.getData(), isb.getLength(), &layout, &writeSize);
 }
 
-void Texture::initContextData(Context &context, TextureContextData &contextData) {
-  ZoneScoped;
+void Texture::initContextData(Context &context, TextureContextData &contextData) { contextData.init(getLabel()); }
 
-  contextData.init(getLabel());
+void Texture::updateContextData(Context &context, TextureContextData &contextData) {
+  ZoneScoped;
 
   WGPUDevice device = context.wgpuDevice;
   shassert(device);
@@ -166,17 +166,11 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   }
 }
 
-void Texture::updateContextData(Context &context, TextureContextData &contextData) {
-  initContextData(context, contextData);
-}
-
 UniqueId Texture::getNextId() {
   static UniqueIdGenerator gen(UniqueIdTag::Texture);
   return gen.getNext();
 }
 
-void Texture::update() {
-  ++version;
-}
+void Texture::update() { ++version; }
 
 } // namespace gfx

@@ -86,7 +86,10 @@ struct MeshContextData : public ContextData {
   }
 
 #if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
-  ~MeshContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Mesh {} data destroyed", getLabel()); }
+  ~MeshContextData() {
+    if (vertexBuffer)
+      SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Mesh {} data destroyed", getLabel());
+  }
 #endif
 };
 

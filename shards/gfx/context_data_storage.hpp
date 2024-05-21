@@ -16,9 +16,7 @@ struct SubContextDataStorage {
                              boost::container::stable_vector<std::pair<size_t, ContextDataType>>>
       map;
 
-  void clear() {
-    map.clear();
-  }
+  void clear() { map.clear(); }
 
   ContextDataType &getCreateOrUpdate(Context &context, size_t frameCounter, const std::shared_ptr<T> &v) {
     auto id = v->getId().getIdPart();
@@ -34,8 +32,8 @@ struct SubContextDataStorage {
       if (v->getVersion() != cd.version) {
         v->updateContextData(context, cd);
         cd.version = v->getVersion();
-        cd.lastTouched = frameCounter;
       }
+      cd.lastTouched = frameCounter;
     }
     return cd;
   }

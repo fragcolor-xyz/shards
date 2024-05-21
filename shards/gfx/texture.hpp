@@ -85,7 +85,10 @@ struct TextureContextData : public ContextData {
   }
 
 #if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
-  ~TextureContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data destroyed", getLabel()); }
+  ~TextureContextData() {
+    if (texture)
+      SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data destroyed", getLabel());
+  }
 #endif
 };
 
