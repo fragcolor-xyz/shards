@@ -405,28 +405,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         prepareData->viewBufferBindings.resize(s);
     }
 
-    // {
-    //   ZoneScopedN("Prepare resources");
-    //   // Init placeholder texture
-    //   for (size_t i = 0; i < std::size(placeholderTextures); i++) {
-    //     contextDataCollector.fixup(nullptr, placeholderTextures[i]);
-    //   }
-
-    //   // Prepare mesh & texture buffers
-    //   for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
-    //     if (baseParam.second.texture) {
-    //       // contextDataCollector.fixup(baseParam.second.texture
-    //       baseParam.second.texture->createContextDataConditionalRefUNSAFE(context.context);
-    //     }
-    //   }
-
-    //   for (auto &drawable : context.drawables) {
-    //     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-    //     auto &cached = drawableCache[meshDrawable.getId()];
-    //     cached.mesh->createContextDataConditionalRefUNSAFE(context.context);
-    //   }
-    // }
-
     // Allocate internal buffers ("object" & "view")
     size_t numDrawables{};
     {
@@ -590,6 +568,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
     }
 
+    TextureContextData *placeholderTextureContextData[NumPlaceholderTextures]{};
+    {
+      ZoneScopedN("fixupContextData");
+      for (size_t i = 0; i < std::size(placeholderTextures); i++) {
+        contextDataCollector.fixup(&placeholderTextureContextData[i], placeholderTextures[i]);
+      }
+      contextDataCollector.doFixup(context.storage.contextDataStorage, context.context, context.storage.frameCounter);
+    }
+
     // Setup draw buffer data
     {
       ZoneScopedN("fillDrawBuffer");
@@ -648,15 +635,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
 
       prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
-    }
-
-    TextureContextData *placeholderTextureContextData[NumPlaceholderTextures]{};
-    {
-      ZoneScopedN("fixupContextData");
-      for (size_t i = 0; i < std::size(placeholderTextures); i++) {
-        contextDataCollector.fixup(&placeholderTextureContextData[i], placeholderTextures[i]);
-      }
-      contextDataCollector.doFixup(context.storage.contextDataStorage, context.context, context.storage.frameCounter);
     }
 
     {
