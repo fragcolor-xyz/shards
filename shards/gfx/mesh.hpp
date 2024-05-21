@@ -8,6 +8,7 @@
 #include "linalg/linalg.h"
 #include "fwd.hpp"
 #include "unique_id.hpp"
+#include "log.hpp"
 #include <string>
 #include <vector>
 #include <optional>
@@ -66,6 +67,27 @@ struct MeshContextData : public ContextData {
   size_t vertexBufferLength = 0;
   WgpuHandle<WGPUBuffer> indexBuffer;
   size_t indexBufferLength = 0;
+
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+  std::string_view getLabel() const { return label; }
+#endif
+
+  MeshContextData() = default;
+  MeshContextData(MeshContextData &&) = default;
+
+  void init(std::string_view label) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+    this->label = label;
+#endif
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Mesh {} data created", getLabel());
+#endif
+  }
+
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~MeshContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Mesh {} data destroyed", getLabel()); }
+#endif
 };
 
 /// <div rustbindgen opaque></div>
@@ -102,6 +124,8 @@ public:
 
   UniqueId getId() const { return id; }
   MeshPtr clone() const;
+
+  std::string_view getLabel() const { return "<unknown>"; }
 
   void pipelineHashCollect(detail::PipelineHashCollector &) const;
 

@@ -104,6 +104,8 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
 void Texture::initContextData(Context &context, TextureContextData &contextData) {
   ZoneScoped;
 
+  contextData.init(getLabel());
+
   WGPUDevice device = context.wgpuDevice;
   shassert(device);
 

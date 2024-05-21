@@ -24,6 +24,8 @@ Buffer &Buffer::setLabel(const std::string &label) {
   return *this;
 }
 
+std::string_view Buffer::getLabel() const { return label; }
+
 Buffer &Buffer::update(ImmutableSharedBuffer data) {
   this->data = data;
   this->version++;
@@ -35,7 +37,7 @@ BufferPtr Buffer::clone() const {
   return result;
 }
 
-void Buffer::initContextData(Context &context, BufferContextData &contextData) {}
+void Buffer::initContextData(Context &context, BufferContextData &contextData) { contextData.init(getLabel()); }
 
 void Buffer::updateContextData(Context &context, BufferContextData &contextData) {
   ImmutableSharedBuffer data = this->data;

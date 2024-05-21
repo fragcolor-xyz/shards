@@ -600,6 +600,10 @@ struct RendererImpl final : public ContextData {
     clearOldCacheItemsIn(storage.pipelineCache.map, storage.frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(storage.viewCache, storage.frameCounter, 120 * 60 * 5);
 
+    clearOldCacheItemsIn(storage.contextDataStorage.buffers.map, storage.frameCounter, 32);
+    clearOldCacheItemsIn(storage.contextDataStorage.meshes.map, storage.frameCounter, 32);
+    clearOldCacheItemsIn(storage.contextDataStorage.textures.map, storage.frameCounter, 16);
+
     // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
     storage.renderTextureCache.resetAndClearOldCacheItems(storage.frameCounter, 8);
     storage.textureViewCache.clearOldCacheItems(storage.frameCounter, 8);

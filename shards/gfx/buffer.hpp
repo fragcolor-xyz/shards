@@ -9,6 +9,7 @@
 #include "isb.hpp"
 #include "unique_id.hpp"
 #include "shader/types.hpp"
+#include "log.hpp"
 
 namespace gfx {
 
@@ -17,6 +18,27 @@ struct BufferContextData : public ContextData {
   WgpuHandle<WGPUBuffer> buffer;
   size_t bufferLength{};
   WGPUBufferUsage currentUsage{};
+
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+  std::string_view getLabel() const { return label; }
+#endif
+
+  BufferContextData() = default;
+  BufferContextData(BufferContextData &&) = default;
+
+  void init(std::string_view label) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+    this->label = label;
+#endif
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data created", getLabel());
+#endif
+  }
+
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~BufferContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data destroyed", getLabel()); }
+#endif
 };
 
 /// <div rustbindgen opaque></div>
@@ -40,6 +62,7 @@ public:
 
   Buffer &setAddressSpaceUsage(shader::AddressSpace addressSpaceUsage);
   Buffer &setLabel(const std::string &);
+  std::string_view getLabel() const;
 
   // Updates buffer data with length in bytes
   Buffer &update(ImmutableSharedBuffer data);

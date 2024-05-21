@@ -11,14 +11,22 @@
 namespace gfx {
 struct Context;
 
+#define SH_GFX_CONTEXT_DATA_LABELS 1
+#define SH_GFX_CONTEXT_DATA_LOG_LIFETIME 1
 struct ContextData {
   size_t version = ~0;
-  size_t lastChecked = ~0;
+  size_t lastTouched = ~0;
+
+#if !SH_GFX_CONTEXT_DATA_LABELS
+  std::string_view getLabel() const { return "<unknown>"; }
+#endif
 };
 
 template <typename T>
 concept TContextData = std::is_base_of_v<ContextData, T>;
 
+// This is the source of the context data on the client side that provides
+// functions to populate the gpu-side context data and timestamps to coordinate when to update
 template <typename T>
 concept TWithContextData = requires(T t, typename T::ContextDataType &cd, Context &ctx) {
   typename T::ContextDataType;

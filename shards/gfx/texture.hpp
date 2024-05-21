@@ -9,6 +9,7 @@
 #include "unique_id.hpp"
 #include "fwd.hpp"
 #include "enums.hpp"
+#include "log.hpp"
 #include <compare>
 #include <variant>
 #include <optional>
@@ -65,6 +66,27 @@ struct TextureContextData : public ContextData {
   WGPUTexture externalTexture{};
   WGPUExtent3D size{};
   UniqueId id{};
+
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+  std::string_view getLabel() const { return label; }
+#endif
+
+  TextureContextData() = default;
+  TextureContextData(TextureContextData &&) = default;
+
+  void init(std::string_view label) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+    this->label = label;
+#endif
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data created", getLabel());
+#endif
+  }
+
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~TextureContextData() { SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data destroyed", getLabel()); }
+#endif
 };
 
 /// <div rustbindgen opaque></div>

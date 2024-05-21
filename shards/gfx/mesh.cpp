@@ -79,6 +79,8 @@ MeshPtr Mesh::clone() const {
 }
 
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {
+  contextData.init(getLabel());
+
   contextData.vertexBufferLength = 0;
   contextData.indexBufferLength = 0;
 }
