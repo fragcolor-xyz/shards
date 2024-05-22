@@ -95,7 +95,7 @@ struct TidePool {
 
   std::atomic_size_t _scheduledCounter;
   std::atomic_bool _running;
-  std::future<void> _controller;
+  std::thread _controller;
   boost::lockfree::queue<Work *> _queue{NumWorkers};
   std::deque<Worker> _workers;
   std::mutex _condMutex;
@@ -103,12 +103,15 @@ struct TidePool {
 
   TidePool() {
     _running = true;
-    _controller = std::async(std::launch::async, [this]() { controllerWorker(); });
+    _controller = std::thread(&TidePool::controllerWorker, this);
   }
 
   ~TidePool() {
     _running = false;
-    _controller.wait();
+    // Ensure the thread is properly joined on destruction if it is joinable
+    if (_controller.joinable()) {
+      _controller.join();
+    }
   }
 
   void schedule(Work *work) {
