@@ -128,6 +128,10 @@ if(WIN32)
   endif()
 endif()
 
+if(EMSCRIPTEN)
+  set(EXTERNAL_BUILD_TYPE "Release")
+endif()
+
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
   set(WINDOWS_ABI "msvc")
 

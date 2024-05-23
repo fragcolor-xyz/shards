@@ -1,7 +1,9 @@
 include(ExternalProject)
 
 # Inherit build type
-set(EXTERNAL_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+if(NOT EXTERNAL_BUILD_TYPE)
+  set(EXTERNAL_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+endif()
 
 # Toolchain file
 if(CMAKE_TOOLCHAIN_FILE)
