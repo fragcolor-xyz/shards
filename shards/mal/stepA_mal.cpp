@@ -5,7 +5,7 @@
 #include "MAL.h"
 
 #include "Environment.h"
-#include "core/foundation.hpp"
+#include "shards/core/foundation.hpp"
 #ifndef NO_MAL_MAIN
 #include "ReadLine.h"
 #endif

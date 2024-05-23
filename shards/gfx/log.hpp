@@ -2,7 +2,7 @@
 #define DDE8DFC5_0F92_481A_AF98_812B4A76BE44
 
 #include "spdlog/common.h"
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 namespace gfx {
 
 inline shards::logging::Logger getLogger() {

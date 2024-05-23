@@ -13,7 +13,7 @@
 #include <shards/core/exposed_type_utils.hpp>
 #include <shards/common_types.hpp>
 #include <shards/inlined.hpp>
-#include <gfx/moving_average.hpp>
+#include <shards/gfx/moving_average.hpp>
 #include <cassert>
 #include <cmath>
 #include <optional>
