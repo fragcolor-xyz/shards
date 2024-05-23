@@ -1,4 +1,4 @@
-#include "core/module.hpp"
+#include "shards/core/module.hpp"
 #include <SDL.h>
 #include <SDL_clipboard.h>
 #include <shards/core/runtime.hpp>

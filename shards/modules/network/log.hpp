@@ -1,7 +1,7 @@
 #ifndef BAC295D1_E679_4CB3_B81C_22D4404D79BA
 #define BAC295D1_E679_4CB3_B81C_22D4404D79BA
 
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 
 namespace shards::Network {
 inline shards::logging::Logger getLogger() {

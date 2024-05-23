@@ -1,7 +1,7 @@
 #ifndef BA2BD435_CBCD_42CF_BCA0_DEB072B8CDCC
 #define BA2BD435_CBCD_42CF_BCA0_DEB072B8CDCC
 
-#include "log/log.hpp"
+#include <shards/log/log.hpp>
 #include <shards/shardwrapper.hpp>
 #include <shards/shards.h>
 #include <shards/core/foundation.hpp>

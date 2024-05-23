@@ -1,7 +1,7 @@
 #ifndef C2052FE4_794D_41AC_8A5F_DE82A84C764C
 #define C2052FE4_794D_41AC_8A5F_DE82A84C764C
 
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 
 namespace shards::input { 
 inline shards::logging::Logger getLogger() {

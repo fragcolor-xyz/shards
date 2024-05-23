@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "core/module.hpp"
+#include "shards/core/module.hpp"
 #ifdef _WIN32
 #include "winsock2.h"
 #endif

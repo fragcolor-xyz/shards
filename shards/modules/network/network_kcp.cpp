@@ -33,7 +33,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/async.hpp"
+#include "shards/core/async.hpp"
 #include "log.hpp"
 
 #define IKCP_MAX_PKT_SIZE 10000

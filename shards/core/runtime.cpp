@@ -4,7 +4,7 @@
 #include "runtime.hpp"
 #include "type_matcher.hpp"
 #include <shards/common_types.hpp>
-#include "core/foundation.hpp"
+#include "shards/core/foundation.hpp"
 #include "foundation.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
@@ -25,7 +25,7 @@
 #include <stdexcept>
 #include <string.h>
 #include <unordered_set>
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>

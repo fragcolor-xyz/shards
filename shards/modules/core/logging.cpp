@@ -8,7 +8,7 @@
 #include <atomic>
 #include <numeric>
 #include <string>
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 #include <spdlog/sinks/dist_sink.h>
 
 namespace shards {

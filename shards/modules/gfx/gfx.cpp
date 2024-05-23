@@ -1,5 +1,5 @@
 #include "gfx.hpp"
-#include "core/module.hpp"
+#include "shards/core/module.hpp"
 #include "shards_utils.hpp"
 #include "buffer_vars.hpp"
 #include <shards/shards.h>
