@@ -15,6 +15,8 @@ namespace gfx {
 
 /// <div rustbindgen opaque></div>
 struct BufferContextData : public ContextData {
+  std::weak_ptr<Buffer> keepAliveRef;
+
   WgpuHandle<WGPUBuffer> buffer;
   size_t bufferLength{};
   WGPUBufferUsage currentUsage{};
@@ -73,12 +75,16 @@ public:
   UniqueId getId() const { return id; }
   BufferPtr clone() const;
 
+  bool keepAlive() const { return true; }
+
   void initContextData(Context &context, BufferContextData &contextData);
   void updateContextData(Context &context, BufferContextData &contextData);
 
 protected:
   static UniqueId getNextId();
 };
+
+static_assert(TWithContextDataKeepAlive<Buffer>, "");
 
 } // namespace gfx
 #endif /* B473CE26_9C2F_45DE_83BF_A386A16F9EE7 */

@@ -11,7 +11,7 @@
 namespace gfx {
 struct Context;
 
-#define SH_GFX_CONTEXT_DATA_LABELS 0
+#define SH_GFX_CONTEXT_DATA_LABELS 1
 #define SH_GFX_CONTEXT_DATA_LOG_LIFETIME 0
 struct ContextData {
   size_t version = ~0;
@@ -24,6 +24,12 @@ struct ContextData {
 
 template <typename T>
 concept TContextData = std::is_base_of_v<ContextData, T>;
+
+template <typename T>
+concept TWithContextDataKeepAlive = requires(T t, typename T::ContextDataType &cd) {
+  { cd.keepAliveRef } -> std::assignable_from<std::shared_ptr<T>>;
+  { t.keepAlive() } -> std::convertible_to<bool>;
+};
 
 // This is the source of the context data on the client side that provides
 // functions to populate the gpu-side context data and timestamps to coordinate when to update

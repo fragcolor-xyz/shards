@@ -62,8 +62,9 @@ struct TextureShard {
   PARAM_PARAMVAR(_addressing, "Addressing", "For sampling, sets the address modes.",
                  {ShardsTypes::TextureAddressingEnumInfo::Type, Type::SeqOf(ShardsTypes::TextureAddressingEnumInfo::Type)});
   PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {ShardsTypes::TextureFilteringEnumInfo::Type});
+  PARAM_PARAMVAR(_label, "Label", "Debug label for this object.", {CoreInfo::StringOrStringVar, {CoreInfo::NoneType}});
   PARAM_IMPL(PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution), PARAM_IMPL_FOR(_mipLevels),
-             PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering));
+             PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering), PARAM_IMPL_FOR(_label));
 
   TextureShard() {}
 
@@ -86,7 +87,7 @@ struct TextureShard {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     texture.reset();
   }
@@ -308,6 +309,13 @@ struct TextureShard {
             },
         .resolution = resolution,
     });
+
+    Var &labelVar = (Var&)_label.get();
+    if (!labelVar.isNone()) {
+      if (SHSTRVIEW(labelVar) != texture->getLabel()) {
+        texture->initWithLabel(std::string(labelVar));
+      }
+    }
   }
 
   void applySamplerSettings() {
@@ -372,7 +380,7 @@ struct RenderTargetShard {
     _renderTarget.renderTarget = std::make_shared<RenderTarget>();
     _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, ShardsTypes::RenderTargetTypeId);
   }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &rt = _renderTarget.renderTarget;
@@ -419,7 +427,7 @@ struct RenderTargetTextureShard {
     }
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, ShardsTypes::RenderTarget);
@@ -469,7 +477,7 @@ struct ReadTextureShard {
     _requiredGraphicsContext.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup(context);
   }
@@ -495,7 +503,7 @@ struct ReadTextureShard {
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
     } else {
       if (isSupportedFormat(_readBuffer->pixelFormat)) {
-      auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
+        auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
         size_t componentSize = getStorageTypeSize(fmtDesc.storageType);
         outImage.channels = fmtDesc.numComponents;
         if (!isIntegerStorageType(fmtDesc.storageType)) {
@@ -503,7 +511,7 @@ struct ReadTextureShard {
         } else if (componentSize == 2) {
           outImage.flags = SHIMAGE_FLAGS_16BITS_INT;
         } else {
-        outImage.flags = SHIMAGE_FLAGS_NONE;
+          outImage.flags = SHIMAGE_FLAGS_NONE;
         }
         outImage.width = _readBuffer->size.x;
         outImage.height = _readBuffer->size.y;

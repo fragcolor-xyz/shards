@@ -18,12 +18,34 @@ struct SubContextDataStorage {
 
   void clear() { map.clear(); }
 
+  void clearOldCacheItems(size_t frameCounter, size_t frameThreshold) {
+    for (auto it = map.begin(); it != map.end();) {
+      ContextDataType &cd = it->second;
+      if constexpr (TWithContextDataKeepAlive<T>) {
+        if (!cd.keepAliveRef.expired()) {
+          ++it;
+          continue;
+        }
+      }
+      if (cd.lastTouched != frameCounter) {
+        it = map.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
   ContextDataType &getCreateOrUpdate(Context &context, size_t frameCounter, const std::shared_ptr<T> &v) {
     auto id = v->getId().getIdPart();
     auto it = map.find(id);
     if (it == map.end()) {
       it = map.emplace(id, ContextDataType()).first;
       v->initContextData(context, it->second);
+      if constexpr (TWithContextDataKeepAlive<T>) {
+        if (v->keepAlive()) {
+          it->second.keepAliveRef = v;
+        }
+      }
     }
 
     auto &cd = it->second;

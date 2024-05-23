@@ -195,7 +195,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     uniformBufferPool.reset();
     storageBufferPool.reset();
 
-    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
+    textureViewCache.clearOldCacheItems(frameCounter, 32);
     clearOldCacheItemsIn(drawableCache, frameCounter, 32);
     clearOldCacheItemsIn(meshCache, frameCounter, 32);
   }

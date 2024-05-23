@@ -202,6 +202,8 @@ struct RendererImpl final : public ContextData {
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
       auto fallbackSize = viewStack.getOutput().size;
+      if (viewStack.size() > 1)
+        SPDLOG_LOGGER_DEBUG(getLogger(), "RenderInto");
       frameQueue->evaluate(outer, fallbackSize);
     }
 
@@ -600,9 +602,9 @@ struct RendererImpl final : public ContextData {
     clearOldCacheItemsIn(storage.pipelineCache.map, storage.frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(storage.viewCache, storage.frameCounter, 120 * 60 * 5);
 
-    clearOldCacheItemsIn(storage.contextDataStorage.buffers.map, storage.frameCounter, 32);
-    clearOldCacheItemsIn(storage.contextDataStorage.meshes.map, storage.frameCounter, 32);
-    clearOldCacheItemsIn(storage.contextDataStorage.textures.map, storage.frameCounter, 16);
+    storage.contextDataStorage.buffers.clearOldCacheItems(storage.frameCounter, 32);
+    storage.contextDataStorage.meshes.clearOldCacheItems(storage.frameCounter, 32);
+    storage.contextDataStorage.textures.clearOldCacheItems(storage.frameCounter, 16);
 
     // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
     storage.renderTextureCache.resetAndClearOldCacheItems(storage.frameCounter, 8);

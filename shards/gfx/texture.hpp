@@ -59,6 +59,8 @@ struct InputTextureFormat {
 
 /// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
+  std::weak_ptr<Texture> keepAliveRef;
+
   TextureFormat format{};
   // Only set for managed textures
   WgpuHandle<WGPUTexture> texture{};
@@ -145,6 +147,8 @@ public:
   UniqueId getId() const { return id; }
   size_t getVersion() const { return version; }
 
+  bool keepAlive() const { return true; }
+
   /// <div rustbindgen hide></div>
   static TexturePtr makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
 
@@ -157,6 +161,8 @@ protected:
 private:
   void update();
 };
+
+static_assert(TWithContextDataKeepAlive<Texture>, "");
 
 } // namespace gfx
 
