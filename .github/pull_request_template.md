@@ -1,3 +1,4 @@
+
 <!--
 Before submitting your PR, please review the following checklist:
 
@@ -9,9 +10,3 @@ Before submitting your PR, please review the following checklist:
 - [ ] **AVOID** breaking the continuous integration build.
 - [ ] **AVOID** making significant changes to the overall architecture.
 -->
-
-**Description**
-<!-- A clear and concise description of what the change is. -->
-
-**Test plan**
-<!-- Demonstrate the solidity of the code. Commands run and their output, screenshot if relevant, etc. -->
