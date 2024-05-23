@@ -511,7 +511,7 @@ struct ReadTextureShard {
         size_t imageSize = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x * _readBuffer->size.y;
         _imageBuffer.resize(imageSize);
         outImage.data = _imageBuffer.data();
-        for (size_t y = 0; y < _readBuffer->size.y; ++y) {
+        for (int y = 0; y < _readBuffer->size.y; ++y) {
           memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride * y, rowLength);
         }
       } else {

@@ -12,7 +12,6 @@
 #include <memory>
 #include <boost/container/small_vector.hpp>
 #include <boost/tti/has_member_data.hpp>
-#include <boost/core/type_name.hpp>
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {
@@ -237,7 +236,7 @@ inline std::string getPipelineStepName(const PipelineStepPtr &step) {
   std::visit(
       [&](auto &arg) {
         using T = std::decay_t<decltype(arg)>;
-        nameBuffer = boost::core::type_name<T>();
+        nameBuffer = NAMEOF_FULL_TYPE(T);
         if constexpr (has_render_step_name<T, FastString>::type::value) {
           if (!arg.name.empty()) {
             nameBuffer = fmt::format("{} ({})", arg.name.c_str(), nameBuffer);

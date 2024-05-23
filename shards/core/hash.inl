@@ -30,11 +30,11 @@ template <typename TDigest> XXH_errorcode hashUpdate(XXH3_state_t *state, const 
   }
 }
 
-#define PUSH_TMP_HASH_SET()            \
-  int hashSetIndex = hashSetCounter++; \
-  DEFER({ --hashSetCounter; });        \
-  if (hashSetIndex >= hashSets.size()) \
-    hashSets.resize(hashSetIndex + 1); \
+#define PUSH_TMP_HASH_SET()                 \
+  int hashSetIndex = hashSetCounter++;      \
+  DEFER({ --hashSetCounter; });             \
+  if (hashSetIndex >= (int)hashSets.size()) \
+    hashSets.resize(hashSetIndex + 1);      \
   hashSets[hashSetIndex].clear();
 
 #define TMP_HASH_SET (hashSets[hashSetIndex])
