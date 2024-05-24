@@ -92,12 +92,18 @@ void Fiber::init(std::function<void()> fn) {
 }
 void Fiber::resume() {
   shassert(continuation);
+#if SH_DEBUG_CONSISTENT_RESUMER
   if (!consistentResumer || *consistentResumer != std::this_thread::get_id())
     throw std::runtime_error("Fiber::resume() called from different thread");
+#endif
   continuation = continuation->resume();
 }
 void Fiber::suspend() {
   shassert(continuation);
+#if SH_DEBUG_CONSISTENT_RESUMER
+  if (!consistentResumer || *consistentResumer != std::this_thread::get_id())
+    throw std::runtime_error("Fiber::suspend() called from different thread");
+#endif
   continuation = continuation->resume();
 }
 Fiber::operator bool() const { return continuation.has_value() && (bool)continuation.value(); }
