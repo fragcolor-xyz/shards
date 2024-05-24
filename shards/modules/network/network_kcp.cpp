@@ -319,7 +319,7 @@ struct ServerShard : public NetworkBase {
         return;
 
       SHInstanceData data{};
-      data.inputType = CoreInfo::AnySeqType;
+      data.inputType = CoreInfo::AnyType;
       data.shared = SHExposedTypesInfo(server._sharedCopy);
       data.wire = wire;
       wire->mesh = server._mesh;
