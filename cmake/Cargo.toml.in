@@ -18,3 +18,4 @@ substrate-bip39 = { git = "https://github.com/shards-lang/substrate-bip39.git", 
 tiny-skia = { opt-level = 3 }
 resvg = { opt-level = 3 }
 usvg = { opt-level = 3 }
+shards-lang = { opt-level = 3 }
