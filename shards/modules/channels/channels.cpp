@@ -523,22 +523,26 @@ struct Flush : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    _mpChannel = std::visit(
-        [&](auto &arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if (std::is_same_v<T, DummyChannel>) {
-            throw SHException("Expected a valid channel.");
-          } else {
-            return (ChannelShared *)&arg;
-          }
-        },
-        *_channel.get());
 
     return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpChannel);
+    // Lazily acquire channel to flush
+    if (!_mpChannel) {
+      _mpChannel = std::visit(
+          [&](auto &arg) -> ChannelShared * {
+            using T = std::decay_t<decltype(arg)>;
+            if (std::is_same_v<T, DummyChannel>) {
+              return nullptr;
+            } else {
+              return &arg;
+            }
+          },
+          *_channel.get());
+      if (!_mpChannel)
+        return input;
+    }
 
     _mpChannel->clear();
 
