@@ -382,9 +382,8 @@ struct WSClientShard {
   static SHOptionalString help() { return SHCCSTR(""); }
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
-  PARAM_PARAMVAR(_port, "Port", ("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar});
   PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_port), PARAM_IMPL_FOR(_handler));
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler));
 
   std::shared_ptr<WSClient> _client;
   SHVar _peerVar;
@@ -454,9 +453,7 @@ struct WSClientShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_client) {
       _client = std::make_shared<WSClient>();
-      _client->peer.init(_client->ctx,
-                         pollnet_open_ws(_client->ctx, toSWL(fmt::format("{}:{}", _address.get(), _port.get().payload.intValue))),
-                         false);
+      _client->peer.init(_client->ctx, pollnet_open_ws(_client->ctx, toSWL(SHSTRVIEW(_address.get()))), false);
       _peerVar = Var::Object(&_client->peer, Types::Peer);
       assignVariableValue(*_peerVarRef, _peerVar);
     }
@@ -499,11 +496,10 @@ struct WSPeer : public Peer {
   boost::lockfree::queue<Message *> recvQueue{16};
   boost::lockfree::queue<Message *> sendQueue{16};
 
-  void init(std::string_view addr, uint16_t port) {
+  void init(std::string_view addr) {
     debugName = "WSPeer";
 
-    std::string fullAddr = fmt::format("{}:{}", addr, port);
-    // socket = pollnet_listen_ws(ctx, toSWL(fullAddr));
+    std::string fullAddr{addr};
     EmscriptenWebSocketCreateAttributes attribs{
         .url = fullAddr.c_str(),
         .protocols = nullptr,
@@ -599,9 +595,8 @@ struct WSClientShard {
   static SHOptionalString help() { return SHCCSTR(""); }
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
-  PARAM_PARAMVAR(_port, "Port", ("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar});
   PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_port), PARAM_IMPL_FOR(_handler));
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler));
 
   std::shared_ptr<WSClient> _client;
   SHVar _peerVar;
@@ -669,7 +664,7 @@ struct WSClientShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_client) {
       _client = std::make_shared<WSClient>();
-      _client->peer.init(SHSTRVIEW(_address.get()), _port.get().payload.intValue);
+      _client->peer.init(SHSTRVIEW(_address.get()));
       _peerVar = Var::Object(&_client->peer, Types::Peer);
       assignVariableValue(*_peerVarRef, _peerVar);
     }
