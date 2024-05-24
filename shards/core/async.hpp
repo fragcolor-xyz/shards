@@ -246,14 +246,6 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 
   getTidePool().schedule(&call);
 
-  // When suspending on the main js thread, make sure to yield to the event loop to cause threads to launch
-#if SH_EMSCRIPTEN
-  if (MainThread::isMainThread()) {
-    SHLOG_DEBUG("awaitne: Forcing suspend on main thread");
-    emscripten_sleep(0);
-  }
-#endif
-
   while (!call.complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
