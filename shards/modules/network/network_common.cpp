@@ -147,6 +147,30 @@ struct PeerID {
     return Var(peer.getId());
   }
 };
+
+struct PeerShard {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Peer; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  PARAM_EXT(ParamVar, _peer, Types::PeerParameterInfo);
+  PARAM_IMPL(PARAM_IMPL_FOR(_peer));
+
+  PeerShard() { setDefaultPeerParam(_peer); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    return _peer.get();
+  }
+};
 }; // namespace Network
 }; // namespace shards
 
@@ -155,4 +179,5 @@ SHARDS_REGISTER_FN(network_common) {
   REGISTER_SHARD("Network.Broadcast", Broadcast);
   REGISTER_SHARD("Network.Send", Send);
   REGISTER_SHARD("Network.PeerID", PeerID);
+  REGISTER_SHARD("Network.Peer", PeerShard);
 }
