@@ -26,7 +26,6 @@ ctrlc = "3.4.0"
 
 [build-dependencies]
 cbindgen = "0.24.0"
- 
+
 [profile.dev]
 opt-level = 3
-# debug = "full"
