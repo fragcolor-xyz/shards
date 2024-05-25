@@ -147,21 +147,26 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
 
   # aggressive inlining
   if(NOT SKIP_HEAVY_INLINE)
-    # this works with emscripten too but makes the final binary much bigger
-    # for now let's keep it disabled
+    # Adjust inlining based on the compiler
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "[A-Za-z]*Clang")
       set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-mllvm>
-        $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=10000>
+        $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=2500>
       )
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       set(INLINING_FLAGS
-        $<$<COMPILE_LANGUAGE:CXX>:-finline-limit=100000>
+        $<$<COMPILE_LANGUAGE:CXX>:-finline-functions-called-once>
+        $<$<COMPILE_LANGUAGE:CXX>:-finline-small-functions>
       )
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    # using Intel C++
+      set(INLINING_FLAGS
+        $<$<COMPILE_LANGUAGE:CXX>:-inline-level=2>
+        $<$<COMPILE_LANGUAGE:CXX>:-inline-factor=100>
+      )
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-      # using Visual Studio C++
+      set(INLINING_FLAGS
+        $<$<COMPILE_LANGUAGE:CXX>:/Ob2>
+      )
     endif()
   endif()
 endif()
