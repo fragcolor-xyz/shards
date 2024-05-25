@@ -7,10 +7,16 @@
 
 #include <shards/core/params.hpp>
 
+#ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
+
+#ifdef __clang__
 #pragma clang attribute pop
+#endif
 
 #ifdef __APPLE__
 #define MA_NO_RUNTIME_LINKING
@@ -23,11 +29,17 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
+#ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
 // The stb_vorbis implementation must come after the implementation of miniaudio.
 #undef STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c"
+
+#ifdef __clang__
 #pragma clang attribute pop
+#endif
 
 namespace shards {
 namespace Audio {

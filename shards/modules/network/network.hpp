@@ -3,10 +3,16 @@
 
 #include <memory>
 
-// ASIO must go first!!
+#ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
+// ASIO must go first!!
 #include <boost/asio.hpp>
+
+#ifdef __clang__
 #pragma clang attribute pop
+#endif
 
 #include <shards/shards.h>
 

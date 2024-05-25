@@ -13,9 +13,15 @@
 #include <shared_mutex>
 using namespace boost::filesystem;
 
+#ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
 #include "sqlite3.h"
+
+#ifdef __clang__
 #pragma clang attribute pop
+#endif
 
 extern "C" {
 int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);

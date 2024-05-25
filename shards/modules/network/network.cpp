@@ -23,9 +23,15 @@
 
 #include "core/async.hpp"
 
+#ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
 #include <ikcp.h>
+
+#ifdef __clang__
 #pragma clang attribute pop
+#endif
 
 #define IKCP_MAX_PKT_SIZE 10000
 
