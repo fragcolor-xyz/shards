@@ -26,5 +26,5 @@ rmp-serde = { version = "1.1.1" }
 compile-time-crc32 = "0.1.2"
 
 [build-dependencies]
-bindgen = { version = "0.64.0" }
+bindgen = { version = "0.69.4" }
 gfx-build = { path = "../gfx/rust/build" }
