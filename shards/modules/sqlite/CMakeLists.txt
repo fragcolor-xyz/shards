@@ -5,9 +5,13 @@ set(SOURCES
 add_shards_module(sqlite SOURCES ${SOURCES}
   REGISTER_SHARDS sqlite)
 
-# Circular dependency linking
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  target_link_libraries(shards-module-sqlite "$<LINK_GROUP:RESCAN,crsqlite-extension,sqlite-static,crsql_bundle-rust>")
-else()
-  target_link_libraries(shards-module-sqlite crsqlite-extension sqlite-static)
-endif()
+# Manually specify the libraries in the correct order and repeat to resolve circular dependencies
+# This is to avoid using LINK_GROUP which is not supported by older cmake version
+target_link_libraries(shards-module-sqlite
+  crsqlite-extension
+  sqlite-static
+  crsql_bundle-rust
+  crsqlite-extension
+  sqlite-static
+  crsql_bundle-rust
+)
