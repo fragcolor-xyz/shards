@@ -8,7 +8,7 @@ use egui::ViewportId;
 use egui::ViewportInfo;
 use egui::ahash::HashMapExt;
 use std::ffi::CStr;
-use std::slice::from_raw_parts;
+use shards::util::from_raw_parts;
 
 const SCROLL_SPEED: f32 = 50.0;
 

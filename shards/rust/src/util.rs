@@ -135,3 +135,12 @@ pub fn merge_exposed_types(exposed: &mut ExposedTypes, types: &SHExposedTypesInf
     exposed.push(t);
   }
 }
+
+// clone std::slice::from_raw_parts but allow null pointer when len is 0
+pub unsafe fn from_raw_parts<T>(data: *const T, len: usize) -> &'static [T] {
+  if len == 0 {
+    &[]
+  } else {
+    std::slice::from_raw_parts(data, len)
+  }
+}

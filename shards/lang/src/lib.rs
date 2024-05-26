@@ -38,6 +38,8 @@ use std::rc::Rc;
 use std::ffi::CString;
 use std::os::raw::c_char;
 
+use shards::util::from_raw_parts;
+
 #[derive(Debug, Clone)]
 pub struct RcBytesWrapper(Rc<[u8]>);
 
@@ -280,7 +282,7 @@ pub extern "C" fn shards_read(
 
 #[no_mangle]
 pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
-  let bytes = unsafe { std::slice::from_raw_parts(bytes, size as usize) };
+  let bytes = unsafe { from_raw_parts(bytes, size as usize) };
   let decoded_bin: Result<Sequence, _> = bincode::deserialize(bytes);
   match decoded_bin {
     Ok(sequence) => SHLAst {

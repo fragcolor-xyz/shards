@@ -14,6 +14,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ptr::null_mut;
+use shards::util::from_raw_parts;
 
 pub const TEXTURE_CC: i32 = fourCharacterCode(*b"tex_");
 
@@ -118,7 +119,7 @@ fn into_egui_image(image: &SHImage) -> egui::ColorImage {
 
   let size = [image.width as _, image.height as _];
   let rgba = unsafe {
-    core::slice::from_raw_parts(
+    from_raw_parts(
       image.data,
       image.width as usize * image.channels as usize * image.height as usize,
     )

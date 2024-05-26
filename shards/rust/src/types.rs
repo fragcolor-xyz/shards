@@ -368,7 +368,11 @@ unsafe extern "C" fn error_cb(
 ) {
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
   let msg = std::str::from_utf8(unsafe {
-    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
+    if errorTxt.len == 0 {
+      &[]
+    } else {
+      slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
+    }
   })
   .unwrap();
   if !nonfatalWarning {
@@ -388,6 +392,9 @@ impl ShardRef {
   pub fn output_types(&self) -> &[Type] {
     unsafe {
       let info = (*self.0).outputTypes.unwrap()(self.0);
+      if info.len == 0 {
+        return &[];
+      }
       core::slice::from_raw_parts(info.elements, info.len as usize)
     }
   }
@@ -395,6 +402,9 @@ impl ShardRef {
   pub fn input_types(&self) -> &[Type] {
     unsafe {
       let info = (*self.0).inputTypes.unwrap()(self.0);
+      if info.len == 0 {
+        return &[];
+      }
       core::slice::from_raw_parts(info.elements, info.len as usize)
     }
   }
@@ -445,6 +455,9 @@ impl ShardRef {
       if result.code == 0 {
         Ok(())
       } else {
+        if result.message.len == 0 {
+          return Err("Unknown error");
+        }
         let cstr = std::str::from_utf8(slice::from_raw_parts(
           result.message.string as *const u8,
           result.message.len as usize,
@@ -461,6 +474,9 @@ impl ShardRef {
         if result.code == 0 {
           Ok(())
         } else {
+          if result.message.len == 0 {
+            return Err("Unknown error");
+          }
           let cstr = std::str::from_utf8(slice::from_raw_parts(
             result.message.string as *const u8,
             result.message.len as usize,
@@ -476,7 +492,11 @@ impl ShardRef {
   pub fn parameters(&self) -> &[ParameterInfo] {
     unsafe {
       let params = (*self.0).parameters.unwrap()(self.0);
-      std::slice::from_raw_parts(params.elements, params.len as usize)
+      if params.len == 0 {
+        return &[];
+      } else {
+        std::slice::from_raw_parts(params.elements, params.len as usize)
+      }
     }
   }
 
@@ -817,6 +837,9 @@ impl From<SHTypeInfo> for ClonedVar {
 impl From<SHStringWithLen> for &str {
   fn from(s: SHStringWithLen) -> Self {
     unsafe {
+      if s.len == 0 {
+        return "";
+      }
       let slice = slice::from_raw_parts(s.string as *const u8, s.len as usize);
       let s = std::str::from_utf8(slice);
       match s {
@@ -1485,10 +1508,14 @@ impl Serialize for Var {
           1
         };
         let data = unsafe {
-          std::slice::from_raw_parts(
-            data,
-            (width as usize * height as usize * channels as usize * pixsize as usize) as usize,
-          )
+          if data.is_null() {
+            &[]
+          } else {
+            std::slice::from_raw_parts(
+              data,
+              (width as usize * height as usize * channels as usize * pixsize as usize) as usize,
+            )
+          }
         };
         let mut s = se.serialize_seq(Some(6))?;
         s.serialize_element(&self.valueType)?;
@@ -3135,6 +3162,9 @@ impl TryFrom<&Var> for &[u8] {
       Err("Expected Bytes, but casting failed.")
     } else {
       unsafe {
+        if var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize == 0 {
+          return Ok(&[]);
+        }
         Ok(core::slice::from_raw_parts_mut(
           var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
           var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
@@ -3155,6 +3185,11 @@ impl TryFrom<&Var> for &str {
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
+      unsafe {
+        if var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen == 0 {
+          return Ok("");
+        }
+      }
       std::str::from_utf8(unsafe {
         slice::from_raw_parts(
           var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *const u8,
@@ -4010,6 +4045,9 @@ impl TryFrom<&Var> for &[Var] {
       unsafe {
         let elems = var.payload.__bindgen_anon_1.seqValue.elements;
         let len = var.payload.__bindgen_anon_1.seqValue.len;
+        if len == 0 {
+          return Ok(&[]);
+        }
         let res = std::slice::from_raw_parts(elems, len as usize);
         Ok(res)
       }
@@ -4268,7 +4306,11 @@ unsafe extern "C" fn shardsvar_compose_cb(
 ) {
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
   let msg = std::str::from_utf8(unsafe {
-    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
+    if errorTxt.len == 0 {
+      &[]
+    } else {
+      slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
+    }
   })
   .unwrap();
   if !nonfatalWarning {
@@ -4430,7 +4472,11 @@ impl ShardsVar {
     self.compose_result.map(|compose_result| unsafe {
       let elems = compose_result.exposedInfo.elements;
       let len = compose_result.exposedInfo.len;
-      std::slice::from_raw_parts(elems, len as usize)
+      if len == 0 {
+        &[]
+      } else {
+        std::slice::from_raw_parts(elems, len as usize)
+      }
     })
   }
 
@@ -4438,7 +4484,11 @@ impl ShardsVar {
     self.compose_result.map(|compose_result| unsafe {
       let elems = compose_result.requiredInfo.elements;
       let len = compose_result.requiredInfo.len;
-      std::slice::from_raw_parts(elems, len as usize)
+      if len == 0 {
+        &[]
+      } else {
+        std::slice::from_raw_parts(elems, len as usize)
+      }
     })
   }
 }
@@ -4535,6 +4585,9 @@ impl Iterator for ExposedTypesIterator {
       Some({
         let ret_index = self.index;
         self.index += 1;
+        if self.length == 0 {
+          return None;
+        }
         unsafe { slice::from_raw_parts_mut(self.elements, self.length)[ret_index] }
       })
     } else {

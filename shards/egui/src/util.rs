@@ -51,10 +51,8 @@ where
   let prev = *var.get();
 
   // Swap
-  unsafe {
-    let obj = Var::default();
-    var.set_fast_unsafe(&obj);
-  }
+  let obj = Var::default();
+  var.set_fast_unsafe(&obj);
 
   let result = inner();
 
@@ -227,11 +225,18 @@ pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'sta
 pub fn into_stroke(v: &Var, ctx: &Context) -> Result<egui::Stroke, &'static str> {
   let tbl: TableVar = v.try_into()?;
   let width: f32 = get_or_var(tbl.get_static("Width").ok_or("Width missing")?, ctx).try_into()?;
-  let color: egui::Color32 = into_color(get_or_var(tbl.get_static("Color").ok_or("Color missing")?, ctx))?;
+  let color: egui::Color32 = into_color(get_or_var(
+    tbl.get_static("Color").ok_or("Color missing")?,
+    ctx,
+  ))?;
   Ok(egui::Stroke { width, color })
 }
 
-pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var, ctx: &Context) -> Result<(), &'static str> {
+pub fn apply_widget_visuals(
+  visuals: &mut WidgetVisuals,
+  v: &Var,
+  ctx: &Context,
+) -> Result<(), &'static str> {
   let tbl: TableVar = v.try_into()?;
   if let Some(v) = tbl.get_static("BGFill") {
     visuals.bg_fill = into_color(v)?;
