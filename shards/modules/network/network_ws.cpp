@@ -244,6 +244,10 @@ struct WSServerShard {
       peer->onStopConnection = _mesh->dispatcher.sink<SHWire::OnStopEvent>().connect<&WSServerShard::wireStopped>(this);
     }
 
+    // set wire ID, in order for Events to be properly routed
+    // for now we just use ptr as ID, until it causes problems
+    peer->wire->id = reinterpret_cast<entt::id_type>(peer->socket);
+
     OnPeerConnected event{
         // .endpoint = *peer->endpoint,
         .wire = peer->wire,
