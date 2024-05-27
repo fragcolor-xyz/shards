@@ -82,12 +82,7 @@ endif()
 
 if(EMSCRIPTEN_PTHREADS)
   list(APPEND RUST_FLAGS -Ctarget-feature=+atomics,+bulk-memory)
-  list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std=panic_abort,std)
-  set(RUST_NIGHTLY TRUE)
 endif()
-
-# Currently required for --crate-type argument
-list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zunstable-options)
 
 file(READ ${SHARDS_DIR}/rust.version RUST_TOOLCHAIN_DEFAULT)
 
@@ -105,6 +100,13 @@ endif()
 
 if(RUST_TOOLCHAIN_OVERRIDE)
   message(STATUS "Using rust toolchain: ${RUST_TOOLCHAIN_OVERRIDE}")
+endif()
+
+string(FIND ${RUST_TOOLCHAIN_OVERRIDE} "nightly" RUST_IS_NIGHTLY_p)
+if(RUST_IS_NIGHTLY_p GREATER -1)
+  set(RUST_IS_NIGHTLY TRUE)
+else()
+  set(RUST_IS_NIGHTLY FALSE)
 endif()
 
 macro(ADD_RUST_FEATURE VAR FEATURE)
