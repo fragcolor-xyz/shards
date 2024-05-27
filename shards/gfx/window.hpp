@@ -3,16 +3,10 @@
 
 #include "linalg.hpp"
 #include "../core/platform.hpp"
-#include <SDL_events.h>
 #include <string>
 #include <vector>
 #include <optional>
 
-#if SH_APPLE
-#include "platform_surface.hpp"
-#endif
-
-struct SDL_Window;
 namespace gfx {
 /// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
@@ -21,18 +15,20 @@ struct WindowCreationOptions {
   bool fullscreen = false;
   std::string title;
 };
+} // namespace gfx
 
 #if SH_EMSCRIPTEN
-struct EmscriptenWindow {
-  static void setCanvasContainer(const char *tag);
-};
+#include "window_em.hpp"
+#else
+#include <SDL_events.h>
+
+#if SH_APPLE
+#include "platform_surface.hpp"
 #endif
 
+struct SDL_Window;
+namespace gfx {
 struct Window {
-#if SH_EMSCRIPTEN
-#define SH_WINDOW_AUTOSIZE 1
-  int2 lastContainerSize{};
-#endif
   SDL_Window *window = nullptr;
 
 #if SH_APPLE
@@ -84,5 +80,6 @@ struct Window {
   ~Window();
 };
 }; // namespace gfx
+#endif
 
 #endif /* AEC3EB9B_7819_42B0_BB31_40818880ECE2 */

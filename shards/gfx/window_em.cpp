@@ -1,23 +1,40 @@
 #include "window.hpp"
 #include "error_utils.hpp"
 #include "../core/platform.hpp"
-#include "sdl_native_window.hpp"
-#include <SDL.h>
-#include <SDL_video.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include "fmt.hpp"
 #include "log.hpp"
-
-#if SH_WINDOWS
-#include <Windows.h>
-#elif SH_APPLE
-#include <SDL_metal.h>
-#elif SH_ANDROID
-#include <android/native_window.h>
-#endif
+#include <emscripten/html5.h>
 
 namespace gfx {
+
+#if SH_EMSCRIPTEN
+struct EmscriptenInternal {
+  std::string canvasContainerTag;
+
+  static EmscriptenInternal &get() {
+    static EmscriptenInternal instance;
+    return instance;
+  }
+
+  int2 getCanvasContainerSize() {
+    if (canvasContainerTag.empty())
+      throw std::logic_error("Emscripten canvas container tag not set");
+
+    double cw{}, ch{};
+    emscripten_get_element_css_size(canvasContainerTag.c_str(), &cw, &ch);
+    return int2(cw, ch);
+  }
+
+  int2 getDrawableSize() {
+    double pixelRatio = emscripten_get_device_pixel_ratio();
+    int2 canvasContainerSize = getCanvasContainerSize();
+    return int2(linalg::floor(double2(canvasContainerSize) * pixelRatio));
+  }
+};
+void EmscriptenWindow::setCanvasContainer(const char *tag) { EmscriptenInternal::get().canvasContainerTag = tag; }
+#endif
 
 void Window::init(const WindowCreationOptions &options) {
   if (window)
@@ -34,7 +51,10 @@ void Window::init(const WindowCreationOptions &options) {
 
   uint32_t flags = SDL_WINDOW_SHOWN;
 
+  // Don't add resize flag for emscripten, as size will be managed externally
+#if !SH_EMSCRIPTEN
   flags |= SDL_WINDOW_RESIZABLE;
+#endif
 
   int width{options.width}, height{options.height};
 
@@ -57,6 +77,17 @@ void Window::init(const WindowCreationOptions &options) {
 #endif
 
   SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+
+#if SH_EMSCRIPTEN
+  // int2 drawableSize = EmscriptenInternal::get().getDrawableSize();
+  // width = drawableSize.x;
+  // height = drawableSize.y;
+  lastContainerSize = int2(0);
+  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
+  width = canvasContainerSize.x;
+  height = canvasContainerSize.y;
+  // emscripten_set_element_css_size("#canvas", canvasContainerSize.x, canvasContainerSize.y);
+#endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
   SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
@@ -94,11 +125,22 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
 void Window::maybeAutoResize() {
+#if SH_EMSCRIPTEN
+  int2 canvasContainerSize = EmscriptenInternal::get().getCanvasContainerSize();
+  if (lastContainerSize != canvasContainerSize) {
+    // int2 drawableSize = EmscriptenInternal::get().getDrawableSize();
+    resize(canvasContainerSize);
+    // emscripten_set_element_css_size("#canvas", canvasContainerSize.x, canvasContainerSize.y);
+    lastContainerSize = canvasContainerSize;
+  }
+#endif
 }
 
 void *Window::getNativeWindowHandle() {
 #if SH_APPLE
   return nullptr;
+#elif SH_EMSCRIPTEN
+  return (void *)("#canvas");
 #else
   return (void *)SDL_GetNativeWindowPtr(window);
 #endif
@@ -112,6 +154,8 @@ int2 Window::getDrawableSize() const {
   ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
   r.x = ANativeWindow_getWidth(nativeWindow);
   r.y = ANativeWindow_getHeight(nativeWindow);
+#elif SH_EMSCRIPTEN
+  SDL_GetWindowSizeInPixels(window, &r.x, &r.y);
 #else
   r = getSize();
 #endif

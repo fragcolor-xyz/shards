@@ -1,10 +1,9 @@
 option(SH_DEBUG "Enable context debug mode by default" OFF)
 
-add_library(gfx
+set(GFX_SOURCES
   culling.cpp
   context.cpp
   context_data.cpp
-  window.cpp
   loop.cpp
   view.cpp
   gfx_wgpu.cpp
@@ -45,6 +44,14 @@ add_library(gfx
   unique_id.cpp
 )
 
+if(EMSCRIPTEN)
+  list(APPEND GFX_SOURCES window_em.cpp)
+else()
+  list(APPEND GFX_SOURCES window.cpp)
+endif()
+
+add_library(gfx ${GFX_SOURCES})
+
 # Always optimize files with hot-paths
 set_source_files_properties(
   drawables/mesh_tree_drawable.cpp
@@ -52,15 +59,15 @@ set_source_files_properties(
   texture_file/texture_file.cpp
   pipeline_hashes.cpp
   PROPERTIES
-    COMPILE_FLAGS -O3
-    SKIP_PRECOMPILE_HEADERS ON)
+  COMPILE_FLAGS -O3
+  SKIP_PRECOMPILE_HEADERS ON)
 
 target_compile_features(gfx PUBLIC cxx_std_20)
 
 target_include_directories(gfx
   PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(gfx
@@ -76,7 +83,9 @@ target_link_libraries(gfx Tracy::TracyClient)
 if(HAVE_THREADS)
   set(GFX_THREADING_DEFAULT ON)
 endif()
+
 option(GFX_THREADING "Support multithreaded rendering" ${GFX_THREADING_DEFAULT})
+
 if(GFX_THREADING)
   target_compile_definitions(gfx PUBLIC GFX_THREADING_SUPPORT=1)
 endif()
@@ -92,9 +101,10 @@ target_link_libraries(gfx-gltf Tracy::TracyClient)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 
-if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE MATCHES Debug))
-	set(GFX_CAN_USE_DATA_PATH ON)
+if(NOT EMSCRIPTEN AND(CMAKE_BUILD_TYPE MATCHES Debug))
+  set(GFX_CAN_USE_DATA_PATH ON)
 endif()
+
 if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
   target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${SHARDS_DIR}\")
 endif()
@@ -111,6 +121,7 @@ if(EMSCRIPTEN)
   endif()
 else()
   target_link_libraries(gfx SDL2)
+
   if(NOT DESKTOP)
     # Only need SDL2main for setup on mobile platforms
     target_link_libraries(gfx SDL2main)
