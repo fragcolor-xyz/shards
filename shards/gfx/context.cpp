@@ -297,6 +297,7 @@ void Context::release() {
   releaseAdapter();
   mainOutput.reset();
 
+#if WEBGPU_NATIVE
   WGPUGlobalReport report{};
   wgpuGenerateReport(wgpuInstance, &report);
   WGPUHubReport *hubReport{};
@@ -315,10 +316,10 @@ void Context::release() {
     auto dumpStat = [&](const char *name, auto &v) {
       if (v.numAllocated > 0 || v.numKeptFromUser > 0) {
         SPDLOG_LOGGER_WARN(logger, "Context has {} {} at release ({} released, {} kept)", v.numAllocated, name,
-                            v.numReleasedFromUser, v.numKeptFromUser);
+                           v.numReleasedFromUser, v.numKeptFromUser);
       }
     };
-    
+
     dumpStat("adapters", hubReport->adapters);
     dumpStat("devices", hubReport->devices);
     dumpStat("queues", hubReport->queues);
@@ -336,6 +337,7 @@ void Context::release() {
     dumpStat("textureViews", hubReport->textureViews);
     dumpStat("samplers", hubReport->samplers);
   }
+#endif
 
   WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
 }
