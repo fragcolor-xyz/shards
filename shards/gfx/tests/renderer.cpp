@@ -12,6 +12,7 @@ TestRenderer::TestRenderer(std::shared_ptr<TestContext> context) : context(conte
 TestRenderer::~TestRenderer() {
   cleanupRenderTarget();
   renderer->cleanup();
+  renderer.reset();
 }
 
 void TestRenderer::createRenderTarget(int2 res) {

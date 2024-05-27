@@ -116,16 +116,14 @@ struct RendererImpl final : public ContextData {
   }
 
   virtual void releaseContextData() override {
-    context.poll();
+    context.poll(true);
 
     // Flush in-flight frame resources
     for (size_t i = 0; i < maxBufferedFrames; i++) {
       swapBuffers();
     }
 
-    storage.renderGraphCache.clear();
-    storage.pipelineCache.clear();
-    storage.viewCache.clear();
+    storage.clear();
   }
 
   void processTransientPtrCleanupQueue() {

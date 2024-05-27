@@ -56,6 +56,12 @@ public:
     }
   }
 
+  template<typename T> void forAll(T &&callback) {
+    for (size_t i = 0; i < MaxSize_; i++) {
+      callback(elems[i].value());
+    }
+  }
+
   TInner &get(size_t frameNumber) {
     shassert(frameNumber <= MaxSize_);
     return elems[frameNumber].value();

@@ -574,6 +574,10 @@ void Context::releaseDevice() {
     mainOutput->releaseSurface();
   }
 
+  if (wgpuDevice) {
+    poll(true);
+  }
+
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
 }
@@ -745,7 +749,9 @@ void Context::initCommon() {
       },
       this);
 
-  if (logger->level() <= spdlog::level::debug) {
+  if (wgpuLogger->level() == spdlog::level::trace) {
+    wgpuSetLogLevel(WGPULogLevel_Trace);
+  } else if (wgpuLogger->level() == spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);
