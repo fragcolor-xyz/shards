@@ -7,6 +7,7 @@
 #include "shards.hpp"
 #include "ops.hpp"
 #include "iterator.hpp"
+#include "defer.hpp"
 #include <spdlog/fmt/fmt.h>
 #include <cassert>
 #include <future>
@@ -636,17 +637,6 @@ template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> 
   assert(var.valueType == SHType::Seq);
   return reinterpret_cast<const TSeqVar<SH_CORE> &>(var);
 }
-
-// https://godbolt.org/z/I72ctd
-template <class Function> struct Defer {
-  Function _f;
-  Defer(Function &&f) : _f(f) {}
-  ~Defer() { _f(); }
-};
-
-#define DEFER_NAME(uniq) _defer##uniq
-#define DEFER_DEF(uniq, body) ::shards::Defer DEFER_NAME(uniq)([&]() { body; })
-#define DEFER(body) DEFER_DEF(__LINE__, body)
 
 template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
 

@@ -297,6 +297,46 @@ void Context::release() {
   releaseAdapter();
   mainOutput.reset();
 
+  WGPUGlobalReport report{};
+  wgpuGenerateReport(wgpuInstance, &report);
+  WGPUHubReport *hubReport{};
+  switch (getBackendType()) {
+  case WGPUBackendType_Vulkan:
+    hubReport = &report.vulkan;
+    break;
+  case WGPUBackendType_D3D12:
+    hubReport = &report.dx12;
+    break;
+  default:
+    break;
+  }
+
+  if (hubReport) {
+    auto dumpStat = [&](const char *name, auto &v) {
+      if (v.numAllocated > 0 || v.numKeptFromUser > 0) {
+        SPDLOG_LOGGER_WARN(logger, "Context has {} {} at release ({} released, {} kept)", v.numAllocated, name,
+                            v.numReleasedFromUser, v.numKeptFromUser);
+      }
+    };
+    
+    dumpStat("adapters", hubReport->adapters);
+    dumpStat("devices", hubReport->devices);
+    dumpStat("queues", hubReport->queues);
+    dumpStat("pipelineLayouts", hubReport->pipelineLayouts);
+    dumpStat("shaderModules", hubReport->shaderModules);
+    dumpStat("bindGroupLayouts", hubReport->bindGroupLayouts);
+    dumpStat("bindGroups", hubReport->bindGroups);
+    dumpStat("commandBuffers", hubReport->commandBuffers);
+    dumpStat("renderBundles", hubReport->renderBundles);
+    dumpStat("renderPipelines", hubReport->renderPipelines);
+    dumpStat("computePipelines", hubReport->computePipelines);
+    dumpStat("querySets", hubReport->querySets);
+    dumpStat("buffers", hubReport->buffers);
+    dumpStat("textures", hubReport->textures);
+    dumpStat("textureViews", hubReport->textureViews);
+    dumpStat("samplers", hubReport->samplers);
+  }
+
   WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
 }
 
