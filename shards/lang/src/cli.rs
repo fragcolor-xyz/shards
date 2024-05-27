@@ -15,7 +15,7 @@ use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{atomic, Arc};
-use shards::util::from_raw_parts;
+use shards::util::from_raw_parts_allow_null;
 
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
@@ -123,7 +123,7 @@ pub extern "C" fn shards_process_args(
   }
 
   let args: Vec<String> = unsafe {
-    from_raw_parts(argv, argc as usize)
+    from_raw_parts_allow_null(argv, argc as usize)
       .iter()
       .map(|&arg| {
         let c_str = CStr::from_ptr(arg);
@@ -308,7 +308,7 @@ fn execute_seq(
   let info = wire.get_info();
   if info.failed {
     let msg = std::str::from_utf8(unsafe {
-      from_raw_parts(
+      from_raw_parts_allow_null(
         info.failureMessage.string as *const u8,
         info.failureMessage.len as usize,
       )

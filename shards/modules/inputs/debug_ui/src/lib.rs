@@ -5,7 +5,7 @@ use std::ffi::CStr;
 use egui::{self, *};
 use shards::types::Var;
 use shards_egui::util;
-use shards::util::from_raw_parts;
+use shards::util::from_raw_parts_allow_null;
 
 pub mod native {
   #![allow(non_upper_case_globals)]
@@ -22,8 +22,8 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
   params: *mut native::shards_input_debug_DebugUIParams,
 ) {
   let params = &mut (*params);
-  let layers = from_raw_parts(params.layers, params.numLayers);
-  let events = from_raw_parts(params.events, params.numEvents);
+  let layers = from_raw_parts_allow_null(params.layers, params.numLayers);
+  let events = from_raw_parts_allow_null(params.events, params.numEvents);
 
   let opts = &mut *params.opts;
 

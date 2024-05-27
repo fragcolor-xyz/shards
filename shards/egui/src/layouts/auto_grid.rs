@@ -7,7 +7,7 @@ use shards::{
   },
 };
 
-use shards::util::from_raw_parts;
+use shards::util::from_raw_parts_allow_null;
 
 use crate::shards::shard;
 use crate::shards::shard::Shard;
@@ -222,7 +222,7 @@ impl Shard for AutoGridShard {
     let input_type = data.inputType;
     let slice = unsafe {
       let ptr = input_type.details.seqTypes.elements;
-      from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+      from_raw_parts_allow_null(ptr, input_type.details.seqTypes.len as usize)
     };
 
     let element_type = if unsafe { input_type.details.seqTypes.len == 1 } {

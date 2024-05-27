@@ -53,7 +53,7 @@ use shards::types::{ShardRef, Var, Wire};
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
 
-use shards::util::from_raw_parts;
+use shards::util::from_raw_parts_allow_null;
 
 pub(crate) const EVAL_STACK_SIZE: usize = 2 * 1024 * 1024;
 
@@ -983,7 +983,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
     let info = wire.get_info();
     if info.failed {
       let msg = std::str::from_utf8(unsafe {
-        from_raw_parts(
+        from_raw_parts_allow_null(
           info.failureMessage.string as *const u8,
           info.failureMessage.len as usize,
         )
