@@ -19,6 +19,8 @@
 
 #if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
+using WGPUInstanceRequestAdapterCallback = WGPURequestAdapterCallback;
+using WGPUAdapterRequestDeviceCallback = WGPURequestDeviceCallback;
 #endif
 
 namespace gfx {
