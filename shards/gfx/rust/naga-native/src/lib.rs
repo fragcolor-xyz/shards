@@ -1959,7 +1959,6 @@ pub mod native {
         name: convert_string(c.name),
         init: c.init.into(),
         ty: c.ty.into(),
-        r#override: naga::Override::None,
       })
     }
   }
@@ -2813,7 +2812,7 @@ pub unsafe extern "C" fn nagaStoreConstExpression(
 
   let handle = writer
     .module
-    .const_expressions
+    .global_expressions
     .append(expr, naga::Span::default());
   return handle.into();
 }
