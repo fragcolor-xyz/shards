@@ -8,7 +8,7 @@ use egui::ViewportId;
 use egui::ViewportInfo;
 use egui::ahash::HashMapExt;
 use std::ffi::CStr;
-use std::slice::from_raw_parts;
+use shards::util::from_raw_parts_allow_null;
 
 const SCROLL_SPEED: f32 = 50.0;
 
@@ -174,7 +174,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
   let mut events = Vec::new();
 
   unsafe {
-    let in_events = from_raw_parts(input.inputEvents, input.numInputEvents);
+    let in_events = from_raw_parts_allow_null(input.inputEvents, input.numInputEvents);
     for in_event in in_events {
       let out_event = match in_event.common.type_ {
         egui_InputEventType_PointerMoved => {

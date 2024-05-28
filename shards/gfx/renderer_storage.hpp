@@ -53,6 +53,19 @@ struct RendererStorage {
     debugVisualizers.get(frameCounter % 2).emplace_back(std::forward<F>(f));
   }
 
+  void clear() {
+    renderGraphCache.clear();
+    pipelineCache.clear();
+    renderTextureCache.clear();
+    textureViewCache.reset();
+    viewCache.clear();
+    queueCache.clear();
+    debugVisualizers.forAll([](auto& v) { v.clear(); });
+    drawableProcessorCache.drawableProcessorsMutex.lock();
+    drawableProcessorCache.drawableProcessors.clear();
+    drawableProcessorCache.drawableProcessorsMutex.unlock();
+  }
+
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     shassert((textureData.texture || textureData.externalTexture) && "Invalid texture");
     TextureViewDesc desc{

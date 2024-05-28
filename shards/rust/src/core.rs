@@ -24,6 +24,7 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::future::Future;
 use std::os::raw::c_char;
+use crate::util::from_raw_parts_allow_null;
 
 const ABI_VERSION: u32 = 0x20200101;
 
@@ -333,7 +334,7 @@ pub fn getShards() -> Vec<&'static CStr> {
     let shard_names = (*Core).getShards.unwrap()();
     let mut res = Vec::new();
     let len = shard_names.len;
-    let slice = slice::from_raw_parts(shard_names.elements, len.try_into().unwrap());
+    let slice = from_raw_parts_allow_null(shard_names.elements, len.try_into().unwrap());
     for name in slice.iter() {
       res.push(CStr::from_ptr(*name));
     }
@@ -509,7 +510,7 @@ impl WireRef {
     if !info.isRunning {
       if info.failed {
         let slice = unsafe {
-          slice::from_raw_parts(
+          from_raw_parts_allow_null(
             info.failureMessage.string as *const u8,
             info.failureMessage.len as usize,
           )

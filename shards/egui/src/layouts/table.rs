@@ -32,6 +32,7 @@ use shards::types::SEQ_OF_ANY_TABLE_TYPES;
 use shards::types::SEQ_OF_SHARDS_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
+use shards::util::from_raw_parts_allow_null;
 
 lazy_static! {
   static ref TABLE_PARAMETERS: Parameters = vec![
@@ -284,7 +285,7 @@ impl LegacyShard for Table {
     let input_type = data.inputType;
     let slice = unsafe {
       let ptr = input_type.details.seqTypes.elements;
-      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+      from_raw_parts_allow_null(ptr, input_type.details.seqTypes.len as usize)
     };
     let element_type = if !slice.is_empty() {
       slice[0]

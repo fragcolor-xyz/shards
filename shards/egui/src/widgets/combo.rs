@@ -28,6 +28,7 @@ use shards::types::ANY_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 use std::cmp::Ordering;
 use std::ffi::CStr;
+use shards::util::from_raw_parts_allow_null;
 
 lazy_static! {
   static ref COMBO_PARAMETERS: Parameters = vec![
@@ -168,7 +169,7 @@ impl LegacyShard for Combo {
 
     let slice = unsafe {
       let ptr = input_type.details.seqTypes.elements;
-      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+      from_raw_parts_allow_null(ptr, input_type.details.seqTypes.len as usize)
     };
 
     let element_type = match slice.len() {

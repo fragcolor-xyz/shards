@@ -2,6 +2,7 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch_all.hpp>
 #include <spdlog/spdlog.h>
+#include <shards/log/log.hpp>
 
 // Defined in the gfx rust crate
 //   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
@@ -12,6 +13,7 @@ int main(int argc, char *argv[]) {
 #ifdef TRACY_ENABLE
   gfxTracyInit();
 #endif
+  shards::logging::setupDefaultLoggerConditional("test-gfx.log");
 
   Catch::Session session;
 

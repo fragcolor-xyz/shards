@@ -1,9 +1,12 @@
 use std::ffi::{CStr, CString};
 
 use crate::{
-  core::{referenceVariable, releaseVariable, deriveType},
-  types::{Type, Context, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Var, DerivedType},
-  SHExposedTypeInfo, SHExposedTypesInfo, SHString, SHVar, SHInstanceData,
+  core::{deriveType, referenceVariable, releaseVariable},
+  types::{
+    Context, DerivedType, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Type,
+    Var,
+  },
+  SHExposedTypeInfo, SHExposedTypesInfo, SHInstanceData, SHString, SHVar,
 };
 
 pub enum TypeOrDerived {
@@ -29,7 +32,10 @@ pub fn get_param_var_type(
       .ok_or("Could not find exposed variable for parameter")?;
     Ok(TypeOrDerived::Static(exp_type.exposedType))
   } else {
-    Ok(TypeOrDerived::Derived(deriveType(&var.get_param(), instance_data)))
+    Ok(TypeOrDerived::Derived(deriveType(
+      &var.get_param(),
+      instance_data,
+    )))
   }
 }
 
@@ -133,5 +139,25 @@ pub fn get_or_var<'a: 'c, 'b: 'c, 'c>(v: &'a Var, ctx: &'b Context) -> &'c Var {
 pub fn merge_exposed_types(exposed: &mut ExposedTypes, types: &SHExposedTypesInfo) {
   for t in types {
     exposed.push(t);
+  }
+}
+
+/// Creates a slice from a raw pointer and a length, allowing a null pointer when length is 0.
+///
+/// # Safety
+///
+/// The caller must ensure that the pointer is valid and points to `len` elements of type `T`.
+/// If `len` is 0, the pointer can be null. The resulting slice must not be used after the memory
+/// it points to has been deallocated or modified.
+///
+/// # Panics
+///
+/// This function does not panic.
+#[inline]
+pub unsafe fn from_raw_parts_allow_null<'a, T>(data: *const T, len: usize) -> &'a [T] {
+  if len == 0 {
+      &[]
+  } else {
+      std::slice::from_raw_parts(data, len)
   }
 }

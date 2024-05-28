@@ -19,6 +19,7 @@ use shards::types::Var;
 use shards::types::WireRef;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
+use shards::util::from_raw_parts_allow_null;
 use shards::SHType_Seq;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -148,7 +149,7 @@ impl LegacyShard for Variable {
           if var.exposedType.basicType == SHType_Seq {
             let slice = unsafe {
               let ptr = var.exposedType.details.seqTypes.elements;
-              std::slice::from_raw_parts(ptr, var.exposedType.details.seqTypes.len as usize)
+              from_raw_parts_allow_null(ptr, var.exposedType.details.seqTypes.len as usize)
             };
             if slice.len() != 1 {
               return Err("UI.Variable: Sequence must have only one type");

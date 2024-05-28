@@ -19,6 +19,8 @@
 
 #if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
+using WGPUInstanceRequestAdapterCallback = WGPURequestAdapterCallback;
+using WGPUAdapterRequestDeviceCallback = WGPURequestDeviceCallback;
 #endif
 
 namespace gfx {
@@ -62,7 +64,7 @@ struct AdapterRequest {
 
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
-    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
+    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPUInstanceRequestAdapterCallback)&Self::callback,
                                new std::shared_ptr<Self>(result));
     return result;
   };
@@ -87,7 +89,7 @@ struct DeviceRequest {
 
   static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
     auto result = std::make_shared<Self>();
-    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
+    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPUAdapterRequestDeviceCallback)&Self::callback,
                              new std::shared_ptr<Self>(result));
     return result;
   };
@@ -294,6 +296,48 @@ void Context::release() {
 
   releaseAdapter();
   mainOutput.reset();
+
+#if WEBGPU_NATIVE
+  WGPUGlobalReport report{};
+  wgpuGenerateReport(wgpuInstance, &report);
+  WGPUHubReport *hubReport{};
+  switch (getBackendType()) {
+  case WGPUBackendType_Vulkan:
+    hubReport = &report.vulkan;
+    break;
+  case WGPUBackendType_D3D12:
+    hubReport = &report.dx12;
+    break;
+  default:
+    break;
+  }
+
+  if (hubReport) {
+    auto dumpStat = [&](const char *name, auto &v) {
+      if (v.numAllocated > 0 || v.numKeptFromUser > 0) {
+        SPDLOG_LOGGER_WARN(logger, "Context has {} {} at release ({} released, {} kept)", v.numAllocated, name,
+                           v.numReleasedFromUser, v.numKeptFromUser);
+      }
+    };
+
+    dumpStat("adapters", hubReport->adapters);
+    dumpStat("devices", hubReport->devices);
+    dumpStat("queues", hubReport->queues);
+    dumpStat("pipelineLayouts", hubReport->pipelineLayouts);
+    dumpStat("shaderModules", hubReport->shaderModules);
+    dumpStat("bindGroupLayouts", hubReport->bindGroupLayouts);
+    dumpStat("bindGroups", hubReport->bindGroups);
+    dumpStat("commandBuffers", hubReport->commandBuffers);
+    dumpStat("renderBundles", hubReport->renderBundles);
+    dumpStat("renderPipelines", hubReport->renderPipelines);
+    dumpStat("computePipelines", hubReport->computePipelines);
+    dumpStat("querySets", hubReport->querySets);
+    dumpStat("buffers", hubReport->buffers);
+    dumpStat("textures", hubReport->textures);
+    dumpStat("textureViews", hubReport->textureViews);
+    dumpStat("samplers", hubReport->samplers);
+  }
+#endif
 
   WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
 }
@@ -572,6 +616,10 @@ void Context::releaseDevice() {
     mainOutput->releaseSurface();
   }
 
+  if (wgpuDevice) {
+    poll(true);
+  }
+
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
 }
@@ -743,7 +791,9 @@ void Context::initCommon() {
       },
       this);
 
-  if (logger->level() <= spdlog::level::debug) {
+  if (wgpuLogger->level() == spdlog::level::trace) {
+    wgpuSetLogLevel(WGPULogLevel_Trace);
+  } else if (wgpuLogger->level() == spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);

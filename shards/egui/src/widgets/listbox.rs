@@ -29,6 +29,8 @@ use shards::types::SHARDS_OR_NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
+use shards::util::from_raw_parts_allow_null;
+
 lazy_static! {
   static ref LISTBOX_PARAMETERS: Parameters = vec![
     (
@@ -197,7 +199,7 @@ impl LegacyShard for ListBox {
     let input_type = data.inputType;
     let slice = unsafe {
       let ptr = input_type.details.seqTypes.elements;
-      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+      from_raw_parts_allow_null(ptr, input_type.details.seqTypes.len as usize)
     };
 
     let element_type = match slice.len() {

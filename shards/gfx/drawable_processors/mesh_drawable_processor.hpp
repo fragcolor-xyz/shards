@@ -18,6 +18,7 @@
 #include "../pipeline_builder.hpp"
 #include "../renderer_types.hpp"
 #include "../shader/struct_layout.hpp"
+#include <shards/defer.hpp>
 #include <boost/container/flat_map.hpp>
 #include <spdlog/spdlog.h>
 #include <functional>
@@ -458,6 +459,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
+    DEFER({ allocator->destroy(drawableDatas); });
 
     // Does the following:
     // - Build mesh data

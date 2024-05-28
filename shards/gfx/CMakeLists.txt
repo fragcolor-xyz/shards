@@ -59,6 +59,7 @@ target_compile_features(gfx PUBLIC cxx_std_20)
 
 target_include_directories(gfx
   PUBLIC
+    ${SHARDS_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}

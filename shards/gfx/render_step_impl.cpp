@@ -14,6 +14,7 @@
 #include "renderer_storage.hpp"
 #include "queue_data.hpp"
 #include "debug_visualize.hpp"
+#include <shards/defer.hpp>
 #include <tracy/Wrapper.hpp>
 #include <taskflow/taskflow.hpp>
 
@@ -166,6 +167,18 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
 
   auto &pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
+  DEFER({
+    for (auto &group : pipelineGroups) {
+      auto &gd = group.second.generatorData;
+      if (gd) {
+        if (gd->drawParameters)
+          workerMemory->destroy(gd->drawParameters);
+        if (gd->viewParameters)
+          workerMemory->destroy(gd->viewParameters);
+      }
+    }
+    std::destroy_at(&pipelineGroups);
+  });
   auto &context = evaluator.getRenderer().getContext();
 
   auto &nodeOutputSize = evaluateContext.outputSize;
