@@ -9,13 +9,14 @@
 #include "window.hpp"
 #include "log.hpp"
 #include "texture.hpp"
-#include <SDL_video.h>
 #include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+#if SHARDS_GFX_SDL
 #include <SDL_stdinc.h>
+#endif
 
 #if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -135,7 +136,7 @@ struct ContextMainOutput {
       }
 #endif
 
-      WGPUPlatformSurfaceDescriptor surfDesc(window->window, surfaceHandle);
+      WGPUPlatformSurfaceDescriptor surfDesc(*window, surfaceHandle);
       wgpuSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
     }
 
@@ -588,6 +589,7 @@ void Context::requestAdapter() {
   state = ContextState::Requesting;
 
   std::optional<WGPUBackendType> backend;
+#if SHARDS_GFX_SDL
   if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
     backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
@@ -595,6 +597,7 @@ void Context::requestAdapter() {
       SPDLOG_LOGGER_DEBUG(logger, "Using backend {}", magic_enum::enum_name(*backend));
     }
   }
+#endif
 
   if (!wgpuInstance) {
 #if WEBGPU_NATIVE

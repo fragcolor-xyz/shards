@@ -2,10 +2,7 @@
 #define AAC121E8_D624_4AD0_81F6_587EB5F716DC
 #include "input.hpp"
 #include "../core/platform.hpp"
-#include <SDL_events.h>
-#include <SDL_keycode.h>
-#include <SDL_mouse.h>
-#include <SDL_touch.h>
+#include "sdl.hpp"
 #include <functional>
 #include <optional>
 #include <boost/container/flat_set.hpp>
@@ -115,6 +112,7 @@ struct InputState {
   }
 
   void update() { // Retrieve up-to-date keyboard state
+#if SHARDS_GFX_SDL
     int numKeys{};
     auto keyStates = SDL_GetKeyboardState(&numKeys);
     heldKeys.clear();
@@ -150,6 +148,7 @@ struct InputState {
         }
       }
     }
+#endif
   }
 };
 } // namespace shards::input

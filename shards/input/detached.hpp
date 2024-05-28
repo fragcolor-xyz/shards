@@ -5,12 +5,14 @@
 #include "state.hpp"
 #include "events.hpp"
 #include "log.hpp"
-#include <SDL_events.h>
-#include <SDL_keycode.h>
-#include <SDL_mouse.h>
+#include "sdl.hpp"
 #include <boost/container/string.hpp>
 #include <boost/container/flat_map.hpp>
 #include <type_traits>
+
+#if !SHARDS_GFX_SDL
+#include <shards/gfx/gfx_events_em.hpp>
+#endif
 
 namespace shards::input {
 // Keeps track of all input state separately and synthesizes it's own events by
@@ -66,16 +68,22 @@ public:
     state = newState;
   }
 
-  // Apply SDL events to the new state
-  using UpdateApplyFn2 = decltype([](const SDL_Event &evt) {});
-  template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn2>> updateSDL(T callback) {
+// Apply Native events to the new state
+#if SHARDS_GFX_SDL
+  using NativeEventType = SDL_Event;
+#else
+  using NativeEventType = gfx::em::EventVar;
+#endif
+
+  using UpdateApplyFn2 = decltype([](const NativeEventType &evt) {});
+  template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn2>> updateNative(T callback) {
     swapBuffers();
 
     virtualInputEvents.clear();
 
     InputState newState = state;
     newState.update();
-    auto applyFn = [&](const SDL_Event &event) {
+    auto applyFn = [&](const NativeEventType &event) {
       apply(event, newState); //
     };
     callback(applyFn);
@@ -115,6 +123,7 @@ private:
     }
   }
 
+#if SHARDS_GFX_SDL
   // Apply an event to the new state, during update
   void apply(const SDL_Event &event, InputState &newState) {
     auto &buffer = buffers[getBufferIndex(1)];
@@ -180,6 +189,30 @@ private:
         SDL_free(event.drop.file);
     }
   }
+#else
+  void apply(const gfx::em::EventVar &event, InputState &newState) {
+    auto &buffer = buffers[getBufferIndex(1)];
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, gfx::em::KeyEvent>) {
+            virtualInputEvents.push_back(KeyEvent{
+                .key = arg.key_, .pressed = arg.type_ == 0, .modifiers = state.modifiers, .repeat = arg.repeat ? 1u : 0u});
+          } else if constexpr (std::is_same_v<T, gfx::em::MouseEvent>) {
+            uint8_t buttonIndex = (arg.button + 1);
+            if (arg.type_ == 0) {
+              virtualInputEvents.push_back(PointerMoveEvent{.pos = float2(arg.x, arg.y)});
+            } else {
+              virtualInputEvents.push_back(
+                  PointerButtonEvent{.pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = (arg.type_ == 1)});
+            }
+          } else if constexpr (std::is_same_v<T, gfx::em::MouseWheelEvent>) {
+            buffer.scrollDelta += arg.deltaY;
+          }
+        },
+        event);
+  }
+#endif
 
   // Apply a consumable event to this detached input state
   // any non-consumed event will be handled normally

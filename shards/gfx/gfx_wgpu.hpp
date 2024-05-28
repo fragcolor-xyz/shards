@@ -55,6 +55,7 @@ inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 #if !WEBGPU_NATIVE
 extern "C" {
 WGPUSwapChain gfxWgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const *descriptor);
+void gfxWgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata);
 }
 #endif
 

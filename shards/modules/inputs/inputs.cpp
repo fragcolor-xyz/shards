@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include <SDL.h>
 #include "input/events.hpp"
 #include "inputs.hpp"
 #include "shards/linalg_shim.hpp"
@@ -9,12 +8,11 @@
 #include <shards/shards.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/input/master.hpp>
+#include <shards/input/sdl.hpp>
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/window.hpp>
 #include <shards/core/platform.hpp>
 #include <shards/input/log.hpp>
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
 #include <shards/core/params.hpp>
 #include <variant>
 #include <boost/filesystem.hpp>

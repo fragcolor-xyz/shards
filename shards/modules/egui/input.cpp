@@ -2,37 +2,16 @@
 #include "egui_types.hpp"
 #include "input.hpp"
 #include <gfx/linalg.hpp>
-#include <SDL.h>
-#include <SDL_keycode.h>
 #include <gfx/window.hpp>
 #include <gfx/types.hpp>
 #include "input/events.hpp"
 #include "input/state.hpp"
 #include "renderer.hpp"
+#include <shards/input/sdl.hpp>
+#include <shards/input/clipboard.hpp>
 #include <map>
 
 namespace gfx {
-
-struct SDLCursor {
-  SDL_Cursor *cursor{};
-  SDLCursor(SDL_SystemCursor id) { cursor = SDL_CreateSystemCursor(id); }
-  SDLCursor(SDLCursor &&rhs) {
-    cursor = rhs.cursor;
-    rhs.cursor = nullptr;
-  }
-  SDLCursor(const SDLCursor &) = delete;
-  SDLCursor &operator=(const SDLCursor &) = delete;
-  SDLCursor &operator=(SDLCursor &&rhs) {
-    cursor = rhs.cursor;
-    rhs.cursor = nullptr;
-    return *this;
-  }
-  ~SDLCursor() {
-    if (cursor)
-      SDL_FreeCursor(cursor);
-  }
-  operator SDL_Cursor *() const { return cursor; }
-};
 
 struct CursorMap {
   std::map<egui::CursorIcon, SDL_SystemCursor> cursorMap{};
@@ -201,9 +180,8 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
                 newEvent(InputEventType::Copy);
               } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
                 auto &evt = newEvent(InputEventType::Paste);
-                auto clipboardPtr = SDL_GetClipboardText();
+                auto clipboardPtr = shards::input::getClipboard();
                 evt.paste.str = strings.emplace_back(clipboardPtr).c_str();
-                SDL_free(clipboardPtr);
               } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
                 newEvent(InputEventType::Cut);
               }
@@ -300,7 +278,7 @@ void EguiInputTranslator::updateTextCursorPosition(const egui::Pos2 *pos) {
   }
 }
 
-void EguiInputTranslator::copyText(const char *text) { SDL_SetClipboardText(text); }
+void EguiInputTranslator::copyText(const char *text) { shards::input::setClipboard(text); }
 
 void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
   if (icon == egui::CursorIcon::None) {

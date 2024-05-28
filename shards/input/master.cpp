@@ -1,12 +1,16 @@
 #include "master.hpp"
-#include "cursor_map.hpp"
 #include "debug.hpp"
 #include "window_input.hpp"
 #include "log.hpp"
 #include <spdlog/spdlog.h>
 #include <gfx/window.hpp>
-#include <SDL_keyboard.h>
-#include <SDL_events.h>
+#include "sdl.hpp"
+
+#if SHARDS_GFX_SDL
+#include "cursor_map.hpp"
+#else
+#include <shards/gfx/gfx_events_em.hpp>
+#endif
 
 namespace shards::input {
 
@@ -30,7 +34,8 @@ InputMaster::~InputMaster() {
 
 void InputMaster::update(gfx::Window &window) {
   input.state.region = getWindowInputRegion(window);
-  input.updateSDL([&](auto apply) {
+  input.updateNative([&](auto apply) {
+#if SHARDS_GFX_SDL
     do {
       SDL_Event event{};
       bool hasEvent = SDL_PollEvent(&event) > 0;
@@ -39,6 +44,9 @@ void InputMaster::update(gfx::Window &window) {
       else
         break;
     } while (true);
+#else
+    gfx::em::getEventHandler()->serverProcessQueue([&](auto &event) { apply(event); });
+#endif
   });
 
   // Convert events to ConsumableEvents
@@ -58,19 +66,15 @@ void InputMaster::update(gfx::Window &window) {
   handlersLocked.clear();
 
   // Handle posted messages
-  messageQueue.consume_all([&](const Message &message) {
-    handleMessage(message);
-  });
+  messageQueue.consume_all([&](const Message &message) { handleMessage(message); });
 
-  for(auto& cb : postInputCallbacks) {
+  for (auto &cb : postInputCallbacks) {
     cb(*this);
   }
   postInputCallbacks.clear();
 }
 
-void InputMaster::postMessage(const Message &message) {
-  messageQueue.push(message);
-}
+void InputMaster::postMessage(const Message &message) { messageQueue.push(message); }
 
 void InputMaster::handleMessage(const Message &message) {
   SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
@@ -78,10 +82,15 @@ void InputMaster::handleMessage(const Message &message) {
       [&](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, BeginTextInputMessage>) {
+#if SHARDS_GFX_SDL
           SDL_StartTextInput();
+#endif
         } else if constexpr (std::is_same_v<T, EndTextInputMessage>) {
+#if SHARDS_GFX_SDL
           SDL_StopTextInput();
+#endif
         } else if constexpr (std::is_same_v<T, SetCursorMessage>) {
+#if SHARDS_GFX_SDL
           if (!arg.visible) {
             SDL_ShowCursor(SDL_DISABLE);
           } else {
@@ -89,6 +98,9 @@ void InputMaster::handleMessage(const Message &message) {
             SDL_ShowCursor(SDL_ENABLE);
             SDL_SetCursor(cursorMap.getCursor(arg.cursor));
           }
+#else
+          gfx::em::getEventHandler()->serverPostMessage(gfx::em::SetCursorMessage{.type = (int32_t)arg.cursor});
+#endif
         } else if constexpr (std::is_same_v<T, TerminateMessage>) {
           terminateRequested = true;
         }

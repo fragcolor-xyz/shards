@@ -46,6 +46,7 @@ set(GFX_SOURCES
 
 if(EMSCRIPTEN)
   list(APPEND GFX_SOURCES window_em.cpp)
+  list(APPEND GFX_SOURCES gfx_events_em.cpp)
 else()
   list(APPEND GFX_SOURCES window.cpp)
 endif()
@@ -110,15 +111,13 @@ if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
 endif()
 
 if(EMSCRIPTEN)
-  # Use builtin SDL2 port
   target_link_options(gfx PUBLIC
     "-sUSE_WEBGPU=1"
     "-sALLOW_MEMORY_GROWTH=1"
   )
 
-  if(EMSCRIPTEN)
-    em_link_js_library(gfx gfx_wgpu.js)
-  endif()
+  em_link_js_library(gfx gfx_wgpu.js)
+  em_link_js_library(gfx gfx_events.js)
 else()
   target_link_libraries(gfx SDL2)
 
@@ -128,6 +127,7 @@ else()
   endif()
 
   set(HAS_WGPU_NATIVE ON)
+  target_compile_definitions(gfx PUBLIC SHARDS_GFX_SDL=1)
 endif()
 
 if(ANDROID)

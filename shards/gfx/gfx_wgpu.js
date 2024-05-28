@@ -40,6 +40,32 @@ var LibraryGFXWebGPU = {
 
     return WebGPU.mgrSwapChain.create(context);
   },
+  gfxWgpuBufferMapAsync__deps: ['$WebGPU', '$callUserCallback'],
+  gfxWgpuBufferMapAsync: (bufferId, mode, offset, size, callback, userdata) => {
+    var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
+    bufferWrapper.mapMode = mode;
+    bufferWrapper.onUnmap = [];
+    var buffer = bufferWrapper.object;
+
+    {{{ gpu.convertSentinelToUndefined('size') }}}
+
+    // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
+
+    {{{ runtimeKeepalivePush() }}}
+    buffer.mapAsync(mode, offset, size).then(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
+      });
+    }, () => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        // TODO(kainino0x): Figure out how to pick other error status values.
+        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
+      });
+    });
+  },
 };
 
 addToLibrary(LibraryGFXWebGPU);

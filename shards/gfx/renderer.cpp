@@ -45,6 +45,7 @@
 #include "pmr/vector.hpp"
 #include "pmr/unordered_map.hpp"
 #include "frame_queue.hpp"
+#include "gfx_wgpu.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -349,7 +350,11 @@ struct RendererImpl final : public ContextData {
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
     };
+#if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -377,7 +382,11 @@ struct RendererImpl final : public ContextData {
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer, 0, cmd.bufferSize);
     };
+#if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed

@@ -10,10 +10,7 @@
 #include <shards/modules/core/time.hpp>
 #include <shards/modules/inputs/inputs.hpp>
 #include <shards/modules/gfx/gfx.hpp>
-#include <SDL_events.h>
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
-#include <SDL_scancode.h>
+#include <shards/input/sdl.hpp>
 #include <gfx/context.hpp>
 #include <gfx/platform_surface.hpp>
 #include <gfx/window.hpp>
@@ -24,7 +21,6 @@ using namespace shards::input;
 namespace shards {
 void WindowContext::nextFrame() {}
 gfx::Window &WindowContext::getWindow() { return *window.get(); }
-SDL_Window *WindowContext::getSdlWindow() { return getWindow().window; }
 } // namespace shards
 
 namespace gfx {

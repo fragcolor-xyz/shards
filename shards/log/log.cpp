@@ -3,7 +3,9 @@
 #include <iterator>
 #include <spdlog/spdlog.h>
 #include <vector>
+#if SHARDS_LOG_SDL
 #include <SDL_stdinc.h>
+#endif
 #include <magic_enum.hpp>
 #include <shared_mutex>
 #include <boost/filesystem.hpp>
@@ -57,6 +59,8 @@ std::shared_mutex &__getRegisterMutex() {
 std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inName) {
   std::string varName;
   const char *val{};
+
+#if SHARDS_LOG_SDL
   auto tryReadEnvVar = [&]() {
     varName = inName;
     val = SDL_getenv(varName.c_str());
@@ -74,6 +78,7 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
     boost::algorithm::to_upper(inName);
     tryReadEnvVar();
   }
+#endif
 
   if (val) {
     return magic_enum::enum_cast<spdlog::level::level_enum>(val);
@@ -230,14 +235,20 @@ void initLogLevel(Logger logger) {
 
 void initLogFormat(Logger logger) {
   std::string varName = fmt::format("LOG_{}_FORMAT", logger->name());
+#if SHARDS_LOG_SDL
   if (const char *val = SDL_getenv(varName.c_str())) {
     logger->set_pattern(val);
-  } else {
+  } else
+#endif
+  {
     std::string logPattern;
-    // Use global log format
+// Use global log format
+#if SHARDS_LOG_SDL
     if (const char *val = SDL_getenv("LOG_FORMAT")) {
       logPattern = val;
-    } else {
+    } else
+#endif
+    {
 #ifdef __ANDROID
       // Logcat already countains timestamps & log level
       logPattern = "[T-%t][%n][%s::%#] %v";

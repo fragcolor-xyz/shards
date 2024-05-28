@@ -6,13 +6,7 @@
 #include "../core/platform.hpp"
 
 namespace gfx {
-struct EmscriptenWindow {
-  static void setCanvasContainer(const char *tag);
-};
-
 struct Window {
-  int2 lastContainerSize{};
-
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
 

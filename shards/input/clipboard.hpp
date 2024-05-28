@@ -18,8 +18,8 @@ public:
   operator std::string_view() const;
 };
 
-const char *getClipboard();
-Clipboard setClipboard();
+Clipboard getClipboard();
+void setClipboard(const char *data);
 } // namespace shards::input
 
 #endif /* DCBD4FEB_B1F1_4618_8DCB_5603B3D3DC67 */
