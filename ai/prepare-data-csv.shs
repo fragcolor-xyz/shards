@@ -1,0 +1,140 @@
+@define(with-explantion true prompt-type @type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
+@define(with-explantion false prompt-type @type({"instruction": Type::String "code": Type::String}))
+; @define(prompt-type @<type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
+
+@wire(prepare-csv {
+  [] >= rows
+  "" >= csv_content
+
+  {instruction: "prompt" code: "solution" explanation: "explanation"} >> temp-prompt-seq
+  Clear(temp-prompt-seq)
+
+
+  "./raw-data-for-fine-tuning-v1/"
+  FS.Iterate
+  Log("iter")
+  FS.Iterate
+  Log("iter2")
+
+  ForEach({
+    {
+      {"instruction": "placeholder-instruction" "code": "placeholder-solution" "explanation": "placeholder-explanation"} >= temp-chat
+      "" >= ai-assistant-answer
+    }
+
+    FS.Read
+    Shards.Read(Json: true)
+    FromJson (Pure: true)
+
+    ;; Parsing the output table and slowly taking the items that I need
+    ExpectTable
+    Take("sequence")
+    ExpectTable
+    Take("statements")
+    ExpectSeq
+    = temp-seq
+    Count(temp-seq)
+    When(Predicate: Is(1) Action:{
+      temp-seq
+      Take(0)
+      ExpectTable
+      Take("Pipeline")
+      ExpectTable
+      Take("blocks")
+      ExpectSeq
+      Take(0)
+      ExpectTable
+      Take("content")
+      ExpectTable
+      Take("Const")
+      ExpectTable
+      Take("Table")
+      ExpectSeq
+      ;; It is at this point we take  different things. Take(0) for prompt: , Take(1) for solution:, Take(2) for explicit:, Take(3) for explanation:, Take(4) for tag:
+      {Take(0) ;; Taking and Setting User Prompt
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString
+      Update(temp-chat "instruction") 
+      ;temp-chat
+      ;Log("result")
+      }
+
+      {Take(1) ;; Taking solution: and appending it to ai-assistant-answer
+      ExpectSeq
+      Take(1)
+      ExpectTable
+      Take("String")
+      ExpectString >= solution
+      Update(temp-chat "code") 
+      ; AppendTo(ai-assistant-answer)
+
+      ;ai-assistant-answer
+      ;Log("answer")
+      }
+      ; {Take(2) ;; Taking explicit: and appending it to ai-assistant-answer
+      ; ExpectSeq
+      ; Take(1)
+      ; ExpectTable
+      ; Take("String")
+      ; ToString
+      ; ExpectString >= explicit 
+      ; ; If(IsNot(solution){
+      ; ;   AppendTo(ai-assistant-answer)
+      ; ; }Pass)
+      ; AppendTo(ai-assistant-answer)
+      ; ; ai-assistant-answer
+      ; ; Log("answer")
+      ; }
+      When(with-explantion | IsTrue{Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
+        ExpectSeq
+        Take(1)
+        ExpectTable
+        Take("String")
+        ExpectString
+        Update(temp-chat "explanation") 
+        ; AppendTo(ai-assistant-answer)
+        ; ai-assistant-answer
+        ; Log("answer")
+      })
+      
+
+      ; {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
+      ; ExpectSeq
+      ; Take(1)
+      ; ExpectTable
+      ; Take("String")
+      ; ExpectString
+      ; AppendTo(ai-assistant-answer)
+      ; ; ai-assistant-answer
+      ; ; Log("answer")
+      ; }
+
+      ; ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
+      ; Update(temp-chat "output")
+      temp-chat >> temp-prompt-seq
+
+      temp-prompt-seq
+      Log("temp-prompt-seq")
+    })
+  })
+  ["instruction", "code", "explanation"] >> rows
+
+  temp-prompt-seq
+  ForEach({
+    Expect(@prompt-type) = chat
+    [chat:instruction, chat:code, chat:explanation] >> rows
+  })
+
+  
+  rows | CSV.Write = csv-data
+  "training-set.csv" | FS.Write(csv-data Overwrite: true)
+
+  
+})
+
+@mesh(main)
+@schedule(main prepare-csv)
+@run(main)
