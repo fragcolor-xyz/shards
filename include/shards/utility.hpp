@@ -584,6 +584,17 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     return (TOwnedVar<SH_CORE> &)back();
   }
 
+  TTableVar<SH_CORE> &emplace_back_table() {
+    resize(size() + 1);
+    auto &v = back();
+    if (v.valueType != SHType::Table) {
+      SH_CORE::destroyVar(v);
+      v.valueType = SHType::Table;
+      v.payload.tableValue = SH_CORE::tableNew();
+    }
+    return reinterpret_cast<TTableVar<SH_CORE> &>(v);
+  }
+
   void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }
 
   template <typename T> T &get(int index) {

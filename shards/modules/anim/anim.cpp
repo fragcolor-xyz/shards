@@ -266,11 +266,9 @@ struct PlayShard {
       SHVar value;
       evaluateTrack(value, trackTable.get<SeqVar>(Var("Frames")), time);
 
-      TableVar outFrame;
-      outFrame.get<OwnedVar>(Var("Path")) = pathVar;
-      outFrame.get<OwnedVar>(Var("Value")) = value;
-
-      (TableVar &)_output.emplace_back_fast() = std::move(outFrame);
+      auto &outFrame = _output.emplace_back_table();
+      outFrame["Path"] = pathVar;
+      outFrame["Value"] = value;
     }
 
     return _output;
