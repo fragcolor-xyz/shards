@@ -18,6 +18,8 @@ use shards::shard::LegacyShard;
 use shards::types::common_type;
 
 use shards::types::Context;
+use shards::types::ExposedInfo;
+use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::Parameters;
@@ -126,6 +128,7 @@ struct RequestBase {
   as_bytes: bool,
   full_response: bool,
   invalid_certs: bool,
+  required: ExposedTypes,
 }
 
 impl Default for RequestBase {
@@ -139,6 +142,7 @@ impl Default for RequestBase {
       as_bytes: false,
       full_response: false,
       invalid_certs: false,
+      required: Vec::new(),
     };
     let table = Table::new();
     s.output_table
@@ -186,6 +190,31 @@ impl RequestBase {
       5 => self.invalid_certs.into(),
       _ => unreachable!(),
     }
+  }
+
+  fn _requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.required.clear();
+
+    if self.headers.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::string_table,
+        name: self.headers.get_name(),
+        help: cstr!("The headers associated with the request.").into(),
+        ..ExposedInfo::default()
+      };
+      self.required.push(exp_info);
+    }
+    if self.url.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::string,
+        name: self.url.get_name(),
+        help: cstr!("The url to request to.").into(),
+        ..ExposedInfo::default()
+      };
+      self.required.push(exp_info);
+    }
+
+    Some(&self.required)
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
@@ -304,6 +333,10 @@ macro_rules! get_like {
         self.rb._parameters()
       }
 
+      fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+        self.rb._requiredVariables()
+      }
+
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         self.rb._setParam(index, value)
       }
@@ -410,6 +443,10 @@ macro_rules! post_like {
 
       fn parameters(&mut self) -> Option<&Parameters> {
         self.rb._parameters()
+      }
+
+      fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+        self.rb._requiredVariables()
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
