@@ -190,11 +190,19 @@ struct SHContext {
 
   constexpr SHVar getFlowStorage() const { return flowStorage; }
 
+  void startNoSuspend() { avoidSuspensionStack.push_back(true); }
+  void endNoSuspend() {
+    if (!avoidSuspensionStack.empty())
+      avoidSuspensionStack.pop_back();
+  }
+  bool canSuspend() const { return avoidSuspensionStack.empty(); }
+
   void mirror(const SHContext *other) {
     state = other->state;
     flowStorage = other->flowStorage;
     errorMessage = other->errorMessage;
     errorStack = other->errorStack;
+    avoidSuspensionStack = other->avoidSuspensionStack;
   }
 
 private:
@@ -204,6 +212,7 @@ private:
   SHVar flowStorage{};
   std::string errorMessage;
   std::vector<std::string> errorStack;
+  std::vector<bool> avoidSuspensionStack; // Stack to handle multiple startNoSuspend calls
 };
 
 namespace shards {

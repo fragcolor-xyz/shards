@@ -554,6 +554,8 @@ SHWireState suspend(SHContext *context, double seconds) {
     throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
+  } else if (unlikely(!context->canSuspend())) {
+    throw ActivationError("Trying to suspend a context that is not allowed to suspend!");
   }
 
   if (seconds <= 0) {
@@ -571,6 +573,14 @@ SHWireState suspend(SHContext *context, double seconds) {
   ++context->stepCounter;
 
   return context->getState();
+}
+
+extern "C" void shards_start_no_suspend(SHContext *context) {
+  context->startNoSuspend();
+}
+
+extern "C" void shards_end_no_suspend(SHContext *context) {
+  context->endNoSuspend();
 }
 
 template <typename T, bool HANDLES_RETURN>

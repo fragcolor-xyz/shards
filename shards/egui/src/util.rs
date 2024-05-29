@@ -7,6 +7,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::EGUI_UI_TYPE;
 use crate::PARENTS_UI_NAME_CSTR;
 use egui::style::WidgetVisuals;
+use shards::core::start_no_suspend;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -110,27 +111,20 @@ pub fn activate_ui_contents(
   parents_stack_var: &mut ParamVar,
   contents: &ShardsVar,
 ) -> Result<Var, &'static str> {
-  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-    let mut output = Var::default();
+  // egui cannot be suspended, so we start a no-suspend block from here
+  let _no_suspend = start_no_suspend(context);
 
-    with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {
-      let wire_state = contents.activate(context, input, &mut output);
-      if wire_state == WireState::Error {
-        return Err("Failed to activate contents");
-      }
-      Ok(())
-    })?;
+  let mut output = Var::default();
 
-    Ok(output)
-  }));
-
-  match result {
-    Ok(result) => result,
-    Err(err) => {
-      shlog_error!("UI Panic error: {:?}", err);
-      Err("UI Panic error")
+  with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {
+    let wire_state = contents.activate(context, input, &mut output);
+    if wire_state == WireState::Error {
+      return Err("Failed to activate contents");
     }
-  }
+    Ok(())
+  })?;
+
+  Ok(output)
 }
 
 pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {

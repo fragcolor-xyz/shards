@@ -779,3 +779,33 @@ impl Hash for Var {
     }
   }
 }
+
+extern "C" {
+  fn shards_start_no_suspend(context: *mut SHContext);
+  fn shards_end_no_suspend(context: *mut SHContext);
+}
+
+// utility droppable object to ensure that the end_no_suspend is called
+pub struct NoSuspend<'a> {
+  context: &'a SHContext,
+}
+
+impl<'a> Drop for NoSuspend<'a> {
+  fn drop(&mut self) {
+    unsafe {
+      shards_end_no_suspend(self.context as *const SHContext as *mut SHContext);
+    }
+  }
+}
+
+/// Usage:
+/// ```
+/// let context = shards::core::start_no_suspend();
+/// // do stuff
+/// ```
+pub fn start_no_suspend(context: &SHContext) -> NoSuspend {
+  unsafe {
+    shards_start_no_suspend(context as *const SHContext as *mut SHContext);
+  }
+  NoSuspend { context }
+}
