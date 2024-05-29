@@ -12,6 +12,7 @@
 
 #if !SHARDS_GFX_SDL
 #include <shards/gfx/gfx_events_em.hpp>
+#include <utf8.h/utf8.h>
 #endif
 
 namespace shards::input {
@@ -105,6 +106,7 @@ private:
   void endUpdate(const InputState &inputState) {
     swapBuffers();
 
+#if SHARDS_GFX_SDL
     synthesizeKeyUpEvents(inputState);
 
     synthesizeTouchUpEvents(inputState);
@@ -112,6 +114,7 @@ private:
     if constexpr (Pointer::HasPersistentPointer) {
       synthesizeMouseButtonEvents(inputState);
       synthesizeMouseEvents(inputState);
+      synthesizeScrollEvents(inputState);
     } else {
       synthesizeMouseFromTouchEvents(inputState);
     }
@@ -121,6 +124,9 @@ private:
     if constexpr (!Pointer::HasPersistentPointer) {
       updateCursorPositionFromPointerState(state);
     }
+#else
+    synthesizeScrollEvents(inputState);
+#endif
   }
 
 #if SHARDS_GFX_SDL
@@ -190,22 +196,64 @@ private:
     }
   }
 #else
+  SDL_Keymod extractEventKeyModidiers(const gfx::em::KeyEvent &e) {
+    int r{};
+    if (e.altKey)
+      r |= KMOD_ALT;
+    if (e.ctrlKey)
+      r |= KMOD_CTRL;
+    if (e.shiftKey)
+      r |= KMOD_SHIFT;
+    return SDL_Keymod(r);
+  }
   void apply(const gfx::em::EventVar &event, InputState &newState) {
     auto &buffer = buffers[getBufferIndex(1)];
     std::visit(
         [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, gfx::em::KeyEvent>) {
+            bool pressed = arg.type_ == 0;
+            SDL_Keycode keyCode = Emscripten_MapKeyCode(&arg);
             virtualInputEvents.push_back(KeyEvent{
-                .key = arg.key_, .pressed = arg.type_ == 0, .modifiers = state.modifiers, .repeat = arg.repeat ? 1u : 0u});
+                .key = keyCode,
+                .pressed = pressed,
+                .modifiers = extractEventKeyModidiers(arg),
+                .repeat = arg.repeat ? 1u : 0u,
+            });
+
+            // Emulate text input as well
+            if (pressed && arg.key_ != 0) {
+              auto &te = std::get<TextEvent>(virtualInputEvents.emplace_back(TextEvent{}));
+              auto &str = te.text;
+              str.resize(8);
+              auto after = (char *)utf8catcodepoint(str.data(), arg.key_, str.size());
+              if (after == nullptr) {
+                virtualInputEvents.pop_back();
+              } else {
+                str.resize(after - str.data());
+              }
+            }
+
+            if (pressed) {
+              newState.heldKeys.insert(keyCode);
+            } else {
+              newState.heldKeys.erase(keyCode);
+            }
           } else if constexpr (std::is_same_v<T, gfx::em::MouseEvent>) {
             uint8_t buttonIndex = (arg.button + 1);
             if (arg.type_ == 0) {
               virtualInputEvents.push_back(PointerMoveEvent{.pos = float2(arg.x, arg.y)});
             } else {
+              bool pressed = arg.type_ == 1;
               virtualInputEvents.push_back(
-                  PointerButtonEvent{.pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = (arg.type_ == 1)});
+                  PointerButtonEvent{.pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = pressed});
+              if (pressed) {
+                newState.mouseButtonState |= SDL_BUTTON(buttonIndex);
+              } else {
+                newState.mouseButtonState &= ~SDL_BUTTON(buttonIndex);
+              }
             }
+            state.cursorPosition = float2(arg.x, arg.y);
           } else if constexpr (std::is_same_v<T, gfx::em::MouseWheelEvent>) {
             buffer.scrollDelta += arg.deltaY;
           }
@@ -377,7 +425,9 @@ private:
       float2 delta = inputState.cursorPosition - state.cursorPosition;
       virtualInputEvents.push_back(PointerMoveEvent{.pos = inputState.cursorPosition, .delta = delta});
     }
+  }
 
+  void synthesizeScrollEvents(const InputState &inputState) {
     if (getScrollDelta() != 0.0f) {
       virtualInputEvents.push_back(ScrollEvent{.delta = getScrollDelta()});
     }

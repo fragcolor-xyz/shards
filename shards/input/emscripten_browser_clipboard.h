@@ -27,6 +27,7 @@ SOFTWARE.*/
 
 #include <string>
 #include <emscripten.h>
+#include <emscripten/proxying.h>
 
 #define _EM_JS_INLINE(ret, c_name, js_name, params, code)                          \
   extern "C" {                                                                     \

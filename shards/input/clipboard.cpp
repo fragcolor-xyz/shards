@@ -1,7 +1,12 @@
 #include "clipboard.hpp"
 #include "../core/platform.hpp"
 #if SH_EMSCRIPTEN
-#include "emscripten_browser_clipboard.h"
+#include <emscripten.h>
+// #include "emscripten_browser_clipboard.h"
+extern "C" {
+void gfxClipboardGet(char **recv, std::atomic_bool *ready);
+void gfxClipboardSet(char *data);
+}
 #else
 #include <SDL_clipboard.h>
 #endif
@@ -25,29 +30,26 @@ Clipboard::~Clipboard() {
 Clipboard::operator std::string_view() const { return (const char *)data; }
 #else
 Clipboard getClipboard() {
-  struct PasteHandler {
-    std::atomic_bool ready;
-    std::string *buffer = new std::string();
-  } handler;
-  emscripten_browser_clipboard::paste(
-      [](std::string const &data, void *ud) {
-        PasteHandler *ph = (PasteHandler *)ud;
-        *ph->buffer = data;
-        ph->ready = true;
-      },
-      &handler);
-  while (!handler.ready) {
+  char* recvPtr{};
+  std::atomic_bool recvReady{};
+  static_assert(sizeof(std::atomic_bool) == sizeof(bool), "Just checking");
+  gfxClipboardGet(&recvPtr, &recvReady);
+  while (!recvReady.load(std::memory_order_acquire)) {
     emscripten_sleep(1);
   }
-  return Clipboard(handler.buffer);
+  return Clipboard(recvPtr);
 }
-void setClipboard(const char *data) { emscripten_browser_clipboard::copy(data); }
+void setClipboard(const char *data) {
+  char* dataCopy = strdup(data);
+  gfxClipboardSet(dataCopy);
+}
 Clipboard::~Clipboard() {
   if (data) {
-    delete (std::string *)data;
+    free(data);
+    // delete (std::string *)data;
   }
 }
-Clipboard::operator std::string_view() const { return *(std::string *)data; }
+Clipboard::operator std::string_view() const { return (const char *)data; }
 #endif
 
 } // namespace shards::input

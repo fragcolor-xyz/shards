@@ -3,15 +3,20 @@
 
 #include <variant>
 #include <shards/log/log.hpp>
+#include <shards/input/sdl.hpp>
+#include <emscripten/dom_pk_codes.h>
 
 // Enable to debug events in logs
 #define SHARDS_GFX_EM_LOG_EVENTS 0
 
 namespace gfx::em {
 struct KeyEvent {
+  // 0 = pressed, 1 = released
   int32_t type_;
-  int32_t key_;
-  int32_t scan_;
+  int32_t domKey_;
+  // Unicode code point for pressed key, or 0 when it doesn't have one
+  uint32_t key_;
+  uint8_t location;
   bool ctrlKey;
   bool altKey;
   bool shiftKey;
@@ -19,6 +24,7 @@ struct KeyEvent {
 };
 
 struct MouseEvent {
+  // 0 = move, 1 = pressed, 2 = released
   int32_t type_;
   int32_t x, y;
   int32_t button;
@@ -36,12 +42,18 @@ struct SetCursorMessage {
 using EventVar = std::variant<KeyEvent, MouseEvent, MouseWheelEvent>;
 using MessageVar = std::variant<SetCursorMessage>;
 
+SDL_Keycode Emscripten_MapKeyCode(const KeyEvent *keyEvent);
+
 struct EventHandler {
   struct AtomicState {
     int32_t displayWidth{}, displayHeight{};
     int32_t canvasWidth{}, canvasHeight{};
     float pixelRatio = 1.0f;
   } astate;
+
+  struct ServerInputState {
+    uint32_t modKeyState{};
+  } serverInputState;
 
   std::mutex mutex;
   std::vector<EventVar> clientEvents;
@@ -59,6 +71,14 @@ struct EventHandler {
     }
 
     for (auto &e : serverEvents1) {
+      std::visit(
+          [&](auto &arg) {
+            using T1 = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T1, KeyEvent>) {
+              serverTrackKeyEventInternal(arg);
+            }
+          },
+          e);
       cb(e);
     }
   }
@@ -98,6 +118,25 @@ struct EventHandler {
         v);
 #endif
     tryFlush();
+  }
+
+private:
+  void serverTrackKeyEventInternal(KeyEvent &e) {
+    auto applyMod = [&](uint32_t pk, SDL_Keymod km) {
+      if (e.domKey_ == pk) {
+        if (e.type_ == 0) {
+          serverInputState.modKeyState |= km;
+        } else {
+          serverInputState.modKeyState &= ~km;
+        }
+      }
+    };
+    applyMod(DOM_PK_SHIFT_LEFT, SDL_Keymod::KMOD_LSHIFT);
+    applyMod(DOM_PK_SHIFT_RIGHT, SDL_Keymod::KMOD_RSHIFT);
+    applyMod(DOM_PK_CONTROL_LEFT, SDL_Keymod::KMOD_LCTRL);
+    applyMod(DOM_PK_CONTROL_RIGHT, SDL_Keymod::KMOD_RCTRL);
+    applyMod(DOM_PK_ALT_LEFT, SDL_Keymod::KMOD_LALT);
+    applyMod(DOM_PK_ALT_RIGHT, SDL_Keymod::KMOD_RALT);
   }
 };
 

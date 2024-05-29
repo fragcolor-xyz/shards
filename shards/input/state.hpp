@@ -9,6 +9,10 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/container/small_vector.hpp>
 
+#if !SHARDS_GFX_SDL
+#include <shards/gfx/gfx_events_em.hpp>
+#endif
+
 namespace shards::input {
 
 static inline constexpr int NumMouseButtons = 3;
@@ -148,6 +152,8 @@ struct InputState {
         }
       }
     }
+#else
+  modifiers = SDL_Keymod(gfx::em::getEventHandler()->serverInputState.modKeyState);
 #endif
   }
 };
