@@ -110,17 +110,27 @@ pub fn activate_ui_contents(
   parents_stack_var: &mut ParamVar,
   contents: &ShardsVar,
 ) -> Result<Var, &'static str> {
-  let mut output = Var::default();
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let mut output = Var::default();
 
-  with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {
-    let wire_state = contents.activate(context, input, &mut output);
-    if wire_state == WireState::Error {
-      return Err("Failed to activate contents");
+    with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {
+      let wire_state = contents.activate(context, input, &mut output);
+      if wire_state == WireState::Error {
+        return Err("Failed to activate contents");
+      }
+      Ok(())
+    })?;
+
+    Ok(output)
+  }));
+
+  match result {
+    Ok(result) => result,
+    Err(err) => {
+      shlog_error!("UI Panic error: {:?}", err);
+      Err("UI Panic error")
     }
-    Ok(())
-  })?;
-
-  Ok(output)
+  }
 }
 
 pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {
