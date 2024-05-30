@@ -64,7 +64,7 @@ struct AdapterRequest {
 
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
-    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPUInstanceRequestAdapterCallback)&Self::callback,
+    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
                                new std::shared_ptr<Self>(result));
     return result;
   };
@@ -89,7 +89,7 @@ struct DeviceRequest {
 
   static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
     auto result = std::make_shared<Self>();
-    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPUAdapterRequestDeviceCallback)&Self::callback,
+    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
                              new std::shared_ptr<Self>(result));
     return result;
   };
