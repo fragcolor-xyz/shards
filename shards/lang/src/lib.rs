@@ -532,8 +532,13 @@ pub extern "C" fn setup_panic_hook() {
     // Print the panic info to standard error.
     eprintln!("Panic occurred: {:?}", info);
     // Trigger a breakpoint.
+    #[cfg(unix)]
     unsafe {
-      libc::raise(libc::SIGTRAP)
-    };
+      libc::raise(libc::SIGTRAP);
+    }
+    #[cfg(windows)]
+    unsafe {
+      DebugBreak();
+    }
   }));
 }
