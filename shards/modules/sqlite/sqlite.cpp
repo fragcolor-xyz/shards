@@ -1,6 +1,7 @@
 #include "shards/shards.h"
 #include "shards/shards.hpp"
 #include <cstdint>
+#include <shards/core/platform.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
@@ -37,6 +38,16 @@ struct Connection {
 
   Connection(const char *path, bool readOnly) {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
+
+    // Change the default vfs for sqlite, since unix locks do not work with
+    // wasmfs
+#if SH_EMSCRIPTEN
+    static bool globalInit{};
+    if (!globalInit) {
+      sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+      globalInit = true;
+    }
+#endif
 
     if (readOnly) {
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
