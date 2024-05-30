@@ -522,3 +522,23 @@ pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mu
     std::ptr::null_mut()
   }
 }
+
+#[no_mangle]
+pub extern "C" fn setup_panic_hook() {
+  // Had to put this in this crate otherwise we would have duplicated symbols
+  // Set a custom panic hook to break into the debugger.
+  #[cfg(debug_assertions)]
+  std::panic::set_hook(Box::new(|info| {
+    // Print the panic info to standard error.
+    eprintln!("Panic occurred: {:?}", info);
+    // Trigger a breakpoint.
+    #[cfg(unix)]
+    unsafe {
+      libc::raise(libc::SIGTRAP);
+    }
+    #[cfg(windows)]
+    unsafe {
+      windows::Win32::System::Diagnostics::Debug::DebugBreak();
+    }
+  }));
+}
