@@ -77,8 +77,6 @@ private:
   std::shared_mutex mutex;
   std::vector<shards::Function<void(InputMaster &)>> postInputCallbacks;
 
-  // EventBuffer<Frame<ConsumableEvent>> eventBuffer;
-
   std::vector<ConsumableEvent> events;
 
   boost::lockfree::spsc_queue<Message> messageQueue;

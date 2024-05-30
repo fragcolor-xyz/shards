@@ -348,7 +348,11 @@ struct RendererImpl final : public ContextData {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+#if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
 #if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
@@ -361,7 +365,12 @@ struct RendererImpl final : public ContextData {
   bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
+
+#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
@@ -380,7 +389,11 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+#if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
 #if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
@@ -393,7 +406,12 @@ struct RendererImpl final : public ContextData {
   bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
+
+#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.stagingBuffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
 
       wgpuBufferUnmap(cmd.stagingBuffer);
       cmd.mappedBuffer.reset();

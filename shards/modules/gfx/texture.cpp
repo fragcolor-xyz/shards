@@ -12,6 +12,7 @@
 #include <gfx/render_target.hpp>
 #include <gfx/gpu_read_buffer.hpp>
 #include <gfx/renderer.hpp>
+#include <gfx/log.hpp>
 #include <shards/core/params.hpp>
 #include <stdexcept>
 #include <vector>
@@ -86,7 +87,7 @@ struct TextureShard {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     texture.reset();
   }
@@ -372,7 +373,7 @@ struct RenderTargetShard {
     _renderTarget.renderTarget = std::make_shared<RenderTarget>();
     _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, ShardsTypes::RenderTargetTypeId);
   }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &rt = _renderTarget.renderTarget;
@@ -419,7 +420,7 @@ struct RenderTargetTextureShard {
     }
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, ShardsTypes::RenderTarget);
@@ -469,7 +470,7 @@ struct ReadTextureShard {
     _requiredGraphicsContext.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup(context);
   }
@@ -495,7 +496,7 @@ struct ReadTextureShard {
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
     } else {
       if (isSupportedFormat(_readBuffer->pixelFormat)) {
-      auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
+        auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
         size_t componentSize = getStorageTypeSize(fmtDesc.storageType);
         outImage.channels = fmtDesc.numComponents;
         if (!isIntegerStorageType(fmtDesc.storageType)) {
@@ -503,7 +504,7 @@ struct ReadTextureShard {
         } else if (componentSize == 2) {
           outImage.flags = SHIMAGE_FLAGS_16BITS_INT;
         } else {
-        outImage.flags = SHIMAGE_FLAGS_NONE;
+          outImage.flags = SHIMAGE_FLAGS_NONE;
         }
         outImage.width = _readBuffer->size.x;
         outImage.height = _readBuffer->size.y;

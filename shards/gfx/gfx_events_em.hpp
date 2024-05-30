@@ -42,8 +42,6 @@ struct SetCursorMessage {
 using EventVar = std::variant<KeyEvent, MouseEvent, MouseWheelEvent>;
 using MessageVar = std::variant<SetCursorMessage>;
 
-SDL_Keycode Emscripten_MapKeyCode(const KeyEvent *keyEvent);
-
 struct EventHandler {
   struct AtomicState {
     int32_t displayWidth{}, displayHeight{};

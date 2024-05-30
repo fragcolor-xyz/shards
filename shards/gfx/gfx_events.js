@@ -9,7 +9,7 @@ var LibraryGFXEvents = {
       console.log('Read data from clipboard: ', text);
     })();
   },
-  gfxClipboardGet__proxy: 'async',
+  gfxClipboardSet__proxy: 'async',
   gfxClipboardSet: function (dataCopy) {
     (async () => {
       let text = UTF8ToString(dataCopy);

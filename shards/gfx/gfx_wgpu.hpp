@@ -56,6 +56,9 @@ inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 extern "C" {
 WGPUSwapChain gfxWgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const *descriptor);
 void gfxWgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata);
+// Custom function implemented in javascript that reads a mapped buffer directly into the given address
+// faster that the default implementation that copies the data into a temporary buffer
+void gfxWgpuBufferReadInto(WGPUBuffer buffer, void* dst, size_t offset, size_t size);
 }
 #endif
 

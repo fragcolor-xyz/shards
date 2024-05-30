@@ -1,19 +1,15 @@
 #ifndef BB4427B0_5641_4FB1_86E3_6E9D1AD7C986
 #define BB4427B0_5641_4FB1_86E3_6E9D1AD7C986
 #include "input.hpp"
-#include "input/events.hpp"
 #include "state.hpp"
 #include "events.hpp"
 #include "log.hpp"
 #include "sdl.hpp"
+#include "event_decoder.hpp"
 #include <boost/container/string.hpp>
 #include <boost/container/flat_map.hpp>
 #include <type_traits>
 
-#if !SHARDS_GFX_SDL
-#include <shards/gfx/gfx_events_em.hpp>
-#include <utf8.h/utf8.h>
-#endif
 
 namespace shards::input {
 // Keeps track of all input state separately and synthesizes it's own events by
@@ -24,14 +20,7 @@ struct DetachedInput {
 
   InputState state;
 
-  struct Buffer {
-    float scrollDelta{};
-    boost::container::string text;
-    void reset() {
-      scrollDelta = 0.0f;
-      text.clear();
-    }
-  } buffers[2];
+  NativeEventDecoderBuffer buffers[2];
 
   size_t currentBufferIndex{};
   bool imeComposing{};
@@ -84,8 +73,9 @@ public:
 
     InputState newState = state;
     newState.update();
+    NativeEventDecoder decoder{virtualInputEvents, state, newState, buffers[getBufferIndex(1)]};
     auto applyFn = [&](const NativeEventType &event) {
-      apply(event, newState); //
+      decoder.apply(event);
     };
     callback(applyFn);
 
@@ -125,142 +115,10 @@ private:
       updateCursorPositionFromPointerState(state);
     }
 #else
+    state = inputState;
     synthesizeScrollEvents(inputState);
 #endif
   }
-
-#if SHARDS_GFX_SDL
-  // Apply an event to the new state, during update
-  void apply(const SDL_Event &event, InputState &newState) {
-    auto &buffer = buffers[getBufferIndex(1)];
-    if (event.type == SDL_MOUSEWHEEL) {
-      buffer.scrollDelta += event.wheel.preciseY;
-    } else if (event.type == SDL_TEXTEDITING) {
-      auto &ievent = event.edit;
-
-      if (strlen(ievent.text) > 0) {
-        if (!imeComposing) {
-          imeComposing = true;
-        }
-
-        virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
-      }
-    } else if (event.type == SDL_KEYDOWN) {
-      virtualInputEvents.push_back(
-          KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
-    } else if (event.type == SDL_TEXTINPUT) {
-      auto &ievent = event.text;
-      if (imeComposing) {
-        virtualInputEvents.push_back(TextCompositionEndEvent{.text = ievent.text});
-        imeComposing = false;
-      } else {
-        virtualInputEvents.push_back(TextEvent{.text = ievent.text});
-      }
-    } else if (event.type == SDL_WINDOWEVENT) {
-      if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-        virtualInputEvents.push_back(RequestCloseEvent{});
-      } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-      }
-    } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
-      virtualInputEvents.push_back(SupendEvent{});
-    } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
-      virtualInputEvents.push_back(ResumeEvent{});
-    } else if (event.type == SDL_FINGERMOTION) {
-      auto &ievent = event.tfinger;
-      virtualInputEvents.push_back(PointerTouchMoveEvent{
-          .pos = float2(ievent.x, ievent.y) * state.region.size,
-          .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
-          .index = ievent.fingerId,
-          .pressure = ievent.pressure,
-      });
-    } else if (event.type == SDL_FINGERDOWN) {
-      auto &ievent = event.tfinger;
-
-      auto &pointer = newState.pointers.getOrInsert(ievent.fingerId);
-      pointer.position = float2(ievent.x, ievent.y) * state.region.size;
-      pointer.pressure = ievent.pressure;
-      pointer.touchId = ievent.touchId;
-
-      virtualInputEvents.push_back(PointerTouchEvent{
-          .pos = float2(ievent.x, ievent.y) * state.region.size,
-          .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
-          .index = ievent.fingerId,
-          .pressure = ievent.pressure,
-          .pressed = true,
-      });
-    } else if (event.type == SDL_DROPFILE) {
-      virtualInputEvents.push_back(DropFileEvent{.path = event.drop.file});
-      SPDLOG_LOGGER_DEBUG(getLogger(), "Window dropped file: {}", event.drop.file);
-      if (event.drop.file)
-        SDL_free(event.drop.file);
-    }
-  }
-#else
-  SDL_Keymod extractEventKeyModidiers(const gfx::em::KeyEvent &e) {
-    int r{};
-    if (e.altKey)
-      r |= KMOD_ALT;
-    if (e.ctrlKey)
-      r |= KMOD_CTRL;
-    if (e.shiftKey)
-      r |= KMOD_SHIFT;
-    return SDL_Keymod(r);
-  }
-  void apply(const gfx::em::EventVar &event, InputState &newState) {
-    auto &buffer = buffers[getBufferIndex(1)];
-    std::visit(
-        [&](auto &&arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, gfx::em::KeyEvent>) {
-            bool pressed = arg.type_ == 0;
-            SDL_Keycode keyCode = Emscripten_MapKeyCode(&arg);
-            virtualInputEvents.push_back(KeyEvent{
-                .key = keyCode,
-                .pressed = pressed,
-                .modifiers = extractEventKeyModidiers(arg),
-                .repeat = arg.repeat ? 1u : 0u,
-            });
-
-            // Emulate text input as well
-            if (pressed && arg.key_ != 0) {
-              auto &te = std::get<TextEvent>(virtualInputEvents.emplace_back(TextEvent{}));
-              auto &str = te.text;
-              str.resize(8);
-              auto after = (char *)utf8catcodepoint(str.data(), arg.key_, str.size());
-              if (after == nullptr) {
-                virtualInputEvents.pop_back();
-              } else {
-                str.resize(after - str.data());
-              }
-            }
-
-            if (pressed) {
-              newState.heldKeys.insert(keyCode);
-            } else {
-              newState.heldKeys.erase(keyCode);
-            }
-          } else if constexpr (std::is_same_v<T, gfx::em::MouseEvent>) {
-            uint8_t buttonIndex = (arg.button + 1);
-            if (arg.type_ == 0) {
-              virtualInputEvents.push_back(PointerMoveEvent{.pos = float2(arg.x, arg.y)});
-            } else {
-              bool pressed = arg.type_ == 1;
-              virtualInputEvents.push_back(
-                  PointerButtonEvent{.pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = pressed});
-              if (pressed) {
-                newState.mouseButtonState |= SDL_BUTTON(buttonIndex);
-              } else {
-                newState.mouseButtonState &= ~SDL_BUTTON(buttonIndex);
-              }
-            }
-            state.cursorPosition = float2(arg.x, arg.y);
-          } else if constexpr (std::is_same_v<T, gfx::em::MouseWheelEvent>) {
-            buffer.scrollDelta += arg.deltaY;
-          }
-        },
-        event);
-  }
-#endif
 
   // Apply a consumable event to this detached input state
   // any non-consumed event will be handled normally

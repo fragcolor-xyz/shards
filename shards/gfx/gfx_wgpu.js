@@ -66,6 +66,26 @@ var LibraryGFXWebGPU = {
       });
     });
   },
+  
+  gfxWgpuBufferReadInto__deps: ['$WebGPU'],
+  gfxWgpuBufferReadInto: (bufferId, dst, offset, size) => {
+    var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
+    var buffer = bufferWrapper.object;
+
+    var mapped;
+    try {
+      mapped = bufferWrapper.object.getMappedRange(offset, size);
+    } catch (ex) {
+#if ASSERTIONS
+      err(`gfxWgpuReadMappedBuffer(${dst}, ${offset}, ${size}) failed: ${ex}`);
+#endif
+      return 0;
+    }
+
+    // Copy directly into the heap at the given into pointer
+    HEAPU8.set(new Uint8Array(mapped), dst);
+  },
 };
 
 addToLibrary(LibraryGFXWebGPU);
