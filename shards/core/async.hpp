@@ -310,7 +310,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 
   getTidePool().schedule(&call);
 
-  while (!call.complete && context->shouldContinue()) {
+  while (!call.complete.load(std::memory_order_acquire) && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }

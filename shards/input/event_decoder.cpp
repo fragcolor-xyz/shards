@@ -1,4 +1,5 @@
 #include "event_decoder.hpp"
+#include "log.hpp"
 #include "../shards/core/platform.hpp"
 
 #if SH_EMSCRIPTEN
@@ -14,8 +15,8 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
     auto &ievent = event.edit;
 
     if (strlen(ievent.text) > 0) {
-      if (!imeComposing) {
-        imeComposing = true;
+      if (!decoderState.imeComposing) {
+        decoderState.imeComposing = true;
       }
 
       virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
@@ -25,9 +26,9 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
         KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
   } else if (event.type == SDL_TEXTINPUT) {
     auto &ievent = event.text;
-    if (imeComposing) {
+    if (decoderState.imeComposing) {
       virtualInputEvents.push_back(TextCompositionEndEvent{.text = ievent.text});
-      imeComposing = false;
+      decoderState.imeComposing = false;
     } else {
       virtualInputEvents.push_back(TextEvent{.text = ievent.text});
     }
@@ -312,7 +313,7 @@ static const SDL_Keycode emscripten_keycode_table[] = {
     /* 222 */ SDLK_QUOTE, /*FX, D3E legacy*/
 };
 
-static SDL_Keycode mapKeyCode(const gfx::em::KeyEvent& keyEvent) {
+static SDL_Keycode mapKeyCode(const gfx::em::KeyEvent &keyEvent) {
   SDL_Keycode keycode = SDLK_UNKNOWN;
   if (keyEvent.domKey_ < SDL_arraysize(emscripten_keycode_table)) {
     keycode = emscripten_keycode_table[keyEvent.domKey_];
@@ -425,8 +426,8 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
             virtualInputEvents.push_back(PointerMoveEvent{.pos = float2(arg.x, arg.y)});
           } else {
             bool pressed = arg.type_ == 1;
-            virtualInputEvents.push_back(
-                PointerButtonEvent{.pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = pressed});
+            virtualInputEvents.push_back(PointerButtonEvent{
+                .pos = float2(arg.x, arg.y), .index = buttonIndex, .pressed = pressed, .modifiers = newState.modifiers});
             if (pressed) {
               newState.mouseButtonState |= SDL_BUTTON(buttonIndex);
             } else {

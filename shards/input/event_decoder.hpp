@@ -11,7 +11,6 @@
 
 namespace shards::input {
 struct NativeEventDecoderBuffer {
-
   float scrollDelta{};
   boost::container::string text;
   void reset() {
@@ -19,12 +18,16 @@ struct NativeEventDecoderBuffer {
     text.clear();
   }
 };
+struct NativeEventDecoderState {
+  bool imeComposing{};
+};
 
 struct NativeEventDecoder {
+  NativeEventDecoderState &decoderState;
   std::vector<Event> &virtualInputEvents;
   const InputState &state;
   InputState &newState;
-  NativeEventDecoderBuffer& buffer;
+  NativeEventDecoderBuffer &buffer;
 
   // Apply Native events to the new state
 #if SHARDS_GFX_SDL

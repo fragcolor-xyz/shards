@@ -21,9 +21,9 @@ struct DetachedInput {
   InputState state;
 
   NativeEventDecoderBuffer buffers[2];
+  NativeEventDecoderState decoderState;
 
   size_t currentBufferIndex{};
-  bool imeComposing{};
 
 public:
   float getScrollDelta() const { return buffers[currentBufferIndex].scrollDelta; }
@@ -73,7 +73,7 @@ public:
 
     InputState newState = state;
     newState.update();
-    NativeEventDecoder decoder{virtualInputEvents, state, newState, buffers[getBufferIndex(1)]};
+    NativeEventDecoder decoder{decoderState, virtualInputEvents, state, newState, buffers[getBufferIndex(1)]};
     auto applyFn = [&](const NativeEventType &event) {
       decoder.apply(event);
     };
