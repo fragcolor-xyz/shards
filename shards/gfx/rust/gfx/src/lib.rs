@@ -57,7 +57,7 @@ pub unsafe extern "C" fn gfxDeviceCreateShaderModule(
   let cstr = std::ffi::CStr::from_ptr(descriptor.wgsl);
 
   let (id, error) = gfx_select!(device => context.device_create_shader_module(device, &desc,
-        wgc::pipeline::ShaderModuleSource::Wgsl(cstr.to_string_lossy()), None));
+        wgc::pipeline::ShaderModuleSource::Wgsl(cstr.to_string_lossy()), ()));
 
   if let Some(error) = error {
     let err_str = format!("{}\n{:?}", error, error);
