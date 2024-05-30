@@ -29,7 +29,7 @@ template <size_t InlineSize, typename R, typename... Args> struct FunctionBase<I
   static constexpr size_t MemSize = (InlineSize - Overhead);
 
 private:
-  uint8_t mem[MemSize]{};
+  __attribute__((aligned(16))) uint8_t mem[MemSize]{};
   uint8_t flags = 0;
 
   template <typename T> T &getMemAsRef() { return *reinterpret_cast<T *>(&mem); }
