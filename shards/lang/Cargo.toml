@@ -21,7 +21,7 @@ compile-time-crc32 = "0.1.2"
 lazy_static = "1.4.0"
 dunce = "1.0.4"
 libc = "0.2.155"
-windows = "0.56.0"
+windows = { version = "0.56.0", features = ["Win32_System_Diagnostics_Debug"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ctrlc = "3.4.0"
