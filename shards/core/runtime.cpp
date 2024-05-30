@@ -1250,6 +1250,9 @@ bool isDebuggerPresent() {
 bool isDebuggerPresent() { return false; }
 #endif
 
+// pub extern "C" fn setup_panic_hook()
+extern "C" void setup_panic_hook();
+
 void installSignalHandlers() {
   if (!isDebuggerPresent()) {
     SHLOG_TRACE("Installing signal handlers");
@@ -1265,6 +1268,8 @@ void installSignalHandlers() {
     std::signal(SIGPIPE, &error_handler);
     std::signal(SIGTRAP, &error_handler);
 #endif
+  } else {
+    setup_panic_hook();
   }
 }
 
@@ -2125,6 +2130,8 @@ void stringGrow(SHStringPayload *str, uint32_t newCap) {
 void stringFree(SHStringPayload *str) { arrayFree(*str); }
 
 }; // namespace shards
+
+extern "C" void shards_install_signal_handlers() { installSignalHandlers(); }
 
 // NO NAMESPACE here!
 

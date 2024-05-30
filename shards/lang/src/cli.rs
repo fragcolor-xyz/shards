@@ -19,6 +19,7 @@ use shards::util::from_raw_parts_allow_null;
 
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
+  fn shards_install_signal_handlers();
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -139,6 +140,7 @@ pub extern "C" fn shards_process_args(
     Commands::External(_) => {}
     _ => unsafe {
       shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+      shards_install_signal_handlers();
     },
   };
 

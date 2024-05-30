@@ -24,7 +24,7 @@ shards-macro = { path = "../rust_macro" }
 dlopen = { version = "0.1.8", optional = true }
 
 [dev-dependencies]
-ctor = "0.1.26"
+ctor = "0.2.8"
 
 [build-dependencies]
 bindgen = { version = "0.69.4" }

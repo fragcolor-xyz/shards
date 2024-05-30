@@ -20,6 +20,7 @@ profiling = { version = "1", default-features = false }
 compile-time-crc32 = "0.1.2"
 lazy_static = "1.4.0"
 dunce = "1.0.4"
+libc = "0.2.155"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ctrlc = "3.4.0"
