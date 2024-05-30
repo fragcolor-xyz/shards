@@ -33,8 +33,5 @@ endif()
 
 if(HAS_WGPU_NATIVE)
   target_compile_definitions(gfx-rust INTERFACE WEBGPU_NATIVE=1)
-  target_include_directories(gfx-rust INTERFACE 
-    ${WGPU_NATIVE_PATH}/ffi
-    ${WGPU_NATIVE_PATH}/ffi/webgpu-headers
-  )
+  target_include_directories(gfx-rust INTERFACE ${WGPU_NATIVE_PATH}/ffi)
 endif()

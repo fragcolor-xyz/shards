@@ -108,9 +108,6 @@ WGPURenderPassDescriptor RenderGraphEvaluator::createRenderPassDescriptor(const 
     } else {
       auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment {
         .view = resolvedFrameTexture.view,
-#if WEBGPU_NATIVE
-        .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
-#endif
       });
 
       std::visit(
