@@ -538,7 +538,7 @@ pub extern "C" fn setup_panic_hook() {
     }
     #[cfg(windows)]
     unsafe {
-      DebugBreak();
+      windows::Win32::System::Diagnostics::Debug::DebugBreak();
     }
   }));
 }
