@@ -1,0 +1,32 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+// Count the number of times functions are called
+pid$target::*:entry
+{
+    @calls[probefunc] = count();
+}
+
+// Measure the execution time of functions
+pid$target::*:entry
+{
+    self->start = timestamp;
+}
+
+pid$target::*:return
+/self->start/
+{
+    @exec_time[probefunc] = sum(timestamp - self->start);
+    self->start = 0;
+}
+
+// Print the results when the script exits
+END
+{
+    printf("Function Call Counts:\n");
+    printa("%s: %@d\n", @calls);
+
+    printf("Function Execution Times (ns):\n");
+    printa("%s: %@d\n", @exec_time);
+}
