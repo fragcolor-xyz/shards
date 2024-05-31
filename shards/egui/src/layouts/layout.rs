@@ -14,6 +14,7 @@ use crate::layouts::LAYOUT_ALIGN_TYPES;
 use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::layouts::SCROLL_VISIBILITY_TYPES;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::Anchor;
 use crate::EguiId;
 use crate::ANCHOR_TYPE;
@@ -888,7 +889,10 @@ lazy_static! {
 }
 
 #[derive(shards::shard)]
-#[shard_info("UI.Layout", "Versatile layout with many options for customizing the desired UI.")]
+#[shard_info(
+  "UI.Layout",
+  "Versatile layout with many options for customizing the desired UI."
+)]
 struct LayoutShard {
   #[shard_required]
   requiring: ExposedTypes,
@@ -1099,85 +1103,100 @@ impl Shard for LayoutShard {
 
     let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
 
-    // if there is a frame, draw it as the outermost ui element
-    if let Some(frame) = frame {
-      frame
-        .show(ui, |ui| {
-          // set whether all widgets in the contents are enabled or disabled
-          ui.set_enabled(!disabled);
-          // add the new child_ui created by frame onto the stack of parents
-          // inside of frame
-          // render scroll area and inner layout if there is a scroll area
-          if let Some(scroll_area) = scroll_area {
-            scroll_area
-              .id_source(scroll_area_id)
-              .show(ui, |ui| {
-                // inside of scroll area
-                ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                  ui.set_min_size(min_size); // set minimum size of entire layout
+    with_possible_panic(|| {
+      // if there is a frame, draw it as the outermost ui element
+      if let Some(frame) = frame {
+        frame
+          .show(ui, |ui| {
+            // set whether all widgets in the contents are enabled or disabled
+            ui.set_enabled(!disabled);
+            // add the new child_ui created by frame onto the stack of parents
+            // inside of frame
+            // render scroll area and inner layout if there is a scroll area
+            if let Some(scroll_area) = scroll_area {
+              scroll_area
+                .id_source(scroll_area_id)
+                .show(ui, |ui| {
+                  // inside of scroll area
+                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                    ui.set_min_size(min_size); // set minimum size of entire layout
 
-                  if self.contents.is_empty() {
-                    return Ok(*input);
-                  }
-                  util::activate_ui_contents(
-                    context,
-                    input,
-                    ui,
-                    &mut self.parents,
-                    &mut self.contents,
-                  )
+                    if self.contents.is_empty() {
+                      return Ok(*input);
+                    }
+                    util::activate_ui_contents(
+                      context,
+                      input,
+                      ui,
+                      &mut self.parents,
+                      &mut self.contents,
+                    )
+                  })
+                  .inner
                 })
                 .inner
+            } else {
+              // inside of frame, no scroll area to render, render inner layout
+              ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                ui.set_min_size(min_size); // set minimum size of entire layout
+
+                if self.contents.is_empty() {
+                  return Ok(*input);
+                }
+
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
               })
               .inner
-          } else {
-            // inside of frame, no scroll area to render, render inner layout
-            ui.allocate_ui_with_layout(max_size, layout, |ui| {
-              ui.set_min_size(min_size); // set minimum size of entire layout
-
-              if self.contents.is_empty() {
-                return Ok(*input);
-              }
-
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
-            .inner
-          }
-        })
-        .inner?;
-    } else {
-      // no frame to render, render only the scroll area (if applicable) and inner layout
-      if let Some(scroll_area) = scroll_area {
-        scroll_area
-          .id_source(scroll_area_id)
-          .show(ui, |ui| {
-            // inside of scroll area
-            ui.allocate_ui_with_layout(max_size, layout, |ui| {
-              ui.set_min_size(min_size); // set minimum size of entire layout
-
-              if self.contents.is_empty() {
-                return Ok(*input);
-              }
-
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
-            .inner
+            }
           })
-          .inner?;
+          .inner
       } else {
-        // inside of frame, no scroll area to render, render inner layout
-        ui.allocate_ui_with_layout(max_size, layout, |ui| {
-          ui.set_min_size(min_size); // set minimum size of entire layout
+        // no frame to render, render only the scroll area (if applicable) and inner layout
+        if let Some(scroll_area) = scroll_area {
+          scroll_area
+            .id_source(scroll_area_id)
+            .show(ui, |ui| {
+              // inside of scroll area
+              ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                ui.set_min_size(min_size); // set minimum size of entire layout
 
-          if self.contents.is_empty() {
-            return Ok(*input);
-          }
+                if self.contents.is_empty() {
+                  return Ok(*input);
+                }
 
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner?;
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
+            })
+            .inner
+        } else {
+          // inside of frame, no scroll area to render, render inner layout
+          ui.allocate_ui_with_layout(max_size, layout, |ui| {
+            ui.set_min_size(min_size); // set minimum size of entire layout
+
+            if self.contents.is_empty() {
+              return Ok(*input);
+            }
+
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
+        }
       }
-    }
+    })??;
+
     // Always passthrough the input
     Ok(*input)
   }

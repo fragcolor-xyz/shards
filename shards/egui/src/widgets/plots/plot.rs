@@ -5,6 +5,7 @@ use super::Plot;
 use super::EGUI_PLOT_UI_TYPE;
 use super::PLOT_UI_NAME;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::EguiId;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -243,19 +244,21 @@ impl LegacyShard for Plot {
         plot = plot.legend(Default::default());
       }
 
-      plot
-        .show(ui, |plot_ui| unsafe {
-          let var = Var::new_object_from_ptr(plot_ui as *const _, &EGUI_PLOT_UI_TYPE);
-          self.plot_context.set_cloning(&var);
+      with_possible_panic(|| {
+        plot
+          .show(ui, |plot_ui| unsafe {
+            let var = Var::new_object_from_ptr(plot_ui as *const _, &EGUI_PLOT_UI_TYPE);
+            self.plot_context.set_cloning(&var);
 
-          let mut _output = Var::default();
-          if self.contents.activate(context, input, &mut _output) == WireState::Error {
-            return Err("Failed to activate contents");
-          }
+            let mut _output = Var::default();
+            if self.contents.activate(context, input, &mut _output) == WireState::Error {
+              return Err("Failed to activate contents");
+            }
 
-          Ok(())
-        })
-        .inner?;
+            Ok(())
+          })
+          .inner
+      })??;
 
       Ok(*input)
     } else {

@@ -5,6 +5,7 @@ use crate::containers::WindowFlags;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::Anchor;
 use crate::ANCHOR_TYPES;
 use crate::BOOL_VAR_SLICE;
@@ -14,8 +15,8 @@ use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
 use shards::types::OptionalString;
-use shards::types::ANY_TYPES;
 use shards::types::WireState;
+use shards::types::ANY_TYPES;
 use shards::types::{
   common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
   Types, Var, SHARDS_OR_NONE_TYPES, STRING_TYPES,
@@ -37,7 +38,11 @@ lazy_static! {
   "Creates a floating window which can be dragged, closed, collapsed, and resized."
 )]
 struct WindowShard {
-  #[shard_param("Title", "The window title displayed on the titlebar.", STRING_VAR_OR_NONE_SLICE)]
+  #[shard_param(
+    "Title",
+    "The window title displayed on the titlebar.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
   pub title: ParamVar,
   #[shard_param(
     "Position",
@@ -240,19 +245,22 @@ impl Shard for WindowShard {
         }
       }
 
-      window.show(gui_ctx, |ui| {
-        if !width.is_none() {
-          ui.set_width(ui.available_width());
-        }
-        if !height.is_none() {
-          ui.set_height(ui.available_height());
-        }
-        if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          .is_err()
-        {
-          failed = true;
-        }
-      });
+      with_possible_panic(|| {
+        window.show(gui_ctx, |ui| {
+          if !width.is_none() {
+            ui.set_width(ui.available_width());
+          }
+          if !height.is_none() {
+            ui.set_height(ui.available_height());
+          }
+
+          if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            .is_err()
+          {
+            failed = true;
+          }
+        });
+      })?;
 
       if failed {
         return Err("Failed to activate window contents");

@@ -3,6 +3,7 @@
 
 use super::ScrollArea;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
@@ -195,21 +196,23 @@ impl LegacyShard for ScrollArea {
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let visibility = if self.alwaysShow.get().try_into()? {
-        egui::scroll_area::ScrollBarVisibility::AlwaysVisible
-      } else {
-        egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
-      };
-      egui::ScrollArea::new([
-        self.horizontal.get().try_into()?,
-        self.vertical.get().try_into()?,
-      ])
-      .id_source(EguiId::new(self, 0))
-      .scroll_bar_visibility(visibility)
-      .show(ui, |ui| {
-        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      })
-      .inner?;
+      with_possible_panic(|| {
+        let visibility = if self.alwaysShow.get().try_into()? {
+          egui::scroll_area::ScrollBarVisibility::AlwaysVisible
+        } else {
+          egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
+        };
+        egui::ScrollArea::new([
+          self.horizontal.get().try_into()?,
+          self.vertical.get().try_into()?,
+        ])
+        .id_source(EguiId::new(self, 0))
+        .scroll_bar_visibility(visibility)
+        .show(ui, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner
+      })??;
 
       // Always passthrough the input
       Ok(*input)

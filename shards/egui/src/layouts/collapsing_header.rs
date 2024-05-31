@@ -3,6 +3,7 @@
 
 use super::CollapsingHeader;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
@@ -197,44 +198,46 @@ impl LegacyShard for CollapsingHeader {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let default_open: bool = self.defaultOpen.get().try_into()?;
+    with_possible_panic(|| {
+      if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
+        let default_open: bool = self.defaultOpen.get().try_into()?;
 
-      if let Some(ret) = if self.header.is_empty() {
-        let text: &str = self.text.get().try_into().or::<&str>(Ok(""))?;
-        egui::CollapsingHeader::new(text)
-          .default_open(default_open)
-          .show(ui, |ui| {
+        if let Some(ret) = if self.header.is_empty() {
+          let text: &str = self.text.get().try_into().or::<&str>(Ok(""))?;
+          egui::CollapsingHeader::new(text)
+            .default_open(default_open)
+            .show(ui, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+            .body_returned
+        } else if let Some(body_response) =
+          egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            egui::Id::new(EguiId::new(self, 0)),
+            default_open,
+          )
+          .show_header(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.header)
+          })
+          .body(|ui| {
             util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           })
-          .body_returned
-      } else if let Some(body_response) =
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-          ui.ctx(),
-          egui::Id::new(EguiId::new(self, 0)),
-          default_open,
-        )
-        .show_header(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.header)
-        })
-        .body(|ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .2
-      {
-        Some(body_response.inner)
-      } else {
-        None
-      } {
-        match ret {
-          Err(err) => Err(err),
-          Ok(_) => Ok(*input),
+          .2
+        {
+          Some(body_response.inner)
+        } else {
+          None
+        } {
+          match ret {
+            Err(err) => Err(err),
+            Ok(_) => Ok(*input),
+          }
+        } else {
+          Ok(*input)
         }
       } else {
-        Ok(*input)
+        Err("No UI parent")
       }
-    } else {
-      Err("No UI parent")
-    }
+    })?
   }
 }

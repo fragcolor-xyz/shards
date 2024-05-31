@@ -1,4 +1,4 @@
-use egui::{Layout, Pos2, Rect, Ui, Vec2, Id};
+use egui::{Id, Layout, Pos2, Rect, Ui, Vec2};
 use shards::{
   core::register_shard,
   types::{
@@ -9,9 +9,9 @@ use shards::{
 
 use shards::util::from_raw_parts_allow_null;
 
-use crate::shards::shard;
 use crate::shards::shard::Shard;
 use crate::util::{self};
+use crate::{shards::shard, util::with_possible_panic};
 
 use crate::{EguiId, CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
 
@@ -267,21 +267,24 @@ impl Shard for AutoGridShard {
       grid.item_width = item_width_var.try_into().unwrap();
 
       let mut failure: Option<&'static str> = None;
-      grid.show(ui, seq.len(), |ui, idx| {
-        if failure.is_some() {
-          return;
-        }
-        let input_elem = &seq[idx];
-        if let Err(e) = util::activate_ui_contents(
-          context,
-          input_elem,
-          ui,
-          &mut self.parents,
-          &mut self.contents,
-        ) {
-          failure.replace(e);
-        }
-      });
+
+      with_possible_panic(|| {
+        grid.show(ui, seq.len(), |ui, idx| {
+          if failure.is_some() {
+            return;
+          }
+          let input_elem = &seq[idx];
+          if let Err(e) = util::activate_ui_contents(
+            context,
+            input_elem,
+            ui,
+            &mut self.parents,
+            &mut self.contents,
+          ) {
+            failure.replace(e);
+          }
+        });
+      })?;
 
       match failure {
         Some(e) => Err(e),

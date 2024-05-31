@@ -1,4 +1,5 @@
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
@@ -172,13 +173,14 @@ impl Shard for Selectable {
     };
 
     // Draw frame and contents
-    let inner_response = ui
-      .push_id(id, |ui| {
+    let inner_response = with_possible_panic(|| {
+      ui.push_id(id, |ui| {
         Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       })
-      .inner;
+      .inner
+    })?;
 
     // Check for errors
     inner_response.inner?;

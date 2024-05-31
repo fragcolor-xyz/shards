@@ -3,13 +3,14 @@
 
 use super::Grid;
 use super::NextRow;
-use crate::INT_VAR_OR_NONE_SLICE;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::EguiId;
 use crate::FLOAT2_VAR_SLICE;
 use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
+use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
 use shards::types::Context;
@@ -251,11 +252,13 @@ impl LegacyShard for Grid {
         grid = grid.max_col_width(max_width.try_into()?)
       };
 
-      grid
-        .show(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner?;
+      with_possible_panic(|| {
+        grid
+          .show(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
+      })??;
 
       // Always passthrough the input
       Ok(*input)
