@@ -282,30 +282,26 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     while (state == 0) {
 #if SH_EMSCRIPTEN
+      // This is to avoid requests getting stuck if the called does not return control to the os thread
       emscripten_sleep(0);
 #endif
       SH_SUSPEND(context, 0.0);
     }
 
-    if (state == 1) {
-      if (unlikely(fullResponse)) {
-        outMap["status"] = Var(status);
-        if (asBytes) {
-          outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
-        } else {
-          outMap["body"] = Var(buffer);
-        }
-        return outMap;
+    if (unlikely(fullResponse)) {
+      outMap["status"] = Var(status);
+      if (asBytes) {
+        outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
       } else {
-        if (asBytes) {
-          return Var((uint8_t *)buffer.data(), buffer.size());
-        } else {
-          return Var(buffer);
-        }
+        outMap["body"] = Var(buffer);
       }
+      return outMap;
     } else {
-      SHLOG_ERROR("Http request failed with status: {}", buffer);
-      throw ActivationError("Http request failed");
+      if (asBytes) {
+        return Var((uint8_t *)buffer.data(), buffer.size());
+      } else {
+        return Var(buffer);
+      }
     }
   }
 };
@@ -390,6 +386,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
 
     while (state == 0) {
 #if SH_EMSCRIPTEN
+      // This is to avoid requests getting stuck if the called does not return control to the os thread
       emscripten_sleep(0);
 #endif
       SH_SUSPEND(context, 0.0);
