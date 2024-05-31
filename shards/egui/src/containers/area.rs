@@ -1,4 +1,7 @@
-use crate::{util, Anchor, EguiId, Order, CONTEXTS_NAME, PARENTS_UI_NAME};
+use crate::{
+  util::{self, with_possible_panic},
+  Anchor, EguiId, Order, CONTEXTS_NAME, PARENTS_UI_NAME,
+};
 use egui::{Pos2, Rect, Vec2};
 use shards::{
   core::register_shard,
@@ -105,11 +108,13 @@ impl Shard for AreaShard {
       frame = frame.fixed_pos(Pos2::new(x, y));
     }
 
-    let result = frame
-      .show(ui_ctx, |ui| {
-        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      })
-      .inner?;
+    let result = with_possible_panic(|| {
+      frame
+        .show(ui_ctx, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner
+    })??;
 
     Ok(result)
   }

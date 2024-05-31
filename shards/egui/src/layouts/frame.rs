@@ -3,6 +3,7 @@
 
 use super::Frame;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
@@ -287,6 +288,7 @@ impl LegacyShard for Frame {
         };
         egui::epaint::Stroke { width, color }
       };
+
       let frame = egui::Frame {
         inner_margin,
         outer_margin,
@@ -295,11 +297,14 @@ impl LegacyShard for Frame {
         stroke,
         ..Default::default()
       };
-      frame
-        .show(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner?;
+
+      with_possible_panic(|| {
+        frame
+          .show(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
+      })??;
 
       // Always passthrough the input
       Ok(*input)

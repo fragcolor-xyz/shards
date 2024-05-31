@@ -19,6 +19,21 @@ use shards::types::WireState;
 use shards::util::get_or_var;
 use shards::SHType_Object;
 
+// Ugly but reasonable for now to fix crashes in users code
+pub fn with_possible_panic<F, R>(inner: F) -> Result<R, &'static str>
+where
+  F: FnOnce() -> R,
+{
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| inner()));
+  match result {
+    Ok(result) => Ok(result),
+    Err(err) => {
+      shlog_error!("Panic: {:?}", err);
+      Err("Panic in UI code, avoid code that suspends while in UI context")
+    }
+  }
+}
+
 pub fn with_object_var<T, F, R>(
   var: &mut ParamVar,
   object: &T,

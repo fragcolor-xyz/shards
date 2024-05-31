@@ -7,6 +7,7 @@ use super::LeftPanel;
 use super::RightPanel;
 use super::TopPanel;
 use crate::util;
+use crate::util::with_possible_panic;
 use crate::EguiId;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
@@ -239,20 +240,34 @@ macro_rules! impl_panel {
           panel = panel.$max_size($max_size.try_into()?);
         }
 
-        if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-          panel
-            .show_inside(ui, |ui| {
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
-            .inner?;
-        } else {
-          let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
-          panel
-            .show(egui_ctx, |ui| {
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
-            .inner?;
-        }
+        with_possible_panic(|| {
+          if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
+            panel
+              .show_inside(ui, |ui| {
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
+          } else {
+            let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
+            panel
+              .show(egui_ctx, |ui| {
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
+          }
+        })??;
 
         // Always passthrough the input
         Ok(*input)
@@ -434,19 +449,21 @@ impl LegacyShard for CentralPanel {
 
     let ui_ctx = util::get_current_context(&self.instance)?;
 
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      egui::CentralPanel::default()
-        .show_inside(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner?;
-    } else {
-      egui::CentralPanel::default()
-        .show(&ui_ctx.egui_ctx, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner?;
-    }
+    with_possible_panic(|| {
+      if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
+        egui::CentralPanel::default()
+          .show_inside(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
+      } else {
+        egui::CentralPanel::default()
+          .show(&ui_ctx.egui_ctx, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
+      }
+    })??;
 
     // Always passthrough the input
     Ok(*input)
