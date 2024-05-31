@@ -2,8 +2,10 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include <boost/core/detail/string_view.hpp>
+#include <shards/core/platform.hpp>
+#include <shards/log/log.hpp>
 
-#ifndef __EMSCRIPTEN__
+#if !SH_EMSCRIPTEN
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -32,6 +34,8 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
 
 using namespace std;
+
+static auto logger = shards::logging::getOrCreate("http");
 
 inline std::string url_encode(const std::string_view &value) {
   std::ostringstream escaped;
@@ -83,7 +87,7 @@ inline std::string url_decode(const std::string_view &value) {
 
 namespace shards {
 namespace Http {
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
 // those shards for non emscripten platforms are implemented in Rust
 
 struct Base {
@@ -184,6 +188,7 @@ struct Base {
   }
 
   static void fetchSucceeded(emscripten_fetch_t *fetch) {
+    SPDLOG_LOGGER_DEBUG(logger, "Fetch succeeded {} (s: {})", (void *)fetch, fetch->status);
     auto self = reinterpret_cast<Base *>(fetch->userData);
     if (self->fullResponse) {
       const auto len = emscripten_fetch_get_response_headers_length(fetch);
@@ -210,6 +215,7 @@ struct Base {
   }
 
   static void fetchFailed(emscripten_fetch_t *fetch) {
+    SPDLOG_LOGGER_DEBUG(logger, "Fetch failed {} (s: {})", (void *)fetch, fetch->status);
     auto self = reinterpret_cast<Base *>(fetch->userData);
     self->buffer.assign(fetch->statusText);
     self->state = -1;
@@ -219,11 +225,11 @@ struct Base {
   bool asBytes{false};
   bool fullResponse{false};
   uint16_t status;
-  int state{0};
+  std::atomic_int state{0};
   int timeout{10};
   std::string buffer;
   std::string hbuffer;
-  std::string vars;
+  std::string urlBuffer;
   std::vector<const char *> headersCArray;
   TableVar outMap;
   ParamVar url{Var("")};
@@ -244,17 +250,17 @@ template <const string_view &METHOD> struct GetLike : public Base {
     attr.userData = this;
     attr.timeoutMSecs = timeout * 1000;
 
-    vars.clear();
-    vars.append(url.get().payload.stringValue);
+    urlBuffer.clear();
+    urlBuffer.append(url.get().payload.stringValue);
     if (input.valueType == SHType::Table) {
-      vars.append("?");
+      urlBuffer.append("?");
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
-        vars.append(url_encode(SHSTRVIEW(key)));
-        vars.append("=");
-        vars.append(url_encode(SHSTRVIEW(value)));
-        vars.append("&");
+        urlBuffer.append(url_encode(SHSTRVIEW(key)));
+        urlBuffer.append("=");
+        urlBuffer.append(url_encode(SHSTRVIEW(value)));
+        urlBuffer.append("&");
       });
-      vars.resize(vars.size() - 1);
+      urlBuffer.resize(urlBuffer.size() - 1);
     }
 
     // add custom headers
@@ -271,9 +277,13 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     state = 0;
     buffer.clear();
-    emscripten_fetch(&attr, vars.c_str());
+    emscripten_fetch_t *fetch = emscripten_fetch(&attr, urlBuffer.c_str());
+    SPDLOG_LOGGER_DEBUG(logger, "Sending {} request \"{}\" {}", METHOD, urlBuffer, (void *)fetch);
 
     while (state == 0) {
+#if SH_EMSCRIPTEN
+      emscripten_sleep(0);
+#endif
       SH_SUSPEND(context, 0.0);
     }
 
@@ -355,18 +365,18 @@ template <const string_view &METHOD> struct PostLike : public Base {
         headersCArray.emplace_back("content-type");
         headersCArray.emplace_back("application/x-www-form-urlencoded");
       }
-      vars.clear();
+      urlBuffer.clear();
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
         auto sv_key = SHSTRVIEW(key);
         auto sv_value = SHSTRVIEW(value);
-        vars.append(url_encode(sv_key));
-        vars.append("=");
-        vars.append(url_encode(sv_value));
-        vars.append("&");
+        urlBuffer.append(url_encode(sv_key));
+        urlBuffer.append("=");
+        urlBuffer.append(url_encode(sv_value));
+        urlBuffer.append("&");
       });
-      vars.resize(vars.size() - 1);
-      attr.requestData = vars.c_str();
-      attr.requestDataSize = vars.size();
+      urlBuffer.resize(urlBuffer.size() - 1);
+      attr.requestData = urlBuffer.c_str();
+      attr.requestDataSize = urlBuffer.size();
     }
 
     headersCArray.emplace_back(nullptr);
@@ -374,9 +384,14 @@ template <const string_view &METHOD> struct PostLike : public Base {
 
     state = 0;
     buffer.clear();
-    emscripten_fetch(&attr, url.get().payload.stringValue);
+    std::string urlStr = std::string(SHSTRVIEW(url.get()));
+    emscripten_fetch_t *fetch = emscripten_fetch(&attr, urlStr.c_str());
+    SPDLOG_LOGGER_DEBUG(logger, "Sending {} request \"{}\" {}", METHOD, urlStr, (void *)fetch);
 
     while (state == 0) {
+#if SH_EMSCRIPTEN
+      emscripten_sleep(0);
+#endif
       SH_SUSPEND(context, 0.0);
     }
 
@@ -935,7 +950,7 @@ struct DecodeURI {
 } // namespace shards
 SHARDS_REGISTER_FN(http) {
   using namespace shards::Http;
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
   REGISTER_SHARD("Http.Get", Get);
   REGISTER_SHARD("Http.Head", Head);
   REGISTER_SHARD("Http.Post", Post);
