@@ -20,6 +20,8 @@ profiling = { version = "1", default-features = false }
 compile-time-crc32 = "0.1.2"
 lazy_static = "1.4.0"
 dunce = "1.0.4"
+egui = { version = "0.25.0", features = ["persistence"] }
+shards-egui = { path = "../egui" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.155"

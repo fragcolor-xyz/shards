@@ -12,6 +12,7 @@ mod eval;
 mod formatter;
 mod print;
 mod read;
+mod visual_ast;
 
 use crate::ast::*;
 
