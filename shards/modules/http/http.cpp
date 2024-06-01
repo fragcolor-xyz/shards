@@ -601,8 +601,14 @@ struct Server {
 };
 
 struct Read {
+  static inline Types OutTypes{{CoreInfo::StringType, CoreInfo::StringTableType, CoreInfo::StringType, CoreInfo::StringType}};
+  static inline std::array<SHVar, 4> OutKeys{Var("method"), Var("headers"), Var("target"), Var("body")};
+  static inline Type OutputType = Type::TableOf(OutTypes, OutKeys);
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringTableType; }
+  static SHTypesInfo outputTypes() { return OutputType; }
+
+  TableVar _headers;
 
   void warmup(SHContext *context) {
     _peerVar = referenceVariable(context, "Http.Server.Socket");
@@ -642,20 +648,34 @@ struct Read {
 
     switch (request.method()) {
     case http::verb::get:
-      _output[Var("method")] = Var("GET", 3);
+      _output[Var("method")] = Var("GET");
       break;
     case http::verb::post:
-      _output[Var("method")] = Var("POST", 4);
+      _output[Var("method")] = Var("POST");
       break;
     case http::verb::put:
-      _output[Var("method")] = Var("PUT", 3);
+      _output[Var("method")] = Var("PUT");
       break;
     case http::verb::delete_:
-      _output[Var("method")] = Var("DELETE", 6);
+      _output[Var("method")] = Var("DELETE");
+      break;
+    case http::verb::head:
+      _output[Var("method")] = Var("HEAD");
+      break;
+    case http::verb::options:
+      _output[Var("method")] = Var("OPTIONS");
       break;
     default:
-      throw ActivationError("Unsupported HTTP method.");
+      throw ActivationError(fmt::format("Unsupported HTTP method {}.", request.method()));
     }
+
+    _headers.clear();
+    for (auto &header : request) {
+      auto k = header.name_string();
+      auto v = header.value();
+      _headers.insert(shards::Var(k.data(), k.size()), shards::Var(v.data(), v.size()));
+    }
+    _output[Var("headers")] = Var(_headers);
 
     auto target = request.target();
     _output[Var("target")] = Var(target.data(), target.size());
