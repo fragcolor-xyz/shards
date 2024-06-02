@@ -114,6 +114,12 @@ lazy_static! {
       BOOL_TYPES_SLICE
     )
       .into(),
+    (
+      cstr!("Retry"),
+      shccstr!("How many times to retry the request if it fails."),
+      INT_TYPES_SLICE
+    )
+      .into(),
   ];
 }
 
@@ -125,6 +131,7 @@ struct RequestBase {
   headers: ParamVar,
   output_table: Table,
   timeout: u64,
+  retry: u64,
   as_bytes: bool,
   full_response: bool,
   invalid_certs: bool,
@@ -139,6 +146,7 @@ impl Default for RequestBase {
       headers: ParamVar::new(().into()),
       output_table: Table::new(),
       timeout: 10,
+      retry: 0,
       as_bytes: false,
       full_response: false,
       invalid_certs: false,
@@ -176,6 +184,7 @@ impl RequestBase {
           .try_into()
           .map_err(|_x| "Failed to set invalid_certs")?,
       ),
+      6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
       _ => unreachable!(),
     }
   }
@@ -188,6 +197,7 @@ impl RequestBase {
       3 => self.as_bytes.into(),
       4 => self.full_response.into(),
       5 => self.invalid_certs.into(),
+      6 => self.retry.try_into().expect("A valid integer in range"),
       _ => unreachable!(),
     }
   }
@@ -396,18 +406,42 @@ macro_rules! get_like {
           }
         }
 
-        let response = request.send().map_err(|e| {
-          shlog!("Failure details: {}", e);
-          "Failed to send the request"
-        })?;
+        // already issue is if we want to retry we need to clone the request
+        // if not we can just directly run it
+        if self.rb.retry == 0 {
+          let response = request.send().map_err(|e| {
+            shlog_error!("Failure details: {}", e);
+            "Failed to send the request"
+          })?;
 
-        if self.rb.full_response || response.status().is_success() {
-          self.rb._finalize(response)
-        } else {
+          if self.rb.full_response || response.status().is_success() {
+            return self.rb._finalize(response);
+          }
+
           shlog_error!("Request failed with status {}", response.status());
           shlog_error!("Request failed with body {}", response.text().unwrap());
-          Err("Request failed")
+          return Err("Request failed");
+        } else {
+          for tries in (0..self.rb.retry).rev() {
+            let response = request.try_clone().unwrap().send();
+
+            if let Ok(response) = response {
+              if self.rb.full_response || response.status().is_success() {
+                return self.rb._finalize(response);
+              }
+
+              shlog_error!("Request failed with status {}", response.status());
+              shlog_error!("Request failed with body {}", response.text().unwrap());
+              return Err("Request failed");
+            }
+
+            if tries == 0 {
+              shlog_error!("Request failed with error: {:?}", response.err());
+              return Err("Request failed");
+            }
+          }
         }
+        unreachable!()
       }
     }
   };
@@ -550,18 +584,40 @@ macro_rules! post_like {
           }
         }
 
-        let response = request.send().map_err(|e| {
-          shlog_error!("Failure details: {}", e);
-          "Failed to send the request"
-        })?;
+        if self.rb.retry == 0 {
+          let response = request.send().map_err(|e| {
+            shlog_error!("Failure details: {}", e);
+            "Failed to send the request"
+          })?;
 
-        if response.status().is_success() {
-          self.rb._finalize(response)
-        } else {
+          if self.rb.full_response || response.status().is_success() {
+            return self.rb._finalize(response);
+          }
+
           shlog_error!("Request failed with status {}", response.status());
           shlog_error!("Request failed with body {}", response.text().unwrap());
-          Err("Request failed")
+          return Err("Request failed");
+        } else {
+          for tries in (0..self.rb.retry).rev() {
+            let response = request.try_clone().unwrap().send();
+
+            if let Ok(response) = response {
+              if self.rb.full_response || response.status().is_success() {
+                return self.rb._finalize(response);
+              }
+
+              shlog_error!("Request failed with status {}", response.status());
+              shlog_error!("Request failed with body {}", response.text().unwrap());
+              return Err("Request failed");
+            }
+
+            if tries == 0 {
+              shlog_error!("Request failed with error: {:?}", response.err());
+              return Err("Request failed");
+            }
+          }
         }
+        unreachable!()
       }
     }
   };
