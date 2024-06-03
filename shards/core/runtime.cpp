@@ -914,7 +914,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       }
 
       SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
-      expInfo.exposed = var.flags & SHVAR_FLAGS_EXPOSED;
+      expInfo.exposed = var.flags & SHVAR_FLAGS_TRACKED;
       std::string_view sName(key.payload.stringValue, key.payload.stringLen);
       ctx.inherited[sName] = expInfo;
     }
@@ -2102,21 +2102,21 @@ void setString(uint32_t crc, SHString str) {
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
 void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var) {
-  if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
+  if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
     return;
 
   auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
-  OnExposedVarSet ev{w->id, nameStr, *var, isGlobal, context->currentWire()};
+  OnTrackedVarSet ev{w->id, nameStr, *var, isGlobal, context->currentWire()};
   w->mesh.lock()->dispatcher.trigger(ev);
 }
 
 void triggerVarValueChange(SHWire *w, const SHVar *name, bool isGlobal, const SHVar *var) {
-  if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
+  if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
     return;
 
   auto nameStr = SHSTRVIEW((*name));
-  OnExposedVarSet ev{w->id, nameStr, *var, isGlobal, w};
+  OnTrackedVarSet ev{w->id, nameStr, *var, isGlobal, w};
   w->mesh.lock()->dispatcher.trigger(ev);
 }
 

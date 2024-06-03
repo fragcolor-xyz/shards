@@ -887,7 +887,7 @@ struct SetUpdateBase : public SetBase {
 };
 
 struct Set : public SetUpdateBase {
-  bool _exposed{false};
+  bool _tracked{false};
   entt::connection _onStartConnection{};
   struct OnStartHandler {
     Set *shard;
@@ -908,7 +908,7 @@ struct Set : public SetUpdateBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static inline Parameters setParamsInfo{
-      setterParams, {{"Exposed", SHCCSTR("If the variable should be marked as exposed."), {CoreInfo::BoolType}}}};
+      setterParams, {{"Tracked", SHCCSTR("If the variable should be marked as tracked."), {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return setParamsInfo; }
 
@@ -916,7 +916,7 @@ struct Set : public SetUpdateBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
-      _exposed = value.payload.boolValue;
+      _tracked = value.payload.boolValue;
     }
   }
 
@@ -924,7 +924,7 @@ struct Set : public SetUpdateBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
-      return Var(_exposed);
+      return Var(_tracked);
     throw SHException("Param index out of range.");
   }
 
@@ -960,7 +960,7 @@ struct Set : public SetUpdateBase {
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
 
-    if (_exposed) {
+    if (_tracked) {
       _exposedInfo._innerInfo.elements[0].exposed = true;
     } else {
       _exposedInfo._innerInfo.elements[0].exposed = false;
@@ -993,8 +993,8 @@ struct Set : public SetUpdateBase {
 
     shassert(_self && "Self should be valid at this point");
 
-    if (_exposed) {
-      _target->flags |= SHVAR_FLAGS_EXPOSED;
+    if (_tracked) {
+      _target->flags |= SHVAR_FLAGS_TRACKED;
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -1004,14 +1004,14 @@ struct Set : public SetUpdateBase {
       _startHandler = OnStartHandler{this, context->currentWire()};
       _onStartConnection = _dispatcherPtr->sink<SHWire::OnStartEvent>().connect<&OnStartHandler::handle>(_startHandler);
 
-      OnExposedVarWarmup ev{context->main->id, _name, _exposedInfo._innerInfo.elements[0], context->currentWire()};
+      OnTrackedVarWarmup ev{context->main->id, _name, _exposedInfo._innerInfo.elements[0], context->currentWire()};
       _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {
-        if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-          // something changed, we are no longer exposed
+        if (_target->flags & SHVAR_FLAGS_TRACKED) {
+          // something changed, we are no longer tracked
           // fixup activations and variable flags
-          _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+          _target->flags &= ~SHVAR_FLAGS_TRACKED;
         }
       }
 
@@ -1059,7 +1059,7 @@ struct Set : public SetUpdateBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_exposed && "This shard should not be activated if variable not exposed");
+    assert(_tracked && "This shard should not be activated if variable not exposed");
 
     SHVar output;
     if (_isTable)
@@ -1069,7 +1069,7 @@ struct Set : public SetUpdateBase {
 
     assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnExposedVarSet ev{context->main->id, _name, *_target, _global, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, *_target, _global, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
@@ -1287,7 +1287,7 @@ struct Update : public SetUpdateBase {
     shassert(_self && "Self should be valid at this point");
 
     if (_isExposed) {
-      if (!(_target->flags & SHVAR_FLAGS_EXPOSED)) {
+      if (!(_target->flags & SHVAR_FLAGS_TRACKED)) {
         throw WarmupError(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
 
@@ -1295,7 +1295,7 @@ struct Update : public SetUpdateBase {
 
       setupDispatcher(context, _isGlobal);
     } else {
-      if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+      if (_target->flags & SHVAR_FLAGS_TRACKED) {
         throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
       }
 
@@ -1320,7 +1320,7 @@ struct Update : public SetUpdateBase {
 
     shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnExposedVarSet ev{context->main->id, _name, *_target, _isGlobal, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, *_target, _isGlobal, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
