@@ -55,11 +55,11 @@ struct Decompress {
     if (compressedLength == 0 && decompressedLength != 0) {
       throw ActivationError("Decompressed length is non-zero but compressed length is zero");
     }
-    uint32_t largeAllocThreshold = (1 << 24); // 16M threshold
+    uint32_t largeAllocThreshold = (1 << 26); // 64MiB threshold
     if (decompressedLength > largeAllocThreshold) {
       double ratio = double(decompressedLength) / double(compressedLength);
-      if (ratio > 8.0) {
-        throw ActivationError("Decompression ratio too large, possibly corrupted data");
+      if (ratio > 16.0) {
+        throw ActivationError(fmt::format("Decompression ratio ({}) too large, possibly corrupted data", ratio));
       }
     }
   }
