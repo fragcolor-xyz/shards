@@ -12,7 +12,7 @@ use crate::{RcBytesWrapper, RcStrWrapper};
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
   pub line: u32,
   pub column: u32,
@@ -88,7 +88,7 @@ impl Into<(u32, u32)> for LineInfo {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Number {
   Integer(i64),
   Float(f64),
@@ -118,7 +118,7 @@ impl Identifier {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Value {
   None,
   Identifier(Identifier),
@@ -181,19 +181,19 @@ impl Value {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Param {
   pub name: Option<RcStrWrapper>,
   pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
   pub name: Identifier,
   pub params: Option<Vec<Param>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum BlockContent {
   Empty,
   Shard(Function),                          // Rule: Shard
@@ -207,18 +207,18 @@ pub enum BlockContent {
   Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Pipeline {
   pub blocks: Vec<Block>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Assignment {
   AssignRef(Pipeline, Identifier),
   AssignSet(Pipeline, Identifier),
@@ -226,24 +226,302 @@ pub enum Assignment {
   AssignPush(Pipeline, Identifier),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Statement {
   Assignment(Assignment),
   Pipeline(Pipeline),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
+}
+
+pub trait ReplaceExpression {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>;
+}
+
+impl ReplaceExpression for Value {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    if let Some(new_value) = f(self) {
+      *self = new_value;
+    } else {
+      match self {
+        Value::Seq(seq) => {
+          for val in seq {
+            val.replace_expression(f);
+          }
+        }
+        Value::Table(table) => {
+          for (key, val) in table {
+            key.replace_expression(f);
+            val.replace_expression(f);
+          }
+        }
+        Value::Shard(func) | Value::Func(func) => {
+          func.replace_expression(f);
+        }
+        Value::Shards(seq) | Value::EvalExpr(seq) | Value::Expr(seq) => {
+          seq.replace_expression(f);
+        }
+        _ => {}
+      }
+    }
+  }
+}
+
+impl ReplaceExpression for Function {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    if let Some(params) = &mut self.params {
+      for param in params {
+        param.value.replace_expression(f);
+      }
+    }
+  }
+}
+
+impl ReplaceExpression for Block {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    match &mut self.content {
+      BlockContent::Shard(func) | BlockContent::Func(func) => {
+        func.replace_expression(f);
+      }
+      BlockContent::Shards(seq) | BlockContent::EvalExpr(seq) | BlockContent::Expr(seq) => {
+        seq.replace_expression(f);
+      }
+      BlockContent::Const(value) => {
+        value.replace_expression(f);
+      }
+      BlockContent::TakeTable(_, _) | BlockContent::TakeSeq(_, _) => {}
+      BlockContent::Program(prog) => {
+        prog.sequence.replace_expression(f);
+      }
+      BlockContent::Empty => {}
+    }
+  }
+}
+
+impl ReplaceExpression for Pipeline {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    for block in &mut self.blocks {
+      block.replace_expression(f);
+    }
+  }
+}
+
+impl ReplaceExpression for Assignment {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    match self {
+      Assignment::AssignRef(pipeline, _)
+      | Assignment::AssignSet(pipeline, _)
+      | Assignment::AssignUpd(pipeline, _)
+      | Assignment::AssignPush(pipeline, _) => {
+        pipeline.replace_expression(f);
+      }
+    }
+  }
+}
+
+impl ReplaceExpression for Statement {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    match self {
+      Statement::Assignment(assignment) => {
+        assignment.replace_expression(f);
+      }
+      Statement::Pipeline(pipeline) => {
+        pipeline.replace_expression(f);
+      }
+    }
+  }
+}
+
+impl ReplaceExpression for Sequence {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    for statement in &mut self.statements {
+      statement.replace_expression(f);
+    }
+  }
+}
+
+impl ReplaceExpression for Program {
+  fn replace_expression<F>(&mut self, f: &F)
+  where
+    F: Fn(&Value) -> Option<Value>,
+  {
+    self.sequence.replace_expression(f);
+  }
+}
+
+pub fn replace_in_sequence<F>(sequence: &mut Sequence, replacer: F)
+where
+  F: Fn(&Value) -> Option<Value>,
+{
+  profiling::scope!("replace_in_sequence");
+  sequence.replace_expression(&replacer);
+}
+
+pub fn replace_in_program<F>(program: &mut Program, replacer: F)
+where
+  F: Fn(&Value) -> Option<Value>,
+{
+  profiling::scope!("replace_in_program");
+  program.replace_expression(&replacer);
+}
+
+#[test]
+fn test1() {
+  let identifier = Identifier {
+    name: RcStrWrapper::from("test"),
+    namespaces: vec![],
+  };
+
+  let function = Function {
+    name: identifier.clone(),
+    params: Some(vec![Param {
+      name: None,
+      value: Value::None,
+    }]),
+  };
+
+  let block = Block {
+    content: BlockContent::Shard(function.clone()),
+    line_info: None,
+  };
+
+  let pipeline = Pipeline {
+    blocks: vec![block.clone()],
+  };
+
+  let assignment = Assignment::AssignRef(pipeline.clone(), identifier.clone());
+
+  let statement = Statement::Assignment(assignment);
+
+  let sequence = Sequence {
+    statements: vec![statement],
+  };
+
+  let mut program = Program {
+    sequence,
+    metadata: Metadata {
+      name: RcStrWrapper::from("example"),
+    },
+  };
+
+  replace_in_program(&mut program, |value| {
+    if *value == Value::None {
+      Some(Value::Boolean(true))
+    } else {
+      None
+    }
+  });
+
+  println!("{:?}", program);
+}
+
+#[test]
+fn test2() {
+  // Create a deeply nested structure
+  let identifier = Identifier {
+      name: RcStrWrapper::from("test"),
+      namespaces: vec![],
+  };
+
+  let function = Function {
+      name: identifier.clone(),
+      params: Some(vec![Param {
+          name: None,
+          value: Value::None,
+      }]),
+  };
+
+  let block = Block {
+      content: BlockContent::Shard(function.clone()),
+      line_info: None,
+  };
+
+  let pipeline = Pipeline {
+      blocks: vec![block.clone()],
+  };
+
+  let assignment = Assignment::AssignRef(pipeline.clone(), identifier.clone());
+
+  let statement = Statement::Assignment(assignment.clone());
+
+  let nested_sequence = Sequence {
+      statements: vec![
+          Statement::Pipeline(pipeline.clone()),
+          Statement::Assignment(assignment.clone()),
+          Statement::Pipeline(Pipeline {
+              blocks: vec![
+                  Block {
+                      content: BlockContent::Shards(Sequence {
+                          statements: vec![statement.clone()],
+                      }),
+                      line_info: None,
+                  },
+              ],
+          }),
+      ],
+  };
+
+  let mut sequence = Sequence {
+      statements: vec![
+          statement.clone(),
+          Statement::Pipeline(pipeline.clone()),
+          Statement::Pipeline(Pipeline {
+              blocks: vec![
+                  Block {
+                      content: BlockContent::Shards(nested_sequence.clone()),
+                      line_info: None,
+                  },
+              ],
+          }),
+      ],
+  };
+
+  println!("Original sequence: {:?}", sequence);
+
+  replace_in_sequence(&mut sequence, |value| {
+      if *value == Value::None {
+          Some(Value::Boolean(true))
+      } else {
+          None
+      }
+  });
+
+  println!("Modified sequence: {:?}", sequence);
 }

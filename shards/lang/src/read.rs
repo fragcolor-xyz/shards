@@ -880,12 +880,6 @@ use lazy_static::lazy_static;
 
 lazy_static! {
   pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
-  static ref READ_PARAMETERS: Parameters = vec![(
-    cstr!("Json"),
-    shccstr!("If the output should be a json AST string instead of binary."),
-    BOOL_TYPES_SLICE
-  )
-    .into()];
 }
 
 #[derive(shard, Default)]
