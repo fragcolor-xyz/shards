@@ -337,7 +337,8 @@ struct Loader {
       format.primitiveType = PrimitiveType::TriangleStrip;
       break;
     default:
-      throw formatException("Unsupported primitive mode ({})", primitive.mode);
+      SPDLOG_WARN("Unsupported primitive mode ({})", primitive.mode);
+      return nullptr;
     }
 
     MeshPtr mesh = std::make_shared<gfx::Mesh>();
@@ -361,6 +362,8 @@ struct Loader {
       auto &gltfMesh = model.meshes[i];
       for (auto &gltfPrim : gltfMesh.primitives) {
         MeshDrawable::Ptr primitive = loadPrimitive(gltfPrim);
+        if (!primitive)
+          continue;
         mesh.primitives.push_back(primitive);
       }
     }
@@ -375,6 +378,8 @@ struct Loader {
 
     if (gltfNode.mesh >= 0) {
       for (auto &prim : meshMap[gltfNode.mesh].primitives) {
+        if (!prim)
+          continue;
         node->drawables.push_back(prim);
       }
     }
