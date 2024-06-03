@@ -8,7 +8,7 @@ pub mod ast;
 mod ast_visitor;
 mod cli;
 mod error;
-mod eval;
+pub mod eval;
 mod formatter;
 mod print;
 mod read;
