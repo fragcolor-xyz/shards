@@ -3,7 +3,7 @@
 
 #include <random>
 
-#include <shards/lang/bindings.h>
+#include <shards/langffi/bindings.h>
 #include <shards/ops.hpp>
 #include <shards/utility.hpp>
 #include <shards/common_types.hpp>

@@ -8,6 +8,7 @@ fn main() {
     .exclude_item("shardsInterface")
     .exclude_item("shardsRegister_lang_lang")
     .with_documentation(true)
+    .with_after_include("struct Sequence;\nstruct EvalEnv;")
     .rename_item("Var", "SHVar")
     .rename_item("Wire", "SHWireRef")
     .with_sys_include("shards/core/runtime.hpp")

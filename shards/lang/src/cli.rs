@@ -33,7 +33,7 @@ enum Commands {
     /// by default the output will go to stdout
     #[arg(long, short = 'i', action)]
     inline: bool,
-    /// Optinally an output file name
+    /// Optionally an output file name
     #[arg(long, short = 'o')]
     output: Option<String>,
   },
@@ -103,8 +103,7 @@ struct Cli {
   command: Commands,
 }
 
-#[no_mangle]
-pub extern "C" fn shards_process_args(
+pub fn process_args(
   argc: i32,
   argv: *const *const c_char,
   no_cancellation: bool,

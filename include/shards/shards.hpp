@@ -1116,14 +1116,14 @@ private:
 
 void abortWire(struct SHContext *context, std::string_view errorText);
 
-struct OnExposedVarWarmup {
+struct OnTrackedVarWarmup {
   entt::id_type id;
   std::string_view name;
   SHExposedTypeInfo info;
   const SHWire *wire;
 };
 
-struct OnExposedVarSet {
+struct OnTrackedVarSet {
   entt::id_type id;
   std::string_view name;
   SHVar newValue;

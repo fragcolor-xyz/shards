@@ -11,7 +11,7 @@
 #endif
 #include "Types.h"
 #include <shards/core/runtime.hpp>
-#include <shards/lang/bindings.h>
+#include <shards/langffi/bindings.h>
 
 #include <boost/filesystem.hpp>
 #include <cassert>
