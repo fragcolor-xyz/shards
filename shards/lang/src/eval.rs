@@ -2106,6 +2106,10 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
   Ok(())
 }
 
+fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> {
+  get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
+}
+
 fn create_shard(
   shard: &Function,
   line_info: LineInfo,
@@ -2116,14 +2120,8 @@ fn create_shard(
   }
 
   let mut replacement_storage = None;
-  if let Some(rw) = get_rewrite_func(&shard.name, e) {
-    if let Some(replacement) = rw.rewrite_function(shard) {
-      replacement_storage = Some(replacement);
-    }
-  }
-
-  let shard = if let Some(replacement) = &replacement_storage {
-    replacement
+  let shard = if let Some(replacement) = get_replacement(shard, e) {
+    &replacement_storage.insert(replacement)
   } else {
     shard
   };
@@ -2834,14 +2832,8 @@ fn eval_pipeline(
         }
 
         let mut replacement_storage = None;
-        if let Some(rw) = get_rewrite_func(&func.name, e) {
-          if let Some(replacement) = rw.rewrite_function(func) {
-            replacement_storage = Some(replacement);
-          }
-        }
-
-        let func = if let Some(replacement) = &replacement_storage {
-          replacement
+        let func = if let Some(replacement) = get_replacement(func, e) {
+          &replacement_storage.insert(replacement)
         } else {
           func
         };
