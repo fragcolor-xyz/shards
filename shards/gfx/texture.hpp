@@ -2,12 +2,14 @@
 #define GFX_TEXTURE
 
 #include "context_data.hpp"
+#include "wgpu_handle.hpp"
 #include "gfx_wgpu.hpp"
 #include "isb.hpp"
 #include "linalg.hpp"
 #include "unique_id.hpp"
 #include "fwd.hpp"
 #include "enums.hpp"
+#include "log.hpp"
 #include <compare>
 #include <variant>
 #include <optional>
@@ -57,18 +59,39 @@ struct InputTextureFormat {
 
 /// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
-  TextureFormat format;
+  std::weak_ptr<Texture> keepAliveRef;
+
+  TextureFormat format{};
   // Only set for managed textures
-  WGPUTexture texture{};
+  WgpuHandle<WGPUTexture> texture{};
   // Only set for externally managed textures, not freed
   WGPUTexture externalTexture{};
   WGPUExtent3D size{};
-  UniqueId id;
-  size_t version;
+  UniqueId id{};
 
-  ~TextureContextData() { releaseContextDataConditional(); }
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+  std::string_view getLabel() const { return label; }
+#endif
 
-  void releaseContextData() override { WGPU_SAFE_RELEASE(wgpuTextureRelease, texture); }
+  TextureContextData() = default;
+  TextureContextData(TextureContextData &&) = default;
+
+  void init(std::string_view label) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+    this->label = label;
+#endif
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data created", getLabel());
+#endif
+  }
+
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~TextureContextData() {
+    if (texture)
+      SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} data destroyed", getLabel());
+  }
+#endif
 };
 
 /// <div rustbindgen opaque></div>
@@ -87,7 +110,9 @@ struct TextureDesc {
 };
 
 /// <div rustbindgen opaque></div>
-struct Texture final : public TWithContextData<TextureContextData> {
+struct Texture final {
+  using ContextDataType = TextureContextData;
+
 private:
   UniqueId id = getNextId();
   TextureDesc desc = TextureDesc::getDefault();
@@ -122,18 +147,22 @@ public:
   UniqueId getId() const { return id; }
   size_t getVersion() const { return version; }
 
+  bool keepAlive() const { return true; }
+
   /// <div rustbindgen hide></div>
   static TexturePtr makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
 
-protected:
   void initContextData(Context &context, TextureContextData &contextData);
   void updateContextData(Context &context, TextureContextData &contextData);
 
+protected:
   static UniqueId getNextId();
 
 private:
   void update();
 };
+
+static_assert(TWithContextDataKeepAlive<Texture>, "");
 
 } // namespace gfx
 

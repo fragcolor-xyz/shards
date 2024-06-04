@@ -24,6 +24,8 @@ Buffer &Buffer::setLabel(const std::string &label) {
   return *this;
 }
 
+std::string_view Buffer::getLabel() const { return label; }
+
 Buffer &Buffer::update(ImmutableSharedBuffer data) {
   this->data = data;
   this->version++;
@@ -32,31 +34,25 @@ Buffer &Buffer::update(ImmutableSharedBuffer data) {
 
 BufferPtr Buffer::clone() const {
   BufferPtr result = cloneSelfWithId(this, getNextId());
-  result->contextData.reset();
   return result;
 }
 
-void Buffer::initContextData(Context &context, BufferContextData &contextData) { contextData.version = 0; }
+void Buffer::initContextData(Context &context, BufferContextData &contextData) { contextData.init(getLabel()); }
 
 void Buffer::updateContextData(Context &context, BufferContextData &contextData) {
-  if (contextData.version == version)
-    return;
-
   ImmutableSharedBuffer data = this->data;
   std::string labelCopy = this->label;
   shader::AddressSpace usage = this->addressSpaceUsage;
-  contextData.version = version;
 
-  if (data.getLength() > contextData.bufferLength) {
-
-    WGPUBufferDescriptor desc = {};
+  WGPUBufferDescriptor desc = {};
+  if (usage == shader::AddressSpace::Uniform) {
+    desc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
+  } else {
+    desc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
+  }
+  if (data.getLength() > contextData.bufferLength || contextData.currentUsage != desc.usage) {
     desc.label = labelCopy.c_str();
     desc.size = data.getLength();
-    if (usage == shader::AddressSpace::Uniform) {
-      desc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
-    } else {
-      desc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
-    }
     contextData.buffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &desc));
     contextData.bufferLength = desc.size;
   }
