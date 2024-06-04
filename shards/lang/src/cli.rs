@@ -33,7 +33,7 @@ enum Commands {
     /// by default the output will go to stdout
     #[arg(long, short = 'i', action)]
     inline: bool,
-    /// Optinally an output file name
+    /// Optionally an output file name
     #[arg(long, short = 'o')]
     output: Option<String>,
   },
