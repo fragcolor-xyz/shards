@@ -4,7 +4,7 @@ if(SHARDS_BUILD_TESTS)
     ${TESTS_SRC}/test_runtime.cpp)
 
   target_link_libraries(test-runtime
-    shards-union shards-lang-rust Catch2 Catch2Main
+    shards-union shards-lang-ffi-rust Catch2 Catch2Main
   )
 
   if(EMSCRIPTEN)

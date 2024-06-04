@@ -134,7 +134,7 @@ impl Drop for EvalEnv {
 }
 
 impl EvalEnv {
-  pub(crate) fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
+  pub fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
     let mut env = EvalEnv {
       parent: None,
       namespace: RcStrWrapper::from(""),
@@ -3794,7 +3794,7 @@ fn eval_assignment(
   Ok(())
 }
 
-pub(crate) fn eval_statement(
+pub fn eval_statement(
   stmt: &Statement,
   e: &mut EvalEnv,
   cancellation_token: Arc<AtomicBool>,
@@ -3805,7 +3805,7 @@ pub(crate) fn eval_statement(
   }
 }
 
-pub(crate) fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
+pub fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
 where
   I: Iterator<Item = &'a mut EvalEnv>,
 {
@@ -3953,7 +3953,7 @@ lazy_static! {
 }
 
 #[derive(Default)]
-pub(crate) struct EvalShard {
+pub struct EvalShard {
   output: ClonedVar,
   namespace: ParamVar,
   name: ParamVar,

@@ -4,11 +4,10 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
-  Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
+  BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shard_impl, shccstr, shlog_debug, shlog_error};
-use shards::{shard, shlog_trace};
+use shards::{shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -887,7 +886,7 @@ lazy_static! {
   "Shards.Read",
   "Reads a Shards program and outputs a binary or json AST."
 )]
-pub(crate) struct ReadShard {
+pub struct ReadShard {
   output: ClonedVar,
   #[shard_param(
     "Json",

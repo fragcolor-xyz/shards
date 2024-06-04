@@ -103,8 +103,7 @@ struct Cli {
   command: Commands,
 }
 
-#[no_mangle]
-pub extern "C" fn shards_process_args(
+pub fn process_args(
   argc: i32,
   argv: *const *const c_char,
   no_cancellation: bool,
