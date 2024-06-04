@@ -9,23 +9,47 @@
 #include "isb.hpp"
 #include "unique_id.hpp"
 #include "shader/types.hpp"
+#include "log.hpp"
 
 namespace gfx {
 
 /// <div rustbindgen opaque></div>
 struct BufferContextData : public ContextData {
+  std::weak_ptr<Buffer> keepAliveRef;
+
   WgpuHandle<WGPUBuffer> buffer;
   size_t bufferLength{};
-  size_t version{};
+  WGPUBufferUsage currentUsage{};
 
-  ~BufferContextData() { releaseContextDataConditional(); }
-  void releaseContextData() override {
-    buffer.release();
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+  std::string_view getLabel() const { return label; }
+#endif
+
+  BufferContextData() = default;
+  BufferContextData(BufferContextData &&) = default;
+
+  void init(std::string_view label) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+    this->label = label;
+#endif
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data created", getLabel());
+#endif
   }
+
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~BufferContextData() {
+    if (buffer)
+      SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Buffer {} data destroyed", getLabel());
+  }
+#endif
 };
 
 /// <div rustbindgen opaque></div>
-struct Buffer final : public TWithContextData<BufferContextData> {
+struct Buffer final {
+  using ContextDataType = BufferContextData;
+
 private:
   UniqueId id = getNextId();
   ImmutableSharedBuffer data;
@@ -42,20 +66,25 @@ public:
   size_t getVersion() const { return version; }
 
   Buffer &setAddressSpaceUsage(shader::AddressSpace addressSpaceUsage);
-  Buffer& setLabel(const std::string&);
+  Buffer &setLabel(const std::string &);
+  std::string_view getLabel() const;
 
   // Updates buffer data with length in bytes
-  Buffer& update(ImmutableSharedBuffer data);
+  Buffer &update(ImmutableSharedBuffer data);
 
   UniqueId getId() const { return id; }
   BufferPtr clone() const;
 
-protected:
+  bool keepAlive() const { return true; }
+
   void initContextData(Context &context, BufferContextData &contextData);
   void updateContextData(Context &context, BufferContextData &contextData);
 
+protected:
   static UniqueId getNextId();
 };
+
+static_assert(TWithContextDataKeepAlive<Buffer>, "");
 
 } // namespace gfx
 #endif /* B473CE26_9C2F_45DE_83BF_A386A16F9EE7 */

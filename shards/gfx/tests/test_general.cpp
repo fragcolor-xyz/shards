@@ -324,56 +324,6 @@ TEST_CASE("Shader parameters", "[General]") {
   testRenderer.reset();
 }
 
-TEST_CASE("Reference tracking", "[General]") {
-  auto testRenderer = createTestRenderer();
-  Renderer &renderer = *testRenderer->renderer.get();
-  Context &context = *testRenderer->context.get();
-
-  std::weak_ptr<Mesh> meshWeak;
-  std::weak_ptr<IDrawable> drawableWeak;
-  std::weak_ptr<MeshContextData> meshContextData;
-  {
-    MeshPtr mesh = createSphereMesh();
-    meshWeak = std::weak_ptr(mesh);
-
-    mesh->createContextDataConditional(context);
-    meshContextData = mesh->contextData;
-
-    DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh);
-    drawableWeak = std::weak_ptr(drawable);
-
-    ViewPtr view = std::make_shared<View>();
-
-    DrawQueuePtr queue = std::make_shared<DrawQueue>();
-    queue->add(drawable);
-    context.beginFrame();
-    renderer.beginFrame();
-    renderer.render(view, createTestPipelineSteps(queue));
-    renderer.endFrame();
-    context.endFrame();
-    queue->clear();
-  }
-
-  // Simulate empty frames
-  // Needs to run for at least the amount of frames specified in RendererImpl::clearOldCacheItems()
-  // so that the references are freed
-  context.poll();
-  for (size_t i = 0; i < 128; i++) {
-    context.beginFrame();
-    renderer.beginFrame();
-    renderer.endFrame();
-    context.endFrame();
-  }
-  context.poll();
-
-  // Should be released now
-  CHECK(meshWeak.expired());
-  CHECK(drawableWeak.expired());
-  CHECK(meshContextData.expired());
-
-  testRenderer.reset();
-}
-
 TEST_CASE("Textures", "[General]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();

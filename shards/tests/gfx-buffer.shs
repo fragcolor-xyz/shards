@@ -1,3 +1,5 @@
+@mesh(root)
+
 @template(spin-transform [t location] {
   t
   {Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX}
@@ -16,12 +18,12 @@
 
 @wire(gfx {
   Animation.Timer >= time
-  
+
   false >= looped-trigger
   Animation.Timer(Duration: 0.2 Looped: true Action: {
     true > looped-trigger
   }) = lt-timer
-  
+
   GFX.Buffer(@buffer-type AddressSpace: BufferAddressSpace::StorageRW) >= buf
   {
     "global_int": 100
@@ -30,18 +32,18 @@
     flags: (lt-timer | If(IsLess(0.1) {1} {0}))
     values: [1.0 2.0 3.0 4.0 5.0 0.0 99.0]
   } | GFX.WriteBuffer(buf)
-  
+
   Once({
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
   })
   @f3(0 0 0) | Math.Translation >= transform-0
-  
+
   ; The first pass that just renders the spinning cube
   GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
   GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
   GFX.DrawQueue >= queue
   GFX.DrawablePass(Features: features Queue: queue) >> render-steps1
-  
+
   GFX.Feature(BlockParams: {
     "buffer": {
       AddressSpace: BufferAddressSpace::StorageRW
@@ -49,7 +51,7 @@
       BindGroup: BindGroupId::Draw
     }
   }) >> fx-features
-  
+
   ; The effect pass that modifies the rendered cube image
   ; It also uses the depth buffer from the rendered cube
   GFX.EffectPass(
@@ -63,7 +65,7 @@
       Shader.ReadInput("texCoord0") >= uv
       uv | Take(0) >= u
       uv | Take(1) >= v
-      
+
       Shader.RefBuffer("buffer") = b
       Shader.Literal([
         "let b = " b ";"
@@ -75,33 +77,33 @@
         v " = " v " + f32(jy) * 0.00005;"
         "}"
       ])
-      
+
       ; Manipulate coordinates
       v | Math.Multiply(300.0) | Math.Cos | Math.Multiply(0.001) | Math.Add(u) > u
       MakeFloat2(u v) | Math.Multiply(3.0) | Math.Mod(@f2(1.0 1.0)) > uv
-      
+
       ; Sample the previous pass color output
       uv | Shader.SampleTextureCoord("color") | ToFloat4 >= color
-      
+
       ; Sample the previous pass depth output
       ; Linearize and scale the result to display it, since depth is stored as normalized 1/z
       uv | Shader.SampleTextureCoord("depth") | Take([0])
       Shader.LinearizeDepth | Math.Subtract(1.5) | Math.Divide(5.0) >= depth
-      
+
       ; Write output to "color"
       MakeFloat4(depth depth 1.0 1.0) | Math.Multiply(color)
       Shader.WriteOutput("color")
       ; End shader
     }
   ) >> render-steps1
-  
+
   {Position: @f3(0 0 4) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
   GFX.View(View: view-transform) >= view
-  
+
   view-transform | FreeCamera > view-transform
-  
+
   @spin-transform(time @f3(0.0 0 0)) > transform-0
-  
+
   transform-0 | GFX.Drawable(Mesh: mesh Params: {BaseColor: @f4(1 1 1 1)}) | GFX.Draw(Queue: queue)
   GFX.Render(Steps: render-steps1 View: view)
 } Looped: true)
@@ -109,8 +111,6 @@
 @wire(test-wire {
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {Step(gfx)})
 } Looped: true LStack: 4194304)
-
-@mesh(root)
 
 @schedule(root test-wire)
 @run(root FPS: 100 Iterations: 100) | Assert.Is(true)
@@ -130,7 +130,7 @@
         BindGroup: BindGroupId::View
       }
     }) >> fx-features
-    
+
     GFX.EffectPass(
       Features: fx-features
       EntryPoint: {
@@ -138,13 +138,13 @@
         Shader.Literal([
           "let b = " b ";"
         ])
-        
+
         @f4(0.0) | Shader.WriteOutput("color")
       }
     ) >> render-steps
     GFX.View = view
     GFX.Render(Steps: render-steps View: view)
-    
+
   })
 } Looped: true LStack: 4194304)
 
@@ -160,7 +160,7 @@
     Once({
       GFX.Buffer(@v-buffer-type) = buf
       {color: @f4(1.0 0.0 0.5 1.0)} | GFX.WriteBuffer(buf)
-      
+
       GFX.Feature(BlockParams: {
           "buffer_v": {
             AddressSpace: BufferAddressSpace::Uniform
@@ -173,18 +173,18 @@
         }
       ) >> fx-features
     })
-    
+
     GFX.EffectPass(
       Features: fx-features
       EntryPoint: {
         Shader.RefBuffer("buffer_v") = b
         @f4(0.0) >= color
-        
+
         Shader.Literal([
           "let b = " b ";"
-          color " = (*b).color;" ; 
+          color " = (*b).color;" ;
         ])
-        
+
         color | Shader.WriteOutput("color")
       }
     ) >> render-steps
@@ -204,7 +204,7 @@
   GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
     Once({
       GFX.Buffer(@v-readback-buffer-type AddressSpace: BufferAddressSpace::StorageRW) = buf
-      
+
       GFX.Feature(BlockParams: {
           "buffer_v": {
             AddressSpace: BufferAddressSpace::StorageRW
@@ -217,29 +217,29 @@
         }
       ) >> fx-features
     })
-    
+
     GFX.EffectPass(
       Features: fx-features
       EntryPoint: {
         Shader.RefBuffer("buffer_v") = b
         @f4(0.0) >= color
-        
+
         Shader.Literal([
           "let b = " b ";"
           "(*b).color = vec4<f32>(1.0, 0.2, 0.4, 1.0);"
           color " = (*b).color;"
         ])
-        
+
         color | Shader.WriteOutput("color")
       }
     ) >> render-steps
-    
+
     {color: @f4(0.0)} >= tmp-var
     When({GFX.ReadBuffer(buf tmp-var)} {
       ["Read buffer result" tmp-var] | String.Format | Log
       tmp-var | Take("color") | Assert.Is(@f4(1 0.2 0.4 1))
     })
-    
+
     GFX.View = view
     GFX.Render(Steps: render-steps View: view)
   })

@@ -77,6 +77,7 @@ struct PreparedRenderView {
 struct RendererImpl final : public ContextData {
   Renderer &outer;
   Context &context;
+  bool hasDevice{};
 
   RendererStorage storage;
 
@@ -94,29 +95,52 @@ struct RendererImpl final : public ContextData {
 
   boost::container::stable_vector<std::optional<FrameQueue>> frameQueues;
 
-  CallbackHandle<> onFlushTextureReferences;
+  std::shared_ptr<ContextFlushTextureReferencesHandler> flushTextureReferencesHandler;
+  std::shared_ptr<ContextDeviceStatusHandler> deviceStatusHandler;
 
   RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {
-    struct FlushSurfaceTextureReferences : public CallbackHandleImpl<> {
+    struct FlushSurfaceTextureReferences : public ContextFlushTextureReferencesHandler {
       TextureViewCache &tvc;
       FlushSurfaceTextureReferences(TextureViewCache &tvc) : tvc(tvc) {}
-      void call() override { tvc.reset(); }
+      void flushTextureReferences() override { tvc.reset(); }
     };
-    onFlushTextureReferences = context.onFlushTextureReferences->emplace<FlushSurfaceTextureReferences>(storage.textureViewCache);
+    flushTextureReferencesHandler =
+        context.onFlushTextureReferences->emplace<FlushSurfaceTextureReferences>(storage.textureViewCache);
+
+    struct DeviceStatusHandler : public ContextDeviceStatusHandler {
+      RendererImpl &renderer;
+      DeviceStatusHandler(RendererImpl &renderer) : renderer(renderer) {}
+      void deviceLost() override { renderer.onDeviceLost(); }
+      void deviceAcquired() override { renderer.onDeviceAcquired(); }
+    };
+    deviceStatusHandler = context.onDeviceStatus->emplace<DeviceStatusHandler>(*this);
+
+    if (!context.isHeadless()) {
+      shouldUpdateMainOutputFromContext = true;
+    }
+
+    if (context.isReady())
+      onDeviceAcquired();
   }
 
-  ~RendererImpl() { releaseContextDataConditional(); }
+  ~RendererImpl() { onDeviceLost(); }
 
   WorkerMemory &getWorkerMemoryForCurrentFrame() { return storage.workerMemory; }
 
-  void initializeContextData() {
+  void onDeviceAcquired() {
+    if (hasDevice)
+      return;
+
     shassert(context.isReady());
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &storage.deviceLimits);
-    bindToContext(context);
+    hasDevice = true;
   }
 
-  virtual void releaseContextData() override {
-    context.poll(true);
+  void onDeviceLost() {
+    if (!hasDevice)
+      return;
+
+    context.poll();
 
     // Flush in-flight frame resources
     for (size_t i = 0; i < maxBufferedFrames; i++) {
@@ -124,6 +148,8 @@ struct RendererImpl final : public ContextData {
     }
 
     storage.clear();
+
+    hasDevice = false;
   }
 
   void processTransientPtrCleanupQueue() {
@@ -176,6 +202,8 @@ struct RendererImpl final : public ContextData {
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
       auto fallbackSize = viewStack.getOutput().size;
+      if (viewStack.size() > 1)
+        SPDLOG_LOGGER_DEBUG(getLogger(), "RenderInto");
       frameQueue->evaluate(outer, fallbackSize);
     }
 
@@ -257,7 +285,7 @@ struct RendererImpl final : public ContextData {
   std::list<DeferredBufferReadCommand> deferredBufferReadCommands;
 
   bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
-    auto &textureData = cmd.texture.texture->createContextDataConditionalRefUNSAFE(context);
+    auto &textureData = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, cmd.texture.texture);
     if (!textureData.texture) {
       SPDLOG_LOGGER_WARN(logger, "Invalid texture queued for reading, ignoring");
       return false;
@@ -295,13 +323,13 @@ struct RendererImpl final : public ContextData {
   }
 
   bool queueBufferReadCommand(WGPUCommandEncoder encoder, DeferredBufferReadCommand &cmd) {
-    auto &bufferData = cmd.buffer->contextData;
-    if (!bufferData || !bufferData->buffer) {
+    auto &bufferData = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, cmd.buffer);
+    if (!bufferData.buffer) {
       SPDLOG_LOGGER_WARN(logger, "Invalid buffer queued for reading, ignoring");
       return false;
     }
 
-    cmd.bufferSize = bufferData->bufferLength;
+    cmd.bufferSize = bufferData.bufferLength;
 
     WGPUBufferDescriptor bufDesc{
         .label = "Temp copy buffer",
@@ -310,7 +338,7 @@ struct RendererImpl final : public ContextData {
     };
     cmd.stagingBuffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
 
-    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData->buffer, 0, cmd.stagingBuffer, 0, cmd.bufferSize);
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData.buffer, 0, cmd.stagingBuffer, 0, cmd.bufferSize);
     return true;
   }
 
@@ -491,9 +519,11 @@ struct RendererImpl final : public ContextData {
   }
 
   void beginFrame() {
-    // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
-    if (!isBoundToContext())
-      initializeContextData();
+    // the device might have it's context data cleared by manually calling renderer->cleanup()
+    // calling beginFrame here assumes you already did context.beginFrame which implies a device
+    // so recreate context data
+    if (!hasDevice)
+      onDeviceAcquired();
 
     swapBuffers();
 
@@ -572,6 +602,10 @@ struct RendererImpl final : public ContextData {
     clearOldCacheItemsIn(storage.pipelineCache.map, storage.frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(storage.viewCache, storage.frameCounter, 120 * 60 * 5);
 
+    storage.contextDataStorage.buffers.clearOldCacheItems(storage.frameCounter, 32);
+    storage.contextDataStorage.meshes.clearOldCacheItems(storage.frameCounter, 32);
+    storage.contextDataStorage.textures.clearOldCacheItems(storage.frameCounter, 16);
+
     // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
     storage.renderTextureCache.resetAndClearOldCacheItems(storage.frameCounter, 8);
     storage.textureViewCache.clearOldCacheItems(storage.frameCounter, 8);
@@ -586,15 +620,7 @@ struct RendererImpl final : public ContextData {
   }
 };
 
-Renderer::Renderer(Context &context) {
-  impl = std::make_shared<RendererImpl>(context, *this);
-  if (!context.isHeadless()) {
-    impl->shouldUpdateMainOutputFromContext = true;
-  }
-
-  if (context.isReady())
-    impl->initializeContextData();
-}
+Renderer::Renderer(Context &context) { impl = std::make_shared<RendererImpl>(context, *this); }
 
 Context &Renderer::getContext() { return impl->context; }
 
@@ -626,7 +652,7 @@ void Renderer::popView() { impl->popView(); }
 void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }
 
-void Renderer::cleanup() { impl->releaseContextDataConditional(); }
+void Renderer::cleanup() { impl->onDeviceLost(); }
 
 void Renderer::setDebug(bool debug) { impl->storage.debug = debug; }
 void Renderer::processDebugVisuals(ShapeRenderer &sr) {

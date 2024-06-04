@@ -71,28 +71,21 @@ void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLengt
   shassert(numIndices * indexSize == indexDataLength);
 }
 
-void Mesh::update() {
-  // This causes the GPU data to be recreated the next time it is requested
-  updateData = true;
-  version++;
-}
+void Mesh::update() { version++; }
 
 MeshPtr Mesh::clone() const {
   auto result = cloneSelfWithId(this, getNextId());
-  result->contextData.reset();
   return result;
 }
 
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {
+  contextData.init(getLabel());
+
   contextData.vertexBufferLength = 0;
   contextData.indexBufferLength = 0;
 }
 
 void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
-  if (contextData.vertexBufferLength != 0 && !updateData)
-    return;
-  updateData = false;
-
   WGPUDevice device = context.wgpuDevice;
   shassert(device);
 

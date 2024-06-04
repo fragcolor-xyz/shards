@@ -11,8 +11,9 @@ namespace gfx {
 typedef std::map<WGPUTextureFormat, TextureFormatDesc> TextureFormatMap;
 
 TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponents, TextureSampleType compatibleSampleTypes,
-                                     TextureFormatUsage usage)
-    : storageType(storageType), numComponents(numComponents), compatibleSampleTypes(compatibleSampleTypes), usage(usage) {
+                                     ColorSpace colorSpace, TextureFormatUsage usage)
+    : storageType(storageType), numComponents(numComponents), compatibleSampleTypes(compatibleSampleTypes),
+      colorSpace(colorSpace), usage(usage) {
   if (storageType == StorageType::Invalid)
     pixelSize = 0;
   else
@@ -34,12 +35,12 @@ static const TextureFormatMap &getTextureFormatMap() {
         {WGPUTextureFormat_RG8Sint, {StorageType::Int8, 2, TextureSampleType::Int}},
         // u8x4
         {WGPUTextureFormat_RGBA8Unorm, {StorageType::UNorm8, 4, TextureSampleType::Float}},
-        {WGPUTextureFormat_RGBA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_RGBA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float, ColorSpace::Srgb}},
         {WGPUTextureFormat_RGBA8Snorm, {StorageType::SNorm8, 4, TextureSampleType::Float}},
         {WGPUTextureFormat_RGBA8Uint, {StorageType::UInt8, 4, TextureSampleType::UInt}},
         {WGPUTextureFormat_RGBA8Sint, {StorageType::Int8, 4, TextureSampleType::Int}},
         {WGPUTextureFormat_BGRA8Unorm, {StorageType::UNorm8, 4, TextureSampleType::Float}},
-        {WGPUTextureFormat_BGRA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_BGRA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float, ColorSpace::Srgb}},
         // u16x1
         {WGPUTextureFormat_R16Uint, {StorageType::UInt16, 1, TextureSampleType::UInt}},
         {WGPUTextureFormat_R16Sint, {StorageType::Int16, 1, TextureSampleType::Int}},
@@ -66,17 +67,18 @@ static const TextureFormatMap &getTextureFormatMap() {
         {WGPUTextureFormat_RGBA32Float, {StorageType::Float32, 4, TextureSampleType::UnfilterableFloat}},
         // Depth(+stencil) formats
         {WGPUTextureFormat_Depth32Float,
-         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, ColorSpace::Undefined, TextureFormatUsage::Depth}},
         {WGPUTextureFormat_Depth24Plus,
-         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, ColorSpace::Undefined, TextureFormatUsage::Depth}},
         {WGPUTextureFormat_Depth16Unorm,
-         {StorageType::UNorm16, 2, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
-        {WGPUTextureFormat_Stencil8, {StorageType::UInt8, 1, TextureSampleType::UInt, TextureFormatUsage::Stencil}},
+         {StorageType::UNorm16, 2, TextureSampleType::UnfilterableFloat, ColorSpace::Undefined, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Stencil8,
+         {StorageType::UInt8, 1, TextureSampleType::UInt, ColorSpace::Undefined, TextureFormatUsage::Stencil}},
         {WGPUTextureFormat_Depth32FloatStencil8,
-         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat,
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, ColorSpace::Undefined,
           TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
         {WGPUTextureFormat_Depth24PlusStencil8,
-         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat,
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, ColorSpace::Undefined,
           TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
     };
   }();
@@ -90,6 +92,17 @@ const TextureFormatDesc &getTextureFormatDescription(WGPUTextureFormat pixelForm
     throw formatException("Unsupported texture input format", magic_enum::enum_name(pixelFormat));
   }
   return it->second;
+}
+
+std::optional<WGPUTextureFormat> upgradeToSrgbFormat(WGPUTextureFormat pixelFormat) {
+  switch (pixelFormat) {
+  case WGPUTextureFormat_RGBA8Unorm:
+    return WGPUTextureFormat_RGBA8UnormSrgb;
+  case WGPUTextureFormat_BGRA8Unorm:
+    return WGPUTextureFormat_BGRA8UnormSrgb;
+  default:
+    return std::nullopt;
+  }
 }
 
 size_t getStorageTypeSize(const StorageType &type) {
