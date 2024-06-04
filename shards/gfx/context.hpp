@@ -40,7 +40,6 @@ enum class ContextFrameState {
 };
 
 struct Window;
-struct ContextData;
 struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
@@ -49,8 +48,24 @@ struct GraphicsExecutor;
 }
 
 #ifndef RUST_BINDGEN
-using ContextFlushTextureCallback = std::shared_ptr<CallbackRegistry<>>;
+struct ContextFlushTextureReferencesHandler : public CallbackHandleImplBase {
+  virtual void flushTextureReferences() = 0;
+};
+using ContextFlushTextureReferencesRegistry = std::shared_ptr<CallbackRegistry<ContextFlushTextureReferencesHandler>>;
+
+struct ContextDeviceStatusHandler : public CallbackHandleImplBase {
+  virtual void deviceLost() = 0;
+  virtual void deviceAcquired() = 0;
+};
+using ContextDeviceStatusRegistry = std::shared_ptr<CallbackRegistry<ContextDeviceStatusHandler>>;
 #endif
+
+struct IContextLifetimeNotifications {
+  /// Device resources invalidated
+  virtual void contextLifetimeInvalidate(Context *) = 0;
+  // (re)create device resources
+  virtual void contextLifetimeCreate(Context *) = 0;
+};
 
 /// <div rustbindgen opaque></div>
 struct Context {
@@ -64,7 +79,9 @@ public:
 #endif
 
 #ifndef RUST_BINDGEN
-  ContextFlushTextureCallback onFlushTextureReferences = std::make_shared<CallbackRegistry<>>();
+  ContextFlushTextureReferencesRegistry onFlushTextureReferences =
+      std::make_shared<ContextFlushTextureReferencesRegistry::element_type>();
+  ContextDeviceStatusRegistry onDeviceStatus = std::make_shared<ContextDeviceStatusRegistry::element_type>();
 #endif
 
 private:
@@ -76,10 +93,6 @@ private:
   bool suspended = false;
 
   ContextCreationOptions options;
-
-  // TODO: Remove
-  std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
-  std::shared_mutex contextDataLock;
 
   WGPUBackendType backendType = WGPUBackendType_Null;
 
@@ -126,10 +139,6 @@ public:
 
   void submit(WGPUCommandBuffer cmdBuffer);
 
-  // start tracking an object implementing WithContextData so it's data is released with this context
-  void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
-  void removeContextDataInternal(ContextData *ptr);
-
 private:
   void deviceLost();
 
@@ -146,9 +155,6 @@ private:
   void initCommon();
 
   void present();
-
-  void collectContextData();
-  void releaseAllContextData();
 };
 
 } // namespace gfx

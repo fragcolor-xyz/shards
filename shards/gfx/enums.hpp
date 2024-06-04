@@ -3,6 +3,7 @@
 
 #include "gfx_wgpu.hpp"
 #include <string_view>
+#include <optional>
 
 namespace gfx {
 
@@ -30,12 +31,15 @@ enum class TextureFormatFlags : uint8_t {
   NoTextureBinding = 0x04,
   // Hint that this texture or derived objects shouldn't be cached between frames
   DontCache = 0x08,
+  // Uses when texture format is RGBA8Unorm or similar, but is should actually be encoded into Srgb
+  // When this is set out render graph outputs, the renderer 
+  IsSecretlySrgb = 0x10,
 };
 inline TextureFormatFlags operator|(const TextureFormatFlags &a, const TextureFormatFlags &b) {
   return TextureFormatFlags(uint8_t(a) | uint8_t(b));
 }
 inline bool textureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
-  return ((uint8_t &)left & (uint8_t &)right) != 0;
+  return (uint8_t(left) & uint8_t(right)) != 0;
 }
 
 enum class TextureFormatUsage : uint8_t {
@@ -47,7 +51,7 @@ enum class TextureFormatUsage : uint8_t {
 inline TextureFormatUsage operator|(const TextureFormatUsage &a, const TextureFormatUsage &b) {
   return TextureFormatUsage(uint8_t(a) | uint8_t(b));
 }
-inline bool hasAnyTextureFormatUsage(const TextureFormatUsage &a, const TextureFormatUsage &b) {
+inline bool textureFormatUsageContains(const TextureFormatUsage &a, const TextureFormatUsage &b) {
   return (uint8_t(a) & uint8_t(b)) != 0;
 }
 
@@ -55,6 +59,12 @@ enum class TextureDimension : uint8_t {
   D1,
   D2,
   Cube,
+};
+
+enum class ColorSpace : uint8_t {
+  Linear,
+  Srgb,
+  Undefined,
 };
 
 struct TextureFormatDesc {
@@ -69,14 +79,17 @@ struct TextureFormatDesc {
 
   TextureSampleType compatibleSampleTypes;
 
+  ColorSpace colorSpace;
+
   TextureFormatUsage usage;
 
   TextureFormatDesc(StorageType storageType, size_t numComponents, TextureSampleType compatibleSampleTypes,
-                    TextureFormatUsage usage = TextureFormatUsage::Color);
+                    ColorSpace colorSpace = ColorSpace::Linear, TextureFormatUsage usage = TextureFormatUsage::Color);
 };
 
 // TextureFormat
 const TextureFormatDesc &getTextureFormatDescription(WGPUTextureFormat pixelFormat);
+std::optional<WGPUTextureFormat> upgradeToSrgbFormat(WGPUTextureFormat pixelFormat);
 size_t getStorageTypeSize(const StorageType &type);
 bool isIntegerStorageType(const StorageType &type);
 size_t getIndexFormatSize(const IndexFormat &type);

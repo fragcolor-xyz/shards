@@ -2,77 +2,45 @@
 #define GFX_CONTEXT_DATA
 
 #include "../core/assert.hpp"
+#include "unique_id.hpp"
 #include <memory>
 #include <mutex>
+#include <concepts>
+#include <boost/container/flat_map.hpp>
 
 namespace gfx {
-
-template <typename T> struct TWithContextData;
 struct Context;
 
-// Can be assigned to a context to be notified when GPU resources should be released
-// NOTE: Your destructor should manually call releaseContextDataConditional!!!
-struct ContextData : public std::enable_shared_from_this<ContextData> {
-private:
-  Context *context = nullptr;
+#define SH_GFX_CONTEXT_DATA_LABELS 1
+#define SH_GFX_CONTEXT_DATA_LOG_LIFETIME 0
+struct ContextData {
+  size_t version = ~0;
+  size_t lastTouched = ~0;
 
-public:
-  static std::recursive_mutex globalMutex;
-
-  ContextData() = default;
-  virtual ~ContextData() = default;
-
-  void releaseContextDataConditional();
-  Context &getContext() {
-    shassert(context);
-    return *context;
-  }
-  bool isBoundToContext() const { return context; }
-
-protected:
-  virtual void releaseContextData() = 0;
-
-protected:
-  template <typename T> friend struct TWithContextData;
-  void bindToContext(Context &context);
-  void unbindFromContext();
+#if !SH_GFX_CONTEXT_DATA_LABELS
+  std::string_view getLabel() const { return "<unknown>"; }
+#endif
 };
 
-// Manages initialization/cleanup of context-specific data T attached to this object
-template <typename T> struct TWithContextData {
-  std::shared_ptr<T> contextData;
+template <typename T>
+concept TContextData = std::is_base_of_v<ContextData, T>;
 
-  // Only safe if texture is not updated from another thread ever
-  T &createContextDataConditionalRefUNSAFE(Context &context) { return *createContextDataConditional(context).get(); }
-
-  void resetContextData() {
-    std::unique_lock<std::recursive_mutex> _l(ContextData::globalMutex);
-    contextData.reset();
-  }
-
-  std::shared_ptr<T> createContextDataConditional(Context &context) {
-    ContextData::globalMutex.lock();
-
-    // Create or reinitialize context data
-    if (!contextData || !contextData->context) {
-      contextData = std::make_shared<T>();
-      contextData->bindToContext(context);
-      initContextData(context, *contextData.get());
-    } else {
-      shassert(&contextData->getContext() == &context);
-    }
-    updateContextData(context, *contextData.get());
-
-    auto ptr = contextData;
-    ContextData::globalMutex.unlock();
-
-    return ptr;
-  }
-
-protected:
-  virtual void initContextData(Context &context, T &contextData) = 0;
-  virtual void updateContextData(Context &context, T &contextData) {}
+template <typename T>
+concept TWithContextDataKeepAlive = requires(T t, typename T::ContextDataType &cd) {
+  { cd.keepAliveRef } -> std::assignable_from<std::shared_ptr<T>>;
+  { t.keepAlive() } -> std::convertible_to<bool>;
 };
+
+// This is the source of the context data on the client side that provides
+// functions to populate the gpu-side context data and timestamps to coordinate when to update
+template <typename T>
+concept TWithContextData = requires(T t, typename T::ContextDataType &cd, Context &ctx) {
+  typename T::ContextDataType;
+  { t.initContextData(ctx, cd) };
+  { t.updateContextData(ctx, cd) };
+  { t.getVersion() } -> std::convertible_to<uint64_t>;
+  { t.getId() } -> std::convertible_to<UniqueId>;
+} && TContextData<typename T::ContextDataType>;
 
 } // namespace gfx
 
