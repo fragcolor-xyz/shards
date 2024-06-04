@@ -6,7 +6,6 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
-use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
 use shards::SHType_Trait;
@@ -112,6 +111,10 @@ pub struct EvalEnv {
 
   // Shards and functions that are forbidden to be used
   pub forbidden_funcs: HashSet<Identifier>,
+
+  // Shards that need rewriting, e.g. upgrading to new versions
+  pub rewrite_funcs: HashMap<Identifier, Box<dyn RewriteFunction>>,
+
   pub settings: Vec<Setting>,
 
   meshes: HashMap<Identifier, MeshVar>,
@@ -147,6 +150,7 @@ impl EvalEnv {
       suffix: None,
       suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
+      rewrite_funcs: HashMap::new(),
       settings: Vec::new(),
       meshes: HashMap::new(),
       extensions: HashMap::new(),
@@ -1074,6 +1078,21 @@ fn is_forbidden_func(name: &Identifier, e: &EvalEnv) -> bool {
       env = unsafe { &*parent };
     } else {
       return false;
+    }
+  }
+}
+
+fn get_rewrite_func<'a>(name: &Identifier, e: &'a EvalEnv) -> Option<&'a Box<dyn RewriteFunction>> {
+  //recurse env and check
+  let mut env = e;
+  loop {
+    if let Some(rewrite) = env.rewrite_funcs.get(name) {
+      return Some(rewrite);
+    }
+    if let Some(parent) = env.parent {
+      env = unsafe { &*parent };
+    } else {
+      return None;
     }
   }
 }
@@ -2096,6 +2115,19 @@ fn create_shard(
     return Err((format!("Forbidden shard {}", shard.name.name), line_info).into());
   }
 
+  let mut replacement_storage = None;
+  if let Some(rw) = get_rewrite_func(&shard.name, e) {
+    if let Some(replacement) = rw.rewrite_function(shard) {
+      replacement_storage = Some(replacement);
+    }
+  }
+
+  let shard = if let Some(replacement) = &replacement_storage {
+    replacement
+  } else {
+    shard
+  };
+
   let s = ShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
       format!("Shard {} does not exist", shard.name.name.as_str()),
@@ -2800,6 +2832,20 @@ fn eval_pipeline(
               .into(),
           );
         }
+
+        let mut replacement_storage = None;
+        if let Some(rw) = get_rewrite_func(&func.name, e) {
+          if let Some(replacement) = rw.rewrite_function(func) {
+            replacement_storage = Some(replacement);
+          }
+        }
+
+        let func = if let Some(replacement) = &replacement_storage {
+          replacement
+        } else {
+          func
+        };
+
         match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
           ("ignore", true) => {
             // ignore is a special function that does nothing

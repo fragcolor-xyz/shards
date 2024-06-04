@@ -4,11 +4,11 @@ extern crate pest_derive;
 
 extern crate clap;
 
-mod ast;
+pub mod ast;
 mod ast_visitor;
 mod cli;
 mod error;
-mod eval;
+pub mod eval;
 mod formatter;
 mod print;
 mod read;
@@ -40,7 +40,7 @@ use std::os::raw::c_char;
 
 use shards::util::from_raw_parts_allow_null;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RcBytesWrapper(Rc<[u8]>);
 
 impl Serialize for RcBytesWrapper {
@@ -222,145 +222,298 @@ pub trait ShardsExtension {
   ) -> Result<AutoShardRef, ShardsError>;
 }
 
-#[repr(C)]
-pub struct SHLError {
-  message: *mut c_char,
-  line: u32,
-  column: u32,
-}
+#[cfg(feature = "exported")]
+mod exported {
+  use super::*;
 
-#[repr(C)]
-pub struct SHLAst {
-  ast: *mut Sequence,
-  error: *mut SHLError,
-}
-
-#[repr(C)]
-pub struct SHLWire {
-  wire: *mut Wire,
-  error: *mut SHLError,
-}
-
-#[no_mangle]
-pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
-  unsafe {
-    shards::core::Core = core;
+  #[repr(C)]
+  pub struct SHLError {
+    message: *mut c_char,
+    line: u32,
+    column: u32,
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_read(
-  name: SHStringWithLen,
-  code: SHStringWithLen,
-  base_path: SHStringWithLen,
-) -> SHLAst {
-  let name: &str = name.into();
-  let code = code.into();
-  let base_path: &str = base_path.into();
-  let result = read::read(code, name, base_path);
+  #[repr(C)]
+  pub struct SHLAst {
+    ast: *mut Sequence,
+    error: *mut SHLError,
+  }
 
-  match result {
-    Ok(p) => SHLAst {
-      ast: Box::into_raw(Box::new(p.sequence)),
-      error: std::ptr::null_mut(),
-    },
-    Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: error.loc.line,
-        column: error.loc.column,
-      };
-      SHLAst {
-        ast: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+  #[repr(C)]
+  pub struct SHLWire {
+    wire: *mut Wire,
+    error: *mut SHLError,
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
+    unsafe {
+      shards::core::Core = core;
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_read(
+    name: SHStringWithLen,
+    code: SHStringWithLen,
+    base_path: SHStringWithLen,
+  ) -> SHLAst {
+    let name: &str = name.into();
+    let code = code.into();
+    let base_path: &str = base_path.into();
+    let result = read::read(code, name, base_path);
+
+    match result {
+      Ok(p) => SHLAst {
+        ast: Box::into_raw(Box::new(p.sequence)),
+        error: std::ptr::null_mut(),
+      },
+      Err(error) => {
+        shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+        let error_message = CString::new(error.message).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: error.loc.line,
+          column: error.loc.column,
+        };
+        SHLAst {
+          ast: std::ptr::null_mut(),
+          error: Box::into_raw(Box::new(shards_error)),
+        }
       }
     }
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
-  let bytes = unsafe { from_raw_parts_allow_null(bytes, size as usize) };
-  let decoded_bin: Result<Sequence, _> = bincode::deserialize(bytes);
-  match decoded_bin {
-    Ok(sequence) => SHLAst {
-      ast: Box::into_raw(Box::new(sequence)),
-      error: std::ptr::null_mut(),
-    },
-    Err(error) => {
-      let error_message = CString::new(error.to_string()).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: 0,
-        column: 0,
-      };
-      SHLAst {
-        ast: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+  #[no_mangle]
+  pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
+    let bytes = unsafe { from_raw_parts_allow_null(bytes, size as usize) };
+    let decoded_bin: Result<Sequence, _> = bincode::deserialize(bytes);
+    match decoded_bin {
+      Ok(sequence) => SHLAst {
+        ast: Box::into_raw(Box::new(sequence)),
+        error: std::ptr::null_mut(),
+      },
+      Err(error) => {
+        let error_message = CString::new(error.to_string()).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: 0,
+          column: 0,
+        };
+        SHLAst {
+          ast: std::ptr::null_mut(),
+          error: Box::into_raw(Box::new(shards_error)),
+        }
       }
     }
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_save_ast(ast: *mut Sequence) -> Var {
-  let ast = unsafe { &*ast };
-  let encoded_bin = bincode::serialize(ast).unwrap();
-  let v: ClonedVar = encoded_bin.as_slice().into();
-  let inner = v.0;
-  std::mem::forget(v);
-  inner
-}
-
-#[no_mangle]
-pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv {
-  if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, None)))
-  } else {
-    let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
+  #[no_mangle]
+  pub extern "C" fn shards_save_ast(ast: *mut Sequence) -> Var {
+    let ast = unsafe { &*ast };
+    let encoded_bin = bincode::serialize(ast).unwrap();
+    let v: ClonedVar = encoded_bin.as_slice().into();
+    let inner = v.0;
+    std::mem::forget(v);
+    inner
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) {
-  let env = unsafe { &mut *env };
-  let name: &str = name.into();
-  env.forbidden_funcs.insert(Identifier {
-    name: RcStrWrapper::from(name),
-    namespaces: Vec::new(),
-  });
-}
-
-#[no_mangle]
-pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
-  unsafe {
-    drop(Box::from_raw(env));
+  #[no_mangle]
+  pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv {
+    if namespace.len == 0 {
+      Box::into_raw(Box::new(EvalEnv::new(None, None)))
+    } else {
+      let namespace: &str = namespace.into();
+      Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
+    }
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_create_sub_env(
-  env: *mut EvalEnv,
-  namespace: SHStringWithLen,
-) -> *mut EvalEnv {
-  let env = unsafe { &mut *env };
-  if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, Some(env))))
-  } else {
-    let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), Some(env))))
+  #[no_mangle]
+  pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) {
+    let env = unsafe { &mut *env };
+    let name: &str = name.into();
+    env.forbidden_funcs.insert(Identifier {
+      name: RcStrWrapper::from(name),
+      namespaces: Vec::new(),
+    });
   }
-}
 
-#[no_mangle]
-pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut SHLError {
-  let env = unsafe { &mut *env };
-  let ast = unsafe { &*ast };
-  for stmt in &ast.statements {
-    if let Err(e) = eval::eval_statement(stmt, env, new_cancellation_token()) {
+  #[no_mangle]
+  pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
+    unsafe {
+      drop(Box::from_raw(env));
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_create_sub_env(
+    env: *mut EvalEnv,
+    namespace: SHStringWithLen,
+  ) -> *mut EvalEnv {
+    let env = unsafe { &mut *env };
+    if namespace.len == 0 {
+      Box::into_raw(Box::new(EvalEnv::new(None, Some(env))))
+    } else {
+      let namespace: &str = namespace.into();
+      Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), Some(env))))
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut SHLError {
+    let env = unsafe { &mut *env };
+    let ast = unsafe { &*ast };
+    for stmt in &ast.statements {
+      if let Err(e) = eval::eval_statement(stmt, env, new_cancellation_token()) {
+        shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
+        let error_message = CString::new(e.message).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: e.loc.line,
+          column: e.loc.column,
+        };
+        return Box::into_raw(Box::new(shards_error));
+      }
+    }
+    core::ptr::null_mut()
+  }
+
+  /// It will consume the env
+  #[no_mangle]
+  pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
+    let name = name.into();
+    let mut env = unsafe { Box::from_raw(env) };
+    let res = eval::transform_env(&mut env, name);
+    match res {
+      Ok(wire) => SHLWire {
+        wire: Box::into_raw(Box::new(wire)),
+        error: std::ptr::null_mut(),
+      },
+      Err(error) => {
+        shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+        let error_message = CString::new(error.message).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: error.loc.line,
+          column: error.loc.column,
+        };
+        SHLWire {
+          wire: std::ptr::null_mut(),
+          error: Box::into_raw(Box::new(shards_error)),
+        }
+      }
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_transform_envs(
+    env: *mut *mut EvalEnv,
+    len: usize,
+    name: SHStringWithLen,
+  ) -> SHLWire {
+    let name = name.into();
+    let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
+    let mut deref_envs = Vec::with_capacity(len);
+    for &env in envs.iter() {
+      let env = unsafe { Box::from_raw(env) };
+      deref_envs.push(env);
+    }
+    let res = eval::transform_envs(deref_envs.iter_mut().map(|x| x.as_mut()), name);
+    match res {
+      Ok(wire) => SHLWire {
+        wire: Box::into_raw(Box::new(wire)),
+        error: std::ptr::null_mut(),
+      },
+      Err(error) => {
+        shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+        let error_message = CString::new(error.message).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: error.loc.line,
+          column: error.loc.column,
+        };
+        SHLWire {
+          wire: std::ptr::null_mut(),
+          error: Box::into_raw(Box::new(shards_error)),
+        }
+      }
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) -> SHLWire {
+    let name = name.into();
+    // we just want a reference to the sequence, not ownership
+    let seq = unsafe { &*sequence };
+    let result = eval::eval(seq, name, HashMap::new(), new_cancellation_token());
+    match result {
+      Ok(wire) => SHLWire {
+        wire: Box::into_raw(Box::new(wire)),
+        error: std::ptr::null_mut(),
+      },
+      Err(error) => {
+        let error_message = CString::new(error.message).unwrap();
+        let shards_error = SHLError {
+          message: error_message.into_raw(),
+          line: error.loc.line,
+          column: error.loc.column,
+        };
+        SHLWire {
+          wire: std::ptr::null_mut(),
+          error: Box::into_raw(Box::new(shards_error)),
+        }
+      }
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
+    let seq = unsafe { &*ast };
+    let s = crate::print::print_ast(seq);
+    let s = Var::ephemeral_string(&s);
+    let mut v = Var::default();
+    shards::core::cloneVar(&mut v, &s);
+    v
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_free_sequence(sequence: *mut Sequence) {
+    unsafe {
+      drop(Box::from_raw(sequence));
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_free_wire(wire: *mut Wire) {
+    unsafe {
+      drop(Box::from_raw(wire));
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shards_free_error(error: *mut SHLError) {
+    unsafe {
+      drop(CString::from_raw((*error).message));
+      drop(Box::from_raw(error));
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
+    unsafe {
+      shards::core::Core = core;
+    }
+
+    register_shard::<read::ReadShard>();
+    register_legacy_shard::<eval::EvalShard>();
+  }
+
+  /// Please note it will consume `from` but not `to`
+  #[no_mangle]
+  pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mut SHLError {
+    let from = unsafe { Box::from_raw(from) };
+    let to = unsafe { &mut *to };
+    if let Err(e) = merge_env(*from, to) {
       shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
       let error_message = CString::new(e.message).unwrap();
       let shards_error = SHLError {
@@ -368,177 +521,29 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut
         line: e.loc.line,
         column: e.loc.column,
       };
-      return Box::into_raw(Box::new(shards_error));
+      Box::into_raw(Box::new(shards_error))
+    } else {
+      std::ptr::null_mut()
     }
   }
-  core::ptr::null_mut()
-}
 
-/// It will consume the env
-#[no_mangle]
-pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
-  let name = name.into();
-  let mut env = unsafe { Box::from_raw(env) };
-  let res = eval::transform_env(&mut env, name);
-  match res {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
-    Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: error.loc.line,
-        column: error.loc.column,
-      };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+  #[no_mangle]
+  pub extern "C" fn setup_panic_hook() {
+    // Had to put this in this crate otherwise we would have duplicated symbols
+    // Set a custom panic hook to break into the debugger.
+    #[cfg(debug_assertions)]
+    std::panic::set_hook(Box::new(|info| {
+      // Print the panic info to standard error.
+      eprintln!("Panic occurred: {:?}", info);
+      // Trigger a breakpoint.
+      #[cfg(unix)]
+      unsafe {
+        libc::raise(libc::SIGTRAP);
       }
-    }
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn shards_transform_envs(
-  env: *mut *mut EvalEnv,
-  len: usize,
-  name: SHStringWithLen,
-) -> SHLWire {
-  let name = name.into();
-  let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
-  let mut deref_envs = Vec::with_capacity(len);
-  for &env in envs.iter() {
-    let env = unsafe { Box::from_raw(env) };
-    deref_envs.push(env);
-  }
-  let res = eval::transform_envs(deref_envs.iter_mut().map(|x| x.as_mut()), name);
-  match res {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
-    Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: error.loc.line,
-        column: error.loc.column,
-      };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+      #[cfg(windows)]
+      unsafe {
+        windows::Win32::System::Diagnostics::Debug::DebugBreak();
       }
-    }
+    }));
   }
-}
-
-#[no_mangle]
-pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) -> SHLWire {
-  let name = name.into();
-  // we just want a reference to the sequence, not ownership
-  let seq = unsafe { &*sequence };
-  let result = eval::eval(seq, name, HashMap::new(), new_cancellation_token());
-  match result {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
-    Err(error) => {
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: error.loc.line,
-        column: error.loc.column,
-      };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
-      }
-    }
-  }
-}
-
-// #[no_mangle]
-// pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
-//   let seq = unsafe { &*ast };
-//   let s = print_ast(seq);
-//   let s = Var::ephemeral_string(&s);
-//   let mut v = Var::default();
-//   cloneVar(&mut v, &s);
-//   v
-// }
-
-#[no_mangle]
-pub extern "C" fn shards_free_sequence(sequence: *mut Sequence) {
-  unsafe {
-    drop(Box::from_raw(sequence));
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn shards_free_wire(wire: *mut Wire) {
-  unsafe {
-    drop(Box::from_raw(wire));
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn shards_free_error(error: *mut SHLError) {
-  unsafe {
-    drop(CString::from_raw((*error).message));
-    drop(Box::from_raw(error));
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
-  unsafe {
-    shards::core::Core = core;
-  }
-
-  register_shard::<read::ReadShard>();
-  register_legacy_shard::<eval::EvalShard>();
-}
-
-/// Please note it will consume `from` but not `to`
-#[no_mangle]
-pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mut SHLError {
-  let from = unsafe { Box::from_raw(from) };
-  let to = unsafe { &mut *to };
-  if let Err(e) = merge_env(*from, to) {
-    shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
-    let error_message = CString::new(e.message).unwrap();
-    let shards_error = SHLError {
-      message: error_message.into_raw(),
-      line: e.loc.line,
-      column: e.loc.column,
-    };
-    Box::into_raw(Box::new(shards_error))
-  } else {
-    std::ptr::null_mut()
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn setup_panic_hook() {
-  // Had to put this in this crate otherwise we would have duplicated symbols
-  // Set a custom panic hook to break into the debugger.
-  #[cfg(debug_assertions)]
-  std::panic::set_hook(Box::new(|info| {
-    // Print the panic info to standard error.
-    eprintln!("Panic occurred: {:?}", info);
-    // Trigger a breakpoint.
-    #[cfg(unix)]
-    unsafe {
-      libc::raise(libc::SIGTRAP);
-    }
-    #[cfg(windows)]
-    unsafe {
-      windows::Win32::System::Diagnostics::Debug::DebugBreak();
-    }
-  }));
 }
