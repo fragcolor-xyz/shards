@@ -26,11 +26,10 @@
   99.9 | Network.Send
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
-  
+
   @random1 | Network.Send | Log("Big load")
   @random2 | Network.Send | Log("Even bigger load")
-  
-  "The End" | Network.Send(peer) | Log("Sent end")
+
   true > test/client-init-success
 })
 
@@ -44,9 +43,14 @@
       When(Is(@random1) {
         true > test/client-received-random1
       })
+
+      When({test/client-received-smaller | And | test/client-received-random1} {
+        "The End" | Network.Send | Log("Sent end")
+      })
     }) = peer
     Once(Do(client-init))
-  })
+    none
+  } {Stop})
 } Looped: true)
 
 @define(tick-count 200)

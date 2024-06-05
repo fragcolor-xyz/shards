@@ -1,6 +1,6 @@
 ; Run the same network test except use Network.WS client & server
 "network.shs" | FS.Read = base-script
-Regex.Replace("Network.Client\\(\".*\"" "Network.WS.Client(\"ws://127.0.0.1\"")
-Regex.Replace("Network.Server\\(\".*\"" "Network.WS.Server(\"127.0.0.1\"") = new-script
+Regex.Replace("Network.Client\\(\".*\" [0-9]+" "Network.WS.Client(\"ws://127.0.0.1:9191\"")
+Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
 Shards.Read | Shards.Distill("runner") = runner
 WireRunner(runner)
