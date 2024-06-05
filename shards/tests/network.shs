@@ -2,18 +2,22 @@
 ; ; Copyright © 2023 Fragcolor
 
 @define(random1 #(RandomBytes(0xFFFF)))
-@define(random2 #(RandomBytes(0xFFFFFF)))
+@define(random2 #(RandomBytes(0xFFFFF)))
 
 @wire(handler {
   Log("Server's Peer Received")
-  | When(Is("The End") {"" Stop})
+  When(Is("The End") {
+    Log("Disconnecting client after receiving end sequence")
+    true > test/server-received-end
+    "" | Stop
+  })
   "Ok" | Network.Send
 } Looped: true)
 
 @wire(network-test-server {
   Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
-  Once({"Smaller" | Network.Broadcast | Log("Send random")} Every: 0.5)
-  Once({@random1 | Network.Broadcast | Log("Send random")} Every: 0.5)
+  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 0.5)
+  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 0.5)
 } Looped: true)
 
 @wire(client-init {
@@ -22,21 +26,48 @@
   99.9 | Network.Send
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
-
+  
   @random1 | Network.Send | Log("Big load")
   @random2 | Network.Send | Log("Even bigger load")
-
-  "The End" | Network.Send(peer)
+  
+  "The End" | Network.Send(peer) | Log("Sent end")
+  true > test/client-init-success
 })
 
 @wire(network-test-client {
-  Network.Client("127.0.0.1" 9191 {
-    Log("Client received")
-  }) = peer
-  Once(Do(client-init))
+  Maybe({
+    Network.Client("127.0.0.1" 9191 {
+      Log("Client received")
+      When(Is("Smaller") {
+        true > test/client-received-smaller
+      })
+      When(Is(@random1) {
+        true > test/client-received-random1
+      })
+    }) = peer
+    Once(Do(client-init))
+  })
 } Looped: true)
 
+@define(tick-count 200)
+@define(tick-count-1 #(@tick-count | Sub(1)))
+@wire(test-assert {
+  false | Set(test/client-init-success Global: true)
+  false | Set(test/client-received-smaller Global: true)
+  false | Set(test/client-received-random1 Global: true)
+  false | Set(test/server-received-end Global: true)
+  ForRange(1 @tick-count-1 {
+    Pause(0)
+  })
+  Log("Checking conditions")
+  test/client-init-success | Log("client-init-success") | Assert.Is(true)
+  test/server-received-end | Log("server-received-end") | Assert.Is(true)
+  test/client-received-smaller | Log("client-received-smaller") | Assert.Is(true)
+  test/client-received-random1 | Log("client-received-random1") | Assert.Is(true)
+})
+
 @mesh(main)
+@schedule(main test-assert)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main 0.01 1000) | Assert.Is(true)
+@run(main #(10.0 | Div(1000.0)) @tick-count) | Assert.Is(true)

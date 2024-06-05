@@ -1,37 +1,116 @@
-#ifndef NETWORK_HPP
-#define NETWORK_HPP
+#ifndef DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
+#define DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C
 
-#include <memory>
-
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
-
-// ASIO must go first!!
-#include <boost/asio.hpp>
-
-#ifdef __clang__
-#pragma clang attribute pop
-#endif
-
+#include <shards/core/platform.hpp>
+#include <boost/core/span.hpp>
+#include <shards/core/foundation.hpp>
 #include <shards/shards.h>
-
-using boost::asio::ip::udp;
+#include <shards/shards.hpp>
+#include <vector>
+#include <memory>
+#include "log.hpp"
 
 namespace shards {
 namespace Network {
 
+constexpr uint32_t PeerCC = 'netP';
+constexpr uint32_t ServerCC = 'netS';
+
+struct Types {
+  static inline Type Server{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = ServerCC}}}};
+  static inline Type ServerVar = Type::VariableOf(Server);
+  static inline Type Peer{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
+  static inline Type PeerVar = Type::VariableOf(Peer);
+  static inline ParameterInfo PeerParameterInfo{"Peer", SHCCSTR("The optional explicit peer to send packets to."), {PeerVar}};
+};
+
+struct Reader {
+  char *buffer;
+  size_t offset;
+  size_t max;
+
+  Reader(char *buf, size_t size) : buffer(buf), offset(0), max(size) {}
+
+  void operator()(uint8_t *buf, size_t size) {
+    auto newOffset = offset + size;
+    if (newOffset > max) {
+      throw std::runtime_error("Overflow requested");
+    }
+    memcpy(buf, buffer + offset, size);
+    offset = newOffset;
+  }
+
+  void deserializeInto(OwnedVar &output);
+};
+
+struct Writer {
+  // let's make this growable on demand
+  std::vector<uint8_t> buffer;
+  size_t offset;
+
+  Writer() {}
+
+  void operator()(const uint8_t *buf, size_t size) {
+    auto newOffset = offset + size;
+    // resize buffer if needed but it (*2) so to avoid too many resizes
+    if (newOffset > buffer.size()) {
+      buffer.resize(newOffset * 2);
+    }
+    memcpy(buffer.data() + offset, buf, size);
+    offset = newOffset;
+  }
+
+  void reset() {
+    offset = 4; // we reserve 4 bytes for size
+    buffer.resize(offset);
+  }
+
+  void finalize() {
+    // write size
+    *(uint32_t *)buffer.data() = offset;
+  }
+
+  // expose data and size
+  const uint8_t *data() { return (uint8_t *)buffer.data(); }
+  size_t size() { return offset; }
+
+  boost::span<const uint8_t> varToSendBuffer(const SHVar &input);
+};
+
+Writer &getSendWriter();
+
+struct Peer {
+  virtual ~Peer() = default;
+
+  virtual void send(boost::span<const uint8_t> data) = 0;
+  virtual bool disconnected() const = 0;
+  virtual int64_t getId() const = 0;
+  virtual std::string_view getDebugName() const = 0;
+  void sendVar(const SHVar &input) { send(getSendWriter().varToSendBuffer(input)); }
+};
+
+struct Server {
+  virtual void broadcast(boost::span<const uint8_t> data) = 0;
+  void broadcastVar(const SHVar &input) { broadcast(getSendWriter().varToSendBuffer(input)); }
+};
+
 struct OnPeerConnected {
-  udp::endpoint endpoint;
+  // udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
 
 struct OnPeerDisconnected {
-  udp::endpoint endpoint;
+  // udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
+
+Peer &getConnectedPeer(ParamVar &peerParam);
+static inline void setDefaultPeerParam(ParamVar &peerParam);
+
+Peer &getServer(ParamVar &serverParam);
+void setDefaultSetverParam(ParamVar &peerParam);
 
 } // namespace Network
 } // namespace shards
 
-#endif
+#endif /* DB94A8B0_9E08_4B91_B2D6_6F71AF52C15C */
