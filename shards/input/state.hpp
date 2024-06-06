@@ -153,7 +153,17 @@ struct InputState {
       }
     }
 #else
-  modifiers = SDL_Keymod(gfx::em::getEventHandler()->serverInputState.modKeyState);
+    modifiers = SDL_Keymod(gfx::em::getEventHandler()->serverInputState.modKeyState);
+    auto& modifiersBits = reinterpret_cast<uint16_t&>(modifiers);
+    auto expandLeftRightBits = [&](SDL_Keymod mod) {
+      if ((modifiersBits & mod) != 0)
+        modifiersBits |= mod;
+    };
+    // Expand KMOD_LCTRL, etc. to KMOD_CTRL
+    expandLeftRightBits(KMOD_CTRL);
+    expandLeftRightBits(KMOD_SHIFT);
+    expandLeftRightBits(KMOD_ALT);
+    expandLeftRightBits(KMOD_GUI);
 #endif
   }
 };
