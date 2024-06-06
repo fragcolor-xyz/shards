@@ -494,21 +494,27 @@ struct ServerShard : public NetworkBase {
   void cleanup(SHContext *context) {
     _running = false;
 
+    // Stop handlers
+    if (_pool) {
+      std::scoped_lock<std::shared_mutex> lock(peersMutex);
+      SPDLOG_LOGGER_TRACE(logger, "Stopping all wires");
+      _pool->stopAll();
+      _server._end2Peer.clear();
+      _server._wire2Peer.clear();
+      _pool.reset();
+    } else {
+      SPDLOG_LOGGER_TRACE(logger, "No pool to stop");
+    }
+
+    // Shut down connection
+    NetworkBase::cleanup(context);
+
     if (_serverVar) {
       releaseVariable(_serverVar);
       _serverVar = nullptr;
     }
 
-    if (_pool) {
-      SPDLOG_LOGGER_TRACE(logger, "Stopping all wires");
-      _pool->stopAll();
-    } else {
-      SPDLOG_LOGGER_TRACE(logger, "No pool to stop");
-    }
-
     _mesh.reset();
-
-    NetworkBase::cleanup(context);
 
     gcWires(context);
 
