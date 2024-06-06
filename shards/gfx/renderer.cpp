@@ -335,9 +335,17 @@ struct RendererImpl final : public ContextData {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+#if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
+#if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -348,7 +356,7 @@ struct RendererImpl final : public ContextData {
 #if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
 #else
-      gfxWgpuBufferReadInto(cmd.buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
 #endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
@@ -368,9 +376,17 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+#if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
+#if WEBGPU_NATIVE
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -381,7 +397,7 @@ struct RendererImpl final : public ContextData {
 #if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
 #else
-      gfxWgpuBufferReadInto(cmd.stagingBuffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
 #endif
 
       wgpuBufferUnmap(cmd.stagingBuffer->buffer);
