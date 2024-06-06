@@ -67,12 +67,21 @@ template <typename T, typename Traits = PoolItemTraits<T>> struct Pool {
     return *v;
   }
 
-  T& newValue(auto init) {
+  T &newValue(auto init) {
     return newValue(init, [](T &v) -> int64_t { return 0; });
   }
 
-  T& newValue() {
+  T &newValue() {
     return newValue([](T &v) {}, [](T &v) -> int64_t { return 0; });
+  }
+
+  void clear() {
+    for (auto &v : inUseList)
+      itemTraits.release(v);
+    inUseList.clear();
+    for (auto &v : freeList)
+      itemTraits.release(v);
+    freeList.clear();
   }
 
   // Check returned items and return them to the pool once they are no longer referenced

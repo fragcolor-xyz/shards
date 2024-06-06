@@ -247,7 +247,7 @@ struct RendererImpl final : public ContextData {
     TextureSubResource texture;
     GpuTextureReadBufferPtr destination;
 
-    WgpuHandle<WGPUBuffer> buffer;
+    std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
     std::optional<void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
@@ -268,7 +268,7 @@ struct RendererImpl final : public ContextData {
     BufferPtr buffer;
     GpuReadBufferPtr destination;
 
-    WgpuHandle<WGPUBuffer> stagingBuffer;
+    std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
     std::optional<void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
@@ -297,12 +297,7 @@ struct RendererImpl final : public ContextData {
     size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
     cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
     cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
-    WGPUBufferDescriptor bufDesc{
-        .label = "Temp copy buffer",
-        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
-        .size = cmd.bufferSize,
-    };
-    cmd.buffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
+    cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
     WGPUImageCopyTexture srcDesc{
         .texture = textureData.texture,
@@ -311,7 +306,7 @@ struct RendererImpl final : public ContextData {
     };
     WGPUImageCopyBuffer dstDesc{
         .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
-        .buffer = cmd.buffer,
+        .buffer = cmd.stagingBuffer->buffer,
     };
     WGPUExtent3D sizeDesc{
         .width = uint32_t(cmd.size.x),
@@ -330,15 +325,9 @@ struct RendererImpl final : public ContextData {
     }
 
     cmd.bufferSize = bufferData.bufferLength;
+    cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
-    WGPUBufferDescriptor bufDesc{
-        .label = "Temp copy buffer",
-        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
-        .size = cmd.bufferSize,
-    };
-    cmd.stagingBuffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
-
-    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData.buffer, 0, cmd.stagingBuffer, 0, cmd.bufferSize);
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData.buffer, 0, cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     return true;
   }
 
@@ -347,9 +336,9 @@ struct RendererImpl final : public ContextData {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
-    wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -362,7 +351,7 @@ struct RendererImpl final : public ContextData {
       cmd.destination->size = cmd.size;
       cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
 
-      wgpuBufferUnmap(cmd.buffer);
+      wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
       return true;
     } else {
@@ -375,9 +364,9 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer, 0, cmd.bufferSize);
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
-    wgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -386,7 +375,7 @@ struct RendererImpl final : public ContextData {
       cmd.destination->data.resize(cmd.bufferSize);
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
 
-      wgpuBufferUnmap(cmd.stagingBuffer);
+      wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
       return true;
     } else {
@@ -609,6 +598,8 @@ struct RendererImpl final : public ContextData {
     // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
     storage.renderTextureCache.resetAndClearOldCacheItems(storage.frameCounter, 8);
     storage.textureViewCache.clearOldCacheItems(storage.frameCounter, 8);
+
+    storage.mapReadCopyDstBufferPool.recycle();
   }
 
   void swapBuffers() {

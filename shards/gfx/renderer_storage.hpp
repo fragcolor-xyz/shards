@@ -33,6 +33,8 @@ struct RendererStorage {
   TextureViewCache textureViewCache;
   ContextDataStorage contextDataStorage;
 
+  WGPUSharedBufferPool mapReadCopyDstBufferPool;
+
   // Enable debug visualization
   bool debug{};
   Swappable<std::vector<DebugVisualizer>, 2> debugVisualizers;
@@ -47,7 +49,16 @@ struct RendererStorage {
   // Increments forever
   size_t frameCounter = 0;
 
-  RendererStorage(Context &context) : drawableProcessorCache(context) {}
+  RendererStorage(Context &context) : drawableProcessorCache(context) {
+    mapReadCopyDstBufferPool.initFn = [&context](size_t cap) -> WGPUBuffer {
+      WGPUBufferDescriptor bufDesc{
+          .label = "Temp copy buffer",
+          .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
+          .size = cap,
+      };
+      return wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc);
+    };
+  }
 
   template <typename F> void debugVisualize(F &&f) {
     if (!debug)
@@ -62,10 +73,11 @@ struct RendererStorage {
     textureViewCache.reset();
     viewCache.clear();
     queueCache.clear();
-    debugVisualizers.forAll([](auto& v) { v.clear(); });
+    debugVisualizers.forAll([](auto &v) { v.clear(); });
     drawableProcessorCache.drawableProcessorsMutex.lock();
     drawableProcessorCache.drawableProcessors.clear();
     drawableProcessorCache.drawableProcessorsMutex.unlock();
+    mapReadCopyDstBufferPool.clear();
   }
 
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {

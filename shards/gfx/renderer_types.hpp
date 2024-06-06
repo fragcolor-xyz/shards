@@ -56,7 +56,7 @@ public:
     }
   }
 
-  template<typename T> void forAll(T &&callback) {
+  template <typename T> void forAll(T &&callback) {
     for (size_t i = 0; i < MaxSize_; i++) {
       callback(elems[i].value());
     }
@@ -354,6 +354,48 @@ struct WGPUBufferPool : public shards::Pool<PooledWGPUBuffer, PooledWGPUBufferTr
           buffer.buffer.reset(initFn(buffer.capacity));
         },
         findBufferInPoolBySize(size));
+  }
+};
+
+struct SharedPooledWGPUBufferTraits {
+  using Ptr = std::shared_ptr<PooledWGPUBuffer>;
+  Ptr newItem() { return std::make_shared<PooledWGPUBuffer>(); }
+  void release(Ptr &) {}
+  bool canRecycle(Ptr &v) { return v.use_count() == 1; }
+  void recycled(Ptr &v) {}
+};
+
+inline constexpr auto findSharedBufferInPoolBySize(size_t targetSize) {
+  if constexpr (sizeof(size_t) >= 8) {
+    if (targetSize > INT64_MAX) {
+      throw std::runtime_error("targetSize too large");
+    }
+  }
+  return [targetSize](std::shared_ptr<PooledWGPUBuffer> &buffer) -> int64_t {
+    if (buffer->capacity < targetSize) {
+      return INT64_MAX;
+    }
+
+    // Negate so the smallest buffer will be picked first
+    return -(int64_t(buffer->capacity) - int64_t(targetSize));
+  };
+}
+
+struct WGPUSharedBufferPool : public shards::Pool<std::shared_ptr<PooledWGPUBuffer>, SharedPooledWGPUBufferTraits> {
+  using Ptr = std::shared_ptr<PooledWGPUBuffer>;
+  using InitFunction = std::function<WGPUBuffer(size_t)>;
+  InitFunction initFn;
+
+  static WGPUBuffer defaultInitializer(size_t) { throw std::runtime_error("invalid buffer initializer"); }
+  WGPUSharedBufferPool(InitFunction &&init_ = &defaultInitializer) : initFn(std::move(init_)) {}
+
+  Ptr &allocateBuffer(size_t size) {
+    return this->newValue(
+        [&](std::shared_ptr<PooledWGPUBuffer> &buffer) {
+          buffer->capacity = alignTo(size, 1024);
+          buffer->buffer.reset(initFn(buffer->capacity));
+        },
+        findSharedBufferInPoolBySize(size));
   }
 };
 
