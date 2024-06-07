@@ -7,7 +7,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
+  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, Lit, LitInt, LitStr, Meta,
 };
 
 // type Error = boxed::Box<dyn std::error::Error>;
@@ -74,7 +74,7 @@ struct ParamSingle {
 struct ParamSet {
   type_name: syn::Type,
   var_name: syn::Ident,
-  has_custom_interface: bool
+  has_custom_interface: bool,
 }
 
 enum Param {
@@ -503,6 +503,18 @@ fn read_shard_info_attr(
       let args: Punctuated<Expr, Comma> =
         attr.parse_args_with(Punctuated::<syn::Expr, Comma>::parse_terminated)?;
       return if let Some((name, desc)) = args.into_pairs().map(|x| x.into_value()).collect_tuple() {
+        // Check if desc is a string literal and not empty
+        if let Expr::Lit(syn::ExprLit {
+          lit: Lit::Str(lit_str),
+          ..
+        }) = &desc
+        {
+          if lit_str.value().trim().is_empty() {
+            return Err("Description must not be empty".into());
+          }
+        } else {
+          return Err("Description must be a string literal".into());
+        }
         Ok(ShardInfoAttr { name, desc })
       } else {
         Err("shard_info attribute must have 2 arguments: (Name, Description)".into())

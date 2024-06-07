@@ -12,7 +12,7 @@ lazy_static! {
 }
 
 #[derive(shards::shard)]
-#[shard_info("UI.Overlay", "AddDescriptionHere")]
+#[shard_info("UI.Overlay", "Overlays multiple UI's on top of each other.")]
 pub struct OverlayShard {
   #[shard_required]
   required: ExposedTypes,
