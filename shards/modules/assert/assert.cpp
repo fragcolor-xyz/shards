@@ -64,7 +64,7 @@ struct Is : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input != _value.get()) {
       SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, _value.get());
-      if (*_aborting)
+      if (isDebuggerPresent() && *_aborting)
         DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - Is");
@@ -134,7 +134,7 @@ struct IsNot : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input == _value.get()) {
       SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, _value.get());
-      if (*_aborting)
+      if (isDebuggerPresent() && *_aborting)
         DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - IsNot");
@@ -220,7 +220,7 @@ struct IsAlmost {
   SHVar activate(SHContext *context, const SHVar &input) {
     if (!_almostEqual(input, _value.get(), _threshold)) {
       SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value.get());
-      if (_aborting)
+      if (isDebuggerPresent() && _aborting)
         DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - IsAlmost");
@@ -265,7 +265,8 @@ struct Break {
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    DEBUG_BREAK();
+    if (isDebuggerPresent())
+      DEBUG_BREAK();
     return input;
   }
 };
