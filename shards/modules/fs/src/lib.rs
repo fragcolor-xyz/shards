@@ -67,7 +67,7 @@ lazy_static! {
 }
 
 #[derive(shards::shard)]
-#[shard_info("FS.FileDialog", "AddDescriptionHere")]
+#[shard_info("FS.FileDialog", "Creates a file dialog to open files")]
 struct FileDialog {
   #[shard_param("Filters", "To filter files based on extensions.", [common_type::none, *FILTER_SEQ_TYPE, Type::context_variable(&*FILTER_SEQ_TYPES)])]
   filters: ParamVar,
