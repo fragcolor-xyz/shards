@@ -135,6 +135,7 @@ jobs:
           cd build
           cmake -G Ninja \
             -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
+            "-DCMAKE_CXX_FLAGS=-D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR" \
             "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
             "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
             "-DRUST_DEFAULT_TARGET_PATH=C:\shards-rust-target" \
