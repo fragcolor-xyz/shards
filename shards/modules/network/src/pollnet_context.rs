@@ -125,10 +125,6 @@ pub struct PollnetContext {
 
 impl PollnetContext {
   pub fn new() -> PollnetContext {
-    if let Err(err) = env_logger::try_init() {
-      warn!("Multiple contexts created!: {}", err)
-    };
-
     let (handle_tx, handle_rx) = std::sync::mpsc::channel();
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let shutdown_tx = Some(shutdown_tx);

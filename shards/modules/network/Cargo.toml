@@ -32,10 +32,5 @@ anyhow = "^1.0.70"
 version = "*"
 features = ["sync", "macros", "net", "fs"]
 
-[dependencies.env_logger]
-version = "^0.10.0"
-default-features = false
-features = ["humantime", "color", "auto-color"]
-
 [build-dependencies]
 bindgen = "0.69"
