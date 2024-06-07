@@ -95,12 +95,10 @@ struct Server {
 };
 
 struct OnPeerConnected {
-  // udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
 
 struct OnPeerDisconnected {
-  // udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
 

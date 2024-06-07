@@ -31,6 +31,3 @@ anyhow = "^1.0.70"
 [dependencies.tokio]
 version = "*"
 features = ["sync", "macros", "net", "fs"]
-
-[build-dependencies]
-bindgen = "0.69"
