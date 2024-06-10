@@ -15,16 +15,28 @@ struct WindowCreationOptions {
   bool fullscreen = false;
   std::string title;
 };
+
+#if SH_APPLE
+struct MetalViewContainer {
+  SDL_MetalView view{};
+  void *layer{};
+
+  MetalViewContainer(SDL_Window *window) {
+    view = SDL_Metal_CreateView(window);
+    layer = SDL_Metal_GetLayer(view);
+  }
+  ~MetalViewContainer() { SDL_Metal_DestroyView(view); }
+  MetalViewContainer(const MetalViewContainer &other) = delete;
+  operator void *() const { return layer; }
+};
+#endif
+
 } // namespace gfx
 
 #if SH_EMSCRIPTEN
 #include "window_em.hpp"
 #else
 #include <SDL_events.h>
-
-#if SH_APPLE
-#include "platform_surface.hpp"
-#endif
 
 struct SDL_Window;
 namespace gfx {
