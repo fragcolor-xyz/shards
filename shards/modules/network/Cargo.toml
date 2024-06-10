@@ -13,4 +13,21 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-tungstenite = { version = "0.20.1", features = ["native-tls"] }
+tokio-tungstenite = {version = "^0.20.1", features = ["native-tls"]}
+tungstenite = {version = "^0.20.1", features = ["native-tls"]}
+slotmap = "1.0"
+futures = "*"
+url = "*"
+futures-util = "*"
+hyper = {version = "^1.1.0", features = ["server"]}
+hyper-util = {version = "0.1.2", features = ["full"]}
+http-body-util = "0.1"
+http = "*"
+nanoid = "*"
+reqwest = "*"
+log = "*"
+anyhow = "^1.0.70"
+
+[dependencies.tokio]
+version = "*"
+features = ["sync", "macros", "net", "fs"]

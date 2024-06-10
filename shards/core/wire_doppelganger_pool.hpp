@@ -39,14 +39,15 @@ template <typename T> struct WireDoppelgangerPool {
   void stopAll()
     requires WireData<T>
   {
+    std::unique_lock<std::mutex> _l(_poolMutex);
     for (auto &item : _pool) {
       stop(item->wire.get());
       _avail.emplace(item.get());
     }
   }
 
-  template <class Composer, typename Anything>
-  T *acquire(Composer &composer, Anything *anything)
+  template <class Composer, typename Anything = void>
+  T *acquire(Composer &composer, Anything *anything = nullptr)
     requires WireData<T>
   {
     ZoneScoped;
