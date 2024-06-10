@@ -2,6 +2,7 @@
 #define A58BF89A_157D_440C_9398_773EB3D0A410
 #include "input.hpp"
 #include "sdl.hpp"
+#include <memory>
 #include <compare>
 #include <linalg.h>
 #include <optional>
