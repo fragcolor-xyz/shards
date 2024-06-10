@@ -1273,7 +1273,7 @@ TEST_CASE("UnsafeActivate-shard") {
 }
 
 TEST_CASE("AWAIT/AWAITNE") {
-#if HAS_ASYNC_SUPPORT
+#if HAS_ASYNC_SUPPORT && SH_ENABLE_TIDE_POOL
   struct TestWork : TidePool::Work {
     TestWork() { testString = "test-aaaaaabbbbbbbcccccccccddddddeeeeeffff"; }
     virtual ~TestWork() {}

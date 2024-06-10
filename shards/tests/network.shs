@@ -29,12 +29,6 @@
   
   @random1 | Network.Send | Log("Big load")
   @random2 | Network.Send | Log("Even bigger load")
-<<<<<<< HEAD
-
-=======
-  
-  "The End" | Network.Send(peer) | Log("Sent end")
->>>>>>> 725f9d1db (Emscripten fixes for formabble)
   true > test/client-init-success
 })
 
@@ -48,7 +42,6 @@
       When(Is(@random1) {
         true > test/client-received-random1
       })
-<<<<<<< HEAD
 
       When({test/client-received-smaller | And | test/client-received-random1} {
         "The End" | Network.Send | Log("Sent end")
@@ -57,11 +50,6 @@
     Once(Do(client-init))
     none
   } {Stop})
-=======
-    }) = peer
-    Once(Do(client-init))
-  })
->>>>>>> 725f9d1db (Emscripten fixes for formabble)
 } Looped: true)
 
 @define(tick-count 200)

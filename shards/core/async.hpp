@@ -25,7 +25,7 @@
 #if SH_EMSCRIPTEN
 #define SH_ENABLE_TIDE_POOL 0
 #else
-#define SH_ENABLE_TIDE_POOL 0
+#define SH_ENABLE_TIDE_POOL 1
 #endif
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
