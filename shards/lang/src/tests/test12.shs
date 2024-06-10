@@ -1,0 +1,15 @@
+@define( seq-type #(TypeOf({Fbl.WithTrait(WirePoolType::Graphics shared/colorable) >> j | j})))
+@trait( controller {
+   controller/update-speed: @type(Type::Float)
+  })
+
+ @wire(main-wire-graphics {
+   Once({
+     0.2 | Set(controller/update-speed Exposed: true)
+    
+    {  } | Fbl.Find(Traits: {
+      WirePoolType::Graphics: [shared/colorable]
+    } Multiple: true) = form-ids
+      Log("Form ids")
+})
+ })
