@@ -197,7 +197,7 @@ sh_add_external_project(
   RELATIVE_INCLUDE_PATHS .
   RELATIVE_BINARY_INCLUDE_PATHS .
   REPO_ARGS GIT_REPOSITORY    https://github.com/shards-lang/snappy.git
-            GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e)
+            GIT_TAG           9e3775b)
 
 sh_add_external_project(
   NAME brotli_a
