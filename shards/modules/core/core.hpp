@@ -2377,9 +2377,10 @@ struct Clear : SeqUser {
   SHTypeInfo compose(const SHInstanceData &data) {
     SeqUser::compose(data);
 
-    for (const auto &shared : data.shared) {
-      if (!shared.isMutable) {
-        SHLOG_ERROR("Clear: Variable {} is not mutable.", shared.name);
+    for (auto &shared : data.shared) {
+      std::string_view vName(shared.name);
+      if (vName == _name && !shared.isMutable) {
+        SHLOG_ERROR("Clear: Variable {} is not mutable.", _name);
         throw ComposeError("Clear: Variable is not mutable.");
       }
     }
