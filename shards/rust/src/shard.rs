@@ -107,7 +107,7 @@ pub trait Shard {
   fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
     Ok(())
   }
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
@@ -184,7 +184,7 @@ pub trait LegacyShard {
     Ok(())
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
 
