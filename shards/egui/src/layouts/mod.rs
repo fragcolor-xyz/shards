@@ -4,6 +4,7 @@
 use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
+use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -144,6 +145,11 @@ shenum_types! {
   pub static ref SEQ_OF_SCROLL_VISIBILITY_TYPES: Vec<Type>;
 }
 
+lazy_static! {
+  static ref SCROLL_VISIBILITY_OR_NONE_SLICE: Vec<Type> =
+    vec![*SCROLL_VISIBILITY_TYPE, common_type::none];
+}
+
 shenum! {
   pub struct LayoutFrame {
   [description("Use the frame styling for grouping widgets together.")]
@@ -174,6 +180,10 @@ shenum_types! {
   pub static ref LAYOUT_FRAME_TYPES: Vec<Type>;
   pub static ref SEQ_OF_LAYOUT_FRAME: Type;
   pub static ref SEQ_OF_LAYOUT_FRAME_TYPES: Vec<Type>;
+}
+
+lazy_static! {
+  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_FRAME_TYPE, common_type::none];
 }
 
 shenum! {
@@ -255,6 +265,10 @@ shenum_types! {
   pub static ref LAYOUT_ALIGN_TYPES: Vec<Type>;
   pub static ref SEQ_OF_LAYOUT_ALIGN: Type;
   pub static ref SEQ_OF_LAYOUT_ALIGN_TYPES: Vec<Type>;
+}
+
+lazy_static! {
+  static ref LAYOUT_ALIGN_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_ALIGN_TYPE, common_type::none];
 }
 
 struct Indent {

@@ -221,14 +221,12 @@ pub fn collect_texture_references(input: &egui::FullOutput, out_refs: &mut Vec<G
   for shape in &input.shapes {
     let tex_id = shape.shape.texture_id();
     match tex_id {
-      TextureId::User(id) => {
-        unsafe {
-          let texture_ptr = id as *const gfx_TexturePtr;
-          let mut newRef = GenericSharedPtr::default();
-          gfx_TexturePtr_refAt(&mut newRef, texture_ptr);
-          out_refs.push(newRef);
-        }
-      }
+      TextureId::User(id) => unsafe {
+        let texture_ptr = id as *const gfx_TexturePtr;
+        let mut newRef = GenericSharedPtr::default();
+        gfx_TexturePtr_refAt(&mut newRef, texture_ptr);
+        out_refs.push(newRef);
+      },
       _ => {}
     }
   }

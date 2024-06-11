@@ -26,9 +26,9 @@ use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::ANY_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
+use shards::util::from_raw_parts_allow_null;
 use std::cmp::Ordering;
 use std::ffi::CStr;
-use shards::util::from_raw_parts_allow_null;
 
 lazy_static! {
   static ref COMBO_PARAMETERS: Parameters = vec![

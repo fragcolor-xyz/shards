@@ -1,4 +1,5 @@
 use super::*;
+use egui::ahash::HashMapExt;
 use egui::CursorIcon;
 use egui::Event;
 use egui::Modifiers;
@@ -6,9 +7,8 @@ use egui::TouchDeviceId;
 use egui::TouchId;
 use egui::ViewportId;
 use egui::ViewportInfo;
-use egui::ahash::HashMapExt;
-use std::ffi::CStr;
 use shards::util::from_raw_parts_allow_null;
+use std::ffi::CStr;
 
 const SCROLL_SPEED: f32 = 50.0;
 

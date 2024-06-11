@@ -10,8 +10,10 @@ use super::LayoutFrame;
 use super::LayoutFrameCC;
 use super::ScrollVisibility;
 use crate::layouts::ScrollVisibilityCC;
+use crate::layouts::LAYOUT_ALIGN_OR_NONE_SLICE;
 use crate::layouts::LAYOUT_ALIGN_TYPES;
 use crate::layouts::LAYOUT_DIRECTION_TYPES;
+use crate::layouts::SCROLL_VISIBILITY_OR_NONE_SLICE;
 use crate::layouts::SCROLL_VISIBILITY_TYPES;
 use crate::util;
 use crate::util::with_possible_panic;
@@ -20,12 +22,16 @@ use crate::EguiId;
 use crate::ANCHOR_TYPE;
 use crate::ANCHOR_TYPES;
 use crate::EGUI_UI_TYPE;
+use crate::FLOAT2_VAR_OR_NONE_SLICE;
 use crate::FLOAT2_VAR_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::LAYOUTCLASS_TYPE;
 use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
+use crate::LAYOUTCLASS_VAR_OR_NONE_SLICE;
+use crate::LAYOUT_FRAME_OR_NONE_SLICE;
 use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
@@ -171,13 +177,13 @@ lazy_static! {
     (
       cstr!("Parent"),
       shccstr!("The parent Layout class to inherit parameters from."),
-      &LAYOUTCLASS_TYPE_VEC_VAR[..],
+      &LAYOUTCLASS_VAR_OR_NONE_SLICE[..],
     )
       .into(),
     (
       cstr!("MainDirection"),
       shccstr!("The primary direction of the UI element layout."),
-      &LAYOUT_DIRECTION_TYPES[..],
+      &LAYOUT_FRAME_OR_NONE_SLICE[..],
     )
       .into(),
     (
@@ -189,7 +195,7 @@ lazy_static! {
     (
       cstr!("MainAlign"),
       shccstr!("Alignment of UI elements along the main axis."),
-      &LAYOUT_ALIGN_TYPES[..],
+      &LAYOUT_ALIGN_OR_NONE_SLICE[..],
     )
       .into(),
     (
@@ -201,7 +207,7 @@ lazy_static! {
     (
       cstr!("CrossAlign"),
       shccstr!("Alignment of UI elements along the cross axis."),
-      &LAYOUT_ALIGN_TYPES[..],
+      &LAYOUT_ALIGN_OR_NONE_SLICE[..],
     )
       .into(),
     (
@@ -213,25 +219,25 @@ lazy_static! {
     (
       cstr!("MinSize"),
       shccstr!("Minimum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
-      FLOAT2_VAR_SLICE,
+      FLOAT2_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("MaxSize"),
       shccstr!("Maximum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
-      FLOAT2_VAR_SLICE,
+      FLOAT2_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("FillWidth"),
       shccstr!("Whether the layout should occupy the full width."),
-      &BOOL_TYPES[..],
+      &BOOL_VAR_OR_NONE_SLICE[..],
     )
       .into(),
     (
       cstr!("FillHeight"),
       shccstr!("Whether the layout should occupy the full height."),
-      &BOOL_TYPES[..],
+      &BOOL_VAR_OR_NONE_SLICE[..],
     )
       .into(),
     (
@@ -243,7 +249,7 @@ lazy_static! {
     (
       cstr!("Frame"),
       shccstr!("Frame to be drawn around the layout."),
-      &LAYOUT_FRAME_TYPE_VEC[..],
+      &LAYOUT_FRAME_OR_NONE_SLICE[..],
     )
       .into(),
     (
@@ -261,31 +267,31 @@ lazy_static! {
     (
       cstr!("ScrollBarVisibility"),
       shccstr!("Visibility of the scroll bars: AlwaysVisible, VisibleWhenNeeded, or AlwaysHidden. Default: AlwaysVisible."),
-      &SCROLL_VISIBILITY_TYPES[..],
+      &SCROLL_VISIBILITY_OR_NONE_SLICE[..],
     )
       .into(),
     (
       cstr!("ScrollAreaMinWidth"),
       shccstr!("Minimum width of the scroll area."),
-      FLOAT_VAR_SLICE,
+      FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMinHeight"),
       shccstr!("Minimum height of the scroll area."),
-      FLOAT_VAR_SLICE,
+      FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMaxWidth"),
       shccstr!("Maximum width of the scroll area."),
-      FLOAT_VAR_SLICE,
+      FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMaxHeight"),
       shccstr!("Maximum height of the scroll area."),
-      FLOAT_VAR_SLICE,
+      FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (

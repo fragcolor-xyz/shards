@@ -8,9 +8,9 @@ use shards::core::register_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
-use shards::types::{ShardsVar, Table, Var};
 use shards::types::Type;
 use shards::types::FRAG_CC;
+use shards::types::{ShardsVar, Table, Var};
 
 shenum! {
   pub struct Order {
@@ -161,12 +161,12 @@ struct CentralPanel {
 
 mod area;
 mod docking;
+mod overlay;
 mod panels;
 mod popup_wrapper;
 mod scope;
 mod selectable;
 mod window;
-mod overlay;
 
 pub fn register_shards() {
   area::register_shards();

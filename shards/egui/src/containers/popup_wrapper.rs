@@ -166,7 +166,7 @@ impl Shard for PopupWrapper {
         } else {
           None
         };
-  
+
         let popup_id = if !self.id.get().is_none() {
           custom_popup_id.as_mut().unwrap()
         } else {
