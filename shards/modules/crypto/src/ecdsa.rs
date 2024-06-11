@@ -12,6 +12,7 @@ use shards::types::Context;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 
+use shards::types::OptionalString;
 use shards::types::Type;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::BYTES_TYPES;
@@ -29,27 +30,27 @@ static SIGNATURE_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
-    shccstr!("The private key to be used to sign the hashed message input."),
+    shccstr!("The private key used to sign the hashed message input."),
     CRYPTO_KEY_TYPES
   )
     .into()];
   static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref PK_PARAMETERS: Parameters = vec![(
     cstr!("Compressed"),
-    shccstr!("If the output PublicKey should use the compressed format."),
+    shccstr!("Indicates if the output PublicKey should be in compressed format."),
     BOOL_TYPES_SLICE
   )
     .into()];
   static ref SIG_PARAMETERS: Parameters = vec![
     (
       cstr!("Signature"),
-      shccstr!("The signature generated signing the input message with the private key."),
+      shccstr!("The signature generated from signing the input message with the private key."),
       SIGNATURE_TYPES
     )
       .into(),
     (
       cstr!("Compressed"),
-      shccstr!("If the output PublicKey should use the compressed format."),
+      shccstr!("Indicates if the output PublicKey should be in compressed format."),
       BOOL_TYPES_SLICE
     )
       .into()
@@ -101,12 +102,24 @@ impl LegacyShard for ECDSASign {
     "ECDSA.Sign"
   }
 
+  fn help(&mut self) -> OptionalString {
+    "Signs a message with the private key using the ECDSA algorithm.".into()
+  }
+
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    "The message hash to sign with the private key, must be 32 bytes.".into()
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    "The signature generated from signing the input message with the private key.".into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -176,12 +189,24 @@ impl LegacyShard for ECDSAPubKey {
     "ECDSA.PublicKey"
   }
 
+  fn help(&mut self) -> OptionalString {
+    "Generates the public key from the private key using the ECDSA algorithm.".into()
+  }
+
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
     &PK_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    "The private key to generate the public key from.".into()
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    "The public key generated from the private key.".into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -235,12 +260,24 @@ impl LegacyShard for ECDSAPrivKey {
     "ECDSA.Seed"
   }
 
+  fn help(&mut self) -> OptionalString {
+    "Generates the private key from the seed using the ECDSA algorithm.".into()
+  }
+
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
     &STRING_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    "The seed to generate the private key from.".into()
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    "The private key generated from the seed.".into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -289,12 +326,24 @@ impl LegacyShard for ECDSARecover {
     "ECDSA.Recover"
   }
 
+  fn help(&mut self) -> OptionalString {
+    "Recovers the public key from the signature and message using the ECDSA algorithm.".into()
+  }
+
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    "The message hash to recover the public key from.".into()
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    "The public key recovered from the signature and message.".into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
