@@ -21,7 +21,9 @@
 // Enable to assert on consistent resuming
 // this is required to pass for the emscripten version to work correctly
 // since fiber state is stored on the calling JS stack
-#define SH_DEBUG_CONSISTENT_RESUMER 1
+#ifndef SH_DEBUG_CONSISTENT_RESUMER
+#define SH_DEBUG_CONSISTENT_RESUMER 0
+#endif
 
 // Enable to assert on consistent resuming
 // this is required to pass for the emscripten version to work correctly
