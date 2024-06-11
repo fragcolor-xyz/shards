@@ -7,16 +7,9 @@
 #include <vector>
 #include <optional>
 
-namespace gfx {
-/// <div rustbindgen opaque></div>
-struct WindowCreationOptions {
-  int width = 1280;
-  int height = 720;
-  bool fullscreen = false;
-  std::string title;
-};
-
 #if SH_APPLE
+#include <SDL_metal.h>
+namespace gfx {
 struct MetalViewContainer {
   SDL_MetalView view{};
   void *layer{};
@@ -29,8 +22,17 @@ struct MetalViewContainer {
   MetalViewContainer(const MetalViewContainer &other) = delete;
   operator void *() const { return layer; }
 };
+} // namespace gfx
 #endif
 
+namespace gfx {
+/// <div rustbindgen opaque></div>
+struct WindowCreationOptions {
+  int width = 1280;
+  int height = 720;
+  bool fullscreen = false;
+  std::string title;
+};
 } // namespace gfx
 
 #if SH_EMSCRIPTEN
