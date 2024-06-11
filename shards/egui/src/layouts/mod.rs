@@ -222,6 +222,11 @@ shenum_types! {
   pub static ref SEQ_OF_LAYOUT_DIRECTION_TYPES: Vec<Type>;
 }
 
+lazy_static! {
+  static ref LAYOUT_DIRECTION_OR_NONE_SLICE: Vec<Type> =
+    vec![*LAYOUT_DIRECTION_TYPE, common_type::none];
+}
+
 shenum! {
   pub struct LayoutAlign {
   [description("Left or top alignment for e.g. anchors and layouts.")]

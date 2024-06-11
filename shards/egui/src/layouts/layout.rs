@@ -12,6 +12,7 @@ use super::ScrollVisibility;
 use crate::layouts::ScrollVisibilityCC;
 use crate::layouts::LAYOUT_ALIGN_OR_NONE_SLICE;
 use crate::layouts::LAYOUT_ALIGN_TYPES;
+use crate::layouts::LAYOUT_DIRECTION_OR_NONE_SLICE;
 use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::layouts::SCROLL_VISIBILITY_OR_NONE_SLICE;
 use crate::layouts::SCROLL_VISIBILITY_TYPES;
@@ -183,7 +184,7 @@ lazy_static! {
     (
       cstr!("MainDirection"),
       shccstr!("The primary direction of the UI element layout."),
-      &LAYOUT_FRAME_OR_NONE_SLICE[..],
+      &LAYOUT_DIRECTION_OR_NONE_SLICE[..],
     )
       .into(),
     (
