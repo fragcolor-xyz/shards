@@ -921,10 +921,7 @@ lazy_static! {
 }
 
 #[derive(shards::shard)]
-#[shard_info(
-  "UI.Layout",
-  "Versatile layout with many options for customizing the desired UI."
-)]
+#[shard_info("UI.Layout", "Versatile layout with numerous customization options.")]
 struct LayoutShard {
   #[shard_required]
   requiring: ExposedTypes,
@@ -935,23 +932,31 @@ struct LayoutShard {
   contents: ShardsVar,
   #[shard_param(
     "Class",
-    "The Layout class describing all of the options relating to the layout of this UI.",
+    "The Layout class defining all layout options.",
     LAYOUTCLASS_TYPE_VEC_VAR
   )]
   layout_class: ParamVar,
-  #[shard_param("MinSize", "The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight.", FLOAT2_VAR_SLICE)]
+  #[shard_param(
+    "MinSize",
+    "Minimum reserved space for the UI. Overridden by FillWidth and FillHeight.",
+    FLOAT2_VAR_SLICE
+  )]
   min_size: ParamVar,
-  #[shard_param("MaxSize", "The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight.", FLOAT2_VAR_SLICE)]
+  #[shard_param(
+    "MaxSize",
+    "Maximum reserved space for the UI. Overridden by FillWidth and FillHeight.",
+    FLOAT2_VAR_SLICE
+  )]
   max_size: ParamVar,
   #[shard_param(
     "FillWidth",
-    "Whether the Layout should take up the full width of the available space.",
+    "Whether the layout should occupy the full width.",
     BOOL_TYPES
   )]
   fill_width: ParamVar,
   #[shard_param(
     "FillHeight",
-    "Whether the Layout should take up the full height of the available space.",
+    "Whether the layout should occupy the full height.",
     BOOL_TYPES
   )]
   fill_height: ParamVar,
@@ -979,8 +984,16 @@ impl Shard for LayoutShard {
     &ANY_TYPES
   }
 
+  fn input_help(&mut self) -> OptionalString {
+    "Not used.".into()
+  }
+
   fn output_types(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn output_help(&mut self) -> OptionalString {
+    "Passthrough the input.".into()
   }
 
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
