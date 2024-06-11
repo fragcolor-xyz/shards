@@ -1736,18 +1736,18 @@ struct Push : public SeqBase {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Updates sequences and tables by pushing elements and/or sequences into them.");
+    return SHCCSTR("Pushes a new value into a sequence variable. If the variable does not exist, it will be created.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("Input is the update value to be pushed into the variables."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to push into the sequence."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline Parameters pushParams{
-      setterParams,
-      {{"Clear",
-        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
-        {CoreInfo::BoolType}}}};
+  static inline Parameters pushParams{setterParams,
+                                      {{"Clear",
+                                        SHCCSTR("Whether to clear this sequence at every wire iteration. This only works if it's "
+                                                "the first push. The default is true."),
+                                        {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return pushParams; }
 
@@ -2263,9 +2263,7 @@ struct Count : SeqUser {
     return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    return CoreInfo::IntType;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::IntType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2328,7 +2326,7 @@ struct Clear : SeqUser {
       // we in that case output the same _cell with adjusted len!
       if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<SHVar &>(input).payload.seqValue.len = 0;
-    } else if(_cell->valueType == SHType::Table) {
+    } else if (_cell->valueType == SHType::Table) {
       _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
     }
 
