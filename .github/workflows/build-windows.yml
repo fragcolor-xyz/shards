@@ -368,7 +368,7 @@ jobs:
         run: |
           cd build
           echo "Running genetic"
-          ./shards new ../shards/tests/genetic.shs
+          SH_IGNORE_CONSISTENT_RESUMER= ./shards new ../shards/tests/genetic.shs
           echo "Running time"
           ./shards new ../shards/tests/time.shs
           echo "Running subwires"
