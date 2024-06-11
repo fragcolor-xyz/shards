@@ -159,7 +159,7 @@ impl EguiHost {
 }
 
 mod native {
-  use crate::bindings::{egui_Input};
+  use crate::bindings::egui_Input;
 
   use super::EguiHost;
   use shards::{
