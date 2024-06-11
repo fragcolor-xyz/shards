@@ -176,123 +176,133 @@ lazy_static! {
       .into(),
     (
       cstr!("MainDirection"),
-      shccstr!("The main direction of the UI element layout."),
+      shccstr!("The primary direction of the UI element layout."),
       &LAYOUT_DIRECTION_TYPES[..],
     )
       .into(),
     (
       cstr!("MainWrap"),
-      shccstr!("Whether the UI elements in the layout should wrap around when reaching the end of the direction of the cursor."),
+      shccstr!("Should UI elements wrap when reaching the end of the main direction."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("MainAlign"),
-      shccstr!("How the UI elements in the layout should be aligned on the main axis."),
+      shccstr!("Alignment of UI elements along the main axis."),
       &LAYOUT_ALIGN_TYPES[..],
     )
       .into(),
     (
       cstr!("MainJustify"),
-      shccstr!("Whether the UI elements in the layout should be justified along the main axis."),
+      shccstr!("Justification of UI elements along the main axis."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("CrossAlign"),
-      shccstr!("How the UI elements in the layout should be aligned on the cross axis."),
+      shccstr!("Alignment of UI elements along the cross axis."),
       &LAYOUT_ALIGN_TYPES[..],
     )
       .into(),
     (
       cstr!("CrossJustify"),
-      shccstr!("Whether the UI elements in the layout should be justified along the across axis."),
+      shccstr!("Justification of UI elements along the cross axis."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("MinSize"),
-      shccstr!("The minimum size of the space to be reserved by this UI for its contents. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("Minimum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("MaxSize"),
-      shccstr!("The maximum size of the space to be reserved by this UI for its contents. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("Maximum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
-    (cstr!("FillWidth"), shccstr!("Whether the Layout should take up the full width of the available space."), &BOOL_TYPES[..],).into(),
-    (cstr!("FillHeight"), shccstr!("Whether the Layout should take up the full height of the available space."), &BOOL_TYPES[..],).into(),
+    (
+      cstr!("FillWidth"),
+      shccstr!("Whether the layout should occupy the full width."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("FillHeight"),
+      shccstr!("Whether the layout should occupy the full height."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
     (
       cstr!("Disabled"),
-      shccstr!("Whether the drawn layout should be disabled or not."),
+      shccstr!("Whether the layout should be disabled."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Frame"),
-      shccstr!("The frame to be drawn around the layout."),
+      shccstr!("Frame to be drawn around the layout."),
       &LAYOUT_FRAME_TYPE_VEC[..],
     )
       .into(),
     (
       cstr!("EnableHorizontalScrollBar"),
-      shccstr!("Enable the horizontal scroll bar. If either this or EnableVerticalScrollBar is true, a ScrollArea will be created within the layout."),
+      shccstr!("Enable the horizontal scroll bar. Creates a ScrollArea if true."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("EnableVerticalScrollBar"),
-      shccstr!("Enable the vertical scroll bar. If either this or EnableHorizontalScrollBar is true, a ScrollArea will be created within the layout."),
+      shccstr!("Enable the vertical scroll bar. Creates a ScrollArea if true."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollBarVisibility"),
-      shccstr!("Whether the scroll bars of the scroll area should be AlwaysVisible, VisibleWhenNeeded, or Always Hidden. Default: AlwaysVisible"),
+      shccstr!("Visibility of the scroll bars: AlwaysVisible, VisibleWhenNeeded, or AlwaysHidden. Default: AlwaysVisible."),
       &SCROLL_VISIBILITY_TYPES[..],
     )
       .into(),
     (
       cstr!("ScrollAreaMinWidth"),
-      shccstr!("The minimum width of the scroll area to be drawn. Note: This is not the minimum width of the contents of the scroll area."),
+      shccstr!("Minimum width of the scroll area."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMinHeight"),
-      shccstr!("The minimum height of the scroll area to be drawn. Note: This is not the minimum height of the contents of the scroll area."),
+      shccstr!("Minimum height of the scroll area."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMaxWidth"),
-      shccstr!("The maximum width of the scroll area to be drawn. Note: This is not the maximum width of the contents of the scroll area."),
+      shccstr!("Maximum width of the scroll area."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaMaxHeight"),
-      shccstr!("The maximum height of the scroll area to be drawn. Note: This is not the maximum height of the contents of the scroll area."),
+      shccstr!("Maximum height of the scroll area."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaAutoShrinkWidth"),
-      shccstr!("Whether the scroll area's width should automatically shrink to fit the size of its contents."),
+      shccstr!("Auto-shrink scroll area width to fit contents."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaAutoShrinkHeight"),
-      shccstr!("Whether the scroll area's height should automatically shrink to fit the size of its contents."),
+      shccstr!("Auto-shrink scroll area height to fit contents."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("ScrollAreaEnableScrolling"),
-      shccstr!("Whether the scroll area's scrolling should be enabled. This is akin to the disable setting for UI elements."),
+      shccstr!("Enable scrolling in the scroll area."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
@@ -307,24 +317,34 @@ lazy_static! {
       .into(),
     (
       cstr!("Class"),
-      shccstr!("The Layout class describing all of the options relating to the layout of this UI."),
+      shccstr!("Layout class describing all layout options."),
       &LAYOUTCLASS_TYPE_VEC_VAR[..],
     )
-    .into(),
+      .into(),
     (
       cstr!("MinSize"),
-      shccstr!("The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("Minimum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("MaxSize"),
-      shccstr!("The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("Maximum space reserved for UI contents. Overridden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
-    (cstr!("FillWidth"), shccstr!("Whether the Layout should take up the full width of the available space."), &BOOL_TYPES[..],).into(),
-    (cstr!("FillHeight"), shccstr!("Whether the Layout should take up the full height of the available space."), &BOOL_TYPES[..],).into(),
+    (
+      cstr!("FillWidth"),
+      shccstr!("Whether the layout should occupy the full width."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("FillHeight"),
+      shccstr!("Whether the layout should occupy the full height."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
   ];
 }
 
@@ -370,6 +390,18 @@ impl LegacyShard for LayoutConstructor {
 
   fn name(&mut self) -> &str {
     "UI.LayoutClass"
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    "Not used.".into()
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    "A Layout class that can be used in other UI shards.".into()
+  }
+
+  fn help(&mut self) -> OptionalString {
+    "This shard creates a Layout class that can be used in other UI shards.".into()
   }
 
   fn inputTypes(&mut self) -> &Types {
