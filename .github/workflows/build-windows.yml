@@ -123,7 +123,7 @@ jobs:
       - name: Set up dev dependencies
         shell: bash
         run: |
-          choco install -y --force --version=17.0.6 llvm
+          choco install -y --force --version=18.1.6 llvm
           choco install -y cmake ninja
       - name: Build
         env:
@@ -250,6 +250,8 @@ jobs:
           ./shards ../shards/tests/loader.clj
           echo "Running network"
           ./shards new ../shards/tests/network.shs
+          echo "Running network-ws"
+          ./shards new ../shards/tests/network-ws.shs
           echo "Running struct"
           ./shards new ../shards/tests/struct.shs
           echo "Running flows"

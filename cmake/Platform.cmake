@@ -136,10 +136,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # static releases
-  if(WIN32)
-    add_link_options(-static)
-    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-static -DCMAKE_C_FLAGS=-static)
-  endif()
+  set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
 
   if(GNU_STATIC_BUILD)
     add_link_options(-static -static-libgcc -static-libstdc++)

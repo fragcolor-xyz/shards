@@ -17,8 +17,15 @@ endif()
 # Compiler to use
 list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER})
 list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER})
+
 if(WIN32)
   list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_RC_COMPILER=${CMAKE_RC_COMPILER})
+
+  # Append runtime library
+  if(CMAKE_MSVC_RUNTIME_LIBRARY)
+    message(STATUS "Overriding external project runtime library: ${CMAKE_MSVC_RUNTIME_LIBRARY}")
+    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY})
+  endif()
 endif()
 
 # Android flags
@@ -45,42 +52,44 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
 
   list(APPEND XCODE_ARGS -sdk ${XCODE_SDK} -arch ${CMAKE_SYSTEM_PROCESSOR})
   list(APPEND EXTERNAL_BUILD_ARGS --config ${EXTERNAL_BUILD_TYPE})
+
   if(XCODE_SDK MATCHES "macosx")
     set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}") # Debug-iphone, Release-iphonesimulator etc.
   else()
     set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}-${XCODE_SDK}") # Debug-iphone, Release-iphonesimulator etc.
   endif()
+
   set(XCODE TRUE)
 endif()
 
 # Utility function for adding external projects that generate static libraries
 #
 # Usage looks like:
-#   sh_add_external_project(
-#     NAME <name>
-#     TARGETS <targetName>
-#     REPO_ARGS <URL/GIT/etc.>
-#   )
+# sh_add_external_project(
+# NAME <name>
+# TARGETS <targetName>
+# REPO_ARGS <URL/GIT/etc.>
+# )
 #
 # This add a target named <targetName> that can be linked against
 # For additional parameters check the ARGS/MULTI_ARGS below
 function(sh_add_external_project)
   set(OPTS
-    INSTALL             # (Optional) When enabled, will build the external project using cmake install and reference the generated libraries through the generated instalation
+    INSTALL # (Optional) When enabled, will build the external project using cmake install and reference the generated libraries through the generated instalation
   )
   set(ARGS
-    NAME                # (Required) The name of the external project target
-    LIB_SUFFIX          # (Optional) String to append to library names ("-debug" => libsnappy-debug.a)
+    NAME # (Required) The name of the external project target
+    LIB_SUFFIX # (Optional) String to append to library names ("-debug" => libsnappy-debug.a)
   )
   set(MULTI_ARGS
-    TARGETS             # (Required) The list of target to build
-    LIB_NAMES           # (Optional) For each target, overrides the library name that is generated. If not set the library name is derived from the target name (snappy -> libsnappy.a, etc.)
-    LIB_RELATIVE_DIRS   # (Optional) For each target, overrides the location where the built library is found relative to the cmake binary directory (source/ -> source/libsnappy.a)
-    CMAKE_ARGS          # (Optional) Extra CMake arguments to pass to external project configure
-    REPO_ARGS           # (Required) Arguments to initialize the source repository (GIT_REPOSITORY, URL, etc.)
-    RELATIVE_INCLUDE_PATHS          # (Optional) Include paths relative to source dir added to targets (without INSTALL)
-    RELATIVE_BINARY_INCLUDE_PATHS   # (Optional) Include paths relative to binary dir added to targets (without INSTALL)
-    RELATIVE_INSTALL_INCLUDE_PATHS  # (Optional) Include paths relative to install dir added to targets (with INSTALL)
+    TARGETS # (Required) The list of target to build
+    LIB_NAMES # (Optional) For each target, overrides the library name that is generated. If not set the library name is derived from the target name (snappy -> libsnappy.a, etc.)
+    LIB_RELATIVE_DIRS # (Optional) For each target, overrides the location where the built library is found relative to the cmake binary directory (source/ -> source/libsnappy.a)
+    CMAKE_ARGS # (Optional) Extra CMake arguments to pass to external project configure
+    REPO_ARGS # (Required) Arguments to initialize the source repository (GIT_REPOSITORY, URL, etc.)
+    RELATIVE_INCLUDE_PATHS # (Optional) Include paths relative to source dir added to targets (without INSTALL)
+    RELATIVE_BINARY_INCLUDE_PATHS # (Optional) Include paths relative to binary dir added to targets (without INSTALL)
+    RELATIVE_INSTALL_INCLUDE_PATHS # (Optional) Include paths relative to install dir added to targets (with INSTALL)
   )
   cmake_parse_arguments(PROJ "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -91,6 +100,7 @@ function(sh_add_external_project)
   message(STATUS "  LIB_RELATIVE_DIRS: ${PROJ_LIB_RELATIVE_DIRS}")
   message(STATUS "  CMAKE_ARGS: ${PROJ_CMAKE_ARGS}")
   message(STATUS "  REPO_ARGS: ${PROJ_REPO_ARGS}")
+
   if(PROJ_INSTALL)
     message(STATUS "  RELATIVE_INSTALL_INCLUDE_PATHS: ${PROJ_RELATIVE_INSTALL_INCLUDE_PATHS}")
   else()
@@ -102,7 +112,8 @@ function(sh_add_external_project)
   if(PROJ_LIB_NAMES)
     list(LENGTH PROJ_LIB_NAMES A)
     list(LENGTH PROJ_TARGETS B)
-    if(NOT (A EQUAL B))
+
+    if(NOT(A EQUAL B))
       message(FATAL_ERROR "LIB_NAMES should have the same number of elements as TARGETS")
     endif()
   else()
@@ -111,6 +122,7 @@ function(sh_add_external_project)
       list(APPEND PROJ_LIB_NAMES ${TARGET})
     endforeach()
   endif()
+
   message(STATUS "  LIB_NAMES: ${LIB_NAMES}")
 
   set(PROJ_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME})
@@ -119,13 +131,15 @@ function(sh_add_external_project)
 
   # Resolve binary output directory when using configuration-specific generators
   set(PROJ_BINARY_DIR ${PROJ_PREFIX_PATH}/src/${PROJ_NAME}-build)
+
   if(XCODE)
     set(BINARY_CONFIG_DIR ${XCODE_CONFIG_BINARY_DIR}/)
   elseif(MSVC)
     set(BINARY_CONFIG_DIR ${EXTERNAL_BUILD_TYPE}/)
   else()
-    set(BINARY_CONFIG_DIR )
+    set(BINARY_CONFIG_DIR)
   endif()
+
   message(STATUS "  BINARY_CONFIG_DIR: ${BINARY_CONFIG_DIR}")
 
   if(NOT PROJ_LIB_RELATIVE_DIRS)
@@ -135,27 +149,30 @@ function(sh_add_external_project)
   else()
     list(LENGTH PROJ_LIB_RELATIVE_DIRS A)
     list(LENGTH PROJ_TARGETS B)
-    if(NOT (A EQUAL B))
+
+    if(NOT(A EQUAL B))
       message(FATAL_ERROR "LIB_RELATIVE_DIRS should have the same number of elements as TARGETS")
     endif()
   endif()
 
   # Resolve generated lib paths
   set(PROJ_LIBS)
+
   foreach(LIB_NAME REL_DIR IN ZIP_LISTS PROJ_LIB_NAMES PROJ_LIB_RELATIVE_DIRS)
     if(PROJ_INSTALL)
       set(LIB "${PROJ_INSTALL_PATH}/lib/${REL_DIR}${LIB_PREFIX}${LIB_NAME}${PROJ_LIB_SUFFIX}${LIB_SUFFIX}")
     else()
       set(LIB "${PROJ_BINARY_DIR}/${REL_DIR}${BINARY_CONFIG_DIR}${LIB_PREFIX}${LIB_NAME}${PROJ_LIB_SUFFIX}${LIB_SUFFIX}")
     endif()
+
     list(APPEND PROJ_LIBS "${LIB}")
   endforeach()
-
 
   if(PROJ_INSTALL)
     set(BUILD_TARGETS --target install)
   else()
     set(BUILD_TARGETS)
+
     foreach(TARGET ${PROJ_TARGETS})
       list(APPEND BUILD_TARGETS --target ${TARGET})
     endforeach()
@@ -171,7 +188,6 @@ function(sh_add_external_project)
     set(PROJ_INCLUDE_PATHS)
   endif()
 
-
   if(PROJ_INSTALL)
     # Append relative (to install path) include paths
     foreach(REL_INSTALL_INCLUDE_PATH ${PROJ_RELATIVE_INSTALL_INCLUDE_PATHS})
@@ -182,6 +198,7 @@ function(sh_add_external_project)
     foreach(REL_INCLUDE_PATH ${PROJ_RELATIVE_INCLUDE_PATHS})
       list(APPEND PROJ_INCLUDE_PATHS ${PROJ_PREFIX_PATH}/src/${PROJ_NAME}/${REL_INCLUDE_PATH})
     endforeach()
+
     foreach(REL_INCLUDE_PATH ${PROJ_RELATIVE_BINARY_INCLUDE_PATHS})
       list(APPEND PROJ_INCLUDE_PATHS ${PROJ_BINARY_DIR}/${REL_INCLUDE_PATH})
     endforeach()

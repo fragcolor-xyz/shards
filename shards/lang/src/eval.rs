@@ -3329,20 +3329,27 @@ fn eval_pipeline(
               }?;
 
               let iterations = if let Some(iterations) = iterations_param {
-                if let Value::Number(Number::Integer(n)) = &iterations.value {
-                  let iterations = u64::try_from(*n).map_err(|_| (
-                        "run built-in function requires an integer number in range of i64 iterations parameter",
-                        block.line_info.unwrap_or_default(),
-                    ).into())?;
-                  Ok(Some(iterations))
+                let v = as_var(
+                  &iterations.value,
+                  block.line_info.unwrap_or_default(),
+                  None,
+                  e,
+                )?;
+                let fv = match &v {
+                  SVar::NotCloned(v) => i64::try_from(v),
+                  SVar::Cloned(v) => i64::try_from(&v.0),
+                };
+
+                if let Ok(fv) = fv {
+                  Ok(Some(fv as u64))
                 } else {
                   Err(
-                    (
-                      "run built-in function requires an integer number iterations parameter",
-                      block.line_info.unwrap_or_default(),
+                      (
+                        "run built-in function requires an int number (or something that evaluates into it) iterations parameter",
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
                     )
-                      .into(),
-                  )
                 }
               } else {
                 Ok(None)
