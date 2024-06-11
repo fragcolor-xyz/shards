@@ -511,7 +511,6 @@ struct Transaction : public Base {
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
-    SPDLOG_INFO("Transaction inner state: {}", magic_enum::enum_name(state));
 
     {
       std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
