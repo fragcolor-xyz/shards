@@ -945,25 +945,25 @@ struct LayoutShard {
   #[shard_param(
     "MinSize",
     "Minimum reserved space for the UI. Overridden by FillWidth and FillHeight.",
-    FLOAT2_VAR_SLICE
+    FLOAT2_VAR_OR_NONE_SLICE
   )]
   min_size: ParamVar,
   #[shard_param(
     "MaxSize",
     "Maximum reserved space for the UI. Overridden by FillWidth and FillHeight.",
-    FLOAT2_VAR_SLICE
+    FLOAT2_VAR_OR_NONE_SLICE
   )]
   max_size: ParamVar,
   #[shard_param(
     "FillWidth",
     "Whether the layout should occupy the full width.",
-    BOOL_TYPES
+    BOOL_VAR_OR_NONE_SLICE
   )]
   fill_width: ParamVar,
   #[shard_param(
     "FillHeight",
     "Whether the layout should occupy the full height.",
-    BOOL_TYPES
+    BOOL_VAR_OR_NONE_SLICE
   )]
   fill_height: ParamVar,
 }
@@ -1055,7 +1055,7 @@ impl Shard for LayoutShard {
       return Err("No layout found in LayoutClass. LayoutClass is invalid/corrupted");
     };
 
-    let mut min_size = if !self.min_size.get().is_none() {
+    let min_size = if !self.min_size.get().is_none() {
       self.min_size.get().try_into()?
     } else {
       if let Some(min_size) = retrieve_layout_class_attribute!(layout_class, min_size) {
@@ -1065,7 +1065,7 @@ impl Shard for LayoutShard {
       }
     };
 
-    let mut max_size = if !self.max_size.get().is_none() {
+    let max_size = if !self.max_size.get().is_none() {
       Some(self.max_size.get().try_into()?)
     } else {
       if let Some(max_size) = retrieve_layout_class_attribute!(layout_class, max_size) {
