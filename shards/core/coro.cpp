@@ -6,6 +6,10 @@
 #include "utils.hpp"
 #include <memory>
 
+#if SH_DEBUG_CONSISTENT_RESUMER
+#include <SDL_stdinc.h>
+#endif
+
 namespace shards {
 #if SH_USE_THREAD_FIBER
 #define SH_DEBUG_THREAD_STACK_SIZE 2 * 1024 * 1024
@@ -77,6 +81,17 @@ ThreadFiber::operator bool() const { return !finished; }
 #else // SH_USE_THREAD_FIBER
 #ifndef __EMSCRIPTEN__
 
+#if SH_DEBUG_CONSISTENT_RESUMER
+static bool checkForConsistentResumer() {
+  static bool check = []() {
+    if (SDL_getenv("SH_IGNORE_CONSISTENT_RESUMER"))
+      return false;
+    return true;
+  }();
+  return check;
+}
+#endif
+
 Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
 void Fiber::init(std::function<void()> fn) {
   continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [=](boost::context::continuation &&sink) {
@@ -87,10 +102,18 @@ void Fiber::init(std::function<void()> fn) {
 }
 void Fiber::resume() {
   shassert(continuation);
+#if SH_DEBUG_CONSISTENT_RESUMER
+  if (checkForConsistentResumer() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
+    throw std::runtime_error("Fiber::resume() called from different thread");
+#endif
   continuation = continuation->resume();
 }
 void Fiber::suspend() {
   shassert(continuation);
+#if SH_DEBUG_CONSISTENT_RESUMER
+  if (checkForConsistentResumer() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
+    throw std::runtime_error("Fiber::suspend() called from different thread");
+#endif
   continuation = continuation->resume();
 }
 Fiber::operator bool() const { return continuation.has_value() && (bool)continuation.value(); }
