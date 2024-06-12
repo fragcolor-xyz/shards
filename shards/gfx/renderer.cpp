@@ -202,8 +202,6 @@ struct RendererImpl final : public ContextData {
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
       auto fallbackSize = viewStack.getOutput().size;
-      if (viewStack.size() > 1)
-        SPDLOG_LOGGER_DEBUG(getLogger(), "RenderInto");
       frameQueue->evaluate(outer, fallbackSize);
     }
 
