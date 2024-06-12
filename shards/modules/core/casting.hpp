@@ -270,7 +270,7 @@ template <SHType ToType> struct MakeVector {
     NumberType componentNumberType = _outputNumberType->isInteger ? NumberType::Int64 : NumberType::Float64;
     _componentConversion = numberTypeLookup.getConversion(componentNumberType, _outputNumberType->type);
 
-    // Check amount of set paramters
+    // Check amount of set parameters
     inputSize = 0;
     for (size_t i = 0; i < params.size(); i++) {
       if (params[i]->valueType == SHType::None) {
