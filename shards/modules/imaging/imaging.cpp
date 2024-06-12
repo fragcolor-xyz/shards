@@ -3,9 +3,9 @@
 
 #include "imaging.hpp"
 #include <shards/modules/core/file_base.hpp>
-#include <shards/core/module.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
+#include <shards/common_types.hpp>
 #include <fstream>
 
 #include "linalg.h"
@@ -61,7 +61,7 @@ struct Convolve {
     _bytes.reserve(_kernel * _kernel * 4); // assume max 4 channels
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _xindex = 0;
     _yindex = 0;
   }
@@ -180,11 +180,16 @@ private:
 };
 
 struct PremultiplyAlpha {
-  static SHOptionalString help() { return SHCCSTR(R"(Applies the premultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been premultiplied in Shards. This mainly applies to PNG images.)"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        R"(Applies the premultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been premultiplied in Shards. This mainly applies to PNG images.)");
+  }
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The image to apply the premultiplication of alpha channels to."); }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The image as a result of the application of the premultiplication of alpha channels."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The image as a result of the application of the premultiplication of alpha channels.");
+  }
 
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     premultiplyAlpha<T>(input, output, w, h);
@@ -227,11 +232,16 @@ private:
 };
 
 struct DemultiplyAlpha {
-  static SHOptionalString help() { return SHCCSTR(R"(Applies the demultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been demultiplied or never been premultiplied in Shards. This mainly applies to PNG images.)"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        R"(Applies the demultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been demultiplied or never been premultiplied in Shards. This mainly applies to PNG images.)");
+  }
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The image to apply the demultiplication of alpha channels to."); }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The image as a result of the application of the demultiplication of alpha channels."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The image as a result of the application of the demultiplication of alpha channels.");
+  }
 
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     demultiplyAlpha<T>(input, output, w, h);
@@ -357,7 +367,7 @@ struct Resize {
     _height.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _width.cleanup();
     _height.cleanup();
   }
@@ -449,7 +459,7 @@ struct ImageGetPixel {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   auto static constexpr Conv_UIntToFloat4 = [](const SHImage &image, auto *pixel) {
     constexpr float max = float(std::numeric_limits<std::remove_pointer_t<decltype(pixel)>>::max());
@@ -520,57 +530,40 @@ struct ImageGetPixel {
   }
 };
 
-struct LoadImage : public FileBase {
+struct LoadImage {
   enum class BPP { u8, u16, f32 };
   DECL_ENUM_INFO(BPP, BPP, 'ibpp');
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters params{FileBase::params,
-                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}},
-                                   {"PremultiplyAlpha",
-                                    SHCCSTR("Toggle premultiplication of alpha channels (E.g. To support PNG images)"),
-                                    {CoreInfo::BoolType}}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 1:
-      _bpp = BPP(value.payload.enumValue);
-      break;
-    case 2:
-      _premultiplyAlpha = value.payload.boolValue;
-      break;
-    default:
-      FileBase::setParam(index, value);
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 1:
-      return Var::Enum(_bpp, CoreCC, BPPEnumInfo::TypeId);
-    case 2:
-      return Var(_premultiplyAlpha);
-    default:
-      return FileBase::getParam(index);
-    }
-  }
+  PARAM_PARAMVAR(_filename, "File", "The file to load the image from", {CoreInfo::StringStringVarOrNone});
+  PARAM_VAR(_bpp, "BPP", "bits per pixel (HDR images loading and such!)", {BPPEnumInfo::Type});
+  PARAM_VAR(_premultiplyAlpha, "PremultiplyAlpha", "Toggle premultiplication of alpha channels (E.g. To support PNG images)",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filename), PARAM_IMPL_FOR(_bpp), PARAM_IMPL_FOR(_premultiplyAlpha));
 
   SHVar _output{};
-  BPP _bpp{BPP::u8};
-  bool _premultiplyAlpha{};
 
-  void cleanup(SHContext* context) {
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
     }
-
-    FileBase::cleanup(context);
   }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  BPP getBPP() const { return _bpp->isNone() ? BPP::u8 : BPP(_bpp->payload.enumValue); }
+  bool getPremultiplyAlpha() const { return _premultiplyAlpha->isNone() ? false : _premultiplyAlpha->payload.boolValue; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     bool bytesInput = input.valueType == SHType::Bytes;
@@ -592,7 +585,7 @@ struct LoadImage : public FileBase {
 
     if (!bytesInput) {
       // need a proper filename in this case
-      if (!getFilename(context, filename)) {
+      if (!getPathChecked(filename, _filename, true)) {
         throw ActivationError(fmt::format("File not found: {}!", filename));
       }
 
@@ -621,7 +614,7 @@ struct LoadImage : public FileBase {
 
     _output.valueType = SHType::Image;
     int x, y, n;
-    switch (_bpp) {
+    switch (getBPP()) {
     case BPP::u8:
       _output.payload.imageValue.data =
           reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
@@ -652,7 +645,7 @@ struct LoadImage : public FileBase {
 
     // Premultiply the alpha channel if premultiply option is chosen
     auto pixsize = getPixelSize(_output);
-    if (_premultiplyAlpha) {
+    if (getPremultiplyAlpha()) {
       // premultiply the alpha channel
       switch (pixsize) {
       case 1:
@@ -673,13 +666,20 @@ struct LoadImage : public FileBase {
   }
 };
 
-struct WritePNG : public FileBase {
+struct WritePNG {
+  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  SHTypesInfo outputTypes() { return OutputTypes; }
+  static SHOptionalString help() { return SHCCSTR(""); }
+
+  PARAM_PARAMVAR(_filename, "File", "The file to write the image to", {CoreInfo::StringStringVarOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filename));
+
   static inline Types OutputTypes = {{CoreInfo::BytesType, CoreInfo::ImageType}};
   std::vector<uint8_t> _scratch;
   std::vector<uint8_t> _output;
 
-  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
-  SHTypesInfo outputTypes() { return OutputTypes; }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   static void write_func(void *context, void *data, int size) {
     auto self = reinterpret_cast<WritePNG *>(context);
@@ -687,7 +687,9 @@ struct WritePNG : public FileBase {
     memcpy(self->_output.data(), data, size);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     // If param is none we output the bytes directly
     if (_filename->valueType == SHType::None) {
       return CoreInfo::BytesType;
@@ -701,7 +703,7 @@ struct WritePNG : public FileBase {
 
     std::string filename;
     if (_filename->valueType != SHType::None) {
-      if (!getFilename(context, filename, false)) {
+      if (!getPathChecked(filename, _filename, false)) {
         throw ActivationError("Path does not exist!");
       }
     }

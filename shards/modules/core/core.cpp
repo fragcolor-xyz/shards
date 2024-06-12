@@ -4,6 +4,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/hash.inl>
+#include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include "core.hpp"
 #include "pdqsort.h"
