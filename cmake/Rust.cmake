@@ -54,9 +54,14 @@ message(STATUS "RUST_CARGO_TARGET = ${RUST_CARGO_TARGET}")
 set(RUST_CARGO_FLAGS "" CACHE STRING "Flags added to rust builds")
 set(RUST_CARGO_FLAGS_INT ${RUST_CARGO_FLAGS})
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+# Set RUST_BUILD_TYPE to override the rust build type
+if(NOT RUST_BUILD_TYPE)
+  set(RUST_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+endif()
+
+if(RUST_BUILD_TYPE STREQUAL "Debug")
   set(RUST_BUILD_SUBDIR_CONFIGURATION debug)
-elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+elseif(RUST_BUILD_TYPE STREQUAL "RelWithDebInfo")
   set(RUST_CARGO_FLAGS_INT --profile rel-with-deb-info)
   set(RUST_BUILD_SUBDIR_CONFIGURATION rel-with-deb-info)
 else()
