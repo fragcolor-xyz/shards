@@ -168,7 +168,7 @@ impl Shard for CircleShard {
     }
     Ok(NONE_TYPES[0])
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let painter = ui.painter();
     let (cx, cy): (f32, f32) = self.center.get().try_into()?;

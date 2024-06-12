@@ -120,7 +120,7 @@ impl Shard for PopupWrapper {
       let id_info = ExposedInfo {
         exposedType: common_type::string,
         name: self.id.get_name(),
-        help: cstr!("The ID variable.").into(),
+        help: shccstr!("The ID variable."),
         ..ExposedInfo::default()
       };
       self.required.push(id_info);

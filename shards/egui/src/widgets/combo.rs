@@ -198,7 +198,7 @@ impl LegacyShard for Combo {
       let exp_info = ExposedInfo {
         exposedType: common_type::int,
         name: self.index.get_name(),
-        help: cstr!("The exposed int variable").into(),
+        help: shccstr!("The exposed int variable"),
         ..ExposedInfo::default()
       };
 

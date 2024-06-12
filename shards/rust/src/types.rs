@@ -767,24 +767,30 @@ impl ParameterInfo {
   }
 }
 
-impl From<&str> for OptionalString {
-  fn from(s: &str) -> OptionalString {
-    let cos = SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    };
-    OptionalString(cos)
+impl From<SHOptionalString> for OptionalString {
+  fn from(s: SHOptionalString) -> OptionalString {
+    OptionalString(s)
   }
 }
 
-impl From<&str> for SHOptionalString {
-  fn from(s: &str) -> SHOptionalString {
-    SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    }
-  }
-}
+// impl From<&str> for OptionalString {
+//   fn from(s: &str) -> OptionalString {
+//     let cos = SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     };
+//     OptionalString(cos)
+//   }
+// }
+
+// impl From<&str> for SHOptionalString {
+//   fn from(s: &str) -> SHOptionalString {
+//     SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     }
+//   }
+// }
 
 impl From<(&'static str, &[Type])> for ParameterInfo {
   fn from(v: (&'static str, &[Type])) -> ParameterInfo {

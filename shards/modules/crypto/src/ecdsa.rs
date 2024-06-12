@@ -103,7 +103,7 @@ impl LegacyShard for ECDSASign {
   }
 
   fn help(&mut self) -> OptionalString {
-    "Signs a message with the private key using the ECDSA algorithm.".into()
+    shccstr!("Signs a message with the private key using the ECDSA algorithm.").into()
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -111,7 +111,7 @@ impl LegacyShard for ECDSASign {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    "The message hash to sign with the private key, must be 32 bytes.".into()
+    shccstr!("The message hash to sign with the private key, must be 32 bytes.").into()
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -119,7 +119,7 @@ impl LegacyShard for ECDSASign {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    "The signature generated from signing the input message with the private key.".into()
+    shccstr!("The signature generated from signing the input message with the private key.").into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -190,7 +190,7 @@ impl LegacyShard for ECDSAPubKey {
   }
 
   fn help(&mut self) -> OptionalString {
-    "Generates the public key from the private key using the ECDSA algorithm.".into()
+    shccstr!("Generates the public key from the private key using the ECDSA algorithm.").into()
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -198,7 +198,7 @@ impl LegacyShard for ECDSAPubKey {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    "The private key to generate the public key from.".into()
+    shccstr!("The private key to generate the public key from.").into()
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -206,7 +206,7 @@ impl LegacyShard for ECDSAPubKey {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    "The public key generated from the private key.".into()
+    shccstr!("The public key generated from the private key.").into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -261,7 +261,7 @@ impl LegacyShard for ECDSAPrivKey {
   }
 
   fn help(&mut self) -> OptionalString {
-    "Generates the private key from the seed using the ECDSA algorithm.".into()
+    shccstr!("Generates the private key from the seed using the ECDSA algorithm.").into()
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -269,7 +269,7 @@ impl LegacyShard for ECDSAPrivKey {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    "The seed to generate the private key from.".into()
+    shccstr!("The seed to generate the private key from.").into()
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -277,7 +277,7 @@ impl LegacyShard for ECDSAPrivKey {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    "The private key generated from the seed.".into()
+    shccstr!("The private key generated from the seed.").into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -327,7 +327,8 @@ impl LegacyShard for ECDSARecover {
   }
 
   fn help(&mut self) -> OptionalString {
-    "Recovers the public key from the signature and message using the ECDSA algorithm.".into()
+    shccstr!("Recovers the public key from the signature and message using the ECDSA algorithm.")
+      .into()
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -335,7 +336,7 @@ impl LegacyShard for ECDSARecover {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    "The message hash to recover the public key from.".into()
+    shccstr!("The message hash to recover the public key from.").into()
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -343,7 +344,7 @@ impl LegacyShard for ECDSARecover {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    "The public key recovered from the signature and message.".into()
+    shccstr!("The public key recovered from the signature and message.").into()
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

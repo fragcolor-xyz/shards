@@ -109,7 +109,7 @@ impl Shard for ImageButton {
       let exp_info = ExposedInfo {
         exposedType: common_type::bool,
         name: self.selected.get_name(),
-        help: cstr!("The exposed bool variable").into(),
+        help: shccstr!("The exposed bool variable"),
         ..ExposedInfo::default()
       };
 

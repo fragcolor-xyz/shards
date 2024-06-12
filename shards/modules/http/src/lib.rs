@@ -209,7 +209,7 @@ impl RequestBase {
       let exp_info = ExposedInfo {
         exposedType: common_type::string_table,
         name: self.headers.get_name(),
-        help: cstr!("The headers associated with the request.").into(),
+        help: shccstr!("The headers associated with the request."),
         ..ExposedInfo::default()
       };
       self.required.push(exp_info);
@@ -218,7 +218,7 @@ impl RequestBase {
       let exp_info = ExposedInfo {
         exposedType: common_type::string,
         name: self.url.get_name(),
-        help: cstr!("The url to request to.").into(),
+        help: shccstr!("The url to request to."),
         ..ExposedInfo::default()
       };
       self.required.push(exp_info);

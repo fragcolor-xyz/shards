@@ -116,7 +116,7 @@ impl LegacyShard for PlotLine {
     let exp_info = ExposedInfo {
       exposedType: EGUI_PLOT_UI_TYPE,
       name: self.plot_ui.get_name(),
-      help: cstr!("The exposed UI plot context.").into(),
+      help: shccstr!("The exposed UI plot context."),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);

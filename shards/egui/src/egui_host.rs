@@ -30,7 +30,7 @@ impl Default for EguiHost {
       ExposedInfo {
         exposedType: EGUI_CTX_TYPE,
         name: instance.get_name(),
-        help: cstr!("The UI context.").into(),
+        help: shccstr!("The UI context."),
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
         global: false,
@@ -39,7 +39,7 @@ impl Default for EguiHost {
       ExposedInfo {
         exposedType: EGUI_UI_TYPE,
         name: parents.get_name(),
-        help: cstr!("The parent UI objects.").into(),
+        help: shccstr!("The parent UI objects."),
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
         global: false,

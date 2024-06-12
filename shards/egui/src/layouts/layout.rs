@@ -400,15 +400,15 @@ impl LegacyShard for LayoutConstructor {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    "Not used.".into()
+    shccstr!("Not used.").into()
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    "A Layout class that can be used in other UI shards.".into()
+    shccstr!("A Layout class that can be used in other UI shards.").into()
   }
 
   fn help(&mut self) -> OptionalString {
-    "This shard creates a Layout class that can be used in other UI shards.".into()
+    shccstr!("This shard creates a Layout class that can be used in other UI shards.").into()
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -537,7 +537,7 @@ impl LegacyShard for LayoutConstructor {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let mut has_parent = false;
 
     let parent_layout_class = if !self.parent.get().is_none() {
@@ -992,7 +992,7 @@ impl Shard for LayoutShard {
   }
 
   fn input_help(&mut self) -> OptionalString {
-    "Not used.".into()
+    shccstr!("Not used.").into()
   }
 
   fn output_types(&mut self) -> &Types {
@@ -1000,7 +1000,7 @@ impl Shard for LayoutShard {
   }
 
   fn output_help(&mut self) -> OptionalString {
-    "Passthrough the input.".into()
+    shccstr!("Passthrough the input.").into()
   }
 
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {

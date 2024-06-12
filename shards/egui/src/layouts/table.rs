@@ -270,7 +270,7 @@ impl LegacyShard for Table {
         let index_info = ExposedInfo {
           exposedType: common_type::int,
           name: self.row_index.get_name(),
-          help: cstr!("The row index.").into(),
+          help: shccstr!("The row index."),
           isMutable: false,
           isProtected: false,
           global: false,
