@@ -514,7 +514,16 @@ struct ServerShard : public NetworkBase {
       _serverVar = nullptr;
     }
 
+    if (_pool) {
+      SPDLOG_LOGGER_TRACE(logger, "Stopping all wires");
+      _pool->stopAll();
+    } else {
+      SPDLOG_LOGGER_TRACE(logger, "No pool to stop");
+    }
+
     _mesh.reset();
+
+    NetworkBase::cleanup(context);
 
     gcWires(context);
 
