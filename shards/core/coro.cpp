@@ -22,7 +22,11 @@ void ThreadFiber::init(std::function<void()> fn) {
   boost::thread::attributes attrs;
   attrs.set_stack_size(SH_DEBUG_THREAD_STACK_SIZE);
   thread.emplace(attrs, [=]() {
-    fn();
+    try {
+      fn();
+    } catch (std::exception &e) {
+      SHLOG_ERROR("ThreadFiber unhandled exception: {}", e.what());
+    }
 
     // Final suspend
     finished = true;
@@ -94,6 +98,9 @@ static bool checkForConsistentResumer() {
 
 Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
 void Fiber::init(std::function<void()> fn) {
+#if SH_DEBUG_CONSISTENT_RESUMER
+  consistentResumer.emplace(std::this_thread::get_id());
+#endif
   continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [=](boost::context::continuation &&sink) {
     continuation.emplace(std::move(sink));
     fn();

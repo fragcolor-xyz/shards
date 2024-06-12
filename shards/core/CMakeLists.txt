@@ -36,6 +36,10 @@ if(SHARDS_THREAD_FIBER)
   target_compile_definitions(shards-core PUBLIC SH_USE_THREAD_FIBER=1)
 endif()
 
+if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER)
+  target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)
+endif()
+
 if(WIN32)
   target_link_libraries(shards-core Boost::stacktrace_windbg_cached)
 
