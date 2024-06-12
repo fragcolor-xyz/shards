@@ -178,6 +178,7 @@ endif()
 add_compile_options(
   ${INLINING_FLAGS}
   $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+  $<$<COMPILE_LANGUAGE:CXX>:-Werror=return-type>
 )
 
 if(NOT MSVC)
