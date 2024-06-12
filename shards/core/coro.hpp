@@ -4,6 +4,8 @@
 #include <cassert>
 #include <variant>
 #include <functional>
+#include <thread>
+#include "platform.hpp"
 
 // TODO make it into a run-time param
 #ifndef NDEBUG
@@ -12,9 +14,19 @@
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
 
+// Enable to assert on consistent resuming
+// this is required to pass for the emscripten version to work correctly
+// since fiber state is stored on the calling JS stack
+#ifndef SH_DEBUG_CONSISTENT_RESUMER
+#define SH_DEBUG_CONSISTENT_RESUMER 0
+#endif
+
 // Defining SH_USE_THREAD_FIBER uses threads as fibers to aid in debugging
 // Set SHARDS_THREAD_FIBER=ON in cmake to enable
 #if SH_USE_THREAD_FIBER
+#if SH_DEBUG_CONSISTENT_RESUMER
+#error "SH_DEBUG_CONSISTENT_RESUMER is not supported with SH_USE_THREAD_FIBER"
+#endif
 #include <boost/context/continuation_fcontext.hpp>
 #include <boost/thread.hpp>
 #include <mutex>
@@ -81,6 +93,9 @@ struct Fiber {
 private:
   SHStackAllocator allocator;
   std::optional<boost::context::continuation> continuation;
+#if SH_DEBUG_CONSISTENT_RESUMER
+  std::optional<std::thread::id> consistentResumer;
+#endif
 
 public:
   Fiber(SHStackAllocator allocator);
