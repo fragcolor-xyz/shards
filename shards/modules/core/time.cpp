@@ -3,7 +3,7 @@
 
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
-#include <gfx/moving_average.hpp>
+#include <shards/gfx/moving_average.hpp>
 #include "time.hpp"
 
 namespace shards {

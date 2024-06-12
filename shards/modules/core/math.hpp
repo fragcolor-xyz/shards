@@ -196,7 +196,8 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
       if (_lhsVecType || _rhsVecType) {
         if (!_lhsVecType || !_rhsVecType)
-          throw ComposeError(fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
+          throw ComposeError(
+              fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
 
         bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
         if (!sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
@@ -348,6 +349,19 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
 template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
                                      CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
+
+  static SHParametersInfo parameters() {
+    static Types ParamTypes = []() {
+      static Types types = BinaryBase::MathTypesOrVar;
+      if constexpr (hasDispatchType(TOp::DispatchType_, DispatchType::BoolTypes)) {
+        types._types.push_back(CoreInfo::BoolType);
+        types._types.push_back(CoreInfo::BoolVarType);
+      }
+      return types;
+    }();
+    static ParamsInfo Info(ParamsInfo::Param("Operand", SHCCSTR("The operand for this operation."), ParamTypes));
+    return SHParametersInfo(Info);
+  }
 
   static SHTypesInfo inputTypes() {
     static Types types = []() {

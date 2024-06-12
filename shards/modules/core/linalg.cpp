@@ -7,7 +7,7 @@
 #include <shards/linalg_shim.hpp>
 #include <shards/math_ops.hpp>
 #include <linalg.h>
-#include <gfx/linalg.hpp>
+#include <shards/gfx/linalg.hpp>
 
 // Ok...
 #ifdef near
