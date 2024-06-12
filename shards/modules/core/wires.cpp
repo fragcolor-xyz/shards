@@ -1823,6 +1823,7 @@ struct TryMany : public ParallelBase {
       return wire->outputType;
     }
     }
+    __builtin_unreachable();
   }
 
   SHVar getInput(const SHVar &input, uint32_t index) override { return input.payload.seqValue.elements[index]; }
@@ -2235,6 +2236,7 @@ struct DoMany : public TryMany {
       return wire->outputType;
     }
     }
+    __builtin_unreachable();
   }
 
   void warmup(SHContext *context) {

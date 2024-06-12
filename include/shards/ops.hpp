@@ -511,6 +511,7 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Any:
     return true;
   }
+  __builtin_unreachable();
 }
 
 #undef SHVECTOR_CMP
