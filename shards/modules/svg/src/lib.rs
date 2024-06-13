@@ -108,10 +108,6 @@ impl Shard for ToImage {
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut opt = usvg::Options::default();
-    // Get file's absolute directory.
-    // opt.resources_dir = std::fs::canonicalize(&args[1]).ok().and_then(|p| p.parent().map(|p| p.to_path_buf()));
-    // opt.fontdb.load_system_fonts();
-    // opt.fontdb.set_generic_families();
 
     let ntree = match input.valueType {
       SHType_Bytes => usvg::Tree::from_data(input.try_into().unwrap(), &opt).map_err(|e| {
@@ -126,10 +122,11 @@ impl Shard for ToImage {
     }?;
 
     let (sx, sy): (i32, i32) = self.size.get().try_into().unwrap_or_default();
-    if sx < 0 || sy < 0 {
-      return Err("Invalid size");
-    }
-    let (w, h) = (sx as u32, sy as u32);
+    let (w, h) = if sx <= 0 || sy <= 0 {
+      (2, 2) // Fallback for negative size
+    } else {
+     (sx as u32, sy as u32)
+    };
 
     let (offset_x, offset_y): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
 
@@ -139,10 +136,10 @@ impl Shard for ToImage {
     };
 
     let pixmap_size = if w == 0 && h == 0 {
-      Ok(ntree.size.to_int_size())
+      ntree.size.to_int_size()
     } else {
-      IntSize::from_wh(w, h).ok_or("Invalid size")
-    }?;
+      IntSize::from_wh(w, h).expect("Invalid size")
+    };
 
     if self.pixmap.is_none() {
       self.pixmap = Some(
@@ -160,11 +157,17 @@ impl Shard for ToImage {
 
     let mut rtree = resvg::Tree::from_usvg(&ntree);
 
-    let padded_size = IntSize::from_wh(
-      pixmap_size.width() - pad_x * 2,
-      pixmap_size.height() - pad_y * 2,
-    )
-    .unwrap_or(IntSize::from_wh(2, 2).unwrap()); // Add a fallback to make small/negative sizes not fail
+    let padx_2 = pad_x * 2;
+    let pady_2 = pad_y * 2;
+    let padded_size = if padx_2 >= pixmap_size.width() || pady_2 >= pixmap_size.height() {
+      IntSize::from_wh(2, 2).unwrap() // Fallback
+    } else {
+      IntSize::from_wh(
+        pixmap_size.width() - pad_x * 2,
+        pixmap_size.height() - pad_y * 2,
+      )
+      .unwrap_or(IntSize::from_wh(2, 2).unwrap()) // Add a fallback to make small/negative sizes not fail
+    };
     rtree.size = padded_size.to_size();
 
     rtree.render(

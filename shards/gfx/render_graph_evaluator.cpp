@@ -106,8 +106,8 @@ WGPURenderPassDescriptor RenderGraphEvaluator::createRenderPassDescriptor(const 
       attachment.stencilLoadOp = WGPULoadOp_Undefined;
       attachment.stencilStoreOp = WGPUStoreOp_Undefined;
     } else {
-      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment {
-        .view = resolvedFrameTexture.view,
+      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
+          .view = resolvedFrameTexture.view,
       });
 
       std::visit(
@@ -255,6 +255,14 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   auto &context = renderer.getContext();
 
   computeFrameSizes(graph, outputs, fallbackSize);
+
+  for (auto &fs : frameSizes) {
+    if (fs.size.x == 0 || fs.size.y == 0) {
+      SPDLOG_LOGGER_WARN(getLogger(), "Frame is zero size, skipping render");
+      return;
+    }
+  }
+
   getFrameTextures(frameTextures, outputs, graph, context);
   validateOutputSizes(graph);
 

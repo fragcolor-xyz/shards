@@ -93,6 +93,7 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use std::sync::atomic::AtomicI32;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -2647,18 +2648,17 @@ impl From<&[u8]> for Var {
 }
 
 struct RefCounted<T> {
-  rc: i32,
+  rc: AtomicI32,
   value: T,
 }
 
 impl<T> RefCounted<T> {
   fn inc_ref(&mut self) {
-    self.rc += 1;
+    self.rc.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
   }
 
   fn dec_ref(&mut self) -> i32 {
-    self.rc -= 1;
-    self.rc
+    self.rc.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) - 1
   }
 }
 
@@ -2792,7 +2792,7 @@ impl Var {
   }
 
   pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
-    let rc = Box::new(RefCounted::<T> { rc: 0, value: obj });
+    let rc = Box::new(RefCounted::<T> { rc: AtomicI32::new(0), value: obj });
     unsafe {
       Var {
         valueType: SHType_Object,
