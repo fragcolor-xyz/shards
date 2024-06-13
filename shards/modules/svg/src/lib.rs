@@ -164,7 +164,7 @@ impl Shard for ToImage {
       pixmap_size.width() - pad_x * 2,
       pixmap_size.height() - pad_y * 2,
     )
-    .ok_or("Invalid padding")?;
+    .unwrap_or(IntSize::from_wh(2, 2).unwrap()); // Add a fallback to make small/negative sizes not fail
     rtree.size = padded_size.to_size();
 
     rtree.render(
