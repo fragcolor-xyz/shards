@@ -13,8 +13,8 @@ use shards::types::ParamVar;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
-use std::ptr::null_mut;
 use shards::util::from_raw_parts_allow_null;
+use std::ptr::null_mut;
 
 pub const TEXTURE_CC: i32 = fourCharacterCode(*b"tex_");
 

@@ -133,7 +133,10 @@ impl Image {
         &self.scaling_aware,
         texture.size_vec2(),
       );
-      let img = SizedTexture { id: texture.id(), size };
+      let img = SizedTexture {
+        id: texture.id(),
+        size,
+      };
       ui.image(img);
 
       Ok(*input)

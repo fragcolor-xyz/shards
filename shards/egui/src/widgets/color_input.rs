@@ -141,7 +141,7 @@ impl LegacyShard for ColorInput {
       let exp_info = ExposedInfo {
         exposedType: common_type::color,
         name: self.variable.get_name(),
-        help: cstr!("The exposed color variable").into(),
+        help: shccstr!("The exposed color variable"),
         ..ExposedInfo::default()
       };
 

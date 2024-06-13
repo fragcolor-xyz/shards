@@ -1601,7 +1601,9 @@ RUNTIME_SHARD_END(Not);
 // Register IsNan
 RUNTIME_CORE_SHARD_FACTORY(IsValidNumber);
 RUNTIME_SHARD_inputTypes(IsValidNumber);
+RUNTIME_SHARD_inputHelp(IsValidNumber);
 RUNTIME_SHARD_outputTypes(IsValidNumber);
+RUNTIME_SHARD_outputHelp(IsValidNumber);
 RUNTIME_SHARD_activate(IsValidNumber);
 RUNTIME_SHARD_END(IsValidNumber);
 
@@ -1898,7 +1900,9 @@ RUNTIME_SHARD_END(Slice);
 RUNTIME_CORE_SHARD_FACTORY(Limit);
 RUNTIME_SHARD_destroy(Limit);
 RUNTIME_SHARD_inputTypes(Limit);
+RUNTIME_SHARD_inputHelp(Limit);
 RUNTIME_SHARD_outputTypes(Limit);
+RUNTIME_SHARD_outputHelp(Limit);
 RUNTIME_SHARD_parameters(Limit);
 RUNTIME_SHARD_compose(Limit);
 RUNTIME_SHARD_setParam(Limit);

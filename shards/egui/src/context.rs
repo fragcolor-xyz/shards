@@ -137,7 +137,7 @@ impl Shard for ContextShard {
     let exp_info = ExposedInfo {
       exposedType: *INPUT_CONTEXT_TYPE,
       name: self.input_context.get_name(),
-      help: cstr!("The input context.").into(),
+      help: shccstr!("The input context."),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);

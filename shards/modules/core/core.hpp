@@ -94,9 +94,13 @@ struct BaseOpsBin {
   ParamVar _operand{shards::Var(0)};
   ExposedInfo _requiredVariables;
 
+  static SHOptionalString help() { return SHCCSTR("Compares the input value with a given value."); }
+
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to compare against the operand."); }
 
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The result of the comparison."); }
 
   SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
 
@@ -255,13 +259,20 @@ LOGIC_ALL_SEQ_OP(IsAllLessEqual, <=);
   RUNTIME_SHARD_END(NAME);
 
 struct Input {
+  static SHOptionalString help() { return SHCCSTR("The input value of the wire."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("No input is required."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value of the wire."); }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { return context->wireStack.back()->currentInput; }
 };
 
 struct Pause {
+  static SHOptionalString help() { return SHCCSTR("Pauses the wire for a given amount of time."); }
+
   ExposedInfo reqs{};
   static inline Parameters params{
       {"Time",
@@ -272,8 +283,10 @@ struct Pause {
   ParamVar time{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Passes the input value through."); }
 
   static SHParametersInfo parameters() { return params; }
 
@@ -339,9 +352,13 @@ struct PauseMs : public Pause {
 struct Comment {
   std::string _comment;
 
+  static SHOptionalString help() { return SHCCSTR("A comment shard that does nothing."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Passes the input value through."); }
 
   static inline Parameters params{{"Text", SHCCSTR("The comment's text."), {CoreInfo::StringType}}};
 
@@ -360,14 +377,18 @@ struct Comment {
 
 struct And {
   static SHOptionalString help() {
-    return SHCCSTR("Computes the logical AND between the input of this shard and the output of the next shard.");
+    return SHCCSTR("If the input of the preceding shard is true, the flow continues; otherwise, the flow stops. This shard is "
+                   "typically used within conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional "
+                   "flow, it might restart the current wire, which can be used as a trick in certain scenarios.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The first operand to be evaluated."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow continues; otherwise, it stops."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
@@ -375,7 +396,7 @@ struct And {
       context->rebaseFlow();
       return input;
     } else {
-      // Reason: We are done, input IS FALSE so we stop this flow
+      // Stop the flow
       context->returnFlow(input);
       return input;
     }
@@ -384,22 +405,27 @@ struct And {
 
 struct Or {
   static SHOptionalString help() {
-    return SHCCSTR("Computes the logical OR between the input of this shard and the output of the next shard.");
+    return SHCCSTR("Computes the logical OR between the input of this shard and the output of the next shard. If the input is "
+                   "true, the flow stops and succeeds; if false, the flow continues with the next shard. Typically used within "
+                   "conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional flow, it might restart "
+                   "the current wire, which can be used as a trick in certain scenarios.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The first operand to be evaluated."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow stops and succeeds; otherwise, the flow continues."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
-      // Reason: We are done, input IS TRUE so we succeed
+      // Stop the flow and succeed
       context->returnFlow(input);
       return input;
     } else {
-      // Continue the flow, with the initial input as next input!
+      // Continue the flow with the initial input
       context->rebaseFlow();
       return input;
     }
@@ -469,45 +495,91 @@ struct IsFalse {
 };
 
 struct Restart {
-  // Must ensure input is the same kind of wire root input
+  // Ensures the input type matches the wire root input type.
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.wire->inputType->basicType != SHType::None && data.inputType != data.wire->inputType)
-      throw ComposeError("Restart input and wire input type mismatch, Restart "
-                         "feeds back to the wire input, wire: " +
+    if (data.wire->inputType->basicType != SHType::None && data.inputType != data.wire->inputType) {
+      throw ComposeError("Restart input and wire input type mismatch. Restart feeds back to the wire input. Wire: " +
                          data.wire->name + " expected: " + type2Name(data.wire->inputType->basicType));
-    return data.inputType; // actually we are flow stopper
+    }
+    return data.inputType; // Actually, we are a flow stopper.
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     context->restartFlow(input);
     return input;
   }
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Restarts the current flow with the provided input. This shard is used to restart the execution of the current wire from "
+        "the beginning, using the same input. It ensures that the input type matches the wire's root input type. Note: This is a "
+        "flow stopper and will not continue to subsequent shards in the current execution sequence.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input to restart the wire with. Must match the wire's root input type.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard does not produce an output as it restarts the flow."); }
 };
 
 struct Return {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     context->returnFlow(input);
     return input;
   }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Stops the current flow and returns the provided input. This shard is used to exit the execution of the "
+                   "current wire early within loops or conditional flows, returning the specified input.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input to return (when supported) and stop the flow."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard does not produce an output as it stops the flow."); }
 };
 
 struct Fail {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     context->cancelFlow(SHSTRVIEW(input));
     return input;
   }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Stops the current flow and cancels the execution with the provided error message. This shard is used to "
+                   "signal an error and halt the execution of the current wire.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The error message to cancel the flow with."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard does not produce an output as it cancels the flow."); }
 };
 
 struct IsValidNumber {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(std::isnormal(input.payload.floatValue)); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input is a valid floating-point number (not zero, subnormal, infinity, or NaN). Returns true "
+                   "if the input is a normal floating-point number, otherwise returns false.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The floating-point number to be checked."); }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns true if the input is a valid normal floating-point number, otherwise returns false.");
+  }
 };
 
 struct IsAlmost {
@@ -553,10 +625,10 @@ struct IsAlmost {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_value.valueType != data.inputType.basicType)
-      throw SHException("Input and value types must match.");
+      throw ActivationError("Input and value types must match.");
 
     if (_threshold <= 0.0)
-      throw SHException("Threshold must be greater than 0.");
+      throw ActivationError("Threshold must be greater than 0.");
 
     return CoreInfo::BoolType;
   }
@@ -589,6 +661,15 @@ private:
 };
 
 struct NaNTo0 {
+  static SHOptionalString help() {
+    return SHCCSTR("Replaces NaN (Not a Number) values in the input with 0. This shard can handle both single float values and "
+                   "sequences of float values.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("A float value or a sequence of float values to be checked for NaN."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input with any NaN values replaced by 0."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatOrFloatSeq; }
 
@@ -787,8 +868,10 @@ struct SetBase : public VariableBase {
   bool _isExposed{false}; // notice this is used in Update only
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to be set to the variable."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value is passed through as the output."); }
 
   // Runs sanity checks on the target variable, returns the existing exposed type if any
   const SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
@@ -902,10 +985,6 @@ struct Set : public SetUpdateBase {
   SHTypeInfo _tableType{};
 
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
-
-  static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
-
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static inline Parameters setParamsInfo{
       setterParams, {{"Tracked", SHCCSTR("If the variable should be marked as tracked."), {CoreInfo::BoolType}}}};
@@ -1080,12 +1159,8 @@ struct Ref : public SetBase {
   bool _overwrite{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("Creates an immutable variable with a constant value. Once created this variable cannot be changed.");
+    return SHCCSTR("Creates an immutable reference variable. Once created this variable cannot be changed.");
   }
-
-  static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
-
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static inline Parameters getParamsInfo{
       getterParams,
@@ -1201,10 +1276,6 @@ struct Update : public SetUpdateBase {
   bool _isGlobal{false};
 
   static SHOptionalString help() { return SHCCSTR("Modifies the value of an existing mutable variable."); }
-
-  static SHOptionalString inputHelp() { return SHCCSTR("Input is the new value of the variable being updated."); }
-
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
@@ -1334,11 +1405,11 @@ struct Get : public VariableBase {
   std::vector<SHVar> _tableKeys{}; // should be fine not to be OwnedVar
   Shard *_shard{nullptr};
 
-  static inline Parameters getParamsInfo{getterParams,
-                                         {{"Default",
-                                           SHCCSTR("The default value to use to infer types and output if the variable is not "
-                                                   "set, key is not there and/or type mismatches."),
-                                           {CoreInfo::AnyType}}}};
+  static inline Parameters getParamsInfo{
+      getterParams,
+      {{"Default",
+        SHCCSTR("The default value used if the variable is not set, the key is not present, or there is a type mismatch."),
+        {CoreInfo::AnyType}}}};
 
   static SHParametersInfo parameters() { return getParamsInfo; }
 
@@ -1360,13 +1431,13 @@ struct Get : public VariableBase {
 
   void destroy() { freeDerivedInfo(_defaultType); }
 
-  static SHOptionalString help() { return SHCCSTR("Reads the value of the variable passed to it."); }
+  static SHOptionalString help() { return SHCCSTR("Reads the value of the specified variable."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output is the value read from the variable."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output is the value read from the specified variable."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _shard = const_cast<Shard *>(data.shard);
@@ -1736,18 +1807,18 @@ struct Push : public SeqBase {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Updates sequences and tables by pushing elements and/or sequences into them.");
+    return SHCCSTR("Pushes a new value into a sequence variable. If the variable does not exist, it will be created.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("Input is the update value to be pushed into the variables."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to push into the sequence."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline Parameters pushParams{
-      setterParams,
-      {{"Clear",
-        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
-        {CoreInfo::BoolType}}}};
+  static inline Parameters pushParams{setterParams,
+                                      {{"Clear",
+                                        SHCCSTR("Whether to clear this sequence at every wire iteration. This only works if it's "
+                                                "the first push. The default is true."),
+                                        {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return pushParams; }
 
@@ -1876,7 +1947,9 @@ struct Sequence : public SeqBase {
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
 
-  static SHOptionalString help() { return SHCCSTR("Creates an empty sequence (or table if a key is passed)."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Creates an empty sequence (or sequence in a table if a key is passed). Useful to declare and specify types.");
+  }
 
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
@@ -2063,7 +2136,7 @@ struct TableDecl : public VariableBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
-  static SHOptionalString help() { return SHCCSTR("Creates an empty table."); }
+  static SHOptionalString help() { return SHCCSTR("Creates an empty table. Useful to declare and specify types."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
@@ -2251,8 +2324,8 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Parses the value in passed to in the `:Name` parameter and returns the count of characters (if string "
-                   "passed), elements (if sequence passed), or key-value pairs (if table passed).");
+    return SHCCSTR("Outputs the count of characters (if the input is a string), elements (if the input is a sequence), or "
+                   "key-value pairs (if the input is a table). If the input type does not match any of these, it outputs 0.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -2260,29 +2333,29 @@ struct Count : SeqUser {
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
+    return SHCCSTR("Outputs the count of characters, elements, or key-value pairs in the specified variable. "
+                   "If the input type does not match, it outputs 0.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    return CoreInfo::IntType;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::IntType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == SHType::Seq)) {
+    switch (_cell->valueType) {
+    case SHType::Seq:
       return shards::Var(int64_t(_cell->payload.seqValue.len));
-    } else if (_cell->valueType == SHType::Table) {
+    case SHType::Table:
       return shards::Var(int64_t(_cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
-    } else if (_cell->valueType == SHType::Bytes) {
+    case SHType::Bytes:
       return shards::Var(int64_t(_cell->payload.bytesSize));
-    } else if (_cell->valueType == SHType::String) {
+    case SHType::String:
       return shards::Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
                                      ? _cell->payload.stringLen
                                      : strlen(_cell->payload.stringValue)));
-    } else {
+    default:
       return shards::Var(0);
     }
   }
@@ -2290,14 +2363,16 @@ struct Count : SeqUser {
 
 struct Clear : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "Removes all the elements of the sequence passed to it in the `:Name` parameter. Applicable only to sequences.");
+    return SHCCSTR("Clears all elements from the sequence or table passed to it. Applicable only to sequences and tables. For "
+                   "sequences, this operation is very fast as Shards recycles memory extensively. If the variable does not exist "
+                   "or the type is not a sequence or table, it simply passes through without failing.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     SeqUser::compose(data);
@@ -2318,17 +2393,16 @@ struct Clear : SeqUser {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == SHType::Seq)) {
-      // notice this is fine because destroyVar will destroy .cap later
-      // so we make sure we are not leaking Vars
+    if (_cell->valueType == SHType::Seq) {
+      // Resize the sequence to 0, clearing it
       shards::arrayResize(_cell->payload.seqValue, 0);
 
-      // sometimes we might have as input the same _cell!
-      // this is kind of a hack but helps UX
-      // we in that case output the same _cell with adjusted len!
-      if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
+      // If the input is the same sequence, adjust its length
+      if (input.payload.seqValue.elements == _cell->payload.seqValue.elements) {
         const_cast<SHVar &>(input).payload.seqValue.len = 0;
-    } else if(_cell->valueType == SHType::Table) {
+      }
+    } else if (_cell->valueType == SHType::Table) {
+      // Clear all key-value pairs in the table
       _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
     }
 
@@ -2338,23 +2412,23 @@ struct Clear : SeqUser {
 
 struct Shuffle : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Shuffles the elements of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+    return SHCCSTR("Shuffles the elements of the sequence variable. Works only on sequences. If the variable is not a sequence, "
+                   "it simply passes through without failing.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == SHType::Seq)) {
+    if (_cell->valueType == SHType::Seq) {
       shards::arrayShuffle(_cell->payload.seqValue);
-    } else {
-      throw ActivationError("Variable is not a sequence, failed to Shuffle.");
     }
 
     return input;
@@ -2363,34 +2437,32 @@ struct Shuffle : SeqUser {
 
 struct Drop : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Drops the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+    return SHCCSTR("Drops the last element of the sequence variable. Works only on sequences. If the variable is not a sequence, "
+                   "it simply passes through without failing.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == SHType::Seq)) {
+    if (_cell->valueType == SHType::Seq) {
       auto len = _cell->payload.seqValue.len;
-      // notice this is fine because destroyVar will destroy .cap later
-      // so we make sure we are not leaking Vars
       if (len > 0) {
+        // Resize the sequence to drop the last element
         shards::arrayResize(_cell->payload.seqValue, len - 1);
-      }
 
-      // sometimes we might have as input the same _cell!
-      // this is kind of a hack but helps UX
-      // we in that case output the same _cell with adjusted len!
-      if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
-        const_cast<SHVar &>(input).payload.seqValue.len = len - 1;
-    } else {
-      throw ActivationError("Variable is not a sequence, failed to Drop.");
+        // If the input is the same sequence, adjust its length
+        if (input.payload.seqValue.elements == _cell->payload.seqValue.elements) {
+          const_cast<SHVar &>(input).payload.seqValue.len = len - 1;
+        }
+      }
     }
 
     return input;
@@ -2399,29 +2471,29 @@ struct Drop : SeqUser {
 
 struct DropFront : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Drops the first element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+    return SHCCSTR("Drops the first element of the sequence variable. Works only on sequences. If the variable is not a "
+                   "sequence, it simply passes through without failing.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == SHType::Seq) && _cell->payload.seqValue.len > 0) {
+    if (_cell->valueType == SHType::Seq && _cell->payload.seqValue.len > 0) {
       auto &arr = _cell->payload.seqValue;
       shards::arrayDel(arr, 0);
-      // sometimes we might have as input the same _cell!
-      // this is kind of a hack but helps UX
-      // we in that case output the same _cell with adjusted len!
-      if (input.payload.seqValue.elements == arr.elements)
+
+      // If the input is the same sequence, adjust its length
+      if (input.payload.seqValue.elements == arr.elements) {
         const_cast<SHVar &>(input).payload.seqValue.len = arr.len;
-    } else {
-      throw ActivationError("Variable is not a sequence, failed to DropFront.");
+      }
     }
 
     return input;
@@ -2429,16 +2501,16 @@ struct DropFront : SeqUser {
 };
 
 struct Pop : SeqUser {
-  // TODO refactor like Push
   static SHOptionalString help() {
-    return SHCCSTR("Pops (drops as well as passes as output) the last element of the sequence variable passed in the `:Name` "
-                   "parameter. Works only on sequences.");
+    return SHCCSTR("Pops (removes and outputs) the last element of the sequence variable. Works only on sequences. If the "
+                   "variable is not a sequence or the sequence is empty, an error is thrown.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Element popped from the sequence."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The element popped from the sequence."); }
 
   SHVar _output{};
 
@@ -2504,16 +2576,16 @@ struct Pop : SeqUser {
 };
 
 struct PopFront : SeqUser {
-  // TODO refactor like push
   static SHOptionalString help() {
-    return SHCCSTR("Pops (drops as well as passes as output) the first element of the sequence variable passed in the `:Name` "
-                   "parameter. Works only on sequences.");
+    return SHCCSTR("Pops (removes and outputs) the first element of the sequence variable. Works only on sequences. If the "
+                   "variable is not a sequence or the sequence is empty, an error is thrown.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Element popped from the sequence."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The element popped from the sequence."); }
 
   SHVar _output{};
 
@@ -2592,10 +2664,12 @@ struct PopFront : SeqUser {
 
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Indices/Keys", SHCCSTR("One or more indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+      "Indices/Keys", SHCCSTR("One or more indices or keys to extract from a sequence or table."), CoreInfo::TakeTypes));
+
   static SHOptionalString help() {
-    return SHCCSTR("Extracts one or more elements/key-values from a sequence or a table by using the provided sequence "
-                   "index/indices or table key(s). Operation is non-destructive; doesn't modify target sequence/table.");
+    return SHCCSTR("Extracts one or more elements from a sequence or values from a table using the provided indices or keys. "
+                   "This operation is non-destructive and does not modify the target sequence or table. If the key cannot be "
+                   "established to exist at compose time, the output will be of type Any.");
   }
 
   SHSeq _cachedSeq{};
@@ -2630,12 +2704,17 @@ struct Take {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Indexables; }
+
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence or table from which elements/key-values have to be extracted.");
+    return SHCCSTR("The sequence or table from which elements or values will be extracted.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The extracted elements/key-values."); }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The extracted elements from a sequence or values from a table. If the key cannot be established to exist at "
+                   "compose time, the output will be of type Any.");
+  }
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
@@ -2958,11 +3037,11 @@ struct Take {
 };
 
 struct RTake : public Take {
-  // works only for seqs tho
-  // TODO need to add string and bytes
+  // Works only for sequences
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", SHCCSTR("One or more indices (counted backwards from the last element) to extract from a sequence."),
       CoreInfo::RTakeTypes));
+
   static SHOptionalString help() {
     return SHCCSTR("Works exactly like `Take` except that the selection indices are counted backwards from the last element in "
                    "the target sequence. Also, `RTake` works only on sequences, not on tables.");
@@ -2971,9 +3050,11 @@ struct RTake : public Take {
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::RIndexables; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The sequence from which elements have to be extracted."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence from which elements will be extracted."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
   static SHOptionalString outputHelp() { return SHCCSTR("The extracted elements."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -3345,9 +3426,21 @@ struct Limit {
     }
   }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Extracts a specified number of elements from the beginning of the input sequence. This operation is "
+                   "non-destructive and does not modify the target sequence.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
+  static SHOptionalString inputHelp() { return SHCCSTR("The input sequence from which elements will be extracted."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The extracted elements from the input sequence. If the input sequence contains multiple types, the output "
+                   "will be a sequence of those types.");
+  }
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
@@ -3396,12 +3489,16 @@ struct Limit {
 };
 
 struct ForRangeShard {
-  static SHOptionalString help() { return SHCCSTR("Executes a shard while an iteration value is within a range."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Executes a series of shards while an iteration value is within a specified range.");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The input value is not used and will pass through."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is not used and will pass through unchanged."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
   static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
   static inline Parameters _params = {
@@ -3553,7 +3650,7 @@ struct Repeat {
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input will be passed to both the action and the `:Until` condition if used.");
+    return SHCCSTR("The input will be passed to both the action and the `Until` condition if used.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }

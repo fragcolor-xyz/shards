@@ -173,7 +173,7 @@ macro_rules! impl_ui_input {
           let exp_info = ExposedInfo {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
-            help: cstr!("The exposed variable").into(),
+            help: shccstr!("The exposed variable"),
             ..ExposedInfo::default()
           };
 
@@ -385,7 +385,7 @@ macro_rules! impl_ui_n_input {
           let exp_info = ExposedInfo {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
-            help: cstr!("The exposed variable").into(),
+            help: shccstr!("The exposed variable"),
             ..ExposedInfo::default()
           };
 

@@ -19,7 +19,7 @@ lazy_static! {
 }
 
 #[derive(shard)]
-#[shard_info("UI.Canvas", "desc")]
+#[shard_info("UI.Canvas", "A canvas to draw UI elements on")]
 struct CanvasShard {
   #[shard_param("Contents", "", SHARDS_OR_NONE_TYPES)]
   pub contents: ShardsVar,
@@ -108,7 +108,7 @@ impl Shard for CanvasShard {
 }
 
 #[derive(shard)]
-#[shard_info("UI.PaintCircle", "desc")]
+#[shard_info("UI.PaintCircle", "Draw a circle on the canvas")]
 struct CircleShard {
   #[shard_param("Center", "Center of the circle", FLOAT2_VAR_TYPES)]
   pub center: ParamVar,
@@ -168,7 +168,7 @@ impl Shard for CircleShard {
     }
     Ok(NONE_TYPES[0])
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let painter = ui.painter();
     let (cx, cy): (f32, f32) = self.center.get().try_into()?;

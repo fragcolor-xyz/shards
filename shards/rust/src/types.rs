@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
-
 use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
@@ -768,24 +767,30 @@ impl ParameterInfo {
   }
 }
 
-impl From<&str> for OptionalString {
-  fn from(s: &str) -> OptionalString {
-    let cos = SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    };
-    OptionalString(cos)
+impl From<SHOptionalString> for OptionalString {
+  fn from(s: SHOptionalString) -> OptionalString {
+    OptionalString(s)
   }
 }
 
-impl From<&str> for SHOptionalString {
-  fn from(s: &str) -> SHOptionalString {
-    SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    }
-  }
-}
+// impl From<&str> for OptionalString {
+//   fn from(s: &str) -> OptionalString {
+//     let cos = SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     };
+//     OptionalString(cos)
+//   }
+// }
+
+// impl From<&str> for SHOptionalString {
+//   fn from(s: &str) -> SHOptionalString {
+//     SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     }
+//   }
+// }
 
 impl From<(&'static str, &[Type])> for ParameterInfo {
   fn from(v: (&'static str, &[Type])) -> ParameterInfo {
@@ -4693,6 +4698,31 @@ macro_rules! __impl_shenum {
       #[inline(always)]
       fn from(info: $SHEnum) -> Self {
         info.bits
+      }
+    }
+
+    impl From<$SHEnum> for shards::types::Var {
+      #[inline(always)]
+      fn from(info: $SHEnum) -> Self {
+        /*
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId = vendor;
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId = enum_type;
+        */
+        shards::types::Var {
+          valueType: shards::SHType_Enum,
+          payload: shards::SHVarPayload {
+            __bindgen_anon_1: shards::SHVarPayload__bindgen_ty_1 {
+              __bindgen_anon_3: shards::SHVarPayload__bindgen_ty_1__bindgen_ty_3 {
+                enumValue: info.bits,
+                enumVendorId: FRAG_CC,
+                // $SHEnumCC from other macro to resolve, concat_idents!($SHEnum, CC),
+                enumTypeId: concat_idents!($SHEnum, CC),
+              },
+            },
+          },
+          ..Default::default()
+        }
       }
     }
   };

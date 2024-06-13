@@ -76,7 +76,7 @@ impl Shard for MnemonicGenerate {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let size: i64 = input.try_into().unwrap();
     let mnemonic_type = match size {
       12  => MnemonicType::Words12,

@@ -135,7 +135,7 @@ It receives the `input` of the shard and should return an output (it can be `Var
 ```rust
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if !self.my_shards.is_empty() {
-      let mut output = Var::default();      
+      let mut output = Var::default();
       let wire_state = self.my_shards.activate(context, self.my_param.get(), &mut output);
       if wire_state == WireState::Error {
         return Err("Failed to activate contents");
@@ -153,7 +153,7 @@ If the shards has parameters, additional functions should be implemented.
 
 ```rust
 
-impl LegacyShard for MyShard {    
+impl LegacyShard for MyShard {
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
@@ -299,7 +299,7 @@ Implement this function when a shard can receive a variable as parameter that do
       let exp_info = ExposedInfo {
         exposedType: common_type::int,
         name: self.my_param.get_name(),
-        help: cstr!("The exposed variable").into(),
+        help: shccstr!("The exposed variable"),
         ..ExposedInfo::default()
       };
 
@@ -370,7 +370,7 @@ In a similar but opposite way to `exposedVariables()`, a shard might require tha
     let exp_info = ExposedInfo {
       exposedType: common_type::int,
       name: self.my_param.get_name(),
-      help: cstr!("The integer parameter").into(),
+      help: shccstr!("The integer parameter"),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
