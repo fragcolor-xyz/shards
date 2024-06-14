@@ -1623,7 +1623,12 @@ struct GetEnumTypeHelp {
     _output["values"] = std::move(values);
     auto descriptions = SeqVar{};
     for (uint32_t i = 0; i < info.descriptions.len; i++) {
-      descriptions.emplace_back(Var(info.descriptions.elements[i].string));
+      // string can be null
+      if (info.descriptions.elements[i].string == nullptr) {
+        descriptions.emplace_back(Var(""));
+      } else {
+        descriptions.emplace_back(Var(info.descriptions.elements[i].string));
+      }
     }
     _output["descriptions"] = std::move(descriptions);
 
@@ -1645,6 +1650,10 @@ struct GetObjectTypeHelp {
     }
 
     auto &info = it->second;
+    if(info.name == nullptr) {
+      throw ActivationError(fmt::format("Object type {} has no name", id));
+    }
+
     _output["name"] = Var(info.name);
     _output["isThreadSafe"] = Var(info.isThreadSafe);
 
