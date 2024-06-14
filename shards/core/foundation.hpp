@@ -981,6 +981,7 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
     SHWire::deleteRef(var.payload.wireValue);
     break;
   default:
+    shassert(var.valueType < SHType::EndOfBlittableTypes && "Non blittable type in destroyVar unhandled");
     break;
   };
 

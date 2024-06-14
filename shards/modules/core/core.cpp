@@ -1489,6 +1489,8 @@ struct GetEnumTypes {
   SeqVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
     for (auto [id, _] : shards::GetGlobals().EnumTypesRegister) {
       _output.emplace_back(Var(id));
     }
@@ -1503,9 +1505,12 @@ struct GetObjectTypes {
   SeqVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
     for (auto [id, _] : shards::GetGlobals().ObjectTypesRegister) {
       _output.emplace_back(Var(id));
     }
+
     return _output;
   }
 };
