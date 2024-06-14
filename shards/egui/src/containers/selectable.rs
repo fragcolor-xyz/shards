@@ -4,11 +4,9 @@ use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
 use egui::Id;
-use egui::Rect;
 use egui::Rgba;
 use egui::Sense;
 use egui::Stroke;
-use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::BOOL_TYPES;
@@ -56,10 +54,6 @@ struct Selectable {
     STRING_VAR_OR_NONE_SLICE
   )]
   id: ParamVar,
-  #[shard_param("FillWidth", "Fill in width.", BOOL_VAR_OR_NONE_SLICE)]
-  fill_width: ParamVar,
-  #[shard_param("FillHeight", "Fill in height.", BOOL_VAR_OR_NONE_SLICE)]
-  fill_height: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -67,7 +61,6 @@ struct Selectable {
   #[shard_required]
   required: ExposedTypes,
   inner_exposed: ExposedTypes,
-  last_size: Option<Vec2>,
   last_clicked: [Option<Id>; 2],
 }
 
@@ -84,10 +77,7 @@ impl Default for Selectable {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
-      last_size: None,
       last_clicked: [None, None],
-      fill_width: ParamVar::default(),
-      fill_height: ParamVar::default(),
     }
   }
 }
@@ -182,50 +172,12 @@ impl Shard for Selectable {
       }
     };
 
-    let fill_w: bool = self.fill_width.get().try_into().unwrap_or(false);
-    let fill_h: bool = self.fill_height.get().try_into().unwrap_or(false);
-
     // Draw frame and contents
     let inner_response = with_possible_panic(|| {
       ui.push_id(id, |ui| {
-        if let Some(last_size) = self.last_size {
-          let rect = Rect::from_min_size(ui.cursor().min, last_size);
-          let resp = ui.interact(rect, id.with("context"), Sense::click());
-          // eprintln!("SI hover: {}, clicked: {}, sc: {}", resp.hovered(), resp.clicked(), resp.secondary_clicked());
-
-          let mut err: Option<&str> = None;
-          if let Some(resp) = resp.context_menu(|ui| {
-            err = util::activate_ui_contents(
-              context,
-              input,
-              ui,
-              &mut self.parents,
-              &mut self.context_menu,
-            )
-            .err();
-          }) {
-            // resp = resp.response;
-          }
-        }
-        let max_size = ui.available_size();
-        // if fill_w {
-        //   new_size.x = ui.available_width();
-        // }
-        // if fill_h {
-        //   new_size.y = ui.available_height();
-        // }
-        let result = Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
+        Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        });
-        let mut new_size = ui.min_size();
-        // if fill_w {
-        //   new_size.x = f32::max(new_size.x, max_size.x);
-        // }
-        // if fill_h {
-        //   new_size.y = f32::max(new_size.y, max_size.y);
-        // }
-        self.last_size = Some(new_size);
-        result
+        })
       })
       .inner
     })?;
@@ -235,25 +187,25 @@ impl Shard for Selectable {
     let mut response = inner_response.response;
 
     // Find clicks in other UI elements, and ignore selection response in that case
-    // let ignore_click = ui_ctx.override_selection_response.is_some();
+    let ignore_click = ui_ctx.override_selection_response.is_some();
 
-    // if !ignore_click && !self.context_menu.is_empty() {
-    //   let mut err: Option<&str> = None;
-    //   if let Some(resp) = response.context_menu(|ui| {
-    //     err = util::activate_ui_contents(
-    //       context,
-    //       input,
-    //       ui,
-    //       &mut self.parents,
-    //       &mut self.context_menu,
-    //     )
-    //     .err();
-    //   }) {
-    //     response = resp.response;
-    //   }
-    // }
+    // if !self.context_menu.is_empty() {
+    if !ignore_click && !self.context_menu.is_empty() {
+      let mut err: Option<&str> = None;
+      if let Some(resp) = response.context_menu(|ui| {
+        err = util::activate_ui_contents(
+          context,
+          input,
+          ui,
+          &mut self.parents,
+          &mut self.context_menu,
+        )
+        .err();
+      }) {
+        response = resp.response;
+      }
+    }
 
-    /*
     if response.hovered() && !ignore_click {
       if ui.input(|i| {
         i.pointer
@@ -287,7 +239,7 @@ impl Shard for Selectable {
         self.last_clicked[1] = self.last_clicked[0];
         self.last_clicked[0] = Some(id);
       }
-    } */
+    }
 
     // Outputs whether the contents are selected or not
     Ok(is_selected.into())
