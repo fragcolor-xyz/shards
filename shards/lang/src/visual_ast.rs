@@ -92,6 +92,10 @@ impl Visitor for VisualAst {
   fn v_take_seq(&mut self, pair: pest::iterators::Pair<Rule>) {
     todo!()
   }
+
+  fn v_end(&mut self, pair: pest::iterators::Pair<Rule>) {
+    todo!()
+  }
 }
 
 pub fn render_ast(code: &str) {
