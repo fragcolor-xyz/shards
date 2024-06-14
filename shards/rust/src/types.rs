@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
-
 use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
@@ -94,6 +93,7 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use std::sync::atomic::AtomicI32;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -768,24 +768,30 @@ impl ParameterInfo {
   }
 }
 
-impl From<&str> for OptionalString {
-  fn from(s: &str) -> OptionalString {
-    let cos = SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    };
-    OptionalString(cos)
+impl From<SHOptionalString> for OptionalString {
+  fn from(s: SHOptionalString) -> OptionalString {
+    OptionalString(s)
   }
 }
 
-impl From<&str> for SHOptionalString {
-  fn from(s: &str) -> SHOptionalString {
-    SHOptionalString {
-      string: s.as_ptr() as *const std::os::raw::c_char,
-      crc: 0, // TODO
-    }
-  }
-}
+// impl From<&str> for OptionalString {
+//   fn from(s: &str) -> OptionalString {
+//     let cos = SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     };
+//     OptionalString(cos)
+//   }
+// }
+
+// impl From<&str> for SHOptionalString {
+//   fn from(s: &str) -> SHOptionalString {
+//     SHOptionalString {
+//       string: s.as_ptr() as *const std::os::raw::c_char,
+//       crc: 0, // TODO
+//     }
+//   }
+// }
 
 impl From<(&'static str, &[Type])> for ParameterInfo {
   fn from(v: (&'static str, &[Type])) -> ParameterInfo {
@@ -827,7 +833,7 @@ impl From<SHTypeInfo> for ClonedVar {
   fn from(t: SHTypeInfo) -> Self {
     let mut var = Var::default();
     var.valueType = SHType_Type;
-    var.payload.__bindgen_anon_1.typeValue = Box::into_raw(Box::new(t)) as *mut SHTypeInfo;
+    var.payload.__bindgen_anon_1.typeValue = &t as *const SHTypeInfo as *mut SHTypeInfo; // Directly assign the pointer
     let mut cloned = ClonedVar::default();
     cloneVar(&mut cloned.0, &var);
     cloned
@@ -2642,18 +2648,17 @@ impl From<&[u8]> for Var {
 }
 
 struct RefCounted<T> {
-  rc: i32,
+  rc: AtomicI32,
   value: T,
 }
 
 impl<T> RefCounted<T> {
   fn inc_ref(&mut self) {
-    self.rc += 1;
+    self.rc.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
   }
 
   fn dec_ref(&mut self) -> i32 {
-    self.rc -= 1;
-    self.rc
+    self.rc.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) - 1
   }
 }
 
@@ -2787,7 +2792,7 @@ impl Var {
   }
 
   pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
-    let rc = Box::new(RefCounted::<T> { rc: 0, value: obj });
+    let rc = Box::new(RefCounted::<T> { rc: AtomicI32::new(0), value: obj });
     unsafe {
       Var {
         valueType: SHType_Object,
@@ -4693,6 +4698,31 @@ macro_rules! __impl_shenum {
       #[inline(always)]
       fn from(info: $SHEnum) -> Self {
         info.bits
+      }
+    }
+
+    impl From<$SHEnum> for shards::types::Var {
+      #[inline(always)]
+      fn from(info: $SHEnum) -> Self {
+        /*
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId = vendor;
+          v.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId = enum_type;
+        */
+        shards::types::Var {
+          valueType: shards::SHType_Enum,
+          payload: shards::SHVarPayload {
+            __bindgen_anon_1: shards::SHVarPayload__bindgen_ty_1 {
+              __bindgen_anon_3: shards::SHVarPayload__bindgen_ty_1__bindgen_ty_3 {
+                enumValue: info.bits,
+                enumVendorId: FRAG_CC,
+                // $SHEnumCC from other macro to resolve, concat_idents!($SHEnum, CC),
+                enumTypeId: concat_idents!($SHEnum, CC),
+              },
+            },
+          },
+          ..Default::default()
+        }
       }
     }
   };

@@ -625,8 +625,8 @@ struct SHVarPayload {
 // this marks a variable external and even if references are counted
 // it won't be destroyed automatically
 #define SHVAR_FLAGS_EXTERNAL (1 << 2)
-// this marks the variable exported, can be set inside a (Set) shard
-#define SHVAR_FLAGS_EXPOSED (1 << 3)
+// this marks the variable tracked, can be set inside a (Set) shard
+#define SHVAR_FLAGS_TRACKED (1 << 3)
 // this marks the variable as a foreign variable, to prevent destruction
 // when used inside seq and table
 #define SHVAR_FLAGS_FOREIGN (1 << 4)

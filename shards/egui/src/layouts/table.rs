@@ -30,9 +30,9 @@ use shards::types::ANYS_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SEQ_OF_ANY_TABLE_TYPES;
 use shards::types::SEQ_OF_SHARDS_TYPES;
+use shards::util::from_raw_parts_allow_null;
 use std::cmp::Ordering;
 use std::ffi::CStr;
-use shards::util::from_raw_parts_allow_null;
 
 lazy_static! {
   static ref TABLE_PARAMETERS: Parameters = vec![
@@ -270,7 +270,7 @@ impl LegacyShard for Table {
         let index_info = ExposedInfo {
           exposedType: common_type::int,
           name: self.row_index.get_name(),
-          help: cstr!("The row index.").into(),
+          help: shccstr!("The row index."),
           isMutable: false,
           isProtected: false,
           global: false,

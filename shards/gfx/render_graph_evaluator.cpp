@@ -23,14 +23,14 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
 
   // Entire texture view
   auto resolve = [&](TexturePtr texture) {
-    return ResolvedFrameTexture(texture, storage.getTextureView(texture->createContextDataConditionalRefUNSAFE(context), 0, 0));
+    TextureContextData &cd = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, texture);
+    return ResolvedFrameTexture(texture, storage.getTextureView(cd, 0, 0));
   };
 
   // Subresource texture view
   auto resolveSubResourceView = [&](const TextureSubResource &resource) {
-    return ResolvedFrameTexture(resource.texture,
-                                storage.getTextureView(resource.texture->createContextDataConditionalRefUNSAFE(context),
-                                                       resource.faceIndex, resource.mipIndex));
+    TextureContextData &cd = storage.contextDataStorage.getCreateOrUpdate(context, storage.frameCounter, resource.texture);
+    return ResolvedFrameTexture(resource.texture, storage.getTextureView(cd, resource.faceIndex, resource.mipIndex));
   };
 
   for (auto &frame : graph.frames) {
@@ -106,8 +106,8 @@ WGPURenderPassDescriptor RenderGraphEvaluator::createRenderPassDescriptor(const 
       attachment.stencilLoadOp = WGPULoadOp_Undefined;
       attachment.stencilStoreOp = WGPUStoreOp_Undefined;
     } else {
-      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment {
-        .view = resolvedFrameTexture.view,
+      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
+          .view = resolvedFrameTexture.view,
       });
 
       std::visit(
@@ -255,6 +255,14 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   auto &context = renderer.getContext();
 
   computeFrameSizes(graph, outputs, fallbackSize);
+
+  for (auto &fs : frameSizes) {
+    if (fs.size.x == 0 || fs.size.y == 0) {
+      SPDLOG_LOGGER_WARN(getLogger(), "Frame is zero size, skipping render");
+      return;
+    }
+  }
+
   getFrameTextures(frameTextures, outputs, graph, context);
   validateOutputSizes(graph);
 

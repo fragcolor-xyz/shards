@@ -36,14 +36,16 @@ struct Base {
   SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
 
   static SHTypesInfo inputTypes() { return MathTypes; }
+
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.");
+    return SHCCSTR("Any valid integer(s), floating point number(s), or a sequence of these types supported by this operation.");
   }
 
   static SHTypesInfo outputTypes() { return MathTypes; }
+
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The result of the operation, usually in the same type as "
-                   "the input value.");
+    return SHCCSTR("The result of the operation, usually in the same type as the input value. If the input is a sequence, the "
+                   "output will be a sequence of results, with possible broadcasting according to the input and operand.");
   }
 };
 
@@ -196,7 +198,8 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
       if (_lhsVecType || _rhsVecType) {
         if (!_lhsVecType || !_rhsVecType)
-          throw ComposeError(fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
+          throw ComposeError(
+              fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
 
         bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
         if (!sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
@@ -362,7 +365,7 @@ template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static SHTypesInfo outputTypes() { return inputTypes(); }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any valid integer(s) or a sequence of such entities supported by this operation.");
+    return SHCCSTR("Any valid integer(s) or a sequence of integers supported by this operation.");
   }
 };
 
@@ -405,8 +408,8 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Applies the unary operation on the input value and returns the result (or a sequence of results if the input "
-                   "and the operand are sequences).");
+    return SHCCSTR("Applies the unary operation on the input value and returns the result. If the input is a sequence, the "
+                   "operation is applied to each element of the sequence.");
   }
 
   ALWAYS_INLINE void operate(SHVar &output, const SHVar &a) {
@@ -441,7 +444,8 @@ template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
 
   static SHTypesInfo inputTypes() { return FloatOrSeqTypes; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any valid float(s) or a sequence of such entities supported by this operation.");
+    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, or a sequence of these types "
+                   "supported by this operation.");
   }
   static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
 };

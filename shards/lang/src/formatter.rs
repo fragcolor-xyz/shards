@@ -143,7 +143,7 @@ impl<'a> FormatterVisitor<'a> {
       } else if c == '\n' {
         if let Some(start) = comment_start {
           let comment = &self.input[start..i + from];
-          let comment_str = comment.trim_start().to_string();
+          let comment_str = comment.to_string();
           us.lines.push(UserLine::Comment(comment_str));
           comment_start = None;
         } else {
@@ -182,7 +182,7 @@ impl<'a> FormatterVisitor<'a> {
             self.newline();
           }
           UserLine::Comment(line) => {
-            self.write(&format!("; {}", line), FormatterTop::Comment);
+            self.write(&format!(";{}", line), FormatterTop::Comment);
             if i < us.lines.len() - 1 {
               self.newline();
             }
@@ -348,9 +348,11 @@ impl<'a> FormatterVisitor<'a> {
     let omit_indent = omit_shard_param_indent(pair.clone());
     if omit_indent {
       inner(self);
+      self.interpolate_at_pos_ext(pair.as_span().end() - 1, true);
     } else {
       self.depth += 1;
       inner(self);
+      self.interpolate_at_pos_ext(pair.as_span().end() - 1, true);
       self.depth -= 1;
     }
 
@@ -441,6 +443,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.with_context(Context::Pipeline, |s| {
       s.interpolate(&pair);
       inner(s);
+      // s.interpolate_at_pos(pair.as_span().end())
     });
   }
   fn v_stmt<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
@@ -646,13 +649,56 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     let str = self.filter(pair.as_str());
     self.write_atom(&str);
   }
+  fn v_end(&mut self, pair: Pair<Rule>) {
+    // Manually done to measure final newline
+    let mut has_final_newline = false;
+    if let Some(us) = self.extract_styling(pair.as_span().end()) {
+      for (i, line) in us.lines.iter().enumerate() {
+        match line {
+          UserLine::Newline => {
+            if i == us.lines.len() - 1 {
+              continue;
+            }
+            self.newline();
+            has_final_newline = true;
+          }
+          UserLine::Comment(line) => {
+            self.write(&format!(";{}", line), FormatterTop::Comment);
+            if i < us.lines.len() - 1 {
+              self.newline();
+              has_final_newline = true;
+            } else {
+              has_final_newline = false;
+            }
+          }
+        }
+      }
+    }
+
+    // Make sure to append final newline
+    if !has_final_newline {
+      self.write_raw("\n");
+    }
+  }
 }
 
 pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
   let mut buf = std::io::BufWriter::new(Vec::new());
-  let mut v = FormatterVisitor::new(&mut buf, &input);
 
-  crate::ast_visitor::process(&input, &mut v)?;
+  // Fix ending newline
+  let mut in_str_buf: String;
+  let input_ref = if input.ends_with('\n') {
+    input
+  } else {
+    in_str_buf = String::new();
+    in_str_buf.reserve(input.len() + 4);
+    in_str_buf.push_str(input);
+    in_str_buf.push('\n');
+    &in_str_buf
+  };
+
+  let mut v = FormatterVisitor::new(&mut buf, &input_ref);
+  crate::ast_visitor::process(&input_ref, &mut v)?;
 
   Ok(String::from_utf8(buf.into_inner()?)?)
 }

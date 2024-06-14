@@ -4,11 +4,10 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
-  Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
+  BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shard_impl, shccstr, shlog_debug, shlog_error};
-use shards::{shard, shlog_trace};
+use shards::{shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -880,30 +879,24 @@ use lazy_static::lazy_static;
 
 lazy_static! {
   pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
-  static ref READ_PARAMETERS: Parameters = vec![(
-    cstr!("Json"),
-    shccstr!("If the output should be a json AST string instead of binary."),
-    BOOL_TYPES_SLICE
-  )
-    .into()];
 }
 
-#[derive(shard, Default)]
+#[derive(shard)]
 #[shard_info(
   "Shards.Read",
-  "Reads a Shards program and outputs a binary or json AST."
+  "Reads the textual representation of a Shards program and outputs the binary or json AST representation.",
 )]
-pub(crate) struct ReadShard {
+pub struct ReadShard {
   output: ClonedVar,
   #[shard_param(
     "Json",
-    "If the output should be a json AST string instead of binary.",
+    "Determines if the output should be a JSON AST string instead of binary.",
     BOOL_TYPES_SLICE
   )]
   as_json: ClonedVar,
   #[shard_param(
     "BasePath",
-    "The base path to use when interpreting file references.",
+    "The base path used when interpreting file references.",
     STRING_VAR_OR_NONE_SLICE
   )]
   base_path: ParamVar,
@@ -917,6 +910,17 @@ impl ReadShard {
       (&self.as_json.0).try_into().unwrap()
     } else {
       false
+    }
+  }
+}
+
+impl Default for ReadShard {
+  fn default() -> Self {
+    Self {
+      output: ClonedVar::default(),
+      as_json: false.into(),
+      base_path: ParamVar::new(Var::ephemeral_string(".")),
+      required_variables: ExposedTypes::default(),
     }
   }
 }

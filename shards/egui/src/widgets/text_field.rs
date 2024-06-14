@@ -132,7 +132,7 @@ impl Shard for TextField {
       let exp_info = ExposedInfo {
         exposedType: common_type::string,
         name: self.variable.get_name(),
-        help: cstr!("The exposed string variable").into(),
+        help: shccstr!("The exposed string variable"),
         ..ExposedInfo::default()
       };
 

@@ -571,7 +571,7 @@ unsafe extern "C" fn activate_future_c_call<
   F: Future<Output = Result<R, &'static str>> + Send + 'static,
   R: Into<ClonedVar>,
 >(
-  context: *mut SHContext,
+  _context: *mut SHContext,
   arg2: *mut c_void,
 ) -> SHVar {
   let f = arg2 as *mut F;

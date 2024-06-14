@@ -491,7 +491,7 @@ std::shared_ptr<Channel> get(const std::string &name) {
 // flush/cleanup a channel
 struct Flush : public Base {
   std::shared_ptr<Channel> _channel;
-  ChannelShared *_mpChannel{};
+  MPMCChannel *_mpChannel{};
 
   static inline Parameters flushParams{
       {"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
@@ -526,10 +526,10 @@ struct Flush : public Base {
     _mpChannel = std::visit(
         [&](auto &arg) {
           using T = std::decay_t<decltype(arg)>;
-          if (std::is_same_v<T, DummyChannel>) {
-            throw SHException("Expected a valid channel.");
+          if (std::is_same_v<T, MPMCChannel>) {
+            return (MPMCChannel *)&arg;
           } else {
-            return (ChannelShared *)&arg;
+            throw ActivationError("Expected a valid non-broadcast channel.");
           }
         },
         *_channel.get());

@@ -451,7 +451,7 @@ impl RigidBodyBase {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Physics.StaticBody", "")]
+#[shard_info("Physics.StaticBody", "A static rigid body that does not move.")]
 struct StaticRigidBodyShard {
   #[shard_required]
   required: ExposedTypes,
@@ -537,7 +537,7 @@ impl Shard for StaticRigidBodyShard {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Physics.DynamicBody", "")]
+#[shard_info("Physics.DynamicBody", "A dynamic fully simulated rigid body.")]
 struct DynamicRigidBodyShard {
   #[shard_required]
   required: ExposedTypes,
@@ -657,7 +657,7 @@ impl Shard for DynamicRigidBodyShard {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Physics.KinematicBody", "")]
+#[shard_info("Physics.KinematicBody", "A kinematic rigid body that can be controlled by the user and interacts with the physics simulation.")]
 struct KinematicRigidBodyShard {
   #[shard_required]
   required: ExposedTypes,

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+#![feature(concat_idents)]
 // Required for shards-egui C++ bindings
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
@@ -43,6 +44,11 @@ pub static FLOAT_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::none,
 ];
 pub static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
+pub static FLOAT2_VAR_OR_NONE_SLICE: &[Type] = &[
+  common_type::float2,
+  common_type::float2_var,
+  common_type::none,
+];
 pub static HASH_VAR_OR_NONE_SLICE: &[Type] = &[common_type::none, common_type::int2_var];
 pub static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
@@ -71,7 +77,10 @@ lazy_static! {
   static ref LAYOUTCLASS_TYPE_VEC: Vec<Type> = vec![*LAYOUTCLASS_TYPE];
   static ref LAYOUTCLASS_VAR_TYPE: Type = Type::context_variable(&LAYOUTCLASS_TYPE_VEC);
   static ref LAYOUTCLASS_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUTCLASS_VAR_TYPE];
+  static ref LAYOUTCLASS_VAR_OR_NONE_SLICE: Vec<Type> =
+    vec![*LAYOUTCLASS_VAR_TYPE, common_type::none];
   static ref LAYOUT_FRAME_TYPE_VEC: Vec<Type> = vec![*LAYOUT_FRAME_TYPE];
+  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_FRAME_TYPE, common_type::none];
   static ref LAYOUT_FRAME_VAR_TYPE: Type = Type::context_variable(&LAYOUT_FRAME_TYPE_VEC);
   static ref LAYOUT_FRAME_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUT_FRAME_VAR_TYPE];
 }

@@ -115,7 +115,21 @@ template <SHType SHTYPE, SHType SHOTHER> struct ToSeq {
   static inline Type _outputType{{SHType::Seq, {.seqTypes = _outputElemType}}};
 
   static SHTypesInfo inputTypes() { return _inputType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of bytes or an image that will be converted into a sequence of another type. Each byte or pixel "
+                   "in the input is interpreted according to the specified type.");
+  }
+
   static SHTypesInfo outputTypes() { return _outputType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is a sequence of the specified type created from the input bytes or image. Each byte or pixel is "
+                   "converted to an element of the output sequence.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a sequence of bytes or an image into a sequence of another specified type. Each byte or pixel in "
+                   "the input is interpreted and converted to an element of the output sequence of the specified type.");
+  }
 
   std::vector<Var> _output;
 
@@ -138,7 +152,21 @@ template <SHType SHTYPE> struct ToString1 {
   static inline Type _inputType{{SHTYPE}};
 
   static SHTypesInfo inputTypes() { return _inputType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "A sequence of bytes that will be converted into a string. Each byte in the sequence is interpreted as a character.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is a string created from the input sequence of bytes. Each byte is interpreted as a character in "
+                   "the resulting string.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a sequence of bytes into a string. Each byte in the sequence is interpreted as a character in the "
+                   "resulting string.");
+  }
 
   std::string _output;
 
@@ -159,7 +187,21 @@ template <SHType FROMTYPE> struct ToImage {
   static inline Type _inputType{{SHType::Seq, {.seqTypes = _inputElemType}}};
 
   static SHTypesInfo inputTypes() { return _inputType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of floating-point numbers that will be converted into an image. The sequence should be structured "
+                   "such that the total number of elements is equal to Width * Height * Channels.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is an image created from the input sequence of floating-point numbers. The dimensions and "
+                   "channels of the image are determined by the parameters provided.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a sequence of floating-point numbers into an image. The image dimensions (width and height) and the "
+                   "number of channels are specified by parameters.");
+  }
 
   static inline Parameters _params{{"Width", SHCCSTR("The width of the output image."), {CoreInfo::IntType}},
                                    {"Height", SHCCSTR("The height of the output image."), {CoreInfo::IntType}},
@@ -212,7 +254,15 @@ template <SHType FROMTYPE> struct ToBytes {
   static inline Type _inputType{{SHType::Seq, {.seqTypes = _inputElemType}}};
 
   static SHTypesInfo inputTypes() { return _inputType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of integers that will be converted into a byte array."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A byte array representing the sequence of integers."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a sequence of integers into a byte array. Each integer in the sequence is serialized into its "
+                   "binary representation and concatenated into the resulting byte array.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     FromSeq c;
@@ -226,40 +276,54 @@ private:
 
 struct ToString {
   VarStringStream stream;
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any value to be converted to a string."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The string representation of the input value."); }
+
+  static SHOptionalString help() { return SHCCSTR("Converts any input value to its string representation."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     stream.write(input);
     return Var(stream.str());
   }
 };
 
-RUNTIME_CORE_SHARD(ToString);
-RUNTIME_SHARD_inputTypes(ToString);
-RUNTIME_SHARD_outputTypes(ToString);
-RUNTIME_SHARD_activate(ToString);
-RUNTIME_SHARD_END(ToString);
-
 struct ToHex {
   VarStringStream stream;
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
+
   static SHTypesInfo inputTypes() { return toHexTypes; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value to be converted to a hexadecimal string. Supported types: integer, bytes, and string.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The hexadecimal string representation of the input value."); }
+
+  static SHOptionalString help() { return SHCCSTR("Converts the input value to its hexadecimal string representation."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     stream.tryWriteHex(input);
     return Var(stream.str());
   }
 };
 
-RUNTIME_CORE_SHARD(ToHex);
-RUNTIME_SHARD_inputTypes(ToHex);
-RUNTIME_SHARD_outputTypes(ToHex);
-RUNTIME_SHARD_activate(ToHex);
-RUNTIME_SHARD_END(ToHex);
-
 struct VarAddr {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The name of the variable whose address is to be retrieved."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The memory address of the specified variable, represented as an integer.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Retrieves the memory address of the specified variable and returns it as an integer.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto v = referenceVariable(context, SHSTRVIEW(input));
     auto res = Var(reinterpret_cast<int64_t>(v));
@@ -270,7 +334,20 @@ struct VarAddr {
 
 struct VarPtr {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The variable whose pointer is to be retrieved. It must be of type sequence, bytes, or string.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The memory address of the specified variable's data, represented as an integer.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Retrieves the memory address of the data contained in the specified variable and returns it as an integer. "
+                   "The variable must be of type sequence, bytes, or string.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.valueType == SHType::Seq)
       return Var(reinterpret_cast<int64_t>(input.payload.seqValue.elements));
@@ -283,12 +360,6 @@ struct VarPtr {
   }
 };
 
-RUNTIME_CORE_SHARD(VarAddr);
-RUNTIME_SHARD_inputTypes(VarAddr);
-RUNTIME_SHARD_outputTypes(VarAddr);
-RUNTIME_SHARD_activate(VarAddr);
-RUNTIME_SHARD_END(VarAddr);
-
 struct BitSwap32 {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
@@ -298,12 +369,6 @@ struct BitSwap32 {
     return Var(static_cast<int64_t>(i32));
   }
 };
-
-RUNTIME_CORE_SHARD(BitSwap32);
-RUNTIME_SHARD_inputTypes(BitSwap32);
-RUNTIME_SHARD_outputTypes(BitSwap32);
-RUNTIME_SHARD_activate(BitSwap32);
-RUNTIME_SHARD_END(BitSwap32);
 
 struct BitSwap64 {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
@@ -341,16 +406,16 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
   }
 }
 
-RUNTIME_CORE_SHARD(BitSwap64);
-RUNTIME_SHARD_inputTypes(BitSwap64);
-RUNTIME_SHARD_outputTypes(BitSwap64);
-RUNTIME_SHARD_activate(BitSwap64);
-RUNTIME_SHARD_END(BitSwap64);
-
 template <SHType ET> struct ExpectX {
   static inline Type outputType{{ET}};
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input value. This shard checks the type of the input value."); }
   SHTypesInfo outputTypes() { return outputType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value if it matches the expected type."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input value matches the expected type. If the input value does not match the expected type, an "
+                   "error is thrown.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(input.valueType != ET)) {
       SHLOG_ERROR("Unexpected value: {}", input);
@@ -362,7 +427,12 @@ template <SHType ET> struct ExpectX {
 
 struct ExpectSeq {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input value. This shard checks if the input value is a sequence."); }
   SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value if it is a sequence."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input value is a sequence. If the input value is not a sequence, an error is thrown.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(input.valueType != SHType::Seq)) {
       SHLOG_ERROR("Unexpected value: {}", input);
@@ -384,7 +454,17 @@ template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
   SHParametersInfo parameters() { return params; }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any input value. This shard checks if the input value matches the expected complex type.");
+  }
   static SHTypesInfo outputTypes() { return ET; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value if it matches the expected complex type."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Checks if the input value matches the expected complex type. If the input value does not match the expected type, an "
+        "error is thrown. The 'Unsafe' parameter can be set to skip deep type hashing and comparison to improve performance.");
+  }
 
   void setParam(int index, const SHVar &value) { _unsafe = value.payload.boolValue; }
 
@@ -402,7 +482,18 @@ struct Expect {
   uint64_t _expectedTypeHash{0};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any input value. This shard checks if the input value matches the expected type.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value if it matches the expected type."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input value matches the expected type specified by the 'Type' parameter. If the input value "
+                   "does not match the expected type, an error is thrown. The 'Unsafe' parameter can be set to skip deep type "
+                   "hashing and comparison to improve performance.");
+  }
 
   PARAM_VAR(_type, "Type", "The type to expect", {CoreInfo::TypeType});
   PARAM_VAR(_unsafe, "Unsafe",
@@ -439,7 +530,20 @@ struct ExpectLike {
   bool _derived{false};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any input value. This shard checks if the input value matches the type of the specified example value or the "
+                   "output type of the given expression.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input value if it matches the expected type."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input value matches the type of the specified example value given by the 'TypeOf' parameter or "
+                   "the output type of the given expression in the 'OutputOf' parameter. If both 'TypeOf' and 'OutputOf' are "
+                   "provided, an error is thrown. If neither is provided, an error is thrown. The 'Unsafe' parameter can be set "
+                   "to skip deep type hashing and comparison to improve performance.");
+  }
 
   PARAM_PARAMVAR(_typeOf, "TypeOf",
                  "The example value to expect. The type of the constant given here will be checked against this shard's input.",
@@ -503,8 +607,17 @@ struct ExpectLike {
 
 struct TypeOf {
   SHTypeInfo _expectedType;
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("No input value is needed for this shard."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::TypeType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The type of the specified expression's output."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Evaluates the output type of the given expression specified by the 'OutputOf' parameter and returns that "
+                   "type. No input is required for this shard.");
+  }
 
   PARAM(ShardsVar, _outputOf, "OutputOf",
         "Evaluates the output type of the given expression. That type will be checked against this shard's input.",
@@ -531,15 +644,34 @@ struct TypeOf {
 
 template <SHType ET> struct IsX {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any value to check the type of."); }
+
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A boolean value indicating whether the input type matches the specified type.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Checks if the input value is of the specified type and returns a boolean result.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) { return Var(input.valueType == ET); }
 };
 
 struct ToBase64 {
   std::string output;
   static inline Types _inputTypes{{CoreInfo::BytesType, CoreInfo::StringType}};
+
   static SHTypesInfo inputTypes() { return _inputTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A bytes or string value to be encoded to Base64."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The Base64 encoded string representation of the input value."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Encodes the input bytes or string value to its Base64 string representation.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     output.clear();
     if (input.valueType == SHType::Bytes) {
@@ -561,8 +693,15 @@ struct ToBase64 {
 
 struct FromBase64 {
   std::vector<uint8_t> output;
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A Base64 encoded string to be decoded."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The decoded bytes from the input Base64 string."); }
+
+  static SHOptionalString help() { return SHCCSTR("Decodes a Base64 encoded string to its original byte representation."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     output.clear();
     auto len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr ? input.payload.stringLen
@@ -577,8 +716,17 @@ struct FromBase64 {
 
 struct HexToBytes {
   std::vector<uint8_t> output;
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "A string representing hexadecimal digits to be converted to bytes. The input may optionally start with '0x' or '0X'.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The decoded bytes from the input hexadecimal string."); }
+
+  static SHOptionalString help() { return SHCCSTR("Converts a hexadecimal string to its original byte representation."); }
 
   int convert(const char *hex_str, size_t hex_str_len, unsigned char *byte_array, size_t byte_array_max) {
     size_t i = 0, j = 0;
@@ -630,7 +778,12 @@ struct HexToBytes {
 
 struct StringToBytes {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string to be converted to bytes."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The byte representation of the input string."); }
+
+  static SHOptionalString help() { return SHCCSTR("Converts a string to its byte representation."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto len = SHSTRLEN(input);
@@ -640,7 +793,12 @@ struct StringToBytes {
 
 struct ImageToBytes {
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("An image to be converted to bytes."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The byte representation of the input image."); }
+
+  static SHOptionalString help() { return SHCCSTR("Converts an image to its byte representation."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto pixsize = getPixelSize(input);
@@ -676,13 +834,11 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("MakeFloat3", MakeVector<SHType::Float3>);
   REGISTER_SHARD("MakeFloat4", MakeVector<SHType::Float4>);
 
-  REGISTER_CORE_SHARD(ToString);
-  REGISTER_CORE_SHARD(ToHex);
-
-  REGISTER_CORE_SHARD(VarAddr);
-
-  REGISTER_CORE_SHARD(BitSwap32);
-  REGISTER_CORE_SHARD(BitSwap64);
+  REGISTER_SHARD("ToString", ToString);
+  REGISTER_SHARD("ToHex", ToHex);
+  REGISTER_SHARD("VarAddr", VarAddr);
+  REGISTER_SHARD("BitSwap32", BitSwap32);
+  REGISTER_SHARD("BitSwap64", BitSwap64);
 
   REGISTER_SHARD("Expect", Expect);
   using ExpectNone = ExpectX<SHType::None>;

@@ -1,0 +1,61 @@
+; Run the same network test except use Network.WS client & server
+"network.shs" | FS.Read = base-script
+Regex.Replace("Network.Client\\(\".*\" [0-9]+" "Network.WS.Client(\"ws://127.0.0.1:9191\"")
+Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
+; Shards.Read | Shards.Distill("runner") = runner
+; WireRunner(runner)
+
+@mesh(root)
+
+@template(base [wire-name addr] {
+  @wire(wire-name {
+    Once({
+      0 | Set(done Global: true)
+      false | Set(have-ok Global: true)
+      false | Set(have-hello Global: true)
+      addr | Log("Connecting to")
+    })
+    Network.WS.Client(addr {
+      BytesToString | Log("Received data")
+      When(Is("Ok!") {
+        true > have-ok
+      })
+      When(Is("Hello!") {
+        true > have-hello
+      })
+      "Ok!" | Network.SendRaw
+      Math.Inc(done)
+    } Raw: true) = ws-client
+    
+    Once({
+      Log("ws-client")
+      "Hello!" | Network.SendRaw(ws-client)
+    })
+    
+    When({done | IsMore(2)} {
+      have-ok | Log("have-ok") | Assert.Is(true)
+      have-hello | Log("have-hello") | Assert.Is(true)
+      none | Stop
+    })
+    Animation.Timer | When(IsMore(5.0) {
+      "Operation timed out" | Fail
+    })
+    none
+  } Looped: true)
+})
+@base(ws-test "ws://echo.websocket.events/ws")
+@base(wss-test "wss://echo.websocket.events/ws")
+
+@schedule(root ws-test)
+@run(root) | Assert.Is(true)
+
+@schedule(root ws-test)
+@run(root) | Assert.Is(true)
+
+@schedule(root wss-test)
+@run(root) | Assert.Is(true)
+
+@schedule(root wss-test)
+@run(root) | Assert.Is(true)
+
+Pass

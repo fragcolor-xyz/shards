@@ -34,6 +34,7 @@ pub trait Visitor {
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
   fn v_take_table(&mut self, pair: Pair<Rule>);
   fn v_take_seq(&mut self, pair: Pair<Rule>);
+  fn v_end(&mut self, pair: Pair<Rule>);
 }
 
 fn process_take_seq<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
@@ -493,7 +494,8 @@ pub fn process<V: Visitor>(code: &str, v: &mut V) -> Result<(), Error> {
   }
 
   let inner = root.into_inner().next().unwrap();
-  process_sequence_no_visit(inner, v)?;
+  process_sequence_no_visit(inner.clone(), v)?;
+  v.v_end(inner);
 
   Ok(())
 }

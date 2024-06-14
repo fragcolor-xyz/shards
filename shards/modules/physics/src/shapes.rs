@@ -77,7 +77,7 @@ fn setup_base_shape(
 }
 
 #[derive(shards::shard)]
-#[shard_info("Physics.Ball", "Physics shape")]
+#[shard_info("Physics.Ball", "Physics shape representing a ball")]
 struct BallShape {
   #[shard_param("Position", "The position of the shape.", POSITION_TYPES_SLICE)]
   position: ParamVar,
@@ -147,7 +147,7 @@ impl Shard for BallShape {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Physics.Cuboid", "Physics shape")]
+#[shard_info("Physics.Cuboid", "Physics shape representing a cuboid")]
 struct CuboidShape {
   #[shard_param("Position", "The position of the shape.", POSITION_TYPES_SLICE)]
   position: ParamVar,

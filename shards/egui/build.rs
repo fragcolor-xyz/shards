@@ -10,7 +10,7 @@ fn main() {
 
   println!("cargo:rerun-if-changed=rust_interop.hpp");
   println!("cargo:rerun-if-changed=renderer.hpp");
-  println!("cargo:rerun-if-changed=egui_types.hpp"); 
+  println!("cargo:rerun-if-changed=egui_types.hpp");
   println!("cargo:rerun-if-changed=input.hpp");
   println!("cargo:rerun-if-changed=context.hpp");
 

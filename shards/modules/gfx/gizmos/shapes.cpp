@@ -132,8 +132,8 @@ struct RectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the rectangle is on",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType});
-  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle",
+  PARAM_PARAMVAR(_size, "Size", "Size of the rectangle", {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the rectangle",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space",
             {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});

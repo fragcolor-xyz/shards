@@ -173,7 +173,7 @@ impl LegacyShard for Plot {
     let ctx_info = ExposedInfo {
       exposedType: EGUI_PLOT_UI_TYPE,
       name: self.plot_context.get_name(),
-      help: cstr!("The UI plot context.").into(),
+      help: shccstr!("The UI plot context."),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
       global: false,

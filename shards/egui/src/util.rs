@@ -173,7 +173,7 @@ pub fn require_parents(requiring: &mut ExposedTypes) {
   let exp_info = ExposedInfo {
     exposedType: EGUI_UI_TYPE,
     name: PARENTS_UI_NAME_CSTR.as_ptr(),
-    help: cstr!("The parent UI objects.").into(),
+    help: shccstr!("The parent UI objects."),
     ..ExposedInfo::default()
   };
   requiring.push(exp_info);
@@ -183,7 +183,7 @@ pub fn require_context(requiring: &mut ExposedTypes) {
   let exp_info = ExposedInfo {
     exposedType: EGUI_CTX_TYPE,
     name: CONTEXTS_NAME_CSTR.as_ptr(),
-    help: cstr!("The UI context.").into(),
+    help: shccstr!("The UI context."),
     ..ExposedInfo::default()
   };
   requiring.push(exp_info);

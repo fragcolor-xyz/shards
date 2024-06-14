@@ -1482,6 +1482,39 @@ struct GetShards {
   }
 };
 
+struct GetEnumTypes {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
+
+  SeqVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
+    for (auto [id, _] : shards::GetGlobals().EnumTypesRegister) {
+      _output.emplace_back(Var(id));
+    }
+    return _output;
+  }
+};
+
+struct GetObjectTypes {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
+
+  SeqVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
+    for (auto [id, _] : shards::GetGlobals().ObjectTypesRegister) {
+      _output.emplace_back(Var(id));
+    }
+
+    return _output;
+  }
+};
+
 struct GetShardHelp {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
@@ -1568,6 +1601,71 @@ struct GetShardHelp {
   }
 };
 
+struct GetEnumTypeHelp {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  TableVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto id = input.payload.intValue;
+    auto it = shards::GetGlobals().EnumTypesRegister.find(id);
+    if (it == shards::GetGlobals().EnumTypesRegister.end()) {
+      throw ActivationError(fmt::format("Enum type {} not found", id));
+    }
+
+    auto &info = it->second;
+    _output["name"] = Var(info.name);
+    auto labels = SeqVar{};
+    for (uint32_t i = 0; i < info.labels.len; i++) {
+      labels.emplace_back(Var(info.labels.elements[i]));
+    }
+    _output["labels"] = std::move(labels);
+    auto values = SeqVar{};
+    for (uint32_t i = 0; i < info.values.len; i++) {
+      values.emplace_back(Var(info.values.elements[i]));
+    }
+    _output["values"] = std::move(values);
+    auto descriptions = SeqVar{};
+    for (uint32_t i = 0; i < info.descriptions.len; i++) {
+      // string can be null
+      if (info.descriptions.elements[i].string == nullptr) {
+        descriptions.emplace_back(Var(""));
+      } else {
+        descriptions.emplace_back(Var(info.descriptions.elements[i].string));
+      }
+    }
+    _output["descriptions"] = std::move(descriptions);
+
+    return _output;
+  }
+};
+
+struct GetObjectTypeHelp {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  TableVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto id = input.payload.intValue;
+    auto it = shards::GetGlobals().ObjectTypesRegister.find(id);
+    if (it == shards::GetGlobals().ObjectTypesRegister.end()) {
+      throw ActivationError(fmt::format("Object type {} not found", id));
+    }
+
+    auto &info = it->second;
+    if(info.name == nullptr) {
+      throw ActivationError(fmt::format("Object type {} has no name", id));
+    }
+
+    _output["name"] = Var(info.name);
+    _output["isThreadSafe"] = Var(info.isThreadSafe);
+
+    return _output;
+  }
+};
+
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
 RUNTIME_SHARD_help(And);
@@ -1601,7 +1699,9 @@ RUNTIME_SHARD_END(Not);
 // Register IsNan
 RUNTIME_CORE_SHARD_FACTORY(IsValidNumber);
 RUNTIME_SHARD_inputTypes(IsValidNumber);
+RUNTIME_SHARD_inputHelp(IsValidNumber);
 RUNTIME_SHARD_outputTypes(IsValidNumber);
+RUNTIME_SHARD_outputHelp(IsValidNumber);
 RUNTIME_SHARD_activate(IsValidNumber);
 RUNTIME_SHARD_END(IsValidNumber);
 
@@ -1898,7 +1998,9 @@ RUNTIME_SHARD_END(Slice);
 RUNTIME_CORE_SHARD_FACTORY(Limit);
 RUNTIME_SHARD_destroy(Limit);
 RUNTIME_SHARD_inputTypes(Limit);
+RUNTIME_SHARD_inputHelp(Limit);
 RUNTIME_SHARD_outputTypes(Limit);
+RUNTIME_SHARD_outputHelp(Limit);
 RUNTIME_SHARD_parameters(Limit);
 RUNTIME_SHARD_compose(Limit);
 RUNTIME_SHARD_setParam(Limit);
@@ -2403,5 +2505,9 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Shards.Help", GetShardHelp);
   REGISTER_SHARD("LastError", LastError);
   REGISTER_SHARD("Shuffle", Shuffle);
+  REGISTER_SHARD("Shards.EnumTypes", GetEnumTypes);
+  REGISTER_SHARD("Shards.ObjectTypes", GetObjectTypes);
+  REGISTER_SHARD("Shards.EnumTypeHelp", GetEnumTypeHelp);
+  REGISTER_SHARD("Shards.ObjectTypeHelp", GetObjectTypeHelp);
 }
 }; // namespace shards

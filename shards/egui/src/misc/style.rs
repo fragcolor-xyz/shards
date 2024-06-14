@@ -654,7 +654,7 @@ impl Shard for StyleShard {
 }
 
 #[derive(shards::shard)]
-#[shard_info("UI.WidgetStyle", "")]
+#[shard_info("UI.WidgetStyle", "Apply style changes to the current UI scope.")]
 struct WidgetStyleShard {
   #[shard_required]
   required: ExposedTypes,

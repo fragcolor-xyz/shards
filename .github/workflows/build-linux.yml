@@ -115,6 +115,7 @@ jobs:
           ./shards new ../shards/tests/builtins.shs
           ./shards ../shards/tests/loader.clj
           ./shards new ../shards/tests/network.shs
+          ./shards new ../shards/tests/network-ws.shs
           ./shards new ../shards/tests/struct.shs
           ./shards new ../shards/tests/flows.shs
           ./shards new ../shards/tests/kdtree.shs
@@ -122,7 +123,6 @@ jobs:
           ./shards new ../shards/tests/genetic.shs
           ./shards new ../shards/tests/imaging.shs
           ./shards new ../shards/tests/http.shs
-          ./shards new ../shards/tests/ws.shs
           ./shards new ../shards/tests/bigint.shs
           ./shards new ../shards/tests/brotli.shs
           ./shards new ../shards/tests/snappy.shs

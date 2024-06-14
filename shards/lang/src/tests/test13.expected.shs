@@ -1,0 +1,19 @@
+SomeShard(; AB
+  ; Start 
+  A: 1.0
+  ; Comment
+  B: 2.0 ; J
+  ; End comment
+)
+
+{
+  ; { 
+  ;   CreativeSpacing(In: comments)
+  ;   Sub({
+  ;     jj
+  ;   })
+  ; } ; sub
+  ;;  ee
+  ; Shard end comment
+}
+; EOF comment

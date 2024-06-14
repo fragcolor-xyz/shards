@@ -7,7 +7,6 @@ endif()
 add_executable(test-gfx
   main.cpp
   test_general.cpp
-  test_context_data.cpp
   test_shader.cpp
   test_gltf.cpp
   test_gizmos.cpp

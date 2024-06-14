@@ -12,7 +12,7 @@ use crate::{RcBytesWrapper, RcStrWrapper};
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
   pub line: u32,
   pub column: u32,
@@ -88,7 +88,7 @@ impl Into<(u32, u32)> for LineInfo {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Number {
   Integer(i64),
   Float(f64),
@@ -118,7 +118,7 @@ impl Identifier {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Value {
   None,
   Identifier(Identifier),
@@ -181,19 +181,19 @@ impl Value {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Param {
   pub name: Option<RcStrWrapper>,
   pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
   pub name: Identifier,
   pub params: Option<Vec<Param>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum BlockContent {
   Empty,
   Shard(Function),                          // Rule: Shard
@@ -207,18 +207,18 @@ pub enum BlockContent {
   Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Pipeline {
   pub blocks: Vec<Block>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Assignment {
   AssignRef(Pipeline, Identifier),
   AssignSet(Pipeline, Identifier),
@@ -226,24 +226,28 @@ pub enum Assignment {
   AssignPush(Pipeline, Identifier),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Statement {
   Assignment(Assignment),
   Pipeline(Pipeline),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
+}
+
+pub trait RewriteFunction {
+  fn rewrite_function(&self, function: &Function) -> Option<Function>;
 }

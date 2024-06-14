@@ -67,7 +67,7 @@ impl LegacyShard for AddFont {
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
       name: self.instance.get_name(),
-      help: cstr!("The exposed UI context.").into(),
+      help: shccstr!("The exposed UI context."),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);

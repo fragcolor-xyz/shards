@@ -72,7 +72,7 @@ jobs:
           submodules: recursive
       - name: Set up dependencies
         run: |
-          sudo xcode-select --switch /Applications/Xcode.app
+          sudo xcode-select --switch /Applications/Xcode_15.4.app
           brew install cmake ninja clang-format
           ./bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`
@@ -143,13 +143,13 @@ jobs:
           ./shards new ../shards/tests/linalg.shs
           ./shards ../shards/tests/loader.clj
           ./shards new ../shards/tests/network.shs
+          ./shards new ../shards/tests/network-ws.shs
           ./shards new ../shards/tests/struct.shs
           ./shards new ../shards/tests/flows.shs
           ./shards new ../shards/tests/kdtree.shs
           ./shards new ../shards/tests/channels.shs
           ./shards new ../shards/tests/imaging.shs
           ./shards new ../shards/tests/http.shs
-          # ./shards new ../shards/tests/ws.shs
           ./shards new ../shards/tests/bigint.shs
           ./shards new ../shards/tests/brotli.shs
           ./shards new ../shards/tests/snappy.shs

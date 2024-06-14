@@ -6,7 +6,6 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
-use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
 use shards::SHType_Trait;
@@ -112,6 +111,10 @@ pub struct EvalEnv {
 
   // Shards and functions that are forbidden to be used
   pub forbidden_funcs: HashSet<Identifier>,
+
+  // Shards that need rewriting, e.g. upgrading to new versions
+  pub rewrite_funcs: HashMap<Identifier, Box<dyn RewriteFunction>>,
+
   pub settings: Vec<Setting>,
 
   meshes: HashMap<Identifier, MeshVar>,
@@ -131,7 +134,7 @@ impl Drop for EvalEnv {
 }
 
 impl EvalEnv {
-  pub(crate) fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
+  pub fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
     let mut env = EvalEnv {
       parent: None,
       namespace: RcStrWrapper::from(""),
@@ -147,6 +150,7 @@ impl EvalEnv {
       suffix: None,
       suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
+      rewrite_funcs: HashMap::new(),
       settings: Vec::new(),
       meshes: HashMap::new(),
       extensions: HashMap::new(),
@@ -1074,6 +1078,21 @@ fn is_forbidden_func(name: &Identifier, e: &EvalEnv) -> bool {
       env = unsafe { &*parent };
     } else {
       return false;
+    }
+  }
+}
+
+fn get_rewrite_func<'a>(name: &Identifier, e: &'a EvalEnv) -> Option<&'a Box<dyn RewriteFunction>> {
+  //recurse env and check
+  let mut env = e;
+  loop {
+    if let Some(rewrite) = env.rewrite_funcs.get(name) {
+      return Some(rewrite);
+    }
+    if let Some(parent) = env.parent {
+      env = unsafe { &*parent };
+    } else {
+      return None;
     }
   }
 }
@@ -2087,6 +2106,10 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
   Ok(())
 }
 
+fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> {
+  get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
+}
+
 fn create_shard(
   shard: &Function,
   line_info: LineInfo,
@@ -2095,6 +2118,13 @@ fn create_shard(
   if is_forbidden_func(&shard.name, e) {
     return Err((format!("Forbidden shard {}", shard.name.name), line_info).into());
   }
+
+  let mut replacement_storage = None;
+  let shard = if let Some(replacement) = get_replacement(shard, e) {
+    &replacement_storage.insert(replacement)
+  } else {
+    shard
+  };
 
   let s = ShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
@@ -2800,6 +2830,14 @@ fn eval_pipeline(
               .into(),
           );
         }
+
+        let mut replacement_storage = None;
+        let func = if let Some(replacement) = get_replacement(func, e) {
+          &replacement_storage.insert(replacement)
+        } else {
+          func
+        };
+
         match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
           ("ignore", true) => {
             // ignore is a special function that does nothing
@@ -3291,20 +3329,27 @@ fn eval_pipeline(
               }?;
 
               let iterations = if let Some(iterations) = iterations_param {
-                if let Value::Number(Number::Integer(n)) = &iterations.value {
-                  let iterations = u64::try_from(*n).map_err(|_| (
-                        "run built-in function requires an integer number in range of i64 iterations parameter",
-                        block.line_info.unwrap_or_default(),
-                    ).into())?;
-                  Ok(Some(iterations))
+                let v = as_var(
+                  &iterations.value,
+                  block.line_info.unwrap_or_default(),
+                  None,
+                  e,
+                )?;
+                let fv = match &v {
+                  SVar::NotCloned(v) => i64::try_from(v),
+                  SVar::Cloned(v) => i64::try_from(&v.0),
+                };
+
+                if let Ok(fv) = fv {
+                  Ok(Some(fv as u64))
                 } else {
                   Err(
-                    (
-                      "run built-in function requires an integer number iterations parameter",
-                      block.line_info.unwrap_or_default(),
+                      (
+                        "run built-in function requires an int number (or something that evaluates into it) iterations parameter",
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
                     )
-                      .into(),
-                  )
                 }
               } else {
                 Ok(None)
@@ -3756,7 +3801,7 @@ fn eval_assignment(
   Ok(())
 }
 
-pub(crate) fn eval_statement(
+pub fn eval_statement(
   stmt: &Statement,
   e: &mut EvalEnv,
   cancellation_token: Arc<AtomicBool>,
@@ -3767,7 +3812,7 @@ pub(crate) fn eval_statement(
   }
 }
 
-pub(crate) fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
+pub fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
 where
   I: Iterator<Item = &'a mut EvalEnv>,
 {
@@ -3915,7 +3960,7 @@ lazy_static! {
 }
 
 #[derive(Default)]
-pub(crate) struct EvalShard {
+pub struct EvalShard {
   output: ClonedVar,
   namespace: ParamVar,
   name: ParamVar,

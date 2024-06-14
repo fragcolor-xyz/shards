@@ -43,8 +43,9 @@ add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
 # Shards core
 add_subdirectory(${SHARDS_DIR}/shards/core src/core)
 
-# Shards core
+# Shards lang
 add_subdirectory(${SHARDS_DIR}/shards/lang src/lang)
+add_subdirectory(${SHARDS_DIR}/shards/langffi src/langffi)
 
 # Rust projects
 add_subdirectory(${SHARDS_DIR}/shards/rust src/rust)

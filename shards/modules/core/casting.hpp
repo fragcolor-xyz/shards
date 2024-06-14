@@ -17,7 +17,18 @@ template <SHType ToType> struct ToNumber {
   const NumberConversion *_numberConversion{nullptr};
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any input type that can be converted to the specified output type. This includes sequences, strings, enums, "
+                   "and vector types.");
+  }
+
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The converted value in the specified output type."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts various input types (sequences, strings, enums, vectors) to the specified output type (e.g., "
+                   "integers, floats, colors). The conversion ensures type compatibility and handles different input formats.");
+  }
 
   static const NumberTypeTraits *getEnumNumberType() {
     static const NumberTypeTraits *result = nullptr;
@@ -216,7 +227,22 @@ template <SHType ToType> struct MakeVector {
   }
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("No input is required. This shard uses parameters to construct a vector of the specified type.");
+  }
+
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The constructed vector with the specified components. If not all components are provided, default values "
+                   "will be used for the remaining components.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Constructs a vector of the specified type (e.g., integers, floats, colors) using the given component values. If only "
+        "one component is provided, it will be broadcasted to all components. For MakeColor, missing components will be filled "
+        "with default values. Use @i2, @i3, @i4, @i8, @i16, @f2, @f3, @f4 built-ins for convenience.");
+  }
 
   void setParam(int index, const SHVar &value) {
     if (index >= (int)params.size())
@@ -270,7 +296,7 @@ template <SHType ToType> struct MakeVector {
     NumberType componentNumberType = _outputNumberType->isInteger ? NumberType::Int64 : NumberType::Float64;
     _componentConversion = numberTypeLookup.getConversion(componentNumberType, _outputNumberType->type);
 
-    // Check amount of set paramters
+    // Check amount of set parameters
     inputSize = 0;
     for (size_t i = 0; i < params.size(); i++) {
       if (params[i]->valueType == SHType::None) {
@@ -303,7 +329,7 @@ template <SHType ToType> struct MakeVector {
       param.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &param : params)
       param.cleanup();
   }

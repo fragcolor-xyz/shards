@@ -13,4 +13,16 @@
             <ExpandedItem>path</ExpandedItem>
         </Expand>
     </Type>
+    <Type Name="gfx::TextureContextData">
+        <DisplayString Optional="true">Texture v{version}, {label}, {size.width}x{size.height} D{(int)format.dimension+1} fmt{(int)format.pixelFormat}</DisplayString>
+        <DisplayString Optional="true">Texture v{version}, {size.width}x{size.height} D{(int)format.dimension+1} fmt{(int)format.pixelFormat}</DisplayString>
+        <Expand>
+            <Item Name="[Size]">size</Item>
+            <Item Name="[Dimension]">format.dimension</Item>
+            <Item Name="[PixelFormat]">format.pixelFormat</Item>
+            <Item Name="[MipLevels]">format.mipLevels</Item>
+            <Item Name="[Version]">version</Item>
+            <Item Name="[LastTouched]">lastTouched</Item>
+        </Expand>
+    </Type>
 </AutoVisualizer>
