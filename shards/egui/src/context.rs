@@ -298,14 +298,25 @@ impl RenderShard {
 
     // Only render the most recent output
     if full_render {
-      let draw_scale = ui_output.full_output.pixels_per_point;
-      let queue = unsafe {
-        bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
-          as *const bindings::gfx_DrawQueuePtr
-      };
-      self
-        .renderer
-        .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)?;
+      let mut err: Option<&'static str> = None;
+      // Sometimes the data from the context doesn't match up with the data from the UI
+      // and egui will just panic, catch it here and just ignore the rendered frame
+      if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let draw_scale = ui_output.full_output.pixels_per_point;
+        let queue = unsafe {
+          bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
+            as *const bindings::gfx_DrawQueuePtr
+        };
+        err = self
+          .renderer
+          .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)
+          .err();
+      })) {
+        shlog_warn!("UI.Render, ignored panic: {:?}", e);
+      }
+      if let Some(err) = err {
+        return Err(err);
+      }
     } else {
       // Apply texture updates only, skip rendering
       self
