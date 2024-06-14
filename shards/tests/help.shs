@@ -87,3 +87,17 @@ Shards.Enumerate | ForEach({
     })
   })
 })
+
+@wire(document-enum {
+  = enum-id
+  enum-id | Shards.EnumTypeHelp = enum-help | Log
+})
+
+@wire(document-object {
+  = object-id
+  object-id | Shards.ObjectTypeHelp = object-help | Log
+})
+
+Shards.EnumTypes | TryMany(document-enum Threads: 4)
+
+Shards.ObjectTypes | TryMany(document-object Threads: 4)

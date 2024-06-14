@@ -11,17 +11,23 @@ void freeTypeInfo(SHTypeInfo info) {
       info.object.extInfo->release(info.object.extInfoData);
     }
     break;
-  case SHType::Seq: {
-    for (uint32_t i = 0; info.seqTypes.len > i; i++) {
-      freeDerivedInfo(info.seqTypes.elements[i]);
+  case SHType::ContextVar: {
+    for (uint32_t i = 0; info.contextVarTypes.len > i; i++) {
+      freeDerivedInfo(info.contextVarTypes.elements[i]);
     }
-    shards::arrayFree(info.seqTypes);
+    shards::arrayFree(info.contextVarTypes);
   } break;
   case SHType::Set: {
     for (uint32_t i = 0; info.setTypes.len > i; i++) {
       freeDerivedInfo(info.setTypes.elements[i]);
     }
     shards::arrayFree(info.setTypes);
+  } break;
+  case SHType::Seq: {
+    for (uint32_t i = 0; info.seqTypes.len > i; i++) {
+      freeDerivedInfo(info.seqTypes.elements[i]);
+    }
+    shards::arrayFree(info.seqTypes);
   } break;
   case SHType::Table: {
     for (uint32_t i = 0; info.table.types.len > i; i++) {
@@ -35,13 +41,10 @@ void freeTypeInfo(SHTypeInfo info) {
   } break;
   default:
     break;
-  };
+  }
 }
 
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
-  // We need to guess a valid SHTypeInfo for this var in order to validate
-  // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and SHType::ContextVar for example
   SHTypeInfo varType;
   memcpy(&varType, &other, sizeof(SHTypeInfo));
   switch (varType.basicType) {
@@ -50,8 +53,22 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
       other.object.extInfo->reference(other.object.extInfoData);
     }
     break;
-  case SHType::ContextVar:
-  case SHType::Set:
+  case SHType::ContextVar: {
+    varType.contextVarTypes = {};
+    for (uint32_t i = 0; i < other.contextVarTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.contextVarTypes.elements[i]);
+      shards::arrayPush(varType.contextVarTypes, cloned);
+    }
+    break;
+  }
+  case SHType::Set: {
+    varType.setTypes = {};
+    for (uint32_t i = 0; i < other.setTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.setTypes.elements[i]);
+      shards::arrayPush(varType.setTypes, cloned);
+    }
+    break;
+  }
   case SHType::Seq: {
     varType.seqTypes = {};
     for (uint32_t i = 0; i < other.seqTypes.len; i++) {
@@ -75,15 +92,12 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
   }
   default:
     break;
-  };
+  }
   return varType;
 }
 
 SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo,
                           bool resolveContextVariables) {
-  // We need to guess a valid SHTypeInfo for this var in order to validate
-  // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and SHType::ContextVar for example
   SHTypeInfo varType{};
   varType.basicType = value.valueType;
   varType.innerType = value.innerType;
@@ -123,7 +137,8 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       shards::arrayResize(varType.table.keys, idx + 1);
       cloneVar(varType.table.keys.elements[idx], k);
     }
-  } break;
+    break;
+  }
   case SHType::Set: {
     auto &s = value.payload.setValue;
     SHSetIterator sit;
@@ -133,7 +148,8 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
       shards::arrayPush(varType.setTypes, derived);
     }
-  } break;
+    break;
+  }
   case SHType::ContextVar: {
     if (expInfo) {
       auto sv = SHSTRVIEW(value);
@@ -153,10 +169,6 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       SHLOG_ERROR("Could not find variable {} when deriving type info", varName);
       throw std::runtime_error("Could not find variable when deriving type info");
     }
-    // if we reach this point, no variable was found...
-    // not our job to trigger errors, just continue
-    // specifically we are used to verify parameters as well
-    // and in that case data is empty
   } break;
   default:
     break;

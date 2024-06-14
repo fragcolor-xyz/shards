@@ -690,10 +690,10 @@ template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   arr.len = size;
 }
 
-template <typename T>
-inline void arrayShuffle(T &arr) {
+template <typename T> inline void arrayShuffle(T &arr) {
   // Check if the array is empty
-  if (arr.len == 0) return;
+  if (arr.len == 0)
+    return;
 
   // Random number generator
   static thread_local std::random_device rd;
@@ -950,6 +950,7 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   switch (var.valueType) {
   case SHType::None:
     return;
+  case SHType::Trait:
   case SHType::Type:
   case SHType::Table:
   case SHType::Set:
@@ -980,6 +981,7 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
     SHWire::deleteRef(var.payload.wireValue);
     break;
   default:
+    shassert(var.valueType < SHType::EndOfBlittableTypes && "Non blittable type in destroyVar unhandled");
     break;
   };
 
