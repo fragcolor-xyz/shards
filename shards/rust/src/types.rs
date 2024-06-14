@@ -832,7 +832,7 @@ impl From<SHTypeInfo> for ClonedVar {
   fn from(t: SHTypeInfo) -> Self {
     let mut var = Var::default();
     var.valueType = SHType_Type;
-    var.payload.__bindgen_anon_1.typeValue = Box::into_raw(Box::new(t)) as *mut SHTypeInfo;
+    var.payload.__bindgen_anon_1.typeValue = &t as *const SHTypeInfo as *mut SHTypeInfo; // Directly assign the pointer
     let mut cloned = ClonedVar::default();
     cloneVar(&mut cloned.0, &var);
     cloned
