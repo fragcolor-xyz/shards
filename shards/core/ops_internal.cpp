@@ -56,7 +56,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
       if (var.payload.enumValue >= 0 && var.payload.enumValue < SHEnum(enumInfo->labels.len)) {
         label = enumInfo->labels.elements[var.payload.enumValue];
       }
-      os << enumInfo->name << "." << label;
+      os << enumInfo->name << "::" << label;
     } else {
       os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
          << var.payload.enumTypeId << std::dec;
@@ -70,7 +70,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << var.payload.intValue;
     break;
   case SHType::Int2:
-    os << "(";
+    os << "@i2(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.int2Value[i];
@@ -80,7 +80,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Int3:
-    os << "(";
+    os << "@i3(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.int3Value[i];
@@ -90,7 +90,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Int4:
-    os << "(";
+    os << "@i4(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.int4Value[i];
@@ -100,7 +100,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Int8:
-    os << "(";
+    os << "@i8(";
     for (auto i = 0; i < 8; i++) {
       if (i == 0)
         os << var.payload.int8Value[i];
@@ -110,7 +110,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Int16:
-    os << "(";
+    os << "@i16(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
         os << int(var.payload.int16Value[i]);
@@ -123,7 +123,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << var.payload.floatValue;
     break;
   case SHType::Float2:
-    os << "(";
+    os << "@f2(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.float2Value[i];
@@ -133,7 +133,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Float3:
-    os << "(";
+    os << "@f3(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.float3Value[i];
@@ -143,7 +143,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Float4:
-    os << "(";
+    os << "@f4(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.float4Value[i];
@@ -153,7 +153,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Color:
-    os << "(" << int(var.payload.colorValue.r) << " " << int(var.payload.colorValue.g) << " " << int(var.payload.colorValue.b)
+    os << "@color(" << int(var.payload.colorValue.r) << " " << int(var.payload.colorValue.g) << " " << int(var.payload.colorValue.b)
        << " " << int(var.payload.colorValue.a) << ")";
     break;
   case SHType::ShardRef:

@@ -78,8 +78,11 @@ struct Log : public LoggingBase {
     return input;
   }
 
-  static inline Parameters _params = {{"Prefix", SHCCSTR("The message to prefix to the logged output."), {CoreInfo::StringType}},
-                                      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
+  static inline Parameters _params = {
+      {"Prefix",
+       SHCCSTR("The message to prefix to the logged output. Note: the prefix will include a colon ':' before the value."),
+       {CoreInfo::StringType}},
+      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
 
   std::string _prefix;
   Enums::LogLevel _level{Enums::LogLevel::Info};
