@@ -1046,10 +1046,10 @@ TEST_CASE("ObjectVar") {
 
     auto wire = shards::Wire("test-wire-ObjectVar")
                     .let(v1)
-                    .shard("Set", "v1")
-                    .shard("Set", "v2")
-                    .shard("Get", "v1")
-                    .shard("Is", Var::ContextVar("v2"))
+                    .shard("Set", "v1"_sv)
+                    .shard("Set", "v2"_sv)
+                    .shard("Get", "v1"_sv)
+                    .shard("Is", Var::ContextVar("v2"_sv))
                     .shard("Assert.Is", true);
     myobject.Release(o1);
     auto mesh = SHMesh::make();
