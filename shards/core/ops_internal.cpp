@@ -9,8 +9,6 @@
 namespace shards {
 std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) {
   switch (var.valueType) {
-  case SHType::EndOfBlittableTypes:
-    break;
   case SHType::Type:
     os << "@type(";
     format(os, *var.payload.typeValue);
@@ -153,8 +151,8 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Color:
-    os << "@color(" << int(var.payload.colorValue.r) << " " << int(var.payload.colorValue.g) << " " << int(var.payload.colorValue.b)
-       << " " << int(var.payload.colorValue.a) << ")";
+    os << "@color(" << int(var.payload.colorValue.r) << " " << int(var.payload.colorValue.g) << " "
+       << int(var.payload.colorValue.b) << " " << int(var.payload.colorValue.a) << ")";
     break;
   case SHType::ShardRef:
     os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
@@ -233,6 +231,9 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     auto &t = *var.payload.traitValue;
     os << t;
   } break;
+  default:
+    shassert(false && "Invalid variable type");
+    break;
   }
   return os;
 }

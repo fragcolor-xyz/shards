@@ -1286,10 +1286,12 @@ struct CachedStreamBuf : std::streambuf {
   }
 
   int overflow(int c) override {
-    data.push_back(static_cast<char>(c));
-    return 0;
+    if (c != EOF) {
+      data.push_back(static_cast<char>(c));
+      return c; // Return the written character
+    }
+    return EOF;
   }
-
   void done() { data.push_back('\0'); }
 
   const char *str() {
@@ -1307,12 +1309,15 @@ struct StringStreamBuf : std::streambuf {
   bool done{false};
 
   std::streamsize xsgetn(char *s, std::streamsize n) override {
+    if (n == 0)
+      return 0;
     if (unlikely(done)) {
       return 0;
     } else if ((size_t(index) + n) > data.size()) {
       const auto len = data.size() - index;
       memcpy(s, &data[index], len);
-      done = true; // flag to indicate we are done
+      done = true;  // flag to indicate we are done
+      index += len; // Update index correctly
       return len;
     } else {
       memcpy(s, &data[index], n);
@@ -1325,7 +1330,7 @@ struct StringStreamBuf : std::streambuf {
     if (index >= data.size())
       return EOF;
 
-    return data[index++];
+    return data[index];
   }
 };
 
