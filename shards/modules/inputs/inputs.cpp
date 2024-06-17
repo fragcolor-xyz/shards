@@ -652,7 +652,7 @@ struct HandleURL : public Base {
 
     for (auto &evt : tmpEvents) {
       SHVar dummy{};
-      SHWireState res = _action.activate(context, Var(evt.path.c_str()), dummy);
+      SHWireState res = _action.activate(context, Var(evt.path.c_str(), 0 /* explicit strlen */), dummy);
       if (res == SHWireState::Error) {
         throw ActivationError("Inner activation failed");
       }

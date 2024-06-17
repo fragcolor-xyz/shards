@@ -1294,10 +1294,10 @@ struct CachedStreamBuf : std::streambuf {
   }
   void done() { data.push_back('\0'); }
 
-  const char *str() {
+  std::string_view str() {
     if (data.empty())
       return "";
-    return &data[0];
+    return std::string_view(data.data(), data.size() - 1);
   }
 };
 
@@ -1376,7 +1376,7 @@ struct VarStringStream {
     }
   }
 
-  const char *str() { return cache.str(); }
+  const std::string_view str() { return cache.str(); }
 };
 
 using ShardsCollection = std::variant<const SHWire *, ShardPtr, Shards, SHVar>;

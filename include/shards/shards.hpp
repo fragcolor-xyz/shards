@@ -891,7 +891,8 @@ struct Var : public SHVar {
     payload.floatValue = src;
   }
 
-  explicit Var(bool src) : SHVar() {
+  // Constructor for bool, enabled only for bool, otherwise c++ will magically convert to int things like 0, 1, etc.
+  template <typename T, typename = std::enable_if_t<std::is_same_v<T, bool>>> explicit Var(T src) {
     valueType = SHType::Bool;
     payload.boolValue = src;
   }
@@ -934,14 +935,12 @@ struct Var : public SHVar {
   }
 
   explicit Var(const std::string &src) : Var(std::string_view(src)) {}
-  template <std::size_t N> explicit constexpr Var(const char (&src)[N]) : Var(std::string_view(src, N - 1)) {}
-  explicit Var(const char *src) : Var(std::string_view(src)) {}
   explicit Var(const char *src, size_t len) : SHVar() {
     valueType = SHType::String;
     payload.stringValue = src;
     payload.stringLen = uint32_t(len == 0 && src != nullptr ? strlen(src) : len);
   }
-  explicit Var(const std::string_view &src) : SHVar() {
+  explicit Var(std::string_view src) : SHVar() {
     valueType = SHType::String;
     payload.stringValue = src.data();
     payload.stringLen = uint32_t(src.size());
@@ -952,8 +951,17 @@ struct Var : public SHVar {
     payload.stringLen = src.len;
   }
 
+  // Template constructor for const char[N], enabled only when N > 1
+  template <std::size_t N, typename = std::enable_if_t<(N > 1)>>
+  Var(const char (&src)[N]) : Var(std::string_view(src, N - 1)) {}
+
+  // Constructor for empty string literals
+  Var(const char (&src)[1]) : Var(std::string_view(src, 0)) {}
+
   static Var ContextVar(const std::string &src) { return ContextVar(std::string_view(src)); }
-  static Var ContextVar(const char *src) { return ContextVar(std::string_view(src)); }
+  template <std::size_t N> static Var ContextVar(const char (&src)[N]) {
+    return ContextVar(std::string_view(src, N - 1));
+  }
   static Var ContextVar(std::string_view src) {
     Var res{};
     res.valueType = SHType::ContextVar;

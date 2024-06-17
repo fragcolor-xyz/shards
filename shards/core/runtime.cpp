@@ -2545,7 +2545,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     } catch (const std::exception &e) {
       SHComposeResult res{};
       res.failed = true;
-      auto msgTmp = shards::Var(e.what());
+      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
       shards::cloneVar(res.failureMessage, msgTmp);
       return res;
     } catch (...) {
@@ -2569,7 +2569,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
       SHLOG_TRACE("composeShards failed: {}", e.what());
       SHComposeResult res{};
       res.failed = true;
-      auto msgTmp = shards::Var(e.what());
+      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
       shards::cloneVar(res.failureMessage, msgTmp);
       return res;
     } catch (...) {
