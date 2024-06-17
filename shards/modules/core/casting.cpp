@@ -312,12 +312,18 @@ struct ToHex {
       output = fmt::format("{:x}", input.payload.intValue);
     } else if (input.valueType == SHType::Bytes) {
       boost::algorithm::hex(input.payload.bytesValue, input.payload.bytesValue + input.payload.bytesSize,
-                             std::back_inserter(output));
+                            std::back_inserter(output));
+
     } else if (input.valueType == SHType::String) {
       boost::algorithm::hex(input.payload.stringValue, input.payload.stringValue + input.payload.stringLen,
-                             std::back_inserter(output));
+                            std::back_inserter(output));
     } else {
       throw ActivationError("Expected integer, bytes, or string type.");
+    }
+    // add 0x prefix and needed padding
+    output.insert(0, "0x");
+    if (output.size() % 2) {
+      output.insert(2, 1, '0');
     }
     return Var(output);
   }

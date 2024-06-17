@@ -480,6 +480,11 @@ struct ToHex {
     fixedInput.payload.bytesSize--;
     boost::algorithm::hex(fixedInput.payload.bytesValue, fixedInput.payload.bytesValue + fixedInput.payload.bytesSize,
                           std::back_inserter(output));
+    // add 0x prefix and needed padding
+    output.insert(0, "0x");
+    if (output.size() % 2) {
+      output.insert(2, 1, '0');
+    }
     return Var(output);
   }
 };
