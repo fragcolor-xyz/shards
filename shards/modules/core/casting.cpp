@@ -275,7 +275,7 @@ private:
 };
 
 struct ToString {
-  VarStringStream stream;
+  std::string output;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any value to be converted to a string."); }
@@ -286,13 +286,14 @@ struct ToString {
   static SHOptionalString help() { return SHCCSTR("Converts any input value to its string representation."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    stream.write(input);
-    return Var(stream.str());
+    output = fmt::format("{}", input);
+    return Var(output);
   }
 };
 
 struct ToHex {
-  VarStringStream stream;
+  std::string output;
+
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
 
   static SHTypesInfo inputTypes() { return toHexTypes; }
@@ -306,8 +307,19 @@ struct ToHex {
   static SHOptionalString help() { return SHCCSTR("Converts the input value to its hexadecimal string representation."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    stream.tryWriteHex(input);
-    return Var(stream.str());
+    output.clear();
+    if (input.valueType == SHType::Int) {
+      output = fmt::format("{:x}", input.payload.intValue);
+    } else if (input.valueType == SHType::Bytes) {
+      boost::algorithm::hex(input.payload.bytesValue, input.payload.bytesValue + input.payload.bytesSize,
+                             std::back_inserter(output));
+    } else if (input.valueType == SHType::String) {
+      boost::algorithm::hex(input.payload.stringValue, input.payload.stringValue + input.payload.stringLen,
+                             std::back_inserter(output));
+    } else {
+      throw ActivationError("Expected integer, bytes, or string type.");
+    }
+    return Var(output);
   }
 };
 

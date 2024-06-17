@@ -12,6 +12,7 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <stdexcept>
+#include <boost/algorithm/hex.hpp>
 
 using namespace boost::multiprecision;
 
@@ -164,7 +165,7 @@ struct BigOperandBase {
 
   SHVar getParam(int index) { return _op; }
 
-  void cleanup(SHContext* context) { _op.cleanup(); }
+  void cleanup(SHContext *context) { _op.cleanup(); }
 
   void warmup(SHContext *context) { _op.warmup(context); }
 
@@ -197,7 +198,7 @@ struct RegOperandBase {
 
   SHVar getParam(int index) { return _op; }
 
-  void cleanup(SHContext* context) { _op.cleanup(); }
+  void cleanup(SHContext *context) { _op.cleanup(); }
 
   void warmup(SHContext *context) { _op.warmup(context); }
 
@@ -284,7 +285,7 @@ struct ShiftBase {
 
   SHVar getParam(int index) { return _shift; }
 
-  void cleanup(SHContext* context) { _shift.cleanup(); }
+  void cleanup(SHContext *context) { _shift.cleanup(); }
 
   void warmup(SHContext *context) { _shift.warmup(context); }
 };
@@ -436,7 +437,7 @@ struct ToBytes {
   SHVar getParam(int index) { return _bits; }
 
   void warmup(SHContext *context) { _bits.warmup(context); }
-  void cleanup(SHContext* context) { _bits.cleanup(); }
+  void cleanup(SHContext *context) { _bits.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const int64_t bits = _bits.get().payload.intValue;
@@ -462,6 +463,8 @@ struct ToBytes {
 };
 
 struct ToHex {
+  std::string output;
+
   static SHOptionalString help() { return SHCCSTR("Converts the value to a hexadecimal representation."); }
 
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
@@ -471,15 +474,14 @@ struct ToHex {
   static SHOptionalString outputHelp() { return SHCCSTR("Hexadecimal representation of the integer value."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    output.clear();
     SHVar fixedInput = input;
     fixedInput.payload.bytesValue++;
     fixedInput.payload.bytesSize--;
-    _stream.tryWriteHex(fixedInput);
-    return Var(_stream.str());
+    boost::algorithm::hex(fixedInput.payload.bytesValue, fixedInput.payload.bytesValue + fixedInput.payload.bytesSize,
+                          std::back_inserter(output));
+    return Var(output);
   }
-
-private:
-  VarStringStream _stream;
 };
 
 struct Abs {
