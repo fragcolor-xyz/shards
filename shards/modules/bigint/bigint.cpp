@@ -12,7 +12,6 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <stdexcept>
-#include <boost/algorithm/hex.hpp>
 
 using namespace boost::multiprecision;
 
@@ -463,8 +462,6 @@ struct ToBytes {
 };
 
 struct ToHex {
-  std::string output;
-
   static SHOptionalString help() { return SHCCSTR("Converts the value to a hexadecimal representation."); }
 
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
@@ -474,19 +471,15 @@ struct ToHex {
   static SHOptionalString outputHelp() { return SHCCSTR("Hexadecimal representation of the integer value."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    output.clear();
     SHVar fixedInput = input;
     fixedInput.payload.bytesValue++;
     fixedInput.payload.bytesSize--;
-    boost::algorithm::hex(fixedInput.payload.bytesValue, fixedInput.payload.bytesValue + fixedInput.payload.bytesSize,
-                          std::back_inserter(output));
-    // add 0x prefix and needed padding
-    output.insert(0, "0x");
-    if (output.size() % 2) {
-      output.insert(2, 1, '0');
-    }
-    return Var(output);
+    _stream.tryWriteHex(fixedInput);
+    return Var(_stream.str());
   }
+
+private:
+  VarStringStream _stream;
 };
 
 struct Abs {

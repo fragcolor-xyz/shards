@@ -1334,6 +1334,42 @@ struct StringStreamBuf : std::streambuf {
   }
 };
 
+struct VarStringStream {
+  CachedStreamBuf cache;
+
+  void write(const SHVar &var) {
+    cache.reset();
+    std::ostream stream(&cache);
+    stream << var;
+    cache.done();
+  }
+
+  void tryWriteHex(const SHVar &var) {
+    cache.reset();
+    std::ostream stream(&cache);
+    if (var.valueType == SHType::Int) {
+      stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << var.payload.intValue;
+    } else if (var.valueType == SHType::Bytes) {
+      stream << "0x" << std::hex;
+      for (uint32_t i = 0; i < var.payload.bytesSize; i++)
+        stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
+    } else if (var.valueType == SHType::String) {
+      stream << "0x" << std::hex;
+      auto len = var.payload.stringLen;
+      if (len == 0 && var.payload.stringValue) {
+        len = uint32_t(strlen(var.payload.stringValue));
+      }
+      for (uint32_t i = 0; i < len; i++)
+        stream << std::setw(2) << std::setfill('0') << (int)var.payload.stringValue[i];
+    } else {
+      throw ActivationError("Cannot convert type to hex");
+    }
+    cache.done();
+  }
+
+  const std::string_view str() { return cache.str(); }
+};
+
 using ShardsCollection = std::variant<const SHWire *, ShardPtr, Shards, SHVar>;
 
 struct ShardInfo {
