@@ -164,7 +164,7 @@ struct BigOperandBase {
 
   SHVar getParam(int index) { return _op; }
 
-  void cleanup(SHContext* context) { _op.cleanup(); }
+  void cleanup(SHContext *context) { _op.cleanup(); }
 
   void warmup(SHContext *context) { _op.warmup(context); }
 
@@ -197,7 +197,7 @@ struct RegOperandBase {
 
   SHVar getParam(int index) { return _op; }
 
-  void cleanup(SHContext* context) { _op.cleanup(); }
+  void cleanup(SHContext *context) { _op.cleanup(); }
 
   void warmup(SHContext *context) { _op.warmup(context); }
 
@@ -284,7 +284,7 @@ struct ShiftBase {
 
   SHVar getParam(int index) { return _shift; }
 
-  void cleanup(SHContext* context) { _shift.cleanup(); }
+  void cleanup(SHContext *context) { _shift.cleanup(); }
 
   void warmup(SHContext *context) { _shift.warmup(context); }
 };
@@ -436,7 +436,7 @@ struct ToBytes {
   SHVar getParam(int index) { return _bits; }
 
   void warmup(SHContext *context) { _bits.warmup(context); }
-  void cleanup(SHContext* context) { _bits.cleanup(); }
+  void cleanup(SHContext *context) { _bits.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const int64_t bits = _bits.get().payload.intValue;

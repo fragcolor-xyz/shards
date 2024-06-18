@@ -70,6 +70,7 @@ template <auto V> struct constant {
 
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 inline SHStringWithLen operator"" _swl(const char *s, size_t l) { return SHStringWithLen{s, l}; }
+inline std::string_view operator"" _sv(const char *s, size_t l) { return std::string_view{s, l}; }
 
 constexpr std::size_t StrLen(const char *str) {
   std::size_t len = 0;
@@ -403,6 +404,15 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     res.flags |= SHVAR_FLAGS_FOREIGN;
     return res;
   }
+
+  // Overload for compile-time string literals
+  template <std::size_t N> static TOwnedVar<SH_CORE> Foreign(const char (&source)[N]) {
+    Var s(source);
+    TOwnedVar<SH_CORE> res{};
+    std::swap<SHVar>(res, s);
+    res.flags |= SHVAR_FLAGS_FOREIGN;
+    return res;
+  }
 };
 
 // helper to create structured data tables
@@ -489,6 +499,11 @@ template <class SH_CORE> struct TTableVar : public SHVar {
   TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) { return insert(Var(key), val); }
 
   template <typename AS_VAR> TOwnedVar<SH_CORE> *find(AS_VAR key) const {
+    return (TOwnedVar<SH_CORE> *)payload.tableValue.api->tableGet(payload.tableValue, Var(key));
+  }
+
+  // Overload to handle compile-time string literals
+  template <std::size_t N> TOwnedVar<SH_CORE> *find(const char (&key)[N]) const {
     return (TOwnedVar<SH_CORE> *)payload.tableValue.api->tableGet(payload.tableValue, Var(key));
   }
 

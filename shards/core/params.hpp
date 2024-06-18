@@ -12,11 +12,11 @@
 namespace shards {
 #define PARAM_EXT(_type, _name, _paramInfo)                              \
   static inline shards::ParameterInfo _name##ParameterInfo = _paramInfo; \
-  _type _name;
+  _type _name{};
 
 #define PARAM(_type, _name, _displayName, _help, ...)                                                     \
   static inline shards::ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
-  _type _name;
+  _type _name{};
 
 #define PARAM_VAR(_name, _displayName, _help, ...) PARAM(shards::OwnedVar, _name, _displayName, _help, __VA_ARGS__)
 #define PARAM_PARAMVAR(_name, _displayName, _help, ...) PARAM(shards::ParamVar, _name, _displayName, _help, __VA_ARGS__)
