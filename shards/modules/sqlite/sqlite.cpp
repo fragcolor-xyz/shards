@@ -36,6 +36,16 @@ static const char *vfs =
     nullptr;
 #endif
 
+#ifndef SH_SQLITE_DEBUG_LOGS
+#define SH_SQLITE_DEBUG_LOGS 0
+#endif
+#if SH_SQLITE_DEBUG_LOGS
+#define SH_SQLITE_DEBUG_LOG(...) SPDLOG_LOGGER_DEBUG(logger, __VA_ARGS__)
+#else 
+#define SH_SQLITE_DEBUG_LOG(...)
+#endif
+
+
 static auto logger = shards::logging::getOrCreate("sqlite");
 
 namespace shards {
@@ -50,17 +60,17 @@ struct Connection {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
 
     if (readOnly) {
-      SPDLOG_LOGGER_DEBUG(logger, "sqlite open read-only {}", path);
+      SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-only {}", path);
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, vfs) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     } else {
-      SPDLOG_LOGGER_DEBUG(logger, "sqlite open read-write {}", path);
+      SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-write {}", path);
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, vfs) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     }
-    SPDLOG_LOGGER_DEBUG(logger, "sqlite opened {}", (void *)db);
+    SH_SQLITE_DEBUG_LOG(logger, "sqlite opened {}", (void *)db);
 
     uint32_t res;
     if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
@@ -79,7 +89,7 @@ struct Connection {
 
   ~Connection() {
     if (db) {
-      SPDLOG_LOGGER_DEBUG(logger, "sqlite close {}", (void *)db);
+      SH_SQLITE_DEBUG_LOG(logger, "sqlite close {}", (void *)db);
       sqlite3_close(db);
     }
   }
@@ -437,7 +447,7 @@ struct Query : public Base {
           if (idx < expectedNumParameters)
             throw ActivationError("Not enough parameters for query");
 
-          SPDLOG_LOGGER_DEBUG(logger, "sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
+          SH_SQLITE_DEBUG_LOG(logger, "sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
           return _returnCols ? getOutputCols(output) : getOutputRows(output);
         },
         [] {});
@@ -498,40 +508,43 @@ struct Transaction : public Base {
       SH_SUSPEND(context, 0);
     }
 
+await(context, [&]
     {
       std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
       std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-      SPDLOG_LOGGER_DEBUG(logger, "Transaction begin, db: {}", (void *)_connection->db);
+      SH_SQLITE_DEBUG_LOG(logger, "Transaction begin, db: {}", (void *)_connection->db);
       auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
       if (rc != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(_connection->get()));
       }
-    }
+    }, [](){});
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
+    
 
+await(context, [&]
     {
       std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
       std::scoped_lock<std::mutex> l2(_connection->mutex);
 
       if (state != SHWireState::Continue) {
         // likely something went wrong! lets rollback.
-        SPDLOG_LOGGER_DEBUG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
+        SH_SQLITE_DEBUG_LOG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
         auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
         if (rc != SQLITE_OK) {
           throw ActivationError(sqlite3_errmsg(_connection->get()));
         }
       } else {
         // commit
-        SPDLOG_LOGGER_DEBUG(logger, "Transaction commit, db: {}", (void *)_connection->db);
+        SH_SQLITE_DEBUG_LOG(logger, "Transaction commit, db: {}", (void *)_connection->db);
         auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
         if (rc != SQLITE_OK) {
           throw ActivationError(sqlite3_errmsg(_connection->get()));
         }
       }
-    }
+    }, [](){});
 
     return input;
   }
@@ -628,7 +641,7 @@ struct RawQuery : public Base {
 
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
-          SPDLOG_LOGGER_DEBUG(logger, "Raw query db: {}, {}", (void *)_connection->db, query);
+          SH_SQLITE_DEBUG_LOG(logger, "Raw query db: {}, {}", (void *)_connection->db, query);
           int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
 
           if (rc != SQLITE_OK) {

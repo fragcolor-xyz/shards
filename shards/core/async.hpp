@@ -176,13 +176,9 @@ struct TidePool {
   }
 #else // Dummy implementation
   void schedule(Work *work) {
-    // SHLOG_INFO("TidePool: spawning thread");
     std::thread([work]() {
-      // SHLOG_INFO("TidePool: thread spawned");
       work->call();
-      // SHLOG_INFO("TidePool: thread finishing");
     }).detach();
-    // SHLOG_INFO("TidePool: detached thread");
   }
 #endif
 };

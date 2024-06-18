@@ -32,7 +32,6 @@ struct GraphicsContext {
 
   ::gfx::Context &getContext();
   ::gfx::Window &getWindow();
-  // SDL_Window *getSdlWindow();
 };
 
 using RequiredGraphicsContext =

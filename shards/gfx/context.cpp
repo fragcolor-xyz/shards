@@ -464,8 +464,6 @@ void Context::poll(bool wait) {
   } else {
     wgpuDevicePoll(wgpuDevice, false, nullptr);
   }
-#else
-  // emscripten_sleep(0);
 #endif
 }
 

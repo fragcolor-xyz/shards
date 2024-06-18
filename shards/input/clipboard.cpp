@@ -2,7 +2,6 @@
 #include "../core/platform.hpp"
 #if SH_EMSCRIPTEN
 #include <emscripten.h>
-// #include "emscripten_browser_clipboard.h"
 extern "C" {
 void gfxClipboardGet(char **recv, std::atomic_bool *ready);
 void gfxClipboardSet(char *data);
