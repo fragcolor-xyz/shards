@@ -93,13 +93,13 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
-use std::sync::atomic::AtomicI32;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::Deserializer;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -110,6 +110,7 @@ use std::os::raw::c_char;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::str::Utf8Error;
+use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
 #[macro_export]
@@ -2792,7 +2793,10 @@ impl Var {
   }
 
   pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
-    let rc = Box::new(RefCounted::<T> { rc: AtomicI32::new(0), value: obj });
+    let rc = Box::new(RefCounted::<T> {
+      rc: AtomicI32::new(0),
+      value: obj,
+    });
     unsafe {
       Var {
         valueType: SHType_Object,
@@ -3202,6 +3206,33 @@ impl TryFrom<&Var> for &str {
         )
       })
       .map_err(|_| "Expected valid UTF-8 string, but casting failed.")
+    }
+  }
+}
+
+impl TryFrom<&Var> for Cow<'static, str> {
+  type Error = &'static str;
+
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
+    {
+      Err("Expected String, Path or ContextVar variable, but casting failed.")
+    } else {
+      unsafe {
+        if var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen == 0 {
+          return Ok(Cow::Borrowed(""));
+        }
+      }
+      let s = std::str::from_utf8(unsafe {
+        slice::from_raw_parts(
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *const u8,
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        )
+      })
+      .map_err(|_| "Expected valid UTF-8 string, but casting failed.")?;
+      Ok(Cow::Borrowed(s))
     }
   }
 }
