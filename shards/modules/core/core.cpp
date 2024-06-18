@@ -1022,7 +1022,8 @@ struct Erase : SeqUser {
     }
 
     if (info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
-      throw ComposeError("Erase: Reference to sequence or table was not a sequence or table.");
+      throw ComposeError(
+          fmt::format("Erase: Expected a SHType::Seq or SHType::Table, got {}, variable: {}", info->exposedType, _name));
     }
 
     auto isTable = info->exposedType.basicType == SHType::Table;
