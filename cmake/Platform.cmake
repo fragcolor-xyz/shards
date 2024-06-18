@@ -4,12 +4,14 @@ endif()
 
 if(APPLE AND NOT IOS)
   set(MACOSX TRUE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "Minimum macOS deployment version")
 endif()
 
 if(IOS)
   set(CMAKE_Swift_COMPILER /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc)
   enable_language(Swift)
   set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "16.3" CACHE STRING "Minimum iOS deployment version")
 endif()
 
 if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
