@@ -106,8 +106,6 @@ struct ContextMainOutput {
   TexturePtr texture;
 
   ContextFlushTextureReferencesRegistry onFlushTextureReferences;
-  
-  std::vector<WGPUTexture> inflightTextures;
 
 #ifndef WEBGPU_NATIVE
   WGPUSwapChain wgpuSwapChain{};
@@ -119,7 +117,6 @@ struct ContextMainOutput {
   }
 
   ~ContextMainOutput() {
-    flushInFlightTextures();
 #ifndef WEBGPU_NATIVE
     releaseSwapchain();
 #endif
@@ -184,13 +181,6 @@ struct ContextMainOutput {
     return texture;
   }
 
-  void flushInFlightTextures() {
-    for (auto &t : inflightTextures) {
-      wgpuTextureRelease(t);
-    }
-    inflightTextures.clear();
-  }
-
   void present() {
     shassert(wgpuCurrentTexture);
 
@@ -198,8 +188,7 @@ struct ContextMainOutput {
     wgpuSurfacePresent(wgpuSurface);
 #endif
 
-    flushInFlightTextures();
-    inflightTextures.push_back(wgpuCurrentTexture);
+    wgpuTextureRelease(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
 
     FrameMark;
@@ -207,17 +196,15 @@ struct ContextMainOutput {
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
     int2 mainOutputSize = window->getDrawableSize();
-    if (mainOutputSize.x <= 0 || mainOutputSize.y <= 0) {
-      return;
-    }
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
-    flushInFlightTextures();
+    if (newSize.x <= 0 || newSize.y <= 0) {
+      return;
+    }
 
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
-    // WGPUTextureFormat preferredFormat = WGPUTextureFormat_BGRA8Unorm;
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
       throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
@@ -421,22 +408,20 @@ bool Context::beginFrame() {
 
   // collectContextData();
   if (!isHeadless()) {
-    bool attemptedRecreate = false;
+    const int maxAttempts = 2;
+    bool success = false;
 
-    bool success{};
-    do {
-      // Try to request the swapchain texture, automatically recreate swapchain on failure once
+    // Try to request the swapchain texture, automatically recreate swapchain on failure
+    for (size_t i = 0; !success && i < maxAttempts; i++) {
       success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
-        if (!attemptedRecreate) {
-          SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
-          mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
-          attemptedRecreate = true;
-        } else {
-          return false;
-        }
+        SPDLOG_LOGGER_DEBUG(logger, "Failed to get current swapchain texture, forcing recreate");
+        mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
       }
-    } while (!success);
+    }
+
+    if (!success)
+      return false;
   }
 
   frameState = ContextFrameState::WaitingForEnd;
@@ -609,7 +594,7 @@ void Context::releaseDevice() {
   ZoneScoped;
 
   onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceLost(); });
-  
+
   if (mainOutput) {
     mainOutput->releaseSurface();
   }
