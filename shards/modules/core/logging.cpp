@@ -24,9 +24,13 @@ struct LoggingBase {
   { SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::level_enum(_level_), __VA_ARGS__); }
 
 struct Log : public LoggingBase {
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to be logged to the console."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The same value that was inputted, unmodified."); }
+
   static SHOptionalString help() {
-    return SHCCSTR(
-        "Logs the output of a shard or the value of a variable to the console (along with an optional prefix string).");
+    return SHCCSTR("Logs the output of a shard or the value of a variable to the console along with an optional prefix string. "
+                   "The logging level can be specified to control the verbosity of the log output.");
   }
 
   static SHParametersInfo parameters() { return _params; }
@@ -74,16 +78,24 @@ struct Log : public LoggingBase {
     return input;
   }
 
-  static inline Parameters _params = {{"Prefix", SHCCSTR("The message to prefix to the logged output."), {CoreInfo::StringType}},
-                                      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
+  static inline Parameters _params = {
+      {"Prefix",
+       SHCCSTR("The message to prefix to the logged output. Note: the prefix will include a colon ':' before the value."),
+       {CoreInfo::StringType}},
+      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
 
   std::string _prefix;
   Enums::LogLevel _level{Enums::LogLevel::Info};
 };
 
 struct LogType : public Log {
+  static SHOptionalString inputHelp() { return SHCCSTR("The value whose type will be logged to the console."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The same value that was inputted, unmodified."); }
+
   static SHOptionalString help() {
-    return SHCCSTR("Logs the type of the passed variable to the console (along with an optional prefix string).");
+    return SHCCSTR("Logs the type of the value to the console along with an optional prefix string. The logging level can be "
+                   "specified to control the verbosity of the log output.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -107,8 +119,13 @@ struct LogType : public Log {
 };
 
 struct Msg : public LoggingBase {
+  static SHOptionalString inputHelp() { return SHCCSTR("The input is ignored. This shard displays a static message."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The same variable that was inputted, unmodified."); }
+
   static SHOptionalString help() {
-    return SHCCSTR("Displays the passed message string or the passed variable's value to the user via standard output.");
+    return SHCCSTR("Displays the passed message string to the user via standard output. The input variable is ignored, and only "
+                   "the static message is displayed.");
   }
 
   static SHParametersInfo parameters() { return _params; }
@@ -209,7 +226,19 @@ using custom_ringbuffer_sink_st = custom_ringbuffer_sink<spdlog::details::null_m
 struct CaptureLog {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input is ignored. This shard captures log messages based on specified parameters.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence of captured log messages."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Captures log messages based on specified parameters, such as the number of messages to retain, the minimum log level, "
+        "and the log format pattern. It can optionally suspend execution until new log messages are available.");
+  }
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -317,7 +346,7 @@ private:
       {"Size", SHCCSTR("The maximum number of logs to retain."), {CoreInfo::IntType}},
       {"MinLevel", SHCCSTR("The minimum level of logs to capture."), {CoreInfo::StringType}},
       {"Pattern", SHCCSTR("The pattern used to format the logs."), {CoreInfo::StringType}},
-      {"Suspend", SHCCSTR("TODO."), {CoreInfo::BoolType}},
+      {"Suspend", SHCCSTR("Suspend execution until new logs are available."), {CoreInfo::BoolType}},
   };
 
   std::vector<std::string> _pool;

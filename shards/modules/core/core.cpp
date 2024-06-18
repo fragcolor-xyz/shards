@@ -1022,7 +1022,8 @@ struct Erase : SeqUser {
     }
 
     if (info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
-      throw ComposeError("Erase: Reference to sequence or table was not a sequence or table.");
+      throw ComposeError(
+          fmt::format("Erase: Expected a SHType::Seq or SHType::Table, got {}, variable: {}", info->exposedType, _name));
     }
 
     auto isTable = info->exposedType.basicType == SHType::Table;
@@ -1521,7 +1522,9 @@ struct GetShardHelp {
 
   TableVar _output{};
 
-  static Var ostr(SHOptionalString &str) { return Var(str.string ? str.string : getString(str.crc)); }
+  static Var ostr(SHOptionalString &str) {
+    return Var(str.string ? std::string_view(str.string) : std::string_view(getString(str.crc)));
+  }
 
   static SeqVar richTypeInfo(const SHTypesInfo &types, bool ignoreNone = true) {
     SeqVar s{};
@@ -1579,7 +1582,7 @@ struct GetShardHelp {
       for (uint32_t i = 0; i < params.len; i++) {
         auto &param = params.elements[i];
         TableVar paramTable{};
-        paramTable.insert(Var("name"), Var(param.name));
+        paramTable.insert(Var("name"), Var(param.name, 0)); // 0 to force strlen, in this case OK
         paramTable.insert(Var("help"), ostr(param.help));
         paramTable.insert(Var("types"), richTypeInfo(param.valueTypes, false));
         paramTable.insert(Var("default"), shard->getParam(shard, i));
@@ -1615,10 +1618,10 @@ struct GetEnumTypeHelp {
     }
 
     auto &info = it->second;
-    _output["name"] = Var(info.name);
+    _output["name"] = Var(info.name, 0);
     auto labels = SeqVar{};
     for (uint32_t i = 0; i < info.labels.len; i++) {
-      labels.emplace_back(Var(info.labels.elements[i]));
+      labels.emplace_back(Var(info.labels.elements[i], 0));
     }
     _output["labels"] = std::move(labels);
     auto values = SeqVar{};
@@ -1632,7 +1635,7 @@ struct GetEnumTypeHelp {
       if (info.descriptions.elements[i].string == nullptr) {
         descriptions.emplace_back(Var(""));
       } else {
-        descriptions.emplace_back(Var(info.descriptions.elements[i].string));
+        descriptions.emplace_back(Var(info.descriptions.elements[i].string, 0));
       }
     }
     _output["descriptions"] = std::move(descriptions);
@@ -1655,11 +1658,11 @@ struct GetObjectTypeHelp {
     }
 
     auto &info = it->second;
-    if(info.name == nullptr) {
+    if (info.name == nullptr) {
       throw ActivationError(fmt::format("Object type {} has no name", id));
     }
 
-    _output["name"] = Var(info.name);
+    _output["name"] = Var(info.name, 0);
     _output["isThreadSafe"] = Var(info.isThreadSafe);
 
     return _output;

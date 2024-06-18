@@ -137,9 +137,24 @@ template <SHType ToType> struct ToNumber {
     }
   }
 
+  // Function to skip alphanumeric prefix starting with '@'
+  void skipPrefix(const char *&strPtr) {
+    if (*strPtr == '@') {
+      ++strPtr; // Skip '@'
+      while (std::isalpha(*strPtr)) {
+        ++strPtr; // Skip alphabetic characters
+      }
+      while (std::isdigit(*strPtr)) {
+        ++strPtr; // Skip numeric characters
+      }
+    }
+  }
+
   void parseStringElements(SHVar &output, const char *str, size_t length) {
     uint8_t *dstPtr = (uint8_t *)&output.payload;
     const char *strPtr = str;
+
+    skipPrefix(strPtr);
 
     // Skip seq header
     while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' || strPtr[0] == '{' || strPtr[0] == '[')) {

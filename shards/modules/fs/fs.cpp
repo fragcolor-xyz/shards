@@ -90,7 +90,7 @@ struct Iterate {
 
     shards::arrayResize(_storage, 0);
     for (auto &sRef : _strings) {
-      shards::arrayPush(_storage, Var(sRef.c_str()));
+      shards::arrayPush(_storage, Var(sRef));
     }
 
     return Var(_storage);
@@ -318,7 +318,7 @@ struct Read {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
       _buffer.push_back(0);
-      return Var((const char *)_buffer.data());
+      return Var((const char *)_buffer.data(), _buffer.size() - 1);
     }
   }
 };

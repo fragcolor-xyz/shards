@@ -1274,7 +1274,8 @@ struct WireLoader : public BaseLoader<WireLoader> {
       if (unlikely(update.error != nullptr)) {
         SHLOG_ERROR("Failed to reload a wire via WireLoader, reason: {}", update.error);
         SHVar output{};
-        _onErrorShards.activate(context, Var(update.error), output);
+        std::string_view error(update.error);
+        _onErrorShards.activate(context, Var(error), output);
       } else {
         if (wire) {
           // stop and release previous version

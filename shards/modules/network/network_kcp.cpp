@@ -553,115 +553,111 @@ struct ServerShard : public NetworkBase {
 
     std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
 
-    _socket->async_receive_from(
-        boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
-        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-          if (!ec && bytes_recvd > 0) {
-            KCPPeer *currentPeer = nullptr;
-            std::shared_lock<std::shared_mutex> lock(peersMutex);
-            auto it = _server._end2Peer.find(_sender);
-            if (it == _server._end2Peer.end()) {
-              SPDLOG_LOGGER_TRACE(logger, "Received packet from unknown peer: {} port: {}", _sender.address().to_string(),
-                                  _sender.port());
+    _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
+                                [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                  if (!ec && bytes_recvd > 0) {
+                                    KCPPeer *currentPeer = nullptr;
+                                    std::shared_lock<std::shared_mutex> lock(peersMutex);
+                                    auto it = _server._end2Peer.find(_sender);
+                                    if (it == _server._end2Peer.end()) {
+                                      SPDLOG_LOGGER_TRACE(logger, "Received packet from unknown peer: {} port: {}",
+                                                          _sender.address().to_string(), _sender.port());
 
-              // new peer
-              lock.unlock();
+                                      // new peer
+                                      lock.unlock();
 
-              // we write so hard lock this
-              std::scoped_lock<std::shared_mutex> lock(peersMutex);
+                                      // we write so hard lock this
+                                      std::scoped_lock<std::shared_mutex> lock(peersMutex);
 
-              // new peer
-              try {
-                auto peer = _pool->acquire(_composer, (void *)0);
-                peer->reset();
-                _server._end2Peer[_sender] = peer;
-                peer->endpoint = _sender;
-                peer->user = this;
-                peer->kcp->user = peer;
-                peer->kcp->output = &ServerShard::udp_output;
-                SPDLOG_LOGGER_DEBUG(logger, "Added new peer: {} port: {}", peer->endpoint->address().to_string(),
-                                    peer->endpoint->port());
+                                      // new peer
+                                      try {
+                                        auto peer = _pool->acquire(_composer, (void *)0);
+                                        peer->reset();
+                                        _server._end2Peer[_sender] = peer;
+                                        peer->endpoint = _sender;
+                                        peer->user = this;
+                                        peer->kcp->user = peer;
+                                        peer->kcp->output = &ServerShard::udp_output;
+                                        SPDLOG_LOGGER_DEBUG(logger, "Added new peer: {} port: {}",
+                                                            peer->endpoint->address().to_string(), peer->endpoint->port());
 
-                // Assume that we recycle containers so the connection might already exist!
-                if (!peer->onStopConnection) {
-                  _server._wire2Peer[peer->wire.get()] = peer;
-                  peer->onStopConnection =
-                      peer->wire->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&ServerShard::wireOnStop>(this);
-                }
+                                        // Assume that we recycle containers so the connection might already exist!
+                                        _server._wire2Peer[peer->wire.get()] = peer;
 
-                // set wire ID, in order for Events to be properly routed
-                // for now we just use ptr as ID, until it causes problems
-                peer->wire->id = reinterpret_cast<entt::id_type>(peer);
+                                        // set wire ID, in order for Events to be properly routed
+                                        // for now we just use ptr as ID, until it causes problems
+                                        peer->wire->id = reinterpret_cast<entt::id_type>(peer);
 
-                currentPeer = peer;
-              } catch (std::exception &e) {
-                SPDLOG_LOGGER_ERROR(logger, "Error acquiring peer: {}", e.what());
+                                        currentPeer = peer;
+                                      } catch (std::exception &e) {
+                                        SPDLOG_LOGGER_ERROR(logger, "Error acquiring peer: {}", e.what());
 
-                // keep receiving
-                if (_socket && _running)
-                  return do_receive();
-              }
-            } else {
-              // SPDLOG_LOGGER_TRACE(logger, "Received packet from known peer: {} port: {}", _sender.address().to_string(),
-              // _sender.port());
+                                        // keep receiving
+                                        if (_socket && _running)
+                                          return do_receive();
+                                      }
+                                    } else {
+                                      // SPDLOG_LOGGER_TRACE(logger, "Received packet from known peer: {} port: {}",
+                                      // _sender.address().to_string(), _sender.port());
 
-              // existing peer
-              currentPeer = it->second;
+                                      // existing peer
+                                      currentPeer = it->second;
 
-              lock.unlock();
-            }
+                                      lock.unlock();
+                                    }
 
-            {
-              std::scoped_lock pLock(currentPeer->mutex);
+                                    {
+                                      std::scoped_lock pLock(currentPeer->mutex);
 
-              auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
-              // SPDLOG_LOGGER_TRACE(logger, "ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(),
-              // _sender.port(),
-              //             bytes_recvd);
-              if (err < 0) {
-                SPDLOG_LOGGER_ERROR(logger, "Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(),
-                                    _sender.port());
-                _stopWireQueue.push(currentPeer->wire.get());
-              }
+                                      auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+                                      // SPDLOG_LOGGER_TRACE(logger, "ikcp_input: {}, peer: {} port: {}, size: {}", err,
+                                      // _sender.address().to_string(), _sender.port(),
+                                      //             bytes_recvd);
+                                      if (err < 0) {
+                                        SPDLOG_LOGGER_ERROR(logger, "Error ikcp_input: {}, peer: {} port: {}", err,
+                                                            _sender.address().to_string(), _sender.port());
+                                        _stopWireQueue.push(currentPeer->wire.get());
+                                      }
 
-              currentPeer->_lastContact = SHClock::now();
-            }
+                                      currentPeer->_lastContact = SHClock::now();
+                                    }
 
-            // keep receiving
-            if (_socket && _running) {
-              return do_receive();
-            } else {
-              SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
-            }
-          } else {
-            if (ec == boost::asio::error::operation_aborted) {
-              // we likely have invalid data under the hood, let's just ignore it
-              SPDLOG_LOGGER_DEBUG(logger, "Operation aborted");
-              return;
-            } else if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
-                       ec == boost::asio::error::try_again) {
-              SPDLOG_LOGGER_DEBUG(logger, "Ignored error while receiving: {}", ec.message());
-              return do_receive();
-            }
+                                    // keep receiving
+                                    if (_socket && _running) {
+                                      return do_receive();
+                                    } else {
+                                      SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
+                                    }
+                                  } else {
+                                    if (ec == boost::asio::error::operation_aborted) {
+                                      // we likely have invalid data under the hood, let's just ignore it
+                                      SPDLOG_LOGGER_DEBUG(logger, "Operation aborted");
+                                      return;
+                                    } else if (ec == boost::asio::error::no_buffer_space ||
+                                               ec == boost::asio::error::would_block || ec == boost::asio::error::try_again) {
+                                      SPDLOG_LOGGER_DEBUG(logger, "Ignored error while receiving: {}", ec.message());
+                                      return do_receive();
+                                    }
 
-            SPDLOG_LOGGER_DEBUG(logger, "Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(),
-                                _sender.port());
+                                    SPDLOG_LOGGER_DEBUG(logger, "Error receiving: {}, peer: {} port: {}", ec.message(),
+                                                        _sender.address().to_string(), _sender.port());
 
-            std::shared_lock<std::shared_mutex> lock(peersMutex);
-            auto it = _server._end2Peer.find(_sender);
-            if (it != _server._end2Peer.end()) {
-              SPDLOG_LOGGER_TRACE(logger, "Removing peer: {} port: {}", _sender.address().to_string(), _sender.port());
-              _stopWireQueue.push(it->second->wire.get());
-            }
+                                    std::shared_lock<std::shared_mutex> lock(peersMutex);
+                                    auto it = _server._end2Peer.find(_sender);
+                                    if (it != _server._end2Peer.end()) {
+                                      SPDLOG_LOGGER_TRACE(logger, "Removing peer: {} port: {}", _sender.address().to_string(),
+                                                          _sender.port());
+                                      _stopWireQueue.push(it->second->wire.get());
+                                    }
 
-            // keep receiving
-            if (_socket && _running) {
-              return do_receive();
-            } else {
-              SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
-            }
-          }
-        });
+                                    // keep receiving
+                                    if (_socket && _running) {
+                                      return do_receive();
+                                    } else {
+                                      SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
+                                    }
+                                  }
+                                });
   }
 
   void setServer(SHContext *context, KCPServer *server) {
@@ -714,6 +710,11 @@ struct ServerShard : public NetworkBase {
         }
 
         setPeer(context, *peer);
+
+        if (!peer->onStopConnection) {
+          peer->onStopConnection =
+              peer->wire->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&ServerShard::wireOnStop>(this);
+        }
 
         if (!peer->wire->warmedUp) {
           OnPeerConnected event{

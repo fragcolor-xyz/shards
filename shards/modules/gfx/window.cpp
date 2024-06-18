@@ -186,8 +186,7 @@ struct MainWindow final {
 
 #if SH_APPLE
     gfx::MetalViewContainer &metalView = _windowContext->window->metalView.value();
-    auto &dispatcher = shContext->main->mesh.lock()->dispatcher;
-    dispatcher.trigger(std::ref(metalView));
+    entt::locator<std::reference_wrapper<gfx::MetalViewContainer>>::emplace(metalView);
 #endif
   }
 

@@ -255,12 +255,8 @@ struct ContextMainOutput {
     surfaceConf.height = newSize.y;
 #endif
 
-#if SH_WINDOWS || SH_OSX || SH_LINUX
-    surfaceConf.presentMode = WGPUPresentMode_Immediate;
-#else
-    surfaceConf.presentMode = WGPUPresentMode_Fifo;
-#endif
     surfaceConf.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+    surfaceConf.presentMode = WGPUPresentMode_Fifo;
     wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
 #else
     WGPUSwapChainDescriptor desc{
@@ -590,7 +586,7 @@ void Context::releaseDevice() {
   ZoneScoped;
 
   onDeviceStatus->forEach([](ContextDeviceStatusHandler &target) { target.deviceLost(); });
-  
+
   if (mainOutput) {
     mainOutput->releaseSurface();
   }

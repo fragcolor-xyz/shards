@@ -222,8 +222,10 @@ struct Query : public Base {
       return Var((int64_t)sqlite3_column_int64(prepared->get(), index));
     case SQLITE_FLOAT:
       return Var(sqlite3_column_double(prepared->get(), index));
-    case SQLITE_TEXT:
-      return Var((const char *)sqlite3_column_text(prepared->get(), index));
+    case SQLITE_TEXT: {
+      int text_len = sqlite3_column_bytes(prepared->get(), index);
+      return Var((const char *)sqlite3_column_text(prepared->get(), index), text_len);
+    }
     case SQLITE_BLOB:
       return Var((const uint8_t *)sqlite3_column_blob(prepared->get(), index),
                  (uint32_t)sqlite3_column_bytes(prepared->get(), index));
@@ -257,7 +259,7 @@ struct Query : public Base {
       if (output.keys.empty()) {
         for (int i = 0; i < numCols; i++) {
           auto colName = sqlite3_column_name(prepared->get(), i);
-          output.keys.push_back(Var(colName));
+          output.keys.push_back(Var(colName, 0)); // we need to strlen, so we pass 0 explicit, sqlite has no way to know ahead
         }
       }
 
@@ -298,7 +300,7 @@ struct Query : public Base {
       if (output.columns.empty()) {
         for (int i = 0; i < numCols; i++) {
           auto colName = sqlite3_column_name(prepared->get(), i);
-          auto colNameVar = Var(colName);
+          auto colNameVar = Var(colName, 0); // pass 0 to call strlen as sqlite has no way to know ahead
           auto &col = output.output[colNameVar];
           if (col.valueType == SHType::None) {
             SeqVar seq;

@@ -1299,7 +1299,7 @@ struct Run {
           }
           const auto len = _sout.data.size();
           _sout.done();
-          return Var(_sout.str(), len);
+          return Var(_sout.str());
         },
         [] {
           // TODO CANCELLATION
