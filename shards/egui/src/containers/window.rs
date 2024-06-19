@@ -205,16 +205,14 @@ impl Shard for WindowShard {
 
       let width = self.width.get();
       if !width.is_none() {
-        let width: i64 = width.try_into()?;
-        window = window.min_width(width as f32).default_width(width as f32);
+        let w = TryInto::<i64>::try_into(width)? as f32;
+        window = window.min_width(w).max_width(w);
       }
 
       let height = self.height.get();
       if !height.is_none() {
-        let height: i64 = height.try_into()?;
-        window = window
-          .min_height(height as f32)
-          .default_height(height as f32)
+        let h = TryInto::<i64>::try_into(height)? as f32;
+        window = window.min_height(h).max_height(h);
       }
 
       if self.has_close_button {
