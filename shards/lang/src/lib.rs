@@ -13,33 +13,22 @@ mod formatter;
 pub mod print;
 pub mod read;
 mod ast_visitor;
+mod visual;
 
 use crate::ast::*;
 
 use core::fmt;
-use std::collections::HashMap;
 
-use eval::merge_env;
-use eval::new_cancellation_token;
-use eval::EvalEnv;
-use shards::core::register_legacy_shard;
-use shards::core::register_shard;
-use shards::shlog_error;
-use shards::types::Var;
 
 use std::ops::Deref;
 
-use shards::types::{AutoShardRef, ClonedVar, Wire};
-use shards::SHStringWithLen;
+use shards::types::{AutoShardRef, ClonedVar};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::hash::Hash;
 use std::rc::Rc;
 
-use std::ffi::CString;
-use std::os::raw::c_char;
 
-use shards::util::from_raw_parts_allow_null;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RcBytesWrapper(Rc<[u8]>);

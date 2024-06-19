@@ -868,14 +868,14 @@ fn finalize_wire(
     let v = as_var(&value, line_info, None, env)?;
     if v.as_ref().valueType != SHType_Trait {
       return Err(
-        ((
+        (
           format!(
             "Traits parameter must be a sequence of traits ({:?} is invalid)",
             value
           ),
           line_info,
         )
-          .into()),
+          .into(),
       );
     }
     s.0.push(v.as_ref());

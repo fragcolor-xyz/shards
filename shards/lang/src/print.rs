@@ -1,7 +1,6 @@
 use crate::ast_visitor::*;
 use crate::ast::*;
 
-use pest::Parser;
 
 const INDENT_LENGTH: usize = 2;
 
@@ -361,6 +360,7 @@ pub fn print_ast(ast: &Sequence) -> String {
 
 #[test]
 fn test1() {
+  use pest::Parser;
   // use std::num::NonZeroUsize;
   // pest::set_call_limit(NonZeroUsize::new(25000));
   // let code = include_str!("nested.shs");
