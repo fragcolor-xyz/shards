@@ -13,7 +13,7 @@ mod formatter;
 pub mod print;
 pub mod read;
 mod rule_visitor;
-mod visual;
+pub mod visual;
 
 use crate::ast::*;
 
