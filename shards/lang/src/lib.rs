@@ -5,30 +5,28 @@ extern crate pest_derive;
 extern crate clap;
 
 pub mod ast;
-mod rule_visitor;
+mod ast_visitor;
 pub mod cli;
 mod error;
 pub mod eval;
 mod formatter;
 pub mod print;
 pub mod read;
-mod ast_visitor;
+mod rule_visitor;
 mod visual;
 
 use crate::ast::*;
 
 use core::fmt;
 
-
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use shards::types::{AutoShardRef, ClonedVar};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RcBytesWrapper(Rc<[u8]>);
@@ -79,7 +77,7 @@ impl From<Vec<u8>> for RcBytesWrapper {
 }
 
 #[derive(Debug, Clone)]
-pub struct RcStrWrapper(Rc<str>);
+pub struct RcStrWrapper(Rc<Cow<'static, str>>);
 
 impl Serialize for RcStrWrapper {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -96,13 +94,13 @@ impl<'de> Deserialize<'de> for RcStrWrapper {
     D: Deserializer<'de>,
   {
     let s = String::deserialize(deserializer)?;
-    Ok(RcStrWrapper(Rc::from(s)))
+    Ok(RcStrWrapper(Rc::new(Cow::Owned(s))))
   }
 }
 
 impl RcStrWrapper {
-  pub fn new<S: Into<Rc<str>>>(s: S) -> Self {
-    RcStrWrapper(s.into())
+  pub fn new<S: Into<Cow<'static, str>>>(s: S) -> Self {
+    RcStrWrapper(Rc::new(s.into()))
   }
 
   pub fn to_string(&self) -> String {
@@ -112,17 +110,23 @@ impl RcStrWrapper {
   pub fn as_str(&self) -> &str {
     &self.0
   }
+
+  pub fn to_mut(&mut self) -> &mut String {
+    Rc::get_mut(&mut self.0)
+      .expect("Cannot get mutable reference")
+      .to_mut()
+  }
 }
 
-impl From<&str> for RcStrWrapper {
-  fn from(s: &str) -> Self {
-    RcStrWrapper::new(s)
+impl From<&'static str> for RcStrWrapper {
+  fn from(s: &'static str) -> Self {
+    RcStrWrapper::new(Cow::Borrowed(s))
   }
 }
 
 impl From<String> for RcStrWrapper {
   fn from(s: String) -> Self {
-    RcStrWrapper::new(s)
+    RcStrWrapper::new(Cow::Owned(s))
   }
 }
 
@@ -130,23 +134,19 @@ impl Eq for RcStrWrapper {}
 
 impl PartialEq<RcStrWrapper> for RcStrWrapper {
   fn eq(&self, other: &RcStrWrapper) -> bool {
-    let s: &str = &self.0;
-    let o: &str = &other.0;
-    s == o
+    self.0 == other.0
   }
 }
 
 impl PartialEq<str> for RcStrWrapper {
   fn eq(&self, other: &str) -> bool {
-    let s: &str = &self.0;
-    s == other
+    *self.0 == other
   }
 }
 
 impl Hash for RcStrWrapper {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    let s: &str = &self.0;
-    s.hash(state);
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.hash(state)
   }
 }
 

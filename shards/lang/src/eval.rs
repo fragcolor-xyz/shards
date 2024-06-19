@@ -1755,7 +1755,6 @@ fn get_full_name<'a>(
     Ok((full_name.clone(), is_replacement))
   } else if name.namespaces.is_empty() {
     let full_name = combine_namespaces(&name.name, &e.full_namespace);
-    let full_name = RcStrWrapper::new(full_name.as_str());
     e.qualified_cache.insert(name.clone(), full_name.clone());
     Ok((full_name, is_replacement))
   } else {
@@ -3905,7 +3904,12 @@ pub fn eval(
   // add defines
   let defines: Vec<(RcStrWrapper, Value)> = defines
     .iter()
-    .map(|(k, v)| (k.as_str().into(), Value::String(v.as_str().into())))
+    .map(|(k, v)| {
+      (
+        k.as_str().to_owned().into(),
+        Value::String(v.as_str().to_owned().into()),
+      )
+    })
     .collect::<Vec<_>>();
   for (name, value) in &defines {
     parent.definitions.insert(
@@ -3927,7 +3931,7 @@ pub fn eval(
 pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env: &mut EvalEnv) {
   env.extensions.insert(
     Identifier {
-      name: ext.name().into(),
+      name: ext.name().to_owned().into(),
       namespaces: Vec::new(),
     },
     ext,

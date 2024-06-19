@@ -24,7 +24,7 @@ pub struct ReadEnv {
 impl ReadEnv {
   pub(crate) fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
     Self {
-      name: name.into(),
+      name: name.to_owned().into(),
       root_directory: root_directory.to_string(),
       script_directory: script_directory.to_string(),
       included: RefCell::new(HashSet::new()),
@@ -86,7 +86,7 @@ fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
   for pair in pair.into_inner() {
     let rule = pair.as_rule();
     match rule {
-      Rule::LowIden => identifiers.push(pair.as_str().into()),
+      Rule::LowIden => identifiers.push(pair.as_str().to_owned().into()),
       _ => return Err(("Unexpected rule in Identifier.", pair.as_span().start_pos()).into()),
     }
   }
@@ -176,7 +176,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
     Rule::UppIden => {
       // Definitely a Shard!
       let identifier = Identifier {
-        name: exp.as_str().into(),
+        name: exp.as_str().to_owned().into(),
         namespaces: Vec::new(),
       };
       let next = inner.next();
@@ -214,8 +214,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       };
 
       if identifier.namespaces.is_empty() {
-        let name = identifier.name.as_str();
-        match name {
+        let name = identifier.name.as_str().to_owned();
+        match name.as_str() {
           "include" => {
             let params = params.ok_or(("Expected 2 parameters", pos).into())?;
             let n_params = params.len();
@@ -251,7 +251,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
             let file_path_str = file_path
               .to_str()
-              .ok_or(("Failed to convert file path to string", pos).into())?;
+              .ok_or(("Failed to convert file path to string", pos).into())?
+              .to_owned();
 
             let rc_path = file_path_str.into();
 
@@ -412,7 +413,7 @@ fn process_take_table(
   for pair in inner {
     let pos = pair.as_span().start_pos();
     match pair.as_rule() {
-      Rule::Iden => keys.push(pair.as_str().into()),
+      Rule::Iden => keys.push(pair.as_str().to_owned().into()),
       _ => return Err(("Expected an identifier in TakeTable", pos).into()),
     }
   }
@@ -614,8 +615,8 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       if splits.len() != 2 {
         return Err(("Expected an enum value", pos).into());
       }
-      let enum_name = splits[0];
-      let variant_name = splits[1];
+      let enum_name = splits[0].to_owned();
+      let variant_name = splits[1].to_owned();
       Ok(Value::Enum(enum_name.into(), variant_name.into()))
     }
     Rule::Number => process_number(
@@ -634,7 +635,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           // remove quotes AND
           // with this case we need to transform escaped characters
           // so we need to iterate over the string
-          let mut chars = full_str[1..full_str.len() - 1].chars();
+          let mut chars: std::str::Chars = full_str[1..full_str.len() - 1].chars();
           let mut new_str = String::new();
           while let Some(c) = chars.next() {
             if c == '\\' {
@@ -658,9 +659,9 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           new_str.into()
         })),
         Rule::ComplexString => Ok(Value::String({
-          let full_str = inner.as_str();
+          let full_str = inner.as_str().to_owned();
           // remove triple quotes
-          full_str[3..full_str.len() - 3].into()
+          full_str[3..full_str.len() - 3].to_owned().into()
         })),
         _ => unreachable!(),
       }
@@ -698,7 +699,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
             Rule::None => Value::None,
-            Rule::Iden => Value::String(key.as_str().into()),
+            Rule::Iden => Value::String(key.as_str().to_owned().into()),
             Rule::VarName => Value::Identifier(extract_identifier(key)?),
             Rule::ConstValue => process_value(
               key.into_inner().next().unwrap(), // parsed qed
@@ -792,7 +793,7 @@ fn process_number(pair: Pair<Rule>, _env: &mut ReadEnv) -> Result<Number, Shards
         .parse()
         .map_err(|_| ("Failed to parse Float", pos).into())?,
     )),
-    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().into())),
+    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().to_owned().into())),
     _ => Err(("Unexpected rule in Number", pos).into()),
   }
 }
@@ -809,8 +810,8 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
     .ok_or(("Expected a ParamName or Value in Param", pos).into())?;
   let pos = first.as_span().start_pos();
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
-    let name = first.as_str();
-    let name = name[0..name.len() - 1].into();
+    let name = first.as_str().to_owned();
+    let name = name[0..name.len() - 1].to_owned().into();
     let value = process_value(
       inner
         .next()

@@ -152,7 +152,7 @@ pub mod util;
 pub mod widgets;
 
 struct VarTextBuffer<'a>(&'a Var);
-struct MutVarTextBuffer<'a>(&'a mut Var);
+pub struct MutVarTextBuffer<'a>(pub &'a mut Var);
 
 impl<'a> egui::TextBuffer for VarTextBuffer<'a> {
   fn is_mutable(&self) -> bool {
