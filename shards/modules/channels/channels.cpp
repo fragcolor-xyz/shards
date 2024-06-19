@@ -18,6 +18,10 @@ template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const 
 }
 
 template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SHTypeInfo type, bool noCopy, const char *name) {
+  // we call this sporadically so we can lock the whole thing
+  static std::mutex mutex;
+  std::scoped_lock lock(mutex);
+
   if (channel->index() == 0) {
     T &impl = channel->emplace<T>(noCopy);
     // no cloning here, this is potentially dangerous if the type is dynamic
