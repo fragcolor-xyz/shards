@@ -2110,7 +2110,7 @@ fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> 
   get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
 }
 
-fn create_shard(
+fn create_shard_basic_error(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
@@ -2180,6 +2180,20 @@ fn create_shard(
     }
   }
   Ok(s)
+}
+
+fn create_shard(
+  shard: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
+  match create_shard_basic_error(shard, line_info, e) {
+    Ok(s) => Ok(s),
+    Err(e) => {
+      let msg = format!("Shard at {}:{}: {}", e.loc.line, e.loc.column, e.message);
+      Err((msg, e.loc).into())
+    }
+  }
 }
 
 fn set_shard_parameter(
