@@ -1,7 +1,7 @@
 #ifndef BED776D7_7318_4FA7_92C1_CC63BC286F1A
 #define BED776D7_7318_4FA7_92C1_CC63BC286F1A
 
-#include "core/runtime.hpp"
+#include "shards/core/runtime.hpp"
 #include "gfx.hpp"
 #include "shards/shards.h"
 #include "window.hpp"

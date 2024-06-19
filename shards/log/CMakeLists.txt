@@ -1,14 +1,19 @@
 add_library(shards-logging log.cpp)
-target_include_directories(shards-logging PUBLIC ${CMAKE_CURRENT_LIST_DIR}/..)
-target_link_libraries(shards-logging spdlog SDL2 magic_enum Boost::filesystem Boost::algorithm)
+target_include_directories(shards-logging PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../..)
+target_link_libraries(shards-logging spdlog magic_enum Boost::filesystem Boost::algorithm)
 
 if(DESKTOP)
   target_compile_definitions(shards-logging PRIVATE SHARDS_LOG_FILE=1)
 endif()
 
+if(NOT EMSCRIPTEN)
+  target_link_libraries(shards-logging SDL2)
+  target_compile_definitions(shards-logging PRIVATE SHARDS_LOG_SDL=1)
+endif()
+
 # The compile-time filtered log level
 if(NOT SPDLOG_ACTIVE_LEVEL)
-  if((CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+  if((CMAKE_BUILD_TYPE STREQUAL "Release") OR(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
     set(SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO)
   else()
     set(SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE)

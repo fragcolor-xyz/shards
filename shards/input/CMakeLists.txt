@@ -1,9 +1,13 @@
 add_library(input
   input_stack.cpp window_mapping.cpp master.cpp
-  gestures.cpp
+  gestures.cpp clipboard.cpp
+  event_decoder.cpp
 )
 target_include_directories(input PUBLIC ${CMAKE_CURRENT_LIST_DIR}/..)
-target_link_libraries(input SDL2 linalg spdlog Boost::lockfree)
+target_link_libraries(input linalg spdlog Boost::lockfree)
+if(NOT EMSCRIPTEN)
+  target_link_libraries(input SDL2)
+endif()
 target_link_libraries(input gfx) # For window mapping
 target_compile_features(input PUBLIC cxx_std_20)
 

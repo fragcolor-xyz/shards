@@ -61,6 +61,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 endif()
 
 option(SHARDS_MIN_DEBUG_INFO "Use minimal debug info" OFF)
+
 function(fixup_debug_flags VARNAME)
   string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UPPER)
   set(TMP_VARNAME "${VARNAME}_${CMAKE_BUILD_TYPE_UPPER}")
@@ -81,20 +82,25 @@ endif()
 if(EMSCRIPTEN)
   add_compile_options(-fdeclspec)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_compile_options(-g1 -Os)
+  # if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  # add_compile_options(-g1 -Os)
+  # endif()
+  if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_link_options("-sASSERTIONS=2")
+
+    # add_link_options(-gsource-map)
   endif()
 
-  if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_link_options("SHELL:-s ASSERTIONS=2")
-  endif()
+
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-sDISABLE_EXCEPTION_CATCHING=0>")
+  add_link_options("-sDISABLE_EXCEPTION_CATCHING=0")
 
   add_compile_definitions(NO_FORCE_INLINE)
-  add_link_options(--bind)
+  add_link_options(-lembind)
 
   # # if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)
-    add_link_options("SHELL:-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=6")
+    add_link_options("-sUSE_PTHREADS=1")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
     set(HAVE_THREADS ON)
@@ -102,11 +108,12 @@ if(EMSCRIPTEN)
     add_compile_options(-DBOOST_ASIO_DISABLE_THREADS=1)
   endif()
 
-  if(NODEJS)
-    add_link_options(-lnodefs.js)
-  else()
-    add_link_options(-lidbfs.js)
-  endif()
+  # TODO: move this to application specific code
+  # if(NODEJS)
+  #   add_link_options(-lnodefs.js)
+  # else()
+  #   add_link_options(-lidbfs.js)
+  # endif()
 else()
   set(HAVE_THREADS ON)
 endif()
@@ -121,6 +128,10 @@ if(WIN32)
     # align stack to 16 bytes
     add_compile_options(-mstackrealign)
   endif()
+endif()
+
+if(EMSCRIPTEN)
+  set(EXTERNAL_BUILD_TYPE "Release")
 endif()
 
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
@@ -178,6 +189,7 @@ endif()
 add_compile_options(
   ${INLINING_FLAGS}
   $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+  $<$<COMPILE_LANGUAGE:CXX>:-Werror=return-type>
 )
 
 if(NOT MSVC)

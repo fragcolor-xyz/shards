@@ -1,8 +1,8 @@
 #ifndef A58BF89A_157D_440C_9398_773EB3D0A410
 #define A58BF89A_157D_440C_9398_773EB3D0A410
 #include "input.hpp"
-#include <SDL_events.h>
-#include <SDL_keycode.h>
+#include "sdl.hpp"
+#include <memory>
 #include <compare>
 #include <linalg.h>
 #include <optional>

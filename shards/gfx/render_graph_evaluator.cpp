@@ -106,8 +106,11 @@ WGPURenderPassDescriptor RenderGraphEvaluator::createRenderPassDescriptor(const 
       attachment.stencilLoadOp = WGPULoadOp_Undefined;
       attachment.stencilStoreOp = WGPUStoreOp_Undefined;
     } else {
-      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
-          .view = resolvedFrameTexture.view,
+      auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment {
+        .view = resolvedFrameTexture.view,
+#if !WEBGPU_NATIVE
+        .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
+#endif
       });
 
       std::visit(

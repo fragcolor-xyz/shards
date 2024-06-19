@@ -7,18 +7,18 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include "fmt.hpp"
+#include "log.hpp"
 
 #if SH_WINDOWS
 #include <Windows.h>
 #elif SH_APPLE
 #include <SDL_metal.h>
-#elif SH_EMSCRIPTEN
-#include <emscripten/html5.h>
 #elif SH_ANDROID
 #include <android/native_window.h>
 #endif
 
 namespace gfx {
+
 void Window::init(const WindowCreationOptions &options) {
   if (window)
     throw std::logic_error("Already initialized");
@@ -32,7 +32,9 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_Init failed: {}", SDL_GetError());
   }
 
-  uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+  uint32_t flags = SDL_WINDOW_SHOWN;
+
+  flags |= SDL_WINDOW_RESIZABLE;
 
   int width{options.width}, height{options.height};
 
@@ -48,9 +50,8 @@ void Window::init(const WindowCreationOptions &options) {
     height = 0;
   }
 
-#if !SH_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
-#endif
+
 #if SH_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
@@ -92,11 +93,12 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
+void Window::maybeAutoResize() {
+}
+
 void *Window::getNativeWindowHandle() {
 #if SH_APPLE
   return nullptr;
-#elif SH_EMSCRIPTEN
-  return (void *)("#canvas");
 #else
   return (void *)SDL_GetNativeWindowPtr(window);
 #endif

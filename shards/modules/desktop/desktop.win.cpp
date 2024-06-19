@@ -6,7 +6,7 @@
 #include <Windows.h>
 #include <psapi.h>
 
-#include "core/module.hpp"
+#include "shards/core/module.hpp"
 #include "desktop.capture.win.hpp"
 #include "desktop.hpp"
 

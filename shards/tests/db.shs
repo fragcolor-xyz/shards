@@ -1,12 +1,14 @@
 @mesh(root)
 
 @wire(extra-queries {
-  Pause(1.0)
+  Log("AAAAA")
+  Pause(5.0)
+  Log("HHHHHH")
   Repeat({
     Math.Inc(x)
     Math.Inc(y)
-    [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
-    Msg("Extra query")
+    [x y] | Log("Extra query")
+    DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
   } Times: 10)
 })
 
@@ -16,30 +18,33 @@
       Repeat({
         Math.Inc(x)
         Math.Inc(y)
-        [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+        [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
       } Times: 10)
-      true | Assert.Is(false) ; fail on purpose, we test rerolling here
-    })
+      "Something" | Fail ; fail on purpose, we test rerolling here
+    } @db-file)
   })
   Msg("Failing transaction done")
 })
 
+@define(db-file "main.db")
+@define(db-file-2 "custom.db")
+@define(db-file-3 "backup.db")
 @wire(db-test-1 {
   Maybe({
-    "shards.db" | FS.Remove
-    "backup.db" | FS.Remove
-    "custom.db" | FS.Remove
+    @db-file | FS.Remove
+    @db-file-2 | FS.Remove
+    @db-file-3 | FS.Remove
   })
 
-  "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
-  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
-  [] | DB.Query("SELECT * FROM integers") | Log
+  "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery(@db-file)
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" @db-file)
+  [] | DB.Query("SELECT * FROM integers" @db-file) | Log
   Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 1 passed")
 
-  [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "custom.db")
-  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "custom.db")
-  [] | DB.Query("SELECT * FROM integers" "custom.db") | Log
+  [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" @db-file-2)
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" @db-file-2)
+  [] | DB.Query("SELECT * FROM integers" @db-file-2) | Log
   Assert.Is({x: [88 100 102] y: [99 101 none]})
   Msg("Test 2 passed")
 
@@ -49,40 +54,39 @@
     Repeat({
       Math.Inc(x)
       Math.Inc(y)
-      [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+      [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
     } Times: 10)
-  })
-  [] | DB.Query("SELECT * FROM integers") | Log
+  } @db-file)
+  [] | DB.Query("SELECT * FROM integers" @db-file) | Log
   Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   Msg("Test 3 passed")
 
-  Detach(failing-transaction)
-  Detach(extra-queries)
+  Do(failing-transaction)
 
   Repeat({
-    [] | DB.Query("SELECT * FROM integers") | Log
+    [] | DB.Query("SELECT * FROM integers" @db-file) | Log("Queried after detach")
     Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   } Times: 10)
   Msg("Test 4 passed")
 
-  DB.Backup("backup.db")
+  DB.Backup(@db-file-3 @db-file)
 
   ; test CRDT capabilities
-  DB.LoadExtension("crsqlite")
-  [] | DB.Query("create table foo (a primary key not null, b)")
-  [] | DB.Query("create table bar (a primary key not null, b, c, d)")
-  [] | DB.Query("create table baz (a primary key not null, b, c, d)")
-  [] | DB.Query("select crsql_as_crr('foo')")
-  [] | DB.Query("select crsql_as_crr('baz')")
-  [] | DB.Query("insert into foo (a,b) values (1,2)")
-  [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')")
-  [] | DB.Query("select * from foo") | Log
-  [] | DB.Query("select * from baz") | Log
-  [] | DB.Query("select * from crsql_changes") | Log
+  DB.LoadExtension("crsqlite" @db-file)
+  [] | DB.Query("create table foo (a primary key not null, b)" @db-file)
+  [] | DB.Query("create table bar (a primary key not null, b, c, d)" @db-file)
+  [] | DB.Query("create table baz (a primary key not null, b, c, d)" @db-file)
+  [] | DB.Query("select crsql_as_crr('foo')" @db-file)
+  [] | DB.Query("select crsql_as_crr('baz')" @db-file)
+  [] | DB.Query("insert into foo (a,b) values (1,2)" @db-file)
+  [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')" @db-file)
+  [] | DB.Query("select * from foo" @db-file) | Log
+  [] | DB.Query("select * from baz" @db-file) | Log
+  [] | DB.Query("select * from crsql_changes" @db-file) | Log
 
   ; Test AsRows
   Repeat({
-    [] | DB.Query("SELECT * FROM integers" AsRows: true) | Log
+    [] | DB.Query("SELECT * FROM integers" @db-file AsRows: true) | Log
     Assert.Is([{x: 88 y: 99} {x: 100 y: 101} {x: 102 y: none} {x: 12 y: 23} {x: 13 y: 24} {x: 14 y: 25} {x: 15 y: 26} {x: 16 y: 27} {x: 17 y: 28} {x: 18 y: 29} {x: 19 y: 30} {x: 20 y: 31} {x: 21 y: 32}])
   } Times: 10)
   Msg("Test 5 passed")

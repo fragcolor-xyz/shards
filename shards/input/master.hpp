@@ -8,7 +8,7 @@
 #include "messages.hpp"
 #include <shared_mutex>
 #include <mutex>
-#include <core/function.hpp>
+#include <shards/core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
 namespace gfx {
@@ -76,8 +76,6 @@ private:
   std::vector<std::shared_ptr<IInputHandler>> handlersLocked;
   std::shared_mutex mutex;
   std::vector<shards::Function<void(InputMaster &)>> postInputCallbacks;
-
-  // EventBuffer<Frame<ConsumableEvent>> eventBuffer;
 
   std::vector<ConsumableEvent> events;
 

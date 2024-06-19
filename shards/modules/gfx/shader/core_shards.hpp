@@ -750,11 +750,12 @@ struct RefBuffer {
     const SHString &bufferName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(ref/buffer)> {}", bufferName);
 
-    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { 
-      if(_pointer->isNone() || (bool)*_pointer) {
+    bool isRef = _pointer->isNone() || (bool)*_pointer;
+    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) {
+      if(isRef) {
         ctx.write("&");
       }
-      ctx.refBuffer(bufferName); 
+      ctx.refBuffer(bufferName);
     });
     context.setWGSLTopVar(StructType{}, std::move(block));
   }

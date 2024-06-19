@@ -159,6 +159,7 @@ public:
   operator SHVar() const { return _v; }
   SHVar *operator->() { return &_v; }
   SHVar &operator*() { return _v; }
+  const SHVar &operator*() const { return _v; }
 
   SHVar &get() {
     assert(_cp);
