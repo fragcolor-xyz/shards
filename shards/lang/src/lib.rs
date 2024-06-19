@@ -5,14 +5,14 @@ extern crate pest_derive;
 extern crate clap;
 
 pub mod ast;
-mod ast_visitor;
+mod rule_visitor;
 pub mod cli;
 mod error;
 pub mod eval;
 mod formatter;
 pub mod print;
 pub mod read;
-mod visual_ast;
+mod ast_visitor;
 
 use crate::ast::*;
 
