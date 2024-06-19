@@ -36,6 +36,10 @@ if(SHARDS_THREAD_FIBER)
   target_compile_definitions(shards-core PUBLIC SH_USE_THREAD_FIBER=1)
 endif()
 
+if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER)
+  target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)
+endif()
+
 if(WIN32)
   target_link_libraries(shards-core Boost::stacktrace_windbg_cached)
 
@@ -115,28 +119,22 @@ target_compile_options(shards-core
 )
 
 if(EMSCRIPTEN)
-  target_compile_options(shards-core PUBLIC
-    "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-  )
+  target_compile_options(shards-core PUBLIC)
 
   target_link_options(shards-core PUBLIC
-    "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-    "SHELL:-s INITIAL_MEMORY=209715200"
-    "SHELL:-s STACK_SIZE=1000000"
-    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
-    "SHELL:-s LLD_REPORT_UNDEFINED"
-    "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_shardsInterface', '_malloc', '_free', '_emscripten_get_now']\""
-    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
-    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sLLD_REPORT_UNDEFINED"
   )
 
-  target_link_options(shards-core PUBLIC "SHELL:-s ASYNCIFY=1")
+  if(NOT SHARDS_THREAD_FIBER)
+    target_link_options(shards-core PUBLIC "-sASYNCIFY=1")
+  endif()
 
   # Require optimizations when building with asyncify too keep size/build time reasonable
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(shards-core PUBLIC "-O3")
-    target_link_options(shards-core PUBLIC "-O3")
-  endif()
+  # if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  #   target_compile_options(shards-core PUBLIC "-O3")
+  #   target_link_options(shards-core PUBLIC "-O3")
+  # endif()
 endif()
 
 duplicate_library_target(shards-core SHARED shards-core-shared)

@@ -12,8 +12,8 @@ namespace channels {
 
 template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const char *name) {
   if (!matchTypes(type, channel.type, false, true, true)) {
-    throw SHException(
-        fmt::format("Attempted to change channel type: {}, desired type: {}, actual channel type: {}", name, type, (SHTypeInfo&)channel.type));
+    throw SHException(fmt::format("Attempted to change channel type: {}, desired type: {}, actual channel type: {}", name, type,
+                                  (SHTypeInfo &)channel.type));
   }
 }
 
@@ -523,22 +523,25 @@ struct Flush : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    _mpChannel = std::visit(
-        [&](auto &arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if (std::is_same_v<T, MPMCChannel>) {
-            return (MPMCChannel *)&arg;
-          } else {
-            throw ActivationError("Expected a valid non-broadcast channel.");
-          }
-        },
-        *_channel.get());
-
     return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpChannel);
+    // Lazily acquire channel to flush
+    if (!_mpChannel) {
+      _mpChannel = std::visit(
+          [&](auto &arg) -> MPMCChannel* {
+            using T = std::decay_t<decltype(arg)>;
+          if (std::is_same_v<T, MPMCChannel>) {
+            return (MPMCChannel *)&arg;
+          } else {
+            return nullptr;
+          }
+          },
+          *_channel.get());
+      if (!_mpChannel)
+        return input;
+    }
 
     _mpChannel->clear();
 

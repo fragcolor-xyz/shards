@@ -170,16 +170,6 @@ if(NOT EMSCRIPTEN)
 else()
   add_library(SDL2 INTERFACE)
   add_library(SDL2main INTERFACE)
-
-  # Use builtin SDL2 port
-  target_compile_options(SDL2 INTERFACE
-    "SHELL:-s USE_SDL=2"
-  )
-  target_link_options(SDL2 INTERFACE
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
-    "SHELL:-s USE_SDL=2"
-  )
 endif()
 
 sh_add_external_project(

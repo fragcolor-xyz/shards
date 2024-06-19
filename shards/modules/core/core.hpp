@@ -13,7 +13,7 @@
 #include <shards/core/exposed_type_utils.hpp>
 #include <shards/common_types.hpp>
 #include <shards/inlined.hpp>
-#include <gfx/moving_average.hpp>
+#include <shards/gfx/moving_average.hpp>
 #include <cassert>
 #include <cmath>
 #include <optional>
@@ -267,6 +267,8 @@ struct Input {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The input value of the wire."); }
 
+  SHTypeInfo compose(const SHInstanceData &data) { return data.wire->inputType; }
+
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { return context->wireStack.back()->currentInput; }
 };
 
@@ -497,8 +499,9 @@ struct IsFalse {
 struct Restart {
   // Ensures the input type matches the wire root input type.
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.wire->inputType->basicType != SHType::None && data.inputType != data.wire->inputType) {
-      throw ComposeError("Restart input and wire input type mismatch. Restart feeds back to the wire input. Wire: " +
+    if (data.wire->inputType->basicType != SHType::None && !matchTypes(data.inputType, data.wire->inputType, false, true, true)) {
+      throw ComposeError("Restart input and wire input type mismatch, Restart "
+                         "feeds back to the wire input, wire: " +
                          data.wire->name + " expected: " + type2Name(data.wire->inputType->basicType));
     }
     return data.inputType; // Actually, we are a flow stopper.

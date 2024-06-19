@@ -3,7 +3,6 @@
 
 #include <boost/container/flat_set.hpp>
 #include <gfx/window.hpp>
-#include <SDL_keycode.h>
 #include <shards/core/foundation.hpp>
 #include <shards/core/exposed_type_utils.hpp>
 #include <input/input_stack.hpp>
@@ -29,7 +28,6 @@ struct WindowContext {
   void nextFrame();
 
   ::gfx::Window &getWindow();
-  SDL_Window *getSdlWindow();
 
   void reset() {
     window.reset();

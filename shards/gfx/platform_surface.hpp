@@ -1,30 +1,21 @@
 #ifndef GFX_PLATFORM_SURFACE
 #define GFX_PLATFORM_SURFACE
 
-#include "SDL_metal.h"
-#include "gfx_wgpu.hpp"
 #include "../core/platform.hpp"
+#if SH_APPLE
+#include "SDL_metal.h"
+#endif
+#include "gfx_wgpu.hpp"
+#if !SH_EMSCRIPTEN
 #include "sdl_native_window.hpp"
+#endif
+#include "window.hpp"
 
 #if SH_WINDOWS
 #include <windows.h>
 #endif
 
 namespace gfx {
-
-struct MetalViewContainer {
-  SDL_MetalView view{};
-  void *layer{};
-
-  MetalViewContainer(SDL_Window *window) {
-    view = SDL_Metal_CreateView(window);
-    layer = SDL_Metal_GetLayer(view);
-  }
-  ~MetalViewContainer() { SDL_Metal_DestroyView(view); }
-  MetalViewContainer(const MetalViewContainer &other) = delete;
-  operator void *() const { return layer; }
-};
-
 struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
     WGPUChainedStruct chain;
@@ -39,9 +30,12 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
 #endif
   } platformDesc;
 
-  WGPUPlatformSurfaceDescriptor(SDL_Window *sdlWindow, void *nativeSurfaceHandle) {
+  WGPUPlatformSurfaceDescriptor(gfx::Window &window, void *nativeSurfaceHandle) {
+#if !SH_EMSCRIPTEN
+    SDL_Window *sdlWindow = window.window;
     if (!nativeSurfaceHandle)
       nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow);
+#endif
 
     memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
 

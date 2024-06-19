@@ -8,7 +8,7 @@
 #include <shards/modules/gfx/gfx.hpp>
 #include "../shards_types.hpp"
 #include "../window.hpp"
-#include "core/foundation.hpp"
+#include "shards/core/foundation.hpp"
 #include "shards/shards.h"
 
 using namespace shards::input;

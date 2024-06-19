@@ -27,7 +27,7 @@ dlopen = { version = "0.1.8", optional = true }
 ctor = "0.2.8"
 
 [build-dependencies]
-bindgen = { version = "0.69.4" }
+bindgen = "0.69"
 
 [features]
 dllshard = ["dlopen"]

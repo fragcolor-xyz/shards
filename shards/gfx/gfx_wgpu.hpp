@@ -11,9 +11,7 @@ extern "C" {
 }
 #endif
 
-#ifndef WEBGPU_NATIVE
-extern "C" WGPUTexture gfxWgpuSwapChainGetCurrentTexture(WGPUSwapChain surface);
-#else // WEBGPU_NATIVE
+#ifdef WEBGPU_NATIVE
 // Alias Undefined to Clear so wgpu is satisfied
 #define WGPULoadOp_Undefined WGPULoadOp_Clear
 #define WGPUStoreOp_Undefined WGPUStoreOp_Discard
@@ -53,6 +51,16 @@ void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 
 // When copying textures into buffers the bytesPerRow should be aligned to this number
 inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
+
+#if !WEBGPU_NATIVE
+extern "C" {
+WGPUSwapChain gfxWgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const *descriptor);
+void gfxWgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata);
+// Custom function implemented in javascript that reads a mapped buffer directly into the given address
+// faster that the default implementation that copies the data into a temporary buffer
+void gfxWgpuBufferReadInto(WGPUBuffer buffer, void* dst, size_t offset, size_t size);
+}
+#endif
 
 #if WEBGPU_NATIVE && !RUST_BINDGEN
 #include "rust/gfx/bindings.hpp"

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <SDL_keycode.h>
+#include "../input/sdl.hpp"
 
 #ifndef RUST_BINDGEN
 #include <vector>

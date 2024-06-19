@@ -4,7 +4,7 @@
 #include <shards/core/foundation.hpp>
 #include <shards/shards.h>
 #include <shards/core/shared.hpp>
-#include <gfx/linalg.hpp>
+#include <shards/gfx/linalg.hpp>
 #include "math.hpp"
 #include "core.hpp"
 #include <shards/core/params.hpp>

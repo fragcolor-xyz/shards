@@ -352,6 +352,19 @@ template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
                                      CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
+  static SHParametersInfo parameters() {
+    static Types ParamTypes = []() {
+      static Types types = BinaryBase::MathTypesOrVar;
+      if constexpr (hasDispatchType(TOp::DispatchType_, DispatchType::BoolTypes)) {
+        types._types.push_back(CoreInfo::BoolType);
+        types._types.push_back(CoreInfo::BoolVarType);
+      }
+      return types;
+    }();
+    static ParamsInfo Info(ParamsInfo::Param("Operand", SHCCSTR("The operand for this operation."), ParamTypes));
+    return SHParametersInfo(Info);
+  }
+
   static SHTypesInfo inputTypes() {
     static Types types = []() {
       Types types = IntOrSeqTypes;

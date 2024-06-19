@@ -2,7 +2,6 @@
 #define SH_EXTRA_GFX
 
 #include "shards_types.hpp"
-#include <SDL_events.h>
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
 #include <gfx/drawable.hpp>
@@ -33,7 +32,6 @@ struct GraphicsContext {
 
   ::gfx::Context &getContext();
   ::gfx::Window &getWindow();
-  SDL_Window *getSdlWindow();
 };
 
 using RequiredGraphicsContext =

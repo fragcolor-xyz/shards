@@ -45,6 +45,7 @@
 #include "pmr/vector.hpp"
 #include "pmr/unordered_map.hpp"
 #include "frame_queue.hpp"
+#include "gfx_wgpu.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -245,7 +246,7 @@ struct RendererImpl final : public ContextData {
     TextureSubResource texture;
     GpuTextureReadBufferPtr destination;
 
-    WgpuHandle<WGPUBuffer> buffer;
+    std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
     std::optional<void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
@@ -266,7 +267,7 @@ struct RendererImpl final : public ContextData {
     BufferPtr buffer;
     GpuReadBufferPtr destination;
 
-    WgpuHandle<WGPUBuffer> stagingBuffer;
+    std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
     std::optional<void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
@@ -295,12 +296,7 @@ struct RendererImpl final : public ContextData {
     size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
     cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
     cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
-    WGPUBufferDescriptor bufDesc{
-        .label = "Temp copy buffer",
-        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
-        .size = cmd.bufferSize,
-    };
-    cmd.buffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
+    cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
     WGPUImageCopyTexture srcDesc{
         .texture = textureData.texture,
@@ -309,7 +305,7 @@ struct RendererImpl final : public ContextData {
     };
     WGPUImageCopyBuffer dstDesc{
         .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
-        .buffer = cmd.buffer,
+        .buffer = cmd.stagingBuffer->buffer,
     };
     WGPUExtent3D sizeDesc{
         .width = uint32_t(cmd.size.x),
@@ -328,15 +324,9 @@ struct RendererImpl final : public ContextData {
     }
 
     cmd.bufferSize = bufferData.bufferLength;
+    cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
-    WGPUBufferDescriptor bufDesc{
-        .label = "Temp copy buffer",
-        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
-        .size = cmd.bufferSize,
-    };
-    cmd.stagingBuffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
-
-    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData.buffer, 0, cmd.stagingBuffer, 0, cmd.bufferSize);
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, bufferData.buffer, 0, cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     return true;
   }
 
@@ -345,22 +335,35 @@ struct RendererImpl final : public ContextData {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
+#if WEBGPU_NATIVE
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
-    wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#if WEBGPU_NATIVE
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
   bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
+
+#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
       cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
 
-      wgpuBufferUnmap(cmd.buffer);
+      wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
       return true;
     } else {
@@ -373,18 +376,31 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer, 0, cmd.bufferSize);
+#if WEBGPU_NATIVE
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
+#else
+      cmd.mappedBuffer = nullptr;
+#endif
     };
-    wgpuBufferMapAsync(cmd.stagingBuffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#if WEBGPU_NATIVE
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#else
+    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
   bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
-      memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
 
-      wgpuBufferUnmap(cmd.stagingBuffer);
+#if WEBGPU_NATIVE
+      memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+#else
+      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
+#endif
+
+      wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
       return true;
     } else {
@@ -560,8 +576,6 @@ struct RendererImpl final : public ContextData {
     queueTextureCopies();
     queueBufferCopies();
 
-    clearOldCacheItems();
-
     processTransientPtrCleanupQueue();
 
 #ifdef TRACY_ENABLE
@@ -607,6 +621,8 @@ struct RendererImpl final : public ContextData {
     // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
     storage.renderTextureCache.resetAndClearOldCacheItems(storage.frameCounter, 8);
     storage.textureViewCache.clearOldCacheItems(storage.frameCounter, 8);
+
+    storage.mapReadCopyDstBufferPool.recycle();
   }
 
   void swapBuffers() {
@@ -615,6 +631,8 @@ struct RendererImpl final : public ContextData {
 
     auto &debugVisualizers = storage.debugVisualizers.get(storage.frameCounter % 2);
     debugVisualizers.clear();
+
+    clearOldCacheItems();
   }
 };
 

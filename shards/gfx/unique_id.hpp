@@ -2,6 +2,7 @@
 #define F14E50FC_17BA_4A5F_BB8B_8CF2D95A9ECE
 
 #include <stdint.h>
+#include <memory>
 
 #ifndef RUST_BINDGEN
 #include <atomic>

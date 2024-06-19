@@ -2,7 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 /* Copyright (C) 2015 Joel Martin <github@martintribe.org> */
 
-#include "mal/MAL.h"
+#include "MAL.h"
 #if defined(__clang__) && defined(_WIN32)
 #define _REGEX_MAX_STACK_COUNT 200000
 #endif
