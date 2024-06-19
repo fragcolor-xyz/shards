@@ -11,7 +11,7 @@ shards = { path = "../../../rust" }
 shards-egui = { path = "../../../egui" }
 
 [build-dependencies]
-bindgen = "0.69.4"
+bindgen = "0.69"
 gfx-build = { path = "../../../gfx/rust/build" }
 
 [workspace]

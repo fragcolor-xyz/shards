@@ -1215,7 +1215,9 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
 };
 #endif
 
+#ifndef shassert
 #define shassert assert
+#endif
 
 #ifndef NDEBUG
 #define SH_DEBUG_MODE 1

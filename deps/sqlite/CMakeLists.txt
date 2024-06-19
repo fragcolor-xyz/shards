@@ -9,6 +9,10 @@ set(SQLITE_DEFINES
   SQLITE_ENABLE_FTS5=1 SQLITE_ENABLE_RTREE=1 SQLITE_ENABLE_GEOPOLY=1
   SQLITE_LIKE_DOESNT_MATCH_BLOBS SQLITE_OMIT_SHARED_CACHE)
 
+if(EMSCRIPTEN)
+  list(APPEND SQLITE_DEFINES SQLITE_ENABLE_FLOCK=1)
+endif()
+
 add_library(sqlite-static STATIC ${SQLITE_SOURCES})
 target_compile_definitions(sqlite-static PUBLIC ${SQLITE_DEFINES})
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
@@ -27,4 +31,5 @@ add_library(crsqlite-extension STATIC
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+
 # target_link_libraries(crsql_bundle-rust crsqlite-extension)

@@ -120,7 +120,7 @@ jobs:
           ./shards new ../shards/tests/flows.shs
           ./shards new ../shards/tests/kdtree.shs
           ./shards new ../shards/tests/channels.shs
-          ./shards new ../shards/tests/genetic.shs
+          SH_IGNORE_CONSISTENT_RESUMER= ./shards new ../shards/tests/genetic.shs
           ./shards new ../shards/tests/imaging.shs
           ./shards new ../shards/tests/http.shs
           ./shards new ../shards/tests/bigint.shs

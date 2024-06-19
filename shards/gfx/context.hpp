@@ -100,6 +100,9 @@ public:
   Context();
   ~Context();
 
+  Context(const Context &) = delete;
+  Context &operator=(const Context &) = delete;
+
   // Initialize a context on a window's surface
   void init(Window &window, const ContextCreationOptions &options = ContextCreationOptions{});
   // Initialize headless context

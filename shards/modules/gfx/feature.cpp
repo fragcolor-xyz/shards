@@ -715,7 +715,7 @@ public:
     feature.generators.clear();
 
     if (!_drawableGeneratorBranch.wires.empty()) {
-      feature.generators.emplace_back([=](FeatureDrawableGeneratorContext &ctx) {
+      feature.generators.emplace_back([this](FeatureDrawableGeneratorContext &ctx) {
         auto applyResults = [](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           size_t index{};
           ForEach(output.payload.seqValue, [&](SHVar &val) {
@@ -732,7 +732,7 @@ public:
     }
 
     if (!_viewGeneratorBranch.wires.empty()) {
-      feature.generators.emplace_back([=](FeatureViewGeneratorContext &ctx) {
+      feature.generators.emplace_back([this](FeatureViewGeneratorContext &ctx) {
         auto applyResults = [](FeatureViewGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           auto &collector = ctx.getParameterCollector();
           collectParameters(collector, shContext, output.payload.tableValue);

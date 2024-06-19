@@ -4,6 +4,7 @@
 #include <variant>
 #include <compare>
 #include <boost/container/string.hpp>
+#include "sdl.hpp"
 
 namespace shards::input {
 // Request application to begin accepting text input

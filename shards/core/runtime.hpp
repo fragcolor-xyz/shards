@@ -19,6 +19,7 @@
 #include "inline.hpp"
 #include "utils.hpp"
 #include "object_type.hpp"
+#include "platform.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -43,7 +44,8 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <time.h>
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
 #include <emscripten/val.h>
 #endif
 
@@ -306,28 +308,51 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
+#define SH_CORO_RESUMED_LOG(_wire) \
+  { SHLOG_TRACE("> Resumed wire {}", (_wire)->name); }
+#define SH_CORO_SUSPENDED_LOG(_wire) \
+  { SHLOG_TRACE("> Suspended wire {}", (_wire)->name); }
+#define SH_CORO_EXT_RESUME_LOG(_wire) \
+  { SHLOG_TRACE("Resuming wire {}", (_wire)->name); }
+#define SH_CORO_EXT_SUSPEND_LOG(_wire) \
+  { SHLOG_TRACE("Suspending wire {}", (_wire)->name); }
+
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire) \
-  { shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
-#define SH_CORO_SUSPENDED(_wire) \
-  { shards::popThreadName(); }
+#define SH_CORO_RESUMED(_wire)                                         \
+  {                                                                    \
+    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); \
+    SH_CORO_RESUMED_LOG(_wire)                                         \
+  }
+#define SH_CORO_SUSPENDED(_wire)   \
+  {                                \
+    shards::popThreadName();       \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
+  }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
-    TracyCoroEnter(wire);                                                         \
+    TracyCoroEnter(_wire);                                                        \
+    SH_CORO_EXT_RESUME_LOG(_wire);                                                \
   }
 #define SH_CORO_EXT_SUSPEND(_wire) \
   {                                \
     shards::popThreadName();       \
     TracyCoroExit(_wire);          \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
   }
 #else
-#define SH_CORO_RESUMED(_wire)
-#define SH_CORO_SUSPENDED(_)
-#define SH_CORO_EXT_RESUME(_) \
-  { TracyCoroEnter(wire); }
-#define SH_CORO_EXT_SUSPEND(_) \
-  { TracyCoroExit(_wire); }
+#define SH_CORO_RESUMED(_wire) SH_CORO_RESUMED_LOG(_wire)
+#define SH_CORO_SUSPENDED(_wire) SH_CORO_SUSPENDED_LOG(_wire)
+#define SH_CORO_EXT_RESUME(_wire) \
+  {                               \
+    TracyCoroEnter(_wire);        \
+    SH_CORO_EXT_RESUME_LOG(_wire) \
+  }
+#define SH_CORO_EXT_SUSPEND(_wire) \
+  {                                \
+    TracyCoroExit(_wire);          \
+    SH_CORO_EXT_SUSPEND_LOG(_wire) \
+  }
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
@@ -866,11 +891,12 @@ inline bool stop(SHWire *wire, SHVar *result, SHContext *currentContext) {
     // delete also the coro ptr
     wire->coro.reset();
   } else {
+    auto mesh = wire->mesh.lock();
+
     // if we had a coro this will run inside it!
     wire->cleanup(true);
 
     // let's not forget to call events, those are called inside coro handler for the above case
-    std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
     if (mesh) {
       mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
     }
@@ -897,6 +923,10 @@ inline SHContext *getRootContext(SHContext *current) {
 }
 
 template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+#if SH_EMSCRIPTEN
+  // Context always runs on the mesh thread already
+  func.action();
+#else
   if (context) {
     if (unlikely(context->onWorkerThread)) {
       throw ActivationError("Trying to callOnMeshThread from a worker thread!");
@@ -925,6 +955,7 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
     SHLOG_WARNING("NO Context, not running on mesh thread");
     func.action();
   }
+#endif
 }
 
 template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext *context, L &&func) {

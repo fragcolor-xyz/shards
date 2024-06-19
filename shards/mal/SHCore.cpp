@@ -9,9 +9,7 @@
 #include "StaticList.h"
 #include "Types.h"
 #include "SHLisp.h"
-#include "mal/MAL.h"
-#include "mal/Types.h"
-#include "shards/shards.h"
+#include <shards/shards.h>
 #include <shards/core/shared.hpp>
 #include <shards/core/runtime.hpp>
 #include <algorithm>
@@ -26,7 +24,7 @@
 #include <ostream>
 #include <set>
 #include <thread>
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 
 #ifndef _WIN32
 #include <dlfcn.h>

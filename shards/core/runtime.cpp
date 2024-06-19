@@ -4,7 +4,7 @@
 #include "runtime.hpp"
 #include "type_matcher.hpp"
 #include <shards/common_types.hpp>
-#include "core/foundation.hpp"
+#include "shards/core/foundation.hpp"
 #include "foundation.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
@@ -25,7 +25,7 @@
 #include <stdexcept>
 #include <string.h>
 #include <unordered_set>
-#include <log/log.hpp>
+#include <shards/log/log.hpp>
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
@@ -34,6 +34,7 @@
 #include "utils.hpp"
 #include "trait.hpp"
 #include "type_cache.hpp"
+#include "platform.hpp"
 
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
@@ -43,7 +44,8 @@ namespace fs = boost::filesystem;
 
 using namespace shards;
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
 // clang-format off
 EM_JS(void, sh_emscripten_init, (), {
   // inject some of our types
@@ -2326,7 +2328,7 @@ void shInit() {
 
   shards::registerShards();
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
   sh_emscripten_init();
   // fill up some interface so we don't need to know mem offsets JS side
   EM_ASM({ Module["SHCore"] = {}; });

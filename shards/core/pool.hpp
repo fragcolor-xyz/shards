@@ -10,9 +10,15 @@
 namespace shards {
 
 template <typename T> struct PoolItemTraits {
-  T newItem() { assert("not implemented"); }
+  T newItem() {
+    assert("not implemented");
+    __builtin_unreachable();
+  }
   void release(T &) { assert("not implemented"); }
-  bool canRecycle(T &v) { assert("not implemented"); }
+  bool canRecycle(T &v) {
+    assert("not implemented");
+    __builtin_unreachable();
+  }
   void recycled(T &v) { assert("not implemented"); }
 };
 
@@ -31,7 +37,7 @@ template <typename T, typename Traits = PoolItemTraits<T>> struct Pool {
   }
 
   // Finds a canditate, based on the largest value returned by the condition that is not INT64_MAX
-  template <typename F> std::enable_if_t<std::is_invocable_r_v<int64_t, F, T &>, T*> findItem(F condition) {
+  template <typename F> std::enable_if_t<std::is_invocable_r_v<int64_t, F, T &>, T *> findItem(F condition) {
     int64_t largestWeight = INT64_MIN;
     typename decltype(freeList)::iterator targetFreeListIt = freeList.end();
     for (auto it = freeList.begin(); it != freeList.end(); ++it) {
@@ -51,7 +57,7 @@ template <typename T, typename Traits = PoolItemTraits<T>> struct Pool {
     return nullptr;
   }
 
-  T& newValue(auto init, auto condition) {
+  T &newValue(auto init, auto condition) {
     auto v = findItem(condition);
     if (!v) {
       auto &result = inUseList.emplace_back(itemTraits.newItem());
@@ -61,12 +67,21 @@ template <typename T, typename Traits = PoolItemTraits<T>> struct Pool {
     return *v;
   }
 
-  T& newValue(auto init) {
+  T &newValue(auto init) {
     return newValue(init, [](T &v) -> int64_t { return 0; });
   }
 
-  T& newValue() {
+  T &newValue() {
     return newValue([](T &v) {}, [](T &v) -> int64_t { return 0; });
+  }
+
+  void clear() {
+    for (auto &v : inUseList)
+      itemTraits.release(v);
+    inUseList.clear();
+    for (auto &v : freeList)
+      itemTraits.release(v);
+    freeList.clear();
   }
 
   // Check returned items and return them to the pool once they are no longer referenced

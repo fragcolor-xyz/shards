@@ -7,12 +7,26 @@
 #include <deque>
 
 #include <shards/shards.h>
+#include <shards/utility.hpp>
+#include "platform.hpp"
 #include "utils.hpp"
+#include "runtime.hpp"
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
 
 #include <tracy/Wrapper.hpp>
+
+#if SH_EMSCRIPTEN
+#include <emscripten.h>
+#endif
+
+// Can not create this many workers, create on demand instead
+#if SH_EMSCRIPTEN
+#define SH_ENABLE_TIDE_POOL 0
+#else
+#define SH_ENABLE_TIDE_POOL 1
+#endif
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
 #define HAS_ASYNC_SUPPORT 0
@@ -30,7 +44,6 @@
 
 namespace shards {
 #if HAS_ASYNC_SUPPORT
-
 /*
  * The TidePool class is a simple C++ thread pool implementation designed to manage
  * worker threads and distribute tasks to them. The class supports dynamic adjustment
@@ -50,12 +63,12 @@ namespace shards {
  * - Schedule tasks using the schedule() function.
  * - The pool will automatically adjust the number of worker threads based on the workload.
  */
-
 struct TidePool {
   struct Work {
     virtual void call() = 0;
   };
 
+#if SH_ENABLE_TIDE_POOL
   struct Worker {
     Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter, std::mutex &condMutex,
            std::condition_variable &cond)
@@ -161,6 +174,13 @@ struct TidePool {
         worker._thread.join();
     }
   }
+#else // Dummy implementation
+  void schedule(Work *work) {
+    std::thread([work]() {
+      work->call();
+    }).detach();
+  }
+#endif
 };
 
 TidePool &getTidePool();
@@ -267,7 +287,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 
   getTidePool().schedule(&call);
 
-  while (!call.complete && context->shouldContinue()) {
+  while (!call.complete.load(std::memory_order_acquire) && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }
