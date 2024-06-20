@@ -5,7 +5,7 @@ use std::any::Any;
 use crate::{
   util::{get_current_parent_opt, require_parents},
   widgets::drag_value::CustomDragValue,
-  PARENTS_UI_NAME,
+  EguiId, PARENTS_UI_NAME,
 };
 use shards::{
   shard::Shard,
@@ -21,6 +21,7 @@ use shards_lang::{ast::*, ast_visitor::*};
 #[derive(Debug, Clone, PartialEq)]
 struct VisualState {
   selected: bool,
+  id: Id,
 }
 
 impl_custom_any!(VisualState);
@@ -28,24 +29,11 @@ impl_custom_any!(VisualState);
 pub struct VisualAst<'a> {
   ui: &'a mut Ui,
   response: Option<Response>,
-  elements_counter: usize,
 }
 
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
-    VisualAst {
-      ui,
-      response: None,
-      elements_counter: 0,
-    }
-  }
-
-  pub fn new_with_counter(ui: &'a mut Ui, counter: usize) -> Self {
-    VisualAst {
-      ui,
-      response: None,
-      elements_counter: counter,
-    }
+    VisualAst { ui, response: None }
   }
 
   pub fn render(&mut self, ast: &mut Sequence) -> Option<Response> {
@@ -58,7 +46,7 @@ impl<'a> VisualAst<'a> {
       .default_open(false)
       .show(self.ui, |ui| {
         if let Some(params) = &mut x.params {
-          let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
+          let mut mutator = VisualAst::new(ui);
           for param in params {
             param.accept_mut(&mut mutator);
           }
@@ -82,7 +70,7 @@ impl<'a> AstMutator for VisualAst<'a> {
 
   fn visit_statement(&mut self, statement: &mut Statement) {
     self.ui.horizontal(|ui| {
-      let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
+      let mut mutator = VisualAst::new(ui);
       match statement {
         Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
         Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
@@ -118,13 +106,16 @@ impl<'a> AstMutator for VisualAst<'a> {
   }
 
   fn visit_block(&mut self, block: &mut Block) {
-    let info = block.line_info.unwrap_or_default();
+    let (selected, id) = {
+      let block_ptr = block as *mut Block as u64;
+      let state = block.get_or_insert_custom_state(|| VisualState {
+        selected: false,
+        id: Id::new(block_ptr),
+      });
+      (state.selected, state.id)
+    };
 
-    let selected = block
-      .get_or_insert_custom_state(|| VisualState { selected: false })
-      .selected;
-
-    self.ui.push_id((info.line, info.column), |ui| {
+    self.ui.push_id(id, |ui| {
       if egui::Frame::group(ui.style())
         .show(ui, |ui| {
           ui.vertical(|ui| {
@@ -155,13 +146,9 @@ impl<'a> AstMutator for VisualAst<'a> {
                 .response
               }
               BlockContent::Const(x) => {
-                egui::Frame::group(ui.style())
-                  .show(ui, |ui| {
-                    let mut mutator = VisualAst::new(ui);
-                    x.accept_mut(&mut mutator);
-                    mutator.response.unwrap()
-                  })
-                  .response
+                let mut mutator = VisualAst::new(ui);
+                x.accept_mut(&mut mutator);
+                mutator.response.unwrap()
               }
               BlockContent::TakeTable(_, _) => todo!(),
               BlockContent::TakeSeq(_, _) => todo!(),
@@ -177,7 +164,9 @@ impl<'a> AstMutator for VisualAst<'a> {
                 .response
               }
             };
-          });
+            // ui.interact(ui.min_rect(), ui.id(), Sense::click())
+          })
+          .response
         })
         .response
         .clicked()
