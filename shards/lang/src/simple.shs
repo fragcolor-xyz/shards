@@ -1,0 +1,2 @@
+"Hello World!" | Log
+Msg("Ciao Mondo!") | Log

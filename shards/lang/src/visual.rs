@@ -1,22 +1,42 @@
-use std::cell::{RefCell, RefMut};
-
 use egui::*;
+use libc::IP_MULTICAST_LOOP;
 use shards::{
   shard::Shard,
-  types::{Context as ShardsContext, ExposedTypes, InstanceData, Type, Types, Var, NONE_TYPES},
+  types::{
+    Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES,
+  },
 };
-use shards_egui::widgets::drag_value::CustomDragValue;
+use shards_egui::{
+  util::{get_current_parent_opt, require_parents},
+  widgets::drag_value::CustomDragValue,
+  PARENTS_UI_NAME,
+};
 
 use crate::{ast::*, ast_visitor::AstMutator};
+
+use pest::Parser;
 
 pub struct VisualAst<'a> {
   ui: &'a mut Ui,
   response: Option<Response>,
+  elements_counter: usize,
 }
 
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
-    VisualAst { ui, response: None }
+    VisualAst {
+      ui,
+      response: None,
+      elements_counter: 0,
+    }
+  }
+
+  pub fn new_with_counter(ui: &'a mut Ui, counter: usize) -> Self {
+    VisualAst {
+      ui,
+      response: None,
+      elements_counter: counter,
+    }
   }
 
   pub fn render(&mut self, ast: &mut Sequence) -> Option<Response> {
@@ -25,11 +45,13 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Response {
-    self
-      .ui
-      .collapsing(x.name.name.as_str(), |ui: &mut Ui| {
+    self.elements_counter += 1;
+    egui::CollapsingHeader::new(x.name.name.as_str())
+      .id_source(self.elements_counter)
+      .default_open(false)
+      .show(self.ui, |ui| {
         if let Some(params) = &mut x.params {
-          let mut mutator = VisualAst::new(ui);
+          let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
           for param in params {
             param.accept_mut(&mut mutator);
           }
@@ -52,10 +74,13 @@ impl<'a> AstMutator for VisualAst<'a> {
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) {
-    match statement {
-      Statement::Assignment(assignment) => assignment.accept_mut(self),
-      Statement::Pipeline(pipeline) => pipeline.accept_mut(self),
-    }
+    self.ui.horizontal(|ui| {
+      let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
+      match statement {
+        Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
+        Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
+      }
+    });
   }
 
   fn visit_assignment(&mut self, assignment: &mut Assignment) {
@@ -93,13 +118,13 @@ impl<'a> AstMutator for VisualAst<'a> {
         self
           .ui
           .group(|ui| {
-            let mut mutator = VisualAst::new(ui);
+            let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
             x.accept_mut(&mut mutator)
           })
           .response
       }
       BlockContent::Const(x) => {
-        let mut mutator = VisualAst::new(self.ui);
+        let mut mutator = VisualAst::new_with_counter(self.ui, self.elements_counter);
         x.accept_mut(&mut mutator);
         mutator.response.unwrap()
       }
@@ -110,7 +135,7 @@ impl<'a> AstMutator for VisualAst<'a> {
         self
           .ui
           .group(|ui| {
-            let mut mutator = VisualAst::new(ui);
+            let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
             x.accept_mut(&mut mutator)
           })
           .response
@@ -136,7 +161,7 @@ impl<'a> AstMutator for VisualAst<'a> {
   fn visit_value(&mut self, value: &mut Value) {
     let response = match value {
       Value::None => self.ui.label("None"),
-      Value::Identifier(_) => todo!(),
+      Value::Identifier(x) => self.ui.label(x.name.as_str()),
       Value::Boolean(x) => self.ui.checkbox(x, if *x { "true" } else { "false" }),
       Value::Enum(_, _) => todo!(),
       Value::Number(x) => match x {
@@ -181,15 +206,28 @@ impl<'a> AstMutator for VisualAst<'a> {
 
 #[derive(shards::shard)]
 #[shard_info("UI.Shards", "A Shards program editor")]
-struct UIShardsShard {
+pub struct UIShardsShard {
   #[shard_required]
   required: ExposedTypes,
+
+  #[shard_warmup]
+  parents: ParamVar,
+
+  ast: Sequence,
 }
 
 impl Default for UIShardsShard {
   fn default() -> Self {
+    let code = include_str!("simple.shs");
+    let successful_parse = crate::ShardsParser::parse(Rule::Program, code).unwrap();
+    let mut env = crate::read::ReadEnv::new("", ".", ".");
+    let seq =
+      crate::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+    let seq = seq.sequence;
     Self {
       required: ExposedTypes::new(),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
+      ast: seq,
     }
   }
 }
@@ -218,10 +256,16 @@ impl Shard for UIShardsShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
+
+    require_parents(&mut self.required);
+
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
+    let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
+    let mut mutator = VisualAst::new(ui);
+    self.ast.accept_mut(&mut mutator);
     Ok(Var::default())
   }
 }
