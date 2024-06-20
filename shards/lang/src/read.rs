@@ -22,7 +22,7 @@ pub struct ReadEnv {
 }
 
 impl ReadEnv {
-  pub(crate) fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
+  pub fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
     Self {
       name: name.to_owned().into(),
       root_directory: root_directory.to_string(),
@@ -123,6 +123,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
         blocks: vec![Block {
           content: BlockContent::Empty,
           line_info: Some(pos.into()),
+          custom_state: None,
         }],
       }
     }
@@ -476,6 +477,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Expr => blocks.push(Block {
         content: BlockContent::Expr(process_sequence(
@@ -486,33 +488,40 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Shard => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Shard(func),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
       },
       Rule::Func => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Func(func),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
       },
       Rule::TakeTable => blocks.push(Block {
@@ -521,6 +530,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeTable(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::TakeSeq => blocks.push(Block {
         content: {
@@ -528,15 +538,18 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeSeq(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::ConstValue => blocks.push(Block {
         // this is an indirection, process_value will handle the case of a ConstValue
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Enum => blocks.push(Block {
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Shards => blocks.push(Block {
         content: BlockContent::Shards(process_sequence(
@@ -547,6 +560,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
@@ -574,7 +588,7 @@ pub(crate) fn process_sequence(
   Ok(Sequence { statements })
 }
 
-pub(crate) fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {
+pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Program {
     return Err(("Expected a Program rule, but found a different rule.", pos).into());

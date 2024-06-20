@@ -1,20 +1,29 @@
 use egui::*;
-use libc::IP_MULTICAST_LOOP;
+
+use std::any::Any;
+
+use crate::{
+  util::{get_current_parent_opt, require_parents},
+  widgets::drag_value::CustomDragValue,
+  PARENTS_UI_NAME,
+};
 use shards::{
   shard::Shard,
   types::{
     Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES,
   },
 };
-use shards_egui::{
-  util::{get_current_parent_opt, require_parents},
-  widgets::drag_value::CustomDragValue,
-  PARENTS_UI_NAME,
-};
-
-use crate::{ast::*, ast_visitor::AstMutator};
 
 use pest::Parser;
+
+use shards_lang::{ast::*, ast_visitor::*};
+
+#[derive(Debug, Clone, PartialEq)]
+struct VisualState {
+  selected: bool,
+}
+
+impl_custom_any!(VisualState);
 
 pub struct VisualAst<'a> {
   ui: &'a mut Ui,
@@ -45,9 +54,7 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Response {
-    self.elements_counter += 1;
     egui::CollapsingHeader::new(x.name.name.as_str())
-      .id_source(self.elements_counter)
       .default_open(false)
       .show(self.ui, |ui| {
         if let Some(params) = &mut x.params {
@@ -111,36 +118,76 @@ impl<'a> AstMutator for VisualAst<'a> {
   }
 
   fn visit_block(&mut self, block: &mut Block) {
-    let _response = match &mut block.content {
-      BlockContent::Empty => self.ui.separator(),
-      BlockContent::Shard(x) => self.mutate_shard(x),
-      BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
-        self
-          .ui
-          .group(|ui| {
-            let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
-            x.accept_mut(&mut mutator)
-          })
-          .response
+    let info = block.line_info.unwrap_or_default();
+
+    let selected = block
+      .get_or_insert_custom_state(|| VisualState { selected: false })
+      .selected;
+
+    self.ui.push_id((info.line, info.column), |ui| {
+      if egui::Frame::group(ui.style())
+        .show(ui, |ui| {
+          ui.vertical(|ui| {
+            if selected {
+              ui.horizontal(|ui| {
+                if ui.button("S").clicked() {
+                  // switch
+                }
+                if ui.button("D").clicked() {
+                  // duplicate
+                }
+                if ui.button("X").clicked() {
+                  // delete
+                }
+              });
+            }
+            let _response = match &mut block.content {
+              BlockContent::Empty => ui.separator(),
+              BlockContent::Shard(x) => {
+                let mut mutator = VisualAst::new(ui);
+                mutator.mutate_shard(x)
+              }
+              BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
+                ui.group(|ui| {
+                  let mut mutator = VisualAst::new(ui);
+                  x.accept_mut(&mut mutator)
+                })
+                .response
+              }
+              BlockContent::Const(x) => {
+                egui::Frame::group(ui.style())
+                  .show(ui, |ui| {
+                    let mut mutator = VisualAst::new(ui);
+                    x.accept_mut(&mut mutator);
+                    mutator.response.unwrap()
+                  })
+                  .response
+              }
+              BlockContent::TakeTable(_, _) => todo!(),
+              BlockContent::TakeSeq(_, _) => todo!(),
+              BlockContent::Func(x) => {
+                let mut mutator = VisualAst::new(ui);
+                mutator.mutate_shard(x)
+              }
+              BlockContent::Program(x) => {
+                ui.group(|ui| {
+                  let mut mutator = VisualAst::new(ui);
+                  x.accept_mut(&mut mutator)
+                })
+                .response
+              }
+            };
+          });
+        })
+        .response
+        .clicked()
+      {
+        block
+          .get_custom_state::<VisualState>()
+          .as_mut()
+          .map(|x| x.selected = !x.selected);
       }
-      BlockContent::Const(x) => {
-        let mut mutator = VisualAst::new_with_counter(self.ui, self.elements_counter);
-        x.accept_mut(&mut mutator);
-        mutator.response.unwrap()
-      }
-      BlockContent::TakeTable(_, _) => todo!(),
-      BlockContent::TakeSeq(_, _) => todo!(),
-      BlockContent::Func(x) => self.mutate_shard(x),
-      BlockContent::Program(x) => {
-        self
-          .ui
-          .group(|ui| {
-            let mut mutator = VisualAst::new_with_counter(ui, self.elements_counter);
-            x.accept_mut(&mut mutator)
-          })
-          .response
-      }
-    };
+    });
   }
 
   fn visit_function(&mut self, function: &mut Function) {
@@ -176,7 +223,10 @@ impl<'a> AstMutator for VisualAst<'a> {
         if x.len() > 16 {
           self.ui.text_edit_multiline(x)
         } else {
-          self.ui.text_edit_singleline(x)
+          let text = x.as_str();
+          let text_width = 10.0 * text.chars().count() as f32;
+          let width = text_width + 20.0; // Add some padding
+          TextEdit::singleline(x).desired_width(width).ui(self.ui)
         }
       }
       Value::Bytes(_) => todo!(),
@@ -219,10 +269,11 @@ pub struct UIShardsShard {
 impl Default for UIShardsShard {
   fn default() -> Self {
     let code = include_str!("simple.shs");
-    let successful_parse = crate::ShardsParser::parse(Rule::Program, code).unwrap();
-    let mut env = crate::read::ReadEnv::new("", ".", ".");
+    let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+    let mut env = shards_lang::read::ReadEnv::new("", ".", ".");
     let seq =
-      crate::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+      shards_lang::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
+        .unwrap();
     let seq = seq.sequence;
     Self {
       required: ExposedTypes::new(),

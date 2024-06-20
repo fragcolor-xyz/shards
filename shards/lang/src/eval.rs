@@ -1492,6 +1492,7 @@ fn resolve_var(
                   blocks: vec![Block {
                     content: BlockContent::Func(f.clone()),
                     line_info: Some(line_info),
+                    custom_state: None,
                   }],
                 },
               }],
@@ -2887,6 +2888,7 @@ fn eval_pipeline(
                           ]),
                         }),
                         line_info: block.line_info,
+                        custom_state: block.custom_state.clone(),
                       }],
                     })],
                   };

@@ -22,6 +22,8 @@ syntect = { version = "5.0.0", default-features = false, features = [
 ] }
 enum-map = { version = "2.5.0" }
 shards = { path = "../rust" }
+shards-lang = { path = "../lang" }
+pest = "2.7.1"
 rmp-serde = { version = "1.1.1" }
 compile-time-crc32 = "0.1.2"
 

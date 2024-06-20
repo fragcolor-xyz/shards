@@ -4,7 +4,7 @@ use shards::SHStringWithLen;
 use shards::{shlog_error, types::*};
 use shards_lang::cli::process_args;
 use shards_lang::eval::{self, *};
-use shards_lang::{ast::*, visual, RcStrWrapper};
+use shards_lang::{ast::*, RcStrWrapper};
 use shards_lang::{print, read};
 use std::collections::HashMap;
 use std::ffi::{c_char, CString};
@@ -289,7 +289,6 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
 
   register_shard::<read::ReadShard>();
   register_legacy_shard::<eval::EvalShard>();
-  register_shard::<visual::UIShardsShard>();
 }
 
 /// Please note it will consume `from` but not `to`

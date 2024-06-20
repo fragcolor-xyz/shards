@@ -1,5 +1,8 @@
 #![allow(non_upper_case_globals)]
 
+use std::any::Any;
+use std::fmt::Debug;
+
 use pest::Position;
 use serde::{Deserialize, Serialize};
 use shards::{
@@ -207,11 +210,98 @@ pub enum BlockContent {
   Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
+pub trait CustomAny: Any + Debug + CustomClone + CustomPartialEq {
+  fn as_any(&self) -> &dyn Any;
+  fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+pub trait CustomClone {
+  fn clone_box(&self) -> Box<dyn CustomAny>;
+}
+
+impl Clone for Box<dyn CustomAny> {
+  fn clone(&self) -> Box<dyn CustomAny> {
+    self.clone_box()
+  }
+}
+
+pub trait CustomPartialEq {
+  fn eq_box(&self, other: &dyn CustomAny) -> bool;
+}
+
+impl PartialEq for Box<dyn CustomAny> {
+  fn eq(&self, other: &Self) -> bool {
+    self.eq_box(other.as_ref())
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
+  #[serde(skip)]
+  pub custom_state: Option<Box<dyn CustomAny>>,
 }
+
+impl Block {
+  pub fn set_custom_state<T: 'static + CustomAny>(&mut self, state: T) {
+    self.custom_state = Some(Box::new(state));
+  }
+
+  pub fn get_custom_state<T: 'static + CustomAny>(&mut self) -> Option<&mut T> {
+    self
+      .custom_state
+      .as_mut()
+      .and_then(|state| state.as_any_mut().downcast_mut::<T>())
+  }
+
+  pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T
+  where
+    F: FnOnce() -> T,
+  {
+    if self.custom_state.is_none() {
+      self.custom_state = Some(Box::new(default()));
+    }
+
+    self.get_custom_state().unwrap()
+  }
+}
+
+// Macro to implement CustomAny for common types
+#[macro_export]
+macro_rules! impl_custom_any {
+  ($($t:ty),*) => {
+      $(
+          impl CustomClone for $t {
+              fn clone_box(&self) -> Box<dyn CustomAny> {
+                  Box::new(self.clone())
+              }
+          }
+
+          impl CustomPartialEq for $t {
+              fn eq_box(&self, other: &dyn CustomAny) -> bool {
+                  other
+                      .as_any()
+                      .downcast_ref::<$t>()
+                      .map_or(false, |a| self == a)
+              }
+          }
+
+          impl CustomAny for $t {
+              fn as_any(&self) -> &dyn Any {
+                  self
+              }
+
+              fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+              }
+          }
+      )*
+  };
+}
+
+// Implement CustomAny for common types
+impl_custom_any!(String, i32, f64);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Pipeline {
