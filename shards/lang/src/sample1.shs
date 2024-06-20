@@ -8,7 +8,7 @@ Repeat({
 
   1 | IsMore(2) | Assert.Is(true)
   @i3(2 3 4) | Log | {1 | Assert.Is(1)} ; this is a Sub({})
-  | Assert.Is((2 3 4))
+  | Assert.Is(@i3(2 3 4))
   Do(walk)
   2 | Math.Add(2) | Log | (3 | Math.Add(3) | Log) | #(false | Assert.Is(true)) | Log
   			2.2 | Log | Log >= rare/pose
@@ -26,10 +26,10 @@ Repeat({
   2 >> seq
   0x2234 >> seq
   seq:0 | Log
-  number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0 Type.String)
+  number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0 Type::String)
   ; notice no |, we inject always a `nil` in front of a Pipeline,
   ; if the next shard input type is not None
-  {a: 1 b: 2} | {ToString | Assert.Is("{a: 1, b: 2}") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)
+  {a: 1 b: 2} | {ToString | Assert.Is("{a: 1 b: 2}") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)
   Repeat({ ; shards
     10 | Log
   } Times: 3 Until: #(1))

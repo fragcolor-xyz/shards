@@ -205,7 +205,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     let mut buf = std::io::BufWriter::new(Vec::new());
     let mut v = formatter::FormatterVisitor::new(&mut buf, &in_str);
 
-    crate::ast_visitor::process(&in_str, &mut v)?;
+    crate::rule_visitor::process(&in_str, &mut v)?;
 
     fs::write(file, &buf.into_inner()?[..])?;
   } else {
@@ -216,7 +216,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     };
 
     let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
-    crate::ast_visitor::process(&in_str, &mut v)?;
+    crate::rule_visitor::process(&in_str, &mut v)?;
   }
 
   std::io::stdout().flush()?;

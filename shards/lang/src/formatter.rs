@@ -4,7 +4,7 @@ use std::{
   path::Path,
 };
 
-use crate::ast_visitor::Visitor;
+use crate::rule_visitor::RuleVisitor;
 use pest::iterators::Pair;
 
 pub type Rule = crate::ast::Rule;
@@ -438,7 +438,7 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
   return true;
 }
 
-impl<'a> Visitor for FormatterVisitor<'a> {
+impl<'a> RuleVisitor for FormatterVisitor<'a> {
   fn v_pipeline<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.with_context(Context::Pipeline, |s| {
       s.interpolate(&pair);
@@ -698,7 +698,7 @@ pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
   };
 
   let mut v = FormatterVisitor::new(&mut buf, &input_ref);
-  crate::ast_visitor::process(&input_ref, &mut v)?;
+  crate::rule_visitor::process(&input_ref, &mut v)?;
 
   Ok(String::from_utf8(buf.into_inner()?)?)
 }
