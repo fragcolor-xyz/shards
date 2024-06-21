@@ -8,9 +8,9 @@ use crate::util;
 use crate::util::with_possible_panic;
 use crate::Anchor;
 use crate::ANCHOR_TYPES;
-use crate::BOOL_VAR_SLICE;
+use crate::FLOAT2_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::cstr;
+use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
@@ -19,14 +19,9 @@ use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::{
   common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
-  Types, Var, SHARDS_OR_NONE_TYPES, STRING_TYPES,
+  Types, Var, SHARDS_OR_NONE_TYPES,
 };
-
-use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
-use shards::{
-  core::register_shard,
-  types::{BOOL_OR_NONE_SLICE, INT_OR_NONE_TYPES_SLICE, STRING_VAR_OR_NONE_SLICE},
-};
+use shards::{core::register_shard, types::STRING_VAR_OR_NONE_SLICE};
 
 lazy_static! {
   static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
@@ -52,14 +47,24 @@ struct WindowShard {
   pub position: ParamVar,
   #[shard_param("Anchor", "Corner or center of the screen.", ANCHOR_TYPES)]
   pub anchor: ParamVar,
-  #[shard_param("Width", "The width of the rendered window.", INT_OR_NONE_TYPES_SLICE)]
-  pub width: ParamVar,
   #[shard_param(
-    "Height",
-    "The height of the rendered window.",
-    INT_OR_NONE_TYPES_SLICE
+    "MinSize",
+    "The minimum size of the window. (set value to < 0 to ignore)",
+    FLOAT2_VAR_OR_NONE_SLICE
   )]
-  pub height: ParamVar,
+  pub min_size: ParamVar,
+  #[shard_param(
+    "MaxSize",
+    "The maximum size of the window. (set value to < 0 to ignore)",
+    FLOAT2_VAR_OR_NONE_SLICE
+  )]
+  pub max_size: ParamVar,
+  #[shard_param(
+    "FixedSize",
+    "The fixed size of the window. overrides all other min/max sizes (set value to < 0 to ignore)",
+    FLOAT2_VAR_OR_NONE_SLICE
+  )]
+  pub fixed_size: ParamVar,
   #[shard_param(
     "Closed",
     "When provided with a callback, this window will have a close button and call this when pressed.",
@@ -94,8 +99,9 @@ impl Default for WindowShard {
       title: ParamVar::default(),
       position: ParamVar::default(),
       anchor: ParamVar::default(),
-      width: ParamVar::default(),
-      height: ParamVar::default(),
+      min_size: ParamVar::default(),
+      max_size: ParamVar::default(),
+      fixed_size: ParamVar::default(),
       closed: ShardsVar::default(),
       flags: ParamVar::default(),
       id: ParamVar::default(),
@@ -203,16 +209,34 @@ impl Shard for WindowShard {
         window.anchor(anchor.into(), offset)
       };
 
-      let width = self.width.get();
-      if !width.is_none() {
-        let w = TryInto::<i64>::try_into(width)? as f32;
-        window = window.min_width(w).max_width(w);
+      let min_size: (f32, f32) = self.min_size.get().try_into().unwrap_or((-1.0, -1.0));
+      let max_size: (f32, f32) = self.max_size.get().try_into().unwrap_or((-1.0, -1.0));
+      let fixed_size: (f32, f32) = self.fixed_size.get().try_into().unwrap_or((-1.0, -1.0));
+      if fixed_size.0 >= 0.0 {
+        window = window
+          .min_width(fixed_size.0)
+          .max_width(fixed_size.0)
+          .default_width(fixed_size.0);
+      } else {
+        if min_size.0 >= 0.0 {
+          window = window.min_width(min_size.0);
+        }
+        if max_size.0 >= 0.0 {
+          window = window.max_width(max_size.0);
+        }
       }
-
-      let height = self.height.get();
-      if !height.is_none() {
-        let h = TryInto::<i64>::try_into(height)? as f32;
-        window = window.min_height(h).max_height(h);
+      if fixed_size.1 >= 0.0 {
+        window = window
+          .min_height(fixed_size.1)
+          .max_height(fixed_size.1)
+          .default_height(fixed_size.1);
+      } else {
+        if min_size.1 >= 0.0 {
+          window = window.min_height(min_size.1);
+        }
+        if max_size.1 >= 0.0 {
+          window = window.max_height(max_size.1);
+        }
       }
 
       if self.has_close_button {
@@ -245,13 +269,6 @@ impl Shard for WindowShard {
 
       with_possible_panic(|| {
         window.show(gui_ctx, |ui| {
-          if !width.is_none() {
-            ui.set_width(ui.available_width());
-          }
-          if !height.is_none() {
-            ui.set_height(ui.available_height());
-          }
-
           if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             .is_err()
           {
