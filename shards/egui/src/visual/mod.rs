@@ -17,7 +17,7 @@ use shards::{
 
 use pest::Parser;
 
-use shards_lang::{ast::*, ast_visitor::*};
+use shards_lang::{ast::*, ast_visitor::*, cli};
 
 mod directory;
 
@@ -71,19 +71,28 @@ impl<'a> VisualAst<'a> {
     let directory = directory::get_global_map();
     let shards = directory.0.get_fast_static("shards");
     let shards = shards.as_table().unwrap();
-    Some(
-      egui::CollapsingHeader::new(x.name.name.as_str())
-        .default_open(false)
-        .show(self.ui, |ui| {
-          if let Some(params) = &mut x.params {
-            let mut mutator = VisualAst::new(ui);
-            for param in params {
-              param.accept_mut(&mut mutator);
+    let shard_name = x.name.name.as_str();
+    let shard_name_var = Var::ephemeral_string(shard_name);
+    if let Some(shard) = shards.get(shard_name_var) {
+      let shard = shard.as_table().unwrap();
+      let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
+      Some(
+        egui::CollapsingHeader::new(shard_name)
+          .default_open(false)
+          .show(self.ui, |ui| {
+            // let params = shard.get_fast_static("parameters").as_table().unwrap();
+            if let Some(params) = &mut x.params {
+              let mut mutator = VisualAst::new(ui);
+              for param in params {
+                param.accept_mut(&mut mutator);
+              }
             }
-          }
-        })
-        .header_response,
-    )
+          })
+          .header_response,
+      )
+    } else {
+      Some(self.ui.label("Unknown shard"))
+    }
   }
 }
 
@@ -163,7 +172,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         (BlockAction::Duplicate, r) => {
           let mut block = pipeline.blocks[i].clone();
           block.get_custom_state::<VisualState>().map(|x| {
-            x.selected = false;
             x.id = Id::new(nanoid!(16));
           });
           pipeline.blocks.insert(i, block);
@@ -211,7 +219,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let response = self
       .ui
       .push_id(id, |ui| {
-        egui::Frame::window(ui.style())
+        let response = egui::Frame::window(ui.style())
           .show(ui, |ui| {
             ui.vertical(|ui| {
               if selected {
@@ -224,6 +232,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   }
                   if ui.button("X").clicked() {
                     action = BlockAction::Remove;
+                  }
+                  if ui.button("🔒").clicked() {
+                    let state = block.get_custom_state::<VisualState>().unwrap();
+                    state.selected = false;
                   }
                 });
               }
@@ -261,7 +273,19 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             })
             .inner
           })
-          .inner
+          .response;
+
+        if !selected {
+          if ui
+            .interact(response.rect, response.id, Sense::click())
+            .clicked()
+          {
+            let state = block.get_custom_state::<VisualState>().unwrap();
+            state.selected = !state.selected;
+          }
+        }
+
+        Some(response)
       })
       .inner;
     (action, response)

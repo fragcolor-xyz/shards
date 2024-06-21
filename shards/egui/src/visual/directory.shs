@@ -1,5 +1,37 @@
+@wire(document-shard {
+  = name
+  Shards.Help = help
+  [name help]
+})
+
+@wire(document-enum {
+  Shards.EnumTypeHelp = help
+  [help:name help]
+})
+
+; process documentation in parallel
+
+Shards.Enumerate | TryMany(document-shard Threads: 4) = shards-docs
+Remove(shards-docs Predicate: IsNone)
+Table(shards)
+shards-docs | ForEach({
+  {Take(0) | ExpectString = shard-name}
+  {Take(1) | Update(shards shard-name)}
+})
+
+Shards.EnumTypes | TryMany(document-enum Threads: 4) = enums-docs
+Remove(enums-docs Predicate: IsNone)
+Table(enums)
+enums-docs | ForEach({
+  {Take(0) | ExpectString = enum-name}
+  {Take(1) | Update(enums enum-name)}
+})
+
+; Shards.ObjectTypes | TryMany(document-object Threads: 4) = object-docs
+; Remove(object-docs Predicate: IsNone)
+
 {
-  shards: {}
-  enums: {}
+  shards: shards
+  enums: enums
   types: {}
 }
