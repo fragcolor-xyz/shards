@@ -88,7 +88,7 @@ impl<'a> VisualAst<'a> {
               }
             }
           })
-          .header_response,
+          .header_response.on_hover_text(help_text),
       )
     } else {
       Some(self.ui.label("Unknown shard"))
