@@ -235,17 +235,17 @@ endif()
 option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
-  add_compile_options(-DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1)
-  add_link_options(-DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1)
-  add_compile_definitions(SH_USE_ASAN)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN> $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address> $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls> $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope> $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer> $<$<COMPILE_LANGUAGE:CXX,C>:-g> $<$<COMPILE_LANGUAGE:CXX,C>:-O1>)
+  add_link_options($<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN> $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address> $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls> $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope> $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer> $<$<COMPILE_LANGUAGE:CXX,C>:-g> $<$<COMPILE_LANGUAGE:CXX,C>:-O1>)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_ASAN>)
 endif()
 
 option(USE_TSAN "Use thread sanitizer" OFF)
 
 if(USE_TSAN)
-  add_compile_options(-fsanitize=thread -g -O1)
-  add_link_options(-fsanitize=thread -g -O1)
-  add_compile_definitions(SH_USE_TSAN)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread> $<$<COMPILE_LANGUAGE:CXX,C>:-g> $<$<COMPILE_LANGUAGE:CXX,C>:-O1>)
+  add_link_options($<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread> $<$<COMPILE_LANGUAGE:CXX,C>:-g> $<$<COMPILE_LANGUAGE:CXX,C>:-O1>)
+  add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_TSAN>)
 endif()
 
 if(CODE_COVERAGE)
