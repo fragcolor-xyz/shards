@@ -334,7 +334,7 @@ impl Shard for DragDrop {
 
       inner.inner?
     } else {
-      let id = ui.id().with("dragdrop");
+      let id = ui.id().with(EguiId::new(self, 0));
       let inner = drag_source(ui, ui_ctx, &input, self.prev_size, id, |ui| {
         let r =
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents);
