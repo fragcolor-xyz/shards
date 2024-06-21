@@ -4,9 +4,11 @@ use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
 use egui::Id;
+use egui::Rect;
 use egui::Rgba;
 use egui::Sense;
 use egui::Stroke;
+use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::BOOL_TYPES;
@@ -62,6 +64,7 @@ struct Selectable {
   required: ExposedTypes,
   inner_exposed: ExposedTypes,
   last_clicked: [Option<Id>; 2],
+  last_size: Option<Vec2>,
 }
 
 impl Default for Selectable {
@@ -78,6 +81,7 @@ impl Default for Selectable {
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
       last_clicked: [None, None],
+      last_size: None,
     }
   }
 }
@@ -172,6 +176,8 @@ impl Shard for Selectable {
       }
     };
 
+    // ui.interact(rect, id, sense)
+
     // Draw frame and contents
     let inner_response = with_possible_panic(|| {
       ui.push_id(id, |ui| {
@@ -186,58 +192,91 @@ impl Shard for Selectable {
     inner_response.inner?;
     let mut response = inner_response.response;
 
+    self.last_size = Some(response.rect.size());
+
     // Find clicks in other UI elements, and ignore selection response in that case
     let ignore_click = ui_ctx.override_selection_response.is_some();
 
-    // if !self.context_menu.is_empty() {
-    if !ignore_click && !self.context_menu.is_empty() {
-      let mut err: Option<&str> = None;
-      if let Some(resp) = response.context_menu(|ui| {
-        err = util::activate_ui_contents(
-          context,
-          input,
-          ui,
-          &mut self.parents,
-          &mut self.context_menu,
-        )
-        .err();
-      }) {
-        response = resp.response;
-      }
-    }
+    // if let Some(ls) = self.last_size {
+    //   let r = response.rect;
+    //   // let r = Rect::from_min_size(ui.cursor().min, ls);
+    //   let resp = ui.interact(r, id, Sense::click_and_drag());
+    //   let hover = resp.hovered();
+    //   if resp.clicked() {
+    //     eprintln!("Clicked");
+    //   } else if resp.double_clicked() {
+    //     eprintln!("DoubleClicked");
+    //   } else if resp.dragged() {
+    //     eprintln!("Dragged");
+    //   }
+    //   if !self.context_menu.is_empty() {
+    //     resp.context_menu(|ui| {
+    //       util::activate_ui_contents(
+    //         context,
+    //         input,
+    //         ui,
+    //         &mut self.parents,
+    //         &mut self.context_menu,
+    //       )
+    //       .err();
+    //     });
+    //   }
+    // }
 
-    if response.hovered() && !ignore_click {
-      if ui.input(|i| {
-        i.pointer
-          .button_double_clicked(egui::PointerButton::Primary)
-      }) {
-        if self.last_clicked[0] == self.last_clicked[1] {
+    // if !self.context_menu.is_empty() {
+    if true {
+      if !ignore_click && !self.context_menu.is_empty() {
+        let mut err: Option<&str> = None;
+        if let Some(resp) = response.context_menu(|ui| {
+          err = util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.parents,
+            &mut self.context_menu,
+          )
+          .err();
+        }) {
+          response = resp.response;
+        }
+      }
+
+      if response.hovered() && !ignore_click {
+        if ui.input(|i| {
+          i.pointer
+            .button_double_clicked(egui::PointerButton::Primary)
+            || i
+              .pointer
+              .button_triple_clicked(egui::PointerButton::Primary)
+        }) {
+          if self.last_clicked[0] == self.last_clicked[1] {
+            let mut _unused = Var::default();
+            if self
+              .double_clicked_callback
+              .activate(context, &input, &mut _unused)
+              == WireState::Error
+            {
+              return Err("DoubleClicked callback failed");
+            }
+          }
+        } else if ui.input(|i| {
+          (i.pointer.primary_released() && !i.modifiers.any())
+            || (i.pointer.primary_clicked() && i.modifiers.any())
+        }) {
           let mut _unused = Var::default();
           if self
-            .double_clicked_callback
+            .clicked_callback
             .activate(context, &input, &mut _unused)
             == WireState::Error
           {
-            return Err("DoubleClicked callback failed");
+            return Err("Clicked callback failed");
           }
         }
-      } else if ui.input(|i| {
-        (i.pointer.primary_released() && !i.modifiers.any())
-          || (i.pointer.primary_clicked() && i.modifiers.any())
-      }) {
-        let mut _unused = Var::default();
-        if self
-          .clicked_callback
-          .activate(context, &input, &mut _unused)
-          == WireState::Error
-        {
-          return Err("Clicked callback failed");
-        }
-      }
 
-      if ui.input(|i| i.pointer.primary_clicked()) {
-        self.last_clicked[1] = self.last_clicked[0];
-        self.last_clicked[0] = Some(id);
+        if ui.input(|i| i.pointer.primary_clicked()) {
+          self.last_clicked[1] = self.last_clicked[0];
+          self.last_clicked[0] = Some(id);
+        }
       }
     }
 

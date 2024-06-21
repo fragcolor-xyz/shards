@@ -1,0 +1,64 @@
+@wire(test-wire {
+  Once({
+    [
+      {name: "dqoiwdj"}
+      {name: "nioadn"}
+      {name: "qiwoje"}
+      {name: "Invalid item" extra-data: 11111}] >= items
+    
+    GFX.DrawQueue = ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+    
+    UI.LayoutClass(MainDirection: LayoutDirection::LeftToRight) = ui-class
+  })
+  
+  GFX.MainWindow(Title: "Drag and Drop" Width: 1280 Height: 720 Contents: {
+    UI({
+      UI.Property(UIProperty::ScreenSize) = screen-size
+      screen-size | Math.Divide(2.0) = center
+      94.0 = radius
+      
+      When({UI.Property(UIProperty::IsAnythingBeingDragged)} {
+        UI.Area(Contents: {
+          UI.DragAndDrop({
+              UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
+            }
+            Drop: {
+              Log("Global drop")
+            }
+          )
+        } Position: @f2(0 0) Order: Order::Background)
+      })
+      
+      ; The list of items to pick from
+      UI.Area(Contents: {
+        items | DoMany({
+          ExpectTable = item
+          UI.Selectable(
+            Clicked: {Log("click")}
+            DoubleClicked: {Log("Double Click")}
+            ContextMenu: {
+              "Menu" | UI.Label
+              UI.Button("Close" {Log("Menu")})
+              Log("Menu")
+            }
+            IsSelected: {false}
+            {
+              ; UI.DragAndDrop({
+              "Select " >= label
+              item:name | ExpectString | AppendTo(label)
+              UI.Button(label {"Hi" | Log})
+              ; })
+            }
+          )
+        })
+      } Position: @f2(50 50) Order: Order::Middle)
+    }) | UI.Render(ui-draw-queue)
+    
+    GFX.Render(Steps: render-steps)
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 120)
