@@ -470,12 +470,12 @@ public extension IShard {
 }
 
 @inlinable public func bridgeDestroy<T: IShard>(_: T.Type, shard: ShardPtr) {
-    let cwrap = shard!.withMemoryRebound(to: SwiftShard.self, capacity: 1) {
+    let cwrap = shard!.withMemoryRebound(to: SwiftShard.self, capacity: 1) { (reboundShard) -> UnsafeMutablePointer<SwiftShard> in
         // we let shard go out of scope to release
-        _ = Unmanaged<T>.fromOpaque($0.pointee.swiftClass).takeRetainedValue();
-        return $0
+        _ = Unmanaged<T>.fromOpaque(reboundShard.pointee.swiftClass).takeRetainedValue()
+        return reboundShard
     }
-    cwrap.deallocate();
+    cwrap.deallocate()
 }
 
 @inlinable public func bridgeInputTypes<T: IShard>(_: T.Type, shard: ShardPtr) -> SHTypesInfo {
