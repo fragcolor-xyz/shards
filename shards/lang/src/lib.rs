@@ -111,9 +111,8 @@ impl RcStrWrapper {
   }
 
   pub fn to_mut(&mut self) -> &mut String {
-    Rc::get_mut(&mut self.0)
-      .expect("Cannot get mutable reference")
-      .to_mut()
+    let cow = Rc::make_mut(&mut self.0);
+    cow.to_mut()
   }
 }
 
