@@ -8,6 +8,7 @@ use crate::{
   PARENTS_UI_NAME,
 };
 use shards::{
+  core::register_shard,
   shard::Shard,
   types::{
     Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES,
@@ -17,6 +18,8 @@ use shards::{
 use pest::Parser;
 
 use shards_lang::{ast::*, ast_visitor::*};
+
+mod directory;
 
 fn draw_arrow_head(ui: &mut egui::Ui, from: Rect, to: Rect) {
   let painter = ui.painter();
@@ -65,6 +68,9 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
+    let directory = directory::get_global_map();
+    let shards = directory.0.get_fast_static("shards");
+    let shards = shards.as_table().unwrap();
     Some(
       egui::CollapsingHeader::new(x.name.name.as_str())
         .default_open(false)
@@ -205,22 +211,22 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let response = self
       .ui
       .push_id(id, |ui| {
-        egui::Frame::group(ui.style())
+        egui::Frame::window(ui.style())
           .show(ui, |ui| {
             ui.vertical(|ui| {
-              // if selected {
-              ui.horizontal(|ui| {
-                if ui.button("S").clicked() {
-                  // switch
-                }
-                if ui.button("D").clicked() {
-                  action = BlockAction::Duplicate;
-                }
-                if ui.button("X").clicked() {
-                  action = BlockAction::Remove;
-                }
-              });
-              // }
+              if selected {
+                ui.horizontal(|ui| {
+                  if ui.button("S").clicked() {
+                    // switch
+                  }
+                  if ui.button("D").clicked() {
+                    action = BlockAction::Duplicate;
+                  }
+                  if ui.button("X").clicked() {
+                    action = BlockAction::Remove;
+                  }
+                });
+              }
               match &mut block.content {
                 BlockContent::Empty => Some(ui.separator()),
                 BlockContent::Shard(x) => {
@@ -277,28 +283,28 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_value(&mut self, value: &mut Value) -> Option<Response> {
-    Some(match value {
-      Value::None => self.ui.label("None"),
-      Value::Identifier(x) => self.ui.label(x.name.as_str()),
-      Value::Boolean(x) => self.ui.checkbox(x, if *x { "true" } else { "false" }),
+    match value {
+      Value::None => Some(self.ui.label("None")),
+      Value::Identifier(x) => Some(self.ui.label(x.name.as_str())),
+      Value::Boolean(x) => Some(self.ui.checkbox(x, if *x { "true" } else { "false" })),
       Value::Enum(_, _) => todo!(),
       Value::Number(x) => match x {
-        Number::Integer(x) => self.ui.add(CustomDragValue::new(x)),
-        Number::Float(x) => self.ui.add(CustomDragValue::new(x)),
+        Number::Integer(x) => Some(self.ui.add(CustomDragValue::new(x))),
+        Number::Float(x) => Some(self.ui.add(CustomDragValue::new(x))),
         Number::Hexadecimal(_x) => todo!(),
       },
       Value::String(x) => {
         // if long we should use a multiline text editor
         // if short we should use a single line text editor
         let x = x.to_mut();
-        if x.len() > 16 {
+        Some(if x.len() > 16 {
           self.ui.text_edit_multiline(x)
         } else {
           let text = x.as_str();
           let text_width = 10.0 * text.chars().count() as f32;
           let width = text_width + 20.0; // Add some padding
           TextEdit::singleline(x).desired_width(width).ui(self.ui)
-        }
+        })
       }
       Value::Bytes(_) => todo!(),
       Value::Int2(_) => todo!(),
@@ -309,16 +315,22 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Float2(_) => todo!(),
       Value::Float3(_) => todo!(),
       Value::Float4(_) => todo!(),
-      Value::Seq(_) => todo!(),
+      Value::Seq(x) => todo!(),
       Value::Table(_) => todo!(),
-      Value::Shard(_) => todo!(),
-      Value::Shards(_) => todo!(),
+      Value::Shard(x) => {
+        let mut mutator = VisualAst::new(self.ui);
+        x.accept_mut(&mut mutator)
+      }
+      Value::Shards(x) => {
+        let mut mutator = VisualAst::new(self.ui);
+        x.accept_mut(&mut mutator)
+      }
       Value::EvalExpr(_) => todo!(),
       Value::Expr(_) => todo!(),
       Value::TakeTable(_, _) => todo!(),
       Value::TakeSeq(_, _) => todo!(),
       Value::Func(_) => todo!(),
-    })
+    }
   }
 
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
@@ -391,4 +403,8 @@ impl Shard for UIShardsShard {
     self.ast.accept_mut(&mut mutator);
     Ok(Var::default())
   }
+}
+
+pub fn register_shards() {
+  register_shard::<UIShardsShard>();
 }

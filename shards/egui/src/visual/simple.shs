@@ -1,0 +1,8 @@
+"Hello World!" | Log
+22 | Log
+10 | When(IsMore(9) {
+  Add(1) | Log
+  When(IsMore(9) {
+    Add(1) | Log
+  })
+})

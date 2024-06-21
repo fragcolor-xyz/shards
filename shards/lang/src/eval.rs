@@ -4104,6 +4104,43 @@ impl LegacyShard for EvalShard {
   }
 }
 
+#[macro_export]
+macro_rules! include_shards {
+  ($file:expr) => {{
+    let code = include_str!($file);
+    let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+    let mut env = shards_lang::read::ReadEnv::new("", ".", ".");
+    let seq =
+      shards_lang::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
+        .unwrap();
+    let seq = seq.sequence;
+    let defines = std::collections::HashMap::new();
+    let token = new_cancellation_token();
+    let wire = shards_lang::eval::eval(&seq, "include_shards", defines, token).unwrap();
+    let mut mesh = Mesh::default();
+    if !mesh.compose(wire.0) {
+      panic!("Failed to compose wire");
+    }
+    mesh.schedule(wire.0, false);
+
+    loop {
+      mesh.tick();
+      if mesh.is_empty() {
+        break;
+      }
+    }
+
+    let info = wire.get_info();
+    let result: shards::types::ClonedVar = if info.failed {
+      panic!("Failed to evaluate include_shards macro");
+    } else {
+      unsafe { *info.finalOutput }
+    }
+    .into();
+    result
+  }};
+}
+
 #[test]
 fn test_combine_namespaces() {
   let partial = "b/var";

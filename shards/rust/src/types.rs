@@ -4995,6 +4995,12 @@ impl AutoSeqVar {
 #[repr(transparent)] // force it same size of original
 pub struct AutoTableVar(pub TableVar);
 
+impl Debug for AutoTableVar {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "AutoTableVar")
+  }
+}
+
 impl Drop for AutoTableVar {
   fn drop(&mut self) {
     destroyVar(&mut self.0 .0);
