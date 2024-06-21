@@ -937,7 +937,7 @@ class ShardController : Equatable, Identifiable {
 
 class WireController {
     init() {
-        var cname = SHStringWithLen()
+        let cname = SHStringWithLen()
         nativeRef = G.Core.pointee.createWire(cname)
     }
 
