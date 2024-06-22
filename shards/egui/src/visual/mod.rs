@@ -80,7 +80,26 @@ impl<'a> VisualAst<'a> {
         egui::CollapsingHeader::new(shard_name)
           .default_open(false)
           .show(self.ui, |ui| {
-            // let params = shard.get_fast_static("parameters").as_table().unwrap();
+            let params = shard.get_fast_static("parameters").as_seq().unwrap();
+            for param in params {
+              let param = param.as_table().unwrap();
+              let name: &str = param.get_fast_static("name").try_into().unwrap();
+              let help_text: &str = param.get_fast_static("help").try_into().unwrap();
+              ui.horizontal(|ui| {
+                ui.label(name).on_hover_text(help_text);
+                // button to reset to default
+                if ui.button("🔄").on_hover_text("Reset to default value.").clicked() {
+                  // reset to default
+                }
+                if ui.button("🔧").on_hover_text("Change value type.").clicked() {
+                  // open a dialog to change the value
+                }
+              });
+
+            }
+
+            // Ast might be without labels, mixed with no label + label etc,
+            // we mutate to full labels for now to make it easier to work with
             if let Some(params) = &mut x.params {
               let mut mutator = VisualAst::new(ui);
               for param in params {
@@ -88,7 +107,8 @@ impl<'a> VisualAst<'a> {
               }
             }
           })
-          .header_response.on_hover_text(help_text),
+          .header_response
+          .on_hover_text(help_text),
       )
     } else {
       Some(self.ui.label("Unknown shard"))
