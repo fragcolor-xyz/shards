@@ -117,7 +117,7 @@
   GFX.UIPass(ui-draw-queue) >> render-steps
 
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     DetachRenderer: true) >= window-ctx
 
   GFX.Renderer(window-ctx {

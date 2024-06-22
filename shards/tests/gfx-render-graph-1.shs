@@ -1,5 +1,5 @@
 @wire(pass {
-  Ref(tsl) 
+  Ref(tsl)
   Once({
     GFX.BuiltinMesh >= mesh
     RandomFloat(16.0) >= offset
@@ -61,7 +61,7 @@
 
 @wire(main-window {
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {Step(test-wire)}
   )
 } Looped: true)

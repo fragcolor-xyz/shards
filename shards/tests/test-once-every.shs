@@ -28,36 +28,36 @@
   Once({
     0.0 >= time
     @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder::CW) = mesh
-    
+
     ; Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-    
+
     ; Create view
     {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     GFX.View(View: view-transform) = view
-    
+
     Once({
       GFX.DrawQueue = ui-draw-queue
       GFX.UIPass(ui-draw-queue) >> render-steps
     })
-    
+
     48.0 >= fps
     0.001 >= chopper
     0.001 >= delay
   })
-  
+
   Once({
-    GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
+    GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
       time | Math.Add(@timestep) > time ; | Log
-      
+
       time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
       Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y
       Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
       GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
-      
+
       UI({
         UI.Window(Contents: {
           UI.Horizontal({
@@ -76,16 +76,16 @@
           UI.Button("Freeze for 0.6s" Action: {
             Pause(0.6)
           })
-          
+
         })
       }) | UI.Render(ui-draw-queue)
-      
+
       GFX.Render(Steps: render-steps View: view)
     })
   } Every: (1.0 | Math.Divide(fps)))
-  
+
   Once({"ping" | Log} Every: 2.0)
-  
+
   RandomFloat(chopper) | Math.Add(delay) = f1
   Pause(f1)
 } Looped: true)

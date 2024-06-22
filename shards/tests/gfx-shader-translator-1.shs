@@ -17,11 +17,11 @@
         } Passthrough: true)
 
         0.0 >= f-1
-        u | If(IsLess(v) 
-               Then: {u > f-1} 
+        u | If(IsLess(v)
+               Then: {u > f-1}
                Else: {v > f-1}
                Passthrough: true)
-        
+
         0.0 >= f-2
         u | Math.Subtract(v) | Math.Abs |
         If(IsLessEqual(0.1)
@@ -29,7 +29,7 @@
            Else: {When(IsMoreEqual(0.8)
                        {0.5 > f-2})}
            Passthrough: true)
-          
+
         v | Math.Multiply(20.0) | Math.Floor | ToInt >= i
         i | When(Is(10)
                  {1.0 > f-0 1.0 > f-1 1.0 > f-2})
@@ -48,7 +48,7 @@
 } Looped: true)
 
 @wire(main-loop-wire {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720
                  Contents: {Step(gfx)})
 } Looped: true LStack: 4194304)
 

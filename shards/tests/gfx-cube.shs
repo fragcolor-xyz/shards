@@ -41,7 +41,7 @@
     GFX.View(View: view-transform) = view
   })
 
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     time | Math.Add(@timestep) > time ; | Log
 
     time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
