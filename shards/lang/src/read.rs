@@ -196,6 +196,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       Ok(FunctionValue::Function(Function {
         name: identifier,
         params,
+        custom_state: None,
       }))
     }
     Rule::VarName => {
@@ -376,12 +377,14 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           _ => Ok(FunctionValue::Function(Function {
             name: identifier,
             params,
+            custom_state: None,
           })),
         }
       } else {
         Ok(FunctionValue::Function(Function {
           name: identifier,
           params,
+          custom_state: None,
         }))
       }
     }

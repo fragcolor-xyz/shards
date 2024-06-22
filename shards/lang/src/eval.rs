@@ -2886,6 +2886,7 @@ fn eval_pipeline(
                             },
                             types.clone(),
                           ]),
+                          custom_state: None,
                         }),
                         line_info: block.line_info,
                         custom_state: block.custom_state.clone(),

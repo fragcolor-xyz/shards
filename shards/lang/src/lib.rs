@@ -196,6 +196,44 @@ impl<'a> ParamHelper<'a> {
   }
 }
 
+pub struct ParamHelperMut<'a> {
+  params: &'a mut [Param],
+}
+
+impl<'a> ParamHelperMut<'a> {
+  pub fn new(params: &'a mut [Param]) -> Self {
+    Self { params }
+  }
+
+  pub fn get_param_by_name_or_index_mut(
+    &mut self,
+    param_name: &str,
+    index: usize,
+  ) -> Option<&mut Param> {
+    if index < self.params.len() {
+      if self.params[index].name.is_none() && index > 0 && self.params[index - 1].name.is_some() {
+        // Previous parameter is named, we forbid indexed parameters after named parameters
+        None
+      } else if self.params[index].name.is_none() {
+        // Parameter is unnamed and its index is the one we want
+        Some(&mut self.params[index])
+      } else {
+        // Parameter is named, we look for a parameter with the given name
+        self
+          .params
+          .iter_mut()
+          .find(|param| param.name.as_deref() == Some(param_name))
+      }
+    } else {
+      // Index is out of bounds, we look for a parameter with the given name
+      self
+        .params
+        .iter_mut()
+        .find(|param| param.name.as_deref() == Some(param_name))
+    }
+  }
+}
+
 pub trait ShardsExtension {
   fn name(&self) -> &str;
   fn process_to_var(

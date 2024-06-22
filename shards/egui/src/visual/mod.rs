@@ -1,3 +1,6 @@
+// prevent upper case globals
+#![allow(non_upper_case_globals)]
+
 use egui::*;
 use nanoid::nanoid;
 use std::any::Any;
@@ -13,11 +16,14 @@ use shards::{
   types::{
     Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES,
   },
+  SHType_Bool, SHType_Bytes, SHType_ContextVar, SHType_Enum, SHType_Float, SHType_Float2,
+  SHType_Float3, SHType_Float4, SHType_Int, SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4,
+  SHType_Int8, SHType_None, SHType_Seq, SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire,
 };
 
 use pest::Parser;
 
-use shards_lang::{ast::*, ast_visitor::*, cli};
+use shards_lang::{ast::*, ast_visitor::*, cli, ParamHelper, ParamHelperMut};
 
 mod directory;
 
@@ -46,21 +52,139 @@ fn draw_arrow_head(ui: &mut egui::Ui, from: Rect, to: Rect) {
   ));
 }
 
+fn var_to_value(var: &Var) -> Result<Value, String> {
+  match var.valueType {
+    SHType_None => Ok(Value::None),
+    SHType_Bool => Ok(Value::Boolean(unsafe {
+      var.payload.__bindgen_anon_1.boolValue
+    })),
+    SHType_Int => Ok(Value::Number(Number::Integer(unsafe {
+      var.payload.__bindgen_anon_1.intValue
+    }))),
+    SHType_Float => Ok(Value::Number(Number::Float(unsafe {
+      var.payload.__bindgen_anon_1.floatValue
+    }))),
+    SHType_String => {
+      let string = unsafe { var.payload.__bindgen_anon_1.string };
+      let string_slice =
+        unsafe { std::slice::from_raw_parts(string.elements as *const u8, string.len as usize) };
+      let string = unsafe { std::str::from_utf8_unchecked(string_slice) };
+      Ok(Value::String(string.into()))
+    }
+    SHType_Bytes => {
+      let bytes = unsafe {
+        std::slice::from_raw_parts(
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+        )
+      };
+      Ok(Value::Bytes(bytes.into()))
+    }
+    SHType_Float2 => {
+      let float2 = unsafe { var.payload.__bindgen_anon_1.float2Value };
+      Ok(Value::Float2([float2[0], float2[1]]))
+    }
+    SHType_Float3 => {
+      let float3 = unsafe { var.payload.__bindgen_anon_1.float3Value };
+      Ok(Value::Float3([float3[0], float3[1], float3[2]]))
+    }
+    SHType_Float4 => {
+      let float4 = unsafe { var.payload.__bindgen_anon_1.float4Value };
+      Ok(Value::Float4([float4[0], float4[1], float4[2], float4[3]]))
+    }
+    SHType_Int2 => {
+      let int2 = unsafe { var.payload.__bindgen_anon_1.int2Value };
+      Ok(Value::Int2([int2[0], int2[1]]))
+    }
+    SHType_Int3 => {
+      let int3 = unsafe { var.payload.__bindgen_anon_1.int3Value };
+      Ok(Value::Int3([int3[0], int3[1], int3[2]]))
+    }
+    SHType_Int4 => {
+      let int4 = unsafe { var.payload.__bindgen_anon_1.int4Value };
+      Ok(Value::Int4([int4[0], int4[1], int4[2], int4[3]]))
+    }
+    SHType_Int8 => {
+      let int8 = unsafe { var.payload.__bindgen_anon_1.int8Value };
+      Ok(Value::Int8([
+        int8[0], int8[1], int8[2], int8[3], int8[4], int8[5], int8[6], int8[7],
+      ]))
+    }
+    SHType_Int16 => {
+      let int16 = unsafe { var.payload.__bindgen_anon_1.int16Value };
+      Ok(Value::Int16([
+        int16[0], int16[1], int16[2], int16[3], int16[4], int16[5], int16[6], int16[7], int16[8],
+        int16[9], int16[10], int16[11], int16[12], int16[13], int16[14], int16[15],
+      ]))
+    }
+    SHType_Enum => Ok(Value::String("TODO".into())),
+    SHType_Seq => {
+      let seq = var.as_seq().unwrap();
+      let mut values = Vec::new();
+      for value in seq {
+        values.push(var_to_value(&value)?);
+      }
+      Ok(Value::Seq(values))
+    }
+    SHType_Table => {
+      let table = var.as_table().unwrap();
+      let mut map = Vec::new();
+      for (key, value) in table.iter() {
+        let key = var_to_value(&key)?;
+        let value = var_to_value(&value)?;
+        map.push((key, value));
+      }
+      Ok(Value::Table(map))
+    }
+    SHType_ShardRef => Ok(Value::String("TODO".into())),
+    SHType_Wire => Ok(Value::String("TODO".into())),
+    SHType_ContextVar => {
+      let string = unsafe { var.payload.__bindgen_anon_1.string };
+      let string_slice =
+        unsafe { std::slice::from_raw_parts(string.elements as *const u8, string.len as usize) };
+      let string = unsafe { std::str::from_utf8_unchecked(string_slice) };
+      Ok(Value::Identifier(Identifier {
+        name: string.into(),
+        namespaces: Vec::new(),
+      }))
+    }
+    _ => Err(format!("Unsupported Var type: {:?}", var.valueType)),
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
-struct VisualState {
+struct BlockState {
   selected: bool,
   id: Id,
 }
 
-impl_custom_any!(VisualState);
+impl_custom_any!(BlockState);
+
+#[derive(Debug, Clone, PartialEq)]
+struct FunctionState {
+  params_sorted: bool,
+}
+
+impl_custom_any!(FunctionState);
 
 pub struct VisualAst<'a> {
   ui: &'a mut Ui,
+  parent_selected: bool,
 }
 
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
-    VisualAst { ui }
+    VisualAst {
+      ui,
+      parent_selected: false,
+    }
+  }
+
+  pub fn with_parent_selected(ui: &'a mut Ui, parent_selected: bool) -> Self {
+    VisualAst {
+      ui,
+      parent_selected,
+    }
   }
 
   pub fn render(&mut self, ast: &mut Sequence) -> Option<Response> {
@@ -68,6 +192,14 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
+    let selected = self.parent_selected;
+
+    let params_sorted = x
+      .get_or_insert_custom_state(|| FunctionState {
+        params_sorted: false,
+      })
+      .params_sorted;
+
     let directory = directory::get_global_map();
     let shards = directory.0.get_fast_static("shards");
     let shards = shards.as_table().unwrap();
@@ -78,32 +210,85 @@ impl<'a> VisualAst<'a> {
       let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
       Some(
         egui::CollapsingHeader::new(shard_name)
+          .open(Some(selected))
           .default_open(false)
           .show(self.ui, |ui| {
             let params = shard.get_fast_static("parameters").as_seq().unwrap();
-            for param in params {
-              let param = param.as_table().unwrap();
-              let name: &str = param.get_fast_static("name").try_into().unwrap();
-              let help_text: &str = param.get_fast_static("help").try_into().unwrap();
-              ui.horizontal(|ui| {
-                ui.label(name).on_hover_text(help_text);
-                // button to reset to default
-                if ui.button("🔄").on_hover_text("Reset to default value.").clicked() {
-                  // reset to default
-                }
-                if ui.button("🔧").on_hover_text("Change value type.").clicked() {
-                  // open a dialog to change the value
-                }
-              });
+            if !params.is_empty() {
+              let mut params_copy = if !params_sorted {
+                // only if we really need to sort
+                let params = x.params.clone();
+                // reset current params
+                x.params = Some(Vec::new());
+                Some(params)
+              } else {
+                None
+              };
 
-            }
+              // helper if needed as well
+              let mut helper = params_copy
+                .as_mut()
+                .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
 
-            // Ast might be without labels, mixed with no label + label etc,
-            // we mutate to full labels for now to make it easier to work with
-            if let Some(params) = &mut x.params {
-              let mut mutator = VisualAst::new(ui);
-              for param in params {
-                param.accept_mut(&mut mutator);
+              if !params_sorted {
+                for (idx, param) in params.into_iter().enumerate() {
+                  let param = param.as_table().unwrap();
+                  let name: &str = param.get_fast_static("name").try_into().unwrap();
+
+                  let new_param = helper
+                    .as_mut()
+                    .and_then(|h| h.as_mut())
+                    .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
+                    .cloned();
+
+                  let param_to_add = new_param.unwrap_or_else(|| {
+                    let default_value = param.get_fast_static("default");
+                    Param {
+                      name: Some(name.into()),
+                      value: var_to_value(&default_value).unwrap(),
+                    }
+                  });
+
+                  x.params.as_mut().unwrap().push(param_to_add);
+                }
+
+                // set flag to true
+                x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
+              }
+
+              for (idx, param) in params.into_iter().enumerate() {
+                let param = param.as_table().unwrap();
+                let name: &str = param.get_fast_static("name").try_into().unwrap();
+                let help_text: &str = param.get_fast_static("help").try_into().unwrap();
+                egui::CollapsingHeader::new(name)
+                  .default_open(false)
+                  .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                      // button to reset to default
+                      if ui
+                        .button("🔄")
+                        .on_hover_text("Reset to default value.")
+                        .clicked()
+                      {
+                        // reset to default
+                      }
+                      if ui
+                        .button("🔧")
+                        .on_hover_text("Change value type.")
+                        .clicked()
+                      {
+                        // open a dialog to change the value
+                      }
+                    });
+
+                    // draw the value
+                    x.params.as_mut().map(|params| {
+                      let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                      params[idx].value.accept_mut(&mut mutator);
+                    });
+                  })
+                  .header_response
+                  .on_hover_text(help_text);
               }
             }
           })
@@ -191,7 +376,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
         (BlockAction::Duplicate, r) => {
           let mut block = pipeline.blocks[i].clone();
-          block.get_custom_state::<VisualState>().map(|x| {
+          block.get_custom_state::<BlockState>().map(|x| {
             x.id = Id::new(nanoid!(16));
           });
           pipeline.blocks.insert(i, block);
@@ -227,7 +412,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
   fn visit_block(&mut self, block: &mut Block) -> (BlockAction, Option<Response>) {
     let (selected, id) = {
-      let state = block.get_or_insert_custom_state(|| VisualState {
+      let state = block.get_or_insert_custom_state(|| BlockState {
         selected: false,
         id: Id::new(nanoid!(16)),
       });
@@ -254,7 +439,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     action = BlockAction::Remove;
                   }
                   if ui.button("🔒").clicked() {
-                    let state = block.get_custom_state::<VisualState>().unwrap();
+                    let state = block.get_custom_state::<BlockState>().unwrap();
                     state.selected = false;
                   }
                 });
@@ -262,7 +447,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               match &mut block.content {
                 BlockContent::Empty => Some(ui.separator()),
                 BlockContent::Shard(x) => {
-                  let mut mutator = VisualAst::new(ui);
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
                   mutator.mutate_shard(x)
                 }
                 BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
@@ -279,7 +464,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 BlockContent::TakeTable(_, _) => todo!(),
                 BlockContent::TakeSeq(_, _) => todo!(),
                 BlockContent::Func(x) => {
-                  let mut mutator = VisualAst::new(ui);
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
                   mutator.mutate_shard(x)
                 }
                 BlockContent::Program(x) => {
@@ -300,7 +485,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             .interact(response.rect, response.id, Sense::click())
             .clicked()
           {
-            let state = block.get_custom_state::<VisualState>().unwrap();
+            let state = block.get_custom_state::<BlockState>().unwrap();
             state.selected = !state.selected;
           }
         }
