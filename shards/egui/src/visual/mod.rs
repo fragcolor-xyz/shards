@@ -163,6 +163,7 @@ impl_custom_any!(BlockState);
 #[derive(Debug, Clone, PartialEq)]
 struct FunctionState {
   params_sorted: bool,
+  standalone_state: BlockState, // used when a single shard is used as parameter
 }
 
 impl_custom_any!(FunctionState);
@@ -197,6 +198,10 @@ impl<'a> VisualAst<'a> {
     let params_sorted = x
       .get_or_insert_custom_state(|| FunctionState {
         params_sorted: false,
+        standalone_state: BlockState {
+          selected: false,
+          id: Id::new(nanoid!(16)),
+        },
       })
       .params_sorted;
 
@@ -208,96 +213,149 @@ impl<'a> VisualAst<'a> {
     if let Some(shard) = shards.get(shard_name_var) {
       let shard = shard.as_table().unwrap();
       let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
-      Some(
-        egui::CollapsingHeader::new(shard_name)
-          .open(Some(selected))
-          .default_open(false)
-          .show(self.ui, |ui| {
-            let params = shard.get_fast_static("parameters").as_seq().unwrap();
-            if !params.is_empty() {
-              let mut params_copy = if !params_sorted {
-                // only if we really need to sort
-                let params = x.params.clone();
-                // reset current params
-                x.params = Some(Vec::new());
-                Some(params)
-              } else {
-                None
-              };
+      let response = egui::CollapsingHeader::new(shard_name)
+        .open(Some(selected))
+        .default_open(false)
+        .show(self.ui, |ui| {
+          let params = shard.get_fast_static("parameters").as_seq().unwrap();
+          if !params.is_empty() {
+            let mut params_copy = if !params_sorted {
+              // only if we really need to sort
+              let params = x.params.clone();
+              // reset current params
+              x.params = Some(Vec::new());
+              Some(params)
+            } else {
+              None
+            };
 
-              // helper if needed as well
-              let mut helper = params_copy
-                .as_mut()
-                .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
+            // helper if needed as well
+            let mut helper = params_copy
+              .as_mut()
+              .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
 
-              if !params_sorted {
-                for (idx, param) in params.into_iter().enumerate() {
-                  let param = param.as_table().unwrap();
-                  let name: &str = param.get_fast_static("name").try_into().unwrap();
-
-                  let new_param = helper
-                    .as_mut()
-                    .and_then(|h| h.as_mut())
-                    .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
-                    .cloned();
-
-                  let param_to_add = new_param.unwrap_or_else(|| {
-                    let default_value = param.get_fast_static("default");
-                    Param {
-                      name: Some(name.into()),
-                      value: var_to_value(&default_value).unwrap(),
-                    }
-                  });
-
-                  x.params.as_mut().unwrap().push(param_to_add);
-                }
-
-                // set flag to true
-                x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
-              }
-
+            if !params_sorted {
               for (idx, param) in params.into_iter().enumerate() {
                 let param = param.as_table().unwrap();
                 let name: &str = param.get_fast_static("name").try_into().unwrap();
-                let help_text: &str = param.get_fast_static("help").try_into().unwrap();
-                egui::CollapsingHeader::new(name)
-                  .default_open(false)
-                  .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                      // button to reset to default
-                      if ui
-                        .button("🔄")
-                        .on_hover_text("Reset to default value.")
-                        .clicked()
-                      {
-                        // reset to default
-                      }
-                      if ui
-                        .button("🔧")
-                        .on_hover_text("Change value type.")
-                        .clicked()
-                      {
-                        // open a dialog to change the value
-                      }
-                    });
 
-                    // draw the value
-                    x.params.as_mut().map(|params| {
-                      let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                      params[idx].value.accept_mut(&mut mutator);
-                    });
-                  })
-                  .header_response
-                  .on_hover_text(help_text);
+                let new_param = helper
+                  .as_mut()
+                  .and_then(|h| h.as_mut())
+                  .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
+                  .cloned();
+
+                let param_to_add = new_param.unwrap_or_else(|| {
+                  let default_value = param.get_fast_static("default");
+                  Param {
+                    name: Some(name.into()),
+                    value: var_to_value(&default_value).unwrap(),
+                  }
+                });
+
+                x.params.as_mut().unwrap().push(param_to_add);
               }
+
+              // set flag to true
+              x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
             }
-          })
-          .header_response
-          .on_hover_text(help_text),
-      )
+
+            for (idx, param) in params.into_iter().enumerate() {
+              let param = param.as_table().unwrap();
+              let name: &str = param.get_fast_static("name").try_into().unwrap();
+              let help_text: &str = param.get_fast_static("help").try_into().unwrap();
+              egui::CollapsingHeader::new(name)
+                .default_open(false)
+                .show(ui, |ui| {
+                  ui.horizontal(|ui| {
+                    // button to reset to default
+                    if ui
+                      .button("🔄")
+                      .on_hover_text("Reset to default value.")
+                      .clicked()
+                    {
+                      // reset to default
+                    }
+                    if ui
+                      .button("🔧")
+                      .on_hover_text("Change value type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                    }
+                  });
+
+                  // draw the value
+                  x.params.as_mut().map(|params| {
+                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    params[idx].value.accept_mut(&mut mutator);
+                  });
+                })
+                .header_response
+                .on_hover_text(help_text);
+            }
+          }
+        });
+      let response = response.header_response.on_hover_text(help_text);
+      Some(response)
     } else {
       Some(self.ui.label("Unknown shard"))
     }
+  }
+
+  fn render_sub_window<F>(
+    &mut self,
+    id: Id,
+    selected: bool,
+    content_renderer: F,
+  ) -> (bool, BlockAction, Option<Response>)
+  where
+    F: FnOnce(&mut Ui) -> Option<Response>,
+  {
+    let mut action = BlockAction::Keep;
+    let mut selected = selected;
+
+    let response = self
+      .ui
+      .push_id(id, |ui| {
+        let response = egui::Frame::window(ui.style())
+          .show(ui, |ui| {
+            ui.vertical(|ui| {
+              if selected {
+                ui.horizontal(|ui| {
+                  if ui.button("S").clicked() {
+                    // switch
+                  }
+                  if ui.button("D").clicked() {
+                    action = BlockAction::Duplicate;
+                  }
+                  if ui.button("X").clicked() {
+                    action = BlockAction::Remove;
+                  }
+                  if ui.button("🔒").clicked() {
+                    selected = false;
+                  }
+                });
+              }
+              content_renderer(ui)
+            })
+            .inner
+          })
+          .response;
+
+        if !selected {
+          if ui
+            .interact(response.rect, response.id, Sense::click())
+            .clicked()
+          {
+            selected = !selected;
+          }
+        }
+        response
+      })
+      .inner;
+
+    (selected, action, Some(response))
   }
 }
 
@@ -419,80 +477,42 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       (state.selected, state.id)
     };
 
-    let mut action = BlockAction::Keep;
-
-    let response = self
-      .ui
-      .push_id(id, |ui| {
-        let response = egui::Frame::window(ui.style())
-          .show(ui, |ui| {
-            ui.vertical(|ui| {
-              if selected {
-                ui.horizontal(|ui| {
-                  if ui.button("S").clicked() {
-                    // switch
-                  }
-                  if ui.button("D").clicked() {
-                    action = BlockAction::Duplicate;
-                  }
-                  if ui.button("X").clicked() {
-                    action = BlockAction::Remove;
-                  }
-                  if ui.button("🔒").clicked() {
-                    let state = block.get_custom_state::<BlockState>().unwrap();
-                    state.selected = false;
-                  }
-                });
-              }
-              match &mut block.content {
-                BlockContent::Empty => Some(ui.separator()),
-                BlockContent::Shard(x) => {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                  mutator.mutate_shard(x)
-                }
-                BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
-                  ui.group(|ui| {
-                    let mut mutator = VisualAst::new(ui);
-                    x.accept_mut(&mut mutator)
-                  })
-                  .inner
-                }
-                BlockContent::Const(x) => {
-                  let mut mutator = VisualAst::new(ui);
-                  x.accept_mut(&mut mutator)
-                }
-                BlockContent::TakeTable(_, _) => todo!(),
-                BlockContent::TakeSeq(_, _) => todo!(),
-                BlockContent::Func(x) => {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                  mutator.mutate_shard(x)
-                }
-                BlockContent::Program(x) => {
-                  ui.group(|ui| {
-                    let mut mutator = VisualAst::new(ui);
-                    x.accept_mut(&mut mutator)
-                  })
-                  .inner
-                }
-              }
-            })
-            .inner
-          })
-          .response;
-
-        if !selected {
-          if ui
-            .interact(response.rect, response.id, Sense::click())
-            .clicked()
-          {
-            let state = block.get_custom_state::<BlockState>().unwrap();
-            state.selected = !state.selected;
-          }
+    let (selected, action, response) =
+      self.render_sub_window(id, selected, |ui| match &mut block.content {
+        BlockContent::Empty => Some(ui.separator()),
+        BlockContent::Shard(x) => {
+          let mut mutator = VisualAst::with_parent_selected(ui, selected);
+          mutator.mutate_shard(x)
         }
+        BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
+          ui.group(|ui| {
+            let mut mutator = VisualAst::new(ui);
+            x.accept_mut(&mut mutator)
+          })
+          .inner
+        }
+        BlockContent::Const(x) => {
+          let mut mutator = VisualAst::new(ui);
+          x.accept_mut(&mut mutator)
+        }
+        BlockContent::TakeTable(_, _) => todo!(),
+        BlockContent::TakeSeq(_, _) => todo!(),
+        BlockContent::Func(x) => {
+          let mut mutator = VisualAst::with_parent_selected(ui, selected);
+          mutator.mutate_shard(x)
+        }
+        BlockContent::Program(x) => {
+          ui.group(|ui| {
+            let mut mutator = VisualAst::new(ui);
+            x.accept_mut(&mut mutator)
+          })
+          .inner
+        }
+      });
 
-        Some(response)
-      })
-      .inner;
+    let state = block.get_custom_state::<BlockState>().unwrap();
+    state.selected = selected;
+
     (action, response)
   }
 
@@ -547,8 +567,31 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Seq(x) => todo!(),
       Value::Table(_) => todo!(),
       Value::Shard(x) => {
-        let mut mutator = VisualAst::new(self.ui);
-        x.accept_mut(&mut mutator)
+        // stand alone shard is special, we need to render it as a block
+        let (selected, id) = {
+          let state = &x
+            .get_or_insert_custom_state(|| FunctionState {
+              params_sorted: false,
+              standalone_state: BlockState {
+                selected: false,
+                id: Id::new(nanoid!(16)),
+              },
+            })
+            .standalone_state;
+          (state.selected, state.id)
+        };
+
+        let (selected, action, response) = self.render_sub_window(id, selected, |ui| {
+          let mut mutator = VisualAst::with_parent_selected(ui, selected);
+          mutator.mutate_shard(x)
+        });
+
+        let state = x.get_custom_state::<FunctionState>().unwrap();
+        state.standalone_state.selected = selected;
+
+        // todo handle action
+
+        response
       }
       Value::Shards(x) => {
         let mut mutator = VisualAst::new(self.ui);
