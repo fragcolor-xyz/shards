@@ -460,18 +460,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
-    let mut final_response: Option<Response> = None;
     for statement in &mut sequence.statements {
-      let response = statement.accept_mut(self);
-      if let Some(previous_response) = final_response.take() {
-        if let Some(response) = response {
-          final_response = Some(previous_response.union(response))
-        } else {
-          final_response = Some(previous_response)
-        }
-      }
+      statement.accept_mut(self);
     }
-    final_response
+    Some(self.ui.button("➕").on_hover_text("Add new statement."))
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
@@ -482,7 +474,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         match statement {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
-        }
+        };
+        Some(ui.button("➕").on_hover_text("Add new statement."))
       })
       .inner
   }
