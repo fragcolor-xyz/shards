@@ -109,14 +109,14 @@
 } Looped: true)
 
 @wire(test-wire {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {Step(gfx)})
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {Step(gfx)})
 } Looped: true LStack: 4194304)
 
 @schedule(root test-wire)
 @run(root FPS: 100 Iterations: 100) | Assert.Is(true)
 
 @wire(fail-test-missing-buffer {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720) = wnd
   GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
     GFX.Feature(BlockParams: {
       "buffer": {
@@ -155,7 +155,7 @@
   color: @type(Type::Float4)
 })
 @wire(view-binding {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720) = wnd
   GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
     Once({
       GFX.Buffer(@v-buffer-type) = buf
@@ -200,7 +200,7 @@
   color: @type(Type::Float4)
 })
 @wire(read-buffer {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720) = wnd
   GFX.Renderer(wnd IgnoreCompilationErrors: true Contents: {
     Once({
       GFX.Buffer(@v-readback-buffer-type AddressSpace: BufferAddressSpace::StorageRW) = buf

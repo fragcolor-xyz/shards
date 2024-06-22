@@ -19,7 +19,7 @@
 
 @template(default-window [eye target] {
   GFX.MainWindow(
-   Title: "SDL Window" Width: 1280 Height: 720 
+   Title: "Shards Window" Width: 1280 Height: 720
    Contents: {
     Animation.Timer = time
     @get-view-transform(eye target) = view-transform
@@ -36,7 +36,7 @@
 
     @f3(0 0 0) Math.Translation >= t1
     {
-      transform: t1 
+      transform: t1
       materials: {
         "2256_Avocado_d": {
           params: {
@@ -64,7 +64,7 @@
       ["Armature" "Bone" "Bone.001"]: {
         rotation: rx
         scale: @f3(1.3 1.3 0.8)
-        translation: @f3(0 0 4) 
+        translation: @f3(0 0 4)
       }
       materials: {
         "Material_001-effect": {
@@ -79,7 +79,7 @@
     {
       transform: t2
       ["Armature" "Bone" "Bone.001"]: {
-        transform: tzero 
+        transform: tzero
       }
       ["Armature" "Cylinder"]: {
         params: {

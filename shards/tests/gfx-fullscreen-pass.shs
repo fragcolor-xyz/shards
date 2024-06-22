@@ -7,17 +7,17 @@
     GFX.EffectPass(
       EntryPoint: {
         Shader.ReadInput("texCoord0") | ToFloat4 | Math.Add(@f4(0 0 0 1)) |
-        Shader.WriteOutput("color") ; End shader  
+        Shader.WriteOutput("color") ; End shader
       }
     ) >> render-steps
 
-    
+
   })
   GFX.Render(Steps: render-steps)
 } Looped: true)
 
 @wire(test-wire {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: Step(gfx))
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: Step(gfx))
 } Looped: true LStack: 4194304)
 
 @mesh(root)

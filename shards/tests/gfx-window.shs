@@ -2,7 +2,7 @@
 @mesh(root)
 @wire(third-wire {
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
   )
   Log("Step 3")
 } Looped: true)

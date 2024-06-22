@@ -7,7 +7,7 @@
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
   })
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     UI({
       UI.Window(Contents: {
         UI.Shards
