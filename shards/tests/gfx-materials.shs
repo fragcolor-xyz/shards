@@ -73,7 +73,7 @@
     GFX.View(View: view-transform) >= view
   })
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
       time | Math.Add(@timestep) >= time
       time | Math.Multiply(0.9) | Math.Add(0.0) | Math.Mod(1.0) >> c

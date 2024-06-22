@@ -29,7 +29,7 @@
    (GFX.View :View .view-transform) >= .view)
 
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 
+   :Title "Shards Window" :Width 1280 :Height 720
    :Contents
    (->
 
@@ -37,7 +37,7 @@
     .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
 
     .queue (GFX.ClearQueue)
-    
+
     20.23 (Spatial.UI
      :Queue .queue :View .view :Scale 100.0 :Contents
      (->

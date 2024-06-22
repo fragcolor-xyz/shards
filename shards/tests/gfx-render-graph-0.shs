@@ -6,7 +6,7 @@
     RandomFloat >= c-r | RandomFloat >= c-g | RandomFloat >= c-b
     @f4(c-r c-g c-b 1.0) = color
     tsl | Math.Translation = tsl-mat
-    
+
     ; Setup pipeline
     GFX.DrawQueue = queue
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
@@ -17,13 +17,13 @@
         {Name: "depth"}]
     ) >> render-steps
   })
-  
+
   Animation.Timer(Offset: offset) = time
   time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX
   time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation >= rotY
   time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation >= rotZ
   tsl-mat | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
-  
+
   GFX.Drawable(Mesh: mesh Params: {baseColor: color}) | GFX.Draw(queue)
   GFX.Render(Steps: render-steps View: view)
 } Looped: true)
@@ -42,21 +42,21 @@
     {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
-  
+
   ; Special clear pass
   GFX.EffectPass(EntryPoint: {
     Shader.ReadInput("texCoord0") | ToFloat4 | Math.Add(@f4(0 0 0 1))
     Shader.WriteOutput("color") ; End shader
   }) >> render-steps
   GFX.Render(Steps: render-steps)
-  
+
   ; Spawned passes
   Branch([branch-init])
 } Looped: true)
 
 @wire(main-window {
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {Step(test-wire)}
   )
 } Looped: true)

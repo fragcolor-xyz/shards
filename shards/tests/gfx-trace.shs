@@ -11,36 +11,36 @@
     ; The first pass that just renders the spinning cube
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
-    
+
     GFX.DrawQueue(Trace: true) = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-    
+
     GFX.DrawQueue = gizmo-queue
     GFX.DrawablePass(Features: features Queue: gizmo-queue) >> render-steps
-    
+
     GFX.BuiltinMesh(BuiltinMeshType::Cube) = cube-mesh
   })
-  
+
   Animation.Timer = time
   @spin-transform(time @f3(0.0 0 0)) = transform-0
-  
+
   transform-0 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb")
   GFX.Draw(Queue: queue)
-  
+
   @f3(0.1 0.0 0.0) | Math.Translation = t
   @f3(0.01) | Math.Scaling = s
   t | Math.MatMul(s) | GFX.Drawable(Mesh: cube-mesh Params: {baseColor: @f4(1.0 0.2 0.2 1.0)})
   GFX.Draw(Queue: queue)
-  
+
   {Position: @f3(0.5) Target: @f3(0 0 0)} | Math.LookAt = view-transform
   GFX.View(View: view-transform) = view
-  
+
   Gizmos.Context(Queue: gizmo-queue View: view Contents: {Gizmos.Debug})
   GFX.Render(Steps: render-steps View: view)
 } Looped: true)
 
 @wire(test-wire {
-  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720) = wnd
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720) = wnd
   GFX.Renderer(Window: wnd Contents: {Step(gfx)} Debug: true)
 } Looped: true LStack: 4194304)
 

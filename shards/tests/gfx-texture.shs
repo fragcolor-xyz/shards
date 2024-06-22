@@ -25,7 +25,7 @@
     GFX.View(View: view-transform) >= view
   })
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
       time | Math.Add(@timestep) > time
       time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX
@@ -53,7 +53,7 @@
     ; Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
-    GFX.DrawablePass(Features: features Queue: queue 
+    GFX.DrawablePass(Features: features Queue: queue
                      Outputs: [{Name: "color" Clear: @f4(1.0)}]) >> render-steps
 
     ; Create view
@@ -61,7 +61,7 @@
     GFX.View(View: view-transform) >= view
   })
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
       @f3(-2 0 0) | Math.Translation | GFX.Drawable(Mesh: mesh Params: {baseColorTexture: texture-0}) | GFX.Draw(queue)
       @f3(0 0 0) | Math.Translation | GFX.Drawable(Mesh: mesh Params: {baseColorTexture: texture-1}) | GFX.Draw(queue)

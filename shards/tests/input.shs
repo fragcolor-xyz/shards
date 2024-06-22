@@ -23,25 +23,25 @@
   Once({
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= cube-mesh
     GFX.DrawQueue >= queue
-    
+
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-    
+
     ; UI Setup
     GFX.DrawQueue >= ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
-    
+
     ; Initial view
     {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
   })
-  
+
   ; Poll inputs
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     DetachRenderer: true
   ) = window-ctx
-  
+
   Inputs.Detached(window-ctx {
       Once({TargetCamera.FromLookAt >= camera-state})
       camera-state | TargetCamera > camera-state
@@ -49,7 +49,7 @@
       RTake(0) | TargetCamera.Matrix > view-transform
     } Name: "Camera" Priority: 0
   ) = camera-state
-  
+
   Once({Math.MatIdentity >= obj-transform})
   Inputs.Detached(window-ctx {
       GFX.View(View: view-transform) = view
@@ -67,7 +67,7 @@
       }
     } Name: "Gizmos" Priority: 1
   )
-  
+
   ; Input test code
   Inputs.Detached(window-ctx {
       false >= down
@@ -87,43 +87,43 @@
       Log("W Key down main thread, outside of scope")
     })
   })
-  
+
   "test-capture" >= test-capture
-  
+
   Once({
     GFX.View(View: view-transform) >= view
-    
+
     Inputs.Detached(window-ctx {
       Once({1.0 | Set(ui-scale-factor Global: true)})
       Once({"input.shs" | FS.Read >= code})
-      
+
       UI({
         Inputs.DebugUI
         Do(settings-menu-ui)
-        
+
         UI.Window(Title: "Code" Contents: {
           UI.CodeEditor(code "Shards")
         })
-        
+
         UI.TopPanel(Contents: {
           test-capture | UI.Label
         })
       } Scale: ui-scale-factor)
     } Name: "UI" Priority: 10)
-    
+
     ; Output of this is the output of UI but as a sequence of all input frames that happened until now
     ; Log("UI data this frame")
     UI.Render(ui-draw-queue)
-    
+
     ; Debug UI & Graphics
     GFX.Renderer(
       Window: window-ctx
       Contents: {
         Animation.Timer >= time
-        
+
         @f4(0 1 0 1) >= color
         obj-transform | GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
-        
+
         GFX.Render(View: view Steps: render-steps)
       }
     )

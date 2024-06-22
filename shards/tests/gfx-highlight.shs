@@ -33,7 +33,7 @@
   })
 
   GFX.MainWindow(
-    Title: "SDL Window" Width: 1280 Height: 720
+    Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
       time | Math.Add(@timestep) > time
       @spin-transform(time @f3(0.0 0 0)) >= transform-0
