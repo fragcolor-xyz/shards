@@ -961,9 +961,19 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
 template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext *context, L &&func) {
   struct Action {
     L &lambda;
-    void action() { lambda(); }
+    std::exception_ptr exp;
+    void action() {
+      try {
+        lambda();
+      } catch (...) {
+        exp = std::current_exception();
+      }
+    }
   } l{func};
   callOnMeshThread(context, l);
+  if (l.exp) {
+    std::rethrow_exception(l.exp);
+  }
 }
 
 #ifdef __EMSCRIPTEN__
