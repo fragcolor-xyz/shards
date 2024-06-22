@@ -1,9 +1,10 @@
 // prevent upper case globals
 #![allow(non_upper_case_globals)]
 
+use directory::get_global_visual_shs_channel_sender;
 use egui::*;
 use nanoid::nanoid;
-use std::any::Any;
+use std::{any::Any, sync::mpsc};
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -14,7 +15,8 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES,
+    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
+    NONE_TYPES,
   },
   SHType_Bool, SHType_Bytes, SHType_ContextVar, SHType_Enum, SHType_Float, SHType_Float2,
   SHType_Float3, SHType_Float4, SHType_Int, SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4,
@@ -164,6 +166,37 @@ impl_custom_any!(BlockState);
 struct FunctionState {
   params_sorted: bool,
   standalone_state: BlockState, // used when a single shard is used as parameter
+  receiver: Option<UniqueReceiver<ClonedVar>>,
+}
+
+#[derive(Debug)]
+struct UniqueReceiver<T> {
+  receiver: Option<mpsc::Receiver<T>>,
+}
+
+impl<T> Clone for UniqueReceiver<T> {
+  fn clone(&self) -> Self {
+    UniqueReceiver { receiver: None }
+  }
+}
+
+impl<T> PartialEq for UniqueReceiver<T> {
+  fn eq(&self, _other: &Self) -> bool {
+    // no-op
+    true
+  }
+}
+
+impl<T> UniqueReceiver<T> {
+  fn new(receiver: mpsc::Receiver<T>) -> Self {
+    UniqueReceiver {
+      receiver: Some(receiver),
+    }
+  }
+
+  fn get_mut(&mut self) -> Option<&mut mpsc::Receiver<T>> {
+    self.receiver.as_mut()
+  }
 }
 
 impl_custom_any!(FunctionState);
@@ -201,15 +234,28 @@ impl<'a> VisualAst<'a> {
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
     let selected = self.parent_selected;
 
-    let params_sorted = x
-      .get_or_insert_custom_state(|| FunctionState {
-        params_sorted: false,
-        standalone_state: BlockState {
-          selected: false,
-          id: Id::new(nanoid!(16)),
-        },
-      })
-      .params_sorted;
+    let state = x.get_or_insert_custom_state(|| FunctionState {
+      params_sorted: false,
+      standalone_state: BlockState {
+        selected: false,
+        id: Id::new(nanoid!(16)),
+      },
+      receiver: None,
+    });
+    let params_sorted = state.params_sorted;
+
+    // check if we have a result from a pending operation
+    let has_result = state
+      .receiver
+      .as_mut()
+      .and_then(|r| r.get_mut())
+      .map(|r| r.try_recv());
+
+    if let Some(Ok(result)) = has_result {
+      shlog_debug!("Got result: {:?}", result);
+      // reset the receiver
+      state.receiver = None;
+    }
 
     let directory = directory::get_global_map();
     let shards = directory.0.get_fast_static("shards");
@@ -312,6 +358,10 @@ impl<'a> VisualAst<'a> {
                     .clicked()
                   {
                     // reset to default
+                    let default_value = param.get_fast_static("default");
+                    x.params.as_mut().map(|params| {
+                      params[idx].value = var_to_value(&default_value).unwrap();
+                    });
                   }
                   if ui
                     .button("🔧")
@@ -319,6 +369,13 @@ impl<'a> VisualAst<'a> {
                     .clicked()
                   {
                     // open a dialog to change the value
+                    let (sender, receiver) = mpsc::channel();
+                    let query = Var::ephemeral_string("").into();
+                    get_global_visual_shs_channel_sender()
+                      .send((query, sender))
+                      .unwrap();
+                    x.get_custom_state::<FunctionState>().unwrap().receiver =
+                      Some(UniqueReceiver::new(receiver));
                   }
                 });
 
@@ -613,6 +670,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 selected: false,
                 id: Id::new(nanoid!(16)),
               },
+              receiver: None,
             })
             .standalone_state;
           (state.selected, state.id)
