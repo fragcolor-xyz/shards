@@ -2728,6 +2728,20 @@ impl Var {
     }
   }
 
+  pub fn color_bytes(var: &Var) -> Result<(u8, u8, u8, u8), &'static str> {
+    if var.valueType != SHType_Color {
+      return Err("Invalid type");
+    }
+    unsafe {
+      Ok((
+        var.payload.__bindgen_anon_1.colorValue.r,
+        var.payload.__bindgen_anon_1.colorValue.g,
+        var.payload.__bindgen_anon_1.colorValue.b,
+        var.payload.__bindgen_anon_1.colorValue.a,
+      ))
+    }
+  }
+
   pub fn color_ints(r: i32, g: i32, b: i32, a: i32) -> Result<Var, &'static str> {
     // ensure all values are in range [0, 255]
     if r < 0 || r > 255 {

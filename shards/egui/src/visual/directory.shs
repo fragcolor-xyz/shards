@@ -1,12 +1,33 @@
+@wire(process-color {
+  ToFloat3 = normalizedColor
+  normalizedColor | Take(0) | Math.Divide(255.0) = r
+  normalizedColor | Take(1) | Math.Divide(255.0) = g
+  normalizedColor | Take(2) | Math.Divide(255.0) = b
+
+  ; Calculate gray value
+  0.2126 | Mul(r) | Add((0.7152 | Mul(g))) | Add((0.0722 | Mul(b))) = gray
+
+  ; Desaturate and lighten each channel
+  r | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newR
+  g | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newG
+  b | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newB
+
+  ; Convert back to RGB format
+  @f3(newR newG newB) | Math.Multiply(255.0) | ToColor = newColor
+})
+
 @wire(document-shard {
   = name
   Shards.Help = help
+  name | Hash.XXH-64 | BytesToInts | Slice(0 3) | ToInt3 | Do(process-color) | Update(help "color")
   [name help]
 })
 
 @wire(document-enum {
   Shards.EnumTypeHelp = help
-  [help:name help]
+  help:name | ExpectString = name
+  name | Hash.XXH-64 | BytesToInts | Slice(0 4) | ToInt3 | Do(process-color) | Update(help "color")
+  [name help]
 })
 
 ; process documentation in parallel

@@ -23,7 +23,7 @@ use shards::{
 
 use pest::Parser;
 
-use shards_lang::{ast::*, ast_visitor::*, cli, ParamHelper, ParamHelperMut};
+use shards_lang::{ast::*, ast_visitor::*, ParamHelperMut};
 
 mod directory;
 
@@ -173,6 +173,12 @@ pub struct VisualAst<'a> {
   parent_selected: bool,
 }
 
+// Helper function to determine if a color is light
+fn is_light_color(color: egui::Color32) -> bool {
+  let brightness = 0.299 * color.r() as f32 + 0.587 * color.g() as f32 + 0.114 * color.b() as f32;
+  brightness > 128.0
+}
+
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
     VisualAst {
@@ -212,90 +218,121 @@ impl<'a> VisualAst<'a> {
     let shard_name_var = Var::ephemeral_string(shard_name);
     if let Some(shard) = shards.get(shard_name_var) {
       let shard = shard.as_table().unwrap();
+
       let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
-      let response = egui::CollapsingHeader::new(shard_name)
-        .open(Some(selected))
-        .default_open(false)
-        .show(self.ui, |ui| {
-          let params = shard.get_fast_static("parameters").as_seq().unwrap();
-          if !params.is_empty() {
-            let mut params_copy = if !params_sorted {
-              // only if we really need to sort
-              let params = x.params.clone();
-              // reset current params
-              x.params = Some(Vec::new());
-              Some(params)
-            } else {
-              None
-            };
+      let help_text = if help_text.is_empty() {
+        "No help text provided."
+      } else {
+        help_text
+      };
 
-            // helper if needed as well
-            let mut helper = params_copy
-              .as_mut()
-              .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
+      let color = shard.get_fast_static("color");
+      let color = Var::color_bytes(&color).unwrap();
+      let bg_color = egui::Color32::from_rgb(color.0, color.1, color.2);
 
-            if !params_sorted {
-              for (idx, param) in params.into_iter().enumerate() {
-                let param = param.as_table().unwrap();
-                let name: &str = param.get_fast_static("name").try_into().unwrap();
+      // Determine text color based on background brightness
+      let text_color = if is_light_color(bg_color) {
+        egui::Color32::BLACK
+      } else {
+        egui::Color32::WHITE
+      };
 
-                let new_param = helper
-                  .as_mut()
-                  .and_then(|h| h.as_mut())
-                  .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
-                  .cloned();
+      let response = egui::CollapsingHeader::new(
+        egui::RichText::new(shard_name)
+          .size(14.0)
+          .strong()
+          .family(egui::FontFamily::Monospace)
+          .background_color(bg_color)
+          .color(text_color),
+      )
+      .open(Some(selected))
+      .default_open(false)
+      .show_background(true)
+      .show(self.ui, |ui| {
+        let params = shard.get_fast_static("parameters").as_seq().unwrap();
+        if !params.is_empty() {
+          let mut params_copy = if !params_sorted {
+            // only if we really need to sort
+            let params = x.params.clone();
+            // reset current params
+            x.params = Some(Vec::new());
+            Some(params)
+          } else {
+            None
+          };
 
-                let param_to_add = new_param.unwrap_or_else(|| {
-                  let default_value = param.get_fast_static("default");
-                  Param {
-                    name: Some(name.into()),
-                    value: var_to_value(&default_value).unwrap(),
-                  }
-                });
+          // helper if needed as well
+          let mut helper = params_copy
+            .as_mut()
+            .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
 
-                x.params.as_mut().unwrap().push(param_to_add);
-              }
-
-              // set flag to true
-              x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
-            }
-
+          if !params_sorted {
             for (idx, param) in params.into_iter().enumerate() {
               let param = param.as_table().unwrap();
               let name: &str = param.get_fast_static("name").try_into().unwrap();
-              let help_text: &str = param.get_fast_static("help").try_into().unwrap();
-              egui::CollapsingHeader::new(name)
-                .default_open(false)
-                .show(ui, |ui| {
-                  ui.horizontal(|ui| {
-                    // button to reset to default
-                    if ui
-                      .button("🔄")
-                      .on_hover_text("Reset to default value.")
-                      .clicked()
-                    {
-                      // reset to default
-                    }
-                    if ui
-                      .button("🔧")
-                      .on_hover_text("Change value type.")
-                      .clicked()
-                    {
-                      // open a dialog to change the value
-                    }
-                  });
 
-                  // draw the value
-                  x.params.as_mut().map(|params| {
-                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                    params[idx].value.accept_mut(&mut mutator);
-                  });
-                })
-                .header_response
-                .on_hover_text(help_text);
+              let new_param = helper
+                .as_mut()
+                .and_then(|h| h.as_mut())
+                .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
+                .cloned();
+
+              let param_to_add = new_param.unwrap_or_else(|| {
+                let default_value = param.get_fast_static("default");
+                Param {
+                  name: Some(name.into()),
+                  value: var_to_value(&default_value).unwrap(),
+                }
+              });
+
+              x.params.as_mut().unwrap().push(param_to_add);
             }
+
+            // set flag to true
+            x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
           }
-        });
+
+          for (idx, param) in params.into_iter().enumerate() {
+            let param = param.as_table().unwrap();
+            let name: &str = param.get_fast_static("name").try_into().unwrap();
+            let help_text: &str = param.get_fast_static("help").try_into().unwrap();
+            let help_text = if help_text.is_empty() {
+              "No help text provided."
+            } else {
+              help_text
+            };
+            egui::CollapsingHeader::new(name)
+              .default_open(false)
+              .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                  // button to reset to default
+                  if ui
+                    .button("🔄")
+                    .on_hover_text("Reset to default value.")
+                    .clicked()
+                  {
+                    // reset to default
+                  }
+                  if ui
+                    .button("🔧")
+                    .on_hover_text("Change value type.")
+                    .clicked()
+                  {
+                    // open a dialog to change the value
+                  }
+                });
+
+                // draw the value
+                x.params.as_mut().map(|params| {
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  params[idx].value.accept_mut(&mut mutator);
+                });
+              })
+              .header_response
+              .on_hover_text(help_text);
+          }
+        }
+      });
       let response = response.header_response.on_hover_text(help_text);
       Some(response)
     } else {
@@ -671,8 +708,10 @@ impl Shard for UIShardsShard {
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
-    let mut mutator = VisualAst::new(ui);
-    self.ast.accept_mut(&mut mutator);
+    egui::ScrollArea::new([true, true]).show(ui, |ui| {
+      let mut mutator = VisualAst::new(ui);
+      self.ast.accept_mut(&mut mutator);
+    });
     Ok(Var::default())
   }
 }
