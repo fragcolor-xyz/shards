@@ -417,6 +417,9 @@ impl<'a> VisualAst<'a> {
             ui.vertical(|ui| {
               if selected {
                 ui.horizontal(|ui| {
+                  if ui.button("🔒").clicked() {
+                    selected = false;
+                  }
                   if ui.button("S").clicked() {
                     // switch
                   }
@@ -425,9 +428,6 @@ impl<'a> VisualAst<'a> {
                   }
                   if ui.button("X").clicked() {
                     action = BlockAction::Remove;
-                  }
-                  if ui.button("🔒").clicked() {
-                    selected = false;
                   }
                 });
               }
@@ -654,32 +654,25 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Seq(x) => todo!(),
       Value::Table(_) => todo!(),
       Value::Shard(x) => {
-        // stand alone shard is special, we need to render it as a block
-        let (selected, id) = {
-          let state = &x
-            .get_or_insert_custom_state(|| FunctionState {
-              params_sorted: false,
-              standalone_state: BlockState {
-                selected: false,
-                id: Id::new(nanoid!(16)),
-              },
-              receiver: None,
-            })
-            .standalone_state;
-          (state.selected, state.id)
-        };
+        /*
 
-        let (selected, action, response) = self.render_sub_window(id, selected, |ui| {
-          let mut mutator = VisualAst::with_parent_selected(ui, selected);
-          mutator.mutate_shard(x)
+        ### Don’t try too hard to satisfy TEXT version.
+        Such as eliding `{}` when single shard or Omitting params which are at default value, etc
+        We can have a pass when we turn AST into text to apply such EYE CANDY.
+
+        Turn it into a Shards value instead
+        */
+        let shard = x.clone();
+        *value = Value::Shards(Sequence {
+          statements: vec![Statement::Pipeline(Pipeline {
+            blocks: vec![Block {
+              content: BlockContent::Shard(shard),
+              line_info: None,
+              custom_state: None,
+            }],
+          })],
         });
-
-        let state = x.get_custom_state::<FunctionState>().unwrap();
-        state.standalone_state.selected = selected;
-
-        // todo handle action
-
-        response
+        self.visit_value(value)
       }
       Value::Shards(x) => {
         let mut mutator = VisualAst::new(self.ui);
