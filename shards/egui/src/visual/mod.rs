@@ -3,6 +3,7 @@
 
 use directory::get_global_visual_shs_channel_sender;
 use egui::*;
+use egui_extras::{Column, TableBuilder};
 use nanoid::nanoid;
 use std::{any::Any, sync::mpsc};
 
@@ -651,8 +652,62 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Float2(_) => todo!(),
       Value::Float3(_) => todo!(),
       Value::Float4(_) => todo!(),
-      Value::Seq(x) => todo!(),
-      Value::Table(_) => todo!(),
+      Value::Seq(x) => {
+        if x.len() > 4 {
+          egui::ScrollArea::new([true, true])
+            .show(self.ui, |ui| {
+              let mut mutator = VisualAst::new(ui);
+              for value in x.iter_mut() {
+                value.accept_mut(&mut mutator);
+              }
+              let response = ui.button("➕").on_hover_text("Add new value.");
+              if response.clicked() {
+                x.push(Value::None);
+              }
+              Some(response)
+            })
+            .inner
+        } else {
+          for value in x.iter_mut() {
+            value.accept_mut(self);
+          }
+          let response = self.ui.button("➕").on_hover_text("Add new value.");
+          if response.clicked() {
+            x.push(Value::None);
+          }
+          Some(response)
+        }
+      }
+      Value::Table(x) => {
+        let table = TableBuilder::new(self.ui)
+          .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+          .striped(true)
+          .column(Column::auto())
+          .column(Column::auto())
+          .header(16.0, |mut row| {
+            row.col(|ui| {
+              ui.label("Key");
+            });
+            row.col(|ui| {
+              ui.label("Value");
+            });
+          });
+        table.body(|body| {
+          let len = x.len();
+          body.rows(16.0, len, |mut row| {
+            let index = row.index();
+            row.col(|ui| {
+              let mut mutator = VisualAst::new(ui);
+              x[index].0.accept_mut(&mut mutator);
+            });
+            row.col(|ui| {
+              let mut mutator = VisualAst::new(ui);
+              x[index].1.accept_mut(&mut mutator);
+            });
+          });
+        });
+        None
+      }
       Value::Shard(x) => {
         /*
 
@@ -682,7 +737,16 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Expr(_) => todo!(),
       Value::TakeTable(_, _) => todo!(),
       Value::TakeSeq(_, _) => todo!(),
-      Value::Func(_) => todo!(),
+      Value::Func(x) => match x.name.name.as_str() {
+        "color" => {
+          let mut mutator = VisualAst::new(self.ui);
+          x.accept_mut(&mut mutator)
+        }
+        _ => {
+          let mut mutator = VisualAst::new(self.ui);
+          x.accept_mut(&mut mutator)
+        }
+      },
     }
   }
 

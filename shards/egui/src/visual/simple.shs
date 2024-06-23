@@ -6,3 +6,8 @@
     Add(1) | Log
   })
 })
+[10 20 30] | Map(Div(2)) | Ref(x)
+{
+  "x": 10
+  10: 20
+} | ToJson | Http.Post("http://example.com")
