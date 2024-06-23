@@ -213,6 +213,13 @@ fn is_light_color(color: egui::Color32) -> bool {
   brightness > 128.0
 }
 
+fn emoji(s: &str) -> egui::RichText {
+  egui::RichText::new(s)
+    .family(egui::FontFamily::Proportional)
+    // .strong()
+    .size(14.0)
+}
+
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
     VisualAst {
@@ -284,18 +291,16 @@ impl<'a> VisualAst<'a> {
         egui::Color32::WHITE
       };
 
-      let response = egui::CollapsingHeader::new(
-        egui::RichText::new(shard_name)
-          .size(14.0)
-          .strong()
-          .family(egui::FontFamily::Monospace)
-          .background_color(bg_color)
-          .color(text_color),
-      )
-      .open(Some(selected))
-      .default_open(false)
-      .show_background(true)
-      .show(self.ui, |ui| {
+      let shard_name_rt = egui::RichText::new(shard_name)
+        .size(14.0)
+        .strong()
+        .family(egui::FontFamily::Monospace)
+        .background_color(bg_color)
+        .color(text_color);
+
+      self.ui.label(shard_name_rt).on_hover_text(help_text);
+
+      if self.parent_selected {
         let params = shard.get_fast_static("parameters").as_seq().unwrap();
         if !params.is_empty() {
           let mut params_copy = if !params_sorted {
@@ -350,11 +355,11 @@ impl<'a> VisualAst<'a> {
             };
             egui::CollapsingHeader::new(name)
               .default_open(false)
-              .show(ui, |ui| {
+              .show(self.ui, |ui| {
                 ui.horizontal(|ui| {
                   // button to reset to default
                   if ui
-                    .button("🔄")
+                    .button(emoji("🔄"))
                     .on_hover_text("Reset to default value.")
                     .clicked()
                   {
@@ -365,7 +370,7 @@ impl<'a> VisualAst<'a> {
                     });
                   }
                   if ui
-                    .button("🔧")
+                    .button(emoji("🔧"))
                     .on_hover_text("Change value type.")
                     .clicked()
                   {
@@ -390,9 +395,8 @@ impl<'a> VisualAst<'a> {
               .on_hover_text(help_text);
           }
         }
-      });
-      let response = response.header_response.on_hover_text(help_text);
-      Some(response)
+      }
+      None
     } else {
       Some(self.ui.label("Unknown shard"))
     }
@@ -418,16 +422,16 @@ impl<'a> VisualAst<'a> {
             ui.vertical(|ui| {
               if selected {
                 ui.horizontal(|ui| {
-                  if ui.button("🔒").clicked() {
+                  if ui.button(emoji("🔒")).clicked() {
                     selected = false;
                   }
-                  if ui.button("S").clicked() {
+                  if ui.button(emoji("🔄")).clicked() {
                     // switch
                   }
-                  if ui.button("D").clicked() {
+                  if ui.button(emoji("🗐")).clicked() {
                     action = BlockAction::Duplicate;
                   }
-                  if ui.button("X").clicked() {
+                  if ui.button(emoji("🗑")).clicked() {
                     action = BlockAction::Remove;
                   }
                 });
@@ -464,19 +468,27 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     for statement in &mut sequence.statements {
       statement.accept_mut(self);
     }
-    Some(self.ui.button("➕").on_hover_text("Add new statement."))
+    self.ui.horizontal(|ui| {
+      ui.button(emoji("➕")).on_hover_text("Add new statement.");
+      ui.button(emoji("💡")).on_hover_text("Ask AI.");
+    });
+    None
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
     self
       .ui
       .horizontal(|ui| {
-        let mut mutator = VisualAst::new(ui);
+        let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
         match statement {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
         };
-        Some(ui.button("➕").on_hover_text("Add new statement."))
+        ui.horizontal(|ui| {
+          ui.button(emoji("➕")).on_hover_text("Add new statement.");
+          ui.button(emoji("💡")).on_hover_text("Ask AI.");
+        });
+        None
       })
       .inner
   }
@@ -574,13 +586,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
         BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
           ui.group(|ui| {
-            let mut mutator = VisualAst::new(ui);
+            let mut mutator = VisualAst::with_parent_selected(ui, selected);
             x.accept_mut(&mut mutator)
           })
           .inner
         }
         BlockContent::Const(x) => {
-          let mut mutator = VisualAst::new(ui);
+          let mut mutator = VisualAst::with_parent_selected(ui, selected);
           x.accept_mut(&mut mutator)
         }
         BlockContent::TakeTable(_, _) => todo!(),
@@ -591,7 +603,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
         BlockContent::Program(x) => {
           ui.group(|ui| {
-            let mut mutator = VisualAst::new(ui);
+            let mut mutator = VisualAst::with_parent_selected(ui, selected);
             x.accept_mut(&mut mutator)
           })
           .inner
@@ -653,60 +665,128 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Float3(_) => todo!(),
       Value::Float4(_) => todo!(),
       Value::Seq(x) => {
-        if x.len() > 4 {
-          egui::ScrollArea::new([true, true])
-            .show(self.ui, |ui| {
-              let mut mutator = VisualAst::new(ui);
-              for value in x.iter_mut() {
-                value.accept_mut(&mut mutator);
-              }
-              let response = ui.button("➕").on_hover_text("Add new value.");
-              if response.clicked() {
-                x.push(Value::None);
-              }
-              Some(response)
-            })
-            .inner
-        } else {
-          for value in x.iter_mut() {
-            value.accept_mut(self);
-          }
-          let response = self.ui.button("➕").on_hover_text("Add new value.");
-          if response.clicked() {
-            x.push(Value::None);
-          }
-          Some(response)
+        let len = x.len();
+        let response = self.ui.label(format!("Seq (len: {})", len));
+        if self.parent_selected {
+          egui::ScrollArea::new([true, true]).show(self.ui, |ui| {
+            x.retain_mut(|value| {
+              let mut to_keep = true;
+              ui.horizontal(|ui| {
+                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                let response = value.accept_mut(&mut mutator).unwrap();
+                response.context_menu(|ui| {
+                  // change type
+                  if ui
+                    .button(emoji("Change 🔧"))
+                    .on_hover_text("Change value type.")
+                    .clicked()
+                  {
+                    // open a dialog to change the value
+                    ui.close_menu();
+                  }
+                  if ui
+                    .button(emoji("Remove 🗑"))
+                    .on_hover_text("Remove value.")
+                    .clicked()
+                  {
+                    to_keep = false;
+                    ui.close_menu();
+                  }
+                });
+              });
+              to_keep
+            });
+            let response = ui.button(emoji("➕")).on_hover_text("Add new value.");
+            if response.clicked() {
+              x.push(Value::None);
+            }
+            Some(response)
+          });
         }
+        Some(response)
       }
       Value::Table(x) => {
-        let table = TableBuilder::new(self.ui)
-          .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-          .striped(true)
-          .column(Column::auto())
-          .column(Column::auto())
-          .header(16.0, |mut row| {
-            row.col(|ui| {
-              ui.label("Key");
+        let len = x.len();
+        let response = self.ui.label(format!("Table (len: {})", len));
+        if self.parent_selected {
+          let table = TableBuilder::new(self.ui)
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+            .striped(true)
+            .column(Column::auto())
+            .column(Column::auto())
+            .header(16.0, |mut row| {
+              row.col(|ui| {
+                ui.label("Key");
+              });
+              row.col(|ui| {
+                ui.label("Value");
+              });
             });
-            row.col(|ui| {
-              ui.label("Value");
+          table.body(|body| {
+            let mut to_remove = None;
+            body.rows(16.0, len, |mut row| {
+              let index = row.index();
+              row.col(|ui| {
+                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                let response = x[index].0.accept_mut(&mut mutator).unwrap();
+                response.context_menu(|ui| {
+                  // change type
+                  if ui
+                    .button(emoji("Change 🔧"))
+                    .on_hover_text("Change value type.")
+                    .clicked()
+                  {
+                    // open a dialog to change the value
+                    ui.close_menu();
+                  }
+                  if ui
+                    .button(emoji("Remove 🗑"))
+                    .on_hover_text("Remove value.")
+                    .clicked()
+                  {
+                    to_remove = Some(index);
+                    ui.close_menu();
+                  }
+                });
+              });
+              row.col(|ui| {
+                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                let response = x[index].1.accept_mut(&mut mutator).unwrap();
+                response.context_menu(|ui| {
+                  // change type
+                  if ui
+                    .button(emoji("Change 🔧"))
+                    .on_hover_text("Change value type.")
+                    .clicked()
+                  {
+                    // open a dialog to change the value
+                    ui.close_menu();
+                  }
+                  if ui
+                    .button(emoji("Remove 🗑"))
+                    .on_hover_text("Remove value.")
+                    .clicked()
+                  {
+                    to_remove = Some(index);
+                    ui.close_menu();
+                  }
+                });
+              });
             });
+            if let Some(index) = to_remove {
+              x.remove(index);
+            }
           });
-        table.body(|body| {
-          let len = x.len();
-          body.rows(16.0, len, |mut row| {
-            let index = row.index();
-            row.col(|ui| {
-              let mut mutator = VisualAst::new(ui);
-              x[index].0.accept_mut(&mut mutator);
-            });
-            row.col(|ui| {
-              let mut mutator = VisualAst::new(ui);
-              x[index].1.accept_mut(&mut mutator);
-            });
-          });
-        });
-        None
+          if self
+            .ui
+            .button(emoji("➕"))
+            .on_hover_text("Add new key-value pair.")
+            .clicked()
+          {
+            x.push((Value::None, Value::None));
+          }
+        }
+        Some(response)
       }
       Value::Shard(x) => {
         /*
