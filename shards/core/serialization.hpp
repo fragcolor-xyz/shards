@@ -148,8 +148,6 @@ struct Serialization {
 
     switch (output.valueType) {
     case SHType::None:
-    case SHType::EndOfBlittableTypes:
-    case SHType::Any:
       break;
     case SHType::Enum:
       read((uint8_t *)&output.payload, sizeof(int32_t) * 3);
@@ -514,8 +512,6 @@ struct Serialization {
     total += sizeof(input.valueType);
     switch (input.valueType) {
     case SHType::None:
-    case SHType::EndOfBlittableTypes:
-    case SHType::Any:
       break;
     case SHType::Enum:
       write((const uint8_t *)&input.payload, sizeof(int32_t) * 3);
