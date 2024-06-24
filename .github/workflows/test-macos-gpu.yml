@@ -159,12 +159,12 @@ jobs:
             --directory build/src \
             --directory build/modules \
             --output-file coverage/coverage.info \
-            --ignore-errors inconsistent,gcov
+            --ignore-errors inconsistent,gcov,range
           # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/shards/mal/*" \
             --output-file coverage/coverage-macos-gpu.info \
-            --ignore-errors inconsistent,gcov
+            --ignore-errors inconsistent,gcov,range
           # convert absolute path to relative path
           sed -e "s|${PWD}/|./|g" coverage/coverage-macos-gpu.info
       - name: Upload coverage (Debug)
