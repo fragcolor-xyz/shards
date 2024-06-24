@@ -407,61 +407,6 @@ impl<'a> VisualAst<'a> {
       Some(self.ui.label("Unknown shard"))
     }
   }
-
-  fn render_sub_window<F>(
-    &mut self,
-    id: Id,
-    selected: bool,
-    content_renderer: F,
-  ) -> (bool, BlockAction, Option<Response>)
-  where
-    F: FnOnce(&mut Ui) -> Option<Response>,
-  {
-    let mut action = BlockAction::Keep;
-    let mut selected = selected;
-
-    let response = self
-      .ui
-      .push_id(id, |ui| {
-        let response = egui::Frame::window(ui.style())
-          .show(ui, |ui| {
-            ui.vertical(|ui| {
-              if selected {
-                ui.horizontal(|ui| {
-                  if ui.button(emoji("🔒")).clicked() {
-                    selected = false;
-                  }
-                  if ui.button(emoji("🔄")).clicked() {
-                    // switch
-                  }
-                  if ui.button(emoji("🗐")).clicked() {
-                    action = BlockAction::Duplicate;
-                  }
-                  if ui.button(emoji("🗑")).clicked() {
-                    action = BlockAction::Remove;
-                  }
-                });
-              }
-              content_renderer(ui)
-            })
-            .inner
-          })
-          .response;
-
-        if !selected {
-          if ui
-            .interact(response.rect, response.id, Sense::click())
-            .clicked()
-          {
-            selected = !selected;
-          }
-        }
-        response
-      })
-      .inner;
-
-    (selected, action, Some(response))
-  }
 }
 
 impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
@@ -583,43 +528,87 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       (state.selected, state.id)
     };
 
-    let (selected, action, response) =
-      self.render_sub_window(id, selected, |ui| match &mut block.content {
-        BlockContent::Empty => Some(ui.separator()),
-        BlockContent::Shard(x) => {
-          let mut mutator = VisualAst::with_parent_selected(ui, selected);
-          mutator.mutate_shard(x)
-        }
-        BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
-          ui.group(|ui| {
-            let mut mutator = VisualAst::with_parent_selected(ui, selected);
-            x.accept_mut(&mut mutator)
+    let mut action = BlockAction::Keep;
+    let mut selected = selected;
+
+    let response = self
+      .ui
+      .push_id(id, |ui| {
+        let response = egui::Frame::window(ui.style())
+          .show(ui, |ui| {
+            ui.vertical(|ui| {
+              if selected {
+                ui.horizontal(|ui| {
+                  if ui.button(emoji("🔒")).on_hover_text("Collapse.").clicked() {
+                    selected = false;
+                  }
+                  if ui
+                    .button(emoji("🔧"))
+                    .on_hover_text("Change shard type.")
+                    .clicked()
+                  {
+                    // switch
+                  }
+                  if ui.button(emoji("🗐")).on_hover_text("Duplicate.").clicked() {
+                    action = BlockAction::Duplicate;
+                  }
+                  if ui.button(emoji("🗑")).on_hover_text("Delete.").clicked() {
+                    action = BlockAction::Remove;
+                  }
+                });
+              }
+              match &mut block.content {
+                BlockContent::Empty => Some(ui.separator()),
+                BlockContent::Shard(x) => {
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  mutator.mutate_shard(x)
+                }
+                BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
+                  ui.group(|ui| {
+                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    x.accept_mut(&mut mutator)
+                  })
+                  .inner
+                }
+                BlockContent::Const(x) => {
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  x.accept_mut(&mut mutator)
+                }
+                BlockContent::TakeTable(_, _) => todo!(),
+                BlockContent::TakeSeq(_, _) => todo!(),
+                BlockContent::Func(x) => {
+                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  mutator.mutate_shard(x)
+                }
+                BlockContent::Program(x) => {
+                  ui.group(|ui| {
+                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    x.accept_mut(&mut mutator)
+                  })
+                  .inner
+                }
+              }
+            })
+            .inner
           })
-          .inner
+          .response;
+
+        if !selected {
+          if ui
+            .interact(response.rect, response.id, Sense::click())
+            .clicked()
+          {
+            selected = !selected;
+          }
         }
-        BlockContent::Const(x) => {
-          let mut mutator = VisualAst::with_parent_selected(ui, selected);
-          x.accept_mut(&mut mutator)
-        }
-        BlockContent::TakeTable(_, _) => todo!(),
-        BlockContent::TakeSeq(_, _) => todo!(),
-        BlockContent::Func(x) => {
-          let mut mutator = VisualAst::with_parent_selected(ui, selected);
-          mutator.mutate_shard(x)
-        }
-        BlockContent::Program(x) => {
-          ui.group(|ui| {
-            let mut mutator = VisualAst::with_parent_selected(ui, selected);
-            x.accept_mut(&mut mutator)
-          })
-          .inner
-        }
-      });
+        response
+      })
+      .inner;
 
     let state = block.get_custom_state::<BlockState>().unwrap();
     state.selected = selected;
 
-    (action, response)
+    (action, Some(response))
   }
 
   fn visit_function(&mut self, function: &mut Function) -> Option<Response> {
@@ -661,7 +650,34 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           TextEdit::singleline(x).desired_width(width).ui(self.ui)
         })
       }
-      Value::Bytes(_) => todo!(),
+      Value::Bytes(x) => {
+        let bytes = x.to_mut();
+        let mut len = bytes.len();
+        let response = self.ui.label(format!("Bytes (len: {})", len));
+        if self.parent_selected {
+          let mem_range = 0..bytes.len();
+          self.ui.add(CustomDragValue::new(&mut len));
+
+          // check if we need to resize
+          if len != bytes.len() {
+            bytes.resize(len, 0);
+          }
+
+          use egui_memory_editor::MemoryEditor;
+          let ctx = egui::Context::default();
+          let mut is_open = true;
+          let mut memory_editor = MemoryEditor::new().with_address_range("Memory", mem_range);
+          // Show a read-only window
+          memory_editor.window_ui(
+            &ctx,
+            &mut is_open,
+            bytes,
+            |mem, addr| mem[addr].into(),
+            |mem, addr, val| mem[addr] = val,
+          );
+        }
+        Some(response)
+      }
       Value::Int2(_) => todo!(),
       Value::Int3(_) => todo!(),
       Value::Int4(_) => todo!(),

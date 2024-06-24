@@ -1322,6 +1322,7 @@ fn resolve_var(
     }
     Value::Bytes(ref b) => {
       let bytes = b.0.as_ref();
+      let bytes = Var::ephemeral_slice(bytes);
       Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
     }
     Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),

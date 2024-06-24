@@ -2806,6 +2806,22 @@ impl Var {
     }
   }
 
+  pub fn ephemeral_slice(b: &[u8]) -> Var {
+    SHVar {
+      valueType: SHType_Bytes,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_4: SHVarPayload__bindgen_ty_1__bindgen_ty_4 {
+            bytesValue: b.as_ptr() as *mut u8,
+            bytesSize: b.len() as u32,
+            bytesCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
   pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
     let rc = Box::new(RefCounted::<T> {
       rc: AtomicI32::new(0),
@@ -3247,6 +3263,28 @@ impl TryFrom<&Var> for Cow<'static, str> {
       })
       .map_err(|_| "Expected valid UTF-8 string, but casting failed.")?;
       Ok(Cow::Borrowed(s))
+    }
+  }
+}
+
+impl TryFrom<&Var> for Cow<'static, [u8]> {
+  type Error = &'static str;
+
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Bytes {
+      Err("Expected Bytes variable, but casting failed.")
+    } else {
+      unsafe {
+        if var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize == 0 {
+          return Ok(Cow::Borrowed(&[]));
+        }
+      }
+      Ok(Cow::Borrowed(unsafe {
+        slice::from_raw_parts(
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+        )
+      }))
     }
   }
 }

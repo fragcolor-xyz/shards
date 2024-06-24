@@ -84,7 +84,7 @@ pub enum BlockAction {
   Keep,
   Remove,
   Duplicate,
-  Swap(Block),
+  Swap(Block)
 }
 
 pub trait AstMutator<R> {

@@ -27,8 +27,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct RcBytesWrapper(Rc<[u8]>);
+#[derive(Debug, Clone)]
+pub struct RcBytesWrapper(Rc<Cow<'static, [u8]>>);
 
 impl Serialize for RcBytesWrapper {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -44,14 +44,14 @@ impl<'de> Deserialize<'de> for RcBytesWrapper {
   where
     D: Deserializer<'de>,
   {
-    let s: &[u8] = Deserialize::deserialize(deserializer)?;
-    Ok(RcBytesWrapper(Rc::from(s)))
+    let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+    Ok(RcBytesWrapper(Rc::new(Cow::Owned(bytes))))
   }
 }
 
 impl RcBytesWrapper {
-  pub fn new<S: Into<Rc<[u8]>>>(s: S) -> Self {
-    RcBytesWrapper(s.into())
+  pub fn new<S: Into<Cow<'static, [u8]>>>(s: S) -> Self {
+    RcBytesWrapper(Rc::new(s.into()))
   }
 
   pub fn to_vec(&self) -> Vec<u8> {
@@ -61,17 +61,55 @@ impl RcBytesWrapper {
   pub fn as_slice(&self) -> &[u8] {
     &self.0
   }
+
+  pub fn to_mut(&mut self) -> &mut Vec<u8> {
+    let cow = Rc::make_mut(&mut self.0);
+    cow.to_mut()
+  }
 }
 
-impl From<&[u8]> for RcBytesWrapper {
-  fn from(s: &[u8]) -> Self {
-    RcBytesWrapper::new(s)
+impl From<&'static [u8]> for RcBytesWrapper {
+  fn from(s: &'static [u8]) -> Self {
+    RcBytesWrapper::new(Cow::Borrowed(s))
   }
 }
 
 impl From<Vec<u8>> for RcBytesWrapper {
   fn from(s: Vec<u8>) -> Self {
-    RcBytesWrapper::new(s)
+    RcBytesWrapper::new(Cow::Owned(s))
+  }
+}
+
+impl PartialEq for RcBytesWrapper {
+  fn eq(&self, other: &RcBytesWrapper) -> bool {
+    self.0 == other.0
+  }
+}
+
+impl Eq for RcBytesWrapper {}
+
+impl PartialEq<[u8]> for RcBytesWrapper {
+  fn eq(&self, other: &[u8]) -> bool {
+    *self.0 == other
+  }
+}
+
+impl Hash for RcBytesWrapper {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.hash(state)
+  }
+}
+
+impl fmt::Display for RcBytesWrapper {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{:?}", self.0)
+  }
+}
+
+impl Deref for RcBytesWrapper {
+  type Target = [u8];
+  fn deref(&self) -> &Self::Target {
+    &self.0
   }
 }
 
