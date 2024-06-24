@@ -3,7 +3,6 @@
 
 use directory::get_global_visual_shs_channel_sender;
 use egui::*;
-use egui_extras::{Column, TableBuilder};
 use nanoid::nanoid;
 use std::{any::Any, sync::mpsc};
 
@@ -26,7 +25,7 @@ use shards::{
 
 use pest::Parser;
 
-use shards_lang::{ast::*, ast_visitor::*, ParamHelperMut};
+use shards_lang::{ast::*, ast_visitor::*, ParamHelperMut, RcStrWrapper};
 
 mod directory;
 
@@ -139,16 +138,23 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
       }
       Ok(Value::Table(map))
     }
-    SHType_ShardRef => Ok(Value::String("TODO".into())),
-    SHType_Wire => Ok(Value::String("TODO".into())),
+    SHType_ShardRef => unimplemented!("ShardRef type not supported"),
+    SHType_Wire => unimplemented!("Wire type not supported"),
     SHType_ContextVar => {
       let string = unsafe { var.payload.__bindgen_anon_1.string };
       let string_slice =
         unsafe { std::slice::from_raw_parts(string.elements as *const u8, string.len as usize) };
       let string = unsafe { std::str::from_utf8_unchecked(string_slice) };
+      // ok we need to derive namespace from the string, we define then using `/` such as a/b/c
+      let mut namespaces = string
+        .split('/')
+        .map(|x| x.into())
+        .collect::<Vec<RcStrWrapper>>();
+      // name is last part, we can just pop it and remove it from the namespaces without cloning in one go
+      let name = namespaces.pop().unwrap();
       Ok(Value::Identifier(Identifier {
-        name: string.into(),
-        namespaces: Vec::new(),
+        name: name.into(),
+        namespaces,
       }))
     }
     _ => Err(format!("Unsupported Var type: {:?}", var.valueType)),
@@ -668,40 +674,41 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         let len = x.len();
         let response = self.ui.label(format!("Seq (len: {})", len));
         if self.parent_selected {
-          egui::ScrollArea::new([true, true]).show(self.ui, |ui| {
-            x.retain_mut(|value| {
-              let mut to_keep = true;
-              ui.horizontal(|ui| {
-                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
-                let response = value.accept_mut(&mut mutator).unwrap();
-                response.context_menu(|ui| {
-                  // change type
-                  if ui
-                    .button(emoji("Change 🔧"))
-                    .on_hover_text("Change value type.")
-                    .clicked()
-                  {
-                    // open a dialog to change the value
-                    ui.close_menu();
-                  }
-                  if ui
-                    .button(emoji("Remove 🗑"))
-                    .on_hover_text("Remove value.")
-                    .clicked()
-                  {
-                    to_keep = false;
-                    ui.close_menu();
-                  }
+          egui::ScrollArea::new([true, true])
+            .min_scrolled_height(100.0)
+            .show(self.ui, |ui| {
+              x.retain_mut(|value| {
+                let mut to_keep = true;
+                ui.horizontal(|ui| {
+                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let response = value.accept_mut(&mut mutator).unwrap();
+                  response.context_menu(|ui| {
+                    // change type
+                    if ui
+                      .button(emoji("Change 🔧"))
+                      .on_hover_text("Change value type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                      ui.close_menu();
+                    }
+                    if ui
+                      .button(emoji("Remove 🗑"))
+                      .on_hover_text("Remove value.")
+                      .clicked()
+                    {
+                      to_keep = false;
+                      ui.close_menu();
+                    }
+                  });
                 });
+                to_keep
               });
-              to_keep
             });
-            let response = ui.button(emoji("➕")).on_hover_text("Add new value.");
-            if response.clicked() {
-              x.push(Value::None);
-            }
-            Some(response)
-          });
+          let response = self.ui.button(emoji("➕")).on_hover_text("Add new value.");
+          if response.clicked() {
+            x.push(Value::None);
+          }
         }
         Some(response)
       }
@@ -709,80 +716,64 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         let len = x.len();
         let response = self.ui.label(format!("Table (len: {})", len));
         if self.parent_selected {
-          let table = TableBuilder::new(self.ui)
-            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .striped(true)
-            .column(Column::auto())
-            .column(Column::auto())
-            .header(16.0, |mut row| {
-              row.col(|ui| {
-                ui.label("Key");
-              });
-              row.col(|ui| {
-                ui.label("Value");
+          // like sequence but key value pairs
+          egui::ScrollArea::new([true, true])
+            .min_scrolled_height(100.0)
+            .show(self.ui, |ui| {
+              x.retain_mut(|(key, value)| {
+                let mut to_keep = true;
+                ui.horizontal(|ui| {
+                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let response = key.accept_mut(&mut mutator).unwrap();
+                  response.context_menu(|ui| {
+                    // change type
+                    if ui
+                      .button(emoji("Change 🔧"))
+                      .on_hover_text("Change key type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                      ui.close_menu();
+                    }
+                    if ui
+                      .button(emoji("Remove 🗑"))
+                      .on_hover_text("Remove key.")
+                      .clicked()
+                    {
+                      to_keep = false;
+                      ui.close_menu();
+                    }
+                  });
+                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let response = value.accept_mut(&mut mutator).unwrap();
+                  response.context_menu(|ui| {
+                    // change type
+                    if ui
+                      .button(emoji("Change 🔧"))
+                      .on_hover_text("Change value type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                      ui.close_menu();
+                    }
+                    if ui
+                      .button(emoji("Remove 🗑"))
+                      .on_hover_text("Remove value.")
+                      .clicked()
+                    {
+                      to_keep = false;
+                      ui.close_menu();
+                    }
+                  });
+                });
+                to_keep
               });
             });
-          table.body(|body| {
-            let mut to_remove = None;
-            body.rows(16.0, len, |mut row| {
-              let index = row.index();
-              row.col(|ui| {
-                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
-                let response = x[index].0.accept_mut(&mut mutator).unwrap();
-                response.context_menu(|ui| {
-                  // change type
-                  if ui
-                    .button(emoji("Change 🔧"))
-                    .on_hover_text("Change value type.")
-                    .clicked()
-                  {
-                    // open a dialog to change the value
-                    ui.close_menu();
-                  }
-                  if ui
-                    .button(emoji("Remove 🗑"))
-                    .on_hover_text("Remove value.")
-                    .clicked()
-                  {
-                    to_remove = Some(index);
-                    ui.close_menu();
-                  }
-                });
-              });
-              row.col(|ui| {
-                let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
-                let response = x[index].1.accept_mut(&mut mutator).unwrap();
-                response.context_menu(|ui| {
-                  // change type
-                  if ui
-                    .button(emoji("Change 🔧"))
-                    .on_hover_text("Change value type.")
-                    .clicked()
-                  {
-                    // open a dialog to change the value
-                    ui.close_menu();
-                  }
-                  if ui
-                    .button(emoji("Remove 🗑"))
-                    .on_hover_text("Remove value.")
-                    .clicked()
-                  {
-                    to_remove = Some(index);
-                    ui.close_menu();
-                  }
-                });
-              });
-            });
-            if let Some(index) = to_remove {
-              x.remove(index);
-            }
-          });
-          if self
+          let response = self
             .ui
             .button(emoji("➕"))
-            .on_hover_text("Add new key-value pair.")
-            .clicked()
-          {
+            .on_hover_text("Add new key value pair.");
+          if response.clicked() {
             x.push((Value::None, Value::None));
           }
         }
