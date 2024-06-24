@@ -3,6 +3,7 @@ use pest::Parser;
 use shards::types::{AutoTableVar, ClonedVar, Mesh};
 use shards_lang::ast::{Rule, ShardsParser};
 use std::{
+  collections::BTreeSet,
   sync::{atomic::AtomicBool, mpsc, Arc},
   thread,
 };
@@ -21,6 +22,21 @@ pub(crate) fn get_global_map() -> &'static AutoTableVar {
     // swap the table into the directory
     std::mem::swap(&mut directory.0 .0, &mut result.0);
     directory
+  })
+}
+
+static GLOBAL_NAME_BTREE: OnceCell<BTreeSet<String>> = OnceCell::new();
+
+pub(crate) fn get_global_name_btree() -> &'static BTreeSet<String> {
+  GLOBAL_NAME_BTREE.get_or_init(|| {
+    let mut name_btree = BTreeSet::new();
+    let map = get_global_map();
+    let shards = map.0.get_fast_static("shards").as_table().unwrap();
+    for (key, _) in shards.iter() {
+      let name: &str = key.as_ref().try_into().unwrap();
+      name_btree.insert(name.to_owned());
+    }
+    name_btree
   })
 }
 
