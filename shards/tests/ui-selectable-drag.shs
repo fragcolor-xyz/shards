@@ -35,16 +35,17 @@
         items | DoMany({
           ExpectTable = item
           UI.Selectable(
+            DragData: item
             Clicked: {Log("click")}
             DoubleClicked: {Log("Double Click")}
             ContextMenu: {
               "Menu" | UI.Label
-              UI.Button("Close" {Log("Menu")})
-              Log("Menu")
+              UI.Button("Close" {Log("Menu") | UI.CloseMenu})
             }
             IsSelected: {false}
-            {
+            Contents: {
               ; UI.DragAndDrop({
+              "Hi" | UI.Label
               "Select " >= label
               item:name | ExpectString | AppendTo(label)
               UI.Button(label {"Hi" | Log})

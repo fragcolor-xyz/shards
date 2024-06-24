@@ -1,3 +1,4 @@
+use crate::dnd::DragOp;
 use crate::util;
 use crate::util::with_possible_panic;
 use crate::CONTEXTS_NAME;
@@ -11,8 +12,8 @@ use egui::Stroke;
 use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::types::BOOL_TYPES;
 use shards::types::*;
+use shards::types::{ANY_TYPES, BOOL_TYPES};
 
 #[derive(shards::shard)]
 #[shard_info(
@@ -51,6 +52,12 @@ struct Selectable {
   )]
   context_menu: ShardsVar,
   #[shard_param(
+    "DragData",
+    "Enables dragging and sets the data for drag operations",
+    ANY_TYPES
+  )]
+  drag_data: ParamVar,
+  #[shard_param(
     "ID",
     "An optional ID value in case of ID conflicts.",
     STRING_VAR_OR_NONE_SLICE
@@ -75,6 +82,7 @@ impl Default for Selectable {
       clicked_callback: ShardsVar::default(),
       double_clicked_callback: ShardsVar::default(),
       context_menu: ShardsVar::default(),
+      drag_data: ParamVar::default(),
       id: ParamVar::default(),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
@@ -146,7 +154,7 @@ impl Shard for Selectable {
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
     let id = if self.id.is_none() {
-      ui.id()
+      ui.id().with(crate::EguiId::new(self, 0))
     } else {
       ui.id().with(TryInto::<&str>::try_into(self.id.get())?)
     };
@@ -178,106 +186,121 @@ impl Shard for Selectable {
 
     // ui.interact(rect, id, sense)
 
-    // Draw frame and contents
-    let inner_response = with_possible_panic(|| {
-      ui.push_id(id, |ui| {
-        Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+    let drag_data = self.drag_data.get();
+    let can_drag = !drag_data.is_none();
+
+    let mut err: Option<&str> = None;
+    ui.push_id(id, |ui| -> Result<(), &str> {
+      let mut body = |ui: &mut egui::Ui| {
+        // Draw frame and contents
+        with_possible_panic(|| {
+          Frame::group(ui.style())
+            .stroke(stroke)
+            .show(ui, |ui| {
+              if let Err(e) = util::activate_ui_contents(
+                context,
+                input,
+                ui,
+                &mut self.parents,
+                &mut self.contents,
+              ) {
+                err = Some(e);
+              }
+            })
+            .response
         })
-      })
-      .inner
-    })?;
+      };
 
-    // Check for errors
-    inner_response.inner?;
-    let mut response = inner_response.response;
+      let inner_response = if let Some(ls) = self.last_size {
+        let r = Rect::from_min_size(ui.cursor().min, ls);
+        let sense = if can_drag {
+          Sense::click_and_drag()
+        } else {
+          Sense::click()
+        };
+        let interact_id = id.with("inner");
+        let interact_response = ui.interact(r, interact_id, sense);
 
-    self.last_size = Some(response.rect.size());
+        let inner_response = if can_drag {
+          let mut op = DragOp::new(interact_id, ui, &ui_ctx);
+          if op.is_dragging() {
+            let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
+            let inner = ui.with_layer_id(layer_id, body).inner?;
+            op.update_dragging(layer_id, &interact_response, ui);
+            inner
+          } else {
+            op.update_not_dragging(drag_data, &interact_response, ui, &ui_ctx);
+            ui.scope(body).inner?
+          }
+        } else {
+          body(ui)?
+        };
 
-    // Find clicks in other UI elements, and ignore selection response in that case
-    let ignore_click = ui_ctx.override_selection_response.is_some();
-
-    // if let Some(ls) = self.last_size {
-    //   let r = response.rect;
-    //   // let r = Rect::from_min_size(ui.cursor().min, ls);
-    //   let resp = ui.interact(r, id, Sense::click_and_drag());
-    //   let hover = resp.hovered();
-    //   if resp.clicked() {
-    //     eprintln!("Clicked");
-    //   } else if resp.double_clicked() {
-    //     eprintln!("DoubleClicked");
-    //   } else if resp.dragged() {
-    //     eprintln!("Dragged");
-    //   }
-    //   if !self.context_menu.is_empty() {
-    //     resp.context_menu(|ui| {
-    //       util::activate_ui_contents(
-    //         context,
-    //         input,
-    //         ui,
-    //         &mut self.parents,
-    //         &mut self.context_menu,
-    //       )
-    //       .err();
-    //     });
-    //   }
-    // }
-
-    // if !self.context_menu.is_empty() {
-    if true {
-      if !ignore_click && !self.context_menu.is_empty() {
-        let mut err: Option<&str> = None;
-        if let Some(resp) = response.context_menu(|ui| {
-          err = util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.parents,
-            &mut self.context_menu,
-          )
-          .err();
-        }) {
-          response = resp.response;
+        if !self.context_menu.is_empty() {
+          interact_response.context_menu(|ui| {
+            util::activate_ui_contents(
+              context,
+              input,
+              ui,
+              &mut self.parents,
+              &mut self.context_menu,
+            )
+            .err();
+          });
         }
-      }
 
-      if response.hovered() && !ignore_click {
-        if ui.input(|i| {
-          i.pointer
-            .button_double_clicked(egui::PointerButton::Primary)
-            || i
-              .pointer
-              .button_triple_clicked(egui::PointerButton::Primary)
-        }) {
-          if self.last_clicked[0] == self.last_clicked[1] {
+        // Find clicks in other UI elements, and ignore selection response in that case
+        let ignore_click = ui_ctx.override_selection_response.is_some();
+        if interact_response.hovered() && !ignore_click {
+          if ui.input(|i| {
+            i.pointer
+              .button_double_clicked(egui::PointerButton::Primary)
+              || i
+                .pointer
+                .button_triple_clicked(egui::PointerButton::Primary)
+          }) {
+            if self.last_clicked[0] == self.last_clicked[1] {
+              let mut _unused = Var::default();
+              if self
+                .double_clicked_callback
+                .activate(context, &input, &mut _unused)
+                == WireState::Error
+              {
+                return Err("DoubleClicked callback failed");
+              }
+            }
+          } else if ui.input(|i| {
+            (i.pointer.primary_released() && !i.modifiers.any())
+              || (i.pointer.primary_clicked() && i.modifiers.any())
+          }) {
             let mut _unused = Var::default();
             if self
-              .double_clicked_callback
+              .clicked_callback
               .activate(context, &input, &mut _unused)
               == WireState::Error
             {
-              return Err("DoubleClicked callback failed");
+              return Err("Clicked callback failed");
             }
           }
-        } else if ui.input(|i| {
-          (i.pointer.primary_released() && !i.modifiers.any())
-            || (i.pointer.primary_clicked() && i.modifiers.any())
-        }) {
-          let mut _unused = Var::default();
-          if self
-            .clicked_callback
-            .activate(context, &input, &mut _unused)
-            == WireState::Error
-          {
-            return Err("Clicked callback failed");
+
+          if ui.input(|i| i.pointer.primary_clicked()) {
+            self.last_clicked[1] = self.last_clicked[0];
+            self.last_clicked[0] = Some(id);
           }
         }
 
-        if ui.input(|i| i.pointer.primary_clicked()) {
-          self.last_clicked[1] = self.last_clicked[0];
-          self.last_clicked[0] = Some(id);
-        }
-      }
+        inner_response
+      } else {
+        body(ui)?
+      };
+
+      self.last_size = Some(inner_response.rect.size());
+
+      Ok(())
+    });
+
+    if let Some(err) = err {
+      return Err(err);
     }
 
     // Outputs whether the contents are selected or not
