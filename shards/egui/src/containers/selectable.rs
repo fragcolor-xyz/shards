@@ -252,6 +252,7 @@ impl Shard for Selectable {
         // Find clicks in other UI elements, and ignore selection response in that case
         let ignore_click = ui_ctx.override_selection_response.is_some();
         if interact_response.hovered() && !ignore_click {
+          let mut double_clicked = false;
           if ui.input(|i| {
             i.pointer
               .button_double_clicked(egui::PointerButton::Primary)
@@ -260,6 +261,7 @@ impl Shard for Selectable {
                 .button_triple_clicked(egui::PointerButton::Primary)
           }) {
             if self.last_clicked[0] == self.last_clicked[1] {
+              double_clicked = true;
               let mut _unused = Var::default();
               if self
                 .double_clicked_callback
@@ -269,10 +271,13 @@ impl Shard for Selectable {
                 return Err("DoubleClicked callback failed");
               }
             }
-          } else if ui.input(|i| {
-            (i.pointer.primary_released() && !i.modifiers.any())
-              || (i.pointer.primary_clicked() && i.modifiers.any())
-          }) {
+          }
+          if !double_clicked
+            && ui.input(|i| {
+              (i.pointer.primary_released() && !i.modifiers.any())
+                || (i.pointer.primary_clicked() && i.modifiers.any())
+            })
+          {
             let mut _unused = Var::default();
             if self
               .clicked_callback
