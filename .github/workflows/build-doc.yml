@@ -29,7 +29,7 @@ jobs:
           path: docs/samples
       - name: Run samples
         env:
-          GFX_BACKEND: D3D12
+          SHARDS_GFX_BACKEND: D3D12
         shell: bash
         run: |
           cd docs/samples
