@@ -4,7 +4,7 @@
 use directory::{get_global_name_btree, get_global_visual_shs_channel_sender};
 use egui::*;
 use nanoid::nanoid;
-use std::{any::Any, borrow::Borrow, sync::mpsc};
+use std::{any::Any, sync::mpsc};
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -963,14 +963,154 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
         Some(response)
       }
-      Value::Int2(_) => todo!(),
-      Value::Int3(_) => todo!(),
-      Value::Int4(_) => todo!(),
-      Value::Int8(_) => todo!(),
-      Value::Int16(_) => todo!(),
-      Value::Float2(_) => todo!(),
-      Value::Float3(_) => todo!(),
-      Value::Float4(_) => todo!(),
+      Value::Int2(x) => {
+        // just 2 ints wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+            })
+            .response,
+        )
+      }
+      Value::Int3(x) => {
+        // just 3 ints wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+              ui.add(CustomDragValue::new(&mut x[2]));
+            })
+            .response,
+        )
+      }
+      Value::Int4(x) => {
+        // just 4 ints wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+              ui.add(CustomDragValue::new(&mut x[2]));
+              ui.add(CustomDragValue::new(&mut x[3]));
+            })
+            .response,
+        )
+      }
+      Value::Int8(x) => {
+        // just 8 ints wrapped in 2 horizontal layouts
+        // First 4
+        let response = self
+          .ui
+          .horizontal(|ui| {
+            for i in 0..4 {
+              ui.add(CustomDragValue::new(&mut x[i]));
+            }
+          })
+          .response;
+        Some(
+          response.union(
+            self
+              .ui
+              .horizontal(|ui| {
+                for i in 4..8 {
+                  ui.add(CustomDragValue::new(&mut x[i]));
+                }
+              })
+              .response,
+          ),
+        )
+      }
+      Value::Int16(x) => {
+        // just 16 ints wrapped in 8 horizontal layout
+        // First 4
+        let response = self
+          .ui
+          .horizontal(|ui| {
+            for i in 0..4 {
+              ui.add(CustomDragValue::new(&mut x[i]));
+            }
+          })
+          .response;
+        // Second 4
+        let response = response.union(
+          self
+            .ui
+            .horizontal(|ui| {
+              for i in 4..8 {
+                ui.add(CustomDragValue::new(&mut x[i]));
+              }
+            })
+            .response,
+        );
+        // Third 4
+        let response = response.union(
+          self
+            .ui
+            .horizontal(|ui| {
+              for i in 8..12 {
+                ui.add(CustomDragValue::new(&mut x[i]));
+              }
+            })
+            .response,
+        );
+        // Fourth 4
+        let response = response.union(
+          self
+            .ui
+            .horizontal(|ui| {
+              for i in 12..16 {
+                ui.add(CustomDragValue::new(&mut x[i]));
+              }
+            })
+            .response,
+        );
+        Some(response)
+      }
+      Value::Float2(x) => {
+        // just 2 floats wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+            })
+            .response,
+        )
+      }
+      Value::Float3(x) => {
+        // just 3 floats wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+              ui.add(CustomDragValue::new(&mut x[2]));
+            })
+            .response,
+        )
+      }
+      Value::Float4(x) => {
+        // just 4 floats wrapped in a horizontal layout
+        Some(
+          self
+            .ui
+            .horizontal(|ui| {
+              ui.add(CustomDragValue::new(&mut x[0]));
+              ui.add(CustomDragValue::new(&mut x[1]));
+              ui.add(CustomDragValue::new(&mut x[2]));
+              ui.add(CustomDragValue::new(&mut x[3]));
+            })
+            .response,
+        )
+      }
       Value::Seq(x) => {
         let len = x.len();
         let response = self.ui.label(format!("Seq (len: {})", len));
