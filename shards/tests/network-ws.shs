@@ -32,9 +32,8 @@ Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
       "Hello!" | Network.SendRaw(ws-client)
     })
     
-    When({done | IsMore(0)} {
-      have-ok | Log("have-ok") | Assert.Is(true)
-      have-hello | Log("have-hello") | Assert.Is(true)
+    When({done | IsMore(0) | And | have-ok | And | have-hello} {
+      Log("Succeeded")
       none | Stop
     })
     Animation.Timer | When(IsMore(5.0) {
