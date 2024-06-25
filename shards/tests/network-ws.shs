@@ -32,7 +32,7 @@ Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
       "Hello!" | Network.SendRaw(ws-client)
     })
     
-    When({done | IsMore(2)} {
+    When({done | IsMore(0)} {
       have-ok | Log("have-ok") | Assert.Is(true)
       have-hello | Log("have-hello") | Assert.Is(true)
       none | Stop
