@@ -314,6 +314,15 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
   }
 }
 
+
+void ShapeRenderer::addSolidTriangle(float3 a, float3 b, float3 c, float4 color, bool culling) {
+  // Render to different vector buffer based on whether culling is enabled
+  std::vector<SolidVertex> &solidVertexVec = culling ? solidVertices : unculledSolidVertices;
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+}
+
 void ShapeRenderer::begin() {
   lineVertices.clear();
   solidVertices.clear();

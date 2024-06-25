@@ -372,7 +372,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     // Generate grouping hash
-    HasherXXH128<HasherDefaultVisitor> hasher;
+    HasherXXH3<HasherDefaultVisitor> hasher;
     hasher(size_t(mesh->getId()));
     hasher(data.clipRect);
     for (auto &texture : data.textures)
@@ -652,7 +652,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
         // Generate texture binding hash
-        HasherXXH128<HasherDefaultVisitor> hasher;
+        HasherXXH3<HasherDefaultVisitor> hasher;
         for (auto &v : firstDrawableData.textures)
           hasher(v ? size_t(v.id) : size_t(0));
         for (auto &v : firstDrawableData.buffers)

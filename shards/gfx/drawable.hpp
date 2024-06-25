@@ -4,7 +4,7 @@
 #include "fwd.hpp"
 #include "linalg.hpp"
 #include "material.hpp"
-#include "hasherxxh128.hpp"
+#include "hasherxxh3.hpp"
 #include <shards/core/pmr/wrapper.hpp>
 #include <shards/core/pmr/vector.hpp>
 #include "bounds.hpp"

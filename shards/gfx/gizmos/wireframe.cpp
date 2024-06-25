@@ -103,7 +103,7 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable, 
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     allocator->reset();
     TransformUpdaterCollector collector(*allocator.get());
-    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get(), color); };
+    collector.collector = [&](DrawablePtr drawable, const float4x4 &) { overlayWireframe(queue, *drawable.get(), color); };
     collector.update(*treeDrawable);
   }
 }

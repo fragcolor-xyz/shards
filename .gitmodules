@@ -96,3 +96,6 @@
 [submodule "deps/sqlite/sqlite-vec"]
 	path = deps/sqlite/sqlite-vec
 	url = https://github.com/shards-lang/sqlite-vec.git
+[submodule "deps/JoltPhysics"]
+	path = deps/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics.git

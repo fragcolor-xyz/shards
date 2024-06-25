@@ -8,28 +8,6 @@ namespace shards {
 // let's do some stack protection here
 constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
 
-template <typename TDigest> void hashReset(XXH3_state_t *state) {
-  if constexpr (sizeof(TDigest) == 8) {
-    XXH3_64bits_reset(state);
-  } else {
-    XXH3_128bits_reset(state);
-  }
-}
-template <typename TDigest> TDigest hashDigest(XXH3_state_t *state) {
-  if constexpr (sizeof(TDigest) == 8) {
-    return XXH3_64bits_digest(state);
-  } else {
-    return XXH3_128bits_digest(state);
-  }
-}
-template <typename TDigest> XXH_errorcode hashUpdate(XXH3_state_t *state, const void *input, size_t len) {
-  if constexpr (sizeof(TDigest) == 8) {
-    return XXH3_64bits_update(state, input, len);
-  } else {
-    return XXH3_128bits_update(state, input, len);
-  }
-}
-
 #define PUSH_TMP_HASH_SET()                 \
   int hashSetIndex = hashSetCounter++;      \
   DEFER({ --hashSetCounter; });             \

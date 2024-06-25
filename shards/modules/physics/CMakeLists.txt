@@ -1,6 +1,14 @@
-add_rust_library(NAME shards-physics
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+set(physics_SOURCES
+  physics.cpp
+  shapes.cpp
+  debug.cpp
+)
 
 add_shards_module(physics
-  RUST_TARGETS shards-physics-rust
-  REGISTER_SHARDS physics)
+  SOURCES ${physics_SOURCES}
+  REGISTER_SHARDS physics shapes debug)
+
+target_link_libraries(shards-module-physics
+  Jolt
+  gfx # For glTF interface
+)

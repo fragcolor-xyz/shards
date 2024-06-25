@@ -25,11 +25,14 @@ struct TransformUpdaterCollector {
   };
   shards::pmr::vector<Node> queue;
 
+  bool ignoreRootTransform{};
+
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
   static thread_local std::set<MeshTreeDrawable *> visited;
 #endif
 
-  shards::Function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
+  shards::Function<void(const DrawablePtr &, const float4x4 &transform)> collector = [](const DrawablePtr &,
+                                                                                        const float4x4 &transform) {};
 
   TransformUpdaterCollector(allocator_type alloc) : queue(alloc) {}
 
@@ -66,12 +69,50 @@ struct TransformUpdaterCollector {
           drawable->transform = node.node->resolvedTransform;
           drawable->update();
         }
-        collector(drawable);
+        collector(drawable, drawable->transform);
       }
 
       for (auto &child : node.node->getChildren()) {
         queue.push_back(Node{
             node.node->resolvedTransform,
+            child.get(),
+            node.updated,
+        });
+      }
+    }
+  }
+
+  // Traverses the transform tree without modifying the objects
+  void updateNoModify(MeshTreeDrawable &root) {
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
+    auto &visited = TransformUpdaterCollector::visited;
+    visited.clear();
+#endif
+
+    queue.push_back(Node{float4x4(linalg::identity), &root});
+
+    while (!queue.empty()) {
+      Node node = queue.back();
+      queue.pop_back();
+
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
+      shassert(!visited.contains(node.node));
+      visited.insert(node.node);
+#endif
+
+      bool isRoot = node.node == &root;
+
+      auto mat = node.node->trs.getMatrix();
+      shassert(mat != float4x4());
+      float4x4 resolvedTransform = (ignoreRootTransform && isRoot) ? linalg::identity : linalg::mul(node.parentTransform, mat);
+
+      for (auto &drawable : node.node->drawables) {
+        collector(drawable, resolvedTransform);
+      }
+
+      for (auto &child : node.node->getChildren()) {
+        queue.push_back(Node{
+            resolvedTransform,
             child.get(),
             node.updated,
         });

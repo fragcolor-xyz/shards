@@ -16,7 +16,7 @@
 #include "renderer.hpp"
 #include "log.hpp"
 #include "graph.hpp"
-#include "hasherxxh128.hpp"
+#include "hasherxxh3.hpp"
 #include "../core/pool.hpp"
 #include "worker_memory.hpp"
 #include <shards/core/pmr/wrapper.hpp>

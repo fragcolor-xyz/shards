@@ -74,6 +74,8 @@ public:
   void addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color, bool culling = true,
                uint32_t resolution = 64);
 
+  void addSolidTriangle(float3 a, float3 b, float3 c, float4 color, bool culling = true);
+
   void begin();
   void end(DrawQueuePtr queue);
 };

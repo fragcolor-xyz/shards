@@ -158,7 +158,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   RendererStorage &storage = evaluator.getStorage();
   WorkerMemory &workerMemory = storage.workerMemory;
 
-  HasherXXH128<PipelineHashVisitor> sharedHasher;
+  HasherXXH3<PipelineHashVisitor> sharedHasher;
   sharedHasher(rtl);
   sharedHasher(evaluateContext.viewData.cachedView.isFlipped);
   sharedHasher(buildPipelineOptions);
