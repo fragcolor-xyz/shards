@@ -353,6 +353,10 @@ jobs:
 
           echo "Running ui-drag-and-drop"
           build/shards new shards/tests/ui-drag-and-drop.shs
+
+          
+          echo "Running ui-selectable-drag"
+          build/shards new shards/tests/ui-selectable-drag.shs
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12

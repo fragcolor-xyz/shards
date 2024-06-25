@@ -16,9 +16,10 @@ struct AddFont {
 }
 
 mod add_font;
-mod painter;
 mod reset;
 mod style;
+mod painter;
+mod debug;
 pub(crate) mod style_util;
 
 pub fn register_shards() {
@@ -26,4 +27,5 @@ pub fn register_shards() {
   register_legacy_shard::<AddFont>();
   style::register_shards();
   painter::register_shards();
+  debug::register_shards();
 }

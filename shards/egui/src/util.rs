@@ -228,13 +228,21 @@ pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
 
 pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let extrusion: f32 =
-    get_or_var(tbl.get_static("Extrusion").ok_or("Extrusion missing")?, ctx).try_into()?;
+  let spread: f32 =
+    get_or_var(tbl.get_static("Spread").ok_or("Spread missing")?, ctx).try_into()?;
+  let blur: f32 = get_or_var(tbl.get_static("Blur").ok_or("Blur missing")?, ctx).try_into()?;
+  let spread: f32 =
+    get_or_var(tbl.get_static("Spread").ok_or("Spread missing")?, ctx).try_into()?;
   let color: egui::Color32 = into_color(get_or_var(
     tbl.get_static("Color").ok_or("Color missing")?,
     ctx,
   ))?;
-  Ok(egui::epaint::Shadow { extrusion, color })
+  Ok(egui::epaint::Shadow {
+    spread,
+    blur,
+    offset: egui::Vec2::ZERO,
+    color,
+  })
 }
 
 pub fn into_stroke(v: &Var, ctx: &Context) -> Result<egui::Stroke, &'static str> {

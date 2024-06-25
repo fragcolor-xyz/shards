@@ -76,6 +76,7 @@ impl Shard for CanvasShard {
 
     self.inner_exposed.clear();
     self.contents.compose(data)?;
+    crate::util::require_context(&mut self.required);
     shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
     shards::util::require_shards_contents(&mut self.required, &self.contents);
 

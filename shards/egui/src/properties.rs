@@ -157,7 +157,9 @@ impl Shard for PropertyShard {
       }
       Property::IsAnythingBeingDragged => {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
-        let is_dragging = egui_ctx.memory(|x| x.is_anything_being_dragged());
+        let is_dragging = egui_ctx.dragged_id().is_some()
+          || egui_ctx.drag_started_id().is_some()
+          || egui_ctx.drag_stopped_id().is_some();
         Ok(is_dragging.into())
       }
       Property::CursorPosition => {
