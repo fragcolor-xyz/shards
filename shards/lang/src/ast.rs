@@ -105,6 +105,16 @@ macro_rules! impl_custom_state {
           .and_then(|state| state.as_any_mut().downcast_mut::<T>())
       }
 
+      /// Uses a custom state of a specific type, if it exists within a closure.
+      /// This method simplifies working with custom state by providing a safe, ergonomic API.
+      pub fn with_custom_state<T: 'static, R, F>(&mut self, f: F) -> Option<R>
+      where
+        T: CustomAny,
+        F: FnOnce(&mut T) -> R,
+      {
+        self.get_custom_state::<T>().map(|state| f(state))
+      }
+
       /// Gets or inserts custom state of a specific type.
       /// If the state doesn't exist, it's created using the provided default function.
       pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T

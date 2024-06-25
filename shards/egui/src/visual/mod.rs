@@ -197,11 +197,24 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
   }
 }
 
-enum SwapStateResult {
-  Done(Block),
+enum SwapStateResult<T> {
+  Done(T),
   Continue,
   Close,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+struct ParamSwapState {
+  receiver: Option<UniqueReceiver<ClonedVar>>,
+  window_pos: Pos2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ParamState {
+  swap_state: Option<ParamSwapState>,
+}
+
+impl_custom_any!(ParamState);
 
 #[derive(Debug, Clone, PartialEq)]
 struct BlockSwapState {
@@ -222,9 +235,15 @@ struct BlockState {
 impl_custom_any!(BlockState);
 
 #[derive(Debug, Clone, PartialEq)]
+struct FunctionSwapState {
+  receiver: Option<UniqueReceiver<ClonedVar>>,
+  window_pos: Pos2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 struct FunctionState {
   params_sorted: bool,
-  receiver: Option<UniqueReceiver<ClonedVar>>,
+  swap_state: Option<FunctionSwapState>,
 }
 
 #[derive(Debug)]
@@ -338,29 +357,29 @@ impl<'a> VisualAst<'a> {
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
     let state = x.get_or_insert_custom_state(|| FunctionState {
       params_sorted: false,
-      receiver: None,
+      swap_state: None,
     });
     let params_sorted = state.params_sorted;
 
-    // check if we have a result from a pending operation
-    let has_result = state
-      .receiver
-      .as_mut()
-      .and_then(|r| r.get_mut())
-      .map(|r| r.try_recv());
+    // // check if we have a result from a pending operation
+    // let has_result = state
+    //   .receiver
+    //   .as_mut()
+    //   .and_then(|r| r.get_mut())
+    //   .map(|r| r.try_recv());
 
-    if let Some(Ok(result)) = has_result {
-      shlog_debug!("Got result: {:?}", result);
-      // reset the receiver
-      state.receiver = None;
-    }
+    // if let Some(Ok(result)) = has_result {
+    //   shlog_debug!("Got result: {:?}", result);
+    //   // reset the receiver
+    //   state.receiver = None;
+    // }
 
     let directory = directory::get_global_map();
     let shards = directory.0.get_fast_static("shards");
     let shards = shards.as_table().unwrap();
     let shard_name = x.name.name.as_str();
     let shard_name_var = Var::ephemeral_string(shard_name);
-    if let Some(shard) = shards.get(shard_name_var) {
+    let response = if let Some(shard) = shards.get(shard_name_var) {
       let shard = shard.as_table().unwrap();
 
       let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
@@ -467,21 +486,54 @@ impl<'a> VisualAst<'a> {
                       .on_hover_text("Change value type.")
                       .clicked()
                     {
+                      // let (sender, receiver) = mpsc::channel();
+                      // let query = Var::ephemeral_string("").into();
+                      // get_global_visual_shs_channel_sender()
+                      //   .send((query, sender))
+                      //   .unwrap();
+                      // x.get_custom_state::<FunctionState>().unwrap().receiver =
+                      //   Some(UniqueReceiver::new(receiver));
+
                       // open a dialog to change the value
-                      let (sender, receiver) = mpsc::channel();
-                      let query = Var::ephemeral_string("").into();
-                      get_global_visual_shs_channel_sender()
-                        .send((query, sender))
-                        .unwrap();
-                      x.get_custom_state::<FunctionState>().unwrap().receiver =
-                        Some(UniqueReceiver::new(receiver));
+
+                      let state = x.params.as_mut().unwrap()[idx]
+                        .get_or_insert_custom_state(|| ParamState { swap_state: None });
+                      let mouse_pos = ui
+                        .ctx()
+                        .input(|i| i.pointer.hover_pos().unwrap_or_default());
+                      state.swap_state = Some(ParamSwapState {
+                        receiver: None,
+                        window_pos: mouse_pos,
+                      });
                     }
                   });
 
-                  // draw the value
                   x.params.as_mut().map(|params| {
+                    // draw the value
                     let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
                     params[idx].value.accept_mut(&mut mutator);
+
+                    // process changes
+                    let new_value = params[idx]
+                      .with_custom_state::<ParamState, Option<Value>, _>(|state| {
+                        if let Some(swap_state) = state.swap_state.as_mut() {
+                          match select_value_modal(ui, swap_state) {
+                            SwapStateResult::<Value>::Done(f) => {
+                              state.swap_state = None;
+                              return Some(f);
+                            }
+                            SwapStateResult::Close => {
+                              state.swap_state = None;
+                            }
+                            _ => {}
+                          }
+                        }
+                        None
+                      })
+                      .and_then(|x| x);
+                    if let Some(new_value) = new_value {
+                      params[idx].value = new_value;
+                    }
                   });
                 })
                 .header_response
@@ -493,10 +545,11 @@ impl<'a> VisualAst<'a> {
       None
     } else {
       Some(self.ui.label("Unknown shard"))
-    }
+    };
+    response
   }
 
-  fn select_shard_modal(&mut self, swap_state: &mut BlockSwapState) -> SwapStateResult {
+  fn select_shard_modal(&mut self, swap_state: &mut BlockSwapState) -> SwapStateResult<Block> {
     egui::Window::new("")
       .id(egui::Id::new(swap_state as *mut _ as u64))
       .open(&mut true)
@@ -718,7 +771,7 @@ impl<'a> VisualAst<'a> {
         let result = ui
           .horizontal(|ui| {
             if ui.button("Cancel").clicked() {
-              SwapStateResult::Close
+              SwapStateResult::<Block>::Close
             } else {
               SwapStateResult::Continue
             }
@@ -816,6 +869,159 @@ impl<'a> VisualAst<'a> {
 
     Some(response)
   }
+}
+
+fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapStateResult<Value> {
+  egui::Window::new("")
+    .id(egui::Id::new(swap_state as *mut _ as u64))
+    .open(&mut true)
+    .collapsible(false)
+    .resizable(false)
+    .title_bar(false)
+    .current_pos(swap_state.window_pos)
+    .frame(egui::Frame::popup(ui.style()))
+    .show(ui.ctx(), |ui| {
+      let result = ui
+        .horizontal(|ui| {
+          if ui
+            .button("Bool")
+            .on_hover_text("A boolean value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Boolean(false));
+          }
+          if ui
+            .button("Int")
+            .on_hover_text("An integer value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Number(Number::Integer(0)));
+          }
+          if ui.button("Float").on_hover_text("A float value.").clicked() {
+            return SwapStateResult::Done(Value::Number(Number::Float(0.0)));
+          }
+          if ui
+            .button("String")
+            .on_hover_text("A string value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::String("".into()));
+          }
+          if ui.button("Bytes").on_hover_text("A bytes value.").clicked() {
+            return SwapStateResult::Done(Value::Bytes(Vec::new().into()));
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      match result {
+        SwapStateResult::<Value>::Done(_) => return result,
+        _ => {}
+      }
+      let result = ui
+        .horizontal(|ui| {
+          if ui
+            .button("Float2")
+            .on_hover_text("A float2 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Float2([0.0, 0.0]));
+          }
+          if ui
+            .button("Float3")
+            .on_hover_text("A float3 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Float3([0.0, 0.0, 0.0]));
+          }
+          if ui
+            .button("Float4")
+            .on_hover_text("A float4 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Float4([0.0, 0.0, 0.0, 0.0]));
+          }
+          if ui.button("Int2").on_hover_text("An int2 value.").clicked() {
+            return SwapStateResult::Done(Value::Int2([0, 0]));
+          }
+          if ui.button("Int3").on_hover_text("An int3 value.").clicked() {
+            return SwapStateResult::Done(Value::Int3([0, 0, 0]));
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      match result {
+        SwapStateResult::<Value>::Done(_) => return result,
+        _ => {}
+      }
+      let result = ui
+        .horizontal(|ui| {
+          if ui.button("Int4").on_hover_text("An int4 value.").clicked() {
+            return SwapStateResult::Done(Value::Int4([0, 0, 0, 0]));
+          }
+          if ui.button("Int8").on_hover_text("An int8 value.").clicked() {
+            return SwapStateResult::Done(Value::Int8([0, 0, 0, 0, 0, 0, 0, 0]));
+          }
+          if ui
+            .button("Int16")
+            .on_hover_text("An int16 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Int16([0; 16]));
+          }
+          if ui
+            .button("Seq")
+            .on_hover_text("A sequence of values.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Seq(Vec::new()));
+          }
+          if ui
+            .button("Table")
+            .on_hover_text("A table of key-value pairs.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Value::Table(Vec::new()));
+          }
+          if ui.button("Color").on_hover_text("A color value.").clicked() {
+            return SwapStateResult::Done(Value::Func(Function {
+              name: Identifier {
+                name: "color".into(),
+                namespaces: Vec::new(),
+              },
+              params: Some(vec![
+                // 4 Number/Integer values
+                Param {
+                  name: None,
+                  value: Value::Number(Number::Integer(255)),
+                  custom_state: None,
+                },
+                Param {
+                  name: None,
+                  value: Value::Number(Number::Integer(255)),
+                  custom_state: None,
+                },
+                Param {
+                  name: None,
+                  value: Value::Number(Number::Integer(255)),
+                  custom_state: None,
+                },
+                Param {
+                  name: None,
+                  value: Value::Number(Number::Integer(255)),
+                  custom_state: None,
+                },
+              ]),
+              custom_state: None,
+            }));
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      result
+    })
+    .unwrap()
+    .inner
+    .unwrap()
 }
 
 impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
