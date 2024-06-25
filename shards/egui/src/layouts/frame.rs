@@ -236,10 +236,10 @@ impl LegacyShard for Frame {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let inner_margin = self.innerMargin.get();
       let inner_margin = if inner_margin.is_none() {
-        egui::style::Margin::default()
+        egui::Margin::default()
       } else {
         let (left, right, top, bottom) = inner_margin.try_into()?;
-        egui::style::Margin {
+        egui::Margin {
           left,
           right,
           top,
@@ -248,10 +248,10 @@ impl LegacyShard for Frame {
       };
       let outer_margin = self.outerMargin.get();
       let outer_margin = if outer_margin.is_none() {
-        egui::style::Margin::default()
+        egui::Margin::default()
       } else {
         let (left, right, top, bottom) = outer_margin.try_into()?;
-        egui::style::Margin {
+        egui::Margin {
           left,
           right,
           top,

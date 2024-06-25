@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::bindings::SHInstanceData;
 use crate::util;
 use crate::Context as UIContext;
 use crate::EguiId;
@@ -19,27 +18,40 @@ use shards::types::*;
 
 const DRAG_THRESHOLD: f32 = 15.0;
 
-pub fn drag_source<R>(
-  ui: &mut egui::Ui,
-  ctx: &UIContext,
-  payload: &Var,
-  drag_size: Vec2,
-  id: egui::Id,
-  body: impl FnOnce(&mut egui::Ui) -> R,
-) -> InnerResponse<R> {
-  let is_dropped = ui.input(|i| i.pointer.any_released());
-  let is_dragging_something = !ctx.dnd_value.borrow().0.is_none();
-  let is_being_dragged = is_dragging_something && ui.memory(|mem| mem.is_being_dragged(id));
+pub struct DragOp {
+  is_dragging_something: bool,
+  is_being_dragged: bool,
+  cursor_already_set: bool,
+}
 
-  let cursor_already_set =
-    is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
+impl DragOp {
+  pub fn new(id: egui::Id, ui: &mut egui::Ui, ctx: &UIContext) -> Self {
+    let is_dropped = ui.ctx().drag_stopped_id().is_some();
+    let is_dragging_something = !ctx.dnd_value.borrow().0.is_none();
+    let is_being_dragged = is_dragging_something && ctx.egui_ctx.is_being_dragged(id);
 
-  if !is_being_dragged {
-    let rect = Rect::from_min_size(ui.cursor().min, drag_size);
+    let cursor_already_set =
+      is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
 
-    // Check for drags:
-    let response = ui.interact(rect, id, egui::Sense::drag());
-    if response.hovered() && !cursor_already_set {
+    Self {
+      is_dragging_something,
+      is_being_dragged,
+      cursor_already_set,
+    }
+  }
+
+  pub fn is_dragging(&self) -> bool {
+    self.is_being_dragged
+  }
+
+  pub fn update_not_dragging(
+    &mut self,
+    payload: &Var,
+    response: &egui::Response,
+    ui: &mut egui::Ui,
+    ctx: &UIContext,
+  ) {
+    if response.hovered() && !self.cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
     }
 
@@ -59,19 +71,17 @@ pub fn drag_source<R>(
         }
       }
     }
+  }
 
-    let inner = ui.scope(body);
-
-    inner
-  } else {
-    if !cursor_already_set {
+  pub fn update_dragging(
+    &mut self,
+    layer_id: egui::LayerId,
+    response: &egui::Response,
+    ui: &mut egui::Ui,
+  ) {
+    if !self.cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
     }
-
-    // Paint the body to a new layer:
-    let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
-    let inner = ui.with_layer_id(layer_id, body);
-    let response = &inner.response;
 
     // Now we move the visuals of the body to where the mouse is.
     // Normally you need to decide a location for a widget first,
@@ -79,15 +89,35 @@ pub fn drag_source<R>(
     // However, a dragged component cannot be interacted with anyway
     // (anything with `Order::Tooltip` always gets an empty [`Response`])
     // So this is fine!
-
-    if is_dragging_something {
+    if self.is_dragging_something {
       if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
         let delta = pointer_pos - response.rect.center();
-        ui.ctx().translate_layer(layer_id, delta);
+        ui.ctx()
+          .transform_layer_shapes(layer_id, egui::emath::TSTransform::from_translation(delta));
       }
     }
+  }
+}
 
+pub fn drag_source<R>(
+  ui: &mut egui::Ui,
+  ctx: &UIContext,
+  payload: &Var,
+  drag_size: Vec2,
+  id: egui::Id,
+  body: impl FnOnce(&mut egui::Ui) -> R,
+) -> InnerResponse<R> {
+  let mut op = DragOp::new(id, ui, ctx);
+  let rect = Rect::from_min_size(ui.cursor().min, drag_size);
+  let response = ui.interact(rect, id, egui::Sense::drag());
+  if op.is_dragging() {
+    let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
+    let inner = ui.with_layer_id(layer_id, body);
+    op.update_dragging(layer_id, &response, ui);
     inner
+  } else {
+    op.update_not_dragging(payload, &response, ui, ctx);
+    ui.scope(body)
   }
 }
 
@@ -98,7 +128,7 @@ pub fn drop_target<R>(
   visualize: bool,
   body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
-  let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+  let is_being_dragged = ui.ctx().dragged_id().is_some() || ui.ctx().drag_stopped_id().is_some();
 
   let margin = Vec2::splat(4.0);
 
@@ -315,8 +345,8 @@ impl Shard for DragDrop {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       });
 
-      let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-      if ui.input(|i| i.pointer.any_released()) {
+      let is_being_dragged = ui.ctx().drag_stopped_id().is_some();
+      if ui.ctx().drag_stopped_id().is_some() {
         // Reset cursor
         ui.ctx().set_cursor_icon(egui::CursorIcon::Default);
         if is_being_dragged && accepts_value && inner.response.hovered() {
@@ -334,7 +364,7 @@ impl Shard for DragDrop {
 
       inner.inner?
     } else {
-      let id = ui.id().with("dragdrop");
+      let id = ui.id().with(EguiId::new(self, 0));
       let inner = drag_source(ui, ui_ctx, &input, self.prev_size, id, |ui| {
         let r =
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents);

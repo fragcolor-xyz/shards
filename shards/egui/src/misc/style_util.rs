@@ -41,8 +41,8 @@ pub(crate) fn get_font_id(font_id: Table) -> Result<egui::FontId, &'static str> 
 
 pub(crate) fn get_margin(
   margin: (f32, f32, f32, f32),
-) -> Result<egui::style::Margin, &'static str> {
-  Ok(egui::style::Margin {
+) -> Result<egui::Margin, &'static str> {
+  Ok(egui::Margin {
     left: margin.0,
     right: margin.1,
     top: margin.2,
@@ -64,7 +64,9 @@ pub(crate) fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static
     (shadow.get_static("extrusion"), shadow.get_static("color"))
   {
     Ok(egui::epaint::Shadow {
-      extrusion: extrusion.try_into().map_err(|e| {
+      blur: 0.0,
+      offset: Default::default(),
+      spread: extrusion.try_into().map_err(|e| {
         shlog!("{}: {}", "extrusion", e);
         "Invalid attribute value received"
       })?,

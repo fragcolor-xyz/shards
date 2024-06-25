@@ -618,7 +618,7 @@ struct StopWire : public WireBase {
         wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
-      }
+    }
     }
 
     if (unlikely(!wire || context == wire->context)) {

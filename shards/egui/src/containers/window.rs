@@ -8,9 +8,9 @@ use crate::util;
 use crate::util::with_possible_panic;
 use crate::Anchor;
 use crate::ANCHOR_TYPES;
-use crate::BOOL_VAR_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::cstr;
+use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
@@ -19,14 +19,9 @@ use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::{
   common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
-  Types, Var, SHARDS_OR_NONE_TYPES, STRING_TYPES,
+  Types, Var, SHARDS_OR_NONE_TYPES,
 };
-
-use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
-use shards::{
-  core::register_shard,
-  types::{BOOL_OR_NONE_SLICE, INT_OR_NONE_TYPES_SLICE, STRING_VAR_OR_NONE_SLICE},
-};
+use shards::{core::register_shard, types::STRING_VAR_OR_NONE_SLICE};
 
 lazy_static! {
   static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
@@ -52,14 +47,42 @@ struct WindowShard {
   pub position: ParamVar,
   #[shard_param("Anchor", "Corner or center of the screen.", ANCHOR_TYPES)]
   pub anchor: ParamVar,
-  #[shard_param("Width", "The width of the rendered window.", INT_OR_NONE_TYPES_SLICE)]
-  pub width: ParamVar,
   #[shard_param(
-    "Height",
-    "The height of the rendered window.",
-    INT_OR_NONE_TYPES_SLICE
+    "MinWidth",
+    "The minimum width of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
   )]
-  pub height: ParamVar,
+  pub min_width: ParamVar,
+  #[shard_param(
+    "MinHeight",
+    "The minimum height of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub min_height: ParamVar,
+  #[shard_param(
+    "MaxWidth",
+    "The maximum width of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub max_width: ParamVar,
+  #[shard_param(
+    "MaxHeight",
+    "The maximum height of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub max_height: ParamVar,
+  #[shard_param(
+    "FixedWidth",
+    "The fixed size of the window. overrides all other min/max sizes.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub fixed_width: ParamVar,
+  #[shard_param(
+    "FixedHeight",
+    "The fixed size of the window. overrides all other min/max sizes.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub fixed_height: ParamVar,
   #[shard_param(
     "Closed",
     "When provided with a callback, this window will have a close button and call this when pressed.",
@@ -94,8 +117,12 @@ impl Default for WindowShard {
       title: ParamVar::default(),
       position: ParamVar::default(),
       anchor: ParamVar::default(),
-      width: ParamVar::default(),
-      height: ParamVar::default(),
+      min_width: ParamVar::default(),
+      min_height: ParamVar::default(),
+      max_width: ParamVar::default(),
+      max_height: ParamVar::default(),
+      fixed_width: ParamVar::default(),
+      fixed_height: ParamVar::default(),
       closed: ShardsVar::default(),
       flags: ParamVar::default(),
       id: ParamVar::default(),
@@ -203,18 +230,37 @@ impl Shard for WindowShard {
         window.anchor(anchor.into(), offset)
       };
 
-      let width = self.width.get();
-      if !width.is_none() {
-        let width: i64 = width.try_into()?;
-        window = window.min_width(width as f32).default_width(width as f32);
-      }
-
-      let height = self.height.get();
-      if !height.is_none() {
-        let height: i64 = height.try_into()?;
+      let min_width: f32 = self.min_width.get().try_into().unwrap_or(-1.0);
+      let min_height: f32 = self.min_height.get().try_into().unwrap_or(-1.0);
+      let max_width: f32 = self.max_width.get().try_into().unwrap_or(-1.0);
+      let max_height: f32 = self.max_height.get().try_into().unwrap_or(-1.0);
+      let fixed_width: f32 = self.fixed_width.get().try_into().unwrap_or(-1.0);
+      let fixed_height: f32 = self.fixed_height.get().try_into().unwrap_or(-1.0);
+      if fixed_width >= 0.0 {
         window = window
-          .min_height(height as f32)
-          .default_height(height as f32)
+          .min_width(fixed_width)
+          .max_width(fixed_width)
+          .default_width(fixed_width);
+      } else {
+        if min_width >= 0.0 {
+          window = window.min_width(min_width);
+        }
+        if max_width >= 0.0 {
+          window = window.max_width(max_width);
+        }
+      }
+      if fixed_height >= 0.0 {
+        window = window
+          .min_height(fixed_height)
+          .max_height(fixed_height)
+          .default_height(fixed_height);
+      } else {
+        if min_height >= 0.0 {
+          window = window.min_height(min_height);
+        }
+        if max_height >= 0.0 {
+          window = window.max_height(max_height);
+        }
       }
 
       if self.has_close_button {
@@ -247,13 +293,6 @@ impl Shard for WindowShard {
 
       with_possible_panic(|| {
         window.show(gui_ctx, |ui| {
-          if !width.is_none() {
-            ui.set_width(ui.available_width());
-          }
-          if !height.is_none() {
-            ui.set_height(ui.available_height());
-          }
-
           if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             .is_err()
           {

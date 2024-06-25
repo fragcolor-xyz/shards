@@ -93,7 +93,7 @@ impl Shard for AreaShard {
 
     let ui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
-    let mut frame = egui::Area::new(EguiId::new(self, 1));
+    let mut frame = egui::Area::new(EguiId::new(self, 1).into());
 
     let order: Option<Order> = self.order.get().try_into().ok();
     frame = frame.order(order.unwrap_or(Order::Background).into());

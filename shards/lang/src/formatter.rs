@@ -1,7 +1,7 @@
 use std::{
   fs::{self, File},
   io::Read,
-  path::Path,
+  path::Path, str::CharIndices,
 };
 
 use crate::rule_visitor::RuleVisitor;
@@ -137,12 +137,12 @@ impl<'a> FormatterVisitor<'a> {
     let mut us: UserStyling = UserStyling::default();
     let mut comment_start: Option<usize> = None;
     let interpolated = &self.input[from..until];
-    for (i, c) in interpolated.chars().enumerate() {
+    for (i, c) in interpolated.char_indices() {
       if c == ';' && comment_start.is_none() {
         comment_start = Some(i + from + 1);
       } else if c == '\n' {
         if let Some(start) = comment_start {
-          let comment = &self.input[start..i + from];
+          let comment = &self.input[start..i+from];
           let comment_str = comment.to_string();
           us.lines.push(UserLine::Comment(comment_str));
           comment_start = None;
@@ -163,7 +163,7 @@ impl<'a> FormatterVisitor<'a> {
 
   fn interpolate(&mut self, new_pair: &Pair<Rule>) {
     self.interpolate_at_pos(new_pair.as_span().start());
-  }
+  } 
 
   // Will interpolate any user-defined comments and newline styling
   // up until the given position

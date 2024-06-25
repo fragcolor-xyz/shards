@@ -322,7 +322,7 @@ impl LegacyShard for ListBox {
                 }
               }
             } else {
-              let inner_margin = egui::style::Margin::same(3.0);
+              let inner_margin = egui::Margin::same(3.0);
               let background_id = ui.painter().add(egui::Shape::Noop);
               let outer_rect = ui.available_rect_before_wrap();
               let mut inner_rect = outer_rect;
