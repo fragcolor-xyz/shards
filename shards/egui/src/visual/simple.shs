@@ -11,20 +11,10 @@
   "x": 10
   10: 20
   "y": 30
-  ; 10 sample rows
-  1: 2
-  2: 4
-  3: 6
-  4: 8
-  5: 10
-  6: 12
-  7: 14
-  8: 16
-  9: 18
-  10: 20
+  2.0: 40
 } | ToJson | Http.Post("http://example.com")
 UI.LayoutClass(
   MainDirection: LayoutDirection::LeftToRight
   CrossAlign: LayoutAlign::Top
   MainAlign: LayoutAlign::Left
-) = img-overlay-layout
+) | Set(img-overlay-layout)
