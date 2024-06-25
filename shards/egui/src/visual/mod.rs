@@ -383,6 +383,7 @@ impl<'a> VisualAst<'a> {
                 Param {
                   name: Some(name.into()),
                   value: var_to_value(&default_value).unwrap(),
+                  custom_state: None,
                 }
               });
 
@@ -621,6 +622,42 @@ impl<'a> VisualAst<'a> {
             {
               return SwapStateResult::Done(Block {
                 content: BlockContent::Const(Value::Table(Vec::new())),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Color").on_hover_text("A color value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Func(Function {
+                  name: Identifier {
+                    name: "color".into(),
+                    namespaces: Vec::new(),
+                  },
+                  params: Some(vec![
+                    // 4 Number/Integer values
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                  ]),
+                  custom_state: None,
+                })),
                 line_info: None,
                 custom_state: None,
               });

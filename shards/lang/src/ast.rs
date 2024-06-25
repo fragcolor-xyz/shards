@@ -15,6 +15,20 @@ use crate::{RcBytesWrapper, RcStrWrapper};
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
 
+/// CustomAny trait allows for flexible, type-erased storage of custom state within AST nodes.
+/// This approach was chosen to balance performance, flexibility, and simplicity.
+///
+/// Benefits:
+/// - Direct access to custom state without additional lookups
+/// - Simplifies state management by keeping it close to related data
+/// - Minimizes memory overhead through use of Box<dyn CustomAny>
+///
+/// Considerations:
+/// - Adds non-structural data to the AST
+/// - May require special handling during serialization/deserialization
+///
+/// Alternative considered: External state storage with UUID references in AST nodes.
+/// Current approach preferred due to reduced lookup overhead and simpler implementation.
 pub trait CustomAny: Any + Debug + CustomClone + CustomPartialEq {
   fn as_any(&self) -> &dyn Any;
   fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -38,6 +52,79 @@ impl PartialEq for Box<dyn CustomAny> {
   fn eq(&self, other: &Self) -> bool {
     self.eq_box(other.as_ref())
   }
+}
+
+// Macro to implement CustomAny for common types
+#[macro_export]
+macro_rules! impl_custom_any {
+  ($($t:ty),*) => {
+      $(
+          impl CustomClone for $t {
+              fn clone_box(&self) -> Box<dyn CustomAny> {
+                  Box::new(self.clone())
+              }
+          }
+
+          impl CustomPartialEq for $t {
+              fn eq_box(&self, other: &dyn CustomAny) -> bool {
+                  other
+                      .as_any()
+                      .downcast_ref::<$t>()
+                      .map_or(false, |a| self == a)
+              }
+          }
+
+          impl CustomAny for $t {
+              fn as_any(&self) -> &dyn Any {
+                  self
+              }
+
+              fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+              }
+          }
+      )*
+  };
+}
+
+macro_rules! impl_custom_state {
+  ($type:ident) => {
+    impl $type {
+      /// Sets custom state for this item.
+      /// This method allows attaching arbitrary data to AST nodes,
+      /// enabling flexible extensions without modifying the core AST structure.
+      pub fn set_custom_state<T: 'static + CustomAny>(&mut self, state: T) {
+        self.custom_state = Some(Box::new(state));
+      }
+
+      /// Gets a mutable reference to the custom state of a specific type, if it exists.
+      pub fn get_custom_state<T: 'static + CustomAny>(&mut self) -> Option<&mut T> {
+        self
+          .custom_state
+          .as_mut()
+          .and_then(|state| state.as_any_mut().downcast_mut::<T>())
+      }
+
+      /// Gets or inserts custom state of a specific type.
+      /// If the state doesn't exist, it's created using the provided default function.
+      pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T
+      where
+        F: FnOnce() -> T,
+      {
+        if self.custom_state.is_none() {
+          self.custom_state = Some(Box::new(default()));
+        }
+
+        self.get_custom_state().unwrap()
+      }
+
+      /// Clears all custom state from this item.
+      /// Useful when a "clean" AST representation is needed, free of runtime-specific data.
+      pub fn clear_custom_state(&mut self) {
+        self.custom_state = None;
+      }
+    }
+  };
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
@@ -213,40 +300,29 @@ impl Value {
 pub struct Param {
   pub name: Option<RcStrWrapper>,
   pub value: Value,
+
+  /// Custom state for UI or other runtime-specific data.
+  /// Stored directly in the AST node for efficient access and simpler management.
+  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
+  #[serde(skip)]
+  pub custom_state: Option<Box<dyn CustomAny>>,
 }
+
+impl_custom_state!(Param);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
   pub name: Identifier,
   pub params: Option<Vec<Param>>,
 
+  /// Custom state for UI or other runtime-specific data.
+  /// Stored directly in the AST node for efficient access and simpler management.
+  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
   #[serde(skip)]
   pub custom_state: Option<Box<dyn CustomAny>>,
 }
 
-impl Function {
-  pub fn set_custom_state<T: 'static + CustomAny>(&mut self, state: T) {
-    self.custom_state = Some(Box::new(state));
-  }
-
-  pub fn get_custom_state<T: 'static + CustomAny>(&mut self) -> Option<&mut T> {
-    self
-      .custom_state
-      .as_mut()
-      .and_then(|state| state.as_any_mut().downcast_mut::<T>())
-  }
-
-  pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T
-  where
-    F: FnOnce() -> T,
-  {
-    if self.custom_state.is_none() {
-      self.custom_state = Some(Box::new(default()));
-    }
-
-    self.get_custom_state().unwrap()
-  }
-}
+impl_custom_state!(Function);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum BlockContent {
@@ -267,69 +343,14 @@ pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
 
+  /// Custom state for UI or other runtime-specific data.
+  /// Stored directly in the AST node for efficient access and simpler management.
+  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
   #[serde(skip)]
   pub custom_state: Option<Box<dyn CustomAny>>,
 }
 
-impl Block {
-  pub fn set_custom_state<T: 'static + CustomAny>(&mut self, state: T) {
-    self.custom_state = Some(Box::new(state));
-  }
-
-  pub fn get_custom_state<T: 'static + CustomAny>(&mut self) -> Option<&mut T> {
-    self
-      .custom_state
-      .as_mut()
-      .and_then(|state| state.as_any_mut().downcast_mut::<T>())
-  }
-
-  pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T
-  where
-    F: FnOnce() -> T,
-  {
-    if self.custom_state.is_none() {
-      self.custom_state = Some(Box::new(default()));
-    }
-
-    self.get_custom_state().unwrap()
-  }
-}
-
-// Macro to implement CustomAny for common types
-#[macro_export]
-macro_rules! impl_custom_any {
-  ($($t:ty),*) => {
-      $(
-          impl CustomClone for $t {
-              fn clone_box(&self) -> Box<dyn CustomAny> {
-                  Box::new(self.clone())
-              }
-          }
-
-          impl CustomPartialEq for $t {
-              fn eq_box(&self, other: &dyn CustomAny) -> bool {
-                  other
-                      .as_any()
-                      .downcast_ref::<$t>()
-                      .map_or(false, |a| self == a)
-              }
-          }
-
-          impl CustomAny for $t {
-              fn as_any(&self) -> &dyn Any {
-                  self
-              }
-
-              fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-              }
-          }
-      )*
-  };
-}
-
-// Implement CustomAny for common types
-impl_custom_any!(String, i32, f64);
+impl_custom_state!(Block);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Pipeline {
