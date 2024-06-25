@@ -8,7 +8,7 @@ use crate::util;
 use crate::util::with_possible_panic;
 use crate::Anchor;
 use crate::ANCHOR_TYPES;
-use crate::FLOAT2_VAR_OR_NONE_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
 use shards::shard;
@@ -48,23 +48,41 @@ struct WindowShard {
   #[shard_param("Anchor", "Corner or center of the screen.", ANCHOR_TYPES)]
   pub anchor: ParamVar,
   #[shard_param(
-    "MinSize",
-    "The minimum size of the window. (set value to < 0 to ignore)",
-    FLOAT2_VAR_OR_NONE_SLICE
+    "MinWidth",
+    "The minimum width of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
   )]
-  pub min_size: ParamVar,
+  pub min_width: ParamVar,
   #[shard_param(
-    "MaxSize",
-    "The maximum size of the window. (set value to < 0 to ignore)",
-    FLOAT2_VAR_OR_NONE_SLICE
+    "MinHeight",
+    "The minimum height of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
   )]
-  pub max_size: ParamVar,
+  pub min_height: ParamVar,
   #[shard_param(
-    "FixedSize",
-    "The fixed size of the window. overrides all other min/max sizes (set value to < 0 to ignore)",
-    FLOAT2_VAR_OR_NONE_SLICE
+    "MaxWidth",
+    "The maximum width of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
   )]
-  pub fixed_size: ParamVar,
+  pub max_width: ParamVar,
+  #[shard_param(
+    "MaxHeight",
+    "The maximum height of the window.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub max_height: ParamVar,
+  #[shard_param(
+    "FixedWidth",
+    "The fixed size of the window. overrides all other min/max sizes.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub fixed_width: ParamVar,
+  #[shard_param(
+    "FixedHeight",
+    "The fixed size of the window. overrides all other min/max sizes.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  pub fixed_height: ParamVar,
   #[shard_param(
     "Closed",
     "When provided with a callback, this window will have a close button and call this when pressed.",
@@ -99,9 +117,12 @@ impl Default for WindowShard {
       title: ParamVar::default(),
       position: ParamVar::default(),
       anchor: ParamVar::default(),
-      min_size: ParamVar::default(),
-      max_size: ParamVar::default(),
-      fixed_size: ParamVar::default(),
+      min_width: ParamVar::default(),
+      min_height: ParamVar::default(),
+      max_width: ParamVar::default(),
+      max_height: ParamVar::default(),
+      fixed_width: ParamVar::default(),
+      fixed_height: ParamVar::default(),
       closed: ShardsVar::default(),
       flags: ParamVar::default(),
       id: ParamVar::default(),
@@ -209,33 +230,36 @@ impl Shard for WindowShard {
         window.anchor(anchor.into(), offset)
       };
 
-      let min_size: (f32, f32) = self.min_size.get().try_into().unwrap_or((-1.0, -1.0));
-      let max_size: (f32, f32) = self.max_size.get().try_into().unwrap_or((-1.0, -1.0));
-      let fixed_size: (f32, f32) = self.fixed_size.get().try_into().unwrap_or((-1.0, -1.0));
-      if fixed_size.0 >= 0.0 {
+      let min_width: f32 = self.min_width.get().try_into().unwrap_or(-1.0);
+      let min_height: f32 = self.min_height.get().try_into().unwrap_or(-1.0);
+      let max_width: f32 = self.max_width.get().try_into().unwrap_or(-1.0);
+      let max_height: f32 = self.max_height.get().try_into().unwrap_or(-1.0);
+      let fixed_width: f32 = self.fixed_width.get().try_into().unwrap_or(-1.0);
+      let fixed_height: f32 = self.fixed_height.get().try_into().unwrap_or(-1.0);
+      if fixed_width >= 0.0 {
         window = window
-          .min_width(fixed_size.0)
-          .max_width(fixed_size.0)
-          .default_width(fixed_size.0);
+          .min_width(fixed_width)
+          .max_width(fixed_width)
+          .default_width(fixed_width);
       } else {
-        if min_size.0 >= 0.0 {
-          window = window.min_width(min_size.0);
+        if min_width >= 0.0 {
+          window = window.min_width(min_width);
         }
-        if max_size.0 >= 0.0 {
-          window = window.max_width(max_size.0);
+        if max_width >= 0.0 {
+          window = window.max_width(max_width);
         }
       }
-      if fixed_size.1 >= 0.0 {
+      if fixed_height >= 0.0 {
         window = window
-          .min_height(fixed_size.1)
-          .max_height(fixed_size.1)
-          .default_height(fixed_size.1);
+          .min_height(fixed_height)
+          .max_height(fixed_height)
+          .default_height(fixed_height);
       } else {
-        if min_size.1 >= 0.0 {
-          window = window.min_height(min_size.1);
+        if min_height >= 0.0 {
+          window = window.min_height(min_height);
         }
-        if max_size.1 >= 0.0 {
-          window = window.max_height(max_size.1);
+        if max_height >= 0.0 {
+          window = window.max_height(max_height);
         }
       }
 
