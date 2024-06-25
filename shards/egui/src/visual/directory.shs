@@ -24,10 +24,11 @@
 })
 
 @wire(document-enum {
+  = enum-id
   Shards.EnumTypeHelp = help
   help:name | ExpectString = name
   name | Hash.XXH-64 | BytesToInts | Slice(0 4) | ToInt3 | Do(process-color) | Update(help "color")
-  [name help]
+  [name help enum-id]
 })
 
 ; process documentation in parallel
@@ -47,6 +48,11 @@ enums-docs | ForEach({
   {Take(0) | ExpectString = enum-name}
   {Take(1) | Update(enums enum-name)}
 })
+Table(enums-from-ids)
+enums-docs | ForEach({
+  {Take(2) | ExpectInt = enum-id}
+  {Take(1) | Update(enums-from-ids enum-id)}
+})
 
 ; Shards.ObjectTypes | TryMany(document-object Threads: 4) = object-docs
 ; Remove(object-docs Predicate: IsNone)
@@ -54,5 +60,6 @@ enums-docs | ForEach({
 {
   shards: shards
   enums: enums
+  enums-from-ids: enums-from-ids
   types: {}
 }

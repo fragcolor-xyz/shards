@@ -1,7 +1,7 @@
 // prevent upper case globals
 #![allow(non_upper_case_globals)]
 
-use directory::{get_global_name_btree, get_global_visual_shs_channel_sender};
+use directory::{get_global_map, get_global_name_btree, get_global_visual_shs_channel_sender};
 use egui::*;
 use nanoid::nanoid;
 use std::{any::Any, sync::mpsc};
@@ -15,8 +15,8 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
-    NONE_TYPES,
+    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, TableVar, Type,
+    Types, Var, NONE_TYPES,
   },
   SHType_Bool, SHType_Bytes, SHType_ContextVar, SHType_Enum, SHType_Float, SHType_Float2,
   SHType_Float3, SHType_Float4, SHType_Int, SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4,
@@ -119,7 +119,39 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
         int16[9], int16[10], int16[11], int16[12], int16[13], int16[14], int16[15],
       ]))
     }
-    SHType_Enum => Ok(Value::String("TODO".into())),
+    SHType_Enum => {
+      // not so simple as the Value::Enum:
+      // 1. we need to derive name and value from the actual numeric values
+      // 2. values can be sparse so we need both labels and values
+      let enums_from_ids = get_global_map()
+        .0
+        .get_fast_static("enums-from-ids")
+        .as_table()
+        .unwrap();
+      let enum_type_id = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId };
+      let enum_vendor_id = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId };
+      let enum_value = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+      // ok so the composite value in c++ is made like this:
+      // int64_t id = (int64_t)vendorId << 32 | typeId;
+      let id = (enum_vendor_id as i64) << 32 | enum_type_id as i64;
+      let enum_info = enums_from_ids
+        .get(Var::from(id))
+        .map(|x| x.as_table().unwrap());
+      if let Some(enum_info) = enum_info {
+        let labels = enum_info.get_fast_static("labels").as_seq().unwrap();
+        let values = enum_info.get_fast_static("values").as_seq().unwrap();
+        let index = values.iter().position(|x| x == enum_value.into()).unwrap();
+        let name: &str = enum_info
+          .get_fast_static("name")
+          .as_ref()
+          .try_into()
+          .unwrap();
+        let label: &str = labels[index].as_ref().try_into().unwrap();
+        Ok(Value::Enum(name.into(), label.into()))
+      } else {
+        Err(format!("Enum not found: {}", id))
+      }
+    }
     SHType_Seq => {
       let seq = var.as_seq().unwrap();
       let mut values = Vec::new();
@@ -381,6 +413,7 @@ impl<'a> VisualAst<'a> {
                     .clicked()
                   {
                     // reset to default
+                    shlog_debug!("Resetting: {} to default value.", name);
                     let default_value = param.get_fast_static("default");
                     x.params.as_mut().map(|params| {
                       params[idx].value = var_to_value(&default_value).unwrap();
@@ -914,7 +947,42 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::None => Some(self.ui.label("None")),
       Value::Identifier(x) => Some(self.ui.label(x.name.as_str())),
       Value::Boolean(x) => Some(self.ui.checkbox(x, if *x { "true" } else { "false" })),
-      Value::Enum(_, _) => todo!(),
+      Value::Enum(x, y) => {
+        let enum_data = get_global_map();
+        let enum_data = enum_data.0.get_fast_static("enums").as_table().unwrap();
+        let x_var = Var::ephemeral_string(x);
+        let enum_data = enum_data.get(x_var).map(|x| x.as_table().unwrap());
+        if let Some(enum_data) = enum_data {
+          let labels = enum_data.get_fast_static("labels").as_seq().unwrap();
+          // render the first part as a constant label, while the second as a single choice select
+          let response = self.ui.label(x.as_str());
+
+          // render labels in a combo box
+          let mut selected_index = labels
+            .iter()
+            .position(|label| label == Var::ephemeral_string(y))
+            .unwrap_or(0);
+          let previous_index = selected_index;
+          let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
+          egui::ComboBox::from_label("")
+            .selected_text(selected)
+            .show_ui(self.ui, |ui| {
+              for (index, label) in labels.iter().enumerate() {
+                let label: &str = label.as_ref().try_into().unwrap();
+                ui.selectable_value(&mut selected_index, index, label);
+              }
+            });
+
+          if previous_index != selected_index {
+            let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
+            *y = selected.into();
+          }
+
+          Some(response)
+        } else {
+          Some(self.ui.label("Invalid enum"))
+        }
+      }
       Value::Number(x) => match x {
         Number::Integer(x) => Some(self.ui.add(CustomDragValue::new(x))),
         Number::Float(x) => Some(self.ui.add(CustomDragValue::new(x))),

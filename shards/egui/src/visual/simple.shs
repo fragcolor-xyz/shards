@@ -23,3 +23,8 @@
   9: 18
   10: 20
 } | ToJson | Http.Post("http://example.com")
+UI.LayoutClass(
+  MainDirection: LayoutDirection::LeftToRight
+  CrossAlign: LayoutAlign::Top
+  MainAlign: LayoutAlign::Left
+) = img-overlay-layout
