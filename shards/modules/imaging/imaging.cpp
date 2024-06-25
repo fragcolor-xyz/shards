@@ -539,8 +539,7 @@ struct LoadImage {
 
   PARAM_PARAMVAR(_filename, "File", "The file to load the image from", {CoreInfo::StringStringVarOrNone});
   PARAM_VAR(_bpp, "BPP", "bits per pixel (HDR images loading and such!)", {BPPEnumInfo::Type});
-  PARAM_VAR(_premultiplyAlpha, "PremultiplyAlpha", "Toggle premultiplication of alpha channels (E.g. To support PNG images)",
-            {CoreInfo::BoolType});
+  PARAM_VAR(_premultiplyAlpha, "PremultiplyAlpha", "Toggle premultiplication of alpha channel", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_filename), PARAM_IMPL_FOR(_bpp), PARAM_IMPL_FOR(_premultiplyAlpha));
 
   SHVar _output{};
@@ -562,8 +561,10 @@ struct LoadImage {
     return outputTypes().elements[0];
   }
 
-  BPP getBPP() const { return _bpp->isNone() ? BPP::u8 : BPP(_bpp->payload.enumValue); }
-  bool getPremultiplyAlpha() const { return _premultiplyAlpha->isNone() ? false : _premultiplyAlpha->payload.boolValue; }
+  void setup() {
+    _bpp = Var::Enum(BPP::u8, BPPEnumInfo::Type);
+    _premultiplyAlpha = Var(false);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     bool bytesInput = input.valueType == SHType::Bytes;
@@ -614,7 +615,7 @@ struct LoadImage {
 
     _output.valueType = SHType::Image;
     int x, y, n;
-    switch (getBPP()) {
+    switch ((BPP)_bpp.payload.enumValue) {
     case BPP::u8:
       _output.payload.imageValue.data =
           reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
@@ -645,7 +646,7 @@ struct LoadImage {
 
     // Premultiply the alpha channel if premultiply option is chosen
     auto pixsize = getPixelSize(_output);
-    if (getPremultiplyAlpha()) {
+    if (_premultiplyAlpha.payload.boolValue) {
       // premultiply the alpha channel
       switch (pixsize) {
       case 1:
