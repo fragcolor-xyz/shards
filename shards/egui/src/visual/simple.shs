@@ -1,5 +1,6 @@
 "Hello World!" | Log
-22 | Log
+22 | Log | Add((2 | Mul(2)))
+22 | Log | Add(#(2 | Mul(2)))
 @color(255 255 255 255) | ToFloat4
 0x10 | When(IsMore(9) {
   Add(1) | Log
@@ -13,7 +14,7 @@
   10: 20
   "y": 30
   2.0: 40
-} | ToJson | Http.Post("http://example.com")
+} {Take("x") | Log} | ToJson | Http.Post("http://example.com")
 UI.LayoutClass(
   MainDirection: LayoutDirection::LeftToRight
   CrossAlign: LayoutAlign::Top

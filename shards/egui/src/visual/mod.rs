@@ -4,7 +4,11 @@
 use directory::{get_global_map, get_global_name_btree, get_global_visual_shs_channel_sender};
 use egui::*;
 use nanoid::nanoid;
-use std::{any::Any, sync::mpsc};
+use std::{
+  any::Any,
+  cmp::{max, min},
+  sync::mpsc,
+};
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -273,6 +277,45 @@ fn emoji(s: &str) -> egui::RichText {
     .size(14.0)
 }
 
+fn get_first_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
+  for statement in &mut ast.statements {
+    match statement {
+      Statement::Assignment(assignment) => {
+        if let Assignment::AssignRef(pipeline, _) = assignment {
+          if let BlockContent::Shard(shard) = &mut pipeline.blocks[0].content {
+            return Some(shard);
+          }
+        }
+      }
+      Statement::Pipeline(pipeline) => {
+        if let BlockContent::Shard(shard) = &mut pipeline.blocks[0].content {
+          return Some(shard);
+        }
+      }
+    }
+  }
+  None
+}
+fn get_last_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
+  for statement in ast.statements.iter_mut().rev() {
+    match statement {
+      Statement::Assignment(assignment) => {
+        if let Assignment::AssignRef(pipeline, _) = assignment {
+          if let BlockContent::Shard(shard) = &mut pipeline.blocks.last_mut()?.content {
+            return Some(shard);
+          }
+        }
+      }
+      Statement::Pipeline(pipeline) => {
+        if let BlockContent::Shard(shard) = &mut pipeline.blocks.last_mut()?.content {
+          return Some(shard);
+        }
+      }
+    }
+  }
+  None
+}
+
 impl<'a> VisualAst<'a> {
   pub fn new(ui: &'a mut Ui) -> Self {
     VisualAst {
@@ -293,8 +336,6 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
-    let selected = self.parent_selected;
-
     let state = x.get_or_insert_custom_state(|| FunctionState {
       params_sorted: false,
       receiver: None,
@@ -439,7 +480,7 @@ impl<'a> VisualAst<'a> {
 
                   // draw the value
                   x.params.as_mut().map(|params| {
-                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
                     params[idx].value.accept_mut(&mut mutator);
                   });
                 })
@@ -943,19 +984,29 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   let mut mutator = VisualAst::with_parent_selected(ui, selected);
                   mutator.mutate_shard(x)
                 }
-                BlockContent::Expr(x) | BlockContent::EvalExpr(x) | BlockContent::Shards(x) => {
-                  ui.group(|ui| {
-                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                    x.accept_mut(&mut mutator)
-                  })
-                  .inner
+                BlockContent::Expr(x) => {
+                  ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+                    egui::Stroke::new(1.0, Color32::from_rgb(173, 216, 230));
+                  render_shards_group(ui, selected, x)
                 }
+                BlockContent::EvalExpr(x) => {
+                  ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+                    egui::Stroke::new(1.0, Color32::from_rgb(200, 180, 255));
+                  render_shards_group(ui, selected, x)
+                }
+                BlockContent::Shards(x) => render_shards_group(ui, selected, x),
                 BlockContent::Const(x) => {
                   let mut mutator = VisualAst::with_parent_selected(ui, selected);
                   x.accept_mut(&mut mutator)
                 }
-                BlockContent::TakeTable(_, _) => todo!(),
-                BlockContent::TakeSeq(_, _) => todo!(),
+                BlockContent::TakeTable(x, y) => {
+                  // simply convert into a Take chain
+                  todo!()
+                }
+                BlockContent::TakeSeq(x, y) => {
+                  // simply convert into a Take chain
+                  todo!()
+                }
                 BlockContent::Func(x) => match x.name.name.as_str() {
                   "color" => {
                     let mut mutator = VisualAst::with_parent_selected(ui, selected);
@@ -1025,7 +1076,38 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_value(&mut self, value: &mut Value) -> Option<Response> {
     match value {
       Value::None => Some(self.ui.label("None")),
-      Value::Identifier(x) => Some(self.ui.label(x.name.as_str())),
+      Value::Identifier(x) => {
+        // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
+        if x.namespaces.is_empty() {
+          if self.ui.button("Add Namespace").clicked() {
+            x.namespaces.push("default".into());
+          }
+        } else {
+          let first = &mut x.namespaces[0];
+          let first = first.to_mut();
+          if self
+            .ui
+            .horizontal(|ui| {
+              let remove = if ui
+                .button(emoji("🗑"))
+                .on_hover_text("Remove Namespace")
+                .clicked()
+              {
+                true
+              } else {
+                false
+              };
+              ui.text_edit_singleline(first);
+              remove
+            })
+            .inner
+          {
+            x.namespaces.clear();
+          }
+        }
+        let x = x.name.to_mut();
+        Some(self.ui.text_edit_singleline(x))
+      }
       Value::Boolean(x) => Some(self.ui.checkbox(x, if *x { "true" } else { "false" })),
       Value::Enum(x, y) => {
         let enum_data = get_global_map();
@@ -1095,9 +1177,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           self.ui.text_edit_multiline(x)
         } else {
           let text = x.as_str();
-          let text_width = 10.0 * text.chars().count() as f32;
-          let width = text_width + 20.0; // Add some padding
-          TextEdit::singleline(x).desired_width(width).ui(self.ui)
+          let count = max(text.chars().count(), 6);
+          let text_width = 8.0 * count as f32;
+          let width = text_width + 10.0; // Add some padding
+          TextEdit::singleline(x)
+            .desired_width(width)
+            .hint_text("String")
+            .ui(self.ui)
         })
       }
       Value::Bytes(x) => {
@@ -1413,17 +1499,42 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self.visit_value(value)
       }
       Value::Shards(x) => {
-        let mut mutator = VisualAst::new(self.ui);
-        x.accept_mut(&mut mutator)
+        self
+          .ui
+          .group(|ui| {
+            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            x.accept_mut(&mut mutator)
+          })
+          .inner
       }
-      Value::EvalExpr(_) => todo!(),
-      Value::Expr(_) => todo!(),
+      Value::EvalExpr(x) => {
+        self.ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+          egui::Stroke::new(1.0, Color32::from_rgb(200, 180, 255));
+        self
+          .ui
+          .group(|ui| {
+            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            x.accept_mut(&mut mutator)
+          })
+          .inner
+      }
+      Value::Expr(x) => {
+        self.ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+          egui::Stroke::new(1.0, Color32::from_rgb(173, 216, 230));
+        self
+          .ui
+          .group(|ui| {
+            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            x.accept_mut(&mut mutator)
+          })
+          .inner
+      }
       Value::TakeTable(_, _) => todo!(),
       Value::TakeSeq(_, _) => todo!(),
       Value::Func(x) => match x.name.name.as_str() {
         "color" => self.mutate_color(x),
         _ => {
-          let mut mutator = VisualAst::new(self.ui);
+          let mut mutator = VisualAst::with_parent_selected(self.ui, self.parent_selected);
           x.accept_mut(&mut mutator)
         }
       },
@@ -1433,6 +1544,32 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
     None
   }
+}
+
+fn render_shards_group(ui: &mut Ui, selected: bool, x: &mut Sequence) -> Option<Response> {
+  ui.group(|ui| {
+    // if not selected, let's render just first and last shard as previews
+    if selected {
+      let mut mutator = VisualAst::with_parent_selected(ui, selected);
+      x.accept_mut(&mut mutator)
+    } else {
+      Some(
+        ui.horizontal(|ui| {
+          if let Some(first) = get_first_shard_ref(x) {
+            let mut mutator = VisualAst::with_parent_selected(ui, selected);
+            mutator.mutate_shard(first);
+          }
+          if let Some(last) = get_last_shard_ref(x) {
+            ui.label("...");
+            let mut mutator = VisualAst::with_parent_selected(ui, selected);
+            mutator.mutate_shard(last);
+          }
+        })
+        .response,
+      )
+    }
+  })
+  .inner
 }
 
 #[derive(shards::shard)]
