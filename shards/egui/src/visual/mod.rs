@@ -986,7 +986,26 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Number(x) => match x {
         Number::Integer(x) => Some(self.ui.add(CustomDragValue::new(x))),
         Number::Float(x) => Some(self.ui.add(CustomDragValue::new(x))),
-        Number::Hexadecimal(_x) => todo!(),
+        Number::Hexadecimal(x) => {
+          // we need a mini embedded text editor
+          let text_width = 10.0 * x.chars().count() as f32;
+          let width = text_width + 20.0; // Add some padding
+          let prev_value = x.clone();
+          let response = TextEdit::singleline(x.to_mut())
+            .desired_width(width)
+            .ui(self.ui);
+
+          if response.changed() {
+            // ensure that the string is a valid hexadecimal number, if not revert to previous value
+            // consider we always prefix with 0x, slice off the 0x prefix
+            // parse the string as a u64 in hexadecimal format
+            let parsed = u64::from_str_radix(&x[2..], 16);
+            if parsed.is_err() {
+              *x = prev_value;
+            }
+          }
+          Some(response)
+        }
       },
       Value::String(x) => {
         // if long we should use a multiline text editor
@@ -1186,9 +1205,12 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           egui::ScrollArea::new([true, true])
             .min_scrolled_height(100.0)
             .show(self.ui, |ui| {
+              let mut idx = 0;
               x.retain_mut(|value| {
                 let mut to_keep = true;
                 ui.horizontal(|ui| {
+                  ui.label(format!("{}:", idx));
+                  idx += 1;
                   let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
                   let response = value.accept_mut(&mut mutator).unwrap();
                   response.context_menu(|ui| {
@@ -1226,6 +1248,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         let response = self.ui.label(format!("Table (len: {})", len));
         if self.parent_selected {
           // like sequence but key value pairs
+          self.ui.label("Key-Value pairs");
           egui::ScrollArea::new([true, true])
             .min_scrolled_height(100.0)
             .show(self.ui, |ui| {
