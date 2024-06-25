@@ -1,5 +1,6 @@
 "Hello World!" | Log
 22 | Log
+@color(255 255 255 255) | ToFloat4
 0x10 | When(IsMore(9) {
   Add(1) | Log
   When(IsMore(9) {

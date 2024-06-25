@@ -170,8 +170,8 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
       }
       Ok(Value::Table(map))
     }
-    SHType_ShardRef => unimplemented!("ShardRef type not supported"),
-    SHType_Wire => unimplemented!("Wire type not supported"),
+    SHType_ShardRef => unreachable!("ShardRef type not supported"),
+    SHType_Wire => unreachable!("Wire type not supported"),
     SHType_ContextVar => {
       let string = unsafe { var.payload.__bindgen_anon_1.string };
       let string_slice =
@@ -393,57 +393,59 @@ impl<'a> VisualAst<'a> {
             x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
           }
 
-          for (idx, param) in params.into_iter().enumerate() {
-            let param = param.as_table().unwrap();
-            let name: &str = param.get_fast_static("name").try_into().unwrap();
-            let help_text: &str = param.get_fast_static("help").try_into().unwrap();
-            let help_text = if help_text.is_empty() {
-              "No help text provided."
-            } else {
-              help_text
-            };
-            egui::CollapsingHeader::new(name)
-              .default_open(false)
-              .show(self.ui, |ui| {
-                ui.horizontal(|ui| {
-                  // button to reset to default
-                  if ui
-                    .button(emoji("🔄"))
-                    .on_hover_text("Reset to default value.")
-                    .clicked()
-                  {
-                    // reset to default
-                    shlog_debug!("Resetting: {} to default value.", name);
-                    let default_value = param.get_fast_static("default");
-                    x.params.as_mut().map(|params| {
-                      params[idx].value = var_to_value(&default_value).unwrap();
-                    });
-                  }
-                  if ui
-                    .button(emoji("🔧"))
-                    .on_hover_text("Change value type.")
-                    .clicked()
-                  {
-                    // open a dialog to change the value
-                    let (sender, receiver) = mpsc::channel();
-                    let query = Var::ephemeral_string("").into();
-                    get_global_visual_shs_channel_sender()
-                      .send((query, sender))
-                      .unwrap();
-                    x.get_custom_state::<FunctionState>().unwrap().receiver =
-                      Some(UniqueReceiver::new(receiver));
-                  }
-                });
+          egui::ScrollArea::both().show(self.ui, |ui| {
+            for (idx, param) in params.into_iter().enumerate() {
+              let param = param.as_table().unwrap();
+              let name: &str = param.get_fast_static("name").try_into().unwrap();
+              let help_text: &str = param.get_fast_static("help").try_into().unwrap();
+              let help_text = if help_text.is_empty() {
+                "No help text provided."
+              } else {
+                help_text
+              };
+              egui::CollapsingHeader::new(name)
+                .default_open(false)
+                .show(ui, |ui| {
+                  ui.horizontal(|ui| {
+                    // button to reset to default
+                    if ui
+                      .button(emoji("🔄"))
+                      .on_hover_text("Reset to default value.")
+                      .clicked()
+                    {
+                      // reset to default
+                      shlog_debug!("Resetting: {} to default value.", name);
+                      let default_value = param.get_fast_static("default");
+                      x.params.as_mut().map(|params| {
+                        params[idx].value = var_to_value(&default_value).unwrap();
+                      });
+                    }
+                    if ui
+                      .button(emoji("🔧"))
+                      .on_hover_text("Change value type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                      let (sender, receiver) = mpsc::channel();
+                      let query = Var::ephemeral_string("").into();
+                      get_global_visual_shs_channel_sender()
+                        .send((query, sender))
+                        .unwrap();
+                      x.get_custom_state::<FunctionState>().unwrap().receiver =
+                        Some(UniqueReceiver::new(receiver));
+                    }
+                  });
 
-                // draw the value
-                x.params.as_mut().map(|params| {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                  params[idx].value.accept_mut(&mut mutator);
-                });
-              })
-              .header_response
-              .on_hover_text(help_text);
-          }
+                  // draw the value
+                  x.params.as_mut().map(|params| {
+                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    params[idx].value.accept_mut(&mut mutator);
+                  });
+                })
+                .header_response
+                .on_hover_text(help_text);
+            }
+          });
         }
       }
       None
@@ -700,6 +702,42 @@ impl<'a> VisualAst<'a> {
       .inner
       .unwrap()
   }
+
+  fn mutate_color(&mut self, x: &mut Function) -> Option<Response> {
+    let params = x.params.as_mut().expect("params should exist");
+
+    let mut color_bytes = [
+      match &params[0].value {
+        Value::Number(Number::Integer(r)) => *r as u8,
+        _ => unreachable!(),
+      },
+      match &params[1].value {
+        Value::Number(Number::Integer(g)) => *g as u8,
+        _ => unreachable!(),
+      },
+      match &params[2].value {
+        Value::Number(Number::Integer(b)) => *b as u8,
+        _ => unreachable!(),
+      },
+      match &params[3].value {
+        Value::Number(Number::Integer(a)) => *a as u8,
+        _ => unreachable!(),
+      },
+    ];
+
+    let response = self
+      .ui
+      .color_edit_button_srgba_unmultiplied(&mut color_bytes);
+
+    // Write the values back
+    for (i, &byte) in color_bytes.iter().enumerate() {
+      if let Value::Number(Number::Integer(val)) = &mut params[i].value {
+        *val = byte as i64;
+      }
+    }
+
+    Some(response)
+  }
 }
 
 impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
@@ -881,10 +919,15 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 }
                 BlockContent::TakeTable(_, _) => todo!(),
                 BlockContent::TakeSeq(_, _) => todo!(),
-                BlockContent::Func(x) => {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
-                  mutator.mutate_shard(x)
-                }
+                BlockContent::Func(x) => match x.name.name.as_str() {
+                  "color" => {
+                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    mutator.mutate_color(x)
+                  }
+                  _ => {
+                    todo!()
+                  }
+                },
                 BlockContent::Program(x) => {
                   ui.group(|ui| {
                     let mut mutator = VisualAst::with_parent_selected(ui, selected);
@@ -927,8 +970,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     (action, Some(response))
   }
 
-  fn visit_function(&mut self, function: &mut Function) -> Option<Response> {
-    self.mutate_shard(function)
+  fn visit_function(&mut self, _function: &mut Function) -> Option<Response> {
+    unreachable!("Function should not be visited directly.")
   }
 
   fn visit_param(&mut self, param: &mut Param) -> Option<Response> {
@@ -1341,10 +1384,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::TakeTable(_, _) => todo!(),
       Value::TakeSeq(_, _) => todo!(),
       Value::Func(x) => match x.name.name.as_str() {
-        "color" => {
-          let mut mutator = VisualAst::new(self.ui);
-          x.accept_mut(&mut mutator)
-        }
+        "color" => self.mutate_color(x),
         _ => {
           let mut mutator = VisualAst::new(self.ui);
           x.accept_mut(&mut mutator)
