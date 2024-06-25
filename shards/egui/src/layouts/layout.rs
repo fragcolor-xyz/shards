@@ -70,6 +70,7 @@ struct LayoutClass {
 }
 
 struct LayoutConstructor {
+  required: ExposedTypes,
   parent: ParamVar,
   layout_class: Option<Rc<LayoutClass>>,
   main_direction: ParamVar,
@@ -358,6 +359,7 @@ lazy_static! {
 impl Default for LayoutConstructor {
   fn default() -> Self {
     Self {
+      required: ExposedTypes::new(),
       parent: ParamVar::default(),
       layout_class: None,
       main_direction: ParamVar::default(),
@@ -423,6 +425,10 @@ impl LegacyShard for LayoutConstructor {
     Some(&LAYOUT_CONSTRUCTOR_PARAMETERS)
   }
 
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    Some(&self.required)
+  }
+
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
     match index {
       0 => self.parent.set_param(value),
@@ -479,6 +485,25 @@ impl LegacyShard for LayoutConstructor {
       22 => self.scroll_area_enable_scrolling.get_param(),
       _ => Var::default(),
     }
+  }
+
+  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+    self.required.clear();
+    if self.parent.is_variable() {
+      self.required.push(ExposedInfo {
+        exposedType: LAYOUTCLASS_TYPE.clone(),
+        name: self.parent.get_name(),
+        help: shccstr!("The parent Layout class to inherit parameters from."),
+        ..ExposedInfo::default()
+      });
+    }
+    Ok(LAYOUTCLASS_TYPE.clone())
+  }
+  fn hasCompose() -> bool
+  where
+    Self: Sized,
+  {
+    true
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
