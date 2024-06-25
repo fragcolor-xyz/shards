@@ -617,7 +617,10 @@ struct HandleURL : public Base {
   std::string _url;
 
   PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_action));
+  PARAM(ShardsVar, _batchAction, "BatchAction",
+        "The Shards to run if a text/file drop event happened. This shard will receive a sequence of all dropped files.",
+        {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_batchAction));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
@@ -639,6 +642,9 @@ struct HandleURL : public Base {
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::StringType;
     _action.compose(dataCopy);
+
+    dataCopy.inputType = CoreInfo::StringSeqType;
+    _batchAction.compose(dataCopy);
     return data.inputType;
   }
 
@@ -646,6 +652,7 @@ struct HandleURL : public Base {
   static SHTypeInfo outputType() { return CoreInfo::AnyType; }
 
   std::vector<DropFileEvent> tmpEvents;
+  SeqVar _tmpSeq;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     tmpEvents.clear();
@@ -681,14 +688,30 @@ struct HandleURL : public Base {
     }
 #endif
 
-    for (auto &evt : tmpEvents) {
-      SHVar dummy{};
-      SHWireState res = _action.activate(context, Var(evt.path.c_str(), 0 /* explicit strlen */), dummy);
-      if (res == SHWireState::Error) {
-        throw ActivationError("Inner activation failed");
+    SHVar dummy{};
+
+    if (!tmpEvents.empty()) {
+      if (_batchAction) {
+        _tmpSeq.clear();
+        for (auto &evt : tmpEvents) {
+          _tmpSeq.push_back(Var(std::string_view(evt.path)));
+        }
+        SHWireState res = _batchAction.activate(context, _tmpSeq, dummy);
+        if (res == SHWireState::Error) {
+          throw ActivationError("Inner activation failed");
+        }
       }
+
+      if (_action) {
+        for (auto &evt : tmpEvents) {
+          SHWireState res = _action.activate(context, Var(evt.path.c_str(), 0 /* explicit strlen */), dummy);
+          if (res == SHWireState::Error) {
+            throw ActivationError("Inner activation failed");
+          }
+        }
+      }
+      tmpEvents.clear();
     }
-    tmpEvents.clear();
 
     return input;
   }
