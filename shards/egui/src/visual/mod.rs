@@ -278,6 +278,8 @@ impl_custom_any!(FunctionState);
 // common state
 pub struct Context {
   swap_state: Option<SwapState>,
+  seqs_stack: Vec<*mut Sequence>,
+  has_changed: bool,
 }
 
 pub struct VisualAst<'a> {
@@ -668,212 +670,213 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
     .show(ui.ctx(), |ui| {
       egui::Frame::menu(ui.style())
         .show(ui, |ui| {
-          let result = ui
-            .horizontal(|ui| {
-              if ui
-                .button("Bool")
-                .on_hover_text("A boolean value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Boolean(false)),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Int")
-                .on_hover_text("An integer value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Number(Number::Integer(0))),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Float").on_hover_text("A float value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Number(Number::Float(0.0))),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("String")
-                .on_hover_text("A string value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::String("".into())),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Bytes").on_hover_text("A bytes value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Bytes(Vec::new().into())),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              SwapStateResult::Continue
-            })
-            .inner;
+          let mut widest = 0.0;
+          let result = ui.horizontal(|ui| {
+            if ui
+              .button("Bool")
+              .on_hover_text("A boolean value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Boolean(false)),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Int")
+              .on_hover_text("An integer value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Number(Number::Integer(0))),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Float").on_hover_text("A float value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Number(Number::Float(0.0))),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("String")
+              .on_hover_text("A string value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::String("".into())),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Bytes").on_hover_text("A bytes value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Bytes(Vec::new().into())),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            SwapStateResult::Continue
+          });
+          widest = widest.max(result.response.rect.width());
+          let result = result.inner;
           match result {
             SwapStateResult::Done(_) => return result,
             _ => {}
           }
-          let result = ui
-            .horizontal(|ui| {
-              if ui
-                .button("Float2")
-                .on_hover_text("A float2 value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Float2([0.0, 0.0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Float3")
-                .on_hover_text("A float3 value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Float3([0.0, 0.0, 0.0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Float4")
-                .on_hover_text("A float4 value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Float4([0.0, 0.0, 0.0, 0.0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Int2").on_hover_text("An int2 value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Int2([0, 0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Int3").on_hover_text("An int3 value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Int3([0, 0, 0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              SwapStateResult::Continue
-            })
-            .inner;
+          let result = ui.horizontal(|ui| {
+            if ui
+              .button("Float2")
+              .on_hover_text("A float2 value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Float2([0.0, 0.0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Float3")
+              .on_hover_text("A float3 value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Float3([0.0, 0.0, 0.0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Float4")
+              .on_hover_text("A float4 value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Float4([0.0, 0.0, 0.0, 0.0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Int2").on_hover_text("An int2 value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Int2([0, 0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Int3").on_hover_text("An int3 value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Int3([0, 0, 0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            SwapStateResult::Continue
+          });
+          widest = widest.max(result.response.rect.width());
+          let result = result.inner;
           match result {
             SwapStateResult::Done(_) => return result,
             _ => {}
           }
-          let result = ui
-            .horizontal(|ui| {
-              if ui.button("Int4").on_hover_text("An int4 value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Int4([0, 0, 0, 0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Int8").on_hover_text("An int8 value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Int8([0, 0, 0, 0, 0, 0, 0, 0])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Int16")
-                .on_hover_text("An int16 value.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Int16([0; 16])),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Seq")
-                .on_hover_text("A sequence of values.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Seq(Vec::new())),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui
-                .button("Table")
-                .on_hover_text("A table of key-value pairs.")
-                .clicked()
-              {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Table(Vec::new())),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-              if ui.button("Color").on_hover_text("A color value.").clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Const(Value::Func(Function {
-                    name: Identifier {
-                      name: "color".into(),
-                      namespaces: Vec::new(),
+          let result = ui.horizontal(|ui| {
+            if ui.button("Int4").on_hover_text("An int4 value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Int4([0, 0, 0, 0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Int8").on_hover_text("An int8 value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Int8([0, 0, 0, 0, 0, 0, 0, 0])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Int16")
+              .on_hover_text("An int16 value.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Int16([0; 16])),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Seq")
+              .on_hover_text("A sequence of values.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Seq(Vec::new())),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui
+              .button("Table")
+              .on_hover_text("A table of key-value pairs.")
+              .clicked()
+            {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Table(Vec::new())),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            if ui.button("Color").on_hover_text("A color value.").clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Const(Value::Func(Function {
+                  name: Identifier {
+                    name: "color".into(),
+                    namespaces: Vec::new(),
+                  },
+                  params: Some(vec![
+                    // 4 Number/Integer values
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
                     },
-                    params: Some(vec![
-                      // 4 Number/Integer values
-                      Param {
-                        name: None,
-                        value: Value::Number(Number::Integer(255)),
-                        custom_state: None,
-                      },
-                      Param {
-                        name: None,
-                        value: Value::Number(Number::Integer(255)),
-                        custom_state: None,
-                      },
-                      Param {
-                        name: None,
-                        value: Value::Number(Number::Integer(255)),
-                        custom_state: None,
-                      },
-                      Param {
-                        name: None,
-                        value: Value::Number(Number::Integer(255)),
-                        custom_state: None,
-                      },
-                    ]),
-                    custom_state: None,
-                  })),
-                  line_info: None,
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                    Param {
+                      name: None,
+                      value: Value::Number(Number::Integer(255)),
+                      custom_state: None,
+                    },
+                  ]),
                   custom_state: None,
-                });
-              }
-              SwapStateResult::Continue
-            })
-            .inner;
+                })),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+            SwapStateResult::Continue
+          });
+          widest = widest.max(result.response.rect.width());
+          let result = result.inner;
           match result {
             SwapStateResult::Done(_) => return result,
             _ => {}
           }
 
-          ui.separator();
+          ui.add_sized([widest, 1.0], egui::Separator::default().horizontal());
 
           ui.label("Search for a shard:");
           let len = swap_state.search_string.len();
@@ -914,7 +917,7 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
             }
           }
 
-          ui.separator();
+          ui.add_sized([widest, 1.0], egui::Separator::default().horizontal());
 
           let maybe_block = egui::ScrollArea::new([true, true])
             .min_scrolled_height(75.0)
@@ -1162,13 +1165,33 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
+    if self.context.seqs_stack.len() > 0 {
+      let top_most = self.context.seqs_stack.last().unwrap();
+      // if our current sequence is not the top most sequence
+      if *top_most != sequence as *mut Sequence {
+        if self
+          .ui
+          .button(emoji("🔍"))
+          .on_hover_text("Zoom in.")
+          .clicked()
+        {
+          self.context.seqs_stack.push(sequence as *mut Sequence);
+        }
+      }
+    }
+
     for statement in &mut sequence.statements {
       statement.accept_mut(self);
     }
-    Some(self.ui.horizontal(|ui| {
-      ui.button(emoji("➕")).on_hover_text("Add new statement.");
-      ui.button(emoji("💡")).on_hover_text("Ask AI.")
-    }).inner)
+    Some(
+      self
+        .ui
+        .horizontal(|ui| {
+          ui.button(emoji("➕")).on_hover_text("Add new statement.");
+          ui.button(emoji("💡")).on_hover_text("Ask AI.")
+        })
+        .inner,
+    )
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
@@ -1180,10 +1203,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
         };
-        Some(ui.horizontal(|ui| {
-          ui.button(emoji("➕")).on_hover_text("Add new statement.");
-          ui.button(emoji("💡")).on_hover_text("Ask AI.")
-        }).inner)
+        Some(
+          ui.horizontal(|ui| {
+            ui.button(emoji("➕")).on_hover_text("Add new statement.");
+            ui.button(emoji("💡")).on_hover_text("Ask AI.")
+          })
+          .inner,
+        )
       })
       .inner
   }
@@ -1327,7 +1353,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 });
               }
               match &mut block.content {
-                BlockContent::Empty => Some(ui.separator()),
+                BlockContent::Empty => Some(egui::Separator::default().horizontal().ui(ui)),
                 BlockContent::Shard(x) => {
                   let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   mutator.mutate_shard(x)
@@ -2196,12 +2222,18 @@ impl Default for UIShardsShard {
       shards_lang::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
         .unwrap();
     let seq = seq.sequence;
-    Self {
+    let mut result = Self {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       ast: seq,
-      context: Context { swap_state: None },
-    }
+      context: Context {
+        swap_state: None,
+        seqs_stack: Vec::new(),
+        has_changed: false,
+      },
+    };
+    result.context.seqs_stack.push(&mut result.ast);
+    result
   }
 }
 
@@ -2237,9 +2269,17 @@ impl Shard for UIShardsShard {
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
+    self.context.has_changed = false;
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
+      // go backward / zoom out
+      if self.context.seqs_stack.len() > 1 {
+        if ui.button(emoji("⬅")).on_hover_text("Zoom out.").clicked() {
+          self.context.seqs_stack.pop();
+        }
+      }
+      let root = unsafe { &mut **self.context.seqs_stack.last_mut().unwrap() };
       let mut mutator = VisualAst::new(&mut self.context, ui);
-      self.ast.accept_mut(&mut mutator);
+      root.accept_mut(&mut mutator);
     });
     Ok(Var::default())
   }
