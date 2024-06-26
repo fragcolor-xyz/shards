@@ -184,7 +184,7 @@ jobs:
         shell: bash
         run: |
           cd build
-          GFX_BACKEND=D3D12 ./test-gfx
+          SHARDS_GFX_BACKEND=D3D12 ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -305,7 +305,7 @@ jobs:
           done
       - name: Test doc samples (GFX)
         env:
-          GFX_BACKEND: D3D12
+          SHARDS_GFX_BACKEND: D3D12
           RUST_BACKTRACE: full
         shell: bash
         run: |
@@ -322,7 +322,7 @@ jobs:
           done
       - name: Graphics Test
         env:
-          GFX_BACKEND: D3D12
+          SHARDS_GFX_BACKEND: D3D12
           RUST_BACKTRACE: full
         shell: bash
         run: |
@@ -359,7 +359,7 @@ jobs:
           build/shards new shards/tests/ui-selectable-drag.shs
       - name: Physics Test
         env:
-          GFX_BACKEND: D3D12
+          SHARDS_GFX_BACKEND: D3D12
           RUST_BACKTRACE: full
         shell: bash
         run: |

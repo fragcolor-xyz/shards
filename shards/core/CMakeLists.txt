@@ -23,6 +23,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
 else()
   set(SHARDS_INLINE_EVERYTHING_DEFAULT ON)
 endif()
+
 if(NOT DEFINED SHARDS_INLINE_EVERYTHING)
   set(SHARDS_INLINE_EVERYTHING ${SHARDS_INLINE_EVERYTHING_DEFAULT} CACHE BOOL "When enabled, runtime and core shards are inlined in a single compilation unit")
 endif()
@@ -31,7 +32,18 @@ if(SHARDS_INLINE_EVERYTHING)
   target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=1)
 endif()
 
+option(SHARDS_DEBUG_THREAD_NAMES "When enabled, threads are given names based on running wires" OFF)
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  target_compile_definitions(shards-core PUBLIC SH_DEBUG_THREAD_NAMES=1)
+else()
+  if(SHARDS_DEBUG_THREAD_NAMES)
+    target_compile_definitions(shards-core PUBLIC SH_DEBUG_THREAD_NAMES=1)
+  endif()
+endif()
+
 set(SHARDS_THREAD_FIBER OFF CACHE BOOL "When enabled, coroutines are evaluated using a single thread (for debugging purposes)")
+
 if(SHARDS_THREAD_FIBER)
   target_compile_definitions(shards-core PUBLIC SH_USE_THREAD_FIBER=1)
 endif()
@@ -76,6 +88,7 @@ if(APPLE)
       "-framework CoreGraphics"
       "-framework UIKit"
     )
+
     if(NOT SKIP_CORE_MOTION)
       target_link_libraries(shards-core "-framework CoreMotion")
     endif()
@@ -94,6 +107,7 @@ if(NOT EMSCRIPTEN)
   target_link_libraries(shards-core Boost::beast Boost::asio Boost::context)
 else()
   target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
+
   # For usage of boost/beast/core/detail/base64.hpp
   target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
@@ -132,8 +146,8 @@ if(EMSCRIPTEN)
 
   # Require optimizations when building with asyncify too keep size/build time reasonable
   # if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  #   target_compile_options(shards-core PUBLIC "-O3")
-  #   target_link_options(shards-core PUBLIC "-O3")
+  # target_compile_options(shards-core PUBLIC "-O3")
+  # target_link_options(shards-core PUBLIC "-O3")
   # endif()
 endif()
 
