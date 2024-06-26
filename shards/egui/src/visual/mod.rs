@@ -385,18 +385,29 @@ impl<'a> VisualAst<'a> {
     let shards = shards.as_table().unwrap();
     let shard_name = x.name.name.as_str();
     let shard_name_var = Var::ephemeral_string(shard_name);
-    let response = if let Some(shard) = shards.get(shard_name_var) {
-      let shard = shard.as_table().unwrap();
+    let shard_info = shards.get(shard_name_var).and_then(|x| x.as_table().ok());
 
-      let help_text: &str = shard.get_fast_static("help").try_into().unwrap();
-      let help_text = if help_text.is_empty() {
-        "No help text provided."
-      } else {
-        help_text
-      };
+    let help_text: Option<&str> = shard_info.map(|x| {
+      x.get_fast_static("help")
+        .try_into()
+        .expect("A shard's help text must be a string!")
+    });
+    let help_text = help_text
+      .map(|x| {
+        if x.is_empty() {
+          "No help text provided."
+        } else {
+          x
+        }
+      })
+      .unwrap_or("No help text provided.");
 
-      let color = shard.get_fast_static("color");
-      let color = Var::color_bytes(&color).unwrap();
+    let color = shard_info.map(|x| {
+      let c = x.get_fast_static("color");
+      Var::color_bytes(c).unwrap_or((255, 255, 255, 255))
+    });
+
+    let shard_name_rt = if let Some(color) = color {
       let bg_color = egui::Color32::from_rgb(color.0, color.1, color.2);
 
       // Determine text color based on background brightness
@@ -406,17 +417,26 @@ impl<'a> VisualAst<'a> {
         egui::Color32::WHITE
       };
 
-      let shard_name_rt = egui::RichText::new(shard_name)
+      egui::RichText::new(shard_name)
         .size(14.0)
         .strong()
         .family(egui::FontFamily::Monospace)
         .background_color(bg_color)
-        .color(text_color);
+        .color(text_color)
+    } else {
+      egui::RichText::new(shard_name)
+        .size(14.0)
+        .strong()
+        .family(egui::FontFamily::Monospace)
+        .italics()
+    };
 
-      self.ui.label(shard_name_rt).on_hover_text(help_text);
+    let response = self.ui.label(shard_name_rt).on_hover_text(help_text);
 
-      if self.parent_selected {
-        let params = shard.get_fast_static("parameters").as_seq().unwrap();
+    if self.parent_selected {
+      let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
+      if let Some(params) = params {
+        // We have documentation...
         if !params.is_empty() {
           let mut params_copy = if !params_sorted {
             // only if we really need to sort
@@ -567,44 +587,57 @@ impl<'a> VisualAst<'a> {
             }
           });
         }
+      } else {
+        // no documentation just render the values
+        for param in x.params.as_mut().unwrap() {
+          let mut mutator =
+            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
+          param.value.accept_mut(&mut mutator);
+        }
       }
-      None
-    } else {
-      Some(self.ui.label("Unknown shard"))
-    };
-    response
+    }
+    Some(response)
   }
 
   fn mutate_color(&mut self, x: &mut Function) -> Option<Response> {
     let params = x.params.as_mut().expect("params should exist");
 
-    let mut color_bytes = [
-      match &params[0].value {
-        Value::Number(Number::Integer(r)) => *r as u8,
-        _ => unreachable!(),
-      },
-      match &params[1].value {
-        Value::Number(Number::Integer(g)) => *g as u8,
-        _ => unreachable!(),
-      },
-      match &params[2].value {
-        Value::Number(Number::Integer(b)) => *b as u8,
-        _ => unreachable!(),
-      },
-      match &params[3].value {
-        Value::Number(Number::Integer(a)) => *a as u8,
-        _ => unreachable!(),
-      },
-    ];
+    // Initialize the color array with default values (255 for R, G, B, and A)
+    let mut color_bytes = [255u8; 4];
 
+    // Populate color_bytes based on the input params
+    for (i, param) in params.iter().enumerate().take(4) {
+      color_bytes[i] = match &param.value {
+        Value::Number(Number::Integer(v)) => *v as u8,
+        Value::Number(Number::Float(v)) => (*v * 255.0).clamp(0.0, 255.0) as u8,
+        Value::Number(Number::Hexadecimal(s)) if s.starts_with("0x") => {
+          u8::from_str_radix(&s[2..4], 16).unwrap_or(0)
+        }
+        _ => unreachable!(),
+      };
+    }
+
+    // Show color picker
     let response = self
       .ui
       .color_edit_button_srgba_unmultiplied(&mut color_bytes);
 
-    // Write the values back
-    for (i, &byte) in color_bytes.iter().enumerate() {
-      if let Value::Number(Number::Integer(val)) = &mut params[i].value {
-        *val = byte as i64;
+    // Write the values back to params
+    for (i, &byte) in color_bytes.iter().enumerate().take(4) {
+      if i < params.len() {
+        match &mut params[i].value {
+          Value::Number(Number::Integer(val)) => {
+            *val = byte as i64;
+          }
+          Value::Number(Number::Float(val)) => {
+            *val = (byte as f64) / 255.0;
+          }
+          Value::Number(Number::Hexadecimal(s)) if s.starts_with("0x") => {
+            let s = s.to_mut();
+            s.replace_range(2..4, &format!("{:02x}", byte));
+          }
+          _ => unreachable!(),
+        }
       }
     }
 
@@ -1325,7 +1358,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     mutator.mutate_color(x)
                   }
                   _ => {
-                    todo!()
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    mutator.mutate_shard(x)
                   }
                 },
                 BlockContent::Program(x) => {
@@ -1863,9 +1897,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       }
       Value::Func(x) => match x.name.name.as_str() {
         "color" => self.mutate_color(x),
-        _ => {
-          todo!()
-        }
+        _ => self.mutate_shard(x),
       },
     }
   }
