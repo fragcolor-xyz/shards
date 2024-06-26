@@ -28,6 +28,8 @@ use pest::Parser;
 
 use shards_lang::{ast::*, ast_visitor::*, ParamHelperMut, RcStrWrapper};
 
+use num_traits::{Float, FromPrimitive, PrimInt, Zero};
+
 mod directory;
 
 fn draw_arrow_head(ui: &mut egui::Ui, from: Rect, to: Rect) {
@@ -1357,6 +1359,54 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                     mutator.mutate_color(x)
                   }
+                  "i2" => {
+                    let y = ints_func_to_ints(x);
+                    block.content = BlockContent::Const(Value::Int2(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "i3" => {
+                    let y = ints_func_to_ints(x);
+                    block.content = BlockContent::Const(Value::Int3(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "i4" => {
+                    let y = ints_func_to_ints(x);
+                    block.content = BlockContent::Const(Value::Int4(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "i8" => {
+                    let y = ints_func_to_ints(x);
+                    block.content = BlockContent::Const(Value::Int8(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "i16" => {
+                    let y = ints_func_to_ints(x);
+                    block.content = BlockContent::Const(Value::Int16(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "f2" => {
+                    let y = floats_func_to_floats(x);
+                    block.content = BlockContent::Const(Value::Float2(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "f3" => {
+                    let y = floats_func_to_floats(x);
+                    block.content = BlockContent::Const(Value::Float3(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
+                  "f4" => {
+                    let y = floats_func_to_floats(x);
+                    block.content = BlockContent::Const(Value::Float4(y));
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                    block.accept_mut(&mut mutator).1
+                  }
                   _ => {
                     let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                     mutator.mutate_shard(x)
@@ -1897,6 +1947,46 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       }
       Value::Func(x) => match x.name.name.as_str() {
         "color" => self.mutate_color(x),
+        "i2" => {
+          let y = ints_func_to_ints(x);
+          *value = Value::Int2(y);
+          self.visit_value(value)
+        }
+        "i3" => {
+          let y = ints_func_to_ints(x);
+          *value = Value::Int3(y);
+          self.visit_value(value)
+        }
+        "i4" => {
+          let y = ints_func_to_ints(x);
+          *value = Value::Int4(y);
+          self.visit_value(value)
+        }
+        "i8" => {
+          let y = ints_func_to_ints(x);
+          *value = Value::Int4(y);
+          self.visit_value(value)
+        }
+        "i16" => {
+          let y = ints_func_to_ints(x);
+          *value = Value::Int4(y);
+          self.visit_value(value)
+        }
+        "f2" => {
+          let y = floats_func_to_floats(x);
+          *value = Value::Float2(y);
+          self.visit_value(value)
+        }
+        "f3" => {
+          let y = floats_func_to_floats(x);
+          *value = Value::Float3(y);
+          self.visit_value(value)
+        }
+        "f4" => {
+          let y = floats_func_to_floats(x);
+          *value = Value::Float4(y);
+          self.visit_value(value)
+        }
         _ => self.mutate_shard(x),
       },
     }
@@ -1905,6 +1995,44 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
     None
   }
+}
+
+fn func_to_numbers<T, const SIZE: usize>(x: &mut Function) -> [T; SIZE]
+where
+  T: FromPrimitive + Copy + Zero,
+{
+  // Initialize array with zeros
+  let mut y = [T::zero(); SIZE];
+
+  for (i, param) in x.params.as_mut().unwrap().iter_mut().take(SIZE).enumerate() {
+    y[i] = match &param.value {
+      Value::Number(num) => match num {
+        Number::Integer(x) => T::from_i64(*x).unwrap_or_else(T::zero),
+        Number::Float(x) => T::from_f64(*x).unwrap_or_else(T::zero),
+        Number::Hexadecimal(x) => {
+          T::from_i64(i64::from_str_radix(&x[2..], 16).unwrap_or(0)).unwrap_or_else(T::zero)
+        }
+      },
+      _ => T::zero(),
+    };
+  }
+  y
+}
+
+// Specialized function for integer types
+fn ints_func_to_ints<T, const SIZE: usize>(x: &mut Function) -> [T; SIZE]
+where
+  T: PrimInt + FromPrimitive,
+{
+  func_to_numbers(x)
+}
+
+// Specialized function for float types
+fn floats_func_to_floats<T, const SIZE: usize>(x: &mut Function) -> [T; SIZE]
+where
+  T: Float + FromPrimitive,
+{
+  func_to_numbers(x)
 }
 
 fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequence {
