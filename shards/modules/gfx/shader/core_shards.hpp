@@ -301,7 +301,7 @@ struct Literal {
 
     bool isDynamic = _source.valueType != SHType::String;
     SPDLOG_LOGGER_TRACE(context.logger, "gen(literal/{})> {}", magic_enum::enum_name(type),
-                       isDynamic ? "dynamic" : SHSTRVIEW(_source));
+                        isDynamic ? "dynamic" : SHSTRVIEW(_source));
 
     auto outputFieldType = getOutputType();
     blocks::BlockPtr block;
@@ -402,14 +402,15 @@ template <typename TShard> struct Read final : public IOBase {
 struct ReadBuffer final : public IOBase {
   std::string _bufferName;
   std::string _resolvedBufferName;
+  FastString _resolvedVariableName;
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   SHTypesInfo outputTypes() { return _type.shardsTypes; }
 
-  const auto &findBufferContainingParam(const std::string &fieldName) {
+  const auto &findBufferContainingParam(FastString fieldName) {
     auto &shaderCtx = ShaderCompositionContext::get();
     for (auto &b : shaderCtx.generatorContext.getDefinitions().buffers) {
-      auto field = b.second.findField(fieldName.c_str());
+      auto field = b.second.findField(fieldName);
       if (field)
         return b;
     }
@@ -418,10 +419,11 @@ struct ReadBuffer final : public IOBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedVariableName = shaderCtx.resolveGlobalVariableName(_name);
 
     const BufferDefinition *buffer{};
     if (_bufferName.empty()) {
-      auto &[name, def] = findBufferContainingParam(_name);
+      auto &[name, def] = findBufferContainingParam(_resolvedVariableName);
       _resolvedBufferName = name;
       buffer = &def;
     } else {
@@ -435,9 +437,10 @@ struct ReadBuffer final : public IOBase {
     }
 
     // Find field in buffer
-    const StructField *field = buffer->findField(_name.c_str());
+    const StructField *field = buffer->findField(_resolvedVariableName);
     if (!field)
-      throw shards::ComposeError(fmt::format("Shader parameter \"{}\" does not exist in buffer \"{}\"", _name, _bufferName));
+      throw shards::ComposeError(
+          fmt::format("Shader parameter \"{}\" does not exist in buffer \"{}\"", _resolvedVariableName, _bufferName));
 
     _type.shaderType = field->type;
     _type.shardsTypes = shards::Types{fieldTypeToShardsType(field->type)};
@@ -472,10 +475,12 @@ struct ReadBuffer final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName, _name);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName,
+                        _resolvedVariableName);
 
     NumType fieldType = std::get<NumType>(_type.shaderType);
-    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _resolvedBufferName));
+    context.setWGSLTop<WGSLBlock>(_type.shaderType,
+                                  blocks::makeBlock<blocks::ReadBuffer>(_resolvedVariableName, fieldType, _resolvedBufferName));
   }
 };
 
@@ -560,6 +565,7 @@ struct SampleTexture {
   SHParametersInfo parameters() { return params; };
 
   shards::OwnedVar _name;
+  FastString _resolvedName;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
@@ -570,12 +576,12 @@ struct SampleTexture {
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedName = shaderCtx.resolveGlobalVariableName(_name);
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
-    auto it = textures.find(name);
+    auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     if (it->second.type.dimension != TextureDimension::D2) {
       throw formatException("SampleTexture does not support texture for type [{}]",
@@ -586,10 +592,8 @@ struct SampleTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample)> {}", textureName);
-
-    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample)> {}", _resolvedName);
+    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(_resolvedName));
   }
 };
 
@@ -617,12 +621,12 @@ struct SampleTextureCoord : public SampleTexture {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue; // should be safe null term wise
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedName = shaderCtx.resolveGlobalVariableName(_name);
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
-    auto it = textures.find(name);
+    auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
 
     SHTypeInfo expectedInputType = getExpectedCoordinateType(it->second);
@@ -634,8 +638,7 @@ struct SampleTextureCoord : public SampleTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample/uv)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(sample/uv)> {}", _resolvedName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not sample texture: coordinate is required"));
@@ -643,7 +646,7 @@ struct SampleTextureCoord : public SampleTexture {
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
     auto &varName = context.assignTempVar(wgslValue->toBlock());
-    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
+    context.setWGSLTopVar(Types::Float4, blocks::makeBlock<blocks::SampleTexture>(_resolvedName, varName));
   }
 };
 
@@ -656,18 +659,19 @@ struct RefTexture {
   SHParametersInfo parameters() { return SampleTexture::params; }
 
   shards::OwnedVar _name;
+  FastString _resolvedName;
   TextureType _textureType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedName = shaderCtx.resolveGlobalVariableName(_name);
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
-    auto it = textures.find(name);
+    auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     _textureType = it->second.type;
 
@@ -675,10 +679,10 @@ struct RefTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/texture)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/texture)> {}", _resolvedName);
 
-    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.texture(textureName); });
+    auto block =
+        std::make_unique<blocks::Custom>([resolvedName = _resolvedName](IGeneratorContext &ctx) { ctx.texture(resolvedName); });
     context.setWGSLTopVar(_textureType, std::move(block));
   }
 
@@ -694,28 +698,29 @@ struct RefSampler {
   SHParametersInfo parameters() { return SampleTexture::params; }
 
   shards::OwnedVar _name;
+  FastString _resolvedName;
   SamplerType _samplerType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedName = shaderCtx.resolveGlobalVariableName(_name);
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
-    auto it = textures.find(name);
+    auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     _samplerType = SamplerType{};
     return ShardsTypes::Sampler;
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/sampler)> {}", textureName);
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(ref/sampler)> {}", _resolvedName);
 
-    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.textureDefaultSampler(textureName); });
+    auto block = std::make_unique<blocks::Custom>(
+        [resolvedName = _resolvedName](IGeneratorContext &ctx) { ctx.textureDefaultSampler(resolvedName); });
     context.setWGSLTopVar(_samplerType, std::move(block));
   }
 
@@ -732,30 +737,31 @@ struct RefBuffer {
   PARAM_VAR(_pointer, "Pointer", "Reference as pointer", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_pointer));
 
+  FastString _resolvedName;
+
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
+    _resolvedName = shaderCtx.resolveGlobalVariableName(_name);
     auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
-    auto it = buffers.find(name);
+    auto it = buffers.find(_resolvedName);
     if (it == buffers.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     return ShardsTypes::Buffer;
   }
 
   void translate(TranslationContext &context) {
-    const SHString &bufferName = _name.payload.stringValue; // null term ok
-    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/buffer)> {}", bufferName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/buffer)> {}", _resolvedName);
 
     bool isRef = _pointer->isNone() || (bool)*_pointer;
-    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) {
-      if(isRef) {
+    auto block = std::make_unique<blocks::Custom>([isRef, resolvedName = _resolvedName](IGeneratorContext &ctx) {
+      if (isRef) {
         ctx.write("&");
       }
-      ctx.refBuffer(bufferName);
+      ctx.refBuffer(resolvedName);
     });
     context.setWGSLTopVar(StructType{}, std::move(block));
   }
@@ -833,6 +839,8 @@ struct WithTexture {
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_then), PARAM_IMPL_FOR(_else));
 
+  bool _hasTexture{};
+
   WithTexture() { _name = shards::Var(""); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -842,8 +850,9 @@ struct WithTexture {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
-    bool hasTexture = shaderCompositionContext.generatorContext.hasTexture(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
-    if (hasTexture) {
+    FastString _resolvedName = shaderCompositionContext.resolveGlobalVariableName(_name);
+    _hasTexture = shaderCompositionContext.generatorContext.hasTexture(_resolvedName);
+    if (_hasTexture) {
       _then.compose(data);
     } else {
       _else.compose(data);
@@ -857,10 +866,7 @@ struct WithTexture {
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
   void translate(TranslationContext &context) {
-    ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
-    bool hasTexture = shaderCompositionContext.generatorContext.hasTexture(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
-
-    if (hasTexture) {
+    if (_hasTexture) {
       if (_then)
         processShardsVar(_then, context);
     } else {

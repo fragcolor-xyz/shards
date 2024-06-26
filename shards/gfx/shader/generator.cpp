@@ -116,7 +116,8 @@ struct InternalStructField {
 };
 
 template <typename T>
-static void generateStruct(T &output, const String &typeName, const std::vector<InternalStructField> &fields, bool interpolated = true) {
+static void generateStruct(T &output, const String &typeName, const std::vector<InternalStructField> &fields,
+                           bool interpolated = true) {
   output += fmt::format("struct {} {{\n", typeName);
   for (auto &field : fields) {
     std::string typeName = getWGSLTypeName(field.base.type);
@@ -600,6 +601,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     IndexedBindings result;
     GeneratorDefinitions definitions;
     std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
+    TempVariableAllocator tempVariableAllocator;
 
     void write(const StringView &str) {}
 
@@ -665,18 +667,13 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       if (index)
         index(*this);
     }
-    void refBuffer(FastString bufferName) {
-      findOrAddIndex(result.bufferBindings, bufferName);
-    }
+    void refBuffer(FastString bufferName) { findOrAddIndex(result.bufferBindings, bufferName); }
 
     void pushError(GeneratorError &&error) {}
 
     const GeneratorDefinitions &getDefinitions() const { return definitions; }
 
-    const std::string &generateTempVariable() {
-      static std::string dummy;
-      return dummy;
-    }
+    TempVariableAllocator &getTempVariableAllocator() { return tempVariableAllocator; }
   } context;
 
   PipelineIO pipelineIO(meshFormat, outputFields);

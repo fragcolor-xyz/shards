@@ -182,6 +182,8 @@ public:
     return stack.back();
   }
 
+  TempVariableAllocator& getTempVariableAllocator() { return tempVariableAllocator; }
+
   // Add a new generated shader blocks without entering it
   template <typename T> void addNew(std::unique_ptr<T> &&ptr) {
     enterNew<T>(std::move(ptr));
