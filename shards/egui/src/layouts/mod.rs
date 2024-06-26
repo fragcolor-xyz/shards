@@ -341,7 +341,7 @@ struct Sized {
   fill_height: ClonedVar,
 }
 
-mod auto_grid;
+pub(crate) mod auto_grid;
 mod collapsing_header;
 mod columns;
 mod disable;
