@@ -296,6 +296,9 @@ fn get_first_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
   None
 }
 fn get_last_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
+  if ast.statements.len() < 2 {
+    return None;
+  }
   for statement in ast.statements.iter_mut().rev() {
     match statement {
       Statement::Assignment(assignment) => {
@@ -1634,7 +1637,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             // if long we should use a multiline text editor
             // if short we should use a single line text editor
             let x = x.to_mut();
-            Some(if x.len() > 16 {
+            Some(if x.len() > 32 {
               ui.text_edit_multiline(x)
             } else {
               let len = x.len();
@@ -1846,6 +1849,28 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               if response.clicked() {
                 x.push(Value::None);
               }
+            } else {
+              // give a peek of FIRST..LAST
+              if !x.is_empty() {
+                ui.horizontal(|ui| {
+                  // first is qed
+                  let first = x.first_mut().unwrap();
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                  first.accept_mut(&mut mutator).unwrap();
+                  // no ctx menu this time
+                  // second is not qed
+                  if x.len() > 1 {
+                    if let Some(second) = x.last_mut() {
+                      ui.label(emoji("⬌"));
+                      let mut mutator =
+                        VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                      second.accept_mut(&mut mutator).unwrap();
+                      // no ctx menu this time
+                    }
+                  }
+                });
+              }
             }
             Some(response)
           }
@@ -1916,6 +1941,28 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 .on_hover_text("Add new key value pair.");
               if response.clicked() {
                 x.push((Value::None, Value::None));
+              }
+            } else {
+              // like seq but just preview first and last key (not values)
+              if !x.is_empty() {
+                ui.horizontal(|ui| {
+                  // first is qed
+                  let first = x.first_mut().unwrap();
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                  first.0.accept_mut(&mut mutator).unwrap();
+                  // no ctx menu this time
+                  // second is not qed
+                  if x.len() > 1 {
+                    if let Some(second) = x.last_mut() {
+                      ui.label(emoji("⬌"));
+                      let mut mutator =
+                        VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                      second.0.accept_mut(&mut mutator).unwrap();
+                      // no ctx menu this time
+                    }
+                  }
+                });
               }
             }
             Some(response)
@@ -2207,7 +2254,7 @@ fn render_shards_group(
             mutator.mutate_shard(first);
           }
           if let Some(last) = get_last_shard_ref(x) {
-            ui.label("...");
+            ui.label(emoji("⬌"));
             let mut mutator = VisualAst::with_parent_selected(context, ui, selected);
             mutator.mutate_shard(last);
           }

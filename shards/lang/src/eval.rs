@@ -906,7 +906,7 @@ fn finalize_wire(
 
   if !env.settings.iter().any(|&s| s.disallow_unsafe) {
     let unsafe_ = param_helper
-      .get_param_by_name_or_index("Unsafe", 4)
+      .get_param_by_name_or_index("Unsafe", 5)
       .map(|param| match &param.value {
         Value::Boolean(b) => Ok(*b),
         _ => Err(("Unsafe parameter must be a boolean", line_info).into()),
@@ -917,7 +917,7 @@ fn finalize_wire(
 
   if !env.settings.iter().any(|&s| s.disallow_custom_stack_sizes) {
     let stack_size = param_helper
-      .get_param_by_name_or_index("StackSize", 5)
+      .get_param_by_name_or_index("StackSize", 6)
       .map(|param| match as_var(&param.value, line_info, None, env)? {
         SVar::Cloned(v) => i64::try_from(&v.0)
           .map_err(|_| ("StackSize parameter must be an integer", line_info).into()),
