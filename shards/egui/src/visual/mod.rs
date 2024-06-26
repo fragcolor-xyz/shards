@@ -5,9 +5,7 @@ use directory::{get_global_map, get_global_name_btree, get_global_visual_shs_cha
 use egui::*;
 use nanoid::nanoid;
 use std::{
-  any::Any,
-  cmp::{max, min},
-  sync::mpsc,
+  any::Any, cell::RefMut, cmp::{max, min}, sync::mpsc
 };
 
 use crate::{
@@ -19,7 +17,7 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, TableVar, Type,
+    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, Type,
     Types, Var, NONE_TYPES,
   },
   SHType_Bool, SHType_Bytes, SHType_ContextVar, SHType_Enum, SHType_Float, SHType_Float2,
@@ -204,9 +202,14 @@ enum SwapStateResult<T> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct ParamSwapState {
+struct SwapStateCommon {
   receiver: Option<UniqueReceiver<ClonedVar>>,
   window_pos: Pos2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ParamSwapState {
+  common: SwapStateCommon,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -216,34 +219,31 @@ struct ParamState {
 
 impl_custom_any!(ParamState);
 
-#[derive(Debug, Clone, PartialEq)]
-struct BlockSwapState {
+#[derive(Debug)]
+struct BlockSwapState<'a> {
+  common: SwapStateCommon,
+  block: RefMut<'a, Block>,
   search_string: String,
   previous_search_string: String,
   search_results: Vec<String>,
-  receiver: Option<UniqueReceiver<ClonedVar>>,
-  window_pos: Pos2,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 struct BlockState {
   selected: bool,
   id: Id,
-  swap_state: Option<BlockSwapState>,
 }
 
 impl_custom_any!(BlockState);
 
 #[derive(Debug, Clone, PartialEq)]
-struct FunctionSwapState {
-  receiver: Option<UniqueReceiver<ClonedVar>>,
-  window_pos: Pos2,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 struct FunctionState {
   params_sorted: bool,
-  swap_state: Option<FunctionSwapState>,
+}
+
+enum SwapState<'a> {
+  Param(ParamSwapState),
+  Block(BlockSwapState<'a>)
 }
 
 #[derive(Debug)]
@@ -278,7 +278,13 @@ impl<T> UniqueReceiver<T> {
 
 impl_custom_any!(FunctionState);
 
+// common state
+pub struct Context {
+  swap_state: Option<SwapState>,
+}
+
 pub struct VisualAst<'a> {
+  context: RefMut<'a, Context>,
   ui: &'a mut Ui,
   parent_selected: bool,
 }
@@ -336,15 +342,21 @@ fn get_last_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
 }
 
 impl<'a> VisualAst<'a> {
-  pub fn new(ui: &'a mut Ui) -> Self {
+  pub fn new(context: RefMut<'a, Context>, ui: &'a mut Ui) -> Self {
     VisualAst {
+      context,
       ui,
       parent_selected: false,
     }
   }
 
-  pub fn with_parent_selected(ui: &'a mut Ui, parent_selected: bool) -> Self {
+  pub fn with_parent_selected(
+    context: RefMut<'a, Context>,
+    ui: &'a mut Ui,
+    parent_selected: bool,
+  ) -> Self {
     VisualAst {
+      context,
       ui,
       parent_selected,
     }
@@ -357,7 +369,6 @@ impl<'a> VisualAst<'a> {
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
     let state = x.get_or_insert_custom_state(|| FunctionState {
       params_sorted: false,
-      swap_state: None,
     });
     let params_sorted = state.params_sorted;
 
@@ -502,15 +513,18 @@ impl<'a> VisualAst<'a> {
                         .ctx()
                         .input(|i| i.pointer.hover_pos().unwrap_or_default());
                       state.swap_state = Some(ParamSwapState {
-                        receiver: None,
-                        window_pos: mouse_pos,
+                        common: SwapStateCommon {
+                          receiver: None,
+                          window_pos: mouse_pos,
+                        },
                       });
                     }
                   });
 
                   x.params.as_mut().map(|params| {
                     // draw the value
-                    let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                    let mut mutator =
+                      VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
                     params[idx].value.accept_mut(&mut mutator);
 
                     // process changes
@@ -547,291 +561,6 @@ impl<'a> VisualAst<'a> {
       Some(self.ui.label("Unknown shard"))
     };
     response
-  }
-
-  fn select_shard_modal(&mut self, swap_state: &mut BlockSwapState) -> SwapStateResult<Block> {
-    egui::Window::new("")
-      .id(egui::Id::new(swap_state as *mut _ as u64))
-      .open(&mut true)
-      .collapsible(false)
-      .resizable(false)
-      .title_bar(false)
-      .current_pos(swap_state.window_pos)
-      .frame(egui::Frame::popup(self.ui.style()))
-      .show(self.ui.ctx(), |ui| {
-        let result = ui
-          .horizontal(|ui| {
-            if ui
-              .button("Bool")
-              .on_hover_text("A boolean value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Boolean(false)),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Int")
-              .on_hover_text("An integer value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Number(Number::Integer(0))),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Float").on_hover_text("A float value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Number(Number::Float(0.0))),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("String")
-              .on_hover_text("A string value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::String("".into())),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Bytes").on_hover_text("A bytes value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Bytes(Vec::new().into())),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            SwapStateResult::Continue
-          })
-          .inner;
-        match result {
-          SwapStateResult::Done(_) => return result,
-          _ => {}
-        }
-        let result = ui
-          .horizontal(|ui| {
-            if ui
-              .button("Float2")
-              .on_hover_text("A float2 value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Float2([0.0, 0.0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Float3")
-              .on_hover_text("A float3 value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Float3([0.0, 0.0, 0.0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Float4")
-              .on_hover_text("A float4 value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Float4([0.0, 0.0, 0.0, 0.0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Int2").on_hover_text("An int2 value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Int2([0, 0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Int3").on_hover_text("An int3 value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Int3([0, 0, 0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            SwapStateResult::Continue
-          })
-          .inner;
-        match result {
-          SwapStateResult::Done(_) => return result,
-          _ => {}
-        }
-        let result = ui
-          .horizontal(|ui| {
-            if ui.button("Int4").on_hover_text("An int4 value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Int4([0, 0, 0, 0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Int8").on_hover_text("An int8 value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Int8([0, 0, 0, 0, 0, 0, 0, 0])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Int16")
-              .on_hover_text("An int16 value.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Int16([0; 16])),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Seq")
-              .on_hover_text("A sequence of values.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Seq(Vec::new())),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui
-              .button("Table")
-              .on_hover_text("A table of key-value pairs.")
-              .clicked()
-            {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Table(Vec::new())),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            if ui.button("Color").on_hover_text("A color value.").clicked() {
-              return SwapStateResult::Done(Block {
-                content: BlockContent::Const(Value::Func(Function {
-                  name: Identifier {
-                    name: "color".into(),
-                    namespaces: Vec::new(),
-                  },
-                  params: Some(vec![
-                    // 4 Number/Integer values
-                    Param {
-                      name: None,
-                      value: Value::Number(Number::Integer(255)),
-                      custom_state: None,
-                    },
-                    Param {
-                      name: None,
-                      value: Value::Number(Number::Integer(255)),
-                      custom_state: None,
-                    },
-                    Param {
-                      name: None,
-                      value: Value::Number(Number::Integer(255)),
-                      custom_state: None,
-                    },
-                    Param {
-                      name: None,
-                      value: Value::Number(Number::Integer(255)),
-                      custom_state: None,
-                    },
-                  ]),
-                  custom_state: None,
-                })),
-                line_info: None,
-                custom_state: None,
-              });
-            }
-            SwapStateResult::Continue
-          })
-          .inner;
-        match result {
-          SwapStateResult::Done(_) => return result,
-          _ => {}
-        }
-
-        ui.separator();
-
-        ui.label("Search for a shard:");
-        ui.text_edit_singleline(&mut swap_state.search_string);
-        let result = ui
-          .horizontal(|ui| {
-            if ui.button("Cancel").clicked() {
-              SwapStateResult::<Block>::Close
-            } else {
-              SwapStateResult::Continue
-            }
-          })
-          .inner;
-        match result {
-          SwapStateResult::Close => return SwapStateResult::Close,
-          _ => {}
-        }
-
-        let prefix = &swap_state.search_string;
-
-        if *prefix != swap_state.previous_search_string {
-          swap_state.search_results.clear();
-          let shards = get_global_name_btree();
-          for shard in shards.range(prefix.to_string()..) {
-            if shard.starts_with(prefix) {
-              // exit if more than 100
-              if swap_state.search_results.len() > 100 {
-                break;
-              }
-              swap_state.search_results.push(shard.clone());
-            } else {
-              break;
-            }
-          }
-        }
-
-        ui.separator();
-
-        let maybe_block = egui::ScrollArea::new([true, true])
-          .min_scrolled_height(75.0)
-          .show(ui, |ui| {
-            for result in swap_state.search_results.iter() {
-              if ui.selectable_label(false, result).clicked() {
-                return SwapStateResult::Done(Block {
-                  content: BlockContent::Shard(Function {
-                    name: Identifier {
-                      name: result.clone().into(),
-                      namespaces: Vec::new(),
-                    },
-                    params: None,
-                    custom_state: None,
-                  }),
-                  line_info: None,
-                  custom_state: None,
-                });
-              }
-            }
-            SwapStateResult::Continue
-          })
-          .inner;
-
-        swap_state.previous_search_string = prefix.clone();
-
-        maybe_block
-      })
-      .unwrap()
-      .inner
-      .unwrap()
   }
 
   fn mutate_color(&mut self, x: &mut Function) -> Option<Response> {
@@ -871,6 +600,291 @@ impl<'a> VisualAst<'a> {
   }
 }
 
+fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapStateResult<Block> {
+  egui::Window::new("")
+    .id(egui::Id::new(swap_state as *mut _ as u64))
+    .open(&mut true)
+    .collapsible(false)
+    .resizable(false)
+    .title_bar(false)
+    .current_pos(swap_state.common.window_pos)
+    .frame(egui::Frame::popup(ui.style()))
+    .show(ui.ctx(), |ui| {
+      let result = ui
+        .horizontal(|ui| {
+          if ui
+            .button("Bool")
+            .on_hover_text("A boolean value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Boolean(false)),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Int")
+            .on_hover_text("An integer value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Number(Number::Integer(0))),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Float").on_hover_text("A float value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Number(Number::Float(0.0))),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("String")
+            .on_hover_text("A string value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::String("".into())),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Bytes").on_hover_text("A bytes value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Bytes(Vec::new().into())),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      match result {
+        SwapStateResult::Done(_) => return result,
+        _ => {}
+      }
+      let result = ui
+        .horizontal(|ui| {
+          if ui
+            .button("Float2")
+            .on_hover_text("A float2 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Float2([0.0, 0.0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Float3")
+            .on_hover_text("A float3 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Float3([0.0, 0.0, 0.0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Float4")
+            .on_hover_text("A float4 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Float4([0.0, 0.0, 0.0, 0.0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Int2").on_hover_text("An int2 value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Int2([0, 0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Int3").on_hover_text("An int3 value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Int3([0, 0, 0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      match result {
+        SwapStateResult::Done(_) => return result,
+        _ => {}
+      }
+      let result = ui
+        .horizontal(|ui| {
+          if ui.button("Int4").on_hover_text("An int4 value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Int4([0, 0, 0, 0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Int8").on_hover_text("An int8 value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Int8([0, 0, 0, 0, 0, 0, 0, 0])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Int16")
+            .on_hover_text("An int16 value.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Int16([0; 16])),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Seq")
+            .on_hover_text("A sequence of values.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Seq(Vec::new())),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui
+            .button("Table")
+            .on_hover_text("A table of key-value pairs.")
+            .clicked()
+          {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Table(Vec::new())),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          if ui.button("Color").on_hover_text("A color value.").clicked() {
+            return SwapStateResult::Done(Block {
+              content: BlockContent::Const(Value::Func(Function {
+                name: Identifier {
+                  name: "color".into(),
+                  namespaces: Vec::new(),
+                },
+                params: Some(vec![
+                  // 4 Number/Integer values
+                  Param {
+                    name: None,
+                    value: Value::Number(Number::Integer(255)),
+                    custom_state: None,
+                  },
+                  Param {
+                    name: None,
+                    value: Value::Number(Number::Integer(255)),
+                    custom_state: None,
+                  },
+                  Param {
+                    name: None,
+                    value: Value::Number(Number::Integer(255)),
+                    custom_state: None,
+                  },
+                  Param {
+                    name: None,
+                    value: Value::Number(Number::Integer(255)),
+                    custom_state: None,
+                  },
+                ]),
+                custom_state: None,
+              })),
+              line_info: None,
+              custom_state: None,
+            });
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+      match result {
+        SwapStateResult::Done(_) => return result,
+        _ => {}
+      }
+
+      ui.separator();
+
+      ui.label("Search for a shard:");
+      ui.text_edit_singleline(&mut swap_state.search_string);
+      let result = ui
+        .horizontal(|ui| {
+          if ui.button("Cancel").clicked() {
+            SwapStateResult::<Block>::Close
+          } else {
+            SwapStateResult::Continue
+          }
+        })
+        .inner;
+      match result {
+        SwapStateResult::Close => return SwapStateResult::Close,
+        _ => {}
+      }
+
+      let prefix = &swap_state.search_string;
+
+      if *prefix != swap_state.previous_search_string {
+        swap_state.search_results.clear();
+        let shards = get_global_name_btree();
+        for shard in shards.range(prefix.to_string()..) {
+          if shard.starts_with(prefix) {
+            // exit if more than 100
+            if swap_state.search_results.len() > 100 {
+              break;
+            }
+            swap_state.search_results.push(shard.clone());
+          } else {
+            break;
+          }
+        }
+      }
+
+      ui.separator();
+
+      let maybe_block = egui::ScrollArea::new([true, true])
+        .min_scrolled_height(75.0)
+        .show(ui, |ui| {
+          for result in swap_state.search_results.iter() {
+            if ui.selectable_label(false, result).clicked() {
+              return SwapStateResult::Done(Block {
+                content: BlockContent::Shard(Function {
+                  name: Identifier {
+                    name: result.clone().into(),
+                    namespaces: Vec::new(),
+                  },
+                  params: None,
+                  custom_state: None,
+                }),
+                line_info: None,
+                custom_state: None,
+              });
+            }
+          }
+          SwapStateResult::Continue
+        })
+        .inner;
+
+      swap_state.previous_search_string = prefix.clone();
+
+      maybe_block
+    })
+    .unwrap()
+    .inner
+    .unwrap()
+}
+
 fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapStateResult<Value> {
   egui::Window::new("")
     .id(egui::Id::new(swap_state as *mut _ as u64))
@@ -878,7 +892,7 @@ fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapState
     .collapsible(false)
     .resizable(false)
     .title_bar(false)
-    .current_pos(swap_state.window_pos)
+    .current_pos(swap_state.common.window_pos)
     .frame(egui::Frame::popup(ui.style()))
     .show(ui.ctx(), |ui| {
       let result = ui
@@ -1045,7 +1059,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     self
       .ui
       .with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-        let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+        let mut mutator = VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
         match statement {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
@@ -1139,7 +1153,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       let state = block.get_or_insert_custom_state(|| BlockState {
         selected: false,
         id: Id::new(nanoid!(16)),
-        swap_state: None,
       });
       (state.selected, state.id)
     };
@@ -1163,18 +1176,19 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     .on_hover_text("Change shard type.")
                     .clicked()
                   {
-                    // switch
-                    let state = block.get_custom_state::<BlockState>().unwrap();
-                    let mouse_pos = ui
+                    // switch to shard selection
+                    let window_pos = ui
                       .ctx()
                       .input(|i| i.pointer.hover_pos().unwrap_or_default());
-                    state.swap_state = Some(BlockSwapState {
+                    self.context.swap_state = Some(SwapState::Block(BlockSwapState {
+                      common: SwapStateCommon {
+                        receiver: None,
+                        window_pos,
+                      },
                       search_string: "".into(),
                       previous_search_string: "".into(),
                       search_results: Vec::new(),
-                      receiver: None,
-                      window_pos: mouse_pos,
-                    });
+                    }));
                   }
                   if ui.button(emoji("🗐")).on_hover_text("Duplicate.").clicked() {
                     action = BlockAction::Duplicate;
@@ -1187,22 +1201,22 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               match &mut block.content {
                 BlockContent::Empty => Some(ui.separator()),
                 BlockContent::Shard(x) => {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   mutator.mutate_shard(x)
                 }
                 BlockContent::Expr(x) => {
                   ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
                     egui::Stroke::new(1.0, Color32::from_rgb(173, 216, 230));
-                  render_shards_group(ui, selected, x)
+                  render_shards_group(self.context, ui, selected, x)
                 }
                 BlockContent::EvalExpr(x) => {
                   ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
                     egui::Stroke::new(1.0, Color32::from_rgb(200, 180, 255));
-                  render_shards_group(ui, selected, x)
+                  render_shards_group(self.context, ui, selected, x)
                 }
-                BlockContent::Shards(x) => render_shards_group(ui, selected, x),
+                BlockContent::Shards(x) => render_shards_group(self.context, ui, selected, x),
                 BlockContent::Const(x) => {
-                  let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   x.accept_mut(&mut mutator)
                 }
                 BlockContent::TakeTable(x, y) => {
@@ -1215,7 +1229,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 }
                 BlockContent::Func(x) => match x.name.name.as_str() {
                   "color" => {
-                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                     mutator.mutate_color(x)
                   }
                   _ => {
@@ -1224,7 +1238,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 },
                 BlockContent::Program(x) => {
                   ui.group(|ui| {
-                    let mut mutator = VisualAst::with_parent_selected(ui, selected);
+                    let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                     x.accept_mut(&mut mutator)
                   })
                   .inner
@@ -1249,13 +1263,14 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
     let state = block.get_custom_state::<BlockState>().unwrap();
     state.selected = selected;
-    if let Some(swap_state) = state.swap_state.as_mut() {
-      match self.select_shard_modal(swap_state) {
+
+    if let Some(SwapState::Block(swap_state)) = &mut self.context.swap_state {
+      match select_shard_modal(self.ui, swap_state) {
         SwapStateResult::Done(new_block) => {
           action = BlockAction::Swap(new_block);
         }
         SwapStateResult::Close => {
-          state.swap_state = None;
+          self.context.swap_state = None;
         }
         _ => {}
       }
@@ -1583,7 +1598,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 ui.horizontal(|ui| {
                   ui.label(format!("{}:", idx));
                   idx += 1;
-                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
                   let response = value.accept_mut(&mut mutator).unwrap();
                   response.context_menu(|ui| {
                     // change type
@@ -1627,7 +1643,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               x.retain_mut(|(key, value)| {
                 let mut to_keep = true;
                 ui.horizontal(|ui| {
-                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
                   let response = key.accept_mut(&mut mutator).unwrap();
                   response.context_menu(|ui| {
                     // change type
@@ -1648,7 +1665,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                       ui.close_menu();
                     }
                   });
-                  let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
                   let response = value.accept_mut(&mut mutator).unwrap();
                   response.context_menu(|ui| {
                     // change type
@@ -1708,7 +1726,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self
           .ui
           .group(|ui| {
-            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
             x.accept_mut(&mut mutator)
           })
           .inner
@@ -1719,7 +1738,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self
           .ui
           .group(|ui| {
-            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
             x.accept_mut(&mut mutator)
           })
           .inner
@@ -1730,7 +1750,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self
           .ui
           .group(|ui| {
-            let mut mutator = VisualAst::with_parent_selected(ui, self.parent_selected);
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
             x.accept_mut(&mut mutator)
           })
           .inner
@@ -1740,7 +1761,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       Value::Func(x) => match x.name.name.as_str() {
         "color" => self.mutate_color(x),
         _ => {
-          let mut mutator = VisualAst::with_parent_selected(self.ui, self.parent_selected);
+          let mut mutator =
+            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
           x.accept_mut(&mut mutator)
         }
       },
@@ -1752,22 +1774,27 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 }
 
-fn render_shards_group(ui: &mut Ui, selected: bool, x: &mut Sequence) -> Option<Response> {
+fn render_shards_group(
+  context: &mut Context,
+  ui: &mut Ui,
+  selected: bool,
+  x: &mut Sequence,
+) -> Option<Response> {
   ui.group(|ui| {
     // if not selected, let's render just first and last shard as previews
     if selected {
-      let mut mutator = VisualAst::with_parent_selected(ui, selected);
+      let mut mutator = VisualAst::with_parent_selected(context, ui, selected);
       x.accept_mut(&mut mutator)
     } else {
       Some(
         ui.horizontal(|ui| {
           if let Some(first) = get_first_shard_ref(x) {
-            let mut mutator = VisualAst::with_parent_selected(ui, selected);
+            let mut mutator = VisualAst::with_parent_selected(context, ui, selected);
             mutator.mutate_shard(first);
           }
           if let Some(last) = get_last_shard_ref(x) {
             ui.label("...");
-            let mut mutator = VisualAst::with_parent_selected(ui, selected);
+            let mut mutator = VisualAst::with_parent_selected(context, ui, selected);
             mutator.mutate_shard(last);
           }
         })
@@ -1788,6 +1815,7 @@ pub struct UIShardsShard {
   parents: ParamVar,
 
   ast: Sequence,
+  context: Context,
 }
 
 impl Default for UIShardsShard {
@@ -1803,6 +1831,7 @@ impl Default for UIShardsShard {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       ast: seq,
+      context: Context { swap_state: None },
     }
   }
 }
@@ -1840,7 +1869,7 @@ impl Shard for UIShardsShard {
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
-      let mut mutator = VisualAst::new(ui);
+      let mut mutator = VisualAst::new(&mut self.context, ui);
       self.ast.accept_mut(&mut mutator);
     });
     Ok(Var::default())
