@@ -601,6 +601,14 @@ impl<'a> VisualAst<'a> {
           }
         }
       }
+    } else {
+      // preview the first param if it exists
+      if let Some(params) = &mut x.params {
+        let param = &mut params[0];
+        let mut mutator =
+          VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
+        param.value.accept_mut(&mut mutator);
+      }
     }
     Some(response)
   }
@@ -1501,7 +1509,55 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_identifier(&mut self, identifier: &mut Identifier) -> Option<Response> {
-    Some(self.ui.label(identifier.name.as_str()))
+    // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
+    let response = if identifier.namespaces.is_empty() {
+      self
+        .ui
+        .horizontal(|ui| {
+          if ui.button(emoji("➕")).clicked() {
+            identifier.namespaces.push("default".into());
+          }
+          let x = identifier.name.to_mut();
+          egui::TextEdit::singleline(x)
+            .clip_text(false)
+            .desired_width(0.0)
+            .ui(ui)
+        })
+        .inner
+    } else {
+      let first = &mut identifier.namespaces[0];
+      let len = first.len();
+      let first = first.to_mut();
+      if self
+        .ui
+        .horizontal(|ui| {
+          let remove = if ui
+            .button(emoji("🗑"))
+            .on_hover_text("Remove Namespace")
+            .clicked()
+          {
+            true
+          } else {
+            false
+          };
+          egui::TextEdit::singleline(first)
+            .clip_text(false)
+            .desired_width(if len == 0 { 70.0 } else { 0.0 })
+            .hint_text("namespace")
+            .ui(ui);
+          remove
+        })
+        .inner
+      {
+        identifier.namespaces.clear();
+      }
+      let x = identifier.name.to_mut();
+      egui::TextEdit::singleline(x)
+        .clip_text(false)
+        .desired_width(0.0)
+        .ui(self.ui)
+    };
+    Some(response)
   }
 
   fn visit_value(&mut self, value: &mut Value) -> Option<Response> {
@@ -1511,45 +1567,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         match value {
           Value::None => Some(ui.label("None")),
           Value::Identifier(x) => {
-            // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
-            if x.namespaces.is_empty() {
-              if ui.button("Add Namespace").clicked() {
-                x.namespaces.push("default".into());
-              }
-            } else {
-              let first = &mut x.namespaces[0];
-              let len = first.len();
-              let first = first.to_mut();
-              if ui
-                .horizontal(|ui| {
-                  let remove = if ui
-                    .button(emoji("🗑"))
-                    .on_hover_text("Remove Namespace")
-                    .clicked()
-                  {
-                    true
-                  } else {
-                    false
-                  };
-                  egui::TextEdit::singleline(first)
-                    .clip_text(false)
-                    .desired_width(if len == 0 { 70.0 } else { 0.0 })
-                    .hint_text("namespace")
-                    .ui(ui);
-                  remove
-                })
-                .inner
-              {
-                x.namespaces.clear();
-              }
-            }
-            let x = x.name.to_mut();
-            Some(
-              egui::TextEdit::singleline(x)
-                .clip_text(false)
-                .desired_width(0.0)
-                .ui(ui),
-            )
+            let mut mutator = VisualAst::with_parent_selected(self.context, ui, true);
+            x.accept_mut(&mut mutator)
           }
           Value::Boolean(x) => Some(ui.checkbox(x, if *x { "true" } else { "false" })),
           Value::Enum(x, y) => {
