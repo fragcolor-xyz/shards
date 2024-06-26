@@ -1,26 +1,63 @@
-"Hello World!" | Log
-22 | Log | Add((2 | Mul(2)))
-22 | Log | Add(#(2 | Mul(2)))
-@color(255 255 255 255) | ToFloat4
-0x10 | When(IsMore(9) {
-  Add(1) | Log
-  When(IsMore(9) {
-    Add(1) | Log
-  })
-})
-[10 20 30] | Map(Div(2)) | Ref(x)
-@i3(1 2 3)| Log
-{
-  "x": 10
-  10: 20
-  "y": 30
-  2.0: 40
-} {Take("x") | Log} | ToJson | Http.Post("http://example.com")
-UI.LayoutClass(
-  MainDirection: LayoutDirection::LeftToRight
-  CrossAlign: LayoutAlign::Top
-  MainAlign: LayoutAlign::Left
-) | Set(img-overlay-layout)
+@wire(main-wire-graphics {
+  fbl/translation | Math.Translation = translation-matrix
+  fbl/rotation | Math.Rotation = rotation-matrix
+  fbl/scale | Math.Scaling = scale-matrix
+  ; matmul them
+  translation-matrix | Math.MatMul(rotation-matrix) | Math.MatMul(scale-matrix)
+  ; and feed to gltf renderer
+  GFX.glTF(Copy: asset/r0
+    AnimationController: {
+      = animations
 
-{a: {b: {c: 10}}} | Ref(table)
-table:a:b:c | Assert.Is(10)
+      Once({
+        0 >= animation-index
+        Sequence(animation-names Type: @type([Type::String]))
+        animations | ForEach({Take(0) >> animation-names})
+      })
+
+      animation-names | Take(animation-index) >= animation-name
+      Get(animations animation-name) = animation
+
+      Animation.Timer(animation
+        Action: {
+          Count(animations) = max
+          animation-index | Math.Add(1) | Math.Mod(max) > animation-index
+        }
+      )
+      Animation.Play(animation)
+      {Take(1)}
+    }
+  )
+  @fbl/draw([])
+} Looped: true)
+
+@wire(messy {
+  "Hello World!" | Log
+  22 | Log | Add((2 | Mul(2)))
+  22 | Log | Add(#(2 | Mul(2)))
+  @color(255 255 255 255) | ToFloat4
+  0x10 | When(IsMore(9) {
+    Add(1) | Log
+    When(IsMore(9) {
+      Add(1) | Log
+    })
+  })
+  [10 20 30] | Map(Div(2)) | Ref(x)
+  @i3(1 2 3) | Log
+  {
+    "x": 10
+    10: 20
+    "y": 30
+    2.0: 40
+  } {Take("x") | Log} | ToJson | Http.Post("http://example.com")
+  UI.LayoutClass(
+    MainDirection: LayoutDirection::LeftToRight
+    CrossAlign: LayoutAlign::Top
+    MainAlign: LayoutAlign::Left
+  ) | Set(img-overlay-layout)
+
+  {a: {b: {c: 10}}} | Ref(table)
+  table:a:b:c | Assert.Is(10)
+})
+
+{graphics-behavior: main-wire-graphics}

@@ -32,31 +32,6 @@ use num_traits::{Float, FromPrimitive, PrimInt, Zero};
 
 mod directory;
 
-fn draw_arrow_head(ui: &mut egui::Ui, from: Rect, to: Rect) {
-  let painter = ui.painter();
-
-  // Calculate arrow position
-  let arrow_x = (from.right() + to.left()) / 2.0;
-  let arrow_y = from.center().y; // Align with the vertical center of the frames
-  let arrow_pos = pos2(arrow_x, arrow_y);
-
-  // Arrow dimensions
-  let arrow_width = 8.0;
-  let arrow_height = 12.0;
-
-  // Calculate arrow points
-  let tip = arrow_pos + Vec2::new(arrow_height / 2.0, 0.0);
-  let left = arrow_pos + Vec2::new(-arrow_height / 2.0, -arrow_width / 2.0);
-  let right = arrow_pos + Vec2::new(-arrow_height / 2.0, arrow_width / 2.0);
-
-  // Draw arrow
-  painter.add(egui::Shape::convex_polygon(
-    vec![tip, left, right],
-    egui::Color32::WHITE,
-    Stroke::new(1.0, egui::Color32::WHITE),
-  ));
-}
-
 fn var_to_value(var: &Var) -> Result<Value, String> {
   match var.valueType {
     SHType_None => Ok(Value::None),
@@ -505,7 +480,7 @@ impl<'a> VisualAst<'a> {
                 help_text
               };
               egui::CollapsingHeader::new(name)
-                .default_open(false)
+                .default_open(if idx == 0 { true } else { false })
                 .show(ui, |ui| {
                   ui.horizontal(|ui| {
                     // button to reset to default
@@ -602,12 +577,17 @@ impl<'a> VisualAst<'a> {
         }
       }
     } else {
-      // preview the first param if it exists
+      // preview the first param THAT IS NOT None if it exists
       if let Some(params) = &mut x.params {
-        let param = &mut params[0];
-        let mut mutator =
-          VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
-        param.value.accept_mut(&mut mutator);
+        for param in params {
+          if let Value::None = param.value {
+            continue;
+          }
+          let mut mutator =
+            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
+          param.value.accept_mut(&mut mutator);
+          break;
+        }
       }
     }
     Some(response)
@@ -1173,7 +1153,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
-    if self.context.seqs_stack.len() > 0 {
+    if self.parent_selected && self.context.seqs_stack.len() > 0 {
       let top_most = self.context.seqs_stack.last().unwrap();
       // if our current sequence is not the top most sequence
       if *top_most != sequence as *mut Sequence {
@@ -1191,15 +1171,24 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     for statement in &mut sequence.statements {
       statement.accept_mut(self);
     }
-    Some(
-      self
-        .ui
-        .horizontal(|ui| {
-          ui.button(emoji("➕")).on_hover_text("Add new statement.");
-          ui.button(emoji("💡")).on_hover_text("Ask AI.")
-        })
-        .inner,
-    )
+
+    if self.parent_selected {
+      Some(
+        self
+          .ui
+          .horizontal(|ui| {
+            ui.button(emoji("➕")).on_hover_text("Add new statement.");
+            ui.button(emoji("💡")).on_hover_text("Ask AI.")
+          })
+          .inner,
+      )
+    } else {
+      Some(
+        self
+          .ui
+          .allocate_response(egui::Vec2::ZERO, egui::Sense::hover()),
+      )
+    }
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
@@ -1211,13 +1200,17 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
         };
-        Some(
-          ui.horizontal(|ui| {
-            ui.button(emoji("➕")).on_hover_text("Add new statement.");
-            ui.button(emoji("💡")).on_hover_text("Ask AI.")
-          })
-          .inner,
-        )
+        if self.parent_selected {
+          Some(
+            ui.horizontal(|ui| {
+              ui.button(emoji("➕")).on_hover_text("Add new statement.");
+              ui.button(emoji("💡")).on_hover_text("Ask AI.")
+            })
+            .inner,
+          )
+        } else {
+          Some(ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover()))
+        }
       })
       .inner
   }
@@ -1225,18 +1218,22 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_assignment(&mut self, assignment: &mut Assignment) -> Option<Response> {
     let mut combined_response = None;
     let (r_a, r_b) = match assignment {
-      Assignment::AssignRef(pipeline, identifier) => {
-        (pipeline.accept_mut(self), identifier.accept_mut(self))
-      }
-      Assignment::AssignSet(pipeline, identifier) => {
-        (pipeline.accept_mut(self), identifier.accept_mut(self))
-      }
-      Assignment::AssignUpd(pipeline, identifier) => {
-        (pipeline.accept_mut(self), identifier.accept_mut(self))
-      }
-      Assignment::AssignPush(pipeline, identifier) => {
-        (pipeline.accept_mut(self), identifier.accept_mut(self))
-      }
+      Assignment::AssignRef(pipeline, identifier) => (pipeline.accept_mut(self), {
+        self.ui.label(emoji("➰"));
+        identifier.accept_mut(self)
+      }),
+      Assignment::AssignSet(pipeline, identifier) => (pipeline.accept_mut(self), {
+        self.ui.label(emoji("➡"));
+        identifier.accept_mut(self)
+      }),
+      Assignment::AssignUpd(pipeline, identifier) => (pipeline.accept_mut(self), {
+        self.ui.label(emoji("⤴"));
+        identifier.accept_mut(self)
+      }),
+      Assignment::AssignPush(pipeline, identifier) => (pipeline.accept_mut(self), {
+        self.ui.label(emoji("⏩"));
+        identifier.accept_mut(self)
+      }),
     };
     if let Some(a) = r_a {
       if let Some(b) = r_b {
@@ -1361,7 +1358,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 });
               }
               match &mut block.content {
-                BlockContent::Empty => Some(egui::Separator::default().horizontal().ui(ui)),
+                BlockContent::Empty => Some(ui.label(emoji("⬊"))),
                 BlockContent::Shard(x) => {
                   let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   mutator.mutate_shard(x)
@@ -1510,11 +1507,15 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
   fn visit_identifier(&mut self, identifier: &mut Identifier) -> Option<Response> {
     // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
-    let response = if identifier.namespaces.is_empty() {
-      self
-        .ui
-        .horizontal(|ui| {
-          if ui.button(emoji("➕")).clicked() {
+    let response = self
+      .ui
+      .horizontal(|ui| {
+        if identifier.namespaces.is_empty() {
+          if ui
+            .button(emoji("➕"))
+            .on_hover_text("Add namespace.")
+            .clicked()
+          {
             identifier.namespaces.push("default".into());
           }
           let x = identifier.name.to_mut();
@@ -1522,41 +1523,40 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             .clip_text(false)
             .desired_width(0.0)
             .ui(ui)
-        })
-        .inner
-    } else {
-      let first = &mut identifier.namespaces[0];
-      let len = first.len();
-      let first = first.to_mut();
-      if self
-        .ui
-        .horizontal(|ui| {
-          let remove = if ui
-            .button(emoji("🗑"))
-            .on_hover_text("Remove Namespace")
-            .clicked()
+        } else {
+          let first = &mut identifier.namespaces[0];
+          let len = first.len();
+          let first = first.to_mut();
+          if ui
+            .horizontal(|ui| {
+              let remove = if ui
+                .button(emoji("🗑"))
+                .on_hover_text("Remove Namespace")
+                .clicked()
+              {
+                true
+              } else {
+                false
+              };
+              egui::TextEdit::singleline(first)
+                .clip_text(false)
+                .desired_width(if len == 0 { 70.0 } else { 0.0 })
+                .hint_text("namespace")
+                .ui(ui);
+              remove
+            })
+            .inner
           {
-            true
-          } else {
-            false
-          };
-          egui::TextEdit::singleline(first)
+            identifier.namespaces.clear();
+          }
+          let x = identifier.name.to_mut();
+          egui::TextEdit::singleline(x)
             .clip_text(false)
-            .desired_width(if len == 0 { 70.0 } else { 0.0 })
-            .hint_text("namespace")
-            .ui(ui);
-          remove
-        })
-        .inner
-      {
-        identifier.namespaces.clear();
-      }
-      let x = identifier.name.to_mut();
-      egui::TextEdit::singleline(x)
-        .clip_text(false)
-        .desired_width(0.0)
-        .ui(self.ui)
-    };
+            .desired_width(0.0)
+            .ui(ui)
+        }
+      })
+      .inner;
     Some(response)
   }
 
