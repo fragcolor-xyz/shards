@@ -1308,12 +1308,16 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   x.accept_mut(&mut mutator)
                 }
                 BlockContent::TakeTable(x, y) => {
-                  // simply convert into a Take chain
-                  todo!()
+                  let new_value = transform_take_table(x, y);
+                  block.content = BlockContent::Expr(new_value);
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                  block.accept_mut(&mut mutator).1
                 }
                 BlockContent::TakeSeq(x, y) => {
-                  // simply convert into a Take chain
-                  todo!()
+                  let new_value = transform_take_seq(x, y);
+                  block.content = BlockContent::Expr(new_value);
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                  block.accept_mut(&mut mutator).1
                 }
                 BlockContent::Func(x) => match x.name.name.as_str() {
                   "color" => {
@@ -1847,14 +1851,20 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           })
           .inner
       }
-      Value::TakeTable(_, _) => todo!(),
-      Value::TakeSeq(_, _) => todo!(),
+      Value::TakeTable(x, y) => {
+        let new_value = transform_take_table(x, y);
+        *value = Value::Expr(new_value);
+        self.visit_value(value) // and visit the new value
+      }
+      Value::TakeSeq(x, y) => {
+        let new_value = transform_take_seq(x, y);
+        *value = Value::Expr(new_value);
+        self.visit_value(value) // and visit the new value
+      }
       Value::Func(x) => match x.name.name.as_str() {
         "color" => self.mutate_color(x),
         _ => {
-          let mut mutator =
-            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
-          x.accept_mut(&mut mutator)
+          todo!()
         }
       },
     }
@@ -1863,6 +1873,93 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
     None
   }
+}
+
+fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequence {
+  // substitute with a Expr sequence
+  let mut blocks = vec![Block {
+    content: BlockContent::Shard(Function {
+      name: Identifier {
+        name: "Get".into(),
+        namespaces: Vec::new(),
+      },
+      params: Some(vec![Param {
+        name: None,
+        value: Value::Identifier(x.clone()),
+        custom_state: None,
+      }]),
+      custom_state: None,
+    }),
+    line_info: None,
+    custom_state: None,
+  }];
+  for y in y.iter() {
+    // add Take shard for each
+    blocks.push(Block {
+      content: BlockContent::Shard(Function {
+        name: Identifier {
+          name: "Take".into(),
+          namespaces: Vec::new(),
+        },
+        params: Some(vec![Param {
+          name: None,
+          value: Value::String(y.clone()),
+          custom_state: None,
+        }]),
+        custom_state: None,
+      }),
+      line_info: None,
+      custom_state: None,
+    });
+  }
+  let new_value = Sequence {
+    statements: vec![Statement::Pipeline(Pipeline { blocks })],
+  };
+  new_value
+}
+
+fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
+  // same as take table but integer keys
+  // substitute with a Expr sequence
+  let mut blocks = vec![Block {
+    content: BlockContent::Shard(Function {
+      name: Identifier {
+        name: "Get".into(),
+        namespaces: Vec::new(),
+      },
+      params: Some(vec![Param {
+        name: None,
+        value: Value::Identifier(x.clone()),
+        custom_state: None,
+      }]),
+      custom_state: None,
+    }),
+    line_info: None,
+    custom_state: None,
+  }];
+  for y in y.iter() {
+    // add Take shard for each
+    blocks.push(Block {
+      content: BlockContent::Shard(Function {
+        name: Identifier {
+          name: "Take".into(),
+          namespaces: Vec::new(),
+        },
+        params: Some(vec![Param {
+          name: None,
+          value: Value::Number(Number::Integer(*y as i64)),
+          custom_state: None,
+        }]),
+        custom_state: None,
+      }),
+      line_info: None,
+      custom_state: None,
+    });
+  }
+  let new_value = Sequence {
+    statements: vec![Statement::Pipeline(Pipeline { blocks })],
+  };
+  new_value
 }
 
 fn render_shards_group(

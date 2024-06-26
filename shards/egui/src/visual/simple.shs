@@ -20,3 +20,6 @@ UI.LayoutClass(
   CrossAlign: LayoutAlign::Top
   MainAlign: LayoutAlign::Left
 ) | Set(img-overlay-layout)
+
+{a: {b: {c: 10}}} | Ref(table)
+table:a:b:c | Assert.Is(10)
