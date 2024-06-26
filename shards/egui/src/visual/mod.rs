@@ -591,10 +591,12 @@ impl<'a> VisualAst<'a> {
         }
       } else {
         // no documentation just render the values
-        for param in x.params.as_mut().unwrap() {
-          let mut mutator =
-            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
-          param.value.accept_mut(&mut mutator);
+        if let Some(params) = &mut x.params {
+          for param in params {
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
+            param.value.accept_mut(&mut mutator);
+          }
         }
       }
     }
@@ -1474,522 +1476,529 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_value(&mut self, value: &mut Value) -> Option<Response> {
-    match value {
-      Value::None => Some(self.ui.label("None")),
-      Value::Identifier(x) => {
-        // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
-        if x.namespaces.is_empty() {
-          if self.ui.button("Add Namespace").clicked() {
-            x.namespaces.push("default".into());
-          }
-        } else {
-          let first = &mut x.namespaces[0];
-          let first = first.to_mut();
-          if self
-            .ui
-            .horizontal(|ui| {
-              let remove = if ui
-                .button(emoji("🗑"))
-                .on_hover_text("Remove Namespace")
-                .clicked()
-              {
-                true
-              } else {
-                false
-              };
-              ui.text_edit_singleline(first);
-              remove
-            })
-            .inner
-          {
-            x.namespaces.clear();
-          }
-        }
-        let x = x.name.to_mut();
-        Some(self.ui.text_edit_singleline(x))
-      }
-      Value::Boolean(x) => Some(self.ui.checkbox(x, if *x { "true" } else { "false" })),
-      Value::Enum(x, y) => {
-        let enum_data = get_global_map();
-        let enum_data = enum_data.0.get_fast_static("enums").as_table().unwrap();
-        let x_var = Var::ephemeral_string(x);
-        let enum_data = enum_data.get(x_var).map(|x| x.as_table().unwrap());
-        if let Some(enum_data) = enum_data {
-          let labels = enum_data.get_fast_static("labels").as_seq().unwrap();
-          // render the first part as a constant label, while the second as a single choice select
-          let response = self.ui.label(x.as_str());
-
-          // render labels in a combo box
-          let mut selected_index = labels
-            .iter()
-            .position(|label| label == Var::ephemeral_string(y))
-            .unwrap_or(0);
-          let previous_index = selected_index;
-          let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
-          egui::ComboBox::from_label("")
-            .selected_text(selected)
-            .show_ui(self.ui, |ui| {
-              for (index, label) in labels.iter().enumerate() {
-                let label: &str = label.as_ref().try_into().unwrap();
-                ui.selectable_value(&mut selected_index, index, label);
+    self
+      .ui
+      .push_id(egui::Id::new(value as *const _), |ui| {
+        match value {
+          Value::None => Some(ui.label("None")),
+          Value::Identifier(x) => {
+            // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
+            if x.namespaces.is_empty() {
+              if ui.button("Add Namespace").clicked() {
+                x.namespaces.push("default".into());
               }
-            });
-
-          if previous_index != selected_index {
-            let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
-            *y = selected.into();
+            } else {
+              let first = &mut x.namespaces[0];
+              let first = first.to_mut();
+              if ui
+                .horizontal(|ui| {
+                  let remove = if ui
+                    .button(emoji("🗑"))
+                    .on_hover_text("Remove Namespace")
+                    .clicked()
+                  {
+                    true
+                  } else {
+                    false
+                  };
+                  ui.text_edit_singleline(first);
+                  remove
+                })
+                .inner
+              {
+                x.namespaces.clear();
+              }
+            }
+            let x = x.name.to_mut();
+            Some(ui.text_edit_singleline(x))
           }
+          Value::Boolean(x) => Some(ui.checkbox(x, if *x { "true" } else { "false" })),
+          Value::Enum(x, y) => {
+            let enum_data = get_global_map();
+            let enum_data = enum_data.0.get_fast_static("enums").as_table().unwrap();
+            let x_var = Var::ephemeral_string(x);
+            let enum_data = enum_data.get(x_var).map(|x| x.as_table().unwrap());
+            if let Some(enum_data) = enum_data {
+              let labels = enum_data.get_fast_static("labels").as_seq().unwrap();
+              // render the first part as a constant label, while the second as a single choice select
+              let response = ui.label(x.as_str());
 
-          Some(response)
-        } else {
-          Some(self.ui.label("Invalid enum"))
-        }
-      }
-      Value::Number(x) => match x {
-        Number::Integer(x) => Some(self.ui.add(CustomDragValue::new(x))),
-        Number::Float(x) => Some(self.ui.add(CustomDragValue::new(x))),
-        Number::Hexadecimal(x) => {
-          // we need a mini embedded text editor
-          let text_width = 10.0 * x.chars().count() as f32;
-          let width = text_width + 20.0; // Add some padding
-          let prev_value = x.clone();
-          let response = TextEdit::singleline(x.to_mut())
-            .desired_width(width)
-            .ui(self.ui);
+              // render labels in a combo box
+              let mut selected_index = labels
+                .iter()
+                .position(|label| label == Var::ephemeral_string(y))
+                .unwrap_or(0);
+              let previous_index = selected_index;
+              let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
+              egui::ComboBox::from_label("")
+                .selected_text(selected)
+                .show_ui(ui, |ui| {
+                  for (index, label) in labels.iter().enumerate() {
+                    let label: &str = label.as_ref().try_into().unwrap();
+                    ui.selectable_value(&mut selected_index, index, label);
+                  }
+                });
 
-          if response.changed() {
-            // ensure that the string is a valid hexadecimal number, if not revert to previous value
-            // consider we always prefix with 0x, slice off the 0x prefix
-            // parse the string as a u64 in hexadecimal format
-            let parsed = u64::from_str_radix(&x[2..], 16);
-            if parsed.is_err() {
-              *x = prev_value;
+              if previous_index != selected_index {
+                let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
+                *y = selected.into();
+              }
+
+              Some(response)
+            } else {
+              Some(ui.label("Invalid enum"))
             }
           }
-          Some(response)
-        }
-      },
-      Value::String(x) => {
-        // if long we should use a multiline text editor
-        // if short we should use a single line text editor
-        let x = x.to_mut();
-        Some(if x.len() > 16 {
-          self.ui.text_edit_multiline(x)
-        } else {
-          let text = x.as_str();
-          let count = max(text.chars().count(), 6);
-          let text_width = 8.0 * count as f32;
-          let width = text_width + 10.0; // Add some padding
-          TextEdit::singleline(x)
-            .desired_width(width)
-            .hint_text("String")
-            .ui(self.ui)
-        })
-      }
-      Value::Bytes(x) => {
-        let bytes = x.to_mut();
-        let mut len = bytes.len();
-        let response = self.ui.label(format!("Bytes (len: {})", len));
-        if self.parent_selected {
-          self.ui.add(CustomDragValue::new(&mut len));
+          Value::Number(x) => match x {
+            Number::Integer(x) => Some(ui.add(CustomDragValue::new(x))),
+            Number::Float(x) => Some(ui.add(CustomDragValue::new(x))),
+            Number::Hexadecimal(x) => {
+              // we need a mini embedded text editor
+              let text_width = 10.0 * x.chars().count() as f32;
+              let width = text_width + 20.0; // Add some padding
+              let prev_value = x.clone();
+              let response = TextEdit::singleline(x.to_mut()).desired_width(width).ui(ui);
 
-          // check if we need to resize
-          if len != bytes.len() {
-            bytes.resize(len, 0);
-          }
-
-          let mem_range = 0..bytes.len();
-
-          if len > 0 {
-            use egui_memory_editor::MemoryEditor;
-            let mut is_open = true;
-            let mut memory_editor = MemoryEditor::new().with_address_range("Memory", mem_range);
-            // Show a read-only window
-            memory_editor.window_ui(
-              self.ui.ctx(),
-              &mut is_open,
-              bytes,
-              |mem, addr| mem[addr].into(),
-              |mem, addr, val| mem[addr] = val,
-            );
-          }
-        }
-        Some(response)
-      }
-      Value::Int2(x) => {
-        // just 2 ints wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-            })
-            .response,
-        )
-      }
-      Value::Int3(x) => {
-        // just 3 ints wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-              ui.add(CustomDragValue::new(&mut x[2]));
-            })
-            .response,
-        )
-      }
-      Value::Int4(x) => {
-        // just 4 ints wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-              ui.add(CustomDragValue::new(&mut x[2]));
-              ui.add(CustomDragValue::new(&mut x[3]));
-            })
-            .response,
-        )
-      }
-      Value::Int8(x) => {
-        // just 8 ints wrapped in 2 horizontal layouts
-        // First 4
-        let response = self
-          .ui
-          .horizontal(|ui| {
-            for i in 0..4 {
-              ui.add(CustomDragValue::new(&mut x[i]));
+              if response.changed() {
+                // ensure that the string is a valid hexadecimal number, if not revert to previous value
+                // consider we always prefix with 0x, slice off the 0x prefix
+                // parse the string as a u64 in hexadecimal format
+                let parsed = u64::from_str_radix(&x[2..], 16);
+                if parsed.is_err() {
+                  *x = prev_value;
+                }
+              }
+              Some(response)
             }
-          })
-          .response;
-        Some(
-          response.union(
-            self
-              .ui
+          },
+          Value::String(x) => {
+            // if long we should use a multiline text editor
+            // if short we should use a single line text editor
+            let x = x.to_mut();
+            Some(if x.len() > 16 {
+              ui.text_edit_multiline(x)
+            } else {
+              let text = x.as_str();
+              let count = max(text.chars().count(), 6);
+              let text_width = 8.0 * count as f32;
+              let width = text_width + 10.0; // Add some padding
+              TextEdit::singleline(x)
+                .desired_width(width)
+                .hint_text("String")
+                .ui(ui)
+            })
+          }
+          Value::Bytes(x) => {
+            let bytes = x.to_mut();
+            let mut len = bytes.len();
+            let response = ui.label(format!("Bytes (len: {})", len));
+            if self.parent_selected {
+              ui.add(CustomDragValue::new(&mut len));
+
+              // check if we need to resize
+              if len != bytes.len() {
+                bytes.resize(len, 0);
+              }
+
+              let mem_range = 0..bytes.len();
+
+              if len > 0 {
+                use egui_memory_editor::MemoryEditor;
+                let mut is_open = true;
+                let mut memory_editor = MemoryEditor::new().with_address_range("Memory", mem_range);
+                // Show a read-only window
+                memory_editor.window_ui(
+                  ui.ctx(),
+                  &mut is_open,
+                  bytes,
+                  |mem, addr| mem[addr].into(),
+                  |mem, addr, val| mem[addr] = val,
+                );
+              }
+            }
+            Some(response)
+          }
+          Value::Int2(x) => {
+            // just 2 ints wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+              })
+              .response,
+            )
+          }
+          Value::Int3(x) => {
+            // just 3 ints wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+                ui.add(CustomDragValue::new(&mut x[2]));
+              })
+              .response,
+            )
+          }
+          Value::Int4(x) => {
+            // just 4 ints wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+                ui.add(CustomDragValue::new(&mut x[2]));
+                ui.add(CustomDragValue::new(&mut x[3]));
+              })
+              .response,
+            )
+          }
+          Value::Int8(x) => {
+            // just 8 ints wrapped in 2 horizontal layouts
+            // First 4
+            let response = ui
               .horizontal(|ui| {
+                for i in 0..4 {
+                  ui.add(CustomDragValue::new(&mut x[i]));
+                }
+              })
+              .response;
+            Some(
+              response.union(
+                ui.horizontal(|ui| {
+                  for i in 4..8 {
+                    ui.add(CustomDragValue::new(&mut x[i]));
+                  }
+                })
+                .response,
+              ),
+            )
+          }
+          Value::Int16(x) => {
+            // just 16 ints wrapped in 8 horizontal layout
+            // First 4
+            let response = ui
+              .horizontal(|ui| {
+                for i in 0..4 {
+                  ui.add(CustomDragValue::new(&mut x[i]));
+                }
+              })
+              .response;
+            // Second 4
+            let response = response.union(
+              ui.horizontal(|ui| {
                 for i in 4..8 {
                   ui.add(CustomDragValue::new(&mut x[i]));
                 }
               })
               .response,
-          ),
-        )
-      }
-      Value::Int16(x) => {
-        // just 16 ints wrapped in 8 horizontal layout
-        // First 4
-        let response = self
-          .ui
-          .horizontal(|ui| {
-            for i in 0..4 {
-              ui.add(CustomDragValue::new(&mut x[i]));
+            );
+            // Third 4
+            let response = response.union(
+              ui.horizontal(|ui| {
+                for i in 8..12 {
+                  ui.add(CustomDragValue::new(&mut x[i]));
+                }
+              })
+              .response,
+            );
+            // Fourth 4
+            let response = response.union(
+              ui.horizontal(|ui| {
+                for i in 12..16 {
+                  ui.add(CustomDragValue::new(&mut x[i]));
+                }
+              })
+              .response,
+            );
+            Some(response)
+          }
+          Value::Float2(x) => {
+            // just 2 floats wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+              })
+              .response,
+            )
+          }
+          Value::Float3(x) => {
+            // just 3 floats wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+                ui.add(CustomDragValue::new(&mut x[2]));
+              })
+              .response,
+            )
+          }
+          Value::Float4(x) => {
+            // just 4 floats wrapped in a horizontal layout
+            Some(
+              ui.horizontal(|ui| {
+                ui.add(CustomDragValue::new(&mut x[0]));
+                ui.add(CustomDragValue::new(&mut x[1]));
+                ui.add(CustomDragValue::new(&mut x[2]));
+                ui.add(CustomDragValue::new(&mut x[3]));
+              })
+              .response,
+            )
+          }
+          Value::Seq(x) => {
+            let len = x.len();
+            let response = ui.label(format!("Seq (len: {})", len));
+            if self.parent_selected {
+              egui::ScrollArea::new([true, true])
+                .min_scrolled_height(100.0)
+                .show(ui, |ui| {
+                  let mut idx = 0;
+                  x.retain_mut(|value| {
+                    let mut to_keep = true;
+                    ui.horizontal(|ui| {
+                      ui.label(format!("{}:", idx));
+                      idx += 1;
+                      ui.vertical(|ui| {
+                        let mut mutator =
+                          VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                        let response = value.accept_mut(&mut mutator).unwrap();
+                        response.context_menu(|ui| {
+                          // change type
+                          if ui
+                            .button(emoji("Change 🔧"))
+                            .on_hover_text("Change value type.")
+                            .clicked()
+                          {
+                            // open a dialog to change the value
+                            ui.close_menu();
+                          }
+                          if ui
+                            .button(emoji("Remove 🗑"))
+                            .on_hover_text("Remove value.")
+                            .clicked()
+                          {
+                            to_keep = false;
+                            ui.close_menu();
+                          }
+                        });
+                      });
+                    });
+                    to_keep
+                  });
+                });
+              let response = ui.button(emoji("➕")).on_hover_text("Add new value.");
+              if response.clicked() {
+                x.push(Value::None);
+              }
             }
-          })
-          .response;
-        // Second 4
-        let response = response.union(
-          self
-            .ui
-            .horizontal(|ui| {
-              for i in 4..8 {
-                ui.add(CustomDragValue::new(&mut x[i]));
-              }
-            })
-            .response,
-        );
-        // Third 4
-        let response = response.union(
-          self
-            .ui
-            .horizontal(|ui| {
-              for i in 8..12 {
-                ui.add(CustomDragValue::new(&mut x[i]));
-              }
-            })
-            .response,
-        );
-        // Fourth 4
-        let response = response.union(
-          self
-            .ui
-            .horizontal(|ui| {
-              for i in 12..16 {
-                ui.add(CustomDragValue::new(&mut x[i]));
-              }
-            })
-            .response,
-        );
-        Some(response)
-      }
-      Value::Float2(x) => {
-        // just 2 floats wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-            })
-            .response,
-        )
-      }
-      Value::Float3(x) => {
-        // just 3 floats wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-              ui.add(CustomDragValue::new(&mut x[2]));
-            })
-            .response,
-        )
-      }
-      Value::Float4(x) => {
-        // just 4 floats wrapped in a horizontal layout
-        Some(
-          self
-            .ui
-            .horizontal(|ui| {
-              ui.add(CustomDragValue::new(&mut x[0]));
-              ui.add(CustomDragValue::new(&mut x[1]));
-              ui.add(CustomDragValue::new(&mut x[2]));
-              ui.add(CustomDragValue::new(&mut x[3]));
-            })
-            .response,
-        )
-      }
-      Value::Seq(x) => {
-        let len = x.len();
-        let response = self.ui.label(format!("Seq (len: {})", len));
-        if self.parent_selected {
-          egui::ScrollArea::new([true, true])
-            .min_scrolled_height(100.0)
-            .show(self.ui, |ui| {
-              let mut idx = 0;
-              x.retain_mut(|value| {
-                let mut to_keep = true;
-                ui.horizontal(|ui| {
-                  ui.label(format!("{}:", idx));
-                  idx += 1;
-                  let mut mutator =
-                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                  let response = value.accept_mut(&mut mutator).unwrap();
-                  response.context_menu(|ui| {
-                    // change type
-                    if ui
-                      .button(emoji("Change 🔧"))
-                      .on_hover_text("Change value type.")
-                      .clicked()
-                    {
-                      // open a dialog to change the value
-                      ui.close_menu();
-                    }
-                    if ui
-                      .button(emoji("Remove 🗑"))
-                      .on_hover_text("Remove value.")
-                      .clicked()
-                    {
-                      to_keep = false;
-                      ui.close_menu();
-                    }
+            Some(response)
+          }
+          Value::Table(x) => {
+            let len = x.len();
+            let response = ui.label(format!("Table (len: {})", len));
+            if self.parent_selected {
+              // like sequence but key value pairs
+              ui.label("Key-Value pairs");
+              egui::ScrollArea::new([true, true])
+                .min_scrolled_height(100.0)
+                .show(ui, |ui| {
+                  x.retain_mut(|(key, value)| {
+                    let mut to_keep = true;
+                    ui.horizontal(|ui| {
+                      let mut mutator =
+                        VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                      let response = key.accept_mut(&mut mutator).unwrap();
+                      response.context_menu(|ui| {
+                        // change type
+                        if ui
+                          .button(emoji("Change 🔧"))
+                          .on_hover_text("Change key type.")
+                          .clicked()
+                        {
+                          // open a dialog to change the value
+                          ui.close_menu();
+                        }
+                        if ui
+                          .button(emoji("Remove 🗑"))
+                          .on_hover_text("Remove key.")
+                          .clicked()
+                        {
+                          to_keep = false;
+                          ui.close_menu();
+                        }
+                      });
+                      ui.vertical(|ui| {
+                        let mut mutator =
+                          VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                        let response = value.accept_mut(&mut mutator).unwrap();
+                        response.context_menu(|ui| {
+                          // change type
+                          if ui
+                            .button(emoji("Change 🔧"))
+                            .on_hover_text("Change value type.")
+                            .clicked()
+                          {
+                            // open a dialog to change the value
+                            ui.close_menu();
+                          }
+                          if ui
+                            .button(emoji("Remove 🗑"))
+                            .on_hover_text("Remove value.")
+                            .clicked()
+                          {
+                            to_keep = false;
+                            ui.close_menu();
+                          }
+                        });
+                      });
+                    });
+                    to_keep
                   });
                 });
-                to_keep
-              });
-            });
-          let response = self.ui.button(emoji("➕")).on_hover_text("Add new value.");
-          if response.clicked() {
-            x.push(Value::None);
+              let response = ui
+                .button(emoji("➕"))
+                .on_hover_text("Add new key value pair.");
+              if response.clicked() {
+                x.push((Value::None, Value::None));
+              }
+            }
+            Some(response)
           }
-        }
-        Some(response)
-      }
-      Value::Table(x) => {
-        let len = x.len();
-        let response = self.ui.label(format!("Table (len: {})", len));
-        if self.parent_selected {
-          // like sequence but key value pairs
-          self.ui.label("Key-Value pairs");
-          egui::ScrollArea::new([true, true])
-            .min_scrolled_height(100.0)
-            .show(self.ui, |ui| {
-              x.retain_mut(|(key, value)| {
-                let mut to_keep = true;
-                ui.horizontal(|ui| {
-                  let mut mutator =
-                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                  let response = key.accept_mut(&mut mutator).unwrap();
-                  response.context_menu(|ui| {
-                    // change type
-                    if ui
-                      .button(emoji("Change 🔧"))
-                      .on_hover_text("Change key type.")
-                      .clicked()
-                    {
-                      // open a dialog to change the value
-                      ui.close_menu();
-                    }
-                    if ui
-                      .button(emoji("Remove 🗑"))
-                      .on_hover_text("Remove key.")
-                      .clicked()
-                    {
-                      to_keep = false;
-                      ui.close_menu();
-                    }
-                  });
-                  let mut mutator =
-                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                  let response = value.accept_mut(&mut mutator).unwrap();
-                  response.context_menu(|ui| {
-                    // change type
-                    if ui
-                      .button(emoji("Change 🔧"))
-                      .on_hover_text("Change value type.")
-                      .clicked()
-                    {
-                      // open a dialog to change the value
-                      ui.close_menu();
-                    }
-                    if ui
-                      .button(emoji("Remove 🗑"))
-                      .on_hover_text("Remove value.")
-                      .clicked()
-                    {
-                      to_keep = false;
-                      ui.close_menu();
-                    }
-                  });
-                });
-                to_keep
-              });
+          Value::Shard(x) => {
+            /*
+
+            ### Don’t try too hard to satisfy TEXT version.
+            Such as eliding `{}` when single shard or Omitting params which are at default value, etc
+            We can have a pass when we turn AST into text to apply such EYE CANDY.
+
+            Turn it into a Shards value instead
+            */
+            let shard = x.clone();
+            *value = Value::Shards(Sequence {
+              statements: vec![Statement::Pipeline(Pipeline {
+                blocks: vec![Block {
+                  content: BlockContent::Shard(shard),
+                  line_info: None,
+                  custom_state: None,
+                }],
+              })],
             });
-          let response = self
-            .ui
-            .button(emoji("➕"))
-            .on_hover_text("Add new key value pair.");
-          if response.clicked() {
-            x.push((Value::None, Value::None));
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+            mutator.visit_value(value)
           }
-        }
-        Some(response)
-      }
-      Value::Shard(x) => {
-        /*
-
-        ### Don’t try too hard to satisfy TEXT version.
-        Such as eliding `{}` when single shard or Omitting params which are at default value, etc
-        We can have a pass when we turn AST into text to apply such EYE CANDY.
-
-        Turn it into a Shards value instead
-        */
-        let shard = x.clone();
-        *value = Value::Shards(Sequence {
-          statements: vec![Statement::Pipeline(Pipeline {
-            blocks: vec![Block {
-              content: BlockContent::Shard(shard),
-              line_info: None,
-              custom_state: None,
-            }],
-          })],
-        });
-        self.visit_value(value)
-      }
-      Value::Shards(x) => {
-        self
-          .ui
-          .group(|ui| {
+          Value::Shards(x) => {
+            ui.group(|ui| {
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              x.accept_mut(&mut mutator)
+            })
+            .inner
+          }
+          Value::EvalExpr(x) => {
+            ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+              egui::Stroke::new(1.0, Color32::from_rgb(200, 180, 255));
+            ui.group(|ui| {
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              x.accept_mut(&mut mutator)
+            })
+            .inner
+          }
+          Value::Expr(x) => {
+            ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
+              egui::Stroke::new(1.0, Color32::from_rgb(173, 216, 230));
+            ui.group(|ui| {
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              x.accept_mut(&mut mutator)
+            })
+            .inner
+          }
+          Value::TakeTable(x, y) => {
+            let new_value = transform_take_table(x, y);
+            *value = Value::Expr(new_value);
             let mut mutator =
               VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            x.accept_mut(&mut mutator)
-          })
-          .inner
-      }
-      Value::EvalExpr(x) => {
-        self.ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
-          egui::Stroke::new(1.0, Color32::from_rgb(200, 180, 255));
-        self
-          .ui
-          .group(|ui| {
+            mutator.visit_value(value) // and visit the new value
+          }
+          Value::TakeSeq(x, y) => {
+            let new_value = transform_take_seq(x, y);
+            *value = Value::Expr(new_value);
             let mut mutator =
               VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            x.accept_mut(&mut mutator)
-          })
-          .inner
-      }
-      Value::Expr(x) => {
-        self.ui.style_mut().visuals.widgets.noninteractive.bg_stroke =
-          egui::Stroke::new(1.0, Color32::from_rgb(173, 216, 230));
-        self
-          .ui
-          .group(|ui| {
-            let mut mutator =
-              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            x.accept_mut(&mut mutator)
-          })
-          .inner
-      }
-      Value::TakeTable(x, y) => {
-        let new_value = transform_take_table(x, y);
-        *value = Value::Expr(new_value);
-        self.visit_value(value) // and visit the new value
-      }
-      Value::TakeSeq(x, y) => {
-        let new_value = transform_take_seq(x, y);
-        *value = Value::Expr(new_value);
-        self.visit_value(value) // and visit the new value
-      }
-      Value::Func(x) => match x.name.name.as_str() {
-        "color" => self.mutate_color(x),
-        "i2" => {
-          let y = ints_func_to_ints(x);
-          *value = Value::Int2(y);
-          self.visit_value(value)
+            mutator.visit_value(value) // and visit the new value
+          }
+          Value::Func(x) => match x.name.name.as_str() {
+            "color" => {
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.mutate_color(x)
+            }
+            "i2" => {
+              let y = ints_func_to_ints(x);
+              *value = Value::Int2(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "i3" => {
+              let y = ints_func_to_ints(x);
+              *value = Value::Int3(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "i4" => {
+              let y = ints_func_to_ints(x);
+              *value = Value::Int4(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "i8" => {
+              let y = ints_func_to_ints(x);
+              *value = Value::Int4(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "i16" => {
+              let y = ints_func_to_ints(x);
+              *value = Value::Int4(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "f2" => {
+              let y = floats_func_to_floats(x);
+              *value = Value::Float2(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "f3" => {
+              let y = floats_func_to_floats(x);
+              *value = Value::Float3(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            "f4" => {
+              let y = floats_func_to_floats(x);
+              *value = Value::Float4(y);
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.visit_value(value)
+            }
+            _ => {
+              let mut mutator =
+                VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+              mutator.mutate_shard(x)
+            }
+          },
         }
-        "i3" => {
-          let y = ints_func_to_ints(x);
-          *value = Value::Int3(y);
-          self.visit_value(value)
-        }
-        "i4" => {
-          let y = ints_func_to_ints(x);
-          *value = Value::Int4(y);
-          self.visit_value(value)
-        }
-        "i8" => {
-          let y = ints_func_to_ints(x);
-          *value = Value::Int4(y);
-          self.visit_value(value)
-        }
-        "i16" => {
-          let y = ints_func_to_ints(x);
-          *value = Value::Int4(y);
-          self.visit_value(value)
-        }
-        "f2" => {
-          let y = floats_func_to_floats(x);
-          *value = Value::Float2(y);
-          self.visit_value(value)
-        }
-        "f3" => {
-          let y = floats_func_to_floats(x);
-          *value = Value::Float3(y);
-          self.visit_value(value)
-        }
-        "f4" => {
-          let y = floats_func_to_floats(x);
-          *value = Value::Float4(y);
-          self.visit_value(value)
-        }
-        _ => self.mutate_shard(x),
-      },
-    }
+      })
+      .inner
   }
 
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
