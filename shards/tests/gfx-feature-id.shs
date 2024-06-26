@@ -14,13 +14,6 @@
   Before: []
   Stage: ProgrammableGraphicsStage::Fragment
   EntryPoint: {
-    ; Texture coordinates are named texCoord0/1/2/etc. by convention
-    Shader.ReadInput("texCoord0") >= uv
-    uv | Take(0) >= u
-    uv | Take(1) >= v
-    
-    ; Sample the previous pass color output
-    uv | Shader.SampleTextureCoord("color") | ToFloat3 | Shader.WriteGlobal("base")
     @f3(0.0) | Shader.WriteGlobal("accum")
   }
 })
@@ -86,8 +79,6 @@
       RandomFloat(0.2) | Sub(0.1) = v
     })
     
-    [id @f2(u v)] | Log
-    
     GFX.Feature(
       Shaders: [
         {
@@ -102,22 +93,15 @@
             Shader.ReadBuffer("v3") = v3
             {Take(0) = r}
             
-            @f3(0.0) >= b
-            r | When(IsMore(0.15) {
-              @f3(0.2 0.0 0.2) > b
-            })
-            
             base | Mul(v3) = a
-            ; Take(0) = r
-            ; @f3(r 0.0 0.0) = a
-            Shader.ReadGlobal("accum") | Add(a) | Add(b) | Shader.WriteGlobal("accum")
+            Shader.ReadGlobal("accum") | Add(a) | Shader.WriteGlobal("accum")
           }
         }]
       UniqueVariables: ["v3" "offset"]
       ViewGenerators: {
         {
           "v3": v3
-          "offset": (@f2(u v) | Log("uv"))
+          "offset": (@f2(u v))
         }
       }
     ) >> effect-features
@@ -125,8 +109,6 @@
   
   render-steps-base >= render-steps
   GFX.EffectPass(
-    ; This indicates that the outputs from previous passes named "color" & "depth" are used within the pass
-    ; EffectPass will automatically expose them as shader bindings
     Inputs: ["color"]
     Features: effect-features
   ) >> render-steps

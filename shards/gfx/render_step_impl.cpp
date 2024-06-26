@@ -452,7 +452,6 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
     MeshDrawable::Ptr drawable;
     FeaturePtr baseFeature;
     DrawQueuePtr queue;
-    shards::pmr::vector<FeaturePtr> capturedFeatures;
     shards::pmr::vector<Feature *> features;
   };
 
@@ -463,12 +462,6 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 
   data->queue = std::make_shared<DrawQueue>();
   data->queue->add(drawable);
-
-  data->features.push_back(baseFeature.get());
-  for (auto &feature : step.features) {
-    data->capturedFeatures.push_back(feature);
-    data->features.push_back(feature.get());
-  }
 
   // Derive definitions from parameters
   for (auto &param : step.parameters.basic) {
@@ -493,6 +486,12 @@ void setupRenderGraphNode(RenderGraphNode &node, NodeBuildData &buildData, const
 
     // Set parameters from step
     drawable->parameters = step.parameters;
+
+    data->features.clear();
+    data->features.push_back(data->baseFeature.get());
+    for (auto &feature : step.features) {
+      data->features.push_back(feature.get());
+    }
 
     // Connect texture inputs
     for (auto &frameIndex : ctx.node.inputs) {

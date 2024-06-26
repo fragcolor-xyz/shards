@@ -91,7 +91,7 @@ struct Container {
   OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
-  OBJECT('gbuf', "GFX.Buffer", Buffer, SHBuffer)
+  OBJECT('gbuf', "GFX.Buffer", Buffer, SHBuffer, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder, '_e0');
