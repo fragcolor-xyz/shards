@@ -9,7 +9,10 @@
   })
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     UI({
-      UI.Window(Contents: {
+      ; UI.Window(Title: "1" Contents: {
+      ;   UI.Settings
+      ; })
+      UI.Window(Title: "Shards" Contents: {
         UI.Shards
       })
     }) | UI.Render(ui-draw-queue)

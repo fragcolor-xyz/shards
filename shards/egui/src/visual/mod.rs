@@ -4,7 +4,7 @@
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
-use std::{any::Any, cmp::max, sync::mpsc};
+use std::{any::Any, sync::mpsc};
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -876,7 +876,12 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
           ui.separator();
 
           ui.label("Search for a shard:");
-          ui.text_edit_singleline(&mut swap_state.search_string);
+          let len = swap_state.search_string.len();
+          TextEdit::singleline(&mut swap_state.search_string)
+            .clip_text(false)
+            .desired_width(if len == 0 { 40.0 } else { 0.0 })
+            .hint_text("String")
+            .ui(ui);
           let result = ui
             .horizontal(|ui| {
               if ui.button("Cancel").clicked() {
@@ -1160,11 +1165,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     for statement in &mut sequence.statements {
       statement.accept_mut(self);
     }
-    self.ui.horizontal(|ui| {
+    Some(self.ui.horizontal(|ui| {
       ui.button(emoji("➕")).on_hover_text("Add new statement.");
-      ui.button(emoji("💡")).on_hover_text("Ask AI.");
-    });
-    None
+      ui.button(emoji("💡")).on_hover_text("Ask AI.")
+    }).inner)
   }
 
   fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
@@ -1176,11 +1180,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
           Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
         };
-        ui.horizontal(|ui| {
+        Some(ui.horizontal(|ui| {
           ui.button(emoji("➕")).on_hover_text("Add new statement.");
-          ui.button(emoji("💡")).on_hover_text("Ask AI.");
-        });
-        None
+          ui.button(emoji("💡")).on_hover_text("Ask AI.")
+        }).inner)
       })
       .inner
   }
@@ -1489,6 +1492,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               }
             } else {
               let first = &mut x.namespaces[0];
+              let len = first.len();
               let first = first.to_mut();
               if ui
                 .horizontal(|ui| {
@@ -1501,7 +1505,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   } else {
                     false
                   };
-                  ui.text_edit_singleline(first);
+                  egui::TextEdit::singleline(first)
+                    .clip_text(false)
+                    .desired_width(if len == 0 { 70.0 } else { 0.0 })
+                    .hint_text("namespace")
+                    .ui(ui);
                   remove
                 })
                 .inner
@@ -1510,7 +1518,12 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               }
             }
             let x = x.name.to_mut();
-            Some(ui.text_edit_singleline(x))
+            Some(
+              egui::TextEdit::singleline(x)
+                .clip_text(false)
+                .desired_width(0.0)
+                .ui(ui),
+            )
           }
           Value::Boolean(x) => Some(ui.checkbox(x, if *x { "true" } else { "false" })),
           Value::Enum(x, y) => {
@@ -1554,10 +1567,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             Number::Float(x) => Some(ui.add(CustomDragValue::new(x))),
             Number::Hexadecimal(x) => {
               // we need a mini embedded text editor
-              let text_width = 10.0 * x.chars().count() as f32;
-              let width = text_width + 20.0; // Add some padding
               let prev_value = x.clone();
-              let response = TextEdit::singleline(x.to_mut()).desired_width(width).ui(ui);
+              let response = TextEdit::singleline(x.to_mut())
+                .clip_text(false)
+                .desired_width(0.0)
+                .ui(ui);
 
               if response.changed() {
                 // ensure that the string is a valid hexadecimal number, if not revert to previous value
@@ -1578,13 +1592,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             Some(if x.len() > 16 {
               ui.text_edit_multiline(x)
             } else {
-              let text = x.as_str();
-              let count = max(text.chars().count(), 6);
-              let text_width = 8.0 * count as f32;
-              let width = text_width + 10.0; // Add some padding
+              let len = x.len();
               TextEdit::singleline(x)
-                .desired_width(width)
                 .hint_text("String")
+                .clip_text(false)
+                .desired_width(if len == 0 { 40.0 } else { 0.0 })
                 .ui(ui)
             })
           }
