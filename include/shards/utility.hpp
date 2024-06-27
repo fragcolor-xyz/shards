@@ -705,9 +705,9 @@ ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.innerType = other.innerType;
   v.payload = other.payload;
   v.flags = (v.flags & ~SHVAR_FLAGS_COPY_MASK) | (other.flags & SHVAR_FLAGS_COPY_MASK);
-  if ((other.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
-    v.objectInfo = other.objectInfo;
-  }
+
+  // Biggest size of union of extra flags
+  v.version = other.version;
 }
 
 }; // namespace shards
