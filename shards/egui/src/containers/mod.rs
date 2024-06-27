@@ -9,8 +9,13 @@ use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::Type;
+use shards::types::WireState;
 use shards::types::FRAG_CC;
 use shards::types::{ShardsVar, Table, Var};
+use shards::Shards;
+
+use crate::util::with_object_stack_var;
+use crate::EGUI_UI_TYPE;
 
 shenum! {
   pub struct Order {
@@ -55,6 +60,59 @@ impl From<Order> for egui::Order {
   }
 }
 
+struct TabData {
+  title: Option<Var>,
+  contents: Option<shards::Shards>,
+}
+
+impl TabData {
+  fn get_title(&self) -> &str {
+    if let Some(title) = &self.title {
+      title.try_into().unwrap()
+    } else {
+      "Untitled".into()
+    }
+  }
+  fn activate(
+    &self,
+    ctx: &shards::types::Context,
+    ui_parents: &mut ParamVar,
+    ui: &mut egui::Ui,
+  ) -> WireState {
+    unsafe {
+      if let Some(shards) = self.contents {
+        with_object_stack_var(ui_parents, ui, &EGUI_UI_TYPE, || {
+          let input = Var::default();
+          let mut output = Var::default();
+          let _wire_state: WireState = (*shards::core::Core).runShards.unwrap()(
+            shards,
+            ctx as *const _ as *mut _,
+            &input,
+            &mut output,
+          )
+          .into();
+
+          Ok(())
+        }).unwrap();
+      }
+      return WireState::Continue;
+    }
+  }
+
+  fn new(title: &mut ParamVar, contents: &mut ShardsVar) -> Self {
+    let t = title.get();
+    Self {
+      title: if !t.is_none() { Some(t.clone()) } else { None },
+      contents: if contents.is_empty() {
+        None
+      } else {
+        let shards: Shards = (&*contents).into();
+        Some(shards)
+      },
+    }
+  }
+}
+
 struct DockArea {
   instance: ParamVar,
   requiring: ExposedTypes,
@@ -63,7 +121,7 @@ struct DockArea {
   exposing: ExposedTypes,
   headers: Vec<ParamVar>,
   shards: Vec<ShardsVar>,
-  tabs: egui_dock::DockState<(ParamVar, ShardsVar)>,
+  tabs: egui_dock::DockState<TabData>,
 }
 
 #[derive(shards::shards_enum)]
