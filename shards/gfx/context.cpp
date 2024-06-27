@@ -617,7 +617,7 @@ void Context::requestAdapter() {
 
   std::optional<WGPUBackendType> backend;
 #if SHARDS_GFX_SDL
-  if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
+  if (const char *backendStr = SDL_getenv("SHARDS_GFX_BACKEND")) {
     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
     backend = magic_enum::enum_cast<WGPUBackendType>(typeStr);
     if (backend) {
@@ -654,10 +654,10 @@ void Context::requestAdapter() {
     }
     extras.backends = instanceBackends;
 
-    if (const char *debug = SDL_getenv("GFX_DEBUG")) {
+    if (const char *debug = SDL_getenv("SHARDS_GFX_DEBUG")) {
       extras.flags |= WGPUInstanceFlag_Debug;
     }
-    if (const char *debug = SDL_getenv("GFX_VALIDATION")) {
+    if (const char *debug = SDL_getenv("SHARDS_GFX_VALIDATION")) {
       extras.flags |= WGPUInstanceFlag_Validation;
     }
     desc.nextInChain = &extras.chain;

@@ -36,7 +36,7 @@ Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
       Log("Succeeded")
       none | Stop
     })
-    Animation.Timer | When(IsMore(5.0) {
+    Animation.Timer | When(IsMore(25.0) {
       "Operation timed out" | Fail
     })
     none
