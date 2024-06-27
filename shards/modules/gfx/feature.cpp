@@ -189,7 +189,6 @@ struct FeatureShard {
 
   PARAM_VAR(_uniqueVariables, "UniqueVariables", "List of variables that should be made unique",
             {CoreInfo::NoneType, CoreInfo::StringSeqType});
-  // PARAM_VAR(_uniqueId, "UniqueID", "Unique ID to append to variables", {CoreInfo::NoneType, BlockSpecType});
 
   PARAM_PARAMVAR(
       _requiredAttributes, "RequiredAttributes",
