@@ -7,7 +7,7 @@
 #define SH_ANDROID 1
 #elif defined(__EMSCRIPTEN__)
 #define SH_EMSCRIPTEN 1
-#elif defined(SDL_PLATFORM_APPLE)
+#elif defined(__APPLE__)
 #include <TargetConditionals.h>
 #define SH_APPLE 1
 
