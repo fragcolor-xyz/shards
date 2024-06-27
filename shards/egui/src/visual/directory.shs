@@ -48,52 +48,39 @@ Set(wire-doc "help")
 [{name: "Wire" type: 58}] | Set(wire-doc "outputTypes")
 "Outputs a wire" | Set(wire-doc "outputHelp")
 
-[{
-    name: "Name"
-    help: "The name of the wire"
-    types: [{name: "String" type: 52}]
-    default: "my-wire"
-  }
-  {
-    name: "Shards"
-    help: "The shards to run"
-    types: [{name: "Seq" type: 56}]
-    default: {Pass}
-  }
-  {
-    name: "Traits"
-    help: "The traits of the wire"
-    types: [{name: "Seq" type: 56}]
-    default: []
-  }
-  {
-    name: "Looped"
-    help: "Whether the wire should loop"
-    types: [{name: "Bool" type: 3}]
-    default: false
-  }
-  {
-    name: "Pure"
-    help: "Whether the wire should be pure"
-    types: [{name: "Bool" type: 3}]
-    default: false
-  }
-  {
-    name: "Unsafe"
-    help: "Whether the wire should be unsafe"
-    types: [{name: "Bool" type: 3}]
-    default: false
-  }
-  {
-    name: "StackSize"
-    help: "The stack size of the wire"
-    types: [{name: "Int" type: 4}]
-    default: (2 | Mul(1024) | Mul(1024))
-  }] | Set(wire-doc "parameters")
+[{name: "Name"
+  help: "The name of the wire"
+  types: [{name: "String" type: 52}]
+  default: "my-wire"}
+  {name: "Shards"
+   help: "The shards to run"
+   types: [{name: "Seq" type: 56}]
+   default: {Pass}}
+  {name: "Traits"
+   help: "The traits of the wire"
+   types: [{name: "Seq" type: 56}]
+   default: []}
+  {name: "Looped"
+   help: "Whether the wire should loop"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "Pure"
+   help: "Whether the wire should be pure"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "Unsafe"
+   help: "Whether the wire should be unsafe"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "StackSize"
+   help: "The stack size of the wire"
+   types: [{name: "Int" type: 4}]
+   default: (2 | Mul(1024) | Mul(1024))}]
+Set(wire-doc "parameters")
 
-  "wire" | Hash.XXH-64 | BytesToInts | Slice(0 3) | ToInt3 | Do(process-color) | Set(wire-doc "color")
+"wire" | Hash.XXH-64 | BytesToInts | Slice(0 3) | ToInt3 | Do(process-color) | Set(wire-doc "color")
 
-  ["wire" wire-doc] >> shards-docs
+["wire" wire-doc] >> shards-docs
 
 Table(shards)
 shards-docs | ForEach({

@@ -13,12 +13,14 @@
       ;   UI.Settings
       ; })
       UI.Window(Title: "Shards" Contents: {
-        UI.LayoutClass(
-          MainDirection: LayoutDirection::TopDown
-          FillWidth: true
-          FillHeight: true
-        ) >= left-to-right-layout-class
-        UI.Layout(UI.Shards left-to-right-layout-class)
+        ; UI.LayoutClass(
+        ;   MainDirection: LayoutDirection::TopDown
+        ;   FillWidth: true
+        ;   FillHeight: true
+        ; ) >= left-to-right-layout-class
+        ; UI.Layout(
+        UI.Shards
+        ; left-to-right-layout-class)
       })
     }) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)

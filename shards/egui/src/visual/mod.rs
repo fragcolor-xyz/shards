@@ -2334,8 +2334,13 @@ impl Shard for UIShardsShard {
   }
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
-    let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
     self.context.has_changed = false;
+    let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
+    let x = ui.available_size_before_wrap().x;
+    let y = ui.available_size_before_wrap().y;
+    let min_max = egui::Vec2::new(x, y);
+    ui.set_min_size(min_max);
+    ui.set_max_size(min_max);
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
       // go backward / zoom out
       if self.context.seqs_stack.len() > 1 {
