@@ -20,11 +20,7 @@
 #include <spdlog/fmt/fmt.h>
 
 #ifndef SH_DEBUG_THREAD_NAMES
-#ifdef NDEBUG
 #define SH_DEBUG_THREAD_NAMES 0
-#else
-#define SH_DEBUG_THREAD_NAMES 1
-#endif
 #endif
 
 namespace shards {
@@ -43,27 +39,33 @@ inline void setThreadName(std::string_view name_sv) {
   std::wstring name = toWindowsWString(name_sv);
   SetThreadDescription(GetCurrentThread(), name.c_str());
 #elif SH_LINUX
-  std::string name {name_sv};
+  std::string name{name_sv};
   pthread_setname_np(pthread_self(), name.c_str());
 #elif SH_APPLE
-  std::string name {name_sv};
+  std::string name{name_sv};
   pthread_setname_np(name.c_str());
 #endif
 }
 
 std::list<std::string> &getThreadNameStack();
 
+#if SH_DEBUG_THREAD_NAMES
 inline void pushThreadName(std::string_view name) {
   auto &stack = getThreadNameStack();
   stack.emplace_back(name);
   setThreadName(name);
 }
+#else
+template <typename T> inline void pushThreadName(const T &v) {}
+#endif
 
 inline void popThreadName() {
+#if SH_DEBUG_THREAD_NAMES
   auto &stack = getThreadNameStack();
   shassert(stack.size() > 0);
   stack.pop_back();
   setThreadName(stack.size() > 0 ? stack.back() : "Unnamed thread");
+#endif
 }
 } // namespace shards
 

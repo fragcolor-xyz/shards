@@ -381,18 +381,18 @@ struct Maybe : public BaseSubFlow {
     else
       _composition = {};
 
-    const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
+    const auto nextIsNone = data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None;
 
+    SHTypeInfo outputType = _composition.outputType;
     if (_elseBlks && !nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
-      SHLOG_ERROR("{} != {}", _composition.outputType, elseComp.outputType);
-      throw ComposeError("Maybe: output types mismatch between the two possible flows!");
+      outputType = CoreInfo::AnyType;
+      SHLOG_WARNING("Maybe: Branches return different types, setting output type to Any!");
     }
 
     // Maybe won't expose
     _composition.exposedInfo = {};
 
-    return !_elseBlks ? data.inputType : _composition.outputType;
+    return !_elseBlks ? data.inputType : outputType;
   }
 
   void cleanup(SHContext *context) {
@@ -637,8 +637,7 @@ template <bool COND> struct When {
 
     auto ares = _action.compose(data);
 
-    const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
+    const auto nextIsNone = data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None;
 
     if (!nextIsNone && !ares.flowStopper && !_passth) {
       if (ares.outputType != data.inputType) {
@@ -737,8 +736,7 @@ struct IfBlock {
     const auto tres = _then.compose(data);
     const auto eres = _else.compose(data);
 
-    const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
+    const auto nextIsNone = data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None;
 
     SHTypeInfo outputType = tres.outputType;
     if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
