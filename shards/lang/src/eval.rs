@@ -4112,14 +4112,14 @@ macro_rules! include_shards {
   ($file:expr) => {{
     let code = include_str!($file);
     let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-    let mut env = shards_lang::read::ReadEnv::new("", ".", ".");
+    let mut env = read::ReadEnv::new("", ".", ".");
     let seq =
-      shards_lang::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
+      read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
         .unwrap();
     let seq = seq.sequence;
     let defines = std::collections::HashMap::new();
     let token = new_cancellation_token();
-    let wire = shards_lang::eval::eval(&seq, "include_shards", defines, token).unwrap();
+    let wire = eval::eval(&seq, "include_shards", defines, token).unwrap();
     let mut mesh = Mesh::default();
     if !mesh.compose(wire.0) {
       panic!("Failed to compose wire");

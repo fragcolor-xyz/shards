@@ -1,7 +1,13 @@
+use crate::{
+  ast::{Rule, ShardsParser},
+  eval, include_shards, read,
+};
 use once_cell::sync::OnceCell;
 use pest::Parser;
-use shards::types::{AutoTableVar, ClonedVar, Mesh};
-use shards_lang::ast::{Rule, ShardsParser};
+use shards::{
+  shlog_debug,
+  types::{AutoTableVar, ClonedVar, Mesh},
+};
 use std::{
   collections::BTreeSet,
   sync::{atomic::AtomicBool, mpsc, Arc},
@@ -14,7 +20,7 @@ pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
 }
 
-pub(crate) fn get_global_map() -> &'static AutoTableVar {
+pub fn get_global_map() -> &'static AutoTableVar {
   GLOBAL_MAP.get_or_init(|| {
     let mut directory = AutoTableVar::new();
     let mut result = include_shards!("directory.shs");
@@ -27,7 +33,7 @@ pub(crate) fn get_global_map() -> &'static AutoTableVar {
 
 static GLOBAL_NAME_BTREE: OnceCell<BTreeSet<String>> = OnceCell::new();
 
-pub(crate) fn get_global_name_btree() -> &'static BTreeSet<String> {
+pub fn get_global_name_btree() -> &'static BTreeSet<String> {
   GLOBAL_NAME_BTREE.get_or_init(|| {
     let mut name_btree = BTreeSet::new();
     let map = get_global_map();
@@ -44,7 +50,7 @@ static GLOBAL_DB_QUERY_CHANNEL_SENDER: OnceCell<
   mpsc::Sender<(ClonedVar, mpsc::Sender<ClonedVar>)>,
 > = OnceCell::new();
 
-pub(crate) fn get_global_visual_shs_channel_sender(
+pub fn get_global_visual_shs_channel_sender(
 ) -> &'static mpsc::Sender<(ClonedVar, mpsc::Sender<ClonedVar>)> {
   GLOBAL_DB_QUERY_CHANNEL_SENDER.get_or_init(|| {
     let (sender, receiver): (

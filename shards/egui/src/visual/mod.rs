@@ -13,11 +13,10 @@ use crate::{
 };
 use shards::{
   core::register_shard,
-  fourCharacterCode,
   shard::Shard,
   types::{
     ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, OptionalString, ParamVar,
-    SeqVar, Type, Types, Var, BOOL_TYPES, FRAG_CC, NONE_TYPES,
+    SeqVar, Type, Types, Var, BOOL_TYPES, NONE_TYPES,
   },
   SHType_Any, SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum,
   SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4, SHType_Int, SHType_Int16, SHType_Int2,
@@ -26,15 +25,10 @@ use shards::{
 };
 
 use shards_lang::{
-  ast::*,
-  ast_visitor::*,
-  read::{AST_TYPE, AST_VAR_TYPE},
-  ParamHelperMut, RcStrWrapper,
+  ast::*, ast_visitor::*, directory, read::{AST_TYPE, AST_VAR_TYPE}, ParamHelperMut, RcStrWrapper
 };
 
 use num_traits::{Float, FromPrimitive, PrimInt, Zero};
-
-mod directory;
 
 fn var_to_value(var: &Var) -> Result<Value, String> {
   match var.valueType {
