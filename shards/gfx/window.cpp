@@ -113,9 +113,8 @@ void *Window::getNativeWindowHandle() {
 
 int2 Window::getDrawableSize() const {
   int2 r;
-#if SH_APPLE
-  SDL_Metal_GetDrawableSize(window, &r.x, &r.y);
-#elif SH_ANDROID
+  SDL_GetWindowSizeInPixels(Window::window, &r.x, &r.y);
+#if SH_ANDROID
   ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
   r.x = ANativeWindow_getWidth(nativeWindow);
   r.y = ANativeWindow_getHeight(nativeWindow);
