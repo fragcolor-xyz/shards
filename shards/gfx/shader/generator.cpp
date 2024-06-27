@@ -153,7 +153,25 @@ struct StageOutput {
   std::vector<GeneratorError> errors;
 };
 
-static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
+// static void thowSortFailure(graph::Graph &graph, const graph::TopologicalSort &sort) {
+//   std::string errorLog;
+//   for (size_t i = 0; i < sort.incomingEdgesPerNode.size(); i++) {
+//     auto &in = sort.incomingEdgesPerNode[i];
+//     if (!in.empty()) {
+//       std::string errorLog1 = fmt::format("Node {} depends on: ", i);
+//       for (auto &edge : in) {
+//         errorLog1 += fmt::format("{} ", edge);
+//       }
+//       errorLog += "\n";
+//       errorLog += errorLog1;
+//     }
+//   }
+//   throw std::logic_error(fmt::format("Failed to sort entry points: {}", errorLog));
+// }
+
+static void trySortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
+  graph::TopologicalSort sort;
+
   std::unordered_map<FastString, size_t> nodeNames;
   for (size_t i = 0; i < entryPoints.size(); i++) {
     const EntryPoint &entryPoint = *entryPoints[i];
@@ -191,19 +209,35 @@ static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool i
   }
 
   if (!ignoreMissingDependencies && missingDependencies.size() > 0) {
-    return false;
+    std::vector<std::string> missing1;
+    for (auto &dep : missingDependencies) {
+      missing1.push_back(std::string(dep));
+    }
+    throw std::logic_error(fmt::format("Missing dependencies: {}", boost::algorithm::join(missing1, ", ")));
   }
 
   std::vector<size_t> sortedIndices;
-  if (!graph::topologicalSort(graph, sortedIndices))
-    return false;
+  if (!sort(graph, sortedIndices)) {
+    std::string errorLog;
+    for (size_t i = 0; i < sort.incomingEdgesPerNode.size(); i++) {
+      auto &in = sort.incomingEdgesPerNode[i];
+      if (!in.empty()) {
+        std::string errorLog1 = fmt::format("Node {} depends on: ", entryPoints[i]->name);
+        for (auto &edge : in) {
+          errorLog1 += fmt::format("{} ", entryPoints[edge]->name);
+        }
+        errorLog += "\n";
+        errorLog += errorLog1;
+      }
+    }
+    throw std::logic_error(fmt::format("Failed to sort entry points: {}", errorLog));
+  }
 
   auto unsortedEntryPoints = std::move(entryPoints);
   entryPoints.clear();
   for (size_t i = 0; i < sortedIndices.size(); i++) {
     entryPoints.push_back(unsortedEntryPoints[sortedIndices[i]]);
   }
-  return true;
 }
 
 struct DynamicVertexInput : public IGeneratorDynamicHandler {
@@ -377,7 +411,7 @@ struct Stage {
     globalsVariableName = fmt::format("p_{}_globals", magic_enum::enum_name(stage));
   }
 
-  bool sort(bool ignoreMissingDependencies = true) { return sortEntryPoints(entryPoints, ignoreMissingDependencies); }
+  void trySort(bool ignoreMissingDependencies = true) { trySortEntryPoints(entryPoints, ignoreMissingDependencies); }
 
   void writeInputStructHeader(std::string &output) {
     output += fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName);
@@ -541,8 +575,11 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   for (size_t i = 0; i < NumGraphicsStages; i++) {
     auto &stage = stages[i];
 
-    bool sorted = stage.sort();
-    shassert(sorted);
+    stage.trySort();
+    // if (!sorted) {
+    // output.errors.emplace_back(fmt::format("Failed to sort entry points for stage {}", magic_enum::enum_name(stage.stage)));
+    // return output;
+    // }
 
     StageIO &stageIO = i == 0 ? pipelineIO.vertexIO : pipelineIO.fragmentIO;
     StageOutput stageOutput = stage.process(pipelineIO, stageIO, buffers, textureDefinitions);
@@ -698,8 +735,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     auto stageType = gfx::ProgrammableGraphicsStage(i);
     auto &stage = stages[i];
 
-    bool sorted = sortEntryPoints(stage.entryPoints);
-    shassert(sorted);
+    trySortEntryPoints(stage.entryPoints);
 
     pipelineIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
 
