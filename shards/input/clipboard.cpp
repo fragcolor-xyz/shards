@@ -7,7 +7,7 @@ void gfxClipboardGet(char **recv, std::atomic_bool *ready);
 void gfxClipboardSet(char *data);
 }
 #else
-#include <SDL_clipboard.h>
+#include <SDL3/SDL_clipboard.h>
 #endif
 
 namespace shards::input {

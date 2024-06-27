@@ -32,7 +32,7 @@ struct EndTextInputMessage {
 // Request application to change the cursor
 struct SetCursorMessage {
   bool visible = true;
-  SDL_SystemCursor cursor = SDL_SystemCursor::SDL_SYSTEM_CURSOR_ARROW;
+  SDL_SystemCursor cursor = SDL_SystemCursor::SDL_SYSTEM_CURSOR_DEFAULT;
   std::partial_ordering operator<=>(const SetCursorMessage &other) const = default;
 };
 

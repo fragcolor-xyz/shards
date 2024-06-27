@@ -15,7 +15,7 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #if SHARDS_GFX_SDL
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 #endif
 
 #if SH_EMSCRIPTEN

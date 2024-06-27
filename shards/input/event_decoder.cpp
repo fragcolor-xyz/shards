@@ -9,9 +9,9 @@
 namespace shards::input {
 #if SHARDS_GFX_SDL
 void NativeEventDecoder::apply(const NativeEventType &event) {
-  if (event.type == SDL_MOUSEWHEEL) {
-    buffer.scrollDelta += event.wheel.preciseY;
-  } else if (event.type == SDL_TEXTEDITING) {
+  if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+    buffer.scrollDelta += event.wheel.y;
+  } else if (event.type == SDL_EVENT_TEXT_EDITING) {
     auto &ievent = event.edit;
 
     if (strlen(ievent.text) > 0) {
@@ -21,10 +21,10 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
 
       virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
     }
-  } else if (event.type == SDL_KEYDOWN) {
+  } else if (event.type == SDL_EVENT_KEY_DOWN) {
     virtualInputEvents.push_back(
-        KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
-  } else if (event.type == SDL_TEXTINPUT) {
+        KeyEvent{.key = event.key.key, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
+  } else if (event.type == SDL_EVENT_TEXT_INPUT) {
     auto &ievent = event.text;
     if (decoderState.imeComposing) {
       virtualInputEvents.push_back(TextCompositionEndEvent{.text = ievent.text});
@@ -32,54 +32,50 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
     } else {
       virtualInputEvents.push_back(TextEvent{.text = ievent.text});
     }
-  } else if (event.type == SDL_WINDOWEVENT) {
-    if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-      virtualInputEvents.push_back(RequestCloseEvent{});
-    } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-    }
-  } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
+  } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+    virtualInputEvents.push_back(RequestCloseEvent{});
+  } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+  } else if (event.type == SDL_EVENT_DID_ENTER_BACKGROUND) {
     virtualInputEvents.push_back(SupendEvent{});
-  } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+  } else if (event.type == SDL_EVENT_DID_ENTER_FOREGROUND) {
     virtualInputEvents.push_back(ResumeEvent{});
-  } else if (event.type == SDL_FINGERMOTION) {
+  } else if (event.type == SDL_EVENT_FINGER_MOTION) {
     auto &ievent = event.tfinger;
     virtualInputEvents.push_back(PointerTouchMoveEvent{
         .pos = float2(ievent.x, ievent.y) * state.region.size,
         .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
-        .index = ievent.fingerId,
+        .index = ievent.fingerID,
         .pressure = ievent.pressure,
     });
-  } else if (event.type == SDL_FINGERDOWN) {
+  } else if (event.type == SDL_EVENT_FINGER_DOWN) {
     auto &ievent = event.tfinger;
 
-    auto &pointer = newState.pointers.getOrInsert(ievent.fingerId);
+    auto &pointer = newState.pointers.getOrInsert(ievent.fingerID);
     pointer.position = float2(ievent.x, ievent.y) * state.region.size;
     pointer.pressure = ievent.pressure;
-    pointer.touchId = ievent.touchId;
+    pointer.touchId = ievent.touchID;
 
     virtualInputEvents.push_back(PointerTouchEvent{
         .pos = float2(ievent.x, ievent.y) * state.region.size,
         .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
-        .index = ievent.fingerId,
+        .index = ievent.fingerID,
         .pressure = ievent.pressure,
         .pressed = true,
     });
-  } else if (event.type == SDL_DROPFILE) {
-    virtualInputEvents.push_back(DropFileEvent{.path = event.drop.file});
-    SPDLOG_LOGGER_DEBUG(getLogger(), "Window dropped file: {}", event.drop.file);
-    if (event.drop.file)
-      SDL_free(event.drop.file);
+  } else if (event.type == SDL_EVENT_DROP_FILE) {
+    virtualInputEvents.push_back(DropFileEvent{.path = event.drop.data});
+    SPDLOG_LOGGER_DEBUG(getLogger(), "Window dropped file: {}", event.drop.data);
   }
 }
 #else
 static SDL_Keymod extractEventKeyModidiers(const gfx::em::KeyEvent &e) {
   int r{};
   if (e.altKey)
-    r |= KMOD_ALT;
+    r |= SDL_KMOD_ALT;
   if (e.ctrlKey)
-    r |= KMOD_CTRL;
+    r |= SDL_KMOD_CTRL;
   if (e.shiftKey)
-    r |= KMOD_SHIFT;
+    r |= SDL_KMOD_SHIFT;
   return SDL_Keymod(r);
 }
 /*
@@ -248,7 +244,7 @@ static const SDL_Keycode emscripten_keycode_table[] = {
     /* 157 */ SDLK_UNKNOWN,
     /* 158 */ SDLK_UNKNOWN,
     /* 159 */ SDLK_UNKNOWN,
-    /* 160 */ SDLK_BACKQUOTE,
+    /* 160 */ SDLK_GRAVE,
     /* 161 */ SDLK_UNKNOWN,
     /* 162 */ SDLK_UNKNOWN,
     /* 163 */ SDLK_KP_HASH, /*KaiOS phone keypad*/
@@ -261,15 +257,15 @@ static const SDL_Keycode emscripten_keycode_table[] = {
     /* 170 */ SDLK_KP_MULTIPLY, /*KaiOS phone keypad*/
     /* 171 */ SDLK_RIGHTBRACKET,
     /* 172 */ SDLK_UNKNOWN,
-    /* 173 */ SDLK_MINUS,      /*FX*/
-    /* 174 */ SDLK_VOLUMEDOWN, /*IE, Chrome*/
-    /* 175 */ SDLK_VOLUMEUP,   /*IE, Chrome*/
-    /* 176 */ SDLK_AUDIONEXT,  /*IE, Chrome*/
-    /* 177 */ SDLK_AUDIOPREV,  /*IE, Chrome*/
+    /* 173 */ SDLK_MINUS,                /*FX*/
+    /* 174 */ SDLK_VOLUMEDOWN,           /*IE, Chrome*/
+    /* 175 */ SDLK_VOLUMEUP,             /*IE, Chrome*/
+    /* 176 */ SDLK_MEDIA_NEXT_TRACK,     /*IE, Chrome*/
+    /* 177 */ SDLK_MEDIA_PREVIOUS_TRACK, /*IE, Chrome*/
     /* 178 */ SDLK_UNKNOWN,
-    /* 179 */ SDLK_AUDIOPLAY, /*IE, Chrome*/
+    /* 179 */ SDLK_MEDIA_PLAY, /*IE, Chrome*/
     /* 180 */ SDLK_UNKNOWN,
-    /* 181 */ SDLK_AUDIOMUTE,  /*FX*/
+    /* 181 */ SDLK_MUTE,       /*FX*/
     /* 182 */ SDLK_VOLUMEDOWN, /*FX*/
     /* 183 */ SDLK_VOLUMEUP,   /*FX*/
     /* 184 */ SDLK_UNKNOWN,
@@ -280,7 +276,7 @@ static const SDL_Keycode emscripten_keycode_table[] = {
     /* 189 */ SDLK_MINUS, /*IE, Chrome, D3E legacy*/
     /* 190 */ SDLK_PERIOD,
     /* 191 */ SDLK_SLASH,
-    /* 192 */ SDLK_BACKQUOTE, /*FX, D3E legacy (SDLK_APOSTROPHE in IE/Chrome)*/
+    /* 192 */ SDLK_GRAVE, /*FX, D3E legacy (SDLK_APOSTROPHE in IE/Chrome)*/
     /* 193 */ SDLK_UNKNOWN,
     /* 194 */ SDLK_UNKNOWN,
     /* 195 */ SDLK_UNKNOWN,
@@ -310,7 +306,7 @@ static const SDL_Keycode emscripten_keycode_table[] = {
     /* 219 */ SDLK_LEFTBRACKET,
     /* 220 */ SDLK_BACKSLASH,
     /* 221 */ SDLK_RIGHTBRACKET,
-    /* 222 */ SDLK_QUOTE, /*FX, D3E legacy*/
+    /* 222 */ SDLK_APOSTROPHE, /*FX, D3E legacy*/
 };
 
 static SDL_Keycode mapKeyCode(const gfx::em::KeyEvent &keyEvent) {

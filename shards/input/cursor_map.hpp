@@ -1,7 +1,7 @@
 #ifndef E7523CEA_AA88_4F7F_8304_1C349E788774
 #define E7523CEA_AA88_4F7F_8304_1C349E788774
 
-#include <SDL_mouse.h>
+#include <SDL3/SDL_mouse.h>
 #include <unordered_map>
 #include <magic_enum.hpp>
 
@@ -22,7 +22,7 @@ struct SDLCursor {
   }
   ~SDLCursor() {
     if (cursor)
-      SDL_FreeCursor(cursor);
+      SDL_DestroyCursor(cursor);
   }
   operator SDL_Cursor *() const { return cursor; }
 };

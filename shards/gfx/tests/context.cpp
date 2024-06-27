@@ -59,7 +59,7 @@ bool TestContext::tick() {
     std::vector<SDL_Event> events{};
     window->pollEvents(events);
     for (auto &event : events) {
-      if (event.type == SDL_QUIT)
+      if (event.type == SDL_EVENT_QUIT)
         return false;
     }
     resizeMainOutputConditional(window->getDrawableSize());

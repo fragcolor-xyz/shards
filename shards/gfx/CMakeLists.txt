@@ -119,12 +119,7 @@ if(EMSCRIPTEN)
   em_link_js_library(gfx gfx_wgpu.js)
   em_link_js_library(gfx gfx_events.js)
 else()
-  target_link_libraries(gfx SDL2)
-
-  if(NOT DESKTOP)
-    # Only need SDL2main for setup on mobile platforms
-    target_link_libraries(gfx SDL2main)
-  endif()
+  target_link_libraries(gfx SDL3-static)
 
   set(HAS_WGPU_NATIVE ON)
   target_compile_definitions(gfx PUBLIC SHARDS_GFX_SDL=1)

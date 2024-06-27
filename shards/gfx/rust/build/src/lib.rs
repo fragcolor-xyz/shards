@@ -24,7 +24,7 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     .clang_arg(format!("-I{}/linalg", deps_path))
     .clang_arg(format!("-I{}/nameof/include", deps_path))
     .clang_arg(format!("-I{}/spdlog/include", deps_path))
-    .clang_arg(format!("-I{}/SDL/include", deps_path))
+    .clang_arg(format!("-I{}/SDL3/include", deps_path))
     .clang_arg(format!("-I{}/rust/wgpu-native/ffi", gfx_path))
     .clang_arg("-std=c++17")
     .rust_target(bindgen::RustTarget::Nightly) // Required for thiscall on x86 windows

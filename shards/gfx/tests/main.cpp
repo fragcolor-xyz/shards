@@ -1,4 +1,4 @@
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch_all.hpp>
 #include <spdlog/spdlog.h>

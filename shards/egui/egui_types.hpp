@@ -88,7 +88,7 @@ union InputEvent {
   } common;
   struct {
     InputEventType type;
-    SDL_KeyCode key;
+    SDL_Keycode key;
     ModifierKeys modifiers;
     bool pressed;
     bool repeat;

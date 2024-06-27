@@ -22,8 +22,8 @@
 [submodule "deps/pdqsort"]
 	path = deps/pdqsort
 	url = https://github.com/shards-lang/pdqsort.git
-[submodule "deps/SDL"]
-	path = deps/SDL
+[submodule "deps/SDL3"]
+	path = deps/SDL3
 	url = https://github.com/shards-lang/SDL-org.git
 [submodule "deps/filesystem"]
 	path = deps/filesystem
@@ -93,3 +93,6 @@
 [submodule "deps/oneTBB"]
 	path = deps/oneTBB
 	url = https://github.com/shards-lang/oneTBB.git
+[submodule "deps/SDL2-compat"]
+	path = deps/SDL2-compat
+	url = https://github.com/libsdl-org/sdl2-compat.git

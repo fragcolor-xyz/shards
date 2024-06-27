@@ -2,8 +2,8 @@
 #include "error_utils.hpp"
 #include "../core/platform.hpp"
 #include "sdl_native_window.hpp"
-#include <SDL.h>
-#include <SDL_video.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_video.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include "fmt.hpp"
@@ -12,7 +12,7 @@
 #if SH_WINDOWS
 #include <Windows.h>
 #elif SH_APPLE
-#include <SDL_metal.h>
+#include <SDL3/SDL_metal.h>
 #elif SH_ANDROID
 #include <android/native_window.h>
 #endif
@@ -32,7 +32,7 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_Init failed: {}", SDL_GetError());
   }
 
-  uint32_t flags = SDL_WINDOW_SHOWN;
+  uint32_t flags{};
 
   flags |= SDL_WINDOW_RESIZABLE;
 
@@ -41,8 +41,6 @@ void Window::init(const WindowCreationOptions &options) {
 // Base OS flags
 #if SH_IOS || SH_ANDROID
   flags |= SDL_WINDOW_FULLSCREEN;
-#else
-  flags |= (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 #endif
 
   if ((flags & SDL_WINDOW_FULLSCREEN) != 0) {
@@ -50,20 +48,30 @@ void Window::init(const WindowCreationOptions &options) {
     height = 0;
   }
 
-  flags |= SDL_WINDOW_ALLOW_HIGHDPI;
+  flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
 #if SH_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
 
-  SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+  SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-  SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
-  window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
+
+  SDL_PropertiesID props = SDL_CreateProperties();
+  SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN, true);
+  SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
+  SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
+  SDL_SetNumberProperty(props, "flags", flags);
+  window = SDL_CreateWindowWithProperties(props);
+  SDL_DestroyProperties(props);
 
   if (!window) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
+  }
+
+  if (options.fullscreen) {
+    SDL_SetWindowFullscreen(window, true);
   }
 
 #if SH_APPLE
@@ -93,8 +101,7 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
-void Window::maybeAutoResize() {
-}
+void Window::maybeAutoResize() {}
 
 void *Window::getNativeWindowHandle() {
 #if SH_APPLE
@@ -137,22 +144,7 @@ int2 Window::getPosition() const {
 
 void Window::move(int2 targetPosition) { SDL_SetWindowPosition(window, targetPosition.x, targetPosition.y); }
 
-static float2 getUIScaleFromDisplayDPI(int displayIndex) {
-  float2 dpi;
-  float diagonalDpi;
-  if (SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
-    return float2(1.0f);
-  }
-
-#if SH_WINDOWS
-  // DPI for 100% on windows
-  return dpi / 96;
-#else
-  const float referenceDpi = 440;
-  const float referenceScale = 4.0;
-  return dpi / referenceDpi * referenceScale;
-#endif
-}
+static float2 getUIScaleFromDisplayDPI(int displayIndex) { return float2(SDL_GetDisplayContentScale(displayIndex)); }
 
 float Window::getUIScale() const {
   float2 scale{};
@@ -160,7 +152,7 @@ float Window::getUIScale() const {
   // On apple, derive display scale from drawable size / window size
   scale = float2(getDrawableSize()) / float2(getSize());
 #else
-  scale = getUIScaleFromDisplayDPI(SDL_GetWindowDisplayIndex(window));
+  scale = getUIScaleFromDisplayDPI(SDL_GetDisplayForWindow(window));
 #endif
   return std::max<float>(scale.x, scale.y);
 }
