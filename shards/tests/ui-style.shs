@@ -6,6 +6,8 @@
   Once({
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
+    "ui-nested.shs" | FS.Read | Shards.Read(AstType::Object) = ast
+    Shards.Print >= text-code
   })
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     UI({
@@ -19,8 +21,15 @@
         ;   FillHeight: true
         ; ) >= left-to-right-layout-class
         ; UI.Layout(
-        UI.Shards
+        UI.Shards(ast) | When(IsTrue {
+          Msg("Reloading code")
+          ast | Shards.Print > text-code
+        })
         ; left-to-right-layout-class)
+      })
+
+      UI.Window(Title: "Code" Contents: {
+        UI.CodeEditor(text-code "Shards")
       })
     }) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)

@@ -4,7 +4,7 @@
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
-use std::{any::Any, sync::mpsc};
+use std::{any::Any, rc::Rc, sync::mpsc};
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -13,10 +13,11 @@ use crate::{
 };
 use shards::{
   core::register_shard,
+  fourCharacterCode,
   shard::Shard,
   types::{
-    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types,
-    Var, NONE_TYPES,
+    ClonedVar, Context as ShardsContext, ExposedTypes, InstanceData, OptionalString, ParamVar,
+    SeqVar, Type, Types, Var, BOOL_TYPES, FRAG_CC, NONE_TYPES,
   },
   SHType_Any, SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum,
   SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4, SHType_Int, SHType_Int16, SHType_Int2,
@@ -24,9 +25,12 @@ use shards::{
   SHType_Table, SHType_Wire,
 };
 
-use pest::Parser;
-
-use shards_lang::{ast::*, ast_visitor::*, ParamHelperMut, RcStrWrapper};
+use shards_lang::{
+  ast::*,
+  ast_visitor::*,
+  read::{AST_TYPE, AST_VAR_TYPE},
+  ParamHelperMut, RcStrWrapper,
+};
 
 use num_traits::{Float, FromPrimitive, PrimInt, Zero};
 
@@ -543,6 +547,7 @@ impl<'a> VisualAst<'a> {
                         if swap_state.param == param {
                           match select_value_modal(ui, swap_state) {
                             SwapStateResult::<Value>::Done(f) => {
+                              self.context.has_changed = true;
                               self.context.swap_state = None;
                               Some(f)
                             }
@@ -1254,6 +1259,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     while i < pipeline.blocks.len() {
       let response = match self.visit_block(&mut pipeline.blocks[i]) {
         (BlockAction::Remove, r) => {
+          self.context.has_changed = true;
           pipeline.blocks.remove(i);
           r
         }
@@ -1262,6 +1268,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           r
         }
         (BlockAction::Duplicate, r) => {
+          self.context.has_changed = true;
           let mut block = pipeline.blocks[i].clone();
           block.get_custom_state::<BlockState>().map(|x| {
             x.id = Id::new(nanoid!(16));
@@ -1271,6 +1278,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           r
         }
         (BlockAction::Swap(block), r) => {
+          self.context.has_changed = true;
           pipeline.blocks.get_mut(i).map(|x| {
             let selected = x
               .get_custom_state::<BlockState>()
@@ -1396,7 +1404,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 BlockContent::Func(x) => match x.name.name.as_str() {
                   "color" => {
                     let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
-                    mutator.mutate_color(x)
+                    let response = mutator.mutate_color(x);
+                    if response.as_ref().unwrap().changed() {
+                      self.context.has_changed = true;
+                    }
+                    response
                   }
                   "i2" => {
                     let y = ints_func_to_ints(x);
@@ -1485,6 +1497,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           SwapStateResult::Done(new_block) => {
             action = BlockAction::Swap(new_block);
             self.context.swap_state = None;
+            self.context.has_changed = true;
           }
           SwapStateResult::Close => {
             self.context.swap_state = None;
@@ -2023,14 +2036,14 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             *value = Value::Expr(new_value);
             let mut mutator =
               VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            mutator.visit_value(value) // and visit the new value
+            mutator.visit_value(value)
           }
           Value::TakeSeq(x, y) => {
             let new_value = transform_take_seq(x, y);
             *value = Value::Expr(new_value);
             let mut mutator =
               VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            mutator.visit_value(value) // and visit the new value
+            mutator.visit_value(value)
           }
           Value::Func(x) => match x.name.name.as_str() {
             "color" => {
@@ -2103,6 +2116,12 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
       })
       .inner
+      .map(|x| {
+        if x.changed() {
+          self.context.has_changed = true;
+        }
+        x
+      })
   }
 
   fn visit_metadata(&mut self, _metadata: &mut Metadata) -> Option<Response> {
@@ -2267,7 +2286,7 @@ fn render_shards_group(
 }
 
 #[derive(shards::shard)]
-#[shard_info("UI.Shards", "A Shards program editor")]
+#[shard_info("UI.Shards", "A Shards program AST visual editor.")]
 pub struct UIShardsShard {
   #[shard_required]
   required: ExposedTypes,
@@ -2275,31 +2294,26 @@ pub struct UIShardsShard {
   #[shard_warmup]
   parents: ParamVar,
 
-  ast: Sequence,
+  #[shard_param("AST", "The Shards AST object to edit in real time, this shard will manipulate and edit this variable in place.", [*AST_VAR_TYPE])]
+  ast_object: ParamVar,
+
+  ast: Option<Rc<Program>>,
   context: Context,
 }
 
 impl Default for UIShardsShard {
   fn default() -> Self {
-    let code = include_str!("simple.shs");
-    let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-    let mut env = shards_lang::read::ReadEnv::new("", ".", ".");
-    let seq =
-      shards_lang::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
-        .unwrap();
-    let seq = seq.sequence;
-    let mut result = Self {
+    Self {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      ast: seq,
+      ast_object: ParamVar::default(),
+      ast: None,
       context: Context {
         swap_state: None,
         seqs_stack: Vec::new(),
         has_changed: false,
       },
-    };
-    result.context.seqs_stack.push(&mut result.ast);
-    result
+    }
   }
 }
 
@@ -2309,8 +2323,20 @@ impl Shard for UIShardsShard {
     &NONE_TYPES
   }
 
+  fn input_help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "No input required, the AST is manipulated in place."
+    ))
+  }
+
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &BOOL_TYPES
+  }
+
+  fn output_help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "True if the AST has been modified, false otherwise."
+    ))
   }
 
   fn warmup(&mut self, ctx: &ShardsContext) -> Result<(), &str> {
@@ -2328,19 +2354,40 @@ impl Shard for UIShardsShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
 
+    if !self.ast_object.is_variable() {
+      return Err("AST object is not a variable");
+    }
+
     require_parents(&mut self.required);
 
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
+    let ast = self.ast_object.get();
+    if ast.is_none() {
+      return Ok(false.into());
+    }
+
+    self.ast = Some(Var::from_object_as_clone(ast, &AST_TYPE)?);
+    if self.context.seqs_stack.is_empty() {
+      let ast = Var::get_mut_from_clone1(&self.ast)?;
+      let seq_ptr = &mut ast.sequence as *mut Sequence;
+      self.context.seqs_stack.push(seq_ptr);
+    }
+
     self.context.has_changed = false;
+
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
+
+    // Set the minimum and maximum size of the UI
+    // This allows us to have a fully user controlled UI/Window
     let x = ui.available_size_before_wrap().x;
     let y = ui.available_size_before_wrap().y;
     let min_max = egui::Vec2::new(x, y);
     ui.set_min_size(min_max);
     ui.set_max_size(min_max);
+
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
       // go backward / zoom out
       if self.context.seqs_stack.len() > 1 {
@@ -2352,7 +2399,8 @@ impl Shard for UIShardsShard {
       let mut mutator = VisualAst::new(&mut self.context, ui);
       root.accept_mut(&mut mutator);
     });
-    Ok(Var::default())
+
+    Ok(self.context.has_changed.into())
   }
 }
 

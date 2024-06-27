@@ -11,20 +11,36 @@ use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxDefinition;
 use syntect::parsing::SyntaxSet;
 
+impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Highlighter<true> {
+  fn compute(&mut self, (theme, code, language): (&CodeTheme, &str, &str)) -> LayoutJob {
+    self.highlight(theme, code, language)
+  }
+}
+
+impl egui::util::cache::ComputerMut<(&CodeTheme, &str), LayoutJob> for Highlighter<false> {
+  fn compute(&mut self, (theme, code): (&CodeTheme, &str)) -> LayoutJob {
+    self.highlight(theme, code, "Shards")
+  }
+}
+
 /// Memoized Code highlighting
-pub(crate) fn highlight(
+pub(crate) fn highlight_shards(ctx: &egui::Context, theme: &CodeTheme, code: &str) -> LayoutJob {
+  type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter<false>>;
+
+  ctx.memory_mut(|mem| {
+    let highlight_cache = mem.caches.cache::<HighlightCache<'_>>();
+    highlight_cache.get((theme, code))
+  })
+}
+
+/// Memoized Code highlighting
+pub(crate) fn highlight_generic(
   ctx: &egui::Context,
   theme: &CodeTheme,
   code: &str,
   language: &str,
 ) -> LayoutJob {
-  impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Highlighter {
-    fn compute(&mut self, (theme, code, language): (&CodeTheme, &str, &str)) -> LayoutJob {
-      self.highlight(theme, code, language)
-    }
-  }
-
-  type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter>;
+  type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter<true>>;
 
   ctx.memory_mut(|mem| {
     let highlight_cache = mem.caches.cache::<HighlightCache<'_>>();
@@ -60,25 +76,35 @@ impl CodeTheme {
   }
 }
 
-struct Highlighter {
+struct Highlighter<const FULL_LOAD: bool> {
   syntaxes: SyntaxSet,
   themes: ThemeSet,
 }
 
-impl Default for Highlighter {
+impl<const FULL_LOAD: bool> Default for Highlighter<FULL_LOAD> {
   fn default() -> Self {
-    let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
-    builder.add(
-      SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
-    );
+    let syntaxes = if FULL_LOAD {
+      let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
+      builder.add(
+        SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
+      );
+      builder.build()
+    } else {
+      let mut builder = SyntaxSet::new().into_builder();
+      builder.add(
+        SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
+      );
+      builder.build()
+    };
+
     Highlighter {
-      syntaxes: builder.build(),
+      syntaxes,
       themes: ThemeSet::load_defaults(),
     }
   }
 }
 
-impl Highlighter {
+impl<const FULL_LOAD: bool> Highlighter<FULL_LOAD> {
   fn highlight(&self, theme: &CodeTheme, text: &str, language: &str) -> LayoutJob {
     self
       .highlight_impl(theme, text, language)
@@ -110,7 +136,6 @@ impl Highlighter {
     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme]);
 
     use egui::text::{LayoutSection, TextFormat};
-
     let mut job = LayoutJob {
       text: text.into(),
       ..Default::default()
@@ -127,6 +152,7 @@ impl Highlighter {
         } else {
           egui::Stroke::NONE
         };
+
         job.sections.push(LayoutSection {
           leading_space: 0.0,
           byte_range: as_byte_range(text, range),

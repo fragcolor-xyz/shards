@@ -2937,6 +2937,13 @@ impl Var {
     Ok(c)
   }
 
+  // This pattern is often used in shards storing Rcs of Vars
+  pub fn get_mut_from_clone1<'a, T>(c: &Option<Rc<T>>) -> Result<&'a mut T, &'static str> {
+    let c = c.as_ref().ok_or("No Var reference found")?;
+    let c = Rc::as_ptr(c) as *mut T;
+    Ok(unsafe { &mut *c })
+  }
+
   pub fn from_object_mut_ref<'a, T>(var: &Var, info: &Type) -> Result<&'a mut T, &'static str> {
     // used to use the object once, when it comes from a simple pointer
     unsafe {

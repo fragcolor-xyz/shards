@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use self::syntax_highlighting::highlight;
 use self::syntax_highlighting::CodeTheme;
 use super::CodeEditor;
 use crate::util;
@@ -27,6 +26,8 @@ use shards::types::Var;
 use shards::types::BOOL_TYPES;
 
 use shards::types::NONE_TYPES;
+use syntax_highlighting::highlight_generic;
+use syntax_highlighting::highlight_shards;
 
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -219,7 +220,11 @@ impl LegacyShard for CodeEditor {
       let id2 = EguiId::new(self, 1);
 
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
-        let mut layout_job = highlight(ui.ctx(), &theme, string, language);
+        let mut layout_job = if language == "Shards" {
+          highlight_shards(ui.ctx(), &theme, string)
+        } else {
+          highlight_generic(ui.ctx(), &theme, string, language)
+        };
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
       };

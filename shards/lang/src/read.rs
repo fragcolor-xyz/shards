@@ -5,12 +5,13 @@ use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
-  BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  BOOL_TYPES_SLICE, FRAG_CC, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
+use shards::{fourCharacterCode, shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 pub struct ReadEnv {
   name: RcStrWrapper,
@@ -897,7 +898,25 @@ pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> 
 use lazy_static::lazy_static;
 
 lazy_static! {
-  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  pub static ref AST_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"ASTa")); // last letter used as version
+  pub static ref AST_TYPE_VEC: Vec<Type> = vec![*AST_TYPE];
+  pub static ref AST_VAR_TYPE: Type = Type::context_variable(&AST_TYPE_VEC);
+  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE];
+}
+
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"ASTt",
+  "AstType",
+  "Variants of AST representation of a Shards program."
+)]
+pub enum AstType {
+  #[enum_value("Binary AST as Bytes type")]
+  Bytes = 0x0,
+  #[enum_value("JSON String type AST")]
+  Json = 0x1,
+  #[enum_value("Live Object AST to be used within a live environment")]
+  Object = 0x2,
 }
 
 #[derive(shard)]
@@ -908,11 +927,11 @@ lazy_static! {
 pub struct ReadShard {
   output: ClonedVar,
   #[shard_param(
-    "Json",
-    "Determines if the output should be a JSON AST string instead of binary.",
-    BOOL_TYPES_SLICE
+    "OutputType",
+    "Determines the type of AST to be outputted.",
+    ASTTYPE_TYPES
   )]
-  as_json: ClonedVar,
+  output_type: ClonedVar,
   #[shard_param(
     "BasePath",
     "The base path used when interpreting file references.",
@@ -921,25 +940,18 @@ pub struct ReadShard {
   base_path: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
-}
 
-impl ReadShard {
-  fn get_as_json(&self) -> bool {
-    if self.as_json.0.is_bool() {
-      (&self.as_json.0).try_into().unwrap()
-    } else {
-      false
-    }
-  }
+  rc_ast: Option<Rc<Program>>,
 }
 
 impl Default for ReadShard {
   fn default() -> Self {
     Self {
       output: ClonedVar::default(),
-      as_json: false.into(),
+      output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
       required_variables: ExposedTypes::default(),
+      rc_ast: None,
     }
   }
 }
@@ -967,15 +979,21 @@ impl Shard for ReadShard {
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(_data)?;
 
-    if self.get_as_json() {
-      Ok(common_type::string)
-    } else {
-      Ok(common_type::bytes)
+    match self.output_type.0.as_ref().try_into() {
+      Ok(AstType::Bytes) => Ok(common_type::bytes),
+      Ok(AstType::Json) => Ok(common_type::string),
+      Ok(AstType::Object) => Ok(*AST_TYPE),
+      Err(_) => {
+        shlog_error!("Invalid output type for ReadShard");
+        Err("Invalid output type for ReadShard")
+      }
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let code: &str = input.try_into()?;
+
+    let output_type = self.output_type.0.as_ref().try_into() as Result<AstType, _>;
 
     let parsed = ShardsParser::parse(Rule::Program, code).map_err(|e| {
       shlog_error!("Failed to parse shards code: {}", e);
@@ -998,23 +1016,34 @@ impl Shard for ReadShard {
       "Failed to tokenize Shards code"
     })?;
 
-    if self.get_as_json() {
-      // Serialize using json
-      let encoded_json = serde_json::to_string(&seq).map_err(|e| {
-        shlog_error!("Failed to serialize shards code: {}", e);
-        "Failed to serialize Shards code"
-      })?;
+    match output_type {
+      Ok(AstType::Bytes) => {
+        // Serialize using bincode
+        let encoded_bin: Vec<u8> = bincode::serialize(&seq).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
 
-      let s = Var::ephemeral_string(encoded_json.as_str());
-      self.output = s.into();
-    } else {
-      // Serialize using bincode
-      let encoded_bin: Vec<u8> = bincode::serialize(&seq).map_err(|e| {
-        shlog_error!("Failed to serialize shards code: {}", e);
-        "Failed to serialize Shards code"
-      })?;
+        self.output = encoded_bin.as_slice().into();
+      }
+      Ok(AstType::Json) => {
+        // Serialize using json
+        let encoded_json = serde_json::to_string(&seq).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
 
-      self.output = encoded_bin.as_slice().into();
+        let s = Var::ephemeral_string(encoded_json.as_str());
+        self.output = s.into();
+      }
+      Ok(AstType::Object) => {
+        self.rc_ast = Some(Rc::new(seq));
+        self.output = Var::new_object(self.rc_ast.as_ref().unwrap(), &AST_TYPE).into();
+      }
+      Err(_) => {
+        shlog_error!("Invalid output type for ReadShard");
+        return Err("Invalid output type for ReadShard");
+      }
     }
 
     Ok(self.output.0)
