@@ -1,9 +1,14 @@
+use std::borrow::Borrow;
+
 use super::DockArea;
 use super::Tab;
+use super::TabData;
 use super::EXPERIMENTAL_TRUE;
 use crate::util;
+use crate::util::with_object_stack_var;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
+use crate::EGUI_UI_TYPE;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
@@ -321,17 +326,6 @@ impl LegacyShard for DockArea {
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Contexts to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_CTX_TYPE,
-      name: self.instance.get_name(),
-      help: shccstr!("The exposed UI context."),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
     Some(&self.requiring)
   }
 
@@ -354,6 +348,10 @@ impl LegacyShard for DockArea {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.requiring.clear();
+    util::require_context(&mut self.requiring);
+    util::require_parents(&mut self.requiring);
+
     for s in &mut self.shards {
       s.compose(data)?;
     }
@@ -368,16 +366,16 @@ impl LegacyShard for DockArea {
     self.contents.warmup(ctx);
 
     for s in &self.shards {
-      s.warmup(ctx).unwrap();
+      s.warmup(ctx)?;
     }
     for s in self.headers.as_mut_slice() {
       s.warmup(ctx);
     }
 
-    for _ in 0..self.shards.len() {
-      if let (Some(h), Some(s)) = (self.headers.pop(), self.shards.pop()) {
-        self.tabs.push_to_first_leaf((h, s));
-      }
+    self.tabs = egui_dock::DockState::new(Vec::new());
+    for (h, s) in std::iter::zip(self.headers.iter_mut(), self.shards.iter_mut()) {
+      let td = TabData::new(h, s);
+      self.tabs.push_to_first_leaf(td);
     }
 
     // Focus on first tab
@@ -389,19 +387,15 @@ impl LegacyShard for DockArea {
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self
-      .tabs
-      .iter_surfaces_mut()
-      .map(|node| node.iter_all_tabs_mut().map(|tab| tab.1))
-      .flatten()
-      .for_each(|(title, contents)| {
-        title.cleanup(ctx);
-        contents.cleanup(ctx);
-      });
-
     self.contents.cleanup(ctx);
     self.parents.cleanup(ctx);
     self.instance.cleanup(ctx);
+    for s in &mut self.shards {
+      s.cleanup(ctx);
+    }
+    for s in &mut self.headers {
+      s.cleanup(ctx);
+    }
 
     Ok(())
   }
@@ -416,15 +410,13 @@ impl LegacyShard for DockArea {
 
     let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
 
-    let parents_stack_var = self.parents.get();
-    let mut viewer = MyTabViewer::new(context, input);
-    viewer.warmup();
-    if let Some(ui) = util::get_current_parent_opt(parents_stack_var)? {
+    let parents_stack_var = self.parents.get().clone();
+    let mut viewer = MyTabViewer::new(context, input, &mut self.parents);
+    if let Some(ui) = util::get_current_parent_opt(&parents_stack_var)? {
       dock.show_inside(ui, &mut viewer);
     } else {
       dock.show(&gui_ctx.egui_ctx, &mut viewer);
     }
-    viewer.cleanup();
 
     // Always passthrough the input
     Ok(*input)
@@ -439,37 +431,27 @@ pub fn register_shards() {
 struct MyTabViewer<'a> {
   context: &'a Context,
   input: &'a Var,
-  parents: ParamVar,
+  parents: &'a mut ParamVar,
 }
 
 impl<'a> MyTabViewer<'a> {
-  pub fn new(context: &'a Context, input: &'a Var) -> MyTabViewer<'a> {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
+  pub fn new(context: &'a Context, input: &'a Var, parents: &'a mut ParamVar) -> MyTabViewer<'a> {
     Self {
       context,
       input,
       parents,
     }
   }
-
-  pub fn warmup(&mut self) {
-    self.parents.warmup(self.context);
-  }
-
-  pub fn cleanup(&mut self) {
-    self.parents.cleanup(Some(self.context));
-  }
 }
 
 impl<'a> egui_dock::TabViewer for MyTabViewer<'a> {
-  type Tab = (ParamVar, ShardsVar);
+  type Tab = TabData;
 
   fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-    util::activate_ui_contents(self.context, self.input, ui, &mut self.parents, &tab.1).unwrap();
+    tab.activate(self.context, &mut self.parents, ui);
   }
 
   fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-    tab.0.get().try_into().unwrap_or("").into()
+    tab.get_title().into()
   }
 }
