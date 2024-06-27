@@ -25,7 +25,11 @@ use shards::{
 };
 
 use shards_lang::{
-  ast::*, ast_visitor::*, directory, read::{AST_TYPE, AST_VAR_TYPE}, ParamHelperMut, RcStrWrapper
+  ast::*,
+  ast_visitor::*,
+  directory,
+  read::{AST_TYPE, AST_VAR_TYPE},
+  ParamHelperMut, RcStrWrapper,
 };
 
 use num_traits::{Float, FromPrimitive, PrimInt, Zero};
@@ -1244,7 +1248,12 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         combined_response = Some(a);
       }
     }
-    combined_response
+    combined_response.map(|x| {
+      if x.clicked() {
+        self.context.has_changed = true;
+      }
+      x
+    })
   }
 
   fn visit_pipeline(&mut self, pipeline: &mut Pipeline) -> Option<Response> {
@@ -1527,6 +1536,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             .clicked()
           {
             identifier.namespaces.push("default".into());
+            self.context.has_changed = true;
           }
           let x = identifier.name.to_mut();
           egui::TextEdit::singleline(x)
@@ -1544,15 +1554,21 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 .on_hover_text("Remove Namespace")
                 .clicked()
               {
+                self.context.has_changed = true;
                 true
               } else {
                 false
               };
-              egui::TextEdit::singleline(first)
+
+              if egui::TextEdit::singleline(first)
                 .clip_text(false)
                 .desired_width(if len == 0 { 70.0 } else { 0.0 })
                 .hint_text("namespace")
-                .ui(ui);
+                .ui(ui)
+                .changed()
+              {
+                self.context.has_changed = true;
+              }
               remove
             })
             .inner
@@ -1567,7 +1583,12 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
       })
       .inner;
-    Some(response)
+    Some(response).map(|x| {
+      if x.changed() {
+        self.context.has_changed = true;
+      }
+      x
+    })
   }
 
   fn visit_value(&mut self, value: &mut Value) -> Option<Response> {
