@@ -14,11 +14,11 @@
 //   on apple this is the cmd key
 //   otherwise the ctrl key
 #if SH_APPLE
-#define KMOD_PRIMARY KMOD_GUI
-#define KMOD_SECONDARY KMOD_CTRL
+#define KMOD_PRIMARY SDL_KMOD_GUI
+#define KMOD_SECONDARY SDL_KMOD_CTRL
 #else
-#define KMOD_PRIMARY KMOD_CTRL
-#define KMOD_SECONDARY KMOD_GUI
+#define KMOD_PRIMARY SDL_KMOD_CTRL
+#define KMOD_SECONDARY SDL_KMOD_GUI
 #endif
 
 namespace shards::input {

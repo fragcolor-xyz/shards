@@ -174,7 +174,7 @@ void loadExternalShards(std::string from) {
         if (!handle) {
           SHLOG_ERROR("LoadLibrary failed, error: {}", GetLastError());
         }
-#elif defined(__linux__) || defined(__APPLE__)
+#elif defined(__linux__) || defined(SDL_PLATFORM_APPLE)
         auto handle = dlopen(dllstr.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (!handle) {
           SHLOG_ERROR("LoadLibrary failed, error: {}", dlerror());

@@ -7,28 +7,6 @@
 #include <spdlog/fmt/fmt.h>
 #include <magic_enum.hpp>
 
-// New events
-
-// struct PointerTouchMoveEvent {
-//   float2 pos;
-//   float2 delta;
-//   SDL_FingerID index;
-//   float pressure;
-
-//   std::partial_ordering operator<=>(const PointerTouchMoveEvent &other) const = default;
-// };
-
-
-// struct PointerTouchEvent {
-//   float2 pos;
-//   float2 delta;
-//   SDL_FingerID index;
-//   float pressure;
-//   bool pressed;
-
-//   std::partial_ordering operator<=>(const PointerTouchEvent &other) const = default;
-// };
-
 namespace magic_enum::customize {
 template <> struct enum_range<SDL_Keymod> {
   static constexpr bool is_flags = true;
@@ -50,12 +28,11 @@ inline std::string debugFormat(const Event &event) {
           return fmt::format("PointerMoveEvent {{ pos: {}, delta: {} }}", arg.pos, arg.delta);
         } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
           return fmt::format("PointerButtonEvent {{ index: {}, pressed: {}, modifiers: {}, pos: {} }}", arg.index, arg.pressed,
-                             magic_enum::enum_flags_name(arg.modifiers), arg.pos);
+                             arg.modifiers, arg.pos);
         } else if constexpr (std::is_same_v<T, ScrollEvent>) {
           return fmt::format("ScrollEvent {{ delta: {} }}", arg.delta);
         } else if constexpr (std::is_same_v<T, KeyEvent>) {
-          return fmt::format("KeyEvent {{ key: {}, pressed: {}, modifiers: {}}}", magic_enum::enum_name((SDL_KeyCode)arg.key),
-                             arg.pressed, magic_enum::enum_flags_name(arg.modifiers));
+          return fmt::format("KeyEvent {{ keycode: {}, pressed: {}, modifiers: {}}}", arg.key, arg.pressed, arg.modifiers);
         } else if constexpr (std::is_same_v<T, SupendEvent>) {
           return fmt::format("SupendEvent {{}}");
         } else if constexpr (std::is_same_v<T, ResumeEvent>) {
@@ -69,10 +46,9 @@ inline std::string debugFormat(const Event &event) {
           return fmt::format("TextCompositionEvent {{ text: {} }}", arg.text);
         } else if constexpr (std::is_same_v<T, TextCompositionEndEvent>) {
           return fmt::format("TextCompositionEndEvent {{ text: {} }}", arg.text);
-        }  else if constexpr (std::is_same_v<T, DropFileEvent>) { 
+        } else if constexpr (std::is_same_v<T, DropFileEvent>) {
           return fmt::format("DropFileEvent {{ {} }}", arg.path);
-        }
-        else {
+        } else {
           return fmt::format("UnknownEvent {{}}");
         }
       },

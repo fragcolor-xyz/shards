@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <vector>
 #if SHARDS_LOG_SDL
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 #endif
 #include <magic_enum.hpp>
 #include <shared_mutex>

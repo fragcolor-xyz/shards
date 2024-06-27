@@ -66,7 +66,7 @@ void InputMaster::update(gfx::Window &window) {
   handlersLocked.clear();
 
   // Handle posted messages
-  messageQueue.consume_all([&](const Message &message) { handleMessage(message); });
+  messageQueue.consume_all([&](const Message &message) { handleMessage(message, window); });
 
   for (auto &cb : postInputCallbacks) {
     cb(*this);
@@ -76,26 +76,26 @@ void InputMaster::update(gfx::Window &window) {
 
 void InputMaster::postMessage(const Message &message) { messageQueue.push(message); }
 
-void InputMaster::handleMessage(const Message &message) {
+void InputMaster::handleMessage(const Message &message, gfx::Window& window) {
   SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
   std::visit(
       [&](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, BeginTextInputMessage>) {
 #if SHARDS_GFX_SDL
-          SDL_StartTextInput();
+          SDL_StartTextInput(window.window);
 #endif
         } else if constexpr (std::is_same_v<T, EndTextInputMessage>) {
 #if SHARDS_GFX_SDL
-          SDL_StopTextInput();
+          SDL_StopTextInput(window.window);
 #endif
         } else if constexpr (std::is_same_v<T, SetCursorMessage>) {
 #if SHARDS_GFX_SDL
           if (!arg.visible) {
-            SDL_ShowCursor(SDL_DISABLE);
+            SDL_HideCursor();
           } else {
             auto &cursorMap = CursorMap::getInstance();
-            SDL_ShowCursor(SDL_ENABLE);
+            SDL_ShowCursor();
             SDL_SetCursor(cursorMap.getCursor(arg.cursor));
           }
 #else

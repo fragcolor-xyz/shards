@@ -8,7 +8,7 @@
 #include <optional>
 
 #if SH_APPLE
-#include <SDL_metal.h>
+#include <SDL3/SDL_metal.h>
 namespace gfx {
 struct MetalViewContainer {
   SDL_MetalView view{};
@@ -38,7 +38,7 @@ struct WindowCreationOptions {
 #if SH_EMSCRIPTEN
 #include "window_em.hpp"
 #else
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 
 struct SDL_Window;
 namespace gfx {
