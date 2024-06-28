@@ -653,8 +653,7 @@ struct Read {
     buffer.clear();
     http::async_read(*peer->socket, buffer, request, [&, peer](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
-        // notice there is likelihood of done not being valid
-        // anymore here
+        // notice there is likelihood of done not being valid anymore here
         throw PeerError{"Read", ec, peer};
       } else {
         done = true;
