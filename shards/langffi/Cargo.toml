@@ -20,5 +20,5 @@ windows = { version = "0.56.0", features = ["Win32_System_Diagnostics_Debug"] }
 [build-dependencies]
 cbindgen = "0.24.0"
 
-# [profile.dev]
-# opt-level = 3
+[profile.dev]
+opt-level = 3

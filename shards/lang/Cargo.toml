@@ -38,5 +38,5 @@ exported = []
 [build-dependencies]
 cbindgen = "0.24.0"
 
-# [profile.dev]
-# opt-level = 3
+[profile.dev]
+opt-level = 3
