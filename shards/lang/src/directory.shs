@@ -50,12 +50,12 @@ Set(wire-doc "help")
 
 [{name: "Name"
   help: "The name of the wire"
-  types: [{name: "String" type: 52}]
+  types: [{name: "ContextVar" type: 54}]
   default: "my-wire"}
   {name: "Shards"
    help: "The shards to run"
    types: [{name: "Seq" type: 56}]
-   default: {Pass}}
+   default: [Pass]}
   {name: "Traits"
    help: "The traits of the wire"
    types: [{name: "Seq" type: 56}]

@@ -485,7 +485,7 @@ impl<'a> VisualAst<'a> {
                 help_text
               };
               egui::CollapsingHeader::new(name)
-                .default_open(if idx == 0 { true } else { false })
+                .default_open(true)
                 .show(ui, |ui| {
                   ui.horizontal(|ui| {
                     // button to reset to default
@@ -500,6 +500,7 @@ impl<'a> VisualAst<'a> {
                       x.params.as_mut().map(|params| {
                         params[idx].value = var_to_value(&default_value).unwrap();
                       });
+                      self.context.has_changed = true;
                     }
                     if ui
                       .button(emoji("🔧"))
@@ -584,17 +585,19 @@ impl<'a> VisualAst<'a> {
       }
     } else {
       // preview the first param THAT IS NOT None if it exists
-      if let Some(params) = &mut x.params {
-        for param in params {
-          if let Value::None = param.value {
-            continue;
+      self.ui.add_enabled_ui(false, |ui| {
+        if let Some(params) = &mut x.params {
+          for param in params {
+            if let Value::None = param.value {
+              continue;
+            }
+            let mut mutator =
+              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+            param.value.accept_mut(&mut mutator);
+            break;
           }
-          let mut mutator =
-            VisualAst::with_parent_selected(self.context, self.ui, self.parent_selected);
-          param.value.accept_mut(&mut mutator);
-          break;
         }
-      }
+      });
     }
     Some(response)
   }
