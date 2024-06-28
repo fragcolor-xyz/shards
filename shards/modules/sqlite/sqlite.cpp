@@ -41,10 +41,9 @@ static const char *vfs =
 #endif
 #if SH_SQLITE_DEBUG_LOGS
 #define SH_SQLITE_DEBUG_LOG(...) SPDLOG_LOGGER_DEBUG(logger, __VA_ARGS__)
-#else 
+#else
 #define SH_SQLITE_DEBUG_LOG(...)
 #endif
-
 
 static auto logger = shards::logging::getOrCreate("sqlite");
 
@@ -510,43 +509,46 @@ struct Transaction : public Base {
       SH_SUSPEND(context, 0);
     }
 
-await(context, [&]
-    {
-      std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-      std::scoped_lock<std::mutex> l2(_connection->mutex);
+    await(
+        context,
+        [&] {
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-      SH_SQLITE_DEBUG_LOG(logger, "Transaction begin, db: {}", (void *)_connection->db);
-      auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
-      if (rc != SQLITE_OK) {
-        throw ActivationError(sqlite3_errmsg(_connection->get()));
-      }
-    }, [](){});
+          SH_SQLITE_DEBUG_LOG(logger, "Transaction begin, db: {}", (void *)_connection->db);
+          auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
+          if (rc != SQLITE_OK) {
+            throw ActivationError(sqlite3_errmsg(_connection->get()));
+          }
+        },
+        []() {});
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
-    
 
-await(context, [&]
-    {
-      std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-      std::scoped_lock<std::mutex> l2(_connection->mutex);
+    await(
+        context,
+        [&] {
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-      if (state != SHWireState::Continue) {
-        // likely something went wrong! lets rollback.
-        SH_SQLITE_DEBUG_LOG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
-        auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
-        if (rc != SQLITE_OK) {
-          throw ActivationError(sqlite3_errmsg(_connection->get()));
-        }
-      } else {
-        // commit
-        SH_SQLITE_DEBUG_LOG(logger, "Transaction commit, db: {}", (void *)_connection->db);
-        auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
-        if (rc != SQLITE_OK) {
-          throw ActivationError(sqlite3_errmsg(_connection->get()));
-        }
-      }
-    }, [](){});
+          if (state != SHWireState::Continue) {
+            // likely something went wrong! lets rollback.
+            SH_SQLITE_DEBUG_LOG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
+            auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          } else {
+            // commit
+            SH_SQLITE_DEBUG_LOG(logger, "Transaction commit, db: {}", (void *)_connection->db);
+            auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          }
+        },
+        []() {});
 
     return input;
   }
@@ -664,11 +666,14 @@ struct Backup : public Base {
   void setup() {
     _dest = Var("backup.db");
     _dbName = Var("shards.db");
+    _fast = Var(true);
   }
 
   PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_VAR(_fast, "Unthrottled", "If true, the backup will not be throttled and it might lock the DB while copying.",
+            {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
 
   PARAM_REQUIRED_VARIABLES();
@@ -711,13 +716,13 @@ struct Backup : public Base {
           }
           DEFER({ sqlite3_backup_finish(pBackup); });
 
-          // do 5 pages, unlock, yield a bit, repeat
+          // do 200 pages, unlock, yield a bit, repeat
           do {
             rc = sqlite3_backup_step(pBackup, 200);
-            if (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
+            if (!_fast.payload.boolValue && (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED)) {
               // unlock
               l2.unlock();
-              // thread wait here 250 ms
+              // thread wait here 100 ms
               std::this_thread::sleep_for(std::chrono::milliseconds(100));
               // lock again
               l2.lock();
