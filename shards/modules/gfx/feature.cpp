@@ -237,6 +237,7 @@ private:
     bool haveViewGenerators() const { return !viewGeneratorBranch.brancher.wires.empty(); }
   };
   std::shared_ptr<SharedData> _sharedData;
+  ExposedInfo _instanceDataCopy;
   CapturingBrancher::VariableRefs _viewGeneratorRefs;
   CapturingBrancher::VariableRefs _drawableGeneratorRefs;
 
@@ -265,6 +266,13 @@ public:
     _featurePtr = ShardsTypes::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
 
+    if (!_sharedData) {
+      _sharedData = std::make_shared<SharedData>();
+      SHInstanceData data{
+          .shared = SHExposedTypesInfo(_instanceDataCopy),
+      };
+      composeGeneratorWires(data);
+    }
     _sharedData->drawableGeneratorBranch.intializeCaptures(_drawableGeneratorRefs, context, IgnoredVariables);
     _sharedData->viewGeneratorBranch.intializeCaptures(_viewGeneratorRefs, context, IgnoredVariables);
   }
@@ -334,32 +342,38 @@ public:
     }
   }
 
+  static OwnedVar deepClone(const SHVar &in) {
+    static thread_local Serialization ser;
+    static thread_local std::vector<uint8_t> buffer;
+    BufferRefWriter w{buffer};
+    ser.serialize(in, w);
+    shards::OwnedVar genCopy;
+    BufferRefReader r{buffer};
+    ser.deserialize(r, genCopy);
+    return genCopy;
+  }
+
   void composeGeneratorWires(const SHInstanceData &data) {
     SHInstanceData generatorInstanceData = data;
 
-    ExposedInfo innerExposed;
+    bool hasGeneratorWires = !_drawableGenerators->isNone() || !_viewGenerators->isNone();
+    if (hasGeneratorWires) {
+      _instanceDataCopy = ExposedInfo(data.shared);
 
-    // Expose custom render context
-    innerExposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
+      ExposedInfo innerExposed;
 
-    generatorInstanceData.inputType = GeneratedDrawInputTableType;
-    _sharedData->drawableGeneratorBranch.brancher.setRunnables(_drawableGenerators);
-    if (!_sharedData->drawableGeneratorBranch.wires().empty())
-      _sharedData->drawableGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
+      // Expose custom render context
+      innerExposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
 
-    generatorInstanceData.inputType = GeneratedViewInputTableType;
-    _sharedData->viewGeneratorBranch.brancher.setRunnables(_viewGenerators);
-    if (!_sharedData->viewGeneratorBranch.wires().empty())
-      _sharedData->viewGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
+      generatorInstanceData.inputType = GeneratedDrawInputTableType;
+      _sharedData->drawableGeneratorBranch.brancher.setRunnables(deepClone(_drawableGenerators));
+      if (!_sharedData->drawableGeneratorBranch.wires().empty())
+        _sharedData->drawableGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
 
-    // Collect derived shader parameters from wire outputs
-    _derivedShaderParams.clear();
-    _derivedTextureParams.clear();
-    for (auto &wire : _sharedData->drawableGeneratorBranch.wires()) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
-    }
-    for (auto &wire : _sharedData->viewGeneratorBranch.wires()) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
+      generatorInstanceData.inputType = GeneratedViewInputTableType;
+      _sharedData->viewGeneratorBranch.brancher.setRunnables(deepClone(_viewGenerators));
+      if (!_sharedData->viewGeneratorBranch.wires().empty())
+        _sharedData->viewGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
     }
   }
 
@@ -378,6 +392,16 @@ public:
 
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     composeGeneratorWires(data);
+
+    // Collect derived shader parameters from wire outputs
+    _derivedShaderParams.clear();
+    _derivedTextureParams.clear();
+    for (auto &wire : _sharedData->drawableGeneratorBranch.wires()) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
+    }
+    for (auto &wire : _sharedData->viewGeneratorBranch.wires()) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
+    }
 
     return ShardsTypes::Feature;
   }
