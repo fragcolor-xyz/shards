@@ -667,14 +667,16 @@ struct Backup : public Base {
     _dest = Var("backup.db");
     _dbName = Var("shards.db");
     _fast = Var(true);
+    _pages = Var(200);
   }
 
   PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_pages, "Pages", "The number of pages to copy at once.", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_VAR(_fast, "Unthrottled", "If true, the backup will not be throttled and it might lock the DB while copying.",
             {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName));
+  PARAM_IMPL(PARAM_IMPL_FOR(_dest), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_pages), PARAM_IMPL_FOR(_fast));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -716,9 +718,11 @@ struct Backup : public Base {
           }
           DEFER({ sqlite3_backup_finish(pBackup); });
 
+          int pages = (int)_pages.get().payload.intValue;
+
           // do 200 pages, unlock, yield a bit, repeat
           do {
-            rc = sqlite3_backup_step(pBackup, 200);
+            rc = sqlite3_backup_step(pBackup, pages);
             if (!_fast.payload.boolValue && (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED)) {
               // unlock
               l2.unlock();
