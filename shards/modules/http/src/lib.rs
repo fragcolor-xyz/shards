@@ -231,6 +231,7 @@ impl RequestBase {
     self.client = Some(
       reqwest::blocking::Client::builder()
         .danger_accept_invalid_certs(self.invalid_certs)
+        .timeout(Duration::from_secs(self.timeout))
         .build()
         .map_err(|e| {
           shlog!("Failure details: {}", e);
@@ -382,7 +383,6 @@ macro_rules! get_like {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
-        request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         if !headers.is_none() {
           let headers_table: Table = headers.try_into()?;
@@ -438,6 +438,8 @@ macro_rules! get_like {
             if tries == 0 {
               shlog_error!("Request failed with error: {:?}", response.err());
               return Err("Request failed");
+            } else {
+              shlog_debug!("Retrying request");
             }
           }
         }
@@ -518,7 +520,6 @@ macro_rules! post_like {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
-        request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         let has_content_type = if !headers.is_none() {
           let headers_table = headers.as_table()?;
@@ -614,6 +615,8 @@ macro_rules! post_like {
             if tries == 0 {
               shlog_error!("Request failed with error: {:?}", response.err());
               return Err("Request failed");
+            } else {
+              shlog_debug!("Retrying request");
             }
           }
         }
