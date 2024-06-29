@@ -716,7 +716,12 @@ struct Backup : public Base {
           if (!pBackup) {
             throw ActivationError(sqlite3_errmsg(pDest));
           }
-          DEFER({ sqlite3_backup_finish(pBackup); });
+          DEFER({
+            auto rc = sqlite3_backup_finish(pBackup);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(pDest));
+            }
+          });
 
           int pages = (int)_pages.get().payload.intValue;
 
@@ -730,6 +735,10 @@ struct Backup : public Base {
               std::this_thread::sleep_for(std::chrono::milliseconds(100));
               // lock again
               l2.lock();
+            }
+            // check for errors!
+            if (rc != SQLITE_OK && rc != SQLITE_DONE && rc != SQLITE_BUSY && rc != SQLITE_LOCKED) {
+              throw ActivationError(sqlite3_errmsg(pDest));
             }
           } while (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED);
 
