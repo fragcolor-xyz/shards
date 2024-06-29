@@ -308,6 +308,7 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
+#ifdef SH_VERBOSE_COROUTINES_LOGGING
 #define SH_CORO_RESUMED_LOG(_wire) \
   { SHLOG_TRACE("> Resumed wire {}", (_wire)->name); }
 #define SH_CORO_SUSPENDED_LOG(_wire) \
@@ -316,6 +317,12 @@ std::vector<SHWire *> &getCoroWireStack();
   { SHLOG_TRACE("Resuming wire {}", (_wire)->name); }
 #define SH_CORO_EXT_SUSPEND_LOG(_wire) \
   { SHLOG_TRACE("Suspending wire {}", (_wire)->name); }
+#else
+#define SH_CORO_RESUMED_LOG(_wire)
+#define SH_CORO_SUSPENDED_LOG(_wire)
+#define SH_CORO_EXT_RESUME_LOG(_wire)
+#define SH_CORO_EXT_SUSPEND_LOG(_wire)
+#endif
 
 #if SH_DEBUG_THREAD_NAMES
 #define SH_CORO_RESUMED(_wire)                                         \
