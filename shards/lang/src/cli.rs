@@ -6,6 +6,7 @@ use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::{sleep, Core};
 use shards::types::Mesh;
+use shards::util::from_raw_parts_allow_null;
 use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -15,7 +16,6 @@ use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{atomic, Arc};
-use shards::util::from_raw_parts_allow_null;
 
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
@@ -103,14 +103,10 @@ struct Cli {
   command: Commands,
 }
 
-pub fn process_args(
-  argc: i32,
-  argv: *const *const c_char,
-  no_cancellation: bool,
-) -> i32 {
+pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool) -> i32 {
   let cancellation_token = new_cancellation_token();
 
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "visionos")))]
   if !no_cancellation {
     let cancellation_token_1 = cancellation_token.clone();
     let r = ctrlc::set_handler(move || {
