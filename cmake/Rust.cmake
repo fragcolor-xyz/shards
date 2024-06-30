@@ -21,16 +21,6 @@ if(NOT RUST_CARGO_TARGET)
         string(APPEND PLATFORM "-sim")
       endif()
 
-      set(VISION_SDKROOT $ENV{VISION_SDKROOT})
-      if(NOT VISION_SDKROOT)
-        execute_process(
-          COMMAND xcrun --sdk xros --show-sdk-path
-          OUTPUT_VARIABLE VISION_SDKROOT
-          OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-      endif()
-
-      list(APPEND RUST_FLAGS -C link-arg=-isysroot -C link-arg=${VISION_SDKROOT})
       list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std)
       set(RUST_NIGHTLY TRUE)
     elseif(IOS)
@@ -140,7 +130,7 @@ macro(ADD_RUST_FEATURE VAR FEATURE)
 endmacro()
 
 # Need this custom build script to inherit the correct SDK variables from XCode
-if(IOS)
+if(IOS OR VISIONOS)
   set(RUST_BUILD_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/osx_rust_build.sh" ${XCODE_SDK})
 endif()
 
