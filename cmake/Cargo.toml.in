@@ -13,6 +13,7 @@ chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120
 tar = { git = "https://github.com/shards-lang/tar-rs", rev = "6d26c0d1724326c8c1b06eaafc25a19253afbcdc" }
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 substrate-bip39 = { git = "https://github.com/shards-lang/substrate-bip39.git", version = "=0.4.4", rev = "2a025c63f6ebfcc418a199c1f1bb07a459a16850" }
+libc = { git = "https://github.com/shards-lang/libc.git", version = "=0.2.155", rev = "7df63bd7f61bf3408344673cf0ba08e7ff0df134" }
 
 [profile.dev.package]
 tiny-skia = { opt-level = 3 }

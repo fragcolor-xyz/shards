@@ -14,7 +14,26 @@ if(NOT RUST_CARGO_TARGET)
   elseif(EMSCRIPTEN)
     set(RUST_CARGO_TARGET wasm32-unknown-emscripten)
   elseif(APPLE)
-    if(IOS)
+    if(CMAKE_SYSTEM_NAME MATCHES "visionOS")
+      set(PLATFORM "visionos")
+
+      if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND XCODE_SDK MATCHES ".*simulator$")
+        string(APPEND PLATFORM "-sim")
+      endif()
+
+      set(VISION_SDKROOT $ENV{VISION_SDKROOT})
+      if(NOT VISION_SDKROOT)
+        execute_process(
+          COMMAND xcrun --sdk xros --show-sdk-path
+          OUTPUT_VARIABLE VISION_SDKROOT
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+      endif()
+
+      list(APPEND RUST_FLAGS -C link-arg=-isysroot -C link-arg=${VISION_SDKROOT})
+      list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std)
+      set(RUST_NIGHTLY TRUE)
+    elseif(IOS)
       set(PLATFORM "ios")
 
       if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND XCODE_SDK MATCHES ".*simulator$")
