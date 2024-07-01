@@ -6045,11 +6045,6 @@ version = "1.0.0"
 source = "git+https://github.com/shards-lang/mio.git?rev=1ce154579e1076260ea6934e89275912b01fae47#1ce154579e1076260ea6934e89275912b01fae47"
 
 [[patch.unused]]
-name = "substrate-bip39"
-version = "0.4.4"
-source = "git+https://github.com/shards-lang/substrate-bip39.git?rev=2a025c63f6ebfcc418a199c1f1bb07a459a16850#2a025c63f6ebfcc418a199c1f1bb07a459a16850"
-
-[[patch.unused]]
 name = "tracy-client"
 version = "0.15.0"
 source = "git+https://github.com/nagisa/rust_tracy_client?tag=tracy-client-v0.15.0#d15b1ea01c6c9a496c2f169a212acd5b17fd0b1a"
