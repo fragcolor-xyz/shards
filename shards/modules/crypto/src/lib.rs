@@ -27,7 +27,7 @@ extern crate shards;
 extern crate lazy_static;
 
 pub mod chachapoly;
-pub mod sr25519;
+pub mod signatures;
 pub mod ecdsa;
 pub mod eth;
 pub mod hash;
@@ -167,7 +167,7 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
   ecdsa::register_shards();
   hash::register_shards();
   eth::register_shards();
-  sr25519::register_shards();
+  signatures::register_shards();
   chachapoly::register_shards();
   register_shard::<MnemonicGenerate>();
   register_shard::<MnemonicToSeed>();
