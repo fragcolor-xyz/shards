@@ -59,10 +59,8 @@ if(NOT EMSCRIPTEN)
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
         libressl
-        URL      https://develop.fragcolor.com/libressl-3.4.1.tar.gz
-        # URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-        # URL      https://cloudflare.cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-        URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
+        URL      https://develop.fragcolor.com/libressl-3.9.2.tar.gz
+        URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
         ${LIBRESSL_PATCH_COMMAND}
       )
       FetchContent_MakeAvailable(libressl)
