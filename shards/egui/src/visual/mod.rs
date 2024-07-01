@@ -255,6 +255,7 @@ impl_custom_any!(FunctionState);
 // common state
 pub struct Context {
   swap_state: Option<SwapState>,
+  seqs_zoom_stack: Vec<*mut Sequence>,
   seqs_stack: Vec<*mut Sequence>,
   has_changed: bool,
 }
@@ -1162,8 +1163,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
-    if self.parent_selected && self.context.seqs_stack.len() > 0 {
-      let top_most = self.context.seqs_stack.last().unwrap();
+    self.context.seqs_stack.push(sequence as *mut Sequence);
+
+    if self.parent_selected && self.context.seqs_zoom_stack.len() > 0 {
+      let top_most = self.context.seqs_zoom_stack.last().unwrap();
       // if our current sequence is not the top most sequence
       if *top_most != sequence as *mut Sequence {
         if self
@@ -1172,7 +1175,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           .on_hover_text("Zoom in.")
           .clicked()
         {
-          self.context.seqs_stack.push(sequence as *mut Sequence);
+          self.context.seqs_zoom_stack.push(sequence as *mut Sequence);
         }
       }
     }
@@ -1182,16 +1185,38 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     }
 
     if self.parent_selected {
+      self.context.seqs_stack.pop();
       Some(
         self
           .ui
           .horizontal(|ui| {
-            ui.button(emoji("➕")).on_hover_text("Add new statement.");
+            if ui
+              .button(emoji("➕"))
+              .on_hover_text("Add new statement.")
+              .clicked()
+            {
+              // add a new statement
+              sequence.statements.push(Statement::Pipeline(Pipeline {
+                blocks: vec![Block {
+                  content: BlockContent::Shard(Function {
+                    name: Identifier {
+                      name: "Pass".into(),
+                      namespaces: Vec::new(),
+                    },
+                    params: None,
+                    custom_state: None,
+                  }),
+                  line_info: None,
+                  custom_state: None,
+                }],
+              }));
+            }
             ui.button(emoji("💡")).on_hover_text("Ask AI.")
           })
           .inner,
       )
     } else {
+      self.context.seqs_stack.pop();
       Some(
         self
           .ui
@@ -1205,14 +1230,42 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       .ui
       .with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
         let mut mutator = VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-        match statement {
-          Statement::Assignment(assignment) => assignment.accept_mut(&mut mutator),
-          Statement::Pipeline(pipeline) => pipeline.accept_mut(&mut mutator),
+        let is_pipeline = match statement {
+          Statement::Assignment(assignment) => {
+            assignment.accept_mut(&mut mutator);
+            false
+          }
+          Statement::Pipeline(pipeline) => {
+            pipeline.accept_mut(&mut mutator);
+            true
+          }
         };
-        if self.parent_selected {
+        if self.parent_selected && is_pipeline {
           Some(
             ui.horizontal(|ui| {
-              ui.button(emoji("➕")).on_hover_text("Add new statement.");
+              if ui
+                .button(emoji("➕"))
+                .on_hover_text("Add new statement.")
+                .clicked()
+              {
+                // add a new statement
+                let pipeline = match statement {
+                  Statement::Pipeline(pipeline) => pipeline,
+                  _ => unreachable!(),
+                };
+                pipeline.blocks.push(Block {
+                  content: BlockContent::Shard(Function {
+                    name: Identifier {
+                      name: "Pass".into(),
+                      namespaces: Vec::new(),
+                    },
+                    params: None,
+                    custom_state: None,
+                  }),
+                  line_info: None,
+                  custom_state: None,
+                });
+              }
               ui.button(emoji("💡")).on_hover_text("Ask AI.")
             })
             .inner,
@@ -1267,6 +1320,21 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         (BlockAction::Remove, r) => {
           self.context.has_changed = true;
           pipeline.blocks.remove(i);
+          // if the blocks are empty, we should remove the pipeline
+          if pipeline.blocks.is_empty() {
+            let parent_sequence = self.context.seqs_stack.last().unwrap();
+            let parent_sequence = unsafe { &mut **parent_sequence };
+            // find pipeline index and remove it
+            let pipeline_index = parent_sequence
+              .statements
+              .iter()
+              .position(|x| match x {
+                Statement::Pipeline(x) => x as *const Pipeline == pipeline as *const Pipeline,
+                _ => false,
+              })
+              .unwrap();
+            parent_sequence.statements.remove(pipeline_index);
+          }
           r
         }
         (BlockAction::Keep, r) => {
@@ -2328,6 +2396,7 @@ impl Default for UIShardsShard {
       ast: None,
       context: Context {
         swap_state: None,
+        seqs_zoom_stack: Vec::new(),
         seqs_stack: Vec::new(),
         has_changed: false,
       },
@@ -2388,10 +2457,10 @@ impl Shard for UIShardsShard {
     }
 
     self.ast = Some(Var::from_object_as_clone(ast, &AST_TYPE)?);
-    if self.context.seqs_stack.is_empty() {
+    if self.context.seqs_zoom_stack.is_empty() {
       let ast = Var::get_mut_from_clone1(&self.ast)?;
       let seq_ptr = &mut ast.sequence as *mut Sequence;
-      self.context.seqs_stack.push(seq_ptr);
+      self.context.seqs_zoom_stack.push(seq_ptr);
     }
 
     self.context.has_changed = false;
@@ -2408,12 +2477,12 @@ impl Shard for UIShardsShard {
 
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
       // go backward / zoom out
-      if self.context.seqs_stack.len() > 1 {
+      if self.context.seqs_zoom_stack.len() > 1 {
         if ui.button(emoji("⬅")).on_hover_text("Zoom out.").clicked() {
-          self.context.seqs_stack.pop();
+          self.context.seqs_zoom_stack.pop();
         }
       }
-      let root = unsafe { &mut **self.context.seqs_stack.last_mut().unwrap() };
+      let root = unsafe { &mut **self.context.seqs_zoom_stack.last_mut().unwrap() };
       let mut mutator = VisualAst::new(&mut self.context, ui);
       root.accept_mut(&mut mutator);
     });
