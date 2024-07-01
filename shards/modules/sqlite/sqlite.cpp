@@ -57,6 +57,13 @@ namespace DB {
 #define SQLITE_EXCLUSIVE_LOCK 4
 
 struct MemoryLockedVfs : sqlite3_vfs {
+  static inline const char *backendVfs = //
+#if SH_EMSCRIPTEN
+      "unix";
+#else
+      nullptr;
+#endif
+
   sqlite3_vfs *fallback{};
   sqlite3_io_methods ioMethods{};
   const sqlite3_io_methods *fallbackIoMethods{};
@@ -192,7 +199,7 @@ struct MemoryLockedVfs : sqlite3_vfs {
 
   MemoryLockedVfs() {
     sqlite3_vfs_register(this, 0);
-    fallback = sqlite3_vfs_find(nullptr);
+    fallback = sqlite3_vfs_find(backendVfs);
     memcpy(this, fallback, sizeof(sqlite3_vfs));
     this->zName = "shards-memory-locked";
 
@@ -200,54 +207,6 @@ struct MemoryLockedVfs : sqlite3_vfs {
       auto &self = *(MemoryLockedVfs *)pVfs;
       return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
     };
-    // xDelete = [](sqlite3_vfs *pVfs, const char *zName, int syncDir) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xDelete(self.fallback, zName, syncDir);
-    // };
-    // xAccess = [](sqlite3_vfs *pVfs, const char *zName, int flags, int *pResOut) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xAccess(self.fallback, zName, flags, pResOut);
-    // };
-    // xFullPathname = [](sqlite3_vfs *pVfs, const char *zName, int nOut, char *zOut) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xFullPathname(self.fallback, zName, nOut, zOut);
-    // };
-    // xDlOpen = nullptr;
-    // xDlError = nullptr;
-    // xDlSym = nullptr;
-    // xDlClose = nullptr;
-    // xRandomness = [](sqlite3_vfs *pVfs, int nByte, char *zOut) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xRandomness(self.fallback, nByte, zOut);
-    // };
-    // xSleep = [](sqlite3_vfs *pVfs, int microseconds) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xSleep(self.fallback, microseconds);
-    // };
-    // xCurrentTime = [](sqlite3_vfs *pVfs, double *pTime) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xCurrentTime(self.fallback, pTime);
-    // };
-    // xGetLastError = [](sqlite3_vfs *pVfs, int a, char *b) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xGetLastError(self.fallback, a, b);
-    // };
-    // xCurrentTimeInt64 = [](sqlite3_vfs *pVfs, sqlite3_int64 *pTime) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xCurrentTimeInt64(self.fallback, pTime);
-    // };
-    // xSetSystemCall = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_syscall_ptr pSyscall) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xSetSystemCall(self.fallback, zName, pSyscall);
-    // };
-    // xGetSystemCall = [](sqlite3_vfs*, const char *zName) -> int {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xGetSystemCall(self.fallback, zName);
-    // };
-    // xNextSystemCall = [](sqlite3_vfs *pVfs, const char *zName) -> const char * {
-    //   auto &self = *(MemoryLockVfs *)pVfs;
-    //   return self.fallback->xNextSystemCall(self.fallback, zName);
-    // };
   }
   static MemoryLockedVfs &instance() {
     static MemoryLockedVfs vfs;
