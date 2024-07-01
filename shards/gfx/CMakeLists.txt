@@ -118,6 +118,8 @@ if(EMSCRIPTEN)
 
   em_link_js_library(gfx gfx_wgpu.js)
   em_link_js_library(gfx gfx_events.js)
+  
+  target_include_directories(gfx PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
 else()
   target_link_libraries(gfx SDL3-static)
 
