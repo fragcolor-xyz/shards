@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "SDL3/SDL_properties.h"
 #include "error_utils.hpp"
 #include "../core/platform.hpp"
 #include "sdl_native_window.hpp"
@@ -62,6 +63,7 @@ void Window::init(const WindowCreationOptions &options) {
   SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN, true);
   SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
   SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
+  SDL_SetStringProperty(props, "title", options.title.c_str());
   SDL_SetNumberProperty(props, "flags", flags);
   window = SDL_CreateWindowWithProperties(props);
   SDL_DestroyProperties(props);
