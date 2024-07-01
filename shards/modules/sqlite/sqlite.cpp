@@ -29,9 +29,9 @@ extern "C" {
 int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
 }
 
-static const char *vfs =
+static const char *vfs = //
 #if SH_EMSCRIPTEN
-    "unix-flock";
+    "shards-memory-locked";
 #else
     nullptr;
 #endif
@@ -49,6 +49,212 @@ static auto logger = shards::logging::getOrCreate("sqlite");
 
 namespace shards {
 namespace DB {
+
+#define SQLITE_NO_LOCK 0
+#define SQLITE_SHARED_LOCK 1
+#define SQLITE_RESERVED_LOCK 2
+#define SQLITE_PENDING_LOCK 3
+#define SQLITE_EXCLUSIVE_LOCK 4
+
+struct MemoryLockedVfs : sqlite3_vfs {
+  sqlite3_vfs *fallback{};
+  sqlite3_io_methods ioMethods{};
+  const sqlite3_io_methods *fallbackIoMethods{};
+
+  enum Lock { None, Shared, Unique };
+  struct FileNode {
+    std::shared_mutex mutex;
+    std::atomic_int refCount = 0;
+  };
+  struct UniqueFileNode {
+    std::shared_ptr<FileNode> node;
+    Lock currentLock{};
+  };
+  std::shared_mutex setMutex;
+  std::unordered_map<std::string, std::shared_ptr<FileNode>> fileNodes;
+  std::unordered_map<sqlite3_file *, std::shared_ptr<UniqueFileNode>> fileNodeMap;
+
+  void initIoMethods(const sqlite3_io_methods *base) {
+    memcpy(&ioMethods, base, sizeof(sqlite3_io_methods));
+    fallbackIoMethods = base;
+    ioMethods.xClose = [](sqlite3_file *pFile) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.closeFile(pFile);
+    };
+    ioMethods.xLock = [](sqlite3_file *pFile, int lockType) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.lockFile(pFile, lockType);
+    };
+    ioMethods.xUnlock = [](sqlite3_file *pFile, int lockType) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.unlockFile(pFile, lockType);
+    };
+    ioMethods.xCheckReservedLock = [](sqlite3_file *pFile, int *pResOut) -> int {
+      *pResOut = 0;
+      return SQLITE_OK;
+    };
+    ioMethods.xShmBarrier = nullptr;
+    ioMethods.xShmUnmap = nullptr;
+    ioMethods.xShmLock = nullptr;
+    ioMethods.xShmMap = nullptr;
+  }
+
+  int lockFile(sqlite3_file *pFile, int lockType) {
+    std::shared_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    if (lockType >= SQLITE_PENDING_LOCK) {
+      if (node->currentLock == Lock::None) {
+        if (!node->node->mutex.try_lock())
+          return SQLITE_BUSY;
+      } else {
+        if (node->currentLock != Lock::Unique) {
+          if (node->currentLock == Lock::Shared) {
+            node->node->mutex.unlock_shared();
+            node->currentLock = Lock::None;
+          }
+        }
+        // Don't want to fail during upgrade so wait lock instead
+        node->node->mutex.lock();
+      }
+      node->currentLock = Lock::Unique;
+    } else {
+      if (node->currentLock == Lock::None) {
+        if (!node->node->mutex.try_lock_shared())
+          return SQLITE_BUSY;
+        node->currentLock = Lock::Shared;
+      }
+    }
+    return SQLITE_OK;
+  }
+
+  int unlockFile(sqlite3_file *pFile, int lockType) {
+    std::shared_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    l.unlock();
+
+    bool wantSharedLock = lockType > SQLITE_NO_LOCK && lockType < SQLITE_PENDING_LOCK;
+    if (wantSharedLock && node->currentLock == Lock::Shared) {
+      return SQLITE_OK;
+    }
+
+    if (node->currentLock == Lock::Unique) {
+      node->node->mutex.unlock();
+      node->currentLock = Lock::None;
+    } else if (node->currentLock == Lock::Shared) {
+      node->node->mutex.unlock_shared();
+      node->currentLock = Lock::None;
+    }
+
+    if (wantSharedLock) {
+      // Happens in case of downgrading
+      node->node->mutex.lock_shared();
+      node->currentLock = Lock::Shared;
+    }
+
+    return SQLITE_OK;
+  }
+
+  int closeFile(sqlite3_file *pFile) {
+    std::unique_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    node->node->refCount--;
+    fileNodeMap.erase(pFile);
+    return fallbackIoMethods->xClose(pFile);
+  }
+
+  int openFile(sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) {
+    std::unique_lock<std::shared_mutex> l(setMutex);
+    int result = fallback->xOpen(fallback, zName, pFile, flags, pOutFlags);
+    if (result == SQLITE_OK) {
+      if (zName == nullptr)
+        return result; // Ignore open on nullptr
+      if (!ioMethods.xFileSize)
+        initIoMethods(pFile->pMethods);
+      pFile->pMethods = &ioMethods;
+
+      auto normalizedPath = boost::filesystem::absolute(boost::filesystem::path(zName)).normalize().string();
+      auto it = fileNodes.find(normalizedPath);
+      auto uniqueNode = std::make_shared<UniqueFileNode>();
+      std::shared_ptr<FileNode> node;
+      if (it == fileNodes.end()) {
+        node = std::make_shared<FileNode>();
+        fileNodes[normalizedPath] = node;
+        uniqueNode->node = node;
+      } else {
+        node = it->second;
+      }
+      node->refCount++;
+      uniqueNode->node = node;
+      fileNodeMap[pFile] = uniqueNode;
+    }
+    return result;
+  }
+
+  MemoryLockedVfs() {
+    sqlite3_vfs_register(this, 0);
+    fallback = sqlite3_vfs_find(nullptr);
+    memcpy(this, fallback, sizeof(sqlite3_vfs));
+    this->zName = "shards-memory-locked";
+
+    xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
+      auto &self = *(MemoryLockedVfs *)pVfs;
+      return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
+    };
+    // xDelete = [](sqlite3_vfs *pVfs, const char *zName, int syncDir) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xDelete(self.fallback, zName, syncDir);
+    // };
+    // xAccess = [](sqlite3_vfs *pVfs, const char *zName, int flags, int *pResOut) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xAccess(self.fallback, zName, flags, pResOut);
+    // };
+    // xFullPathname = [](sqlite3_vfs *pVfs, const char *zName, int nOut, char *zOut) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xFullPathname(self.fallback, zName, nOut, zOut);
+    // };
+    // xDlOpen = nullptr;
+    // xDlError = nullptr;
+    // xDlSym = nullptr;
+    // xDlClose = nullptr;
+    // xRandomness = [](sqlite3_vfs *pVfs, int nByte, char *zOut) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xRandomness(self.fallback, nByte, zOut);
+    // };
+    // xSleep = [](sqlite3_vfs *pVfs, int microseconds) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xSleep(self.fallback, microseconds);
+    // };
+    // xCurrentTime = [](sqlite3_vfs *pVfs, double *pTime) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xCurrentTime(self.fallback, pTime);
+    // };
+    // xGetLastError = [](sqlite3_vfs *pVfs, int a, char *b) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xGetLastError(self.fallback, a, b);
+    // };
+    // xCurrentTimeInt64 = [](sqlite3_vfs *pVfs, sqlite3_int64 *pTime) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xCurrentTimeInt64(self.fallback, pTime);
+    // };
+    // xSetSystemCall = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_syscall_ptr pSyscall) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xSetSystemCall(self.fallback, zName, pSyscall);
+    // };
+    // xGetSystemCall = [](sqlite3_vfs*, const char *zName) -> int {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xGetSystemCall(self.fallback, zName);
+    // };
+    // xNextSystemCall = [](sqlite3_vfs *pVfs, const char *zName) -> const char * {
+    //   auto &self = *(MemoryLockVfs *)pVfs;
+    //   return self.fallback->xNextSystemCall(self.fallback, zName);
+    // };
+  }
+  static MemoryLockedVfs &instance() {
+    static MemoryLockedVfs vfs;
+    return vfs;
+  }
+};
+
 struct Connection {
   sqlite3 *db{};
   std::mutex mutex;
@@ -752,6 +958,7 @@ struct Backup : public Base {
 } // namespace shards
 SHARDS_REGISTER_FN(sqlite) {
   using namespace shards::DB;
+  MemoryLockedVfs::instance();
   REGISTER_SHARD("DB.Query", Query);
   REGISTER_SHARD("DB.Transaction", Transaction);
   REGISTER_SHARD("DB.LoadExtension", LoadExtension);
