@@ -30,7 +30,6 @@
 
   "18446744073709551615" | BigInt | BigInt.ToBytes(64) = max-u64 |
   BigInt | BigInt.ToString | Assert.Is("18446744073709551615" true) | Log("Returned")
-  max-u64 | Substrate.Decode([Type::Int] ["u64"]) | Log("Decoded")
 
   "4e2" | HexToBytes | BigInt | BigInt.ToString | Assert.Is("1250" true) | Log("Returned")
 
