@@ -1,159 +1,58 @@
 @include("hello2.shs") ; to use the macro `if`
 
-@define(rpcs false IgnoreRedefined: true)
-
-@define(rpc-server "http://127.0.0.1:9933")
-
 @mesh(root)
 
 @wire(main {
+  "caution juice atom organ advance problem want pledge someone senior holiday very" | Mnemonic.ToSeed | Slice(To: 32) | ToHex | Log = seed1-2
+
   ; test from hex string
-  "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" |
-  {Sr25519.PublicKey | ToHex |
-   Assert.Is("0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f" true)} |
-  {Ed25519.PublicKey | ToHex |
-   Assert.Is("0xd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a" true)} |
-  {ECDSA.PublicKey | ToHex |
-   Assert.Is("0x048db55b05db86c0b1786ca49f095d76344c9e6056b2f02701a7e7f3c20aabfd913ebbe148dd17c56551a52952371071a6c604b3f3abe8f2c8fa742158ea6dd7d4")} |
+  "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" | HexToBytes = sr25519-key-1
+  Sr25519.PublicKey = sr25519-key-1-public
+  ToHex | Log | Assert.Is("0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f" true)
 
-  ; test from bytes
-  HexToBytes |
-  {Sr25519.PublicKey | ToHex |
-   Assert.Is("0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f" true)} |
-  {Ed25519.PublicKey | ToHex |
-   Assert.Is("0xd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a" true)} |
-  {ECDSA.PublicKey | ToHex |
-   Assert.Is("0x048db55b05db86c0b1786ca49f095d76344c9e6056b2f02701a7e7f3c20aabfd913ebbe148dd17c56551a52952371071a6c604b3f3abe8f2c8fa742158ea6dd7d4")}
+  "Hello World!" | HexToBytes = message
+  Sr25519.Sign(sr25519-key-1) | Log | Sr25519.Verify(sr25519-key-1-public message) | Log | Assert.Is(true true)
 
-  "caution juice atom organ advance problem want pledge someone senior holiday very" |
-  {Sr25519.Seed | ToHex |
-   Assert.Is("0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true)} |
-  {Sr25519.PublicKey |
-   {ToHex | Assert.Is("0xd6a3105d6768e956e9e5d41050ac29843f98561410d3a47f9dd5b3b227ab8746")} |
-   {Substrate.AccountId | Assert.Is("5Gv8YYFu8H1btvmrJy9FjjAWfb99wrhV3uhPFoNEr918utyR" true)}} |
-  {ECDSA.Seed | Log | ToHex | Assert.Is("0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true)} |
-  {ECDSA.PublicKey |
-   {ToHex | Log} |
-   {Slice(From: 1) |
-    Hash.Keccak-256 |
-    Slice(From: 12) |
-    ToHex |
-    Log("Eth Address") |
-    Assert.Is("0x30bfedb19bab047810a0b27b87ff73ec3aa840f9" true)}}
+  "Hello World 2!" | HexToBytes = message-2
+  Sr25519.Sign(sr25519-key-1) | Log | Sr25519.Verify(sr25519-key-1-public message) | Log | Assert.Is(false true)
 
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "state_getMetadata"} | ToJson | Http.Post(rpc-server) |
-    FromJson | ExpectTable | Take("result") | ExpectString = metadata
-  } Pass)
+  "0x368c36dd239786fe314316756a938ab657826246db4c3d43c00256e3be77a45d6e7bfc7f604e77c15ad219210aa04272846508872ccde32c7e69a15e50ccf489" | HexToBytes | Sr25519.Verify(sr25519-key-1-public message) | Log | Assert.Is(true true)
+  "0x368c36dd239786fe314316756a938ab657826246db4c3d43c00256e3be77a45d6e7bfc7f604e77c15ad219210aa04272846508872ccde32c7e69a15e50ccf489" | HexToBytes | Sr25519.Verify(sr25519-key-1-public message-2) | Log | Assert.Is(false true)
 
-  ["Sudo" "Key"] | Substrate.StorageKey | ToHex | Assert.Is("0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b" true) = sudo-key-data
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [sudo-key-data]} | ToJson | Http.Post(rpc-server) | Log
-  } Pass)
 
-  ["Fragments" "Something"] | Substrate.StorageKey | ToHex = frag-key-data
-  ; @if(@rpcs {
-  ;   {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [frag-key-data]} | ToJson | Http.Post(rpc-server) | Log |
-  ;   FromJson | ExpectTable | Take("result") | ExpectString | HexToBytes | Substrate.Decode([Type::Int] ["u32"]) | Log
-  ; } {})
+  "0xbf56c0728fd4e9cf64bfaf6dabab81554103298cdee5cc4d580433aa25e98b00" = hash-1-expect
+  "0x1a3f3c1ccf9ae9f7e7535c9463b06aff" = hash-12-expect
+  "0x3ea2f1d0abf3fc66cf29eebb70cbd4e7fe762ef8a09bcc06c8edf641230afec0" = hash-2-expect
+  "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069" = hash-3-expect
+  "0xd0e47486bbf4c16acac26f8b653592973c1362909f90262877089f9c8a4536af" = hash-4-expect
+  "0x914d7f3e6a282ba5edd201a1e09b5844" = hash-5-expect
+  "0x914d7f3e6a282ba5" = hash-6-expect
 
-  ["Balances" "FreeBalance"] | Substrate.StorageKey | ToHex | Assert.Is("0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4" true)
-  ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] | Substrate.StorageMap |
-  ToHex | Assert.Is("0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
+  "Hello World!" | Hash.Blake2-256 | ToHex | Log = hash-1 | Assert.Is(hash-1-expect true)
+  "Hello World!" | Hash.Blake2-128 | ToHex | Log = hash-12 | Assert.Is(hash-12-expect true)
+  "Hello World!" | Hash.Keccak-256 | ToHex | Log = hash-2 | Assert.Is(hash-2-expect true)
+  "Hello World!" | Hash.Sha2-256 | ToHex | Log = hash-3 | Assert.Is(hash-3-expect true)
+  "Hello World!" | Hash.Sha3-256 | ToHex | Log = hash-4 | Assert.Is(hash-4-expect true)
+  "Hello World!" | Hash.XXH-128 | ToHex | Log = hash-5 | Assert.Is(hash-5-expect true)
+  "Hello World!" | Hash.XXH-64 | ToHex | Log = hash-6 | Assert.Is(hash-6-expect true)
 
-  ["System" "Account" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] | Substrate.StorageMap | ToHex >= balance-data
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [balance-data]} | ToJson | Log | Http.Post(rpc-server) | Log |
-    FromJson | ExpectTable | Take("result") | ExpectString | HexToBytes | Substrate.Decode([Type::Int] ["u64"]) | Log
-  } Pass)
+  "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" | HexToBytes
+  ECDSA.PublicKey | ToHex
+  Assert.Is("0x048db55b05db86c0b1786ca49f095d76344c9e6056b2f02701a7e7f3c20aabfd913ebbe148dd17c56551a52952371071a6c604b3f3abe8f2c8fa742158ea6dd7d4")
 
-  ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" "0x002a"] | Substrate.StorageMap |
-  ToHex | Assert.Is("0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dce11f437743387ffa42428d46ee58416002a" true)
-
-  "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" = account-id
-  [account-id] | Substrate.Encode(["a"]) | {ToHex | Assert.Is("0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)} |
-  Substrate.Decode([Type::String] ["a"]) | Log | Assert.Is(["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"] true)
-  [false 42] | Substrate.Encode([none "u8"]) | {ToHex | Assert.Is("0x002a" true)} |
-  Substrate.Decode([Type::Bool Type::Int] [none "u8"]) | Log | Assert.Is([false 42] true)
-  [false 42] | Substrate.Encode([none "c"]) | {ToHex | Assert.Is("0x00a8" true)} |
-  Substrate.Decode([Type::Bool Type::Int] [none "c"]) | Log | Assert.Is([false 42] true)
-  ["Hello world" "And universe" "And planets"] | Substrate.Encode([none none none]) | Substrate.Decode([Type::String Type::String Type::String] [none none none]) | Log |
-  Assert.Is(["Hello world" "And universe" "And planets"] true)
-
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "state_getRuntimeVersion"} | ToJson | Http.Post(rpc-server) |
-    FromJson | ExpectTable | Take("result") | ExpectTable | Log = runtime-version
-  } Pass)
-
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "chain_getShardHash" "params" [0]} | ToJson | Http.Post(rpc-server) |
-    FromJson | ExpectTable | Take("result") | ExpectString | Log | HexToBytes | Log = genesis-hash
-  } {"0x" | ToBytes = genesis-hash})
-
-  ; extrinsic call
-
-  ; call payload to be signed
-  ; [module-index call-index args...]
-  [9 0 44] | Substrate.Encode(["u8" "u8" "u32"]) = call-data
-
-  ; extra data to be signed
-  ; [era nonce weight]
-  ; use 0 u8 for era to have an immortal transaction
-  [0 0 0] | Substrate.Encode(["u8" "c" "c"]) = extra-data
-
-  ; additional data to be signed
-  ; runtime-spec-version transaction-version genesis-hash genesis-or-current-hash]
-  [100 1] | Substrate.Encode(["u32" "u32"]) >= additional-data
-  genesis-hash | AppendTo(additional-data) | AppendTo(additional-data) ; twice
-
-  call-data >= signed-payload
-  extra-data | AppendTo(signed-payload)
-  additional-data | AppendTo(signed-payload)
-  Count(signed-payload) |
-  If(IsMore(256) {
-    Msg("Big signature")
-    signed-payload | Hash.Blake2-256 ; use hashed version if longer bigger than 256
-  } {signed-payload}) > signed-payload
-  Sr25519.Sign("//Alice") | Log >= signature
-  {
-    ; test signature verify
-    Sr25519.Verify(("//Alice" | Sr25519.PublicKey) signed-payload) | Log("verified")
+  "caution juice atom organ advance problem want pledge someone senior holiday very" | Mnemonic.ToSeed | Slice(To: 32) = private-key-1
+  ToHex | Assert.Is("0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true)
+  private-key-1
+  {ECDSA.PublicKey
+    {ToHex | Log}
+    {Slice(From: 1)
+      Hash.Keccak-256
+      Slice(From: 12)
+      ToHex
+      Log("Eth Address")
+      Assert.Is("0x30bfedb19bab047810a0b27b87ff73ec3aa840f9" true)
+    }
   }
-  ; add enum index 1
-  "0x01" | HexToBytes | PrependTo(signature)
-  signature | ToHex | Log
-
-  ; signer
-  "//Alice" | Sr25519.PublicKey | Substrate.AccountId | Log = alice-pub-key
-  ; multiaddress enum
-  [0 alice-pub-key] | Substrate.Encode(["u8" "a"]) = signer
-
-  ; call payload
-  ; V4 | 0b1000_0000 - if signed
-  [0x84] | Substrate.Encode(["u8"]) >= rpc-data
-  signer | AppendTo(rpc-data)
-  signature | AppendTo(rpc-data)
-  extra-data | AppendTo(rpc-data)
-  ; V4 & 0b0111_1111 - if unsigned
-  ; [0x7F] (Substrate.Encode ["u8"]) >= .rpc-data
-  ; function
-  call-data | AppendTo(rpc-data)
-  ; must be len prefixed
-  [rpc-data] | Substrate.Encode([none]) | ToHex | Log = rpc-date-hex
-  @if(@rpcs {
-    {"id" 1 "jsonrpc" "2.0" "method" "author_submitExtrinsic" "params" [rpc-data-hex]} | ToJson | Http.Post(rpc-server)
-    FromJson | Log
-  } Pass)
-
-  "my_key" | ToBytes | ToHex = offchain-req
-  @if(@rpcs { ; this one requires --enable-offchain-indexing 1 --rpc-methods=Unsafe
-    {"id" 1 "jsonrpc" "2.0" "method" "offchain_localStorageGet" "params" ["PERSISTENT" offchain-req]} | ToJson | Http.Post(rpc-server) |
-    FromJson | Log
-  } Pass)
-
-  [1000000] | Substrate.Encode(["c"]) = compact-num | {ToHex | Log}
-  compact-num | Substrate.Decode([Type::Bytes] ["c"]) | Take(0) | ExpectBytes |
-  Substrate.Decode([Type::Int] ["c"]) | Take(0) | ExpectInt | Log | Assert.Is(1000000 true)
 
   UUID = uuid
   uuid | UUID.ToString | Log
