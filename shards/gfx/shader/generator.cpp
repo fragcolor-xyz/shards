@@ -153,22 +153,6 @@ struct StageOutput {
   std::vector<GeneratorError> errors;
 };
 
-// static void thowSortFailure(graph::Graph &graph, const graph::TopologicalSort &sort) {
-//   std::string errorLog;
-//   for (size_t i = 0; i < sort.incomingEdgesPerNode.size(); i++) {
-//     auto &in = sort.incomingEdgesPerNode[i];
-//     if (!in.empty()) {
-//       std::string errorLog1 = fmt::format("Node {} depends on: ", i);
-//       for (auto &edge : in) {
-//         errorLog1 += fmt::format("{} ", edge);
-//       }
-//       errorLog += "\n";
-//       errorLog += errorLog1;
-//     }
-//   }
-//   throw std::logic_error(fmt::format("Failed to sort entry points: {}", errorLog));
-// }
-
 static void trySortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
   graph::TopologicalSort sort;
 
