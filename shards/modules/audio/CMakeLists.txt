@@ -11,7 +11,7 @@ target_link_libraries(shards-module-audio
 )
 
 # Need to compile specific files as objective-c
-if(IOS)
+if(IOS OR VISIONOS)
   target_sources(shards-module-audio PRIVATE audio.mm)
 else()
   target_sources(shards-module-audio PRIVATE audio.cpp)
