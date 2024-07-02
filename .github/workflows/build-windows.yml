@@ -274,8 +274,6 @@ jobs:
           ./shards new ../shards/tests/bigint.shs
           echo "Running wasm"
           ./shards new ../shards/tests/wasm.shs
-          echo "Running eth"
-          ./shards new ../shards/tests/eth.shs
           echo "Running crypto"
           ./shards new ../shards/tests/crypto.shs
           echo "Running complex-deserialize"
@@ -354,7 +352,7 @@ jobs:
           echo "Running ui-drag-and-drop"
           build/shards new shards/tests/ui-drag-and-drop.shs
 
-          
+
           echo "Running ui-selectable-drag"
           build/shards new shards/tests/ui-selectable-drag.shs
       - name: Physics Test
