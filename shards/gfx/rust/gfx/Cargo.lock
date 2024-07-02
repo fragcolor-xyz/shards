@@ -570,9 +570,9 @@ dependencies = [
 
 [[package]]
 name = "malloc_buf"
-version = "0.0.6"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
+checksum = "3f32c8c0575eee8637bf462087c00098fe16d6cb621f1abb6ebab4da414d57fd"
 dependencies = [
  "libc",
 ]
@@ -594,9 +594,8 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "metal"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c43f73953f8cbe511f021b58f18c3ce1c3d1ae13fe953293e13345bf83217f25"
+version = "0.28.0"
+source = "git+https://github.com/shards-lang/metal-rs.git?branch=shards-0.28.0#fe1120d0e46bb58fb17a09afc58c98c1ea57d1df"
 dependencies = [
  "bitflags 2.6.0",
  "block",
@@ -675,21 +674,17 @@ dependencies = [
 [[package]]
 name = "objc"
 version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "915b1b472bc21c53464d6c8461c9d3af805ba1ef837e1cac254428f4a77177b1"
+source = "git+https://github.com/shards-lang/rust-objc.git?branch=shards-0.2.7#b2d834c95e38d89c39d42eea3587b584596f0848"
 dependencies = [
  "malloc_buf",
- "objc_exception",
+ "objc-encode",
 ]
 
 [[package]]
-name = "objc_exception"
-version = "0.1.2"
+name = "objc-encode"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad970fb455818ad6cba4c122ad012fae53ae8b4795f86378bce65e4f6bab2ca4"
-dependencies = [
- "cc",
-]
+checksum = "8a34fdd0d389ac7d4a94d1afeb9e2acc8d74ecf6d730519dd1a8625e8e1ed822"
 
 [[package]]
 name = "once_cell"
