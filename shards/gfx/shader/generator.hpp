@@ -80,7 +80,8 @@ struct IGeneratorContext {
 
   virtual void pushError(GeneratorError &&error) = 0;
 
-  virtual const std::string &generateTempVariable() = 0;
+  virtual TempVariableAllocator &getTempVariableAllocator() = 0;
+  const std::string &generateTempVariable() { return getTempVariableAllocator().get(); }
 
   // Helper function for writeGlobal
   template <typename T> void writeGlobal(FastString name, const NumType &type, T &&inner) {
@@ -143,7 +144,7 @@ struct GeneratorContext : public IGeneratorContext {
 
   const GeneratorDefinitions &getDefinitions() const { return definitions; }
 
-  const std::string &generateTempVariable() { return tempVariableAllocator.get(); }
+  TempVariableAllocator &getTempVariableAllocator() { return tempVariableAllocator; }
 };
 
 struct GeneratorOutput {

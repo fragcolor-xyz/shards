@@ -235,6 +235,7 @@ template <SHType ToType> struct MakeVector {
   std::vector<ParamVar> params;
   bool isBroadcast{};
   size_t inputSize;
+  ExposedInfo required;
 
   MakeVector() {
     auto vectorType = VectorTypeLookup::getInstance().get(ToType);
@@ -299,6 +300,8 @@ template <SHType ToType> struct MakeVector {
     return params;
   }
 
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(required); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
     if (!_outputVectorType) {
@@ -311,11 +314,21 @@ template <SHType ToType> struct MakeVector {
     NumberType componentNumberType = _outputNumberType->isInteger ? NumberType::Int64 : NumberType::Float64;
     _componentConversion = numberTypeLookup.getConversion(componentNumberType, _outputNumberType->type);
 
+    required.clear();
+
     // Check amount of set parameters
     inputSize = 0;
     for (size_t i = 0; i < params.size(); i++) {
       if (params[i]->valueType == SHType::None) {
         break;
+      }
+
+      // Add variable reference
+      if (params[i].isVariable()) {
+        required.push_back(SHExposedTypeInfo{
+            .name = params[i].variableName(),
+            .exposedType = parameters().elements[i].valueTypes.elements[1],
+        });
       }
       ++inputSize;
     }

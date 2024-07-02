@@ -33,9 +33,10 @@ void ShaderCompositionContext::setContext(ShaderCompositionContext *context) { c
 struct DynamicBlockFromShards : public blocks::Block {
   std::vector<ShardPtr> shards;
   VariableMap composeWith;
+  VariableRemapping globalVariableRemapping;
 
-  DynamicBlockFromShards(std::vector<ShardPtr> &&shards, const VariableMap &composeWith)
-      : shards(std::move(shards)), composeWith(composeWith) {}
+  DynamicBlockFromShards(std::vector<ShardPtr> &&shards, const VariableMap &composeWith, const VariableRemapping& globalVariableRemapping)
+      : shards(std::move(shards)), composeWith(composeWith), globalVariableRemapping(globalVariableRemapping) {}
 
   virtual void apply(IGeneratorContext &context) const {
     auto &definitions = context.getDefinitions();
@@ -72,7 +73,7 @@ struct DynamicBlockFromShards : public blocks::Block {
         .len = uint32_t(exposedTypes.size()),
     };
 
-    ShaderCompositionContext shaderCompositionContext(context, composeWith);
+    ShaderCompositionContext shaderCompositionContext(context, composeWith, globalVariableRemapping);
     ShaderCompositionContext::withContext(shaderCompositionContext, [&]() {
       SHComposeResult composeResult = composeWire(shards, instanceData);
       DEFER(shards::arrayFree(composeResult.exposedInfo));
@@ -83,10 +84,18 @@ struct DynamicBlockFromShards : public blocks::Block {
 
       // Process shards by translator
       shader::TranslationContext shaderCtx;
+
+      // Copy context state to temp allocator
+      auto &tmpAlloc = shaderCtx.getTempVariableAllocator();
+      tmpAlloc.stateSet(context.getTempVariableAllocator());
+
       for (ShardPtr shard : shards) {
         shaderCtx.processShard(shard);
       }
       shaderCtx.finalize();
+
+      // Copy state back to context
+      context.getTempVariableAllocator().stateSet(tmpAlloc);
 
       auto compiledBlock = std::move(shaderCtx.root);
       compiledBlock->apply(context);
@@ -94,12 +103,12 @@ struct DynamicBlockFromShards : public blocks::Block {
   }
 
   virtual std::unique_ptr<Block> clone() {
-    return std::make_unique<DynamicBlockFromShards>(std::vector<ShardPtr>(shards), composeWith);
+    return std::make_unique<DynamicBlockFromShards>(std::vector<ShardPtr>(shards), composeWith, globalVariableRemapping);
   }
 };
 
 void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
-                           const VariableMap &composeWithVariables) {
+                           const VariableMap &composeWithVariables, const VariableRemapping& globalVariableRemapping) {
   checkType(input.valueType, SHType::Seq, ":Shaders EntryPoint");
 
   // Check input type is a shard sequence
@@ -109,7 +118,7 @@ void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, c
     shards.push_back(shardVar.payload.shardValue);
   });
 
-  entryPoint.code = std::make_unique<DynamicBlockFromShards>(std::move(shards), composeWithVariables);
+  entryPoint.code = std::make_unique<DynamicBlockFromShards>(std::move(shards), composeWithVariables, globalVariableRemapping);
 }
 
 } // namespace gfx::shader

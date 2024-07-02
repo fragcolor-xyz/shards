@@ -81,7 +81,7 @@ public:
 
   auto requiredVariables() { return brancher.requiredVariables(); }
 
-  void compose(const SHInstanceData &data, const ExposedInfo &shared = ExposedInfo{}, const IgnoredVariables &ignored = {}) {
+  void compose(const SHInstanceData &data, const ExposedInfo &shared = ExposedInfo{}, const IgnoredVariables &ignored = {}, bool shareObjectVariables = false) {
     _variablesApplied = false;
     ExposedInfo sharedNonMutable{data.shared};
     for(auto& data : sharedNonMutable._innerInfo) {
@@ -91,7 +91,7 @@ public:
     }
     SHInstanceData dataInner = data;
     dataInner.shared = SHExposedTypesInfo(sharedNonMutable);
-    brancher.compose(dataInner, shared, ignored, false);
+    brancher.compose(dataInner, shared, ignored, shareObjectVariables);
   }
 
   // context: The context to capture from
