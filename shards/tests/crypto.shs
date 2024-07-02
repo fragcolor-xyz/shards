@@ -25,16 +25,18 @@
   "0x3ea2f1d0abf3fc66cf29eebb70cbd4e7fe762ef8a09bcc06c8edf641230afec0" = hash-2-expect
   "0x7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069" = hash-3-expect
   "0xd0e47486bbf4c16acac26f8b653592973c1362909f90262877089f9c8a4536af" = hash-4-expect
-  "0x914d7f3e6a282ba5edd201a1e09b5844" = hash-5-expect
   "0x914d7f3e6a282ba5" = hash-6-expect
+  "0x914d7f3e6a282ba5edd201a1e09b5844" = hash-5-expect
 
   "Hello World!" | Hash.Blake2-256 | ToHex | Log = hash-1 | Assert.Is(hash-1-expect true)
   "Hello World!" | Hash.Blake2-128 | ToHex | Log = hash-12 | Assert.Is(hash-12-expect true)
   "Hello World!" | Hash.Keccak-256 | ToHex | Log = hash-2 | Assert.Is(hash-2-expect true)
   "Hello World!" | Hash.Sha2-256 | ToHex | Log = hash-3 | Assert.Is(hash-3-expect true)
   "Hello World!" | Hash.Sha3-256 | ToHex | Log = hash-4 | Assert.Is(hash-4-expect true)
-  "Hello World!" | Hash.XXH-128 | ToHex | Log = hash-5 | Assert.Is(hash-5-expect true)
   "Hello World!" | Hash.XXH-64 | ToHex | Log = hash-6 | Assert.Is(hash-6-expect true)
+  "Hello World!" | Hash.XXH-128 | ToHex | Log = hash-5 | Assert.Is(hash-5-expect true)
+  "Hello World!" | Hash.XXH3-64 | ToHex | Log Assert.IsNot(hash-6-expect true)
+  "Hello World!" | Hash.XXH3-128 | ToHex | Log | Assert.IsNot(hash-5-expect true)
 
   "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" | HexToBytes
   ECDSA.PublicKey | ToHex
