@@ -2866,6 +2866,37 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   return result;
 }
+
+SHVar hash_bytes_xx64(const void *data, size_t len, uint64_t seed) {
+  XXH3_state_t state;
+  XXH3_64bits_reset_withSeed(&state, seed);
+  XXH3_64bits_update(&state, data, len);
+  XXH64_hash_t hash = XXH3_64bits_digest(&state);
+  SHVar res{};
+  res.valueType = SHType::Int;
+  res.payload.intValue = hash;
+  return res;
+}
+
+SHVar hash_bytes_xx128(const void *data, size_t len, uint64_t seed) {
+  XXH3_state_t state;
+  XXH3_128bits_reset_withSeed(&state, seed);
+  XXH3_128bits_update(&state, data, len);
+  XXH128_hash_t hash = XXH3_128bits_digest(&state);
+  SHVar res{};
+  res.valueType = SHType::Int2;
+  res.payload.int2Value[0] = hash.low64;
+  res.payload.int2Value[1] = hash.high64;
+  return res;
+}
+
+SHVar hash_bytes_xx64_legacy(const void *data, size_t len, uint64_t seed) {
+  XXH64_hash_t hash = XXH64(data, len, seed);
+  SHVar res{};
+  res.valueType = SHType::Int;
+  res.payload.intValue = hash;
+  return res;
+}
 }
 
 namespace shards {

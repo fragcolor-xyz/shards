@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use shards::core::hash_var;
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -17,67 +18,109 @@ use shards::types::Var;
 use sha2::{Digest as Sha2Digest, Sha256, Sha512};
 
 use std::convert::TryInto;
+use std::ffi::c_void;
+use std::mem::transmute;
 
-use tiny_keccak::{Hasher as KeccakHasher, Keccak, Sha3};
-use std::hash::Hasher;
 use byteorder::{ByteOrder, LittleEndian};
+use std::hash::Hasher;
+use tiny_keccak::{Hasher as KeccakHasher, Keccak, Sha3};
 
 #[inline(always)]
 fn blake2<const N: usize>(data: &[u8]) -> [u8; N] {
-	blake2b_simd::Params::new()
-		.hash_length(N)
-		.hash(data)
-		.as_bytes()
-		.try_into()
-		.expect("slice is always the necessary length")
+  blake2b_simd::Params::new()
+    .hash_length(N)
+    .hash(data)
+    .as_bytes()
+    .try_into()
+    .expect("slice is always the necessary length")
 }
 
 /// Do a Blake2 512-bit hash and place result in `dest`.
 pub fn blake2_512_into(data: &[u8], dest: &mut [u8; 64]) {
-	*dest = blake2(data);
+  *dest = blake2(data);
 }
 
 /// Do a Blake2 512-bit hash and return result.
 pub fn blake2_512(data: &[u8]) -> [u8; 64] {
-	blake2(data)
+  blake2(data)
 }
 
 /// Do a Blake2 256-bit hash and return result.
 pub fn blake2_256(data: &[u8]) -> [u8; 32] {
-	blake2(data)
+  blake2(data)
 }
 
 /// Do a Blake2 128-bit hash and return result.
 pub fn blake2_128(data: &[u8]) -> [u8; 16] {
-	blake2(data)
+  blake2(data)
+}
+
+extern "C" {
+  pub fn hash_bytes_xx128(data: *const u8, len: usize, seed: u64) -> Var;
+  pub fn hash_bytes_xx64(data: *const u8, len: usize, seed: u64) -> Var;
+  pub fn hash_bytes_xx64_legacy(data: *const u8, len: usize, seed: u64) -> Var;
 }
 
 /// Do a XX 64-bit hash and place result in `dest`.
 pub fn twox_64_into(data: &[u8], dest: &mut [u8; 8]) {
-	let r0 = twox_hash::XxHash::with_seed(0).chain_update(data).finish();
-	LittleEndian::write_u64(&mut dest[0..8], r0);
+  let hash = unsafe { hash_bytes_xx64_legacy(data.as_ptr(), data.len(), 0) };
+  let value = unsafe { transmute(hash.payload.__bindgen_anon_1.intValue) };
+  LittleEndian::write_u64(&mut dest[0..8], value);
 }
 
 /// Do a XX 64-bit hash and return result.
 pub fn twox_64(data: &[u8]) -> [u8; 8] {
-	let mut r: [u8; 8] = [0; 8];
-	twox_64_into(data, &mut r);
-	r
+  let mut r: [u8; 8] = [0; 8];
+  twox_64_into(data, &mut r);
+  r
 }
 
 /// Do a XX 128-bit hash and place result in `dest`.
 pub fn twox_128_into(data: &[u8], dest: &mut [u8; 16]) {
-	let r0 = twox_hash::XxHash::with_seed(0).chain_update(data).finish();
-	let r1 = twox_hash::XxHash::with_seed(1).chain_update(data).finish();
-	LittleEndian::write_u64(&mut dest[0..8], r0);
-	LittleEndian::write_u64(&mut dest[8..16], r1);
+  // run legacy twice with seed at 0 and 1
+  let hash0 = unsafe { hash_bytes_xx64_legacy(data.as_ptr(), data.len(), 0) };
+  let hash1 = unsafe { hash_bytes_xx64_legacy(data.as_ptr(), data.len(), 1) };
+  let first = unsafe { transmute(hash0.payload.__bindgen_anon_1.intValue) };
+  let second = unsafe { transmute(hash1.payload.__bindgen_anon_1.intValue) };
+  LittleEndian::write_u64(&mut dest[0..8], first);
+  LittleEndian::write_u64(&mut dest[8..16], second);
 }
 
 /// Do a XX 128-bit hash and return result.
 pub fn twox_128(data: &[u8]) -> [u8; 16] {
-	let mut r: [u8; 16] = [0; 16];
-	twox_128_into(data, &mut r);
-	r
+  let mut r: [u8; 16] = [0; 16];
+  twox_128_into(data, &mut r);
+  r
+}
+
+/// Do a XX 128-bit hash using XXH3 and place result in `dest`.
+pub fn twox_128_3_into(data: &[u8], dest: &mut [u8; 16]) {
+  let hash = unsafe { hash_bytes_xx128(data.as_ptr(), data.len(), 0) };
+  let low = unsafe { transmute(hash.payload.__bindgen_anon_1.int2Value[0]) };
+  let high = unsafe { transmute(hash.payload.__bindgen_anon_1.int2Value[1]) };
+  LittleEndian::write_u64(&mut dest[0..8], low);
+  LittleEndian::write_u64(&mut dest[8..16], high);
+}
+
+/// Do a XX 128-bit hash using XXH3 and return result.
+pub fn twox_128_3(data: &[u8]) -> [u8; 16] {
+  let mut r: [u8; 16] = [0; 16];
+  twox_128_3_into(data, &mut r);
+  r
+}
+
+/// Do a XX 64-bit hash using XXH3 and place result in `dest`.
+pub fn twox_64_3_into(data: &[u8], dest: &mut [u8; 8]) {
+  let hash = unsafe { hash_bytes_xx64(data.as_ptr(), data.len(), 0) };
+  let value = unsafe { transmute(hash.payload.__bindgen_anon_1.intValue) };
+  LittleEndian::write_u64(&mut dest[0..8], value);
+}
+
+/// Do a XX 64-bit hash using XXH3 and return result.
+pub fn twox_64_3(data: &[u8]) -> [u8; 8] {
+  let mut r: [u8; 8] = [0; 8];
+  twox_64_3_into(data, &mut r);
+  r
 }
 
 lazy_static! {
@@ -354,6 +397,22 @@ add_hasher3!(
   16
 );
 
+add_hasher3!(
+  SHTwoX_64_New,
+  "Hash.XXH3-64",
+  "Hash.XXH3-64-rust-0x20200101",
+  twox_64_3,
+  8
+);
+
+add_hasher3!(
+  SHTwoX_128_New,
+  "Hash.XXH3-128",
+  "Hash.XXH3-128-rust-0x20200101",
+  twox_128_3,
+  16
+);
+
 pub fn register_shards() {
   register_legacy_shard::<Keccak_256>();
   register_legacy_shard::<Keccak_512>();
@@ -365,4 +424,6 @@ pub fn register_shards() {
   register_legacy_shard::<SHBlake_256>();
   register_legacy_shard::<SHTwoX_64>();
   register_legacy_shard::<SHTwoX_128>();
+  register_legacy_shard::<SHTwoX_64_New>();
+  register_legacy_shard::<SHTwoX_128_New>();
 }
