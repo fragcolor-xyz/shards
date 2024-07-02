@@ -779,3 +779,7 @@ impl Hash for Var {
     }
   }
 }
+
+pub fn hash_var(v: &Var) -> Var {
+  unsafe { (*Core).hashVar.unwrap()(v as *const _) }
+}

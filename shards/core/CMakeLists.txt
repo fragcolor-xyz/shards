@@ -82,7 +82,7 @@ if(APPLE)
     -liconv
   )
 
-  if(IOS)
+  if(IOS OR VISIONOS)
     target_link_libraries(shards-core
       "-framework AVFoundation"
       "-framework CoreGraphics"

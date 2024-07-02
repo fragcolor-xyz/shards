@@ -20,9 +20,6 @@ use shards::types::STRING_TYPES;
 
 use shards::types::Var;
 
-use sp_core::crypto::Pair;
-use sp_core::ecdsa;
-
 use std::convert::TryInto;
 
 static SIGNATURE_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
@@ -34,7 +31,7 @@ lazy_static! {
     CRYPTO_KEY_TYPES
   )
     .into()];
-  static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
+  static ref PK_TYPES: Vec<Type> = vec![common_type::bytes];
   static ref PK_PARAMETERS: Parameters = vec![(
     cstr!("Compressed"),
     shccstr!("Indicates if the output PublicKey should be in compressed format."),
@@ -65,21 +62,7 @@ fn get_key(input: &Var) -> Result<libsecp256k1::SecretKey, &'static str> {
       "Failed to parse secret key"
     })
   } else {
-    let key: Result<&str, &str> = input.try_into();
-    if let Ok(key) = key {
-      // use this to allow even mnemonics to work!
-      let pair = ecdsa::Pair::from_string(key, None).map_err(|e| {
-        shlog!("{:?}", e);
-        "Failed to parse secret key"
-      })?;
-      let key = pair.seed();
-      libsecp256k1::SecretKey::parse(&key).map_err(|e| {
-        shlog!("{}", e);
-        "Failed to parse secret key"
-      })
-    } else {
-      Err("Invalid key value")
-    }
+    Err("Invalid key value")
   }
 }
 

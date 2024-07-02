@@ -12,9 +12,8 @@ use shards::types::Parameters;
 
 use shards::types::Type;
 use shards::types::BYTES_TYPES;
-
-use chacha20poly1305::aead::{Aead, NewAead};
-use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
+use chacha20poly1305::aead::Aead;
+use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, KeyInit};
 use shards::types::Var;
 
 lazy_static! {
