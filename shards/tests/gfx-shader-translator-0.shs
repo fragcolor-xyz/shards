@@ -130,21 +130,14 @@
 })
 
 @wire(gfx {
-  Once({
-    0.0 >= time
-    time | Broadcast("time")
+  Animation.Timer = time
 
-    GFX.Feature(ViewGenerators: {
-      Listen("time" @type(Type::Float)) >= time
-      {time: time}
-    }) >> features
-    GFX.EffectPass(EntryPoint: {@shader-main} Features: features) >> render-steps
-  })
+  GFX.Feature(ViewGenerators: {
+    {time: time}
+  }) >> features
+  GFX.EffectPass(EntryPoint: {@shader-main} Features: features) >> render-steps
 
   GFX.Render(Steps: render-steps)
-
-  time | Math.Add(@timestep) > time
-  time | Broadcast("time")
 } Looped: true)
 
 @wire(main-loop-wire {

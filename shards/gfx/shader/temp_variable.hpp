@@ -17,6 +17,10 @@ public:
 
   void reset() { counter = 0; }
 
+  size_t stateGet() const { return counter; }
+  void stateSet(size_t value) { counter = value; }
+  void stateSet(TempVariableAllocator& other) { counter = other.counter; }
+
   const std::string &get(const std::string_view &hint = std::string_view()) {
     tempVariableName.clear();
     if (!hint.empty()) {
