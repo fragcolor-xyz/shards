@@ -93,6 +93,3 @@
 [submodule "deps/oneTBB"]
 	path = deps/oneTBB
 	url = https://github.com/shards-lang/oneTBB.git
-[submodule "deps/SDL2-compat"]
-	path = deps/SDL2-compat
-	url = https://github.com/libsdl-org/sdl2-compat.git
