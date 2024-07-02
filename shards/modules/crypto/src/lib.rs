@@ -8,15 +8,10 @@ use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
-use shards::types::ParamVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::BYTES_TYPES;
-use shards::types::NONE_TYPES;
 use shards::types::STRING_TYPES;
 use std::convert::TryInto;
 
@@ -29,12 +24,9 @@ extern crate lazy_static;
 pub mod chachapoly;
 pub mod signatures;
 pub mod ecdsa;
-pub mod eth;
 pub mod hash;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
-
-static PUB_KEY_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
 
 use bip39::{Language, Mnemonic, MnemonicType};
 
@@ -166,7 +158,6 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
 
   ecdsa::register_shards();
   hash::register_shards();
-  eth::register_shards();
   signatures::register_shards();
   chachapoly::register_shards();
   register_shard::<MnemonicGenerate>();
