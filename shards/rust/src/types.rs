@@ -2728,6 +2728,20 @@ impl Var {
     }
   }
 
+  pub fn color_bytes(var: &Var) -> Result<(u8, u8, u8, u8), &'static str> {
+    if var.valueType != SHType_Color {
+      return Err("Invalid type");
+    }
+    unsafe {
+      Ok((
+        var.payload.__bindgen_anon_1.colorValue.r,
+        var.payload.__bindgen_anon_1.colorValue.g,
+        var.payload.__bindgen_anon_1.colorValue.b,
+        var.payload.__bindgen_anon_1.colorValue.a,
+      ))
+    }
+  }
+
   pub fn color_ints(r: i32, g: i32, b: i32, a: i32) -> Result<Var, &'static str> {
     // ensure all values are in range [0, 255]
     if r < 0 || r > 255 {
@@ -2785,6 +2799,22 @@ impl Var {
             stringValue: p as *const std::os::raw::c_char,
             stringLen: len as u32,
             stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn ephemeral_slice(b: &[u8]) -> Var {
+    SHVar {
+      valueType: SHType_Bytes,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_4: SHVarPayload__bindgen_ty_1__bindgen_ty_4 {
+            bytesValue: b.as_ptr() as *mut u8,
+            bytesSize: b.len() as u32,
+            bytesCapacity: 0,
           },
         },
       },
@@ -2905,6 +2935,13 @@ impl Var {
     let c = Rc::as_ptr(c) as *mut Option<T>;
     let c = unsafe { (*c).as_mut().ok_or("Failed to unwrap Rc-ed reference")? };
     Ok(c)
+  }
+
+  // This pattern is often used in shards storing Rcs of Vars
+  pub fn get_mut_from_clone1<'a, T>(c: &Option<Rc<T>>) -> Result<&'a mut T, &'static str> {
+    let c = c.as_ref().ok_or("No Var reference found")?;
+    let c = Rc::as_ptr(c) as *mut T;
+    Ok(unsafe { &mut *c })
   }
 
   pub fn from_object_mut_ref<'a, T>(var: &Var, info: &Type) -> Result<&'a mut T, &'static str> {
@@ -3233,6 +3270,28 @@ impl TryFrom<&Var> for Cow<'static, str> {
       })
       .map_err(|_| "Expected valid UTF-8 string, but casting failed.")?;
       Ok(Cow::Borrowed(s))
+    }
+  }
+}
+
+impl TryFrom<&Var> for Cow<'static, [u8]> {
+  type Error = &'static str;
+
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Bytes {
+      Err("Expected Bytes variable, but casting failed.")
+    } else {
+      unsafe {
+        if var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize == 0 {
+          return Ok(Cow::Borrowed(&[]));
+        }
+      }
+      Ok(Cow::Borrowed(unsafe {
+        slice::from_raw_parts(
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+        )
+      }))
     }
   }
 }
@@ -4994,6 +5053,12 @@ impl AutoSeqVar {
 /// A wrapper around `TableVar` that automatically destroys the variable when it goes out of scope.
 #[repr(transparent)] // force it same size of original
 pub struct AutoTableVar(pub TableVar);
+
+impl Debug for AutoTableVar {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "AutoTableVar")
+  }
+}
 
 impl Drop for AutoTableVar {
   fn drop(&mut self) {
