@@ -93,8 +93,6 @@
       ; (String.Starts(With: "Process."))
       ; (String.Starts(With: "Tracy."))
       ; (String.Starts(With: "Wasm."))
-      ; (String.Starts(With: "Substrate."))
-      ; (String.Starts(With: "Eth."))
       ; (String.Starts(With: "Desktop."))
       ; (String.Starts(With: "Events."))
       ; (String.Starts(With: "_Emscripten."))
