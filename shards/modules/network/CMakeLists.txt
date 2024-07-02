@@ -21,13 +21,19 @@ add_shards_module(network SOURCES ${NETWORK_SOURCES}
   RUST_TARGETS ${NETWORK_RUST_TARGETS}
   REGISTER_SHARDS ${NETWORK_REGISTER_SHARDS})
 
+if(ANDROID OR DESKTOP_LINUX)
+  set(NEED_OPENSSL_SYS ON)
+endif()
+
 if(NOT EMSCRIPTEN)
   if(USE_UBSAN)
     target_compile_options(kcp PRIVATE -fno-sanitize=null)
   endif()
 
-  target_link_libraries(shards-network-rust INTERFACE OpenSSL)
-  target_link_libraries(shards-module-network OpenSSL kcp-wrapper)
+  if(NEED_OPENSSL_SYS)
+    target_link_libraries(shards-network-rust INTERFACE OpenSSL)
+  endif()
+  target_link_libraries(shards-module-network kcp-wrapper)
 else()
   target_link_libraries(shards-module-network websocket.js)
 endif()

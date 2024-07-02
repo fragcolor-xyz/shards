@@ -51,10 +51,10 @@ if(NOT EMSCRIPTEN)
       message(STATUS "Using libressl from LIBRE_SSL_DIR=${libressl_SOURCE_DIR}")
       add_subdirectory(${libressl_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libressl)
     else()
-      if(CMAKE_GENERATOR STREQUAL Xcode)
-        # Required to fix linking against empty libraries with object library dependencies from xcode
-        set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
-      endif()
+      # if(CMAKE_GENERATOR STREQUAL Xcode)
+      #   # Required to fix linking against empty libraries with object library dependencies from xcode
+      #   set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
+      # endif()
 
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
