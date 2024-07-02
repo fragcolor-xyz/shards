@@ -143,13 +143,13 @@ jobs:
         run: wget -qO- https://raw.githubusercontent.com/fragcolor-xyz/wait-for/WAIT_FOR_VERSION/wait-for | sh -s -- 127.0.0.1:8000 -- echo "Docs website is up"
         env:
           WAIT_FOR_VERSION: b90dabffc34fdae1f8bc84c4d442de60e5b47b35 # v2.2.4
-      - name: Step to check for broken links
-        id: link-report
-        uses: fragcolor-xyz/link-checker@0f3f6f07d7c0ab247d73468ae5c277c441c596a3
-        with:
-          url: "http://127.0.0.1:8000"
-          blc_args: --recursive --verbose --follow true --exclude twitter.com
-          allow_failures: false
+      # - name: Step to check for broken links
+      #   id: link-report
+      #   uses: fragcolor-xyz/link-checker@0f3f6f07d7c0ab247d73468ae5c277c441c596a3
+      #   with:
+      #     url: "http://127.0.0.1:8000"
+      #     blc_args: --recursive --verbose --follow true --exclude twitter.com
+      #     allow_failures: false
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
         run: |

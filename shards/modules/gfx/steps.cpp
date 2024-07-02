@@ -417,7 +417,7 @@ struct EffectPassShard {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
     if (!_composeWith.isNone()) {
-      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, [&]() {
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, shader::VariableRemapping(), [&]() {
         // Create a new object to force shader recompile
         wrapperFeature = std::make_shared<Feature>();
       });

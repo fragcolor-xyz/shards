@@ -1,10 +1,10 @@
 #include "gfx.hpp"
-#include "buffer_vars.hpp"
 #include "drawable_utils.hpp"
 #include "gfx.hpp"
 #include "drawable_utils.hpp"
 #include "shards_types.hpp"
 #include <shards/common_types.hpp>
+#include <shards/core/capturing_brancher.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/runtime.hpp>
 #include <shards/core/params.hpp>
@@ -12,9 +12,7 @@
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <shards/utility.hpp>
-#include <shards/core/brancher.hpp>
 #include <shards/iterator.hpp>
-#include "shader/translator.hpp"
 #include "shader/composition.hpp"
 #include "shards_utils.hpp"
 #include "buffer.hpp"
@@ -32,11 +30,8 @@
 #include <gfx/features/velocity.hpp>
 #include <shards/linalg_shim.hpp>
 #include <magic_enum.hpp>
-#include <algorithm>
 #include <array>
-#include <deque>
 #include <memory>
-#include <queue>
 #include <stdexcept>
 #include <string.h>
 #include <unordered_map>
@@ -192,6 +187,9 @@ struct FeatureShard {
   //   :<name> <default-value>        (type will be derived from value)
   PARAM_VAR(_blockParams, "BlockParams", "Custom bindings to expose to shaders", {CoreInfo::NoneType, BlockSpecType});
 
+  PARAM_VAR(_uniqueVariables, "UniqueVariables", "List of variables that should be made unique",
+            {CoreInfo::NoneType, CoreInfo::StringSeqType});
+
   PARAM_PARAMVAR(
       _requiredAttributes, "RequiredAttributes",
       "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
@@ -199,31 +197,61 @@ struct FeatureShard {
 
   PARAM_IMPL(PARAM_IMPL_FOR(_shaders), PARAM_IMPL_FOR(_composeWith), PARAM_IMPL_FOR(_state), PARAM_IMPL_FOR(_viewGenerators),
              PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_blockParams),
-             PARAM_IMPL_FOR(_requiredAttributes));
+             PARAM_IMPL_FOR(_requiredAttributes), PARAM_IMPL_FOR(_uniqueVariables));
 
 private:
-  Brancher _viewGeneratorBranch;
-  Brancher _drawableGeneratorBranch;
-
-  bool _branchesWarmedUp{};
-
   // Parameters derived from generators
   boost::container::flat_map<FastString, NumParamDecl> _derivedShaderParams;
   boost::container::flat_map<FastString, TextureParamDecl> _derivedTextureParams;
 
   FeaturePtr *_featurePtr{};
-  SHVar _externalContextVar{};
 
   gfx::shader::VariableMap _composedWith;
   SHVar _composedWithHash{};
 
+  static inline CapturingBrancher::IgnoredVariables IgnoredVariables{
+      GraphicsRendererContext::VariableName,
+      GraphicsContext::VariableName,
+  };
+
+  struct SharedData {
+    CapturingBrancher viewGeneratorBranch;
+    CapturingBrancher drawableGeneratorBranch;
+    SHVar externalContextVar{};
+    bool warmedUp{};
+    std::map<FastString, FastString> globalVariableRemapping;
+
+    ~SharedData() {}
+
+    FastString resolveGlobalVariableName(std::string_view inName) {
+      auto it = globalVariableRemapping.find(inName);
+      if (it == globalVariableRemapping.end()) {
+        return inName;
+      } else {
+        return it->second;
+      }
+    }
+    FastString resolveGlobalVariableName(const SHVar &inName) { return resolveGlobalVariableName(SHSTRVIEW(inName)); }
+
+    bool haveDrawableGenerators() const { return !drawableGeneratorBranch.brancher.wires.empty(); }
+    bool haveViewGenerators() const { return !viewGeneratorBranch.brancher.wires.empty(); }
+  };
+  std::shared_ptr<SharedData> _sharedData;
+  ExposedInfo _instanceDataCopy;
+  CapturingBrancher::VariableRefs _viewGeneratorRefs;
+  CapturingBrancher::VariableRefs _drawableGeneratorRefs;
+
+  CapturingBrancher::CloningContext _brancherCloningContext;
+  CapturingBrancher::CapturedVariables _drawableGeneratorVariables;
+  CapturingBrancher::CapturedVariables _viewGeneratorVariables;
+
 public:
   void cleanup(SHContext *context) {
-    PARAM_CLEANUP(context);
+    _sharedData.reset();
+    _drawableGeneratorRefs.clear();
+    _viewGeneratorRefs.clear();
 
-    _viewGeneratorBranch.cleanup(context);
-    _drawableGeneratorBranch.cleanup(context);
-    _branchesWarmedUp = false;
+    PARAM_CLEANUP(context);
 
     if (_featurePtr) {
       ShardsTypes::FeatureObjectVar.Release(_featurePtr);
@@ -237,6 +265,16 @@ public:
     assert(!_featurePtr);
     _featurePtr = ShardsTypes::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
+
+    if (!_sharedData) {
+      _sharedData = std::make_shared<SharedData>();
+      SHInstanceData data{
+          .shared = SHExposedTypesInfo(_instanceDataCopy),
+      };
+      composeGeneratorWires(data);
+    }
+    _sharedData->drawableGeneratorBranch.intializeCaptures(_drawableGeneratorRefs, context, IgnoredVariables);
+    _sharedData->viewGeneratorBranch.intializeCaptures(_viewGeneratorRefs, context, IgnoredVariables);
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire,
@@ -265,15 +303,13 @@ public:
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
-                std::string ks(SHSTRVIEW(k));
-                auto &param = outBasicParams[ks] = NumParamDecl(arg);
+                auto &param = outBasicParams[resolveGlobalVariableName(k)] = NumParamDecl(arg);
                 param.bindGroupId = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
-                std::string ks(SHSTRVIEW(k));
-                auto &param = outTextureParams[ks] = TextureParamDecl(arg);
+                auto &param = outTextureParams[resolveGlobalVariableName(k)] = TextureParamDecl(arg);
                 param.bindGroupId = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
@@ -306,41 +342,67 @@ public:
     }
   }
 
+  static OwnedVar deepClone(const SHVar &in) {
+    static thread_local Serialization ser;
+    static thread_local std::vector<uint8_t> buffer;
+    BufferRefWriter w{buffer};
+    ser.serialize(in, w);
+    shards::OwnedVar genCopy;
+    BufferRefReader r{buffer};
+    ser.deserialize(r, genCopy);
+    return genCopy;
+  }
+
   void composeGeneratorWires(const SHInstanceData &data) {
-    SHInstanceData generatorInstanceData{};
+    SHInstanceData generatorInstanceData = data;
 
-    ExposedInfo exposed(data.shared);
+    bool hasGeneratorWires = !_drawableGenerators->isNone() || !_viewGenerators->isNone();
+    if (hasGeneratorWires) {
+      _instanceDataCopy = ExposedInfo(data.shared);
 
-    // Expose custom render context
-    exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
+      ExposedInfo innerExposed;
 
-    generatorInstanceData.shared = SHExposedTypesInfo(exposed);
+      // Expose custom render context
+      innerExposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
 
-    generatorInstanceData.inputType = GeneratedDrawInputTableType;
-    _drawableGeneratorBranch.setRunnables(_drawableGenerators);
-    if (!_drawableGeneratorBranch.wires.empty())
-      _drawableGeneratorBranch.compose(generatorInstanceData);
+      generatorInstanceData.inputType = GeneratedDrawInputTableType;
+      _sharedData->drawableGeneratorBranch.brancher.setRunnables(deepClone(_drawableGenerators));
+      if (!_sharedData->drawableGeneratorBranch.wires().empty())
+        _sharedData->drawableGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
 
-    generatorInstanceData.inputType = GeneratedViewInputTableType;
-    _viewGeneratorBranch.setRunnables(_viewGenerators);
-    if (!_viewGeneratorBranch.wires.empty())
-      _viewGeneratorBranch.compose(generatorInstanceData);
-
-    // Collect derived shader parameters from wire outputs
-    _derivedShaderParams.clear();
-    _derivedTextureParams.clear();
-    for (auto &wire : _viewGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
-    }
-    for (auto &wire : _drawableGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
+      generatorInstanceData.inputType = GeneratedViewInputTableType;
+      _sharedData->viewGeneratorBranch.brancher.setRunnables(deepClone(_viewGenerators));
+      if (!_sharedData->viewGeneratorBranch.wires().empty())
+        _sharedData->viewGeneratorBranch.compose(generatorInstanceData, innerExposed, IgnoredVariables);
     }
   }
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
+    static std::atomic_uint64_t uniqueIdCounter;
+
+    _sharedData = std::make_shared<SharedData>();
+
+    if (!_uniqueVariables->isNone()) {
+      auto uniqueId = ++uniqueIdCounter;
+      for (auto &var : _uniqueVariables) {
+        _sharedData->globalVariableRemapping[SHSTRVIEW(var)] = fmt::format("{}_{:08x}", SHSTRVIEW(var), uniqueId);
+      }
+    }
+
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     composeGeneratorWires(data);
+
+    // Collect derived shader parameters from wire outputs
+    _derivedShaderParams.clear();
+    _derivedTextureParams.clear();
+    for (auto &wire : _sharedData->drawableGeneratorBranch.wires()) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
+    }
+    for (auto &wire : _sharedData->viewGeneratorBranch.wires()) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
+    }
+
     return ShardsTypes::Feature;
   }
 
@@ -485,7 +547,7 @@ public:
 
     SHVar entryPointVar;
     if (getFromTable(context, inputTable, Var("EntryPoint"), entryPointVar)) {
-      applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
+      applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith, _sharedData->globalVariableRemapping);
     } else {
       throw formatException(":Shader table requires an :EntryPoint");
     }
@@ -545,7 +607,7 @@ public:
     return fieldType;
   }
 
-  void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
+  void applyParam(SHContext *context, Feature &feature, FastString name, const SHVar &value) {
     SHVar tmp;
     std::optional<ShaderParamVariant> defaultValue;
     std::optional<shader::Type> explicitType;
@@ -617,6 +679,9 @@ public:
     }
   }
 
+  FastString resolveGlobalVariableName(std::string_view inName) { return _sharedData->resolveGlobalVariableName(inName); }
+  FastString resolveGlobalVariableName(const SHVar &inName) { return _sharedData->resolveGlobalVariableName(inName); }
+
   void applyParams(SHContext *context, Feature &feature, const SHVar &input) {
     checkType(input.valueType, SHType::Table, ":Params");
     const SHTable &inputTable = input.payload.tableValue;
@@ -624,12 +689,11 @@ public:
     ForEach(inputTable, [&](SHVar key, SHVar v) {
       if (key.valueType != SHType::String)
         throw formatException("Shader parameter key must be a string");
-      std::string keyStr(SHSTRVIEW(key));
-      applyParam(context, feature, keyStr, v);
+      applyParam(context, feature, resolveGlobalVariableName(key), v);
     });
   }
 
-  void applyBlockParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
+  void applyBlockParam(SHContext *context, Feature &feature, FastString name, const SHVar &value) {
     checkType(value.valueType, SHType::Table, ":BlockParam");
     TableVar &inputTable = (TableVar &)value;
 
@@ -665,25 +729,36 @@ public:
     for (auto &[key, v] : inputTable) {
       if (key.valueType != SHType::String)
         throw formatException("Shader parameter key must be a string");
-      std::string keyStr(SHSTRVIEW(key));
-      applyBlockParam(context, feature, keyStr, v);
+      applyBlockParam(context, feature, resolveGlobalVariableName(key), v);
     }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // Capture variable once during activate
-    // activate happens during rendering
-    if (!_branchesWarmedUp) {
-      _drawableGeneratorBranch.warmup(context);
-      _viewGeneratorBranch.warmup(context);
-      _branchesWarmedUp = true;
+    if (_sharedData->haveDrawableGenerators()) {
+      for (auto &vr : _drawableGeneratorRefs) {
+        vr.second.cloneInto(_drawableGeneratorVariables[vr.first], _brancherCloningContext);
+      }
+      _sharedData->drawableGeneratorBranch.applyCapturedVariablesSwap(_drawableGeneratorVariables);
+      if (!_sharedData->warmedUp)
+        _sharedData->drawableGeneratorBranch.warmup();
     }
 
+    if (_sharedData->haveViewGenerators()) {
+      for (auto &vr : _viewGeneratorRefs) {
+        vr.second.cloneInto(_viewGeneratorVariables[vr.first], _brancherCloningContext);
+      }
+      _sharedData->viewGeneratorBranch.applyCapturedVariablesSwap(_viewGeneratorVariables);
+      if (!_sharedData->warmedUp)
+        _sharedData->viewGeneratorBranch.warmup();
+    }
+    _sharedData->warmedUp = true;
+
     if (!_composeWith.isNone()) {
-      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, [&]() {
-        // Create a new object to force shader recompile
-        *_featurePtr = std::make_shared<Feature>();
-      });
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith,
+                                     _sharedData->globalVariableRemapping, [&]() {
+                                       // Create a new object to force shader recompile
+                                       *_featurePtr = std::make_shared<Feature>();
+                                     });
     }
 
     Feature &feature = *_featurePtr->get();
@@ -714,30 +789,30 @@ public:
 
     feature.generators.clear();
 
-    if (!_drawableGeneratorBranch.wires.empty()) {
-      feature.generators.emplace_back([this](FeatureDrawableGeneratorContext &ctx) {
-        auto applyResults = [](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
+    if (_sharedData->haveDrawableGenerators()) {
+      feature.generators.emplace_back([sharedData = _sharedData](FeatureDrawableGeneratorContext &ctx) {
+        auto applyResults = [&](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           size_t index{};
           ForEach(output.payload.seqValue, [&](SHVar &val) {
             if (index >= ctx.getSize())
               throw formatException("Value returned by drawable generator is out of range");
 
             auto &collector = ctx.getParameterCollector(index);
-            collectParameters(collector, shContext, val.payload.tableValue);
+            collectParameters(collector, shContext, val.payload.tableValue, sharedData);
             ++index;
           });
         };
-        runGenerators<true>(_drawableGeneratorBranch, _externalContextVar, ctx, applyResults);
+        runGenerators<true>(sharedData->drawableGeneratorBranch.brancher, sharedData->externalContextVar, ctx, applyResults);
       });
     }
 
-    if (!_viewGeneratorBranch.wires.empty()) {
-      feature.generators.emplace_back([this](FeatureViewGeneratorContext &ctx) {
-        auto applyResults = [](FeatureViewGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
+    if (_sharedData->haveViewGenerators()) {
+      feature.generators.emplace_back([sharedData = _sharedData](FeatureViewGeneratorContext &ctx) {
+        auto applyResults = [&](FeatureViewGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           auto &collector = ctx.getParameterCollector();
-          collectParameters(collector, shContext, output.payload.tableValue);
+          collectParameters(collector, shContext, output.payload.tableValue, sharedData);
         };
-        runGenerators<false>(_viewGeneratorBranch, _externalContextVar, ctx, applyResults);
+        runGenerators<false>(sharedData->viewGeneratorBranch.brancher, sharedData->externalContextVar, ctx, applyResults);
       });
     }
 
@@ -754,22 +829,23 @@ public:
     return ShardsTypes::FeatureObjectVar.Get(_featurePtr);
   }
 
-  static void collectParameters(IParameterCollector &collector, SHContext *context, const SHTable &table) {
+  static void collectParameters(IParameterCollector &collector, SHContext *context, const SHTable &table,
+                                const std::shared_ptr<SharedData> &sharedData) {
     ForEach(table, [&](const SHVar &k, const SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("Shader parameter key must be a string");
-      std::string keyStr(SHSTRVIEW(k));
+      auto key = sharedData->resolveGlobalVariableName(k);
       if (v.valueType == SHType::Object) {
         auto objType = shards::Type::Object(v.payload.objectVendorId, v.payload.objectTypeId);
         if (objType == ShardsTypes::Buffer) {
           auto &buffer = *(SHBuffer *)v.payload.objectValue;
-          collector.setBlock(keyStr, buffer.buffer);
+          collector.setBlock(key, buffer.buffer);
         } else {
-          collector.setTexture(keyStr, varToTexture(v));
+          collector.setTexture(key, varToTexture(v));
         }
       } else {
         auto shaderParam = paramVarToShaderParameter(context, v);
-        collector.setParam(keyStr, std::get<NumParameter>(shaderParam));
+        collector.setParam(key, std::get<NumParameter>(shaderParam));
       }
     });
   }

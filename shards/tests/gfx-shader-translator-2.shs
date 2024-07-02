@@ -1,24 +1,24 @@
 @define(timestep #(1.0 | Math.Divide(120.0)))
 
 @wire(palette {
-  {@f3(1.0) >= result} |
-  When(Is(0) {@f3(0.8 0.4 0.1) > result}) |
-  When(Is(3) {@f3(0.4 0.3 0.9) > result}) |
-  When(Is(1) {@f3(0.94 0.3 0.25) > result}) |
-  When(Is(2) {@f3(0.2 1.0 0.1) > result}) |
-  When(Is(4) {@f3(0.5 0.5 0.8) > result}) |
+  {@f3(1.0) >= result}
+  When(Is(0) {@f3(0.8 0.4 0.1) > result})
+  When(Is(3) {@f3(0.4 0.3 0.9) > result})
+  When(Is(1) {@f3(0.94 0.3 0.25) > result})
+  When(Is(2) {@f3(0.2 1.0 0.1) > result})
+  When(Is(4) {@f3(0.5 0.5 0.8) > result})
   When(Is(5) {@f3(0.5 0.3 0.1) > result})
   result
 } Pure: true)
 
 @wire(palette-f {
-  Math.Multiply(5.0) |
-  {Ref(in)} |
-  {Math.Floor >= prev} |
+  Math.Multiply(5.0)
+  {Ref(in)}
+  {Math.Floor >= prev}
   {Math.Ceil >= next}
   prev | ToInt | Do(palette) >= color-a
   next | ToInt | Do(palette) >= color-b
-  prev | Math.Subtract(prev) |
+  prev | Math.Subtract(prev)
   in | Math.Subtract(prev) | Math.Lerp(color-a color-b)
 } Pure: true)
 
@@ -27,11 +27,11 @@
 } Pure: true)
 
 @wire(plasma {
-  Math.Add(@f2(0.3 -0.5)) | Math.Multiply(4.0) |
-  {Take(0) >= u} | {Take(1) >= v} |
+  Math.Add(@f2(0.3 -0.5)) | Math.Multiply(4.0)
+  {Take(0) >= u} {Take(1) >= v}
   Shader.ReadBuffer("time") | Math.Multiply(0.8) >= time
   v | Math.Add(time) > v
-
+  
   time | Math.Add(u) >= t0
   time | Math.Add(v) >= t1
   time | Math.Add(v) | Math.Add(u) >= t2
@@ -46,10 +46,10 @@
   Shader.ReadInput("texCoord0") >= uv
   Shader.ReadBuffer("time") >= time
   Shader.ReadGlobal("color") >= base-color
-
+  
   uv | Do(plasma) >= vcolor
   vcolor | Do(palette-f) >= sheen-color
-
+  
   sheen-color | ToFloat4 | Math.Add(@f4(0.0 0.0 0.0 1.0)) | Shader.WriteGlobal("color")
 })
 
@@ -61,42 +61,40 @@
 })
 
 @wire(gfx {
+  Animation.Timer = time
+  
   Once({
-    0.0 >= time
-    time | Broadcast("time")
-
     {Position: @f3(0.0 1.0 0.0) Target: @f3(0.0)} | Math.LookAt >= view-transform
     GFX.View(view-transform) >= view
-
+    
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= cube
-
+    
     Do(update-cube-transform)
-
-    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
-    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
-    GFX.Feature(Shaders: [{Stage: ProgrammableGraphicsStage::Fragment
-                           After: ["readColor"]
-                           Before: ["writeColor"]
-                           EntryPoint: {@shader-main()}}]
-                ViewGenerators: {
-                  Listen("time" @type(Type::Float)) >= time
-                  {time: time}
-                }) >> features
-
-    GFX.DrawQueue >= queue
-    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
   })
-
-  time | Math.Add(@timestep) >= time
-  time | Broadcast("time")
-  Do(update-cube-transform) |
+  
+  GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+  GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+  GFX.Feature(Shaders:
+    [{Stage: ProgrammableGraphicsStage::Fragment
+      After: ["readColor"]
+      Before: ["writeColor"]
+      EntryPoint: {@shader-main()}}]
+    ViewGenerators: {
+      {time: time}
+    }
+  ) >> features
+  
+  GFX.DrawQueue >= queue
+  GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+  
+  Do(update-cube-transform)
   GFX.Drawable(Mesh: cube) | GFX.Draw(queue)
   GFX.Render(Steps: render-steps View: view)
 } Looped: true)
 
 @wire(test-wire {
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720
-                 Contents: {Step(gfx)})
+  Contents: {Step(gfx)})
 } Looped: true LStack: 4194304)
 
 @mesh(root)

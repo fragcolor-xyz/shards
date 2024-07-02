@@ -125,8 +125,6 @@ public:
 
     // Copy shared
     _shared = ExposedInfo(_mergedRequirements);
-    mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
-
     mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;
   }
 

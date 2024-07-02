@@ -11,12 +11,15 @@
 
 namespace gfx::shader {
 using VariableMap = std::unordered_map<std::string, shards::OwnedVar>;
+using VariableRemapping = std::map<FastString, FastString>;
 struct ShaderCompositionContext {
   IGeneratorContext &generatorContext;
   const VariableMap &composeWith;
+  const VariableRemapping &variableRemapping;
 
-  ShaderCompositionContext(IGeneratorContext &generatorContext, const VariableMap &composeWith)
-      : generatorContext(generatorContext), composeWith(composeWith) {}
+  ShaderCompositionContext(IGeneratorContext &generatorContext, const VariableMap &composeWith,
+                           const VariableRemapping &variableRemapping)
+      : generatorContext(generatorContext), composeWith(composeWith), variableRemapping(variableRemapping) {}
 
   std::optional<SHVar> getComposeTimeConstant(const std::string &key) {
     auto it = composeWith.find(key);
@@ -40,15 +43,23 @@ struct ShaderCompositionContext {
     }
   }
 
+  FastString resolveGlobalVariableName(std::string_view name) {
+    auto it = variableRemapping.find(name);
+    if (it != variableRemapping.end())
+      return it->second;
+    return name;
+  }
+  FastString resolveGlobalVariableName(const SHVar &var) { return resolveGlobalVariableName(SHSTRVIEW(var)); }
+
 private:
   static void setContext(ShaderCompositionContext *context);
 };
 
 void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
-                           const VariableMap &composeWithVariables = VariableMap());
+                           const VariableMap &composeWithVariables = VariableMap(), const VariableRemapping& globalVariableRemapping = VariableRemapping());
 
 template <typename T>
-void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash, gfx::shader::VariableMap &composedWith,
+void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash, gfx::shader::VariableMap &composedWith, const VariableRemapping& globalVariableRemapping,
                             T apply) {
   checkType(input.valueType, SHType::Table, "ComposeWith table");
 

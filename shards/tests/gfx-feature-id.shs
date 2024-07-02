@@ -1,0 +1,133 @@
+@define(timestep #(1.0 | Math.Divide(120.0)))
+
+@template(spin-transform [t location] {
+  t
+  {Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX}
+  {Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation >= rotY}
+  {Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation >= rotZ}
+  location | Math.Translation | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
+})
+
+@define(shader-setup {
+  Name: "setup"
+  After: []
+  Before: []
+  Stage: ProgrammableGraphicsStage::Fragment
+  EntryPoint: {
+    @f3(0.0) | Shader.WriteGlobal("accum")
+  }
+})
+@define(shader-finish {
+  Name: "finish"
+  After: ["setup"]
+  Before: []
+  Stage: ProgrammableGraphicsStage::Fragment
+  EntryPoint: {
+    ; Texture coordinates are named texCoord0/1/2/etc. by convention
+    Shader.ReadGlobal("accum")
+    ToFloat4 | Add(@f4(0.0 0.0 0.0 1.0)) | Shader.WriteOutput("color")
+  }
+})
+
+@wire(gfx {
+  Once({
+    ; translate to the new syntax
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
+    @f3(0 0 0) | Math.Translation >= transform-0
+    
+    ; The first pass that just renders the spinning cube
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    GFX.DrawQueue >= queue
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps-base
+    
+    ; The effect pass that modifies the rendered cube image
+    ; It also uses the depth buffer from the rendered cube
+    GFX.Feature(Shaders: [
+      @shader-setup
+      @shader-finish]) >> effect-features-base
+    
+    GFX.Feature(Shaders: [
+      {
+        Before: ["finish"]
+        After: ["setup"]
+        Stage: ProgrammableGraphicsStage::Fragment
+        EntryPoint: {
+          Shader.ReadGlobal("accum") | Add(@f3(0.3)) | Shader.WriteGlobal("accum")
+        }
+      }]) >> effect-features-base
+    
+    [0] >= many-shaders
+  })
+  
+  effect-features-base >= effect-features
+  
+  Once({
+    Count(many-shaders) >> many-shaders
+  } Every: 0.25)
+  
+  many-shaders | DoMany({
+    = id
+    
+    Once({
+      RandomInt(3) = idx
+      [0.0 0.0 0.0] >= vseq
+      [idx (RandomFloat(0.2))] | Assoc(vseq)
+      vseq | ToFloat3 = v3
+      
+      RandomFloat(0.2) | Sub(0.1) = u
+      RandomFloat(0.2) | Sub(0.1) = v
+    })
+    
+    GFX.Feature(
+      Shaders: [
+        {
+          Before: ["finish"]
+          After: ["setup"]
+          Stage: ProgrammableGraphicsStage::Fragment
+          EntryPoint: {
+            Shader.ReadInput("texCoord0") >= uv
+            Shader.ReadBuffer("offset") | Add(uv)
+            Shader.SampleTextureCoord("color") | ToFloat3 = base
+            
+            Shader.ReadBuffer("v3") = v3
+            {Take(0) = r}
+            
+            base | Mul(v3) = a
+            Shader.ReadGlobal("accum") | Add(a) | Shader.WriteGlobal("accum")
+          }
+        }]
+      UniqueVariables: ["v3" "offset"]
+      ViewGenerators: {
+        {
+          "v3": v3
+          "offset": (@f2(u v))
+        }
+      }
+    ) >> effect-features
+  })
+  
+  render-steps-base >= render-steps
+  GFX.EffectPass(
+    Inputs: ["color"]
+    Features: effect-features
+  ) >> render-steps
+  
+  {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+  GFX.View(View: view-transform) >= view
+  
+  Animation.Timer = time
+  @spin-transform(time @f3(0.0 0 0)) > transform-0
+  
+  transform-0 | GFX.Drawable(Mesh: mesh Params: {BaseColor: @f4(1 1 1 1)}) | GFX.Draw(Queue: queue)
+  GFX.Render(Steps: render-steps View: view)
+} Looped: true)
+
+@wire(test-wire {
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {Step(gfx)})
+} Looped: true LStack: 4194304)
+
+@mesh(root)
+@schedule(root test-wire)
+
+@run(root FPS: 120 Iterations: 200) | Assert.Is(true)

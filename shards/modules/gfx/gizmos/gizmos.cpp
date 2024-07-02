@@ -270,14 +270,21 @@ struct Arrow : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Shows an arrow"); }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_bodyColor, "BodyColor", "The color of the arrow", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_capColor, "CapColor", "The color of the arrow", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_bodyColor), PARAM_IMPL_FOR(_capColor));
+
+  Arrow() {
+    _bodyColor = toVar(float4(1.0f, 1.0f, 1.0f, 1.0f));
+    _capColor = toVar(float4(1.0f, 1.0f, 1.0f, 1.0f));
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     float4x4 mat = toFloat4x4(input);
     float3 pos = gfx::extractTranslation(mat);
     float3x3 rot = gfx::extractRotationMatrix(mat);
-    float4 bodyColor(1.0f, 1.0f, 1.0f, 1.0f);
-    float4 capColor(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 bodyColor = toFloat4(_bodyColor.get());
+    float4 capColor = toFloat4(_capColor.get());
     _gizmoContext->gfxGizmoContext.renderer.addHandle(pos, rot[2], 0.2f, 1.0f, bodyColor, gfx::GizmoRenderer::CapType::Arrow,
                                                       capColor);
     return SHVar{};
