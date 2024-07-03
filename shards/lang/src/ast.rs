@@ -686,7 +686,7 @@ impl<'de> Deserialize<'de> for Block {
         V: MapAccess<'de>,
       {
         let mut content = None;
-        let mut line_info = None;
+        let line_info = None;
 
         while let Some(key) = map.next_key()? {
           match key {
