@@ -161,7 +161,7 @@ impl Shard for ToImage {
 
     let (pad_x, pad_y) = {
       let (x, y): (i32, i32) = self.padding.get().try_into().unwrap_or_default();
-      (x as u32, y as u32)
+      (x, y)
     };
 
     let pixmap_size = if w == 0 && h == 0 {
@@ -177,12 +177,12 @@ impl Shard for ToImage {
 
     let padx_2 = pad_x * 2;
     let pady_2 = pad_y * 2;
-    let padded_size = if padx_2 >= pixmap_size.width() || pady_2 >= pixmap_size.height() {
+    let padded_size = if padx_2 >= pixmap_size.width() as i32 || pady_2 >= pixmap_size.height() as i32 {
       IntSize::from_wh(2, 2).unwrap() // Fallback
     } else {
       IntSize::from_wh(
-        pixmap_size.width() - pad_x * 2,
-        pixmap_size.height() - pad_y * 2,
+        (pixmap_size.width() as i32 - pad_x * 2) as u32,
+        (pixmap_size.height() as i32 - pad_y * 2) as u32,
       )
       .unwrap_or(IntSize::from_wh(2, 2).unwrap()) // Add a fallback to make small/negative sizes not fail
     };
