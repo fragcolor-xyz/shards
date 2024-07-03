@@ -27,3 +27,4 @@ shards-lang = { opt-level = 3 }
 syntect = { opt-level = 3 }
 flate2 = { opt-level = 3 }
 bincode = { opt-level = 3 }
+flexbuffers = { opt-level = 3 }

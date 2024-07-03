@@ -259,7 +259,11 @@ impl AstVisitor for PrintVisitor {
       Value::Int2(arr) => self.write(&format!("@i2({} {})", arr[0], arr[1])),
       Value::Int3(arr) => self.write(&format!("@i3({} {} {})", arr[0], arr[1], arr[2])),
       Value::Int4(arr) => self.write(&format!("@i4({} {} {} {})", arr[0], arr[1], arr[2], arr[3])),
-      Value::Float2(arr) => self.write(&format!("@f2({} {})", format_f64(arr[0]), format_f64(arr[1]))),
+      Value::Float2(arr) => self.write(&format!(
+        "@f2({} {})",
+        format_f64(arr[0]),
+        format_f64(arr[1])
+      )),
       Value::Float3(arr) => self.write(&format!(
         "@f3({} {} {})",
         format_f32(arr[0]),
@@ -437,7 +441,7 @@ impl Shard for ShardsPrintShard {
         self.output = Var::ephemeral_string(formatted.as_str()).into();
       }
       (_, Ok(bytes), _) => {
-        let program = bincode::deserialize::<Program>(bytes).map_err(|e| {
+        let program = flexbuffers::from_slice::<Program>(bytes).map_err(|e| {
           shlog_error!("Failed to deserialize shards code: {}", e);
           "Failed to deserialize Shards code"
         })?;

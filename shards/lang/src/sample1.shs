@@ -1,4 +1,5 @@
-
+"Hello World!" | Log
+@x-defined | Log
 
 Repeat({
   = input-var

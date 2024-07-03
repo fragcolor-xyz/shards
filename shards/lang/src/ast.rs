@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
 
+use core::fmt;
 use std::any::Any;
 use std::fmt::Debug;
 
@@ -137,7 +138,7 @@ macro_rules! impl_custom_state {
   };
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
   pub line: u32,
   pub column: u32,
@@ -214,15 +215,23 @@ impl Into<(u32, u32)> for LineInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename = "Num")]
 pub enum Number {
+  #[serde(rename = "int")]
   Integer(i64),
+  #[serde(rename = "float")]
   Float(f64),
+  #[serde(rename = "hex")]
   Hexadecimal(RcStrWrapper),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
+#[serde(rename = "Iden")]
 pub struct Identifier {
   pub name: RcStrWrapper,
+  #[serde(default)]
+  #[serde(rename = "ns")]
+  #[serde(skip_serializing_if = "Vec::is_empty")]
   pub namespaces: Vec<RcStrWrapper>,
 }
 
@@ -245,29 +254,53 @@ impl Identifier {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Value {
+  #[serde(rename = "none")]
   None,
+  #[serde(rename = "id")]
   Identifier(Identifier),
+  #[serde(rename = "bool")]
   Boolean(bool),
+  #[serde(rename = "enum")]
   Enum(RcStrWrapper, RcStrWrapper),
+  #[serde(rename = "num")]
   Number(Number),
+  #[serde(rename = "str")]
   String(RcStrWrapper),
+  #[serde(rename = "bytes")]
   Bytes(RcBytesWrapper),
+  #[serde(rename = "i2")]
   Int2([i64; 2]),
+  #[serde(rename = "i3")]
   Int3([i32; 3]),
+  #[serde(rename = "i4")]
   Int4([i32; 4]),
+  #[serde(rename = "i8")]
   Int8([i16; 8]),
+  #[serde(rename = "i16")]
   Int16([i8; 16]),
+  #[serde(rename = "f2")]
   Float2([f64; 2]),
+  #[serde(rename = "f3")]
   Float3([f32; 3]),
+  #[serde(rename = "f4")]
   Float4([f32; 4]),
+  #[serde(rename = "seq")]
   Seq(Vec<Value>),
+  #[serde(rename = "table")]
   Table(Vec<(Value, Value)>),
+  #[serde(rename = "sh")]
   Shard(Function),
+  #[serde(rename = "shs")]
   Shards(Sequence),
+  #[serde(rename = "eExpr")]
   EvalExpr(Sequence),
+  #[serde(rename = "expr")]
   Expr(Sequence),
+  #[serde(rename = "tt")]
   TakeTable(Identifier, Vec<RcStrWrapper>),
+  #[serde(rename = "ts")]
   TakeSeq(Identifier, Vec<u32>),
+  #[serde(rename = "func")]
   Func(Function),
 }
 
@@ -308,7 +341,9 @@ impl Value {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Param {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<RcStrWrapper>,
+  #[serde(flatten)]
   pub value: Value,
 
   /// Custom state for UI or other runtime-specific data.
@@ -322,7 +357,9 @@ impl_custom_state!(Param);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
+  #[serde(flatten)]
   pub name: Identifier,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub params: Option<Vec<Param>>,
 
   /// Custom state for UI or other runtime-specific data.
@@ -336,19 +373,29 @@ impl_custom_state!(Function);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum BlockContent {
+  #[serde(rename = "none")]
   Empty,
-  Shard(Function),                          // Rule: Shard
-  Shards(Sequence),                         // Rule: Shards
-  Const(Value),                             // Rules: ConstValue, Vector
+  #[serde(rename = "sh")]
+  Shard(Function), // Rule: Shard
+  #[serde(rename = "shs")]
+  Shards(Sequence), // Rule: Shards
+  #[serde(rename = "const")]
+  Const(Value), // Rules: ConstValue, Vector
+  #[serde(rename = "tt")]
   TakeTable(Identifier, Vec<RcStrWrapper>), // Rule: TakeTable
-  TakeSeq(Identifier, Vec<u32>),            // Rule: TakeSeq
-  EvalExpr(Sequence),                       // Rule: EvalExpr
-  Expr(Sequence),                           // Rule: Expr
-  Func(Function),                           // Rule: BuiltIn
+  #[serde(rename = "ts")]
+  TakeSeq(Identifier, Vec<u32>), // Rule: TakeSeq
+  #[serde(rename = "eExpr")]
+  EvalExpr(Sequence), // Rule: EvalExpr
+  #[serde(rename = "expr")]
+  Expr(Sequence), // Rule: Expr
+  #[serde(rename = "func")]
+  Func(Function), // Rule: BuiltIn
+  #[serde(rename = "prog")]
   Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
@@ -356,26 +403,29 @@ pub struct Block {
   /// Custom state for UI or other runtime-specific data.
   /// Stored directly in the AST node for efficient access and simpler management.
   /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  #[serde(skip)]
   pub custom_state: Option<Box<dyn CustomAny>>,
 }
 
 impl_custom_state!(Block);
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Pipeline {
   pub blocks: Vec<Block>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Assignment {
+  #[serde(rename = "ref")]
   AssignRef(Pipeline, Identifier),
+  #[serde(rename = "set")]
   AssignSet(Pipeline, Identifier),
+  #[serde(rename = "upd")]
   AssignUpd(Pipeline, Identifier),
+  #[serde(rename = "push")]
   AssignPush(Pipeline, Identifier),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
   Assignment(Assignment),
   Pipeline(Pipeline),
@@ -386,20 +436,19 @@ pub struct Metadata {
   pub name: RcStrWrapper,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
 
   /// Custom state for UI or other runtime-specific data.
   /// Stored directly in the AST node for efficient access and simpler management.
   /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  #[serde(skip)]
   pub custom_state: Option<Box<dyn CustomAny>>,
 }
 
 impl_custom_state!(Sequence);
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
@@ -407,4 +456,297 @@ pub struct Program {
 
 pub trait RewriteFunction {
   fn rewrite_function(&self, function: &Function) -> Option<Function>;
+}
+
+impl Serialize for Sequence {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    self.statements.serialize(serializer)
+  }
+}
+
+impl<'de> Deserialize<'de> for Sequence {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let statements = Vec::deserialize(deserializer)?;
+    Ok(Sequence {
+      statements,
+      custom_state: None,
+    })
+  }
+}
+
+impl Serialize for Program {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    use serde::ser::SerializeStruct;
+    let mut state = serializer.serialize_struct("Program", 2)?;
+    state.serialize_field("metadata", &self.metadata)?;
+    state.serialize_field("sequence", &self.sequence.statements)?;
+    state.end()
+  }
+}
+
+impl<'de> Deserialize<'de> for Program {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    #[derive(Deserialize)]
+    struct ProgramHelper {
+      metadata: Metadata,
+      sequence: Vec<Statement>,
+    }
+
+    let helper = ProgramHelper::deserialize(deserializer)?;
+    Ok(Program {
+      metadata: helper.metadata,
+      sequence: Sequence {
+        statements: helper.sequence,
+        custom_state: None,
+      },
+    })
+  }
+}
+
+// Custom serialization for Pipeline
+impl Serialize for Pipeline {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    // Directly serialize the blocks vector
+    self.blocks.serialize(serializer)
+  }
+}
+
+// Custom deserialization for Pipeline
+impl<'de> Deserialize<'de> for Pipeline {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    // Directly deserialize into a Vec<Block>
+    let blocks = Vec::<Block>::deserialize(deserializer)?;
+    Ok(Pipeline { blocks })
+  }
+}
+
+// Custom serialization for Statement
+impl Serialize for Statement {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    match self {
+      Statement::Assignment(assignment) => assignment.serialize(serializer),
+      Statement::Pipeline(pipeline) => pipeline.serialize(serializer),
+    }
+  }
+}
+
+use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
+
+impl<'de> Deserialize<'de> for Statement {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct StatementVisitor;
+
+    impl<'de> Visitor<'de> for StatementVisitor {
+      type Value = Statement;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a map (for Assignment) or a sequence (for Pipeline)")
+      }
+
+      fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
+      where
+        V: SeqAccess<'de>,
+      {
+        let pipeline = Pipeline::deserialize(de::value::SeqAccessDeserializer::new(seq))?;
+        Ok(Statement::Pipeline(pipeline))
+      }
+
+      fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+      where
+        M: MapAccess<'de>,
+      {
+        let assignment = Assignment::deserialize(de::value::MapAccessDeserializer::new(map))?;
+        Ok(Statement::Assignment(assignment))
+      }
+    }
+
+    deserializer.deserialize_any(StatementVisitor)
+  }
+}
+
+impl Serialize for Block {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    use serde::ser::SerializeStruct;
+    let mut state = serializer.serialize_struct("Block", 2)?;
+
+    // Flatten the content
+    match &self.content {
+      BlockContent::Empty => state.serialize_field("none", &()),
+      BlockContent::Shard(func) => state.serialize_field("sh", func),
+      BlockContent::Shards(seq) => state.serialize_field("shs", seq),
+      BlockContent::Const(val) => state.serialize_field("const", val),
+      BlockContent::TakeTable(id, vec) => state.serialize_field("tt", &(id, vec)),
+      BlockContent::TakeSeq(id, vec) => state.serialize_field("ts", &(id, vec)),
+      BlockContent::EvalExpr(seq) => state.serialize_field("eExpr", seq),
+      BlockContent::Expr(seq) => state.serialize_field("expr", seq),
+      BlockContent::Func(func) => state.serialize_field("func", func),
+      BlockContent::Program(prog) => state.serialize_field("prog", prog),
+    }?;
+
+    state.end()
+  }
+}
+
+impl<'de> Deserialize<'de> for Block {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    enum Field {
+      None,
+      Sh,
+      Shs,
+      Const,
+      Tt,
+      Ts,
+      EExpr,
+      Expr,
+      Func,
+      Prog,
+      LineInfo,
+    }
+
+    impl<'de> Deserialize<'de> for Field {
+      fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+      where
+        D: Deserializer<'de>,
+      {
+        struct FieldVisitor;
+
+        impl<'de> Visitor<'de> for FieldVisitor {
+          type Value = Field;
+
+          fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("`none`, `sh`, `shs`, `const`, `tt`, `ts`, `eExpr`, `expr`, `func`, `prog`, or `line_info`")
+          }
+
+          fn visit_str<E>(self, value: &str) -> Result<Field, E>
+          where
+            E: de::Error,
+          {
+            match value {
+              "none" => Ok(Field::None),
+              "sh" => Ok(Field::Sh),
+              "shs" => Ok(Field::Shs),
+              "const" => Ok(Field::Const),
+              "tt" => Ok(Field::Tt),
+              "ts" => Ok(Field::Ts),
+              "eExpr" => Ok(Field::EExpr),
+              "expr" => Ok(Field::Expr),
+              "func" => Ok(Field::Func),
+              "prog" => Ok(Field::Prog),
+              "line_info" => Ok(Field::LineInfo),
+              _ => Err(de::Error::unknown_field(value, FIELDS)),
+            }
+          }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)
+      }
+    }
+
+    struct BlockVisitor;
+
+    impl<'de> Visitor<'de> for BlockVisitor {
+      type Value = Block;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct Block")
+      }
+
+      fn visit_map<V>(self, mut map: V) -> Result<Block, V::Error>
+      where
+        V: MapAccess<'de>,
+      {
+        let mut content = None;
+        let mut line_info = None;
+
+        while let Some(key) = map.next_key()? {
+          match key {
+            Field::None => {
+              map.next_value::<()>()?;
+              content = Some(BlockContent::Empty);
+            }
+            Field::Sh => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Shard(value));
+            }
+            Field::Shs => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Shards(value));
+            }
+            Field::Const => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Const(value));
+            }
+            Field::Tt => {
+              let (id, vec): (Identifier, Vec<RcStrWrapper>) = map.next_value()?;
+              content = Some(BlockContent::TakeTable(id, vec));
+            }
+            Field::Ts => {
+              let (id, vec): (Identifier, Vec<u32>) = map.next_value()?;
+              content = Some(BlockContent::TakeSeq(id, vec));
+            }
+            Field::EExpr => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::EvalExpr(value));
+            }
+            Field::Expr => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Expr(value));
+            }
+            Field::Func => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Func(value));
+            }
+            Field::Prog => {
+              let value = map.next_value()?;
+              content = Some(BlockContent::Program(value));
+            }
+            Field::LineInfo => {}
+          }
+        }
+
+        let content = content.ok_or_else(|| de::Error::missing_field("content"))?;
+
+        Ok(Block {
+          content,
+          line_info,
+          custom_state: None,
+        })
+      }
+    }
+
+    const FIELDS: &[&str] = &[
+      "none", "sh", "shs", "const", "tt", "ts", "eExpr", "expr", "func", "prog",
+    ];
+    deserializer.deserialize_struct("Block", FIELDS, BlockVisitor)
+  }
 }

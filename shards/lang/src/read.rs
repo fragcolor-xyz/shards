@@ -1010,7 +1010,7 @@ impl Shard for ReadShard {
       bp_var.try_into()?
     };
 
-    let seq = process_program(
+    let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
       &mut ReadEnv::new("", "", base_path),
     )
@@ -1021,8 +1021,8 @@ impl Shard for ReadShard {
 
     match output_type {
       Ok(AstType::Bytes) => {
-        // Serialize using bincode
-        let encoded_bin: Vec<u8> = bincode::serialize(&seq).map_err(|e| {
+        // Serialize using flexbuffers
+        let encoded_bin: Vec<u8> = flexbuffers::to_vec(&prog).map_err(|e| {
           shlog_error!("Failed to serialize shards code: {}", e);
           "Failed to serialize Shards code"
         })?;
@@ -1031,7 +1031,7 @@ impl Shard for ReadShard {
       }
       Ok(AstType::Json) => {
         // Serialize using json
-        let encoded_json = serde_json::to_string(&seq).map_err(|e| {
+        let encoded_json = serde_json::to_string(&prog).map_err(|e| {
           shlog_error!("Failed to serialize shards code: {}", e);
           "Failed to serialize Shards code"
         })?;
@@ -1040,7 +1040,7 @@ impl Shard for ReadShard {
         self.output = s.into();
       }
       Ok(AstType::Object) => {
-        self.rc_ast = Some(Rc::new(seq));
+        self.rc_ast = Some(Rc::new(prog));
         self.output = Var::new_object(self.rc_ast.as_ref().unwrap(), &AST_TYPE).into();
       }
       Err(_) => {
@@ -1064,11 +1064,11 @@ fn test_parsing1() {
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
-  // Serialize using bincode
-  let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
+  // Serialize using flexbuffers
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
 
-  // Deserialize using bincode
-  let decoded_bin: Sequence = bincode::deserialize(&encoded_bin[..]).unwrap();
+  // Deserialize using flexbuffers
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
 
   // Serialize using json
   let encoded_json = serde_json::to_string(&seq).unwrap();
@@ -1080,7 +1080,7 @@ fn test_parsing1() {
   // Deserialize using json
   let decoded_json: Sequence = serde_json::from_str(&encoded_json).unwrap();
 
-  let encoded_bin2: Vec<u8> = bincode::serialize(&decoded_json).unwrap();
+  let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
 }
 
@@ -1092,11 +1092,11 @@ fn test_parsing2() {
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
-  // Serialize using bincode
-  let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
+  // Serialize using flexbuffers
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
 
-  // Deserialize using bincode
-  let decoded_bin: Sequence = bincode::deserialize(&encoded_bin[..]).unwrap();
+  // Deserialize using flexbuffers
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
 
   // Serialize using json
   let encoded_json = serde_json::to_string(&seq).unwrap();
@@ -1108,6 +1108,6 @@ fn test_parsing2() {
   // Deserialize using json
   let decoded_json: Sequence = serde_json::from_str(&encoded_json).unwrap();
 
-  let encoded_bin2: Vec<u8> = bincode::serialize(&decoded_json).unwrap();
+  let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
 }

@@ -230,7 +230,7 @@ fn load(
   shlog!("Parsing binary file: {}", file);
 
   let ast = {
-    // deserialize from bincode, skipping the first 8 bytes
+    // deserialize from flexbuffers, skipping the first 8 bytes
     let mut file_content = std::fs::read(file).map_err(|_| "File not found")?;
     let magic: i32 = i32::from_be_bytes([
       file_content[0],
@@ -247,7 +247,7 @@ fn load(
     ]);
     assert_eq!(version, SHARDS_CURRENT_ABI); // todo backwards compatibility
     file_content.drain(0..8);
-    bincode::deserialize(&file_content).unwrap()
+    flexbuffers::from_slice(file_content.as_slice()).unwrap()
   };
 
   Ok(execute_seq(&args, ast, cancellation_token)?)
@@ -359,15 +359,15 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
     let mut writer = std::io::BufWriter::new(&mut file);
 
     if !as_json {
-      // Serialize using bincode
-      let encoded_bin: Vec<u8> = bincode::serialize(&ast).unwrap();
+      // Serialize using flexbuffers
+      let encoded_bin = flexbuffers::to_vec(&ast).unwrap();
       writer
         .write(fourCharacterCode(*b"SHRD").to_be_bytes().as_ref())
         .unwrap();
       writer
         .write(SHARDS_CURRENT_ABI.to_le_bytes().as_ref())
         .unwrap();
-      writer.write_all(&encoded_bin).unwrap();
+      writer.write_all(encoded_bin.as_slice()).unwrap();
     } else {
       let encoded_json = serde_json::to_string_pretty(&ast).unwrap();
       writer.write_all(encoded_json.as_bytes()).unwrap();

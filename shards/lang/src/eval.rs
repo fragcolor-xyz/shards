@@ -4045,16 +4045,21 @@ impl LegacyShard for EvalShard {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let maybe_bytes: Result<&[u8], _> = input.try_into();
-    let seq = if let Ok(bytes) = maybe_bytes {
+    let prog = if let Ok(bytes) = maybe_bytes {
       // deserialize sequence from bytes
-      let seq: Sequence =
-        bincode::deserialize(&bytes).map_err(|_| "failed to deserialize Shards")?;
-      seq
+      let prog: Program = flexbuffers::from_slice(bytes).map_err(|e| {
+        shlog_error!("failed to deserialize Shards: {:?}", e);
+        "failed to deserialize Shards"
+      })?;
+      prog
     } else {
       let s: &str = input.try_into()?;
       // deserialize sequence from string
-      let seq: Sequence = serde_json::from_str(s).map_err(|_| "failed to deserialize Shards")?;
-      seq
+      let prog: Program = serde_json::from_str(s).map_err(|e| {
+        shlog_error!("failed to deserialize Shards: {:?}", e);
+        "failed to deserialize Shards"
+      })?;
+      prog
     };
 
     let namespace = self.namespace.get();
@@ -4085,11 +4090,15 @@ impl LegacyShard for EvalShard {
       );
     }
 
-    let mut env =
-      eval_sequence(&seq, Some(&mut env), Arc::new(AtomicBool::new(false))).map_err(|e| {
-        shlog_error!("failed to evaluate shards: {:?}", e);
-        "failed to evaluate shards"
-      })?;
+    let mut env = eval_sequence(
+      &prog.sequence,
+      Some(&mut env),
+      Arc::new(AtomicBool::new(false)),
+    )
+    .map_err(|e| {
+      shlog_error!("failed to evaluate shards: {:?}", e);
+      "failed to evaluate shards"
+    })?;
 
     let name = self.name.get();
     let wire = if name.is_string() {
@@ -4118,8 +4127,7 @@ macro_rules! include_shards {
     let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
     let mut env = read::ReadEnv::new("", ".", ".");
     let seq =
-      read::process_program(successful_parse.into_iter().next().unwrap(), &mut env)
-        .unwrap();
+      read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
     let seq = seq.sequence;
     let defines = std::collections::HashMap::new();
     let token = new_cancellation_token();
