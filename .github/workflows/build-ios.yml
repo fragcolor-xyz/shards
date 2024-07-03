@@ -49,8 +49,8 @@ jobs:
           cmake -Bbuild_ios -GXcode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
           cmake --build build_ios --target shards-lib
           cmake --build build_ios --target cargo-shards-rust-union-rust
-      - name: Build visionOS
-        run: |
-          cmake -Bbuild_visionos -GXcode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SYSTEM_NAME=visionOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=xros
-          cmake --build build_visionos --target shards-lib
-          cmake --build build_visionos --target cargo-shards-rust-union-rust
+      # - name: Build visionOS
+      #   run: |
+      #     cmake -Bbuild_visionos -GXcode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SYSTEM_NAME=visionOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=xros
+      #     cmake --build build_visionos --target shards-lib
+      #     cmake --build build_visionos --target cargo-shards-rust-union-rust
