@@ -138,7 +138,7 @@ macro_rules! impl_custom_state {
   };
 }
 
-#[derive(Debug, Copy, Clone, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
   pub line: u32,
   pub column: u32,
@@ -610,6 +610,10 @@ impl Serialize for Block {
       BlockContent::Program(prog) => state.serialize_field("prog", prog),
     }?;
 
+    if let Some(line_info) = &self.line_info {
+      state.serialize_field("line_info", line_info)?;
+    }
+
     state.end()
   }
 }
@@ -686,7 +690,7 @@ impl<'de> Deserialize<'de> for Block {
         V: MapAccess<'de>,
       {
         let mut content = None;
-        let line_info = None;
+        let mut line_info = None;
 
         while let Some(key) = map.next_key()? {
           match key {
@@ -730,7 +734,10 @@ impl<'de> Deserialize<'de> for Block {
               let value = map.next_value()?;
               content = Some(BlockContent::Program(value));
             }
-            Field::LineInfo => {}
+            Field::LineInfo => {
+              let value = map.next_value()?;
+              line_info = Some(value);
+            }
           }
         }
 
