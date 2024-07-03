@@ -1725,6 +1725,8 @@ fn process_platform_built_in() -> Var {
     Var::ephemeral_string("android")
   } else if cfg!(target_os = "ios") {
     Var::ephemeral_string("ios")
+  } else if cfg!(target_os = "visionos") {
+    Var::ephemeral_string("visionos")
   } else if cfg!(target_os = "emscripten") {
     Var::ephemeral_string("emscripten")
   } else if cfg!(target_os = "windows") {
