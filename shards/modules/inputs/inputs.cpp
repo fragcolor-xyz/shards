@@ -102,13 +102,13 @@ inline bool matchModifiers(SDL_Keymod a, SDL_Keymod mask) {
     }
     return true;
   };
-  if (!check(KMOD_CTRL))
+  if (!check(SDL_KMOD_CTRL))
     return false;
-  if (!check(KMOD_ALT))
+  if (!check(SDL_KMOD_ALT))
     return false;
-  if (!check(KMOD_GUI))
+  if (!check(SDL_KMOD_GUI))
     return false;
-  if (!check(KMOD_SHIFT))
+  if (!check(SDL_KMOD_SHIFT))
     return false;
   return true;
 }
@@ -135,17 +135,17 @@ inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
 }
 
 inline SDL_Keymod convertModifierKeys(const Var &modifiers) {
-  SDL_Keymod result = KMOD_NONE;
+  SDL_Keymod result = SDL_KMOD_NONE;
   if (!modifiers.isNone()) {
     auto &seq = (SeqVar &)modifiers;
     for (auto &mod_ : seq) {
       auto &mod = (ModifierKey &)mod_.payload.enumValue;
       switch (mod) {
       case ModifierKey::Shift:
-        (uint16_t &)result |= KMOD_SHIFT;
+        (uint16_t &)result |= SDL_KMOD_SHIFT;
         break;
       case ModifierKey::Alt:
-        (uint16_t &)result |= KMOD_ALT;
+        (uint16_t &)result |= SDL_KMOD_ALT;
         break;
       case ModifierKey::Primary:
         (uint16_t &)result |= KMOD_PRIMARY;

@@ -3,7 +3,7 @@
 
 #include "../core/platform.hpp"
 #if SH_APPLE
-#include "SDL_metal.h"
+#include <SDL3/SDL_metal.h>
 #endif
 #include "gfx_wgpu.hpp"
 #if !SH_EMSCRIPTEN

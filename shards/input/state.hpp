@@ -119,9 +119,10 @@ struct InputState {
 #if SHARDS_GFX_SDL
     int numKeys{};
     auto keyStates = SDL_GetKeyboardState(&numKeys);
+    SDL_Keymod modState = SDL_GetModState();
     heldKeys.clear();
     for (int i = 0; i < numKeys; i++) {
-      SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i);
+      SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i, modState);
       if (keyStates[i] == 1) {
         heldKeys.insert(code);
       }
@@ -129,41 +130,40 @@ struct InputState {
 
     if constexpr (Pointer::HasPersistentPointer) {
       // Retrieve mouse button state
-      int2 cursorPositionInt{};
-      mouseButtonState = SDL_GetMouseState(&cursorPositionInt.x, &cursorPositionInt.y);
-      cursorPosition = float2(cursorPositionInt);
+      mouseButtonState = SDL_GetMouseState(&cursorPosition.x, &cursorPosition.y);
     }
 
     // Update key mod state
     modifiers = SDL_GetModState();
 
     pointers.pointers.clear();
-    int numDevices = SDL_GetNumTouchDevices();
+    int numDevices{};
+    auto touchDevices = SDL_GetTouchDevices(&numDevices);
     for (int d = 0; d < numDevices; d++) {
-      auto deviceId = SDL_GetTouchDevice(d);
-      int numFingers = SDL_GetNumTouchFingers(deviceId);
+      int numFingers{};
+      auto fingers = SDL_GetTouchFingers(touchDevices[d], &numFingers);
       for (int f = 0; f < numFingers; f++) {
-        auto *finger = SDL_GetTouchFinger(SDL_GetTouchDevice(d), f);
+        auto finger = fingers[f];
         if (finger) {
           auto &outFinger = pointers.getOrInsert(finger->id);
           outFinger.position = float2(finger->x, finger->y) * region.size;
           outFinger.pressure = finger->pressure;
-          outFinger.touchId = deviceId;
+          outFinger.touchId = touchDevices[d];
         }
       }
     }
 #else
     modifiers = SDL_Keymod(gfx::em::getEventHandler()->serverInputState.modKeyState);
-    auto& modifiersBits = reinterpret_cast<uint16_t&>(modifiers);
+    auto &modifiersBits = reinterpret_cast<uint16_t &>(modifiers);
     auto expandLeftRightBits = [&](SDL_Keymod mod) {
       if ((modifiersBits & mod) != 0)
         modifiersBits |= mod;
     };
-    // Expand KMOD_LCTRL, etc. to KMOD_CTRL
-    expandLeftRightBits(KMOD_CTRL);
-    expandLeftRightBits(KMOD_SHIFT);
-    expandLeftRightBits(KMOD_ALT);
-    expandLeftRightBits(KMOD_GUI);
+    // Expand SDL_KMOD_LCTRL, etc. to SDL_KMOD_CTRL
+    expandLeftRightBits(SDL_KMOD_CTRL);
+    expandLeftRightBits(SDL_KMOD_SHIFT);
+    expandLeftRightBits(SDL_KMOD_ALT);
+    expandLeftRightBits(SDL_KMOD_GUI);
 #endif
   }
 };

@@ -19,7 +19,7 @@ fn main() {
     .allowlist_type("egui::.*")
     .allowlist_type("shards::.*")
     .allowlist_var("SDLK_.*")
-    .allowlist_type("SDL_KeyCode")
+    .allowlist_type("SDL_Keycode")
     .allowlist_function("shards_input_.*")
     .opaque_type("std::.*")
     .size_t_is_usize(true)

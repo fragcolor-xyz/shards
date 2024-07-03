@@ -72,7 +72,7 @@ TEST_CASE("DetachedInput state") {
     state.reset();
     SDL_Event sdlEvt{};
     sdlEvt.wheel.preciseY = 1.0f;
-    sdlEvt.wheel.type = SDL_MOUSEWHEEL;
+    sdlEvt.wheel.type = SDL_EVENT_MOUSE_WHEEL;
     detached.apply(sdlEvt);
     detached.update(state);
     {

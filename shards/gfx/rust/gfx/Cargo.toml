@@ -19,9 +19,13 @@ profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.15.0", optional = true }
 
 [patch.crates-io]
-tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
+objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
+metal = { git = "https://github.com/shards-lang/metal-rs.git", branch = "shards-0.28.0" }
 naga = { path = "../wgpu/naga" }
-profiling = { path = "../profiling" }                                                                # Until updates tracy-client to 0.15.0 (https://github.com/aclysma/profiling/pull/44)
+
+# Until updates tracy-client to 0.15.0 (https://github.com/aclysma/profiling/pull/44)
+profiling = { path = "../profiling" }
+tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 
 [patch."https://github.com/gfx-rs/naga"]
 naga = { path = "../wgpu/naga" }

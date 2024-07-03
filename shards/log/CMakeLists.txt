@@ -7,7 +7,7 @@ if(DESKTOP)
 endif()
 
 if(NOT EMSCRIPTEN)
-  target_link_libraries(shards-logging SDL2)
+  target_link_libraries(shards-logging SDL3-static)
   target_compile_definitions(shards-logging PRIVATE SHARDS_LOG_SDL=1)
 endif()
 

@@ -7,7 +7,7 @@
 #include <memory>
 
 #if SH_DEBUG_CONSISTENT_RESUMER
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 #endif
 
 // Enable for verbose fiber logging

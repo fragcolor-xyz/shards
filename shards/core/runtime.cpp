@@ -4,7 +4,8 @@
 #include "runtime.hpp"
 #include "type_matcher.hpp"
 #include <shards/common_types.hpp>
-#include "shards/core/foundation.hpp"
+#include <shards/core/foundation.hpp>
+#include <shards/core/platform.hpp>
 #include "foundation.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
@@ -169,12 +170,12 @@ void loadExternalShards(std::string from) {
         auto filename = p.path().filename();
         auto dllstr = p.path().string();
         SHLOG_INFO("Loading external dll: {} path: {}", filename, dllstr);
-#if _WIN32
+#if SH_WINDOWS
         auto handle = LoadLibraryExA(dllstr.c_str(), NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!handle) {
           SHLOG_ERROR("LoadLibrary failed, error: {}", GetLastError());
         }
-#elif defined(__linux__) || defined(__APPLE__)
+#elif SH_LINUX || SH_APPLE
         auto handle = dlopen(dllstr.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (!handle) {
           SHLOG_ERROR("LoadLibrary failed, error: {}", dlerror());
