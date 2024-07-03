@@ -17,18 +17,18 @@ struct CursorMap {
   std::map<egui::CursorIcon, SDL_SystemCursor> cursorMap{};
 
   CursorMap() {
-    cursorMap.insert_or_assign(egui::CursorIcon::Text, SDL_SystemCursor::SDL_SYSTEM_CURSOR_IBEAM);
-    cursorMap.insert_or_assign(egui::CursorIcon::PointingHand, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
-    cursorMap.insert_or_assign(egui::CursorIcon::Grab, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
-    cursorMap.insert_or_assign(egui::CursorIcon::Grabbing, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
-    cursorMap.insert_or_assign(egui::CursorIcon::NoDrop, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NO);
-    cursorMap.insert_or_assign(egui::CursorIcon::NotAllowed, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NO);
+    cursorMap.insert_or_assign(egui::CursorIcon::Text, SDL_SystemCursor::SDL_SYSTEM_CURSOR_TEXT);
+    cursorMap.insert_or_assign(egui::CursorIcon::PointingHand, SDL_SystemCursor::SDL_SYSTEM_CURSOR_POINTER);
+    cursorMap.insert_or_assign(egui::CursorIcon::Grab, SDL_SystemCursor::SDL_SYSTEM_CURSOR_POINTER);
+    cursorMap.insert_or_assign(egui::CursorIcon::Grabbing, SDL_SystemCursor::SDL_SYSTEM_CURSOR_POINTER);
+    cursorMap.insert_or_assign(egui::CursorIcon::NoDrop, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NOT_ALLOWED);
+    cursorMap.insert_or_assign(egui::CursorIcon::NotAllowed, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NOT_ALLOWED);
     cursorMap.insert_or_assign(egui::CursorIcon::Crosshair, SDL_SystemCursor::SDL_SYSTEM_CURSOR_CROSSHAIR);
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNeSw, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENESW);
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNwSe, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENWSE);
-    cursorMap.insert_or_assign(egui::CursorIcon::Default, SDL_SystemCursor::SDL_SYSTEM_CURSOR_ARROW);
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeVertical, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENS);
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeHorizontal, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZEWE);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNeSw, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NESW_RESIZE);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNwSe, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+    cursorMap.insert_or_assign(egui::CursorIcon::Default, SDL_SystemCursor::SDL_SYSTEM_CURSOR_DEFAULT);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeVertical, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NS_RESIZE);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeHorizontal, SDL_SystemCursor::SDL_SYSTEM_CURSOR_EW_RESIZE);
   }
 
   SDL_SystemCursor *getCursor(egui::CursorIcon cursor) {
@@ -46,11 +46,11 @@ struct CursorMap {
 
 static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   return egui::ModifierKeys{
-      .alt = (flags & KMOD_ALT) != 0,
-      .ctrl = (flags & KMOD_CTRL) != 0,
-      .shift = (flags & KMOD_SHIFT) != 0,
-      .macCmd = (flags & KMOD_GUI) != 0,
-      .command = (flags & KMOD_GUI) != 0,
+      .alt = (flags & SDL_KMOD_ALT) != 0,
+      .ctrl = (flags & SDL_KMOD_CTRL) != 0,
+      .shift = (flags & SDL_KMOD_SHIFT) != 0,
+      .macCmd = (flags & SDL_KMOD_GUI) != 0,
+      .command = (flags & SDL_KMOD_GUI) != 0,
   };
 }
 
@@ -167,7 +167,7 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
         } else if constexpr (std::is_same_v<T, KeyEvent>) {
           if ((args.canReceiveInput && !event.isConsumed()) || !arg.pressed) {
             auto &oevent = newEvent(InputEventType::Key).key;
-            oevent.key = SDL_KeyCode(arg.key);
+            oevent.key = SDL_Keycode(arg.key);
             oevent.pressed = arg.pressed;
             oevent.modifiers = translateModifierKeys(arg.modifiers);
             oevent.repeat = arg.repeat > 0;
@@ -289,7 +289,7 @@ void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
     auto *cursor = CursorMap::getInstance().getCursor(icon);
     outputMessages.push_back(shards::input::SetCursorMessage{
         .visible = true,
-        .cursor = cursor ? *cursor : SDL_SYSTEM_CURSOR_ARROW,
+        .cursor = cursor ? *cursor : SDL_SYSTEM_CURSOR_DEFAULT,
     });
   }
 }

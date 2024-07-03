@@ -3429,12 +3429,8 @@ dependencies = [
  "enum-map",
  "gfx-build",
  "lazy_static",
- "nanoid",
- "num-traits",
- "pest",
  "rmp-serde",
  "shards",
- "shards-lang",
  "syntect",
 ]
 
@@ -3491,7 +3487,6 @@ dependencies = [
  "lazy_static",
  "libc",
  "nanoid",
- "once_cell",
  "pest",
  "pest_derive",
  "profiling",

@@ -129,12 +129,12 @@ private:
         }
       }
     };
-    applyMod(DOM_PK_SHIFT_LEFT, SDL_Keymod::KMOD_LSHIFT);
-    applyMod(DOM_PK_SHIFT_RIGHT, SDL_Keymod::KMOD_RSHIFT);
-    applyMod(DOM_PK_CONTROL_LEFT, SDL_Keymod::KMOD_LCTRL);
-    applyMod(DOM_PK_CONTROL_RIGHT, SDL_Keymod::KMOD_RCTRL);
-    applyMod(DOM_PK_ALT_LEFT, SDL_Keymod::KMOD_LALT);
-    applyMod(DOM_PK_ALT_RIGHT, SDL_Keymod::KMOD_RALT);
+    applyMod(DOM_PK_SHIFT_LEFT, SDL_KMOD_LSHIFT);
+    applyMod(DOM_PK_SHIFT_RIGHT, SDL_KMOD_RSHIFT);
+    applyMod(DOM_PK_CONTROL_LEFT, SDL_KMOD_LCTRL);
+    applyMod(DOM_PK_CONTROL_RIGHT, SDL_KMOD_RCTRL);
+    applyMod(DOM_PK_ALT_LEFT, SDL_KMOD_LALT);
+    applyMod(DOM_PK_ALT_RIGHT, SDL_KMOD_RALT);
   }
 };
 

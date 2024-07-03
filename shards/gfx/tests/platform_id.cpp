@@ -1,6 +1,6 @@
 #include "./platform_id.hpp"
 #include "gfx/context.hpp"
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 
 namespace gfx {
 TestPlatformId::operator std::string() const { return id; }

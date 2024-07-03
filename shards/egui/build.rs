@@ -19,7 +19,7 @@ fn main() {
     .header("rust_interop.hpp")
     .allowlist_type("egui::.*")
     .allowlist_var("SDLK_.*")
-    .allowlist_type("SDL_KeyCode")
+    .allowlist_type("SDL_Keycode")
     .size_t_is_usize(true)
     .layout_tests(false)
     .clang_arg(format!("-I{}/include", shards_root));

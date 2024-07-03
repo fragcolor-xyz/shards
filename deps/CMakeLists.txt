@@ -51,18 +51,12 @@ if(NOT EMSCRIPTEN)
       message(STATUS "Using libressl from LIBRE_SSL_DIR=${libressl_SOURCE_DIR}")
       add_subdirectory(${libressl_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libressl)
     else()
-      if(CMAKE_GENERATOR STREQUAL Xcode)
-        # Required to fix linking against empty libraries with object library dependencies from xcode
-        set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
-      endif()
 
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
         libressl
-        URL      https://develop.fragcolor.com/libressl-3.4.1.tar.gz
-        # URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-        # URL      https://cloudflare.cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-        URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
+        URL      https://develop.fragcolor.com/libressl-3.9.2.tar.gz
+        URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
         ${LIBRESSL_PATCH_COMMAND}
       )
       FetchContent_MakeAvailable(libressl)
@@ -101,76 +95,9 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-if(NOT EMSCRIPTEN)
-  if(NOT ANDROID AND EXTERNAL_BUILD_TYPE MATCHES "Debug")
-    set(SDL_LIB_SUFFIX "d")
-  endif()
-
-  if(LIB_SUFFIX STREQUAL ".lib")
-    set(SDL2_LIB_NAME "SDL2-static")
-  else()
-    set(SDL2_LIB_NAME "SDL2")
-  endif()
-
-  sh_add_external_project(
-    NAME sdl_a
-    TARGETS   SDL2 SDL2main
-    LIB_NAMES ${SDL2_LIB_NAME} SDL2main
-    INSTALL
-    LIB_SUFFIX ${SDL_LIB_SUFFIX}
-    RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
-    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF
-    REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
-
-
-  if(APPLE)
-    target_link_libraries(SDL2 INTERFACE
-      "-framework Foundation"
-      "-framework CoreAudio"
-      "-framework AudioToolbox"
-      "-framework CoreVideo"
-      "-framework IOKit"
-      "-framework QuartzCore"
-      "-framework Metal"
-      "-framework Security"
-      "-framework CoreHaptics"
-      "-framework GameController"
-      "-framework CoreBluetooth"
-      -liconv
-    )
-
-    if(IOS)
-      target_link_libraries(SDL2 INTERFACE
-        "-framework AVFoundation"
-        "-framework CoreMotion"
-        "-framework CoreGraphics"
-        "-framework UIKit"
-      )
-    else()
-      target_link_libraries(SDL2 INTERFACE
-        "-framework Cocoa"
-        "-framework Carbon"
-        "-framework ForceFeedback"
-      )
-    endif()
-  endif()
-
-  if(WIN32)
-    target_link_libraries(SDL2 INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
-  elseif(LINUX)
-    target_link_libraries(SDL2 INTERFACE dl)
-  endif()
-
-  # Required for SDL2main entry point to call main
-  if(NOT DESKTOP)
-    target_compile_definitions(SDL2main INTERFACE "main=SDL_main")
-  else()
-    target_compile_definitions(SDL2 INTERFACE "SDL_MAIN_HANDLED=1")
-  endif()
-else()
-  add_library(SDL2 INTERFACE)
-  add_library(SDL2main INTERFACE)
-endif()
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+add_subdirectory(SDL3)
 
 sh_add_external_project(
   NAME wasm3_a
