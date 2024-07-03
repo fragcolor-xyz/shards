@@ -33,14 +33,15 @@ if(SHARDS_INLINE_EVERYTHING)
   target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=1)
 endif()
 
-option(SHARDS_DEBUG_THREAD_NAMES "When enabled, threads are given names based on running wires" OFF)
-
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_compile_definitions(shards-core PUBLIC SH_DEBUG_THREAD_NAMES=1)
+  set(SHARDS_DEBUG_THREAD_NAMES_DEFAULT ON)
 else()
-  if(SHARDS_DEBUG_THREAD_NAMES)
-    target_compile_definitions(shards-core PUBLIC SH_DEBUG_THREAD_NAMES=1)
-  endif()
+  set(SHARDS_DEBUG_THREAD_NAMES_DEFAULT OFF)
+endif()
+set(SHARDS_DEBUG_THREAD_NAMES ${SHARDS_DEBUG_THREAD_NAMES_DEFAULT} CACHE BOOL "When enabled, threads are given names based on running wires")
+
+if(SHARDS_DEBUG_THREAD_NAMES)
+  target_compile_definitions(shards-core PUBLIC SH_DEBUG_THREAD_NAMES=1)
 endif()
 
 set(SHARDS_THREAD_FIBER OFF CACHE BOOL "When enabled, coroutines are evaluated using a single thread (for debugging purposes)")
