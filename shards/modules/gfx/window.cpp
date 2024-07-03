@@ -464,6 +464,46 @@ struct OsUiScaleFactor {
   }
 };
 
+struct WindowInsets {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Float4Type; }
+  static SHOptionalString help() {
+    return SHCCSTR("Retrieves the window inset values when rendering on mobile devices and screens with a keep-out area");
+  }
+
+  RequiredWindowContext _requiredWindowContext;
+
+  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredWindowContext.warmup(context, &_window);
+  }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _requiredWindowContext.cleanup();
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    // auto &window = _requiredWindowContext->window;
+    // Actually is static for now, but keep this here might it be of use in the future
+    float scale = 1.0f;
+#if SH_APPLE
+    scale *= _requiredWindowContext->window->getInputScale().x;
+#endif
+    return toVar(Window::viewInset * scale);
+  }
+};
+
 void registerMainWindowShards() {
   REGISTER_SHARD("GFX.MainWindow", MainWindow);
   REGISTER_SHARD("GFX.WindowSize", WindowSize);
@@ -471,6 +511,7 @@ void registerMainWindowShards() {
   REGISTER_SHARD("GFX.WindowPosition", WindowPosition);
   REGISTER_SHARD("GFX.UIScaleFactor", OsUiScaleFactor);
   REGISTER_SHARD("GFX.MoveWindow", MoveWindow);
+  REGISTER_SHARD("GFX.WindowInsets", WindowInsets);
 }
 
 } // namespace gfx
