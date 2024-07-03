@@ -26,14 +26,17 @@ float shards_get_uiview_safe_area_top(void *metalView);
 #elif SH_ANDROID
 #include <jni.h>
 extern "C" {
-JNIEXPORT void JNICALL Java_com_fragcolor_formabble_FblView_nativeSetViewInsets(JNIEnv *env, jclass cls, jint left, jint top, jint right,
-                                                                                     jint bottom) {
+JNIEXPORT void JNICALL Java_com_fragcolor_formabble_FblView_nativeSetViewInsets(JNIEnv *env, jclass cls, jint left, jint top,
+                                                                                jint right, jint bottom) {
   SPDLOG_INFO("Received android_set_view_insets: ({}, {}, {}, {})", left, top, right, bottom);
+  Window.viewInset = float4(left, top, right, bottom);
 }
 }
 #endif
 
 namespace gfx {
+
+float4 Window::viewInset{};
 
 void Window::init(const WindowCreationOptions &options) {
   if (window)
