@@ -14,7 +14,7 @@
       ; UI.Window(Title: "1" Contents: {
       ;   UI.Settings
       ; })
-      UI.Window(Title: "Shards" Contents: {
+      UI.Window(Title: "Shards" MinWidth: 512.0 Contents: {
         ; UI.LayoutClass(
         ;   MainDirection: LayoutDirection::TopDown
         ;   FillWidth: true

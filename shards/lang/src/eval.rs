@@ -1497,6 +1497,7 @@ fn resolve_var(
                   }],
                 },
               }],
+              custom_state: None,
             },
           };
           as_var(&value2, line_info, None, e)
@@ -2896,6 +2897,7 @@ fn eval_pipeline(
                         custom_state: block.custom_state.clone(),
                       }],
                     })],
+                    custom_state: None,
                   };
 
                   let cvar = eval_eval_expr(&make_trait_shards, e)?;

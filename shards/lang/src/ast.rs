@@ -389,7 +389,15 @@ pub struct Metadata {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
+
+  /// Custom state for UI or other runtime-specific data.
+  /// Stored directly in the AST node for efficient access and simpler management.
+  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
+  #[serde(skip)]
+  pub custom_state: Option<Box<dyn CustomAny>>,
 }
+
+impl_custom_state!(Sequence);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Program {

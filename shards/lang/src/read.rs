@@ -4,8 +4,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
-  BOOL_TYPES_SLICE, FRAG_CC, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, FRAG_CC,
+  STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{fourCharacterCode, shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
 use std::cell::{Ref, RefCell};
@@ -589,7 +589,10 @@ pub(crate) fn process_sequence(
     .into_inner()
     .map(|x| process_statement(x, env))
     .collect::<Result<Vec<_>, _>>()?;
-  Ok(Sequence { statements })
+  Ok(Sequence {
+    statements,
+    custom_state: None,
+  })
 }
 
 pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {

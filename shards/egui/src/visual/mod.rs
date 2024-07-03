@@ -252,6 +252,13 @@ impl<T> UniqueReceiver<T> {
 
 impl_custom_any!(FunctionState);
 
+#[derive(Debug, Clone, PartialEq)]
+struct SequenceState {
+  selected: bool,
+}
+
+impl_custom_any!(SequenceState);
+
 // common state
 pub struct Context {
   swap_state: Option<SwapState>,
@@ -1163,6 +1170,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
+    sequence
+      .get_or_insert_custom_state(|| SequenceState {
+        selected: self.parent_selected,
+      })
+      .selected = self.parent_selected;
     self.context.seqs_stack.push(sequence as *mut Sequence);
 
     if self.parent_selected && self.context.seqs_zoom_stack.len() > 0 {
@@ -1210,6 +1222,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   custom_state: None,
                 }],
               }));
+
+              self.context.has_changed = true;
             }
             ui.button(emoji("💡")).on_hover_text("Ask AI.")
           })
@@ -1265,6 +1279,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   line_info: None,
                   custom_state: None,
                 });
+
+                self.context.has_changed = true;
               }
               ui.button(emoji("💡")).on_hover_text("Ask AI.")
             })
@@ -2084,6 +2100,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   custom_state: None,
                 }],
               })],
+              custom_state: None,
             });
             let mut mutator =
               VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
@@ -2292,6 +2309,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
   }
   let new_value = Sequence {
     statements: vec![Statement::Pipeline(Pipeline { blocks })],
+    custom_state: None,
   };
   new_value
 }
@@ -2336,6 +2354,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
   }
   let new_value = Sequence {
     statements: vec![Statement::Pipeline(Pipeline { blocks })],
+    custom_state: None,
   };
   new_value
 }
@@ -2483,7 +2502,13 @@ impl Shard for UIShardsShard {
         }
       }
       let root = unsafe { &mut **self.context.seqs_zoom_stack.last_mut().unwrap() };
-      let mut mutator = VisualAst::new(&mut self.context, ui);
+      let mut mutator = VisualAst::with_parent_selected(
+        &mut self.context,
+        ui,
+        root
+          .get_or_insert_custom_state(|| SequenceState { selected: false })
+          .selected,
+      );
       root.accept_mut(&mut mutator);
     });
 
