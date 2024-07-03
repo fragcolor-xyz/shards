@@ -132,6 +132,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   shards::Time::DeltaTimer deltaTimer;
 
   OwnedVar inputContextVar;
+  OwnedVar windowContextVar;
 
   CapturingBrancher::CloningContext brancherCloningContext;
 
@@ -170,6 +171,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     inputContextVar.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
     inputContextVar.refcount = 1;
     brancher.mesh()->addRef(toSWL(RequiredInputContext::variableName()), &inputContextVar);
+    brancher.mesh()->addRef(toSWL(RequiredWindowContext::variableName()), &windowContextVar);
 
     inputContext.handler = this->weak_from_this();
 
@@ -301,6 +303,7 @@ struct Detached {
     }
 
     ExposedInfo branchShared{RequiredInputContext::getExposedTypeInfo()};
+    branchShared.push_back(RequiredWindowContext::getExposedTypeInfo());
     _handler->brancher.compose(data, branchShared, IgnoredVariables);
 
     for (auto req : _handler->brancher.requiredVariables()) {
@@ -353,6 +356,9 @@ struct Detached {
     _handler->name = !_name->isNone() ? SHSTRVIEW(*_name) : "";
     _handler->inputContext.window = windowCtx.window;
     _handler->inputContext.master = &windowCtx.inputMaster;
+    _handler->windowContextVar = Var::Object(&getWindowContext(), WindowContext::Type);
+    _handler->windowContextVar.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
+    _handler->windowContextVar.refcount = 1;
 
     windowCtx.inputMaster.addHandler(_handler);
 
