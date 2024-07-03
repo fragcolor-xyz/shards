@@ -18,6 +18,22 @@
 #include <android/native_window.h>
 #endif
 
+#if SH_IOS
+extern "C" {
+float shards_get_uiview_safe_area_bottom(void *metalView);
+float shards_get_uiview_safe_area_top(void *metalView);
+}
+#elif SH_ANDROID
+#include <jni.h>
+extern "C" {
+JNIEXPORT void JNICALL Java_com_fragcolor_formabble_FblView_nativeSetViewInsets(JNIEnv *env, jclass cls, jint left, jint top,
+                                                                                jint right, jint bottom) {
+  SPDLOG_INFO("Received android_set_view_insets: ({}, {}, {}, {})", left, top, right, bottom);
+  gfx::Window::viewInset = gfx::float4(left, top, right, bottom);
+}
+}
+#endif
+
 namespace gfx {
 
 void Window::init(const WindowCreationOptions &options) {
@@ -83,6 +99,10 @@ void Window::init(const WindowCreationOptions &options) {
 
 #if SH_APPLE
   metalView.emplace(window);
+  SDL_MetalView uiView = metalView->view;
+  viewInset.y = shards_get_uiview_safe_area_top(uiView);
+  viewInset.w = shards_get_uiview_safe_area_bottom(uiView);
+  SPDLOG_INFO("Safe area insets: top: {}, bottom: {}", viewInset.y, viewInset.w);
 #endif
 }
 

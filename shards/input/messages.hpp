@@ -4,6 +4,7 @@
 #include <variant>
 #include <compare>
 #include <boost/container/string.hpp>
+#include "../gfx/linalg.hpp"
 #include "sdl.hpp"
 
 namespace shards::input {
@@ -12,7 +13,7 @@ struct BeginTextInputMessage {
   SDL_Rect inputRect{};
 
   std::partial_ordering operator<=>(const BeginTextInputMessage &other) const {
-    if (inputRect.x != other.inputRect.x) 
+    if (inputRect.x != other.inputRect.x)
       return inputRect.x <=> other.inputRect.x;
     if (inputRect.y != other.inputRect.y)
       return inputRect.y <=> other.inputRect.y;
@@ -39,7 +40,12 @@ struct SetCursorMessage {
 // Tell the main window loop to terminate
 struct TerminateMessage {};
 
-using Message = std::variant<BeginTextInputMessage, EndTextInputMessage, SetCursorMessage, TerminateMessage>;
+// Tell the main window loop to terminate
+struct ResizeWindowMessage {
+  gfx::int2 newSize;
+};
+
+using Message = std::variant<BeginTextInputMessage, EndTextInputMessage, SetCursorMessage, TerminateMessage, ResizeWindowMessage>;
 
 inline std::partial_ordering operator<=>(const Message &a, const Message &b) {
   auto ci = a.index() <=> b.index();

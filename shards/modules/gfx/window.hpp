@@ -21,6 +21,8 @@ struct WindowContext {
   std::shared_ptr<gfx::Window> window;
   input::InputMaster inputMaster;
 
+  std::weak_ptr<SHMesh> windowMesh;
+
   double time;
   float deltaTime;
 
