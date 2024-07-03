@@ -44,11 +44,11 @@ jobs:
           rustup +$RUSTUP_TOOLCHAIN target add x86_64-apple-ios
       - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
-      - name: Build device
+      - name: Build iOS
         run: |
-          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
-          cmake --build build_arm64 --target shards-core -- -arch arm64 -sdk iphoneos
-      - name: Build simulator x86
+          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
+          cmake --build build_arm64 --target shards-lib -- -arch arm64 -sdk iphoneos
+      - name: Build visionOS
         run: |
-          cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
-          cmake --build build_sim_x86 --target shards-core -- -arch x86_64 -sdk iphonesimulator
+          cmake -Bbuild_sim_visionos -GXcode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_SYSTEM_NAME=visionOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=xros
+          cmake --build build_sim_visionos --target shards-lib -- -arch arm64 -sdk xros
