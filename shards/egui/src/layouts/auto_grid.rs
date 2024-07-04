@@ -122,7 +122,8 @@ impl AutoGrid {
       );
 
       let child_layout = Layout::top_down(egui::Align::Center);
-      let mut child_ui = ui.child_ui_with_id_source(item_max_rect, child_layout, id_src.with(i));
+      let mut child_ui =
+        ui.child_ui_with_id_source(item_max_rect, child_layout, id_src.with(i), None);
 
       add_child(&mut child_ui, i);
 

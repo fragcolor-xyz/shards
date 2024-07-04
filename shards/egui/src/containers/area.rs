@@ -7,7 +7,7 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    common_type, Context, ExposedTypes, InstanceData, OptionalString, ParamVar, ShardsVar, Type,
+    common_type, Context, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type,
     Types, Var, ANY_TYPES, SHARDS_OR_NONE_TYPES,
   },
 };
@@ -215,7 +215,7 @@ impl Shard for SubAreaShard {
       container_rect
     };
 
-    let mut ui = parent_ui.child_ui(aligned, parent_ui.layout().clone());
+    let mut ui = parent_ui.child_ui(aligned, parent_ui.layout().clone(), None);
 
     let result = util::activate_ui_contents(
       context,
