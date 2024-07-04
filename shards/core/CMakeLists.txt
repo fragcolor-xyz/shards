@@ -8,6 +8,7 @@ set(core_SOURCES
   trait.cpp
   type_info.cpp
   hash.cpp
+  taskflow.cpp
 )
 
 add_library(shards-core STATIC ${core_SOURCES})

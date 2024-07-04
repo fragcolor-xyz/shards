@@ -22,10 +22,14 @@
 #endif
 
 // Can not create this many workers, create on demand instead
-#if SH_EMSCRIPTEN
+#if SH_EMSCRIPTEN || 1
 #define SH_ENABLE_TIDE_POOL 0
 #else
 #define SH_ENABLE_TIDE_POOL 1
+#endif
+
+#if !SH_ENABLE_TIDE_POOL
+#include "taskflow.hpp"
 #endif
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
@@ -176,9 +180,9 @@ struct TidePool {
   }
 #else // Dummy implementation
   void schedule(Work *work) {
-    std::thread([work]() {
-      work->call();
-    }).detach();
+    tf::Taskflow flow;
+    flow.emplace([=]() { work->call(); });
+    TaskFlowInstance::instance().run(std::move(flow));
   }
 #endif
 };
