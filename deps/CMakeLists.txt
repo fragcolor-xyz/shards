@@ -95,9 +95,11 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-add_subdirectory(SDL3)
+if(NOT EMSCRIPTEN)
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  add_subdirectory(SDL3)
+endif()
 
 sh_add_external_project(
   NAME wasm3_a
