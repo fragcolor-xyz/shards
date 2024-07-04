@@ -36,7 +36,7 @@ use num_traits::{Float, FromPrimitive, PrimInt, Zero};
 
 fn var_to_value(var: &Var) -> Result<Value, String> {
   match var.valueType {
-    SHType_None => Ok(Value::None),
+    SHType_None => Ok(Value::None(())),
     SHType_Bool => Ok(Value::Boolean(unsafe {
       var.payload.__bindgen_anon_1.boolValue
     })),
@@ -596,7 +596,7 @@ impl<'a> VisualAst<'a> {
       self.ui.add_enabled_ui(false, |ui| {
         if let Some(params) = &mut x.params {
           for param in params {
-            if let Value::None = param.value {
+            if let Value::None(_) = param.value {
               continue;
             }
             let mut mutator =
@@ -971,7 +971,7 @@ fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapState
           ui.horizontal(|ui| {
             ui.add_enabled_ui(has_type(&types, SHType_None), |ui| {
               if ui.button("None").on_hover_text("A none value.").clicked() {
-                result = SwapStateResult::Done(Value::None);
+                result = SwapStateResult::Done(Value::None(()));
               }
             });
 
@@ -1683,7 +1683,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       .ui
       .push_id(egui::Id::new(value as *const _), |ui| {
         match value {
-          Value::None => Some(ui.label("None")),
+          Value::None(_) => Some(ui.label("None")),
           Value::Identifier(x) => {
             let mut mutator = VisualAst::with_parent_selected(self.context, ui, true);
             x.accept_mut(&mut mutator)
@@ -1962,7 +1962,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 });
               let response = ui.button(emoji("➕")).on_hover_text("Add new value.");
               if response.clicked() {
-                x.push(Value::None);
+                x.push(Value::None(()));
               }
             } else {
               // give a peek of FIRST..LAST
@@ -2055,7 +2055,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 .button(emoji("➕"))
                 .on_hover_text("Add new key value pair.");
               if response.clicked() {
-                x.push((Value::None, Value::None));
+                x.push((Value::None(()), Value::None(())));
               }
             } else {
               // like seq but just preview first and last key (not values)

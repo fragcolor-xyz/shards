@@ -239,7 +239,7 @@ impl AstVisitor for PrintVisitor {
 
   fn visit_value(&mut self, value: &Value) {
     match value {
-      Value::None => self.write("none"),
+      Value::None(_) => self.write("none"),
       Value::Identifier(identifier) => self.visit_identifier(identifier),
       Value::Boolean(b) => self.write(&format!("{}", b)),
       Value::Enum(a, b) => self.write(&format!("{}::{}", a, b)),

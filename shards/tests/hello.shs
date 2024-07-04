@@ -213,3 +213,8 @@ Zip([zs1 zs2 zs3 zs4 [99 98]]) | Assert.Is([
 
 true = is-true | IsTrue | Assert.Is(true) | Log
 false = is-false | IsFalse | Assert.Is(true) | Log
+
+@if(true none none)
+
+none
+1

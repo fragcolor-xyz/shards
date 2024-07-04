@@ -5,7 +5,7 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use pest::Position;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
@@ -255,7 +255,7 @@ impl Identifier {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Value {
   #[serde(rename = "none")]
-  None,
+  None(()), // We leave it as (), to achieve serializer consistency
   #[serde(rename = "id")]
   Identifier(Identifier),
   #[serde(rename = "bool")]
@@ -309,7 +309,7 @@ impl TryFrom<Var> for Value {
 
   fn try_from(value: Var) -> Result<Self, Self::Error> {
     match value.valueType {
-      SHType_None => Ok(Value::None),
+      SHType_None => Ok(Value::None(())),
       SHType_Bool => Ok(Value::Boolean(value.as_ref().try_into().unwrap())),
       SHType_Int => Ok(Value::Number(Number::Integer(
         value.as_ref().try_into().unwrap(),
@@ -339,17 +339,14 @@ impl Value {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Param {
-  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<RcStrWrapper>,
-  #[serde(flatten)]
   pub value: Value,
 
   /// Custom state for UI or other runtime-specific data.
   /// Stored directly in the AST node for efficient access and simpler management.
   /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  #[serde(skip)]
   pub custom_state: Option<Box<dyn CustomAny>>,
 }
 
@@ -755,5 +752,211 @@ impl<'de> Deserialize<'de> for Block {
       "none", "sh", "shs", "const", "tt", "ts", "eExpr", "expr", "func", "prog",
     ];
     deserializer.deserialize_struct("Block", FIELDS, BlockVisitor)
+  }
+}
+
+impl Serialize for Param {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("Param", 2)?;
+
+    // Serialize the name if it exists
+    if let Some(name) = &self.name {
+      state.serialize_field("name", name)?;
+    }
+
+    // Flatten the value field
+    match &self.value {
+      Value::None(_) => state.serialize_field("none", &()),
+      Value::Identifier(id) => state.serialize_field("id", id),
+      Value::Boolean(b) => state.serialize_field("bool", b),
+      Value::Enum(e1, e2) => state.serialize_field("enum", &(e1, e2)),
+      Value::Number(n) => state.serialize_field("num", n),
+      Value::String(s) => state.serialize_field("str", s),
+      Value::Bytes(b) => state.serialize_field("bytes", b),
+      Value::Int2(arr) => state.serialize_field("i2", arr),
+      Value::Int3(arr) => state.serialize_field("i3", arr),
+      Value::Int4(arr) => state.serialize_field("i4", arr),
+      Value::Int8(arr) => state.serialize_field("i8", arr),
+      Value::Int16(arr) => state.serialize_field("i16", arr),
+      Value::Float2(arr) => state.serialize_field("f2", arr),
+      Value::Float3(arr) => state.serialize_field("f3", arr),
+      Value::Float4(arr) => state.serialize_field("f4", arr),
+      Value::Seq(seq) => state.serialize_field("seq", seq),
+      Value::Table(table) => state.serialize_field("table", table),
+      Value::Shard(func) => state.serialize_field("sh", func),
+      Value::Shards(seq) => state.serialize_field("shs", seq),
+      Value::EvalExpr(seq) => state.serialize_field("eExpr", seq),
+      Value::Expr(seq) => state.serialize_field("expr", seq),
+      Value::TakeTable(id, vec) => state.serialize_field("tt", &(id, vec)),
+      Value::TakeSeq(id, vec) => state.serialize_field("ts", &(id, vec)),
+      Value::Func(func) => state.serialize_field("func", func),
+    }?;
+
+    state.end()
+  }
+}
+
+impl<'de> Deserialize<'de> for Param {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    enum Field {
+      Name,
+      None,
+      Id,
+      Bool,
+      Enum,
+      Num,
+      Str,
+      Bytes,
+      I2,
+      I3,
+      I4,
+      I8,
+      I16,
+      F2,
+      F3,
+      F4,
+      Seq,
+      Table,
+      Sh,
+      Shs,
+      EExpr,
+      Expr,
+      Tt,
+      Ts,
+      Func,
+    }
+
+    impl<'de> Deserialize<'de> for Field {
+      fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+      where
+        D: Deserializer<'de>,
+      {
+        struct FieldVisitor;
+
+        impl<'de> Visitor<'de> for FieldVisitor {
+          type Value = Field;
+
+          fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a valid Param field")
+          }
+
+          fn visit_str<E>(self, value: &str) -> Result<Field, E>
+          where
+            E: de::Error,
+          {
+            match value {
+              "name" => Ok(Field::Name),
+              "none" => Ok(Field::None),
+              "id" => Ok(Field::Id),
+              "bool" => Ok(Field::Bool),
+              "enum" => Ok(Field::Enum),
+              "num" => Ok(Field::Num),
+              "str" => Ok(Field::Str),
+              "bytes" => Ok(Field::Bytes),
+              "i2" => Ok(Field::I2),
+              "i3" => Ok(Field::I3),
+              "i4" => Ok(Field::I4),
+              "i8" => Ok(Field::I8),
+              "i16" => Ok(Field::I16),
+              "f2" => Ok(Field::F2),
+              "f3" => Ok(Field::F3),
+              "f4" => Ok(Field::F4),
+              "seq" => Ok(Field::Seq),
+              "table" => Ok(Field::Table),
+              "sh" => Ok(Field::Sh),
+              "shs" => Ok(Field::Shs),
+              "eExpr" => Ok(Field::EExpr),
+              "expr" => Ok(Field::Expr),
+              "tt" => Ok(Field::Tt),
+              "ts" => Ok(Field::Ts),
+              "func" => Ok(Field::Func),
+              _ => Err(de::Error::unknown_field(value, FIELDS)),
+            }
+          }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)
+      }
+    }
+
+    struct ParamVisitor;
+
+    impl<'de> Visitor<'de> for ParamVisitor {
+      type Value = Param;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct Param")
+      }
+
+      fn visit_map<V>(self, mut map: V) -> Result<Param, V::Error>
+      where
+        V: MapAccess<'de>,
+      {
+        let mut name = None;
+        let mut value = None;
+
+        while let Some(key) = map.next_key()? {
+          match key {
+            Field::Name => name = Some(map.next_value()?),
+            Field::None => {
+              map.next_value::<()>()?;
+              value = Some(Value::None(()));
+            }
+            Field::Id => value = Some(Value::Identifier(map.next_value()?)),
+            Field::Bool => value = Some(Value::Boolean(map.next_value()?)),
+            Field::Enum => {
+              let (e1, e2): (RcStrWrapper, RcStrWrapper) = map.next_value()?;
+              value = Some(Value::Enum(e1, e2));
+            }
+            Field::Num => value = Some(Value::Number(map.next_value()?)),
+            Field::Str => value = Some(Value::String(map.next_value()?)),
+            Field::Bytes => value = Some(Value::Bytes(map.next_value()?)),
+            Field::I2 => value = Some(Value::Int2(map.next_value()?)),
+            Field::I3 => value = Some(Value::Int3(map.next_value()?)),
+            Field::I4 => value = Some(Value::Int4(map.next_value()?)),
+            Field::I8 => value = Some(Value::Int8(map.next_value()?)),
+            Field::I16 => value = Some(Value::Int16(map.next_value()?)),
+            Field::F2 => value = Some(Value::Float2(map.next_value()?)),
+            Field::F3 => value = Some(Value::Float3(map.next_value()?)),
+            Field::F4 => value = Some(Value::Float4(map.next_value()?)),
+            Field::Seq => value = Some(Value::Seq(map.next_value()?)),
+            Field::Table => value = Some(Value::Table(map.next_value()?)),
+            Field::Sh => value = Some(Value::Shard(map.next_value()?)),
+            Field::Shs => value = Some(Value::Shards(map.next_value()?)),
+            Field::EExpr => value = Some(Value::EvalExpr(map.next_value()?)),
+            Field::Expr => value = Some(Value::Expr(map.next_value()?)),
+            Field::Tt => {
+              let (id, vec): (Identifier, Vec<RcStrWrapper>) = map.next_value()?;
+              value = Some(Value::TakeTable(id, vec));
+            }
+            Field::Ts => {
+              let (id, vec): (Identifier, Vec<u32>) = map.next_value()?;
+              value = Some(Value::TakeSeq(id, vec));
+            }
+            Field::Func => value = Some(Value::Func(map.next_value()?)),
+          }
+        }
+
+        let value = value.ok_or_else(|| de::Error::missing_field("value"))?;
+
+        Ok(Param {
+          name,
+          value,
+          custom_state: None,
+        })
+      }
+    }
+
+    const FIELDS: &[&str] = &[
+      "name", "none", "id", "bool", "enum", "num", "str", "bytes", "i2", "i3", "i4", "i8", "i16",
+      "f2", "f3", "f4", "seq", "table", "sh", "shs", "eExpr", "expr", "tt", "ts", "func",
+    ];
+    deserializer.deserialize_struct("Param", FIELDS, ParamVisitor)
   }
 }

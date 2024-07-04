@@ -63,4 +63,27 @@ a | Math.Add(#(a | Math.Subtract(c))) ; run at eval time and write result
 Do(w1)
 Do(w2)
 
+@macro(if [cond yes no] {
+  Sequence(pipelines)
+  cond | If(IsAny([true "true" 1]) {
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(yes) | FromJson)]
+        }
+      }
+    } {
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(no) | FromJson)]
+        }
+      }
+    }
+  ) >> pipelines
+  [pipelines] | ToJson
+})
+
+@if(true none none)
+
 ; comment

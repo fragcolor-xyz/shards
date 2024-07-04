@@ -260,7 +260,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let rc_path = file_path_str.into();
 
             if once && check_included(&rc_path, env) {
-              return Ok(FunctionValue::Const(Value::None));
+              return Ok(FunctionValue::Const(Value::None(())));
             }
 
             shlog_trace!("Including file {:?}", file_path);
@@ -617,7 +617,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       let pair = pair.into_inner().next().unwrap(); // parsed qed
       process_value(pair, env)
     }
-    Rule::None => Ok(Value::None),
+    Rule::None => Ok(Value::None(())),
     Rule::Boolean => {
       // check if string content is true or false
       let bool_str = pair.as_str();
@@ -719,7 +719,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             .next()
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
-            Rule::None => Value::None,
+            Rule::None => Value::None(()),
             Rule::Iden => Value::String(key.as_str().to_owned().into()),
             Rule::VarName => Value::Identifier(extract_identifier(key)?),
             Rule::ConstValue => process_value(

@@ -1242,7 +1242,7 @@ fn resolve_var(
   e: &mut EvalEnv,
 ) -> Result<ResolvedVar, ShardsError> {
   match value {
-    Value::None => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
+    Value::None(_) => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
     Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
     Value::Identifier(ref name) => {
       // could be wire, trait or mesh as "special" cases
@@ -2320,7 +2320,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       // we need to evaluate the replacement as not everything can be a const
       if let Some(replacement) = find_replacement(name, e) {
         match replacement {
-          Value::None
+          Value::None(_)
           | Value::Boolean(_)
           | Value::Enum(_, _)
           | Value::Number(_)
@@ -3622,7 +3622,7 @@ fn eval_pipeline(
                   Definition::Value(value) => {
                     let replacement = unsafe { &*value };
                     match replacement {
-                      Value::None
+                      Value::None(_)
                       | Value::Identifier(_)
                       | Value::Boolean(_)
                       | Value::Enum(_, _)

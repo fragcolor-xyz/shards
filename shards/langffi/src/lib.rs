@@ -52,7 +52,7 @@ pub extern "C" fn shards_read(
       error: std::ptr::null_mut(),
     },
     Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+      shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -77,6 +77,7 @@ pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
       error: std::ptr::null_mut(),
     },
     Err(error) => {
+      shlog_error!("{:?}", error);
       let error_message = CString::new(error.to_string()).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -147,13 +148,13 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut
   let env = unsafe { &mut *env };
   let ast = unsafe { &*ast };
   for stmt in &ast.statements {
-    if let Err(e) = eval::eval_statement(stmt, env, new_cancellation_token()) {
-      shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
-      let error_message = CString::new(e.message).unwrap();
+    if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
+      shlog_error!("{:?}", error);
+      let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
-        line: e.loc.line,
-        column: e.loc.column,
+        line: error.loc.line,
+        column: error.loc.column,
       };
       return Box::into_raw(Box::new(shards_error));
     }
@@ -173,7 +174,7 @@ pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen)
       error: std::ptr::null_mut(),
     },
     Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+      shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -208,7 +209,7 @@ pub extern "C" fn shards_transform_envs(
       error: std::ptr::null_mut(),
     },
     Err(error) => {
-      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
+      shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -235,6 +236,7 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
       error: std::ptr::null_mut(),
     },
     Err(error) => {
+      shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -299,7 +301,7 @@ pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mu
   let from = unsafe { Box::from_raw(from) };
   let to = unsafe { &mut *to };
   if let Err(e) = merge_env(*from, to) {
-    shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
+    shlog_error!("{:?}", e);
     let error_message = CString::new(e.message).unwrap();
     let shards_error = SHLError {
       message: error_message.into_raw(),
