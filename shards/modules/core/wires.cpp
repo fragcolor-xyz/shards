@@ -4,6 +4,7 @@
 #include "wires.hpp"
 #include <cassert>
 #include <shards/core/async.hpp>
+#include <shards/core/platform.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/core/module.hpp>
 #include <shards/common_types.hpp>
@@ -618,7 +619,7 @@ struct StopWire : public WireBase {
         wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
-    }
+      }
     }
 
     if (unlikely(!wire || context == wire->context)) {
@@ -1567,15 +1568,19 @@ struct ParallelBase : public CapturingSpawners {
       SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
     }
 
-#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
     if (_threads > 0) {
-      const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+      const auto threads =
+#if SH_EMSCRIPTEN
+          1; // Limit the number of threads to 1 on web
+#else
+          std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+#endif
+
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
         _exec = std::make_unique<tf::Executor>(size_t(threads),
                                                std::make_shared<TaskFlowDebugInterface>(fmt::format("{}", wire->name)));
       }
     }
-#endif
   }
 
   void cleanup(SHContext *context) {

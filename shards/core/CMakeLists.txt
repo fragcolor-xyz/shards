@@ -134,11 +134,7 @@ target_compile_options(shards-core
 
 if(EMSCRIPTEN)
   target_compile_options(shards-core PUBLIC)
-
-  target_link_options(shards-core PUBLIC
-    "-sALLOW_MEMORY_GROWTH=1"
-    "-sLLD_REPORT_UNDEFINED"
-  )
+  target_link_options(shards-core PUBLIC "-sLLD_REPORT_UNDEFINED")
 
   if(NOT SHARDS_THREAD_FIBER)
     target_link_options(shards-core PUBLIC "-sASYNCIFY=1")
