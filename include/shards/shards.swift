@@ -1049,3 +1049,41 @@ class MeshController {
     var nativeRef = SHMeshRef(bitPattern: 0)
     var wires = [WireController]()
 }
+
+extension SHStringWithLen {
+    // Create SHStringWithLen from a Swift String
+    static func from(_ swiftString: String) -> SHStringWithLen {
+        var result = SHStringWithLen()
+        let utf8String = swiftString.utf8CString
+        result.string = utf8String.withUnsafeBufferPointer { $0.baseAddress }
+        result.len = UInt64(utf8String.count - 1) // Subtract 1 to exclude null terminator
+        return result
+    }
+
+    // Convert SHStringWithLen to Swift String
+    func toString() -> String? {
+        guard let cString = string else { return nil }
+        return String(cString: cString)
+    }
+
+    // Create SHStringWithLen from a C string
+    static func fromCString(_ cString: UnsafePointer<CChar>) -> SHStringWithLen {
+        var result = SHStringWithLen()
+        result.string = UnsafePointer(cString)
+        result.len = UInt64(strlen(cString))
+        return result
+    }
+
+    // Create an empty SHStringWithLen
+    static var empty: SHStringWithLen {
+        var result = SHStringWithLen()
+        result.string = nil
+        result.len = 0
+        return result
+    }
+
+    // Check if SHStringWithLen is empty
+    var isEmpty: Bool {
+        return len == 0 || string == nil
+    }
+}
