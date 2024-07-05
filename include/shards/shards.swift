@@ -3,6 +3,73 @@
 
 // WIP: This is a work in progress
 
+/*
+final class MyShard1 : IShard {
+    typealias ShardType = MyShard1
+
+    static var name: StaticString = "MyShard1"
+    static var help: StaticString = ""
+
+    var inputTypes: [SHTypeInfo] = [
+        VarType.AnyValue.asSHTypeInfo()
+    ]
+    var outputTypes: [SHTypeInfo] = [
+        VarType.AnyValue.asSHTypeInfo()
+    ]
+
+    var parameters: [SHParameterInfo] = []
+    func setParam(idx: Int, value: SHVar) -> Result<Void, ShardError> {
+        .failure(ShardError(message: "Not implemented"))
+    }
+    func getParam(idx: Int) -> SHVar {
+        SHVar()
+    }
+
+    var exposedVariables: [SHExposedTypeInfo] = []
+    var requiredVariables: [SHExposedTypeInfo] = []
+
+    func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError> {
+        .success(data.inputType)
+    }
+
+    func warmup(context: Context) -> Result<Void, ShardError> {
+        .success(())
+    }
+
+    func cleanup(context: Context) -> Result<Void, ShardError> {
+        .success(())
+    }
+
+    func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError> {
+        guard input.type == .Int else {
+            return .failure(ShardError(message: "Expected Int input"))
+        }
+        let result = input.int * 2
+        return .success(SHVar(value: result))
+    }
+
+    // -- DON'T EDIT THE FOLLOWING --
+    static var inputTypesCFunc: SHInputTypesProc {{ bridgeInputTypes(ShardType.self, shard: $0) }}
+    static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
+    static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
+    static var nameCFunc: SHNameProc {{ _ in bridgeName(ShardType.self) }}
+    static var helpCFunc: SHHelpProc {{ _ in bridgeHelp(ShardType.self) }}
+    static var parametersCFunc: SHParametersProc {{ bridgeParameters(ShardType.self, shard: $0) }}
+    static var setParamCFunc: SHSetParamProc {{ bridgeSetParam(ShardType.self, shard: $0, idx: $1, input: $2)}}
+    static var getParamCFunc: SHGetParamProc {{ bridgeGetParam(ShardType.self, shard: $0, idx: $1)}}
+    static var exposedVariablesCFunc: SHExposedVariablesProc {{ bridgeExposedVariables(ShardType.self, shard: $0) }}
+    static var requiredVariablesCFunc: SHRequiredVariablesProc {{ bridgeRequiredVariables(ShardType.self, shard: $0) }}
+    static var composeCFunc: SHComposeProc {{ bridgeCompose(ShardType.self, shard: $0, data: $1) }}
+    static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
+    static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0, ctx: $1) }}
+    static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
+    var errorCache: ContiguousArray<CChar> = []
+}
+
+and register with:
+RegisterShard(MyShard1.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }, { createSwiftShard(MyShard1.self) })
+*/
+
 import Foundation
 import shards
 
@@ -11,8 +78,6 @@ public struct Globals {
 
     init() {
         Core = shardsInterface(UInt32(SHARDS_CURRENT_ABI))
-        // print("Shards Swift runtime initialized!")
-        // Core.pointee.registerShard(BaseShard.name.withUnsafeBufferPointer{ $0.baseAddress }, { createSwiftShard(BaseShard.self) })
     }
 }
 
@@ -369,8 +434,8 @@ public final class ShardError : Error {
 }
 
 public protocol IShard : AnyObject {
-    static var name: ContiguousArray<CChar> { get }
-    static var help: ContiguousArray<CChar> { get }
+    static var name: StaticString { get }
+    static var help: StaticString { get }
 
     init()
 
@@ -429,9 +494,7 @@ public extension IShard {
 }
 
 @inlinable public func bridgeName<T: IShard>(_: T.Type) -> UnsafePointer<Int8>? {
-    return T.name.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
+    return T.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }
 }
 
 @inlinable public func bridgeSetParam<T: IShard>(_: T.Type, shard: ShardPtr, idx: Int32, input: UnsafePointer<SHVar>?) -> SHError {
@@ -463,9 +526,7 @@ public extension IShard {
 
 @inlinable public func bridgeHelp<T: IShard>(_: T.Type) -> SHOptionalString {
     var result = SHOptionalString()
-    result.string = T.help.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
+    result.string = T.help.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }
     return result
 }
 
@@ -620,6 +681,7 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
 #endif
     let shard = T()
     let cwrapper = UnsafeMutablePointer<SwiftShard>.allocate(capacity: 1)
+    cwrapper.initialize(to: SwiftShard())
 
     cwrapper.pointee.header.name = T.nameCFunc
     cwrapper.pointee.header.hash = { _ in UInt32(SHARDS_CURRENT_ABI) }
@@ -642,64 +704,9 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     cwrapper.pointee.header.requiredVariables = T.requiredVariablesCFunc
 
     cwrapper.pointee.swiftClass = Unmanaged<T>.passRetained(shard).toOpaque()
-    let ptr = cwrapper.withMemoryRebound(to: Shard.self, capacity: 1) {
-        $0
-    }
-    return ptr;
-}
 
-final class BaseShard : IShard {
-    typealias ShardType = BaseShard
-
-    static var name: ContiguousArray<CChar> = "BaseShard".utf8CString
-    static var help: ContiguousArray<CChar> = []
-
-    var inputTypes: [SHTypeInfo] = []
-    var outputTypes: [SHTypeInfo] = []
-
-    var parameters: [SHParameterInfo] = []
-    func setParam(idx: Int, value: SHVar) -> Result<Void, ShardError> {
-        .failure(ShardError(message: "Not implemented"))
-    }
-    func getParam(idx: Int) -> SHVar {
-        SHVar()
-    }
-
-    var exposedVariables: [SHExposedTypeInfo] = []
-    var requiredVariables: [SHExposedTypeInfo] = []
-
-    func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError> {
-        .success(data.inputType)
-    }
-
-    func warmup(context: Context) -> Result<Void, ShardError> {
-        .success(())
-    }
-
-    func cleanup(context: Context) -> Result<Void, ShardError> {
-        .success(())
-    }
-
-    func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError> {
-        return .failure(ShardError(message: "Not implemented"))
-    }
-
-    // -- DON'T EDIT THE FOLLOWING --
-    static var inputTypesCFunc: SHInputTypesProc {{ bridgeInputTypes(ShardType.self, shard: $0) }}
-    static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
-    static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
-    static var nameCFunc: SHNameProc {{ _ in bridgeName(ShardType.self) }}
-    static var helpCFunc: SHHelpProc {{ _ in bridgeHelp(ShardType.self) }}
-    static var parametersCFunc: SHParametersProc {{ bridgeParameters(ShardType.self, shard: $0) }}
-    static var setParamCFunc: SHSetParamProc {{ bridgeSetParam(ShardType.self, shard: $0, idx: $1, input: $2)}}
-    static var getParamCFunc: SHGetParamProc {{ bridgeGetParam(ShardType.self, shard: $0, idx: $1)}}
-    static var exposedVariablesCFunc: SHExposedVariablesProc {{ bridgeExposedVariables(ShardType.self, shard: $0) }}
-    static var requiredVariablesCFunc: SHRequiredVariablesProc {{ bridgeRequiredVariables(ShardType.self, shard: $0) }}
-    static var composeCFunc: SHComposeProc {{ bridgeCompose(ShardType.self, shard: $0, data: $1) }}
-    static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
-    static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0, ctx: $1) }}
-    static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
-    var errorCache: ContiguousArray<CChar> = []
+    // Cast to Shard pointer without rebinding
+    return UnsafeMutableRawPointer(cwrapper).assumingMemoryBound(to: Shard.self)
 }
 
 struct Parameter {
@@ -1051,12 +1058,21 @@ class MeshController {
 }
 
 extension SHStringWithLen {
-    // Create SHStringWithLen from a Swift String
-    static func from(_ swiftString: String) -> SHStringWithLen {
+    // Create SHStringWithLen from a reference to a Swift String
+    static func from(_ swiftString: inout String) -> SHStringWithLen {
         var result = SHStringWithLen()
-        let utf8String = swiftString.utf8CString
-        result.string = utf8String.withUnsafeBufferPointer { $0.baseAddress }
-        result.len = UInt64(utf8String.count - 1) // Subtract 1 to exclude null terminator
+        result.string = swiftString.utf8CString.withUnsafeBufferPointer { $0.baseAddress }
+        result.len = UInt64(swiftString.utf8CString.count - 1) // Subtract 1 to exclude null terminator
+        return result
+    }
+
+    // Create SHStringWithLen from a static compile-time string
+    static func fromStatic(_ staticString: StaticString) -> SHStringWithLen {
+        var result = SHStringWithLen()
+        result.string = staticString.withUTF8Buffer { buffer in
+            return unsafeBitCast(buffer.baseAddress, to: UnsafePointer<CChar>.self)
+        }
+        result.len = UInt64(staticString.utf8CodeUnitCount)
         return result
     }
 
@@ -1064,14 +1080,6 @@ extension SHStringWithLen {
     func toString() -> String? {
         guard let cString = string else { return nil }
         return String(cString: cString)
-    }
-
-    // Create SHStringWithLen from a C string
-    static func fromCString(_ cString: UnsafePointer<CChar>) -> SHStringWithLen {
-        var result = SHStringWithLen()
-        result.string = UnsafePointer(cString)
-        result.len = UInt64(strlen(cString))
-        return result
     }
 
     // Create an empty SHStringWithLen
@@ -1088,11 +1096,22 @@ extension SHStringWithLen {
     }
 }
 
+class Shards {
+    static func log(_ message: String) {
+        message.utf8CString.withUnsafeBufferPointer { buffer in
+            var shString = SHStringWithLen()
+            shString.string = buffer.baseAddress
+            shString.len = UInt64(buffer.count - 1)  // Subtract 1 to exclude null terminator
+            G.Core.pointee.log(shString)
+        }
+    }
+}
+
 open class GenericShard: IShard {
     public required init() {}
 
-    open class var name: ContiguousArray<CChar> { fatalError("Must be overridden") }
-    open class var help: ContiguousArray<CChar> { [] }
+    open class var name: StaticString { fatalError("Must be overridden") }
+    open class var help: StaticString { "" }
 
     open var inputTypes: [SHTypeInfo] { [VarType.AnyValue.asSHTypeInfo()] }
     open var outputTypes: [SHTypeInfo] { [VarType.AnyValue.asSHTypeInfo()] }
@@ -1172,16 +1191,12 @@ func bridgeDestroy(_ shard: ShardPtr) {
 }
 
 func bridgeName(_: ShardPtr) -> UnsafePointer<Int8>? {
-    return GenericShard.name.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
+    return GenericShard.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }
 }
 
 func bridgeHelp(_: ShardPtr) -> SHOptionalString {
     var result = SHOptionalString()
-    result.string = GenericShard.help.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
+    result.string = GenericShard.help.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }
     return result
 }
 
