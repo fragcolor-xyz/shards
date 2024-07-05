@@ -70,10 +70,10 @@ pub extern "C" fn shards_read(
 #[no_mangle]
 pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
   let bytes = unsafe { from_raw_parts_allow_null(bytes, size as usize) };
-  let decoded_bin: Result<Sequence, _> = flexbuffers::from_slice(bytes);
+  let decoded_bin: Result<Program, _> = flexbuffers::from_slice(bytes);
   match decoded_bin {
-    Ok(sequence) => SHLAst {
-      ast: Box::into_raw(Box::new(sequence)),
+    Ok(prog) => SHLAst {
+      ast: Box::into_raw(Box::new(prog.sequence)),
       error: std::ptr::null_mut(),
     },
     Err(error) => {
@@ -93,7 +93,7 @@ pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_save_ast(ast: *mut Sequence) -> Var {
+pub extern "C" fn shards_save_ast(ast: *mut Program) -> Var {
   let ast = unsafe { &*ast };
   let encoded_bin = flexbuffers::to_vec(&ast).unwrap();
   let v: ClonedVar = encoded_bin.as_slice().into();
