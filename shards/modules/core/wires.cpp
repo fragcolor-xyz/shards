@@ -1534,13 +1534,14 @@ struct ParallelBase : public CapturingSpawners {
 
   struct Composer {
     ParallelBase &server;
+    bool onWorkerThread = true;
 
     void compose(SHWire *wire, SHMesh *mesh, bool recycling) {
       if (recycling)
         return;
 
       SHInstanceData data{};
-      data.onWorkerThread = true;
+      data.onWorkerThread = onWorkerThread;
       data.inputType = server._inputType;
       if (!wire->pure) {
         data.shared = server._sharedCopy;
@@ -2198,6 +2199,8 @@ struct DoMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _composer.onWorkerThread = false;
+    
     WireBase::resolveWire();
 
     if (data.inputType.seqTypes.len == 1) {
