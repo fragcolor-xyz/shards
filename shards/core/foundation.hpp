@@ -129,6 +129,11 @@ int64_t findEnumId(std::string_view name);
 void registerWire(SHWire *wire);
 void unregisterWire(SHWire *wire);
 
+void imageAddRef(SHImage* ptr);
+void imageDecRef(SHImage* ptr);
+SHImage* imageNew();
+SHImage* imageClone(SHImage* ptr);
+
 struct RuntimeObserver {
   virtual void registerShard(const char *fullName, SHShardConstructor constructor) {}
   virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {}

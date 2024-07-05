@@ -417,6 +417,33 @@ void unregisterWire(SHWire *wire) {
   }
 }
 
+void imageAddRef(SHImage *ptr) { shassert(ptr);
+  shassert(ptr);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(ptr->refCount);
+  shassert(atomicRefCount > 0);
+  atomicRefCount.add(1);
+ }
+void imageDecRef(SHImage *ptr) {
+  shassert(ptr);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(ptr->refCount);
+  shassert(atomicRefCount > 0);
+  if (atomicRefCount.fetch_sub(1) == 1) {
+    delete ptr;
+  }
+}
+SHImage *imageNew(uint32_t dataLen) {
+  SHImage *image = reinterpret_cast<SHImage *>(new uint8_t[sizeof(SHImage) - 1 + dataLen]);
+  image->dataLength = dataLen;
+  image->refCount = 1;
+  return image;
+}
+SHImage *imageClone(SHImage *ptr) {
+  shassert(ptr);
+  SHImage *newImage = imageNew(ptr->dataLength);
+  memcpy(newImage, ptr, sizeof(SHImage) - 1 + ptr->dataLength);
+  return ptr;
+}
+
 entt::id_type findId(SHContext *ctx) noexcept {
   entt::id_type id = entt::null;
 

@@ -234,11 +234,13 @@ struct SHColor {
 #define SHIMAGE_FLAGS_32BITS_FLOAT (1 << 3)
 
 struct SHImage {
+  uint32_t refCount;
   uint16_t width;
   uint16_t height;
   uint8_t channels;
   uint8_t flags;
-  uint8_t *data;
+  uint32_t dataLength;
+  uint8_t data[1];
 };
 
 struct SHAudio {
@@ -589,7 +591,7 @@ struct SHVarPayload {
 
     struct SHColor colorValue;
 
-    struct SHImage imageValue;
+    struct SHImage* imageValue;
 
     struct SHAudio audioValue;
 
@@ -746,6 +748,11 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
+typedef void(__cdecl *SHImageAddRefProc)(struct SHImage *);
+typedef void(__cdecl *SHImageDecRefProc)(struct SHImage *);
+typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
+typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
+
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
   SHInlineShards inlineShardId;
@@ -812,6 +819,12 @@ struct Shard {
   SHGetStateProc getState;
   SHSetStateProc setState;
   SHResetStateProc resetState;
+
+  // Image object manipulation
+  SHImageAddRefProc imageAddRef;
+  SHImageDecRefProc imageDecRef;
+  SHImageNewProc imageNew;
+  SHImageCloneProc imageClone;
 };
 
 struct SHWireProviderUpdate {
