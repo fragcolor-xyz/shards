@@ -328,27 +328,9 @@ struct Base {
   OwnedVar _dbNameStr{Var("shards.db")};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
-  bool _runningOnWorker{};
   bool _withinTransaction{false};
 
-  template <typename Callback, typename Cancel> auto maybeAwaitNoExcept(SHContext *context, Callback &&action, Cancel&& cancel) {
-    if (_runningOnWorker) {
-      return action();
-    } else {
-      return awaitne(context, std::move(action), cancel);
-    }
-  }
-  template <typename Callback, typename Cancel> void maybeAwait(SHContext *context, Callback &&action, Cancel&& cancel) {
-    if (_runningOnWorker) {
-      action();
-    } else {
-      await(context, std::move(action), cancel);
-    }
-  }
-
   void compose(SHInstanceData &data) {
-    _runningOnWorker = data.onWorkerThread;
-
     _withinTransaction = false;
     if (data.shared.len > 0) {
       for (uint32_t i = data.shared.len; i > 0; i--) {
@@ -580,7 +562,7 @@ struct Query : public Base {
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
 
-    return maybeAwaitNoExcept(
+    return maybeAwaitne(
         context,
         [&]() -> SHVar {
           // ok if we are not within a transaction, we need to check if transaction lock is locked!
@@ -821,7 +803,7 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
-    return maybeAwaitNoExcept(
+    return maybeAwaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
@@ -882,7 +864,7 @@ struct Backup : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, true);
 
-    return maybeAwaitNoExcept(
+    return maybeAwaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;

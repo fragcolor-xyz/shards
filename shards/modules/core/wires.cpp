@@ -1387,7 +1387,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
-      await(
+      maybeAwait(
           context,
           [this, context, wireVar]() {
             deferredCompose(context);
@@ -1683,6 +1683,7 @@ struct ParallelBase : public CapturingSpawners {
 
       bool success = true;
       cref->mesh->schedule(obs, cref->wire, getInput(input, idx), false); // don't compose
+      cref->wire->context->onWorkerThread = true;
       while (!cref->mesh->empty()) {
         if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
           success = false;
@@ -2254,7 +2255,7 @@ struct DoMany : public TryMany {
       auto &cref = _wires[i];
       if (!cref) {
         // compose on a worker thread!
-        await(
+        maybeAwait(
             context,
             [this, i]() {
               auto &cref = _wires[i];

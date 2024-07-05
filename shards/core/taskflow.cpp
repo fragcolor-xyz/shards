@@ -25,7 +25,7 @@ struct TaskFlowDebugInterface : tf::WorkerInterface {
 };
 
 static size_t getNumTaskflowThreads() {
-#if SH_EMSCRIPTEN
+#if SH_EMSCRIPTEN || 1
   return 2;
 #else
   return std::max<size_t>(1, std::thread::hardware_concurrency() - 1);

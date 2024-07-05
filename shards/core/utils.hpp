@@ -59,9 +59,16 @@ inline void pushThreadName(std::string_view name) {
 template <typename T> inline void pushThreadName(const T &v) {}
 #endif
 
+#if SH_DEBUG_THREAD_NAMES
+// You can add this to the debugger watch window (shards::_debugThreadStack)
+//  to see the current thread stack
+extern thread_local std::list<std::string>* _debugThreadStack;
+#endif
+
 inline void popThreadName() {
 #if SH_DEBUG_THREAD_NAMES
   auto &stack = getThreadNameStack();
+  _debugThreadStack = &stack;
   shassert(stack.size() > 0);
   stack.pop_back();
   setThreadName(stack.size() > 0 ? stack.back() : "Unnamed thread");
