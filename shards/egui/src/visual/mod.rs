@@ -286,6 +286,13 @@ fn emoji(s: &str) -> egui::RichText {
     .size(14.0)
 }
 
+fn chars(s: &str) -> egui::RichText {
+  egui::RichText::new(s)
+    .family(egui::FontFamily::Proportional)
+    .strong()
+    .size(15.0)
+}
+
 fn get_first_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
   for statement in &mut ast.statements {
     match statement {
@@ -1297,19 +1304,19 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let mut combined_response = None;
     let (r_a, r_b) = match assignment {
       Assignment::AssignRef(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("➰"));
+        self.ui.label(chars("="));
         identifier.accept_mut(self)
       }),
       Assignment::AssignSet(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("➡"));
+        self.ui.label(chars(">="));
         identifier.accept_mut(self)
       }),
       Assignment::AssignUpd(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("⤴"));
+        self.ui.label(chars(">"));
         identifier.accept_mut(self)
       }),
       Assignment::AssignPush(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("⏩"));
+        self.ui.label(chars(">>"));
         identifier.accept_mut(self)
       }),
     };
