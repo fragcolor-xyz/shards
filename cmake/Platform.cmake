@@ -10,6 +10,9 @@ if(APPLE)
   set(CMAKE_Swift_COMPILER /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc)
   enable_language(Swift)
   set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
+
+  # Remember to set proper linker to your final targets if you use swift files!
+  # set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
 if(APPLE AND NOT IOS AND NOT VISIONOS)
