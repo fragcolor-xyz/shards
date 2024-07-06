@@ -52,6 +52,7 @@ final class MyShard1 : IShard {
     static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
     static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
     static var nameCFunc: SHNameProc {{ _ in bridgeName(ShardType.self) }}
+    static var hashCFunc: SHHashProc {{ _ in bridgeHash(ShardType.self) }}
     static var helpCFunc: SHHelpProc {{ _ in bridgeHelp(ShardType.self) }}
     static var parametersCFunc: SHParametersProc {{ bridgeParameters(ShardType.self, shard: $0) }}
     static var setParamCFunc: SHSetParamProc {{ bridgeSetParam(ShardType.self, shard: $0, idx: $1, input: $2)}}
@@ -463,6 +464,7 @@ public protocol IShard : AnyObject {
     static var outputTypesCFunc: SHInputTypesProc { get }
     static var destroyCFunc: SHDestroyProc { get }
     static var nameCFunc: SHNameProc { get }
+    static var hashCFunc: SHHashProc { get }
     static var helpCFunc: SHHelpProc { get }
     static var parametersCFunc: SHParametersProc { get }
     static var setParamCFunc: SHSetParamProc { get }
@@ -493,6 +495,10 @@ public extension IShard {
 
 @inlinable public func bridgeName<T: IShard>(_: T.Type) -> UnsafePointer<Int8>? {
     return T.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }
+}
+
+@inlinable public func bridgeHash<T: IShard>(_: T.Type) -> UInt32 {
+    return hashShard(T.self)
 }
 
 @inlinable public func bridgeSetParam<T: IShard>(_: T.Type, shard: ShardPtr, idx: Int32, input: UnsafePointer<SHVar>?) -> SHError {
@@ -660,6 +666,28 @@ public extension IShard {
     return result
 }
 
+@inlinable public func hashShard<T: IShard>(_: T.Type) -> UInt32 {
+    let name = T.name
+    let namePtr = name.utf8Start.withMemoryRebound(to: UInt8.self, capacity: name.utf8CodeUnitCount) { $0 }
+    let nameData = Data(bytes: namePtr, count: name.utf8CodeUnitCount)
+
+    // Create a buffer with the shard name and SHARDS_CURRENT_ABI
+    var buffer = [UInt8]()
+    buffer.append(contentsOf: nameData)
+
+    var abi = UInt32(SHARDS_CURRENT_ABI)
+    withUnsafeBytes(of: &abi) { buffer.append(contentsOf: $0) }
+
+    // Compute the hash using a simple algorithm (FNV-1a in this case)
+    var hash: UInt32 = 2166136261
+    for byte in buffer {
+        hash ^= UInt32(byte)
+        hash &*= 16777619
+    }
+
+    return hash
+}
+
 func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
 #if DEBUG
     print("Creating swift shard: \(T.name)")
@@ -669,7 +697,7 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     cwrapper.initialize(to: SwiftShard())
 
     cwrapper.pointee.header.name = T.nameCFunc
-    cwrapper.pointee.header.hash = { _ in UInt32(SHARDS_CURRENT_ABI) }
+    cwrapper.pointee.header.hash = T.hashCFunc
     cwrapper.pointee.header.help = T.helpCFunc
     cwrapper.pointee.header.inputHelp = { _ in SHOptionalString() }
     cwrapper.pointee.header.outputHelp = { _ in SHOptionalString() }
