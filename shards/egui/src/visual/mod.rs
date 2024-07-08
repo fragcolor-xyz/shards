@@ -2567,13 +2567,13 @@ impl Shard for UIShardsShard {
 
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
 
-    // Set the minimum and maximum size of the UI
-    // This allows us to have a fully user controlled UI/Window
-    let x = ui.available_size_before_wrap().x;
-    let y = ui.available_size_before_wrap().y;
-    let min_max = egui::Vec2::new(x, y);
-    ui.set_min_size(min_max);
-    ui.set_max_size(min_max);
+    // // Set the minimum and maximum size of the UI
+    // // This allows us to have a fully user controlled UI/Window
+    // let x = ui.available_size_before_wrap().x;
+    // let y = ui.available_size_before_wrap().y;
+    // let min_max = egui::Vec2::new(x, y);
+    // ui.set_min_size(min_max);
+    // ui.set_max_size(min_max);
 
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
       // go backward / zoom out
