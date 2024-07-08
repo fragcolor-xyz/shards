@@ -135,6 +135,7 @@ SHImage *imageNew(uint32_t dataLen);
 SHImage *imageClone(SHImage *ptr);
 uint32_t imageDeriveDataLength(SHImage* ptr);
 uint32_t imageGetPixelSize(SHImage* img);
+uint32_t imageGetRowStride(SHImage* img);
 
 struct RuntimeObserver {
   virtual void registerShard(const char *fullName, SHShardConstructor constructor) {}

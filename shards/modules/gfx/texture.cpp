@@ -274,6 +274,7 @@ struct TextureShard {
         .source =
             TextureSource{
                 .numChannels = image.channels,
+                .rowStride = image.rowStride,
                 .data = std::move(isb),
             },
     });
@@ -519,6 +520,7 @@ struct ReadTextureShard {
         new (&customImage->userData) std::vector<uint8_t>(std::move(_readBuffer->data));
 
         outImage.data = customImage->userData.data();
+        outImage.rowStride = _readBuffer->stride;
         shassert(outImage.data);
 
         outImage.free = [](SHImage *image) {

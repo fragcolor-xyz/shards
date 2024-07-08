@@ -240,6 +240,7 @@ struct SHImage {
   uint32_t refCount;
   uint16_t width;
   uint16_t height;
+  uint16_t rowStride;
   uint8_t channels;
   uint8_t flags;
   uint8_t *data;

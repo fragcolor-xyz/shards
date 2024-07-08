@@ -95,7 +95,8 @@ struct TextureContextData : public ContextData {
 };
 
 struct TextureSource {
-  int numChannels = 4;
+  uint8_t numChannels = 4;
+  uint32_t rowStride{};
   ImmutableSharedBuffer data;
 
   std::strong_ordering operator<=>(const TextureSource &other) const = default;

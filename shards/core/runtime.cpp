@@ -462,6 +462,14 @@ uint32_t imageGetPixelSize(SHImage *img) {
   return pixsize;
 }
 
+uint32_t imageGetRowStride(SHImage* img) {
+  shassert(img);
+  if(img->rowStride)
+    return img->rowStride;
+  return uint32_t(img->width * img->channels * imageGetPixelSize(img));
+
+}
+
 uint32_t imageDeriveDataLength(SHImage *img) {
   shassert(img);
   auto spixsize = imageGetPixelSize(img);
