@@ -2099,6 +2099,28 @@ SHVar blockingSleepActivation(const SHVar &input) {
   return input;
 }
 
+#ifdef SH_COMPRESSED_STRINGS
+SHVar export_compressed_strings(const SHVar &input) { return Var::Empty; }
+#else
+SHVar export_strings(const SHVar &input) {
+  static OwnedVar output;
+  if (output->isNone()) {
+    assert(shards::GetGlobals().CompressedStrings);
+    SeqVar strs;
+    for (auto &[crc, str] : *shards::GetGlobals().CompressedStrings) {
+      if (crc != 0) {
+        SeqVar record;
+        record.emplace_back(Var(crc));
+        record.emplace_back(Var(str.string, 0));
+        strs.emplace_back(std::move(record));
+      }
+    }
+    output = OwnedVar(std::move(strs));
+  }
+  return output;
+}
+#endif
+
 struct LastError {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -2513,5 +2535,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Shards.ObjectTypes", GetObjectTypes);
   REGISTER_SHARD("Shards.EnumTypeHelp", GetEnumTypeHelp);
   REGISTER_SHARD("Shards.ObjectTypeHelp", GetObjectTypeHelp);
+
+  using ExportStringsShard = LambdaShard<export_strings, CoreInfo::NoneType, CoreInfo::AnySeqType>;
+  REGISTER_SHARD("_ExportStrings", ExportStringsShard);
 }
 }; // namespace shards

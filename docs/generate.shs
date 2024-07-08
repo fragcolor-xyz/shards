@@ -539,5 +539,3 @@ skipped-list | ForEach({
 ["};\n\n"] | String.Format >> out
 out | String.Join("") = file-content
 "forbidden_shards.inl" | FS.Write(file-content Overwrite: true)
-
-Pause(2.0)
