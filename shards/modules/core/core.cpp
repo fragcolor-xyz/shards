@@ -2100,7 +2100,7 @@ SHVar blockingSleepActivation(const SHVar &input) {
 }
 
 #ifdef SH_COMPRESSED_STRINGS
-SHVar export_compressed_strings(const SHVar &input) { return Var::Empty; }
+SHVar export_strings(const SHVar &input) { return Var::Empty; }
 #else
 SHVar export_strings(const SHVar &input) {
   static OwnedVar output;
