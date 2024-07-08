@@ -360,6 +360,40 @@ impl<'a> VisualAst<'a> {
     ast.accept_mut(self)
   }
 
+  fn populate_params(x: &mut Function, info: &SeqVar) {
+    // only if we really need to sort
+    let mut params = x.params.take();
+    // reset current params
+    x.params = Some(Vec::new());
+
+    // helper if needed as well
+    let mut helper = params.as_mut().map(|x| ParamHelperMut::new(x));
+
+    for (idx, param) in info.into_iter().enumerate() {
+      let param = param.as_table().unwrap();
+      let name: &str = param.get_fast_static("name").try_into().unwrap();
+
+      let new_param = helper
+        .as_mut()
+        .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
+        .cloned();
+
+      let param_to_add = new_param.unwrap_or_else(|| {
+        let default_value = param.get_fast_static("default");
+        Param {
+          name: Some(name.into()),
+          value: var_to_value(&default_value).unwrap(),
+          custom_state: None,
+        }
+      });
+
+      x.params.as_mut().unwrap().push(param_to_add);
+    }
+
+    // set flag to true
+    x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
+  }
+
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
     let state = x.get_or_insert_custom_state(|| FunctionState {
       params_sorted: false,
@@ -432,53 +466,18 @@ impl<'a> VisualAst<'a> {
 
     let response = self.ui.label(shard_name_rt).on_hover_text(help_text);
 
+    let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
+
+    if !params_sorted {
+      if let Some(params) = params {
+        Self::populate_params(x, params);
+      }
+    }
+
     if self.parent_selected {
-      let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
       if let Some(params) = params {
         // We have documentation...
         if !params.is_empty() {
-          let mut params_copy = if !params_sorted {
-            // only if we really need to sort
-            let params = x.params.clone();
-            // reset current params
-            x.params = Some(Vec::new());
-            Some(params)
-          } else {
-            None
-          };
-
-          // helper if needed as well
-          let mut helper = params_copy
-            .as_mut()
-            .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
-
-          if !params_sorted {
-            for (idx, param) in params.into_iter().enumerate() {
-              let param = param.as_table().unwrap();
-              let name: &str = param.get_fast_static("name").try_into().unwrap();
-
-              let new_param = helper
-                .as_mut()
-                .and_then(|h| h.as_mut())
-                .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
-                .cloned();
-
-              let param_to_add = new_param.unwrap_or_else(|| {
-                let default_value = param.get_fast_static("default");
-                Param {
-                  name: Some(name.into()),
-                  value: var_to_value(&default_value).unwrap(),
-                  custom_state: None,
-                }
-              });
-
-              x.params.as_mut().unwrap().push(param_to_add);
-            }
-
-            // set flag to true
-            x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
-          }
-
           egui::ScrollArea::both().show(self.ui, |ui| {
             for (idx, param) in params.into_iter().enumerate() {
               let param = param.as_table().unwrap();
@@ -499,8 +498,18 @@ impl<'a> VisualAst<'a> {
               } else {
                 help_text
               };
+              let default_value = param.get_fast_static("default");
+              let is_at_default_value = x
+                .params
+                .as_ref()
+                .map(|params| {
+                  let param = &params[idx];
+                  let default_value = var_to_value(&default_value).unwrap();
+                  &param.value == &default_value
+                })
+                .unwrap_or(false);
               egui::CollapsingHeader::new(name)
-                .default_open(true)
+                .default_open(!is_at_default_value)
                 .show(ui, |ui| {
                   ui.horizontal(|ui| {
                     // button to reset to default
@@ -511,7 +520,6 @@ impl<'a> VisualAst<'a> {
                     {
                       // reset to default
                       shlog_debug!("Resetting: {} to default value.", name);
-                      let default_value = param.get_fast_static("default");
                       x.params.as_mut().map(|params| {
                         params[idx].value = var_to_value(&default_value).unwrap();
                       });

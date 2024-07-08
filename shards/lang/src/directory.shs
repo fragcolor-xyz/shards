@@ -55,7 +55,7 @@ Set(wire-doc "help")
   {name: "Shards"
    help: "The shards to run"
    types: [{name: "Seq" type: 56}]
-   default: [Pass]}
+   default: none}
   {name: "Traits"
    help: "The traits of the wire"
    types: [{name: "Seq" type: 56}]

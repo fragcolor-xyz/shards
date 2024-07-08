@@ -6,30 +6,49 @@
   Once({
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
-    "ui-nested.shs" | FS.Read | Shards.Read(AstType::Object) = ast
-    Shards.Print >= text-code
   })
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     UI({
-      ; UI.Window(Title: "1" Contents: {
-      ;   UI.Settings
-      ; })
-      UI.Window(Title: "Shards" MinWidth: 512.0 Contents: {
-        ; UI.LayoutClass(
-        ;   MainDirection: LayoutDirection::TopDown
-        ;   FillWidth: true
-        ;   FillHeight: true
-        ; ) >= left-to-right-layout-class
-        ; UI.Layout(
-        UI.Shards(ast) | When(IsTrue {
-          Msg("Reloading code")
-          ast | Shards.Print > text-code
-        })
-        ; left-to-right-layout-class)
-      })
-
-      UI.Window(Title: "Code" Contents: {
-        UI.CodeEditor(text-code "Shards")
+      UI.Window(Contents: {
+        UI.Style(AnimationTime: 0.5
+          OverrideTextColor: @color(255 100 100)
+          Selection: {
+            BGFill: @color(0 255 205 255)
+            Stroke: @stroke-2
+          }
+        )
+        UI.WidgetStyle(
+          Inactive: {
+            BGFill: @color(0 0 127)
+            WeakBGFill: @color(0 0 20)
+            BGStroke: @stroke-2
+            Rounding: @f4(1.0)
+            ; Stroke: @no-stroke
+          }
+          NonInteractive: {
+            BGFill: @color(127 127 127 255)
+            Stroke: @no-stroke
+            BGStroke: @stroke-2
+          }
+          Hovered: {
+            BGFill: @color(190 190 190 255)
+            Stroke: @stroke-4
+            BGStroke: @stroke-4
+          }
+          Active: {
+            BGFill: @color(0 255 205 255)
+            Stroke: @stroke-2
+            BGStroke: @stroke-2
+          }
+          Open: {
+            BGFill: @color(255 255 255 255)
+            Stroke: @no-stroke
+            BGStroke: @stroke-2
+          }
+        )
+        "Label" | UI.Label
+        UI.Button("Button")
+        UI.TextField(text)
       })
     }) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)
@@ -38,4 +57,4 @@
 
 @mesh(root)
 @schedule(root main)
-@run(root FPS: 60)
+@run(root FPS: 60 Iterations: 100)
