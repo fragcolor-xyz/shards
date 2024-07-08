@@ -479,126 +479,124 @@ impl<'a> VisualAst<'a> {
       if let Some(params) = params {
         // We have documentation...
         if !params.is_empty() {
-          egui::ScrollArea::both().show(self.ui, |ui| {
-            for (idx, param) in params.into_iter().enumerate() {
-              let param = param.as_table().unwrap();
-              let name: &str = param
-                .get_fast_static("name")
-                .try_into()
-                .expect("A shard's parameter name must be a string!");
-              let help_text: &str = param
-                .get_fast_static("help")
-                .try_into()
-                .expect("A shard's parameter help text must be a string!");
-              let types = param
-                .get_fast_static("types")
-                .as_seq()
-                .expect("A shard's parameter types must be a sequence!");
-              let help_text = if help_text.is_empty() {
-                "No help text provided."
-              } else {
-                help_text
-              };
-              let default_value = param.get_fast_static("default");
-              let is_at_default_value = x
-                .params
-                .as_ref()
-                .map(|params| {
-                  let param = &params[idx];
-                  let default_value = var_to_value(&default_value).unwrap();
-                  &param.value == &default_value
-                })
-                .unwrap_or(false);
-              egui::CollapsingHeader::new(name)
-                .default_open(!is_at_default_value)
-                .show(ui, |ui| {
-                  ui.horizontal(|ui| {
-                    // button to reset to default
-                    if ui
-                      .button(emoji("🔄"))
-                      .on_hover_text("Reset to default value.")
-                      .clicked()
-                    {
-                      // reset to default
-                      shlog_debug!("Resetting: {} to default value.", name);
-                      x.params.as_mut().map(|params| {
-                        params[idx].value = var_to_value(&default_value).unwrap();
-                      });
-                      self.context.has_changed = true;
-                    }
-                    if ui
-                      .button(emoji("🔧"))
-                      .on_hover_text("Change value type.")
-                      .clicked()
-                    {
-                      // let (sender, receiver) = mpsc::channel();
-                      // let query = Var::ephemeral_string("").into();
-                      // get_global_visual_shs_channel_sender()
-                      //   .send((query, sender))
-                      //   .unwrap();
-                      // x.get_custom_state::<FunctionState>().unwrap().receiver =
-                      //   Some(UniqueReceiver::new(receiver));
+          for (idx, param) in params.into_iter().enumerate() {
+            let param = param.as_table().unwrap();
+            let name: &str = param
+              .get_fast_static("name")
+              .try_into()
+              .expect("A shard's parameter name must be a string!");
+            let help_text: &str = param
+              .get_fast_static("help")
+              .try_into()
+              .expect("A shard's parameter help text must be a string!");
+            let types = param
+              .get_fast_static("types")
+              .as_seq()
+              .expect("A shard's parameter types must be a sequence!");
+            let help_text = if help_text.is_empty() {
+              "No help text provided."
+            } else {
+              help_text
+            };
+            let default_value = param.get_fast_static("default");
+            let is_at_default_value = x
+              .params
+              .as_ref()
+              .map(|params| {
+                let param = &params[idx];
+                let default_value = var_to_value(&default_value).unwrap();
+                &param.value == &default_value
+              })
+              .unwrap_or(false);
+            egui::CollapsingHeader::new(name)
+              .default_open(!is_at_default_value)
+              .show(self.ui, |ui| {
+                ui.horizontal(|ui| {
+                  // button to reset to default
+                  if ui
+                    .button(emoji("🔄"))
+                    .on_hover_text("Reset to default value.")
+                    .clicked()
+                  {
+                    // reset to default
+                    shlog_debug!("Resetting: {} to default value.", name);
+                    x.params.as_mut().map(|params| {
+                      params[idx].value = var_to_value(&default_value).unwrap();
+                    });
+                    self.context.has_changed = true;
+                  }
+                  if ui
+                    .button(emoji("🔧"))
+                    .on_hover_text("Change value type.")
+                    .clicked()
+                  {
+                    // let (sender, receiver) = mpsc::channel();
+                    // let query = Var::ephemeral_string("").into();
+                    // get_global_visual_shs_channel_sender()
+                    //   .send((query, sender))
+                    //   .unwrap();
+                    // x.get_custom_state::<FunctionState>().unwrap().receiver =
+                    //   Some(UniqueReceiver::new(receiver));
 
-                      // open a dialog to change the value
+                    // open a dialog to change the value
 
-                      let mouse_pos = ui
-                        .ctx()
-                        .input(|i| i.pointer.hover_pos().unwrap_or_default());
-                      self.context.swap_state = Some(SwapState::Param(ParamSwapState {
-                        common: SwapStateCommon {
-                          id: Id::new(nanoid!()),
-                          receiver: None,
-                          window_pos: mouse_pos,
-                        },
-                        param: &mut x.params.as_mut().unwrap()[idx],
-                        types: types as *const SeqVar,
-                      }));
-                    }
-                  });
+                    let mouse_pos = ui
+                      .ctx()
+                      .input(|i| i.pointer.hover_pos().unwrap_or_default());
+                    self.context.swap_state = Some(SwapState::Param(ParamSwapState {
+                      common: SwapStateCommon {
+                        id: Id::new(nanoid!()),
+                        receiver: None,
+                        window_pos: mouse_pos,
+                      },
+                      param: &mut x.params.as_mut().unwrap()[idx],
+                      types: types as *const SeqVar,
+                    }));
+                  }
+                });
 
-                  x.params.as_mut().map(|params| {
-                    let param = &mut params[idx];
+                x.params.as_mut().map(|params| {
+                  let param = &mut params[idx];
 
-                    // this will be useful later in print for example!
-                    param.is_default = Some(is_at_default_value);
+                  // this will be useful later in print for example!
+                  param.is_default = Some(is_at_default_value);
 
-                    // draw the value
-                    let mut mutator =
-                      VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                    param.value.accept_mut(&mut mutator);
+                  // draw the value
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                  param.value.accept_mut(&mut mutator);
 
-                    // process changes
-                    let new_value =
-                      if let Some(SwapState::Param(swap_state)) = &mut self.context.swap_state {
-                        if swap_state.param == param {
-                          match select_value_modal(ui, swap_state) {
-                            SwapStateResult::<Value>::Done(f) => {
-                              self.context.has_changed = true;
-                              self.context.swap_state = None;
-                              Some(f)
-                            }
-                            SwapStateResult::Close => {
-                              self.context.swap_state = None;
-                              None
-                            }
-                            _ => None,
+                  // process changes
+                  let new_value =
+                    if let Some(SwapState::Param(swap_state)) = &mut self.context.swap_state {
+                      if swap_state.param == param {
+                        match select_value_modal(ui, swap_state) {
+                          SwapStateResult::<Value>::Done(f) => {
+                            self.context.has_changed = true;
+                            self.context.swap_state = None;
+                            Some(f)
                           }
-                        } else {
-                          None
+                          SwapStateResult::Close => {
+                            self.context.swap_state = None;
+                            None
+                          }
+                          _ => None,
                         }
                       } else {
                         None
-                      };
+                      }
+                    } else {
+                      None
+                    };
 
-                    if let Some(new_value) = new_value {
-                      param.value = new_value;
-                    }
-                  });
-                })
-                .header_response
-                .on_hover_text(help_text);
-            }
-          });
+                  if let Some(new_value) = new_value {
+                    param.value = new_value;
+                  }
+                });
+              })
+              .header_response
+              .on_hover_text(help_text);
+          }
         }
       } else {
         // no documentation just render the values
@@ -947,28 +945,25 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
 
           ui.add_sized([widest, 1.0], egui::Separator::default().horizontal());
 
-          let maybe_block = egui::ScrollArea::new([true, true])
-            .min_scrolled_height(75.0)
-            .show(ui, |ui| {
-              for result in swap_state.search_results.iter() {
-                if ui.selectable_label(false, result).clicked() {
-                  return SwapStateResult::Done(Block {
-                    content: BlockContent::Shard(Function {
-                      name: Identifier {
-                        name: result.clone().into(),
-                        namespaces: Vec::new(),
-                      },
-                      params: None,
-                      custom_state: None,
-                    }),
-                    line_info: None,
+          let maybe_block = {
+            for result in swap_state.search_results.iter() {
+              if ui.selectable_label(false, result).clicked() {
+                return SwapStateResult::Done(Block {
+                  content: BlockContent::Shard(Function {
+                    name: Identifier {
+                      name: result.clone().into(),
+                      namespaces: Vec::new(),
+                    },
+                    params: None,
                     custom_state: None,
-                  });
-                }
+                  }),
+                  line_info: None,
+                  custom_state: None,
+                });
               }
-              SwapStateResult::Continue
-            })
-            .inner;
+            }
+            SwapStateResult::Continue
+          };
 
           swap_state.previous_search_string = prefix.clone();
 
@@ -1994,43 +1989,39 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             let len = x.len();
             let response = ui.label(format!("Seq (len: {})", len));
             if self.parent_selected {
-              egui::ScrollArea::new([true, true])
-                .min_scrolled_height(100.0)
-                .show(ui, |ui| {
-                  let mut idx = 0;
-                  x.retain_mut(|value| {
-                    let mut to_keep = true;
-                    ui.horizontal(|ui| {
-                      ui.label(format!("{}:", idx));
-                      idx += 1;
-                      ui.vertical(|ui| {
-                        let mut mutator =
-                          VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                        let response = value.accept_mut(&mut mutator).unwrap();
-                        response.context_menu(|ui| {
-                          // change type
-                          if ui
-                            .button(emoji("Change 🔧"))
-                            .on_hover_text("Change value type.")
-                            .clicked()
-                          {
-                            // open a dialog to change the value
-                            ui.close_menu();
-                          }
-                          if ui
-                            .button(emoji("Remove 🗑"))
-                            .on_hover_text("Remove value.")
-                            .clicked()
-                          {
-                            to_keep = false;
-                            ui.close_menu();
-                          }
-                        });
-                      });
+              let mut idx = 0;
+              x.retain_mut(|value| {
+                let mut to_keep = true;
+                ui.horizontal(|ui| {
+                  ui.label(format!("{}:", idx));
+                  idx += 1;
+                  ui.vertical(|ui| {
+                    let mut mutator =
+                      VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                    let response = value.accept_mut(&mut mutator).unwrap();
+                    response.context_menu(|ui| {
+                      // change type
+                      if ui
+                        .button(emoji("Change 🔧"))
+                        .on_hover_text("Change value type.")
+                        .clicked()
+                      {
+                        // open a dialog to change the value
+                        ui.close_menu();
+                      }
+                      if ui
+                        .button(emoji("Remove 🗑"))
+                        .on_hover_text("Remove value.")
+                        .clicked()
+                      {
+                        to_keep = false;
+                        ui.close_menu();
+                      }
                     });
-                    to_keep
                   });
                 });
+                to_keep
+              });
               let response = ui.button(emoji("➕")).on_hover_text("Add new value.");
               if response.clicked() {
                 x.push(Value::None(()));
@@ -2066,62 +2057,58 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             if self.parent_selected {
               // like sequence but key value pairs
               ui.label("Key-Value pairs");
-              egui::ScrollArea::new([true, true])
-                .min_scrolled_height(100.0)
-                .show(ui, |ui| {
-                  x.retain_mut(|(key, value)| {
-                    let mut to_keep = true;
-                    ui.horizontal(|ui| {
-                      let mut mutator =
-                        VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                      let response = key.accept_mut(&mut mutator).unwrap();
-                      response.context_menu(|ui| {
-                        // change type
-                        if ui
-                          .button(emoji("Change 🔧"))
-                          .on_hover_text("Change key type.")
-                          .clicked()
-                        {
-                          // open a dialog to change the value
-                          ui.close_menu();
-                        }
-                        if ui
-                          .button(emoji("Remove 🗑"))
-                          .on_hover_text("Remove key.")
-                          .clicked()
-                        {
-                          to_keep = false;
-                          ui.close_menu();
-                        }
-                      });
-                      ui.vertical(|ui| {
-                        let mut mutator =
-                          VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-                        let response = value.accept_mut(&mut mutator).unwrap();
-                        response.context_menu(|ui| {
-                          // change type
-                          if ui
-                            .button(emoji("Change 🔧"))
-                            .on_hover_text("Change value type.")
-                            .clicked()
-                          {
-                            // open a dialog to change the value
-                            ui.close_menu();
-                          }
-                          if ui
-                            .button(emoji("Remove 🗑"))
-                            .on_hover_text("Remove value.")
-                            .clicked()
-                          {
-                            to_keep = false;
-                            ui.close_menu();
-                          }
-                        });
-                      });
+              x.retain_mut(|(key, value)| {
+                let mut to_keep = true;
+                ui.horizontal(|ui| {
+                  let mut mutator =
+                    VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                  let response = key.accept_mut(&mut mutator).unwrap();
+                  response.context_menu(|ui| {
+                    // change type
+                    if ui
+                      .button(emoji("Change 🔧"))
+                      .on_hover_text("Change key type.")
+                      .clicked()
+                    {
+                      // open a dialog to change the value
+                      ui.close_menu();
+                    }
+                    if ui
+                      .button(emoji("Remove 🗑"))
+                      .on_hover_text("Remove key.")
+                      .clicked()
+                    {
+                      to_keep = false;
+                      ui.close_menu();
+                    }
+                  });
+                  ui.vertical(|ui| {
+                    let mut mutator =
+                      VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
+                    let response = value.accept_mut(&mut mutator).unwrap();
+                    response.context_menu(|ui| {
+                      // change type
+                      if ui
+                        .button(emoji("Change 🔧"))
+                        .on_hover_text("Change value type.")
+                        .clicked()
+                      {
+                        // open a dialog to change the value
+                        ui.close_menu();
+                      }
+                      if ui
+                        .button(emoji("Remove 🗑"))
+                        .on_hover_text("Remove value.")
+                        .clicked()
+                      {
+                        to_keep = false;
+                        ui.close_menu();
+                      }
                     });
-                    to_keep
                   });
                 });
+                to_keep
+              });
               let response = ui
                 .button(emoji("➕"))
                 .on_hover_text("Add new key value pair.");
@@ -2567,31 +2554,21 @@ impl Shard for UIShardsShard {
 
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
 
-    // // Set the minimum and maximum size of the UI
-    // // This allows us to have a fully user controlled UI/Window
-    // let x = ui.available_size_before_wrap().x;
-    // let y = ui.available_size_before_wrap().y;
-    // let min_max = egui::Vec2::new(x, y);
-    // ui.set_min_size(min_max);
-    // ui.set_max_size(min_max);
-
-    egui::ScrollArea::new([true, true]).show(ui, |ui| {
-      // go backward / zoom out
-      if self.context.seqs_zoom_stack.len() > 1 {
-        if ui.button(emoji("⬅")).on_hover_text("Zoom out.").clicked() {
-          self.context.seqs_zoom_stack.pop();
-        }
+    // go backward / zoom out
+    if self.context.seqs_zoom_stack.len() > 1 {
+      if ui.button(emoji("⬅")).on_hover_text("Zoom out.").clicked() {
+        self.context.seqs_zoom_stack.pop();
       }
-      let root = unsafe { &mut **self.context.seqs_zoom_stack.last_mut().unwrap() };
-      let mut mutator = VisualAst::with_parent_selected(
-        &mut self.context,
-        ui,
-        root
-          .get_or_insert_custom_state(|| SequenceState { selected: false })
-          .selected,
-      );
-      root.accept_mut(&mut mutator);
-    });
+    }
+    let root = unsafe { &mut **self.context.seqs_zoom_stack.last_mut().unwrap() };
+    let mut mutator = VisualAst::with_parent_selected(
+      &mut self.context,
+      ui,
+      root
+        .get_or_insert_custom_state(|| SequenceState { selected: false })
+        .selected,
+    );
+    root.accept_mut(&mut mutator);
 
     Ok(self.context.has_changed.into())
   }

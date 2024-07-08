@@ -11,9 +11,11 @@ use crate::ANCHOR_TYPES;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
+use num_traits::clamp;
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
+use shards::types::ClonedVar;
 use shards::types::OptionalString;
 use shards::types::WireState;
 use shards::types::ANY_TYPES;
@@ -35,10 +37,12 @@ lazy_static! {
 struct WindowShard {
   #[shard_param(
     "Title",
-    "The window title displayed on the titlebar.",
+    "The window title displayed on the title bar.",
     STRING_VAR_OR_NONE_SLICE
   )]
   pub title: ParamVar,
+  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
+  pub contents: ShardsVar,
   #[shard_param(
     "Position",
     "Absolute position; or when anchor is set, relative offset.",
@@ -97,9 +101,11 @@ struct WindowShard {
     STRING_VAR_OR_NONE_SLICE
   )]
   pub id: ParamVar,
+  #[shard_param("Transparency", "If not None, it sets the window's transparency level based on the alpha value.", [common_type::float, common_type::none])]
+  pub transparent: ClonedVar,
+
   pub cached_id: Option<egui::Id>,
-  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
-  pub contents: ShardsVar,
+
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -130,6 +136,7 @@ impl Default for WindowShard {
       contents: ShardsVar::default(),
       required: Vec::new(),
       has_close_button: false,
+      transparent: false.into(),
     }
   }
 }
@@ -202,6 +209,22 @@ impl Shard for WindowShard {
     if !self.contents.is_empty() {
       let title: &str = self.title.get().try_into().unwrap_or_default();
       let mut window = egui::Window::new(title);
+
+      if title == "" {
+        window = window.title_bar(false);
+      }
+
+      let transparency: f64 = self.transparent.0.as_ref().try_into().unwrap_or(1.0);
+      if transparency < 1.0 {
+        window = window.frame(
+          egui::Frame::none().fill(egui::Color32::from_rgba_premultiplied(
+            0,
+            0,
+            0,
+            (clamp(transparency, 0.0, 1.0) * 255.0) as u8,
+          )),
+        );
+      }
 
       if let Ok(id) = <&str>::try_from(self.id.get()) {
         let id = self.cached_id.get_or_insert_with(|| egui::Id::new(id));
