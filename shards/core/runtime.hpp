@@ -554,6 +554,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
     ZoneScoped;
 
+    // set pristine flag to false
+    _pristine = false;
+
     SHLOG_TRACE("Scheduling wire {}", wire->name);
 
     if (wire->warmedUp || scheduled.count(wire) > 0) {
@@ -721,6 +724,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       }
     }
     variables.clear();
+
+    // set pristine flag
+    _pristine = true;
   }
 
   void terminate() {
@@ -746,6 +752,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   bool empty() { return _flowPool.empty(); }
+
+  bool pristine() { return _pristine; }
 
   const std::vector<std::string> &errors() { return _errors; }
 
@@ -856,6 +864,8 @@ private:
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
   std::string label;
+
+  std::atomic_bool _pristine{true};
 };
 
 namespace shards {
