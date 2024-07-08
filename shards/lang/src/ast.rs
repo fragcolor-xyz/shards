@@ -429,6 +429,15 @@ pub enum Statement {
   Pipeline(Pipeline),
 }
 
+impl Statement {
+  pub fn as_pipeline_mut(&mut self) -> Option<&mut Pipeline> {
+    match self {
+      Statement::Pipeline(pipeline) => Some(pipeline),
+      _ => None,
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,

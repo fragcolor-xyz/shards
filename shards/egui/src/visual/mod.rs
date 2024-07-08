@@ -1250,6 +1250,32 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 }],
               }));
 
+              // and immediately trigger a swap request
+              // switch to shard selection
+              let new_block = sequence
+                .statements
+                .last_mut()
+                .unwrap()
+                .as_pipeline_mut()
+                .unwrap()
+                .blocks
+                .last_mut()
+                .unwrap();
+              let window_pos = ui
+                .ctx()
+                .input(|i| i.pointer.hover_pos().unwrap_or_default());
+              self.context.swap_state = Some(SwapState::Block(BlockSwapState {
+                common: SwapStateCommon {
+                  id: Id::new(nanoid!()),
+                  receiver: None,
+                  window_pos,
+                },
+                block: new_block as *mut Block,
+                search_string: "".into(),
+                previous_search_string: "".into(),
+                search_results: Vec::new(),
+              }));
+
               self.context.has_changed = true;
             }
             ui.button(emoji("💡")).on_hover_text("Ask AI.")
@@ -1306,6 +1332,24 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   line_info: None,
                   custom_state: None,
                 });
+
+                // and immediately trigger a swap request
+                // switch to shard selection
+                let new_block = pipeline.blocks.last_mut().unwrap();
+                let window_pos = ui
+                  .ctx()
+                  .input(|i| i.pointer.hover_pos().unwrap_or_default());
+                self.context.swap_state = Some(SwapState::Block(BlockSwapState {
+                  common: SwapStateCommon {
+                    id: Id::new(nanoid!()),
+                    receiver: None,
+                    window_pos,
+                  },
+                  block: new_block as *mut Block,
+                  search_string: "".into(),
+                  previous_search_string: "".into(),
+                  search_results: Vec::new(),
+                }));
 
                 self.context.has_changed = true;
               }
