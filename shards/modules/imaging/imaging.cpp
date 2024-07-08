@@ -670,6 +670,10 @@ struct LoadImage {
     auto pixsize = imageGetPixelSize(_output.payload.imageValue);
     if (_premultiplyAlpha.payload.boolValue) {
       OwnedVar premultipliedOutput = makeImage(imageDeriveDataLength(_output->payload.imageValue));
+      auto& dstImage = premultipliedOutput->payload.imageValue;
+      dstImage->channels = _output->payload.imageValue->channels;
+      dstImage->width = _output->payload.imageValue->width;
+      dstImage->height = _output->payload.imageValue->height;
       // premultiply the alpha channel
       switch (pixsize) {
       case 1:

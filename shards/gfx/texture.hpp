@@ -94,11 +94,18 @@ struct TextureContextData : public ContextData {
 #endif
 };
 
+struct TextureSource {
+  int numChannels = 4;
+  ImmutableSharedBuffer data;
+
+  std::strong_ordering operator<=>(const TextureSource &other) const = default;
+};
+
 /// <div rustbindgen opaque></div>
 struct TextureDesc {
   TextureFormat format;
   int2 resolution;
-  ImmutableSharedBuffer data;
+  TextureSource source;
 
   // Can wrap an already existing texture if this is passed
   // it will not be released when the texture object is destroyed
@@ -138,7 +145,7 @@ public:
   SamplerState &getSamplerState() { return samplerState; }
   const std::string &getLabel() const { return label; }
   const TextureDesc &getDesc() const { return desc; }
-  ImmutableSharedBuffer getData() const { return desc.data; }
+  TextureSource getSource() const { return desc.source; }
   const TextureFormat &getFormat() const { return desc.format; }
   int2 getResolution() const { return desc.resolution; }
 

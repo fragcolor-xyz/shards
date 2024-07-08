@@ -11,7 +11,7 @@ namespace gfx {
 
 /// <div rustbindgen opaque></div>
 struct ImmutableSharedBuffer {
-private:
+public:
   /// <div rustbindgen hide></div>
   struct IContainer {
     virtual ~IContainer() = default;
@@ -19,6 +19,7 @@ private:
     virtual const uint8_t *getData() = 0;
   };
 
+private:
   /// <div rustbindgen hide></div>
   struct OwnedContainer : public IContainer {
     std::vector<uint8_t> data;
@@ -47,6 +48,8 @@ private:
 
 public:
   ImmutableSharedBuffer() = default;
+
+  ImmutableSharedBuffer(std::shared_ptr<IContainer> container) : container(container) {}
 
   ImmutableSharedBuffer(const void *inData, size_t inDataLength) {
     container = std::make_shared<OwnedContainer>();
