@@ -53,7 +53,13 @@ impl Number {
   fn to_string(&self) -> String {
     match self {
       Number::Integer(i) => format!("{}", i),
-      Number::Float(f) => format!("{}", f),
+      Number::Float(f) => {
+        if f.fract() == 0.0 {
+          format!("{}.0", f)
+        } else {
+          format!("{}", f)
+        }
+      }
       Number::Hexadecimal(s) => format!("{}", s),
     }
   }

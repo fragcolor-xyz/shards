@@ -2477,6 +2477,8 @@ pub struct UIShardsShard {
   #[shard_param("AST", "The Shards AST object to edit in real time, this shard will manipulate and edit this variable in place.", [*AST_VAR_TYPE])]
   ast_object: ParamVar,
 
+  current_ast: Var,
+
   ast: Option<Rc<Program>>,
   context: Context,
 }
@@ -2487,6 +2489,7 @@ impl Default for UIShardsShard {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       ast_object: ParamVar::default(),
+      current_ast: Var::default(),
       ast: None,
       context: Context {
         swap_state: None,
@@ -2529,6 +2532,9 @@ impl Shard for UIShardsShard {
   fn cleanup(&mut self, ctx: Option<&ShardsContext>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
 
+    self.current_ast = Var::default();
+    self.ast = None;
+
     Ok(())
   }
 
@@ -2545,16 +2551,22 @@ impl Shard for UIShardsShard {
   }
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
-    let ast = self.ast_object.get();
-    if ast.is_none() {
+    let ast_var = self.ast_object.get();
+    if ast_var.is_none() {
       return Ok(false.into());
     }
 
-    self.ast = Some(Var::from_object_as_clone(ast, &AST_TYPE)?);
-    if self.context.seqs_zoom_stack.is_empty() {
+    self.ast = Some(Var::from_object_as_clone(ast_var, &AST_TYPE)?);
+    if *ast_var != self.current_ast {
       let ast = Var::get_mut_from_clone1(&self.ast)?;
       let seq_ptr = &mut ast.sequence as *mut Sequence;
+      self.context.seqs_zoom_stack.clear();
       self.context.seqs_zoom_stack.push(seq_ptr);
+
+      self.context.seqs_stack.clear();
+      self.context.swap_state = None;
+
+      self.current_ast = *ast_var;
     }
 
     self.context.has_changed = false;
