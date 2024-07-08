@@ -459,6 +459,7 @@ impl_custom_state!(Sequence);
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
+  pub version: u64, // optional field to store the version of the program when live editing
 }
 
 pub trait RewriteFunction {
@@ -518,6 +519,7 @@ impl<'de> Deserialize<'de> for Program {
         statements: helper.sequence,
         custom_state: None,
       },
+      version: 0,
     })
   }
 }

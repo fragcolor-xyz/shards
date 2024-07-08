@@ -606,6 +606,7 @@ pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, S
     metadata: Metadata {
       name: env.name.clone(),
     },
+    version: 0,
   })
 }
 
