@@ -1737,7 +1737,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
       // Slower stable update
       if (!fastUpdateSuccessful) {
-        SHLOG_PERF_WARN("Perfoming slow table clone on {} => {}", src, dst);
+        SHLOG_PERF_WARN("Performing slow table clone on {} => {}", src, dst);
 
         // Delete/update set
         for (; dstIt != map->end();) {

@@ -890,7 +890,7 @@ impl LegacyShard for LayoutConstructor {
       }
     };
 
-    let mut scroll_area = if create_new_scroll_area {
+    let scroll_area = if create_new_scroll_area {
       Some(EguiScrollAreaSettings {
         enable_horizontal_scroll_bar,
         enable_vertical_scroll_bar,

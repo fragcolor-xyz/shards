@@ -5,44 +5,31 @@ extern crate pest_derive;
 extern crate clap;
 
 pub mod ast;
-mod rule_visitor;
+pub mod ast_visitor;
 pub mod cli;
 mod error;
 pub mod eval;
 mod formatter;
 pub mod print;
 pub mod read;
-mod ast_visitor;
+pub mod rule_visitor;
+pub mod directory;
 
 use crate::ast::*;
 
 use core::fmt;
-use std::collections::HashMap;
 
-use eval::merge_env;
-use eval::new_cancellation_token;
-use eval::EvalEnv;
-use shards::core::register_legacy_shard;
-use shards::core::register_shard;
-use shards::shlog_error;
-use shards::types::Var;
-
+use std::borrow::Cow;
 use std::ops::Deref;
 
-use shards::types::{AutoShardRef, ClonedVar, Wire};
-use shards::SHStringWithLen;
+use shards::types::{AutoShardRef, ClonedVar};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use std::ffi::CString;
-use std::os::raw::c_char;
-
-use shards::util::from_raw_parts_allow_null;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct RcBytesWrapper(Rc<[u8]>);
+#[derive(Debug, Clone)]
+pub struct RcBytesWrapper(Rc<Cow<'static, [u8]>>);
 
 impl Serialize for RcBytesWrapper {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -58,14 +45,14 @@ impl<'de> Deserialize<'de> for RcBytesWrapper {
   where
     D: Deserializer<'de>,
   {
-    let s: &[u8] = Deserialize::deserialize(deserializer)?;
-    Ok(RcBytesWrapper(Rc::from(s)))
+    let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+    Ok(RcBytesWrapper(Rc::new(Cow::Owned(bytes))))
   }
 }
 
 impl RcBytesWrapper {
-  pub fn new<S: Into<Rc<[u8]>>>(s: S) -> Self {
-    RcBytesWrapper(s.into())
+  pub fn new<S: Into<Cow<'static, [u8]>>>(s: S) -> Self {
+    RcBytesWrapper(Rc::new(s.into()))
   }
 
   pub fn to_vec(&self) -> Vec<u8> {
@@ -75,22 +62,60 @@ impl RcBytesWrapper {
   pub fn as_slice(&self) -> &[u8] {
     &self.0
   }
+
+  pub fn to_mut(&mut self) -> &mut Vec<u8> {
+    let cow = Rc::make_mut(&mut self.0);
+    cow.to_mut()
+  }
 }
 
-impl From<&[u8]> for RcBytesWrapper {
-  fn from(s: &[u8]) -> Self {
-    RcBytesWrapper::new(s)
+impl From<&'static [u8]> for RcBytesWrapper {
+  fn from(s: &'static [u8]) -> Self {
+    RcBytesWrapper::new(Cow::Borrowed(s))
   }
 }
 
 impl From<Vec<u8>> for RcBytesWrapper {
   fn from(s: Vec<u8>) -> Self {
-    RcBytesWrapper::new(s)
+    RcBytesWrapper::new(Cow::Owned(s))
+  }
+}
+
+impl PartialEq for RcBytesWrapper {
+  fn eq(&self, other: &RcBytesWrapper) -> bool {
+    self.0 == other.0
+  }
+}
+
+impl Eq for RcBytesWrapper {}
+
+impl PartialEq<[u8]> for RcBytesWrapper {
+  fn eq(&self, other: &[u8]) -> bool {
+    *self.0 == other
+  }
+}
+
+impl Hash for RcBytesWrapper {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.hash(state)
+  }
+}
+
+impl fmt::Display for RcBytesWrapper {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{:?}", self.0)
+  }
+}
+
+impl Deref for RcBytesWrapper {
+  type Target = [u8];
+  fn deref(&self) -> &Self::Target {
+    &self.0
   }
 }
 
 #[derive(Debug, Clone)]
-pub struct RcStrWrapper(Rc<str>);
+pub struct RcStrWrapper(Rc<Cow<'static, str>>);
 
 impl Serialize for RcStrWrapper {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -107,13 +132,13 @@ impl<'de> Deserialize<'de> for RcStrWrapper {
     D: Deserializer<'de>,
   {
     let s = String::deserialize(deserializer)?;
-    Ok(RcStrWrapper(Rc::from(s)))
+    Ok(RcStrWrapper(Rc::new(Cow::Owned(s))))
   }
 }
 
 impl RcStrWrapper {
-  pub fn new<S: Into<Rc<str>>>(s: S) -> Self {
-    RcStrWrapper(s.into())
+  pub fn new<S: Into<Cow<'static, str>>>(s: S) -> Self {
+    RcStrWrapper(Rc::new(s.into()))
   }
 
   pub fn to_string(&self) -> String {
@@ -123,17 +148,22 @@ impl RcStrWrapper {
   pub fn as_str(&self) -> &str {
     &self.0
   }
+
+  pub fn to_mut(&mut self) -> &mut String {
+    let cow = Rc::make_mut(&mut self.0);
+    cow.to_mut()
+  }
 }
 
-impl From<&str> for RcStrWrapper {
-  fn from(s: &str) -> Self {
-    RcStrWrapper::new(s)
+impl From<&'static str> for RcStrWrapper {
+  fn from(s: &'static str) -> Self {
+    RcStrWrapper::new(Cow::Borrowed(s))
   }
 }
 
 impl From<String> for RcStrWrapper {
   fn from(s: String) -> Self {
-    RcStrWrapper::new(s)
+    RcStrWrapper::new(Cow::Owned(s))
   }
 }
 
@@ -141,23 +171,19 @@ impl Eq for RcStrWrapper {}
 
 impl PartialEq<RcStrWrapper> for RcStrWrapper {
   fn eq(&self, other: &RcStrWrapper) -> bool {
-    let s: &str = &self.0;
-    let o: &str = &other.0;
-    s == o
+    self.0 == other.0
   }
 }
 
 impl PartialEq<str> for RcStrWrapper {
   fn eq(&self, other: &str) -> bool {
-    let s: &str = &self.0;
-    s == other
+    *self.0 == other
   }
 }
 
 impl Hash for RcStrWrapper {
-  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    let s: &str = &self.0;
-    s.hash(state);
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.0.hash(state)
   }
 }
 
@@ -204,6 +230,44 @@ impl<'a> ParamHelper<'a> {
       self
         .params
         .iter()
+        .find(|param| param.name.as_deref() == Some(param_name))
+    }
+  }
+}
+
+pub struct ParamHelperMut<'a> {
+  params: &'a mut [Param],
+}
+
+impl<'a> ParamHelperMut<'a> {
+  pub fn new(params: &'a mut [Param]) -> Self {
+    Self { params }
+  }
+
+  pub fn get_param_by_name_or_index_mut(
+    &mut self,
+    param_name: &str,
+    index: usize,
+  ) -> Option<&mut Param> {
+    if index < self.params.len() {
+      if self.params[index].name.is_none() && index > 0 && self.params[index - 1].name.is_some() {
+        // Previous parameter is named, we forbid indexed parameters after named parameters
+        None
+      } else if self.params[index].name.is_none() {
+        // Parameter is unnamed and its index is the one we want
+        Some(&mut self.params[index])
+      } else {
+        // Parameter is named, we look for a parameter with the given name
+        self
+          .params
+          .iter_mut()
+          .find(|param| param.name.as_deref() == Some(param_name))
+      }
+    } else {
+      // Index is out of bounds, we look for a parameter with the given name
+      self
+        .params
+        .iter_mut()
         .find(|param| param.name.as_deref() == Some(param_name))
     }
   }

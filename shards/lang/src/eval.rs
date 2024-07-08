@@ -868,14 +868,14 @@ fn finalize_wire(
     let v = as_var(&value, line_info, None, env)?;
     if v.as_ref().valueType != SHType_Trait {
       return Err(
-        ((
+        (
           format!(
             "Traits parameter must be a sequence of traits ({:?} is invalid)",
             value
           ),
           line_info,
         )
-          .into()),
+          .into(),
       );
     }
     s.0.push(v.as_ref());
@@ -906,7 +906,7 @@ fn finalize_wire(
 
   if !env.settings.iter().any(|&s| s.disallow_unsafe) {
     let unsafe_ = param_helper
-      .get_param_by_name_or_index("Unsafe", 4)
+      .get_param_by_name_or_index("Unsafe", 5)
       .map(|param| match &param.value {
         Value::Boolean(b) => Ok(*b),
         _ => Err(("Unsafe parameter must be a boolean", line_info).into()),
@@ -917,7 +917,7 @@ fn finalize_wire(
 
   if !env.settings.iter().any(|&s| s.disallow_custom_stack_sizes) {
     let stack_size = param_helper
-      .get_param_by_name_or_index("StackSize", 5)
+      .get_param_by_name_or_index("StackSize", 6)
       .map(|param| match as_var(&param.value, line_info, None, env)? {
         SVar::Cloned(v) => i64::try_from(&v.0)
           .map_err(|_| ("StackSize parameter must be an integer", line_info).into()),
@@ -1242,7 +1242,7 @@ fn resolve_var(
   e: &mut EvalEnv,
 ) -> Result<ResolvedVar, ShardsError> {
   match value {
-    Value::None => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
+    Value::None(_) => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
     Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
     Value::Identifier(ref name) => {
       // could be wire, trait or mesh as "special" cases
@@ -1322,6 +1322,7 @@ fn resolve_var(
     }
     Value::Bytes(ref b) => {
       let bytes = b.0.as_ref();
+      let bytes = Var::ephemeral_slice(bytes);
       Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
     }
     Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
@@ -1492,9 +1493,11 @@ fn resolve_var(
                   blocks: vec![Block {
                     content: BlockContent::Func(f.clone()),
                     line_info: Some(line_info),
+                    custom_state: None,
                   }],
                 },
               }],
+              custom_state: None,
             },
           };
           as_var(&value2, line_info, None, e)
@@ -1723,6 +1726,8 @@ fn process_platform_built_in() -> Var {
     Var::ephemeral_string("android")
   } else if cfg!(target_os = "ios") {
     Var::ephemeral_string("ios")
+  } else if cfg!(target_os = "visionos") {
+    Var::ephemeral_string("visionos")
   } else if cfg!(target_os = "emscripten") {
     Var::ephemeral_string("emscripten")
   } else if cfg!(target_os = "windows") {
@@ -1755,7 +1760,6 @@ fn get_full_name<'a>(
     Ok((full_name.clone(), is_replacement))
   } else if name.namespaces.is_empty() {
     let full_name = combine_namespaces(&name.name, &e.full_namespace);
-    let full_name = RcStrWrapper::new(full_name.as_str());
     e.qualified_cache.insert(name.clone(), full_name.clone());
     Ok((full_name, is_replacement))
   } else {
@@ -2316,7 +2320,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       // we need to evaluate the replacement as not everything can be a const
       if let Some(replacement) = find_replacement(name, e) {
         match replacement {
-          Value::None
+          Value::None(_)
           | Value::Boolean(_)
           | Value::Enum(_, _)
           | Value::Number(_)
@@ -2883,13 +2887,18 @@ fn eval_pipeline(
                             Param {
                               name: None,
                               value: Value::String(name.resolve()),
+                              custom_state: None,
+                              is_default: None,
                             },
                             types.clone(),
                           ]),
+                          custom_state: None,
                         }),
                         line_info: block.line_info,
+                        custom_state: block.custom_state.clone(),
                       }],
                     })],
+                    custom_state: None,
                   };
 
                   let cvar = eval_eval_expr(&make_trait_shards, e)?;
@@ -3614,7 +3623,7 @@ fn eval_pipeline(
                   Definition::Value(value) => {
                     let replacement = unsafe { &*value };
                     match replacement {
-                      Value::None
+                      Value::None(_)
                       | Value::Identifier(_)
                       | Value::Boolean(_)
                       | Value::Enum(_, _)
@@ -3905,7 +3914,12 @@ pub fn eval(
   // add defines
   let defines: Vec<(RcStrWrapper, Value)> = defines
     .iter()
-    .map(|(k, v)| (k.as_str().into(), Value::String(v.as_str().into())))
+    .map(|(k, v)| {
+      (
+        k.as_str().to_owned().into(),
+        Value::String(v.as_str().to_owned().into()),
+      )
+    })
     .collect::<Vec<_>>();
   for (name, value) in &defines {
     parent.definitions.insert(
@@ -3927,7 +3941,7 @@ pub fn eval(
 pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env: &mut EvalEnv) {
   env.extensions.insert(
     Identifier {
-      name: ext.name().into(),
+      name: ext.name().to_owned().into(),
       namespaces: Vec::new(),
     },
     ext,
@@ -4032,16 +4046,21 @@ impl LegacyShard for EvalShard {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let maybe_bytes: Result<&[u8], _> = input.try_into();
-    let seq = if let Ok(bytes) = maybe_bytes {
+    let prog = if let Ok(bytes) = maybe_bytes {
       // deserialize sequence from bytes
-      let seq: Sequence =
-        bincode::deserialize(&bytes).map_err(|_| "failed to deserialize Shards")?;
-      seq
+      let prog: Program = flexbuffers::from_slice(bytes).map_err(|e| {
+        shlog_error!("failed to deserialize Shards: {:?}", e);
+        "failed to deserialize Shards"
+      })?;
+      prog
     } else {
       let s: &str = input.try_into()?;
       // deserialize sequence from string
-      let seq: Sequence = serde_json::from_str(s).map_err(|_| "failed to deserialize Shards")?;
-      seq
+      let prog: Program = serde_json::from_str(s).map_err(|e| {
+        shlog_error!("failed to deserialize Shards: {:?}", e);
+        "failed to deserialize Shards"
+      })?;
+      prog
     };
 
     let namespace = self.namespace.get();
@@ -4072,11 +4091,15 @@ impl LegacyShard for EvalShard {
       );
     }
 
-    let mut env =
-      eval_sequence(&seq, Some(&mut env), Arc::new(AtomicBool::new(false))).map_err(|e| {
-        shlog_error!("failed to evaluate shards: {:?}", e);
-        "failed to evaluate shards"
-      })?;
+    let mut env = eval_sequence(
+      &prog.sequence,
+      Some(&mut env),
+      Arc::new(AtomicBool::new(false)),
+    )
+    .map_err(|e| {
+      shlog_error!("failed to evaluate shards: {:?}", e);
+      "failed to evaluate shards"
+    })?;
 
     let name = self.name.get();
     let wire = if name.is_string() {
@@ -4096,6 +4119,42 @@ impl LegacyShard for EvalShard {
 
     Ok(self.output.0)
   }
+}
+
+#[macro_export]
+macro_rules! include_shards {
+  ($file:expr) => {{
+    let code = include_str!($file);
+    let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+    let mut env = read::ReadEnv::new("", ".", ".");
+    let seq =
+      read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+    let seq = seq.sequence;
+    let defines = std::collections::HashMap::new();
+    let token = new_cancellation_token();
+    let wire = eval::eval(&seq, "include_shards", defines, token).unwrap();
+    let mut mesh = Mesh::default();
+    if !mesh.compose(wire.0) {
+      panic!("Failed to compose wire");
+    }
+    mesh.schedule(wire.0, false);
+
+    loop {
+      mesh.tick();
+      if mesh.is_empty() {
+        break;
+      }
+    }
+
+    let info = wire.get_info();
+    let result: shards::types::ClonedVar = if info.failed {
+      panic!("Failed to evaluate include_shards macro");
+    } else {
+      unsafe { *info.finalOutput }
+    }
+    .into();
+    result
+  }};
 }
 
 #[test]

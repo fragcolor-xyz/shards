@@ -10,18 +10,20 @@
 @macro(macro1 [v] {
   v >= hello
   " World!" | AppendTo(hello)
-  {String: hello} | ToJson
+  {str: hello} | ToJson
 })
 
 @macro(my-macro [n] {
   Sequence(pipelines)
   Repeat({
-    {Pipeline: {blocks: [{content:
-      {Shard: {name: {name: "Msg" namespaces: []}
-              params:[{name: none value: {String: "Hello"}}]
-      }}}]}} >> pipelines
+    {
+      sh: {
+        name: "Msg"
+        params: [{str: "Hello"}]
+      }
+    } >> pipelines
   } Times: n)
-  {statements: pipelines} | ToJson
+  [pipelines] | ToJson | Log
 })
 
 @define(to-j-from-j {ToJson | ToHex})
@@ -29,15 +31,20 @@
 @macro(if [cond yes no] {
   Sequence(pipelines)
   cond | If(IsAny([true "true" 1]) {
-    {Pipeline: {blocks: [{content:
-          {Shard: {name: {name: "SubFlow" namespaces: []}
-                  params:[{name: none value: (@ast(yes) | FromJson)}]
-          }}}]}}
-  } {
-    {Pipeline: {blocks: [{content:
-          {Shard: {name: {name: "SubFlow" namespaces: []}
-                  params:[{name: none value: (@ast(no) | FromJson)}]
-          }}}]}}
-  }) >> pipelines
-  {statements: pipelines} | ToJson
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(yes) | FromJson)]
+        }
+      }
+    } {
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(no) | FromJson)]
+        }
+      }
+    }
+  ) >> pipelines
+  [pipelines] | ToJson
 })

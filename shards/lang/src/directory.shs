@@ -1,0 +1,112 @@
+@wire(process-color {
+  ToFloat3 = normalizedColor
+  normalizedColor | Take(0) | Math.Divide(255.0) = r
+  normalizedColor | Take(1) | Math.Divide(255.0) = g
+  normalizedColor | Take(2) | Math.Divide(255.0) = b
+
+  ; Calculate gray value
+  0.2126 | Mul(r) | Add((0.7152 | Mul(g))) | Add((0.0722 | Mul(b))) = gray
+
+  ; Desaturate and lighten each channel
+  r | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newR
+  g | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newG
+  b | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newB
+
+  ; Convert back to RGB format
+  @f3(newR newG newB) | Math.Multiply(255.0) | ToColor = newColor
+})
+
+@wire(document-shard {
+  = name
+  Shards.Help = help
+  name | Hash.XXH-64 | BytesToInts | Slice(0 3) | ToInt3 | Do(process-color) | Update(help "color")
+  [name help]
+})
+
+@wire(document-enum {
+  = enum-id
+  Shards.EnumTypeHelp = help
+  help:name | ExpectString = name
+  name | Hash.XXH-64 | BytesToInts | Slice(0 4) | ToInt3 | Do(process-color) | Update(help "color")
+  [name help enum-id]
+})
+
+; process documentation in parallel
+
+Shards.Enumerate | TryMany(document-shard Threads: 4) >= shards-docs
+Remove(shards-docs Predicate: IsNone)
+
+; add extra built-ins
+
+; @wire
+"Creates a wire, a stateful and composable unit of execution in Shards that can be scheduled on meshes or run inline, maintaining its internal state between invocations."
+Set(wire-doc "help")
+
+[{name: "None" type: 0}] | Set(wire-doc "inputTypes")
+"This built-in takes no input" | Set(wire-doc "inputHelp")
+
+[{name: "Wire" type: 58}] | Set(wire-doc "outputTypes")
+"Outputs a wire" | Set(wire-doc "outputHelp")
+
+[{name: "Name"
+  help: "The name of the wire"
+  types: [{name: "ContextVar" type: 54}]
+  default: "my-wire"}
+  {name: "Shards"
+   help: "The shards to run"
+   types: [{name: "Seq" type: 56}]
+   default: none}
+  {name: "Traits"
+   help: "The traits of the wire"
+   types: [{name: "Seq" type: 56}]
+   default: []}
+  {name: "Looped"
+   help: "Whether the wire should loop"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "Pure"
+   help: "Whether the wire should be pure"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "Unsafe"
+   help: "Whether the wire should be unsafe"
+   types: [{name: "Bool" type: 3}]
+   default: false}
+  {name: "StackSize"
+   help: "The stack size of the wire"
+   types: [{name: "Int" type: 4}]
+   default: (2 | Mul(1024) | Mul(1024))}]
+Set(wire-doc "parameters")
+
+"wire" | Hash.XXH-64 | BytesToInts | Slice(0 3) | ToInt3 | Do(process-color) | Set(wire-doc "color")
+
+["wire" wire-doc] >> shards-docs
+
+Table(shards)
+shards-docs | ForEach({
+  {Take(0) | ExpectString = shard-name}
+  {Take(1) | Update(shards shard-name)}
+})
+
+Shards.EnumTypes | TryMany(document-enum Threads: 4) = enums-docs
+Remove(enums-docs Predicate: IsNone)
+Table(enums)
+enums-docs | ForEach({
+  {Take(0) | ExpectString = enum-name}
+  {Take(1) | Update(enums enum-name)}
+})
+Table(enums-from-ids)
+enums-docs | ForEach({
+  {Take(2) | ExpectInt = enum-id}
+  {Take(1) | Update(enums-from-ids enum-id)}
+})
+
+; Shards.ObjectTypes | TryMany(document-object Threads: 4) = object-docs
+; Remove(object-docs Predicate: IsNone)
+
+{
+  shards: shards
+  enums: enums
+  enums-from-ids: enums-from-ids
+  types: {}
+}

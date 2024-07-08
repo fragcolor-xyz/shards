@@ -133,10 +133,10 @@ struct Device {
   std::string errorMessage;
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) {
-    assert(pDevice->capture.format == ma_format_f32);
-    assert(pDevice->playback.format == ma_format_f32);
-
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
+
+    shassert(device->_inChannels.payload.intValue == 0 || pDevice->capture.format == ma_format_f32 && "Invalid capture format");
+    shassert(device->_outChannels.payload.intValue == 0 || pDevice->playback.format == ma_format_f32 && "Invalid playback format");
 
     if (device->stopped)
       return;
@@ -269,10 +269,12 @@ struct Device {
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = decltype(deviceConfig.playback.channels)(_outChannels.payload.intValue);
 
-    deviceConfig.capture.pDeviceID = NULL;
-    deviceConfig.capture.format = ma_format_f32;
-    deviceConfig.capture.channels = decltype(deviceConfig.capture.channels)(_inChannels.payload.intValue);
-    deviceConfig.capture.shareMode = ma_share_mode_shared;
+    if (_inChannels.payload.intValue > 0) {
+      deviceConfig.capture.pDeviceID = NULL;
+      deviceConfig.capture.format = ma_format_f32;
+      deviceConfig.capture.channels = decltype(deviceConfig.capture.channels)(_inChannels.payload.intValue);
+      deviceConfig.capture.shareMode = ma_share_mode_shared;
+    }
 
     deviceConfig.sampleRate = decltype(deviceConfig.sampleRate)(_sampleRate.payload.intValue);
     deviceConfig.periodSizeInFrames = decltype(deviceConfig.periodSizeInFrames)(_bufferSize.payload.intValue);
@@ -850,12 +852,18 @@ struct ReadFile {
       throw ActivationError("Failed to read");
     }
     _progress += framesRead;
+
     if (framesRead < _nsamples) {
       // Reached the end.
       _done = true;
       // zero anything that was not used
       const auto remains = _nsamples - framesRead;
-      memset(_buffer.data() + framesRead, 0x0, sizeof(float) * remains);
+      if (remains <= _buffer.size()) {
+        memset(_buffer.data() + framesRead * _channels, 0, sizeof(float) * remains * _channels);
+      } else {
+        // Handle error: buffer is smaller than expected
+        throw ActivationError("Buffer size mismatch");
+      }
     }
 
     return Var(SHAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});

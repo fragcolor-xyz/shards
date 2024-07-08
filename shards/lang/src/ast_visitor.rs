@@ -79,3 +79,90 @@ impl Metadata {
     visitor.visit_metadata(self);
   }
 }
+
+pub enum BlockAction {
+  Keep,
+  Remove,
+  Duplicate,
+  Swap(Block)
+}
+
+pub trait AstMutator<R> {
+  fn visit_program(&mut self, program: &mut Program) -> R;
+  fn visit_sequence(&mut self, sequence: &mut Sequence) -> R;
+  fn visit_statement(&mut self, statement: &mut Statement) -> R;
+  fn visit_assignment(&mut self, assignment: &mut Assignment) -> R;
+  fn visit_pipeline(&mut self, pipeline: &mut Pipeline) -> R;
+  fn visit_block(&mut self, block: &mut Block) -> (BlockAction, R);
+  fn visit_function(&mut self, function: &mut Function) -> R;
+  fn visit_param(&mut self, param: &mut Param) -> R;
+  fn visit_identifier(&mut self, identifier: &mut Identifier) -> R;
+  fn visit_value(&mut self, value: &mut Value) -> R;
+  fn visit_metadata(&mut self, metadata: &mut Metadata) -> R;
+}
+
+impl Program {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_program(self)
+  }
+}
+
+impl Sequence {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_sequence(self)
+  }
+}
+
+impl Statement {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_statement(self)
+  }
+}
+
+impl Assignment {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_assignment(self)
+  }
+}
+
+impl Pipeline {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_pipeline(self)
+  }
+}
+
+impl Block {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> (BlockAction, R) {
+    visitor.visit_block(self)
+  }
+}
+
+impl Function {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_function(self)
+  }
+}
+
+impl Param {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_param(self)
+  }
+}
+
+impl Identifier {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_identifier(self)
+  }
+}
+
+impl Value {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_value(self)
+  }
+}
+
+impl Metadata {
+  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
+    visitor.visit_metadata(self)
+  }
+}

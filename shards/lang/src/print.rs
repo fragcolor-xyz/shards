@@ -1,7 +1,21 @@
-use crate::ast_visitor::*;
-use crate::ast::*;
+use std::rc::Rc;
 
-use pest::Parser;
+use shards::shard::Shard;
+use shards::shlog_error;
+use shards::types::ClonedVar;
+use shards::types::ExposedTypes;
+use shards::types::InstanceData;
+use shards::types::Type;
+use shards::types::Types;
+use shards::types::Var;
+use shards::types::STRING_TYPES;
+use shards::SHContext;
+
+use crate::ast::*;
+use crate::ast_visitor::*;
+use crate::formatter::format_str;
+use crate::read;
+use crate::read::AST_TYPE;
 
 const INDENT_LENGTH: usize = 2;
 
@@ -39,7 +53,13 @@ impl Number {
   fn to_string(&self) -> String {
     match self {
       Number::Integer(i) => format!("{}", i),
-      Number::Float(f) => format!("{}", f),
+      Number::Float(f) => {
+        if f.fract() == 0.0 {
+          format!("{}.0", f)
+        } else {
+          format!("{}", f)
+        }
+      }
       Number::Hexadecimal(s) => format!("{}", s),
     }
   }
@@ -213,10 +233,15 @@ impl AstVisitor for PrintVisitor {
   }
 
   fn visit_param(&mut self, param: &Param) {
-    if let Some(name) = &param.name {
-      self.write(&format!("{}: ", name));
+    match param.is_default {
+      Some(true) => {} // do nothing, omit default params
+      _ => {
+        if let Some(name) = &param.name {
+          self.write(&format!("{}: ", name));
+        }
+        param.value.accept(self);
+      }
     }
-    param.value.accept(self);
   }
 
   fn visit_identifier(&mut self, identifier: &Identifier) {
@@ -225,7 +250,7 @@ impl AstVisitor for PrintVisitor {
 
   fn visit_value(&mut self, value: &Value) {
     match value {
-      Value::None => self.write("none"),
+      Value::None(_) => self.write("none"),
       Value::Identifier(identifier) => self.visit_identifier(identifier),
       Value::Boolean(b) => self.write(&format!("{}", b)),
       Value::Enum(a, b) => self.write(&format!("{}::{}", a, b)),
@@ -242,18 +267,22 @@ impl AstVisitor for PrintVisitor {
           .collect();
         self.write(&format!("@bytes(0x{})", hex_string));
       }
-      Value::Int2(arr) => self.write(&format!("({} {})", arr[0], arr[1])),
-      Value::Int3(arr) => self.write(&format!("({} {} {})", arr[0], arr[1], arr[2])),
-      Value::Int4(arr) => self.write(&format!("({} {} {} {})", arr[0], arr[1], arr[2], arr[3])),
-      Value::Float2(arr) => self.write(&format!("({} {})", format_f64(arr[0]), format_f64(arr[1]))),
+      Value::Int2(arr) => self.write(&format!("@i2({} {})", arr[0], arr[1])),
+      Value::Int3(arr) => self.write(&format!("@i3({} {} {})", arr[0], arr[1], arr[2])),
+      Value::Int4(arr) => self.write(&format!("@i4({} {} {} {})", arr[0], arr[1], arr[2], arr[3])),
+      Value::Float2(arr) => self.write(&format!(
+        "@f2({} {})",
+        format_f64(arr[0]),
+        format_f64(arr[1])
+      )),
       Value::Float3(arr) => self.write(&format!(
-        "({} {} {})",
+        "@f3({} {} {})",
         format_f32(arr[0]),
         format_f32(arr[1]),
         format_f32(arr[2])
       )),
       Value::Float4(arr) => self.write(&format!(
-        "({} {} {} {})",
+        "@f4({} {} {} {})",
         format_f32(arr[0]),
         format_f32(arr[1]),
         format_f32(arr[2]),
@@ -285,11 +314,11 @@ impl AstVisitor for PrintVisitor {
         self.write(&format!("{}:{}", identifier.to_string(), path_str));
       }
       Value::Int8(arr) => self.write(&format!(
-        "({} {} {} {} {} {} {} {})",
+        "@i8({} {} {} {} {} {} {} {})",
         arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], arr[6], arr[7]
       )),
       Value::Int16(arr) => self.write(&format!(
-        "({} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {})",
+        "@i16({} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {})",
         arr[0],
         arr[1],
         arr[2],
@@ -326,7 +355,7 @@ impl AstVisitor for PrintVisitor {
         self.write(&format!("{{{}}}", values_str));
       }
       Value::Shards(seq) => {
-        self.write("{");
+        self.write("{\n");
         seq.accept(self);
         self.write("}");
       }
@@ -359,15 +388,107 @@ pub fn print_ast(ast: &Sequence) -> String {
   visitor.result()
 }
 
+#[derive(shards::shard)]
+#[shard_info("Shards.Print", "Pretty prints shards AST into a string.")]
+pub struct ShardsPrintShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: ClonedVar,
+}
+
+impl Default for ShardsPrintShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for ShardsPrintShard {
+  fn input_types(&mut self) -> &Types {
+    &read::READ_OUTPUT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &SHContext) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&SHContext>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &SHContext, input: &Var) -> Result<Var, &str> {
+    // ok we have 3 types, string (json), bytes (binary), and object (Program Rc etc)
+    let string_ast: Result<&str, _> = input.try_into();
+    let bytes_ast: Result<&[u8], _> = input.try_into();
+    let object_ast = Var::from_object_as_clone::<Program>(input, &AST_TYPE);
+    match (string_ast, bytes_ast, object_ast) {
+      (Ok(string), _, _) => {
+        let program = serde_json::from_str::<Program>(string).map_err(|e| {
+          shlog_error!("Failed to deserialize shards code: {}", e);
+          "Failed to deserialize Shards code"
+        })?;
+        let printed = print_ast(&program.sequence);
+        let formatted = format_str(&printed).map_err(|e| {
+          shlog_error!("Failed to format shards code: {}", e);
+          "Failed to format Shards code"
+        })?;
+        self.output = Var::ephemeral_string(formatted.as_str()).into();
+      }
+      (_, Ok(bytes), _) => {
+        let program = flexbuffers::from_slice::<Program>(bytes).map_err(|e| {
+          shlog_error!("Failed to deserialize shards code: {}", e);
+          "Failed to deserialize Shards code"
+        })?;
+        let printed = print_ast(&program.sequence);
+        let formatted = format_str(&printed).map_err(|e| {
+          shlog_error!("Failed to format shards code: {}", e);
+          "Failed to format Shards code"
+        })?;
+        self.output = Var::ephemeral_string(formatted.as_str()).into();
+      }
+      (_, _, Ok(rc)) => {
+        let program = &*rc;
+        let printed = print_ast(&program.sequence);
+        let formatted = format_str(&printed).map_err(|e| {
+          shlog_error!("Failed to format shards code: {}", e);
+          "Failed to format Shards code"
+        })?;
+        self.output = Var::ephemeral_string(formatted.as_str()).into();
+      }
+      _ => return Err("Invalid input type"),
+    }
+    Ok(self.output.0)
+  }
+}
+
 #[test]
 fn test1() {
+  use pest::Parser;
   // use std::num::NonZeroUsize;
   // pest::set_call_limit(NonZeroUsize::new(25000));
   // let code = include_str!("nested.shs");
   let code = include_str!("sample1.shs");
   let successful_parse = crate::ShardsParser::parse(Rule::Program, code).unwrap();
   let mut env = crate::read::ReadEnv::new("", ".", ".");
-  let seq = crate::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+  let seq =
+    crate::read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
   let printed = print_ast(&seq);

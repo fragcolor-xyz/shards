@@ -4,13 +4,14 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var,
-  BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, FRAG_CC,
+  STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
+use shards::{fourCharacterCode, shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 pub struct ReadEnv {
   name: RcStrWrapper,
@@ -22,9 +23,9 @@ pub struct ReadEnv {
 }
 
 impl ReadEnv {
-  pub(crate) fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
+  pub fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
     Self {
-      name: name.into(),
+      name: name.to_owned().into(),
       root_directory: root_directory.to_string(),
       script_directory: script_directory.to_string(),
       included: RefCell::new(HashSet::new()),
@@ -86,7 +87,7 @@ fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
   for pair in pair.into_inner() {
     let rule = pair.as_rule();
     match rule {
-      Rule::LowIden => identifiers.push(pair.as_str().into()),
+      Rule::LowIden => identifiers.push(pair.as_str().to_owned().into()),
       _ => return Err(("Unexpected rule in Identifier.", pair.as_span().start_pos()).into()),
     }
   }
@@ -123,6 +124,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
         blocks: vec![Block {
           content: BlockContent::Empty,
           line_info: Some(pos.into()),
+          custom_state: None,
         }],
       }
     }
@@ -176,7 +178,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
     Rule::UppIden => {
       // Definitely a Shard!
       let identifier = Identifier {
-        name: exp.as_str().into(),
+        name: exp.as_str().to_owned().into(),
         namespaces: Vec::new(),
       };
       let next = inner.next();
@@ -195,6 +197,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       Ok(FunctionValue::Function(Function {
         name: identifier,
         params,
+        custom_state: None,
       }))
     }
     Rule::VarName => {
@@ -214,8 +217,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       };
 
       if identifier.namespaces.is_empty() {
-        let name = identifier.name.as_str();
-        match name {
+        let name = identifier.name.as_str().to_owned();
+        match name.as_str() {
           "include" => {
             let params = params.ok_or(("Expected 2 parameters", pos).into())?;
             let n_params = params.len();
@@ -251,12 +254,13 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
             let file_path_str = file_path
               .to_str()
-              .ok_or(("Failed to convert file path to string", pos).into())?;
+              .ok_or(("Failed to convert file path to string", pos).into())?
+              .to_owned();
 
             let rc_path = file_path_str.into();
 
             if once && check_included(&rc_path, env) {
-              return Ok(FunctionValue::Const(Value::None));
+              return Ok(FunctionValue::Const(Value::None(())));
             }
 
             shlog_trace!("Including file {:?}", file_path);
@@ -374,12 +378,14 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           _ => Ok(FunctionValue::Function(Function {
             name: identifier,
             params,
+            custom_state: None,
           })),
         }
       } else {
         Ok(FunctionValue::Function(Function {
           name: identifier,
           params,
+          custom_state: None,
         }))
       }
     }
@@ -412,7 +418,7 @@ fn process_take_table(
   for pair in inner {
     let pos = pair.as_span().start_pos();
     match pair.as_rule() {
-      Rule::Iden => keys.push(pair.as_str().into()),
+      Rule::Iden => keys.push(pair.as_str().to_owned().into()),
       _ => return Err(("Expected an identifier in TakeTable", pos).into()),
     }
   }
@@ -475,6 +481,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Expr => blocks.push(Block {
         content: BlockContent::Expr(process_sequence(
@@ -485,33 +492,40 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Shard => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Shard(func),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
       },
       Rule::Func => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Func(func),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
+          custom_state: None,
         }),
       },
       Rule::TakeTable => blocks.push(Block {
@@ -520,6 +534,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeTable(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::TakeSeq => blocks.push(Block {
         content: {
@@ -527,15 +542,18 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeSeq(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::ConstValue => blocks.push(Block {
         // this is an indirection, process_value will handle the case of a ConstValue
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Enum => blocks.push(Block {
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       Rule::Shards => blocks.push(Block {
         content: BlockContent::Shards(process_sequence(
@@ -546,6 +564,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
+        custom_state: None,
       }),
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
@@ -570,10 +589,13 @@ pub(crate) fn process_sequence(
     .into_inner()
     .map(|x| process_statement(x, env))
     .collect::<Result<Vec<_>, _>>()?;
-  Ok(Sequence { statements })
+  Ok(Sequence {
+    statements,
+    custom_state: None,
+  })
 }
 
-pub(crate) fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {
+pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Program {
     return Err(("Expected a Program rule, but found a different rule.", pos).into());
@@ -584,6 +606,7 @@ pub(crate) fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pro
     metadata: Metadata {
       name: env.name.clone(),
     },
+    version: 0,
   })
 }
 
@@ -595,7 +618,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       let pair = pair.into_inner().next().unwrap(); // parsed qed
       process_value(pair, env)
     }
-    Rule::None => Ok(Value::None),
+    Rule::None => Ok(Value::None(())),
     Rule::Boolean => {
       // check if string content is true or false
       let bool_str = pair.as_str();
@@ -614,8 +637,8 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       if splits.len() != 2 {
         return Err(("Expected an enum value", pos).into());
       }
-      let enum_name = splits[0];
-      let variant_name = splits[1];
+      let enum_name = splits[0].to_owned();
+      let variant_name = splits[1].to_owned();
       Ok(Value::Enum(enum_name.into(), variant_name.into()))
     }
     Rule::Number => process_number(
@@ -634,7 +657,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           // remove quotes AND
           // with this case we need to transform escaped characters
           // so we need to iterate over the string
-          let mut chars = full_str[1..full_str.len() - 1].chars();
+          let mut chars: std::str::Chars = full_str[1..full_str.len() - 1].chars();
           let mut new_str = String::new();
           while let Some(c) = chars.next() {
             if c == '\\' {
@@ -658,9 +681,9 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           new_str.into()
         })),
         Rule::ComplexString => Ok(Value::String({
-          let full_str = inner.as_str();
+          let full_str = inner.as_str().to_owned();
           // remove triple quotes
-          full_str[3..full_str.len() - 3].into()
+          full_str[3..full_str.len() - 3].to_owned().into()
         })),
         _ => unreachable!(),
       }
@@ -697,8 +720,8 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             .next()
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
-            Rule::None => Value::None,
-            Rule::Iden => Value::String(key.as_str().into()),
+            Rule::None => Value::None(()),
+            Rule::Iden => Value::String(key.as_str().to_owned().into()),
             Rule::VarName => Value::Identifier(extract_identifier(key)?),
             Rule::ConstValue => process_value(
               key.into_inner().next().unwrap(), // parsed qed
@@ -792,7 +815,7 @@ fn process_number(pair: Pair<Rule>, _env: &mut ReadEnv) -> Result<Number, Shards
         .parse()
         .map_err(|_| ("Failed to parse Float", pos).into())?,
     )),
-    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().into())),
+    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().to_owned().into())),
     _ => Err(("Unexpected rule in Number", pos).into()),
   }
 }
@@ -809,8 +832,8 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
     .ok_or(("Expected a ParamName or Value in Param", pos).into())?;
   let pos = first.as_span().start_pos();
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
-    let name = first.as_str();
-    let name = name[0..name.len() - 1].into();
+    let name = first.as_str().to_owned();
+    let name = name[0..name.len() - 1].to_owned().into();
     let value = process_value(
       inner
         .next()
@@ -837,6 +860,8 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
   Ok(Param {
     name: param_name,
     value: param_value,
+    custom_state: None,
+    is_default: None,
   })
 }
 
@@ -878,7 +903,25 @@ pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> 
 use lazy_static::lazy_static;
 
 lazy_static! {
-  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  pub static ref AST_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"ASTa")); // last letter used as version
+  pub static ref AST_TYPE_VEC: Vec<Type> = vec![*AST_TYPE];
+  pub static ref AST_VAR_TYPE: Type = Type::context_variable(&AST_TYPE_VEC);
+  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE];
+}
+
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"ASTt",
+  "AstType",
+  "Variants of AST representation of a Shards program."
+)]
+pub enum AstType {
+  #[enum_value("Binary AST as Bytes type")]
+  Bytes = 0x0,
+  #[enum_value("JSON String type AST")]
+  Json = 0x1,
+  #[enum_value("Live Object AST to be used within a live environment")]
+  Object = 0x2,
 }
 
 #[derive(shard)]
@@ -889,11 +932,11 @@ lazy_static! {
 pub struct ReadShard {
   output: ClonedVar,
   #[shard_param(
-    "Json",
-    "Determines if the output should be a JSON AST string instead of binary.",
-    BOOL_TYPES_SLICE
+    "OutputType",
+    "Determines the type of AST to be outputted.",
+    ASTTYPE_TYPES
   )]
-  as_json: ClonedVar,
+  output_type: ClonedVar,
   #[shard_param(
     "BasePath",
     "The base path used when interpreting file references.",
@@ -902,25 +945,18 @@ pub struct ReadShard {
   base_path: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
-}
 
-impl ReadShard {
-  fn get_as_json(&self) -> bool {
-    if self.as_json.0.is_bool() {
-      (&self.as_json.0).try_into().unwrap()
-    } else {
-      false
-    }
-  }
+  rc_ast: Option<Rc<Program>>,
 }
 
 impl Default for ReadShard {
   fn default() -> Self {
     Self {
       output: ClonedVar::default(),
-      as_json: false.into(),
+      output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
       required_variables: ExposedTypes::default(),
+      rc_ast: None,
     }
   }
 }
@@ -948,15 +984,21 @@ impl Shard for ReadShard {
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(_data)?;
 
-    if self.get_as_json() {
-      Ok(common_type::string)
-    } else {
-      Ok(common_type::bytes)
+    match self.output_type.0.as_ref().try_into() {
+      Ok(AstType::Bytes) => Ok(common_type::bytes),
+      Ok(AstType::Json) => Ok(common_type::string),
+      Ok(AstType::Object) => Ok(*AST_TYPE),
+      Err(_) => {
+        shlog_error!("Invalid output type for ReadShard");
+        Err("Invalid output type for ReadShard")
+      }
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let code: &str = input.try_into()?;
+
+    let output_type = self.output_type.0.as_ref().try_into() as Result<AstType, _>;
 
     let parsed = ShardsParser::parse(Rule::Program, code).map_err(|e| {
       shlog_error!("Failed to parse shards code: {}", e);
@@ -970,7 +1012,7 @@ impl Shard for ReadShard {
       bp_var.try_into()?
     };
 
-    let seq = process_program(
+    let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
       &mut ReadEnv::new("", "", base_path),
     )
@@ -979,23 +1021,34 @@ impl Shard for ReadShard {
       "Failed to tokenize Shards code"
     })?;
 
-    if self.get_as_json() {
-      // Serialize using json
-      let encoded_json = serde_json::to_string(&seq).map_err(|e| {
-        shlog_error!("Failed to serialize shards code: {}", e);
-        "Failed to serialize Shards code"
-      })?;
+    match output_type {
+      Ok(AstType::Bytes) => {
+        // Serialize using flexbuffers
+        let encoded_bin: Vec<u8> = flexbuffers::to_vec(&prog).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
 
-      let s = Var::ephemeral_string(encoded_json.as_str());
-      self.output = s.into();
-    } else {
-      // Serialize using bincode
-      let encoded_bin: Vec<u8> = bincode::serialize(&seq).map_err(|e| {
-        shlog_error!("Failed to serialize shards code: {}", e);
-        "Failed to serialize Shards code"
-      })?;
+        self.output = encoded_bin.as_slice().into();
+      }
+      Ok(AstType::Json) => {
+        // Serialize using json
+        let encoded_json = serde_json::to_string(&prog).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
 
-      self.output = encoded_bin.as_slice().into();
+        let s = Var::ephemeral_string(encoded_json.as_str());
+        self.output = s.into();
+      }
+      Ok(AstType::Object) => {
+        self.rc_ast = Some(Rc::new(prog));
+        self.output = Var::new_object(self.rc_ast.as_ref().unwrap(), &AST_TYPE).into();
+      }
+      Err(_) => {
+        shlog_error!("Invalid output type for ReadShard");
+        return Err("Invalid output type for ReadShard");
+      }
     }
 
     Ok(self.output.0)
@@ -1013,11 +1066,11 @@ fn test_parsing1() {
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
-  // Serialize using bincode
-  let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
+  // Serialize using flexbuffers
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
 
-  // Deserialize using bincode
-  let decoded_bin: Sequence = bincode::deserialize(&encoded_bin[..]).unwrap();
+  // Deserialize using flexbuffers
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
 
   // Serialize using json
   let encoded_json = serde_json::to_string(&seq).unwrap();
@@ -1029,7 +1082,7 @@ fn test_parsing1() {
   // Deserialize using json
   let decoded_json: Sequence = serde_json::from_str(&encoded_json).unwrap();
 
-  let encoded_bin2: Vec<u8> = bincode::serialize(&decoded_json).unwrap();
+  let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
 }
 
@@ -1041,11 +1094,11 @@ fn test_parsing2() {
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
-  // Serialize using bincode
-  let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
+  // Serialize using flexbuffers
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
 
-  // Deserialize using bincode
-  let decoded_bin: Sequence = bincode::deserialize(&encoded_bin[..]).unwrap();
+  // Deserialize using flexbuffers
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
 
   // Serialize using json
   let encoded_json = serde_json::to_string(&seq).unwrap();
@@ -1057,6 +1110,6 @@ fn test_parsing2() {
   // Deserialize using json
   let decoded_json: Sequence = serde_json::from_str(&encoded_json).unwrap();
 
-  let encoded_bin2: Vec<u8> = bincode::serialize(&decoded_json).unwrap();
+  let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
 }

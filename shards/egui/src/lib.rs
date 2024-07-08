@@ -30,6 +30,9 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate shards_lang;
+
 pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
 pub static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 pub static BOOL_VAR_SLICE: &[Type] = &[common_type::bool, common_type::bool_var];
@@ -150,10 +153,11 @@ pub mod misc;
 pub mod properties;
 pub mod state;
 pub mod util;
+pub mod visual;
 pub mod widgets;
 
 struct VarTextBuffer<'a>(&'a Var);
-struct MutVarTextBuffer<'a>(&'a mut Var);
+pub struct MutVarTextBuffer<'a>(pub &'a mut Var);
 
 impl<'a> egui::TextBuffer for VarTextBuffer<'a> {
   fn is_mutable(&self) -> bool {
@@ -356,4 +360,5 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   misc::register_shards();
   widgets::register_shards();
   properties::register_shards();
+  visual::register_shards();
 }

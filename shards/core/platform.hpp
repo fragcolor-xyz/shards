@@ -11,7 +11,7 @@
 #include <TargetConditionals.h>
 #define SH_APPLE 1
 
-#if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE // includes all iOS-based devices including visionOS
 #define SH_IOS 1
 #else
 #define SH_OSX 1
