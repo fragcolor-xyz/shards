@@ -2898,6 +2898,12 @@ SHVar hash_bytes_xx64_legacy(const void *data, size_t len, uint64_t seed) {
   res.payload.intValue = hash;
   return res;
 }
+
+void shards_decompress_strings() {
+#ifdef SH_COMPRESSED_STRINGS
+  shards::decompressStrings();
+#endif
+}
 }
 
 namespace shards {

@@ -20,6 +20,7 @@ use std::sync::{atomic, Arc};
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
   fn shards_install_signal_handlers();
+  fn shards_decompress_strings();
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -223,9 +224,15 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
 fn load(
   file: &str,
   args: &Vec<String>,
-  _decompress_strings: bool,
+  decompress_strings: bool,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), Error> {
+  if decompress_strings {
+    unsafe {
+      shards_decompress_strings();
+    }
+  }
+
   shlog!("Loading file");
   shlog!("Parsing binary file: {}", file);
 
@@ -390,11 +397,17 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
 
 fn execute(
   file: &str,
-  _decompress_strings: bool,
+  decompress_strings: bool,
   args: &Vec<String>,
   cancellation_token: Arc<AtomicBool>,
   change_current_path: bool,
 ) -> Result<(), Error> {
+  if decompress_strings {
+    unsafe {
+      shards_decompress_strings();
+    }
+  }
+
   shlog!("Evaluating file: {}", file);
 
   let ast = {
