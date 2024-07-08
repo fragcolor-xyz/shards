@@ -227,10 +227,15 @@ impl AstVisitor for PrintVisitor {
   }
 
   fn visit_param(&mut self, param: &Param) {
-    if let Some(name) = &param.name {
-      self.write(&format!("{}: ", name));
+    match param.is_default {
+      Some(true) => {} // do nothing, omit default params
+      _ => {
+        if let Some(name) = &param.name {
+          self.write(&format!("{}: ", name));
+        }
+        param.value.accept(self);
+      }
     }
-    param.value.accept(self);
   }
 
   fn visit_identifier(&mut self, identifier: &Identifier) {

@@ -348,6 +348,7 @@ pub struct Param {
   /// Stored directly in the AST node for efficient access and simpler management.
   /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
   pub custom_state: Option<Box<dyn CustomAny>>,
+  pub is_default: Option<bool>, // This is used to determine if the param is default or not, optional
 }
 
 impl_custom_state!(Param);
@@ -949,6 +950,7 @@ impl<'de> Deserialize<'de> for Param {
           name,
           value,
           custom_state: None,
+          is_default: None,
         })
       }
     }

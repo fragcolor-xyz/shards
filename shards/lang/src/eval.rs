@@ -2888,6 +2888,7 @@ fn eval_pipeline(
                               name: None,
                               value: Value::String(name.resolve()),
                               custom_state: None,
+                              is_default: None,
                             },
                             types.clone(),
                           ]),

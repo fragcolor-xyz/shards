@@ -384,6 +384,7 @@ impl<'a> VisualAst<'a> {
           name: Some(name.into()),
           value: var_to_value(&default_value).unwrap(),
           custom_state: None,
+          is_default: Some(true),
         }
       });
 
@@ -557,6 +558,9 @@ impl<'a> VisualAst<'a> {
 
                   x.params.as_mut().map(|params| {
                     let param = &mut params[idx];
+
+                    // this will be useful later in print for example!
+                    param.is_default = Some(is_at_default_value);
 
                     // draw the value
                     let mut mutator =
@@ -864,21 +868,25 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                   ]),
                   custom_state: None,
@@ -1140,21 +1148,25 @@ fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapState
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                   ]),
                   custom_state: None,
@@ -2297,6 +2309,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
         name: None,
         value: Value::Identifier(x.clone()),
         custom_state: None,
+        is_default: Some(false),
       }]),
       custom_state: None,
     }),
@@ -2315,6 +2328,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
           name: None,
           value: Value::String(y.clone()),
           custom_state: None,
+          is_default: Some(false),
         }]),
         custom_state: None,
       }),
@@ -2342,6 +2356,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
         name: None,
         value: Value::Identifier(x.clone()),
         custom_state: None,
+        is_default: Some(false),
       }]),
       custom_state: None,
     }),
@@ -2360,6 +2375,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
           name: None,
           value: Value::Number(Number::Integer(*y as i64)),
           custom_state: None,
+          is_default: Some(false),
         }]),
         custom_state: None,
       }),
