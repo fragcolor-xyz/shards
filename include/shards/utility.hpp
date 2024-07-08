@@ -667,15 +667,6 @@ template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> 
 
 template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
 
-inline size_t getPixelSize(const SHVar &input) {
-  auto pixsize = 1;
-  if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-    pixsize = 2;
-  else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-    pixsize = 4;
-  return pixsize;
-}
-
 inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
   if (var.valueType != SHType::ContextVar)
     return nullptr;

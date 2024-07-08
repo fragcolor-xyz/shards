@@ -233,15 +233,18 @@ struct SHColor {
 #define SHIMAGE_FLAGS_16BITS_INT (1 << 2)
 #define SHIMAGE_FLAGS_32BITS_FLOAT (1 << 3)
 
+struct SHImage;
+typedef void(__cdecl *SHImageFreeProc)(struct SHImage *image);
+
 struct SHImage {
   uint32_t refCount;
   uint16_t width;
   uint16_t height;
   uint8_t channels;
   uint8_t flags;
-  uint32_t dataLength;
-  uint8_t data[1];
-};
+  uint8_t *data;
+  SHImageFreeProc free;
+} __attribute__((aligned(16)));
 
 struct SHAudio {
   uint32_t sampleRate; // set to 0 if unknown/not relevant
@@ -591,7 +594,7 @@ struct SHVarPayload {
 
     struct SHColor colorValue;
 
-    struct SHImage* imageValue;
+    struct SHImage *imageValue;
 
     struct SHAudio audioValue;
 
@@ -748,11 +751,6 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
-typedef void(__cdecl *SHImageAddRefProc)(struct SHImage *);
-typedef void(__cdecl *SHImageDecRefProc)(struct SHImage *);
-typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
-typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
-
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
   SHInlineShards inlineShardId;
@@ -819,12 +817,6 @@ struct Shard {
   SHGetStateProc getState;
   SHSetStateProc setState;
   SHResetStateProc resetState;
-
-  // Image object manipulation
-  SHImageAddRefProc imageAddRef;
-  SHImageDecRefProc imageDecRef;
-  SHImageNewProc imageNew;
-  SHImageCloneProc imageClone;
 };
 
 struct SHWireProviderUpdate {
@@ -1044,6 +1036,12 @@ typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, uint32_t newCap);
 typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
 
+typedef void(__cdecl *SHImageIncRefProc)(struct SHImage *);
+typedef void(__cdecl *SHImageDecRefProc)(struct SHImage *);
+typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
+typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
+typedef uint32_t (__cdecl *SHImageDeriveDataLength)(struct SHImage *);
+
 typedef struct _SHCore {
   // Aligned allocator
   SHAlloc alloc;
@@ -1154,6 +1152,13 @@ typedef struct _SHCore {
   SHReadCachedString readCachedString;
   SHWriteCachedString writeCachedString;
   SHDecompressStrings decompressStrings;
+
+  // Image object manipulation
+  SHImageIncRefProc imageIncRef;
+  SHImageDecRefProc imageDecRef;
+  SHImageNewProc imageNew;
+  SHImageCloneProc imageClone;
+  SHImageDeriveDataLength imageDeriveDataLength;
 
   // equality utilities
   SHIsEqualVar isEqualVar;

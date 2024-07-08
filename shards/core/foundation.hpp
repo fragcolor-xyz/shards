@@ -129,10 +129,12 @@ int64_t findEnumId(std::string_view name);
 void registerWire(SHWire *wire);
 void unregisterWire(SHWire *wire);
 
-void imageAddRef(SHImage* ptr);
-void imageDecRef(SHImage* ptr);
-SHImage* imageNew();
-SHImage* imageClone(SHImage* ptr);
+void imageIncRef(SHImage *ptr);
+void imageDecRef(SHImage *ptr);
+SHImage *imageNew(uint32_t dataLen);
+SHImage *imageClone(SHImage *ptr);
+uint32_t imageDeriveDataLength(SHImage* ptr);
+uint32_t imageGetPixelSize(SHImage* img);
 
 struct RuntimeObserver {
   virtual void registerShard(const char *fullName, SHShardConstructor constructor) {}
@@ -965,14 +967,12 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   case SHType::Set:
   case SHType::Seq:
   case SHType::ShardRef:
+  case SHType::Image:
   case SHType::Bytes:
   case SHType::String:
   case SHType::Path:
   case SHType::ContextVar:
     _destroyVarSlow(var);
-    break;
-  case SHType::Image:
-    delete[] var.payload.imageValue.data;
     break;
   case SHType::Audio:
     delete[] var.payload.audioValue.samples;
@@ -1149,6 +1149,13 @@ inline SeqVar &asSeq(SHVar &var) {
 inline const SeqVar &asSeq(const SHVar &var) {
   shassert(var.valueType == SHType::Seq);
   return *reinterpret_cast<const SeqVar *>(&var);
+}
+
+inline OwnedVar makeImage(uint32_t dataLen = 0) {
+  SHVar var{};
+  var.valueType = SHType::Image;
+  var.payload.imageValue = imageNew(dataLen);
+  return std::move(reinterpret_cast<OwnedVar&>(var));
 }
 
 struct ParamsInfo {

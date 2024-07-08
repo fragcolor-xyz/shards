@@ -347,7 +347,7 @@ struct TextureShard {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_createFromImage)
-      activateFromImage(input.payload.imageValue);
+      activateFromImage(*input.payload.imageValue);
     else
       activateRenderableTexture();
 
@@ -498,7 +498,7 @@ struct ReadTextureShard {
       _requiredGraphicsContext->renderer->pollBufferCopies();
 
     _image.valueType = SHType::Image;
-    auto &outImage = _image.payload.imageValue;
+    auto &outImage = *_image.payload.imageValue;
     if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
       outImage.data = nullptr;
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;

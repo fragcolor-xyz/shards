@@ -37,6 +37,8 @@ struct Convolve {
 
   static SHParametersInfo parameters() { return _params; }
 
+  OwnedVar _output{};
+
   SHVar getParam(int index) {
     if (index == 0)
       return Var(int64_t(_radius));
@@ -57,21 +59,19 @@ struct Convolve {
     }
   }
 
-  void warmup(SHContext *context) {
-    _bytes.reserve(_kernel * _kernel * 4); // assume max 4 channels
-  }
+  void warmup(SHContext *context) {}
 
   void cleanup(SHContext *context) {
     _xindex = 0;
     _yindex = 0;
   }
 
-  template <typename T> void process(const SHVar &pixels, int32_t w, int32_t h, int32_t c) {
+  template <typename T> void process(uint8_t *outData, const SHVar &pixels, int32_t w, int32_t h, int32_t c) {
     const int high = _radius - 1;
     const int low = high * -1;
     int index = 0;
-    const auto from = reinterpret_cast<T *>(pixels.payload.imageValue.data);
-    auto to = reinterpret_cast<T *>(&_bytes[0]);
+    const auto from = reinterpret_cast<T *>(pixels.payload.imageValue->data);
+    auto to = reinterpret_cast<T *>(outData);
     for (int y = low; y <= high; y++) {
       for (int x = low; x <= high; x++) {
         const int cidxx = _xindex + x;
@@ -87,13 +87,19 @@ struct Convolve {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int32_t w = int32_t(input.payload.imageValue.width);
-    int32_t h = int32_t(input.payload.imageValue.height);
-    int32_t c = int32_t(input.payload.imageValue.channels);
+    int32_t w = int32_t(input.payload.imageValue->width);
+    int32_t h = int32_t(input.payload.imageValue->height);
+    int32_t c = int32_t(input.payload.imageValue->channels);
 
-    auto pixsize = getPixelSize(input);
+    auto pixsize = imageGetPixelSize(input.payload.imageValue);
+    _output = makeImage(_kernel * _kernel * c * pixsize);
+    SHImage &outImage = *_output->payload.imageValue;
+    outImage.width = _kernel;
+    outImage.height = _kernel;
+    outImage.channels = input.payload.imageValue->channels;
+    outImage.flags = input.payload.imageValue->flags;
 
-    _bytes.resize(_kernel * _kernel * c * pixsize);
+    uint8_t *outData = outImage.data;
 
     if (_xindex >= w) {
       _xindex = 0;
@@ -104,24 +110,20 @@ struct Convolve {
     }
 
     if (pixsize == 1) {
-      process<uint8_t>(input, w, h, c);
+      process<uint8_t>(outData, input, w, h, c);
     } else if (pixsize == 2) {
-      process<uint16_t>(input, w, h, c);
+      process<uint16_t>(outData, input, w, h, c);
     } else if (pixsize == 4) {
-      process<float>(input, w, h, c);
+      process<float>(outData, input, w, h, c);
     }
 
     // advance the scan
     _xindex += _step;
 
-    auto output = Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel), input.payload.imageValue.channels,
-                      input.payload.imageValue.flags);
-    output.version = input.version + 1;
-    return output;
+    return _output;
   }
 
 private:
-  std::vector<uint8_t> _bytes;
   int32_t _radius{1};
   int32_t _step{1};
   uint32_t _kernel{1};
@@ -133,9 +135,11 @@ struct StripAlpha {
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  template <typename T> void process(const SHVar &input, int32_t w, int32_t h) {
-    const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
-    auto to = reinterpret_cast<T *>(&_bytes[0]);
+  OwnedVar _output{};
+
+  template <typename T> void process(uint8_t *outData, const SHVar &input, int32_t w, int32_t h) {
+    const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
+    auto to = reinterpret_cast<T *>(outData);
     for (auto y = 0; y < h; y++) {
       for (auto x = 0; x < w; x++) {
         const auto faddr = ((w * y) + x) * 4;
@@ -148,35 +152,37 @@ struct StripAlpha {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.imageValue.channels < 4)
+    if (input.payload.imageValue->channels < 4)
       return input; // nothing to do
 
-    int32_t w = int32_t(input.payload.imageValue.width);
-    int32_t h = int32_t(input.payload.imageValue.height);
+    int32_t w = int32_t(input.payload.imageValue->width);
+    int32_t h = int32_t(input.payload.imageValue->height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
-    _bytes.resize(w * h * 3 * pixsize);
+    _output.reset();
+    _output = makeImage(w * h * 3 * pixsize);
+    auto &outImage = *_output.payload.imageValue;
+    outImage.channels = 3;
+    outImage.width = uint16_t(w);
+    outImage.height = uint16_t(h);
+    uint8_t *outData = outImage.data;
 
     if (pixsize == 1) {
-      process<uint8_t>(input, w, h);
+      process<uint8_t>(outData, input, w, h);
     } else if (pixsize == 2) {
-      process<uint16_t>(input, w, h);
+      process<uint16_t>(outData, input, w, h);
     } else if (pixsize == 4) {
-      process<float>(input, w, h);
+      process<float>(outData, input, w, h);
     }
 
-    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3, input.payload.imageValue.flags);
-    output.version = input.version + 1;
-    return output;
+    _output.version = input.version + 1;
+    return _output;
   }
-
-private:
-  std::vector<uint8_t> _bytes;
 };
 
 struct PremultiplyAlpha {
@@ -191,40 +197,46 @@ struct PremultiplyAlpha {
     return SHCCSTR("The image as a result of the application of the premultiplication of alpha channels.");
   }
 
+  OwnedVar _output{};
+
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     premultiplyAlpha<T>(input, output, w, h);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.imageValue.channels < 4)
+    if (input.payload.imageValue->channels < 4)
       return input; // nothing to do
 
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
       return input; // already premultiplied
 
     // find number of bytes per pixel
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
-    int32_t w = int32_t(input.payload.imageValue.width);
-    int32_t h = int32_t(input.payload.imageValue.height);
+    int32_t w = int32_t(input.payload.imageValue->width);
+    int32_t h = int32_t(input.payload.imageValue->height);
 
     _bytes.resize(w * h * 4 * pixsize);
-    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version + 1;
+    _output = makeImage(w * h * 4 * pixsize);
+    auto &outImage = *_output->payload.imageValue;
+    outImage.channels = 4;
+    outImage.width = uint16_t(w);
+    outImage.height = uint16_t(h);
+    outImage.flags = input.payload.imageValue->flags;
 
     if (pixsize == 1) {
-      process<uint8_t>(input, output, w, h);
+      process<uint8_t>(input, _output, w, h);
     } else if (pixsize == 2) {
-      process<uint16_t>(input, output, w, h);
+      process<uint16_t>(input, _output, w, h);
     } else if (pixsize == 4) {
-      process<float>(input, output, w, h);
+      process<float>(input, _output, w, h);
     }
 
-    return output;
+    return _output;
   }
 
 private:
@@ -243,40 +255,46 @@ struct DemultiplyAlpha {
     return SHCCSTR("The image as a result of the application of the demultiplication of alpha channels.");
   }
 
+  OwnedVar _output{};
+
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     demultiplyAlpha<T>(input, output, w, h);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.imageValue.channels < 4)
+    if (input.payload.imageValue->channels < 4)
       return input; // nothing to do
 
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) != SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) != SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
       return input; // already straight alpha
 
     // find number of bytes per pixel
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
-    int32_t w = int32_t(input.payload.imageValue.width);
-    int32_t h = int32_t(input.payload.imageValue.height);
+    int32_t w = int32_t(input.payload.imageValue->width);
+    int32_t h = int32_t(input.payload.imageValue->height);
 
-    _bytes.resize(w * h * 4 * pixsize);
-    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version + 1;
+    _output = makeImage(w * h * 4 * pixsize);
+    auto &outImage = *_output->payload.imageValue;
+    outImage.channels = 4;
+    outImage.width = uint16_t(w);
+    outImage.height = uint16_t(h);
+    outImage.flags = input.payload.imageValue->flags;
 
     if (pixsize == 1) {
-      process<uint8_t>(input, output, w, h);
+      process<uint8_t>(input, _output, w, h);
     } else if (pixsize == 2) {
-      process<uint16_t>(input, output, w, h);
+      process<uint16_t>(input, _output, w, h);
     } else if (pixsize == 4) {
-      process<float>(input, output, w, h);
+      process<float>(input, _output, w, h);
     }
 
-    return output;
+    _output.version = input.version + 1;
+    return _output;
   }
 
 private:
@@ -287,9 +305,11 @@ struct FillAlpha {
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  template <typename T, typename TA> void process(const SHVar &input, int32_t w, int32_t h, TA alpha_value) {
-    const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
-    auto to = reinterpret_cast<T *>(&_bytes[0]);
+  OwnedVar _output{};
+
+  template <typename T, typename TA> void process(uint8_t *outData, const SHVar &input, int32_t w, int32_t h, TA alpha_value) {
+    const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
+    auto to = reinterpret_cast<T *>(outData);
     for (auto y = 0; y < h; y++) {
       for (auto x = 0; x < w; x++) {
         const auto faddr = ((w * y) + x) * 3;
@@ -303,39 +323,41 @@ struct FillAlpha {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.imageValue.channels == 4)
+    if (input.payload.imageValue->channels == 4)
       return input; // nothing to do
 
     // TODO remove this limit maybe!
-    if (input.payload.imageValue.channels != 3)
+    if (input.payload.imageValue->channels != 3)
       throw ActivationError("A 3 or 4 channels image was expected.");
 
-    int32_t w = int32_t(input.payload.imageValue.width);
-    int32_t h = int32_t(input.payload.imageValue.height);
+    int32_t w = int32_t(input.payload.imageValue->width);
+    int32_t h = int32_t(input.payload.imageValue->height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
-    _bytes.resize(w * h * 4 * pixsize);
+    _output = makeImage(w * h * 4 * pixsize);
+    auto &outImage = *_output->payload.imageValue;
+    outImage.channels = 4;
+    outImage.width = uint16_t(w);
+    outImage.height = uint16_t(h);
+    outImage.flags = input.payload.imageValue->flags;
+    uint8_t *outData = outImage.data;
 
     if (pixsize == 1) {
-      process<uint8_t>(input, w, h, 255);
+      process<uint8_t>(outData, input, w, h, 255);
     } else if (pixsize == 2) {
-      process<uint16_t>(input, w, h, 65535);
+      process<uint16_t>(outData, input, w, h, 65535);
     } else if (pixsize == 4) {
-      process<float>(input, w, h, 1.0);
+      process<float>(outData, input, w, h, 1.0);
     }
 
-    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version + 1;
-    return output;
+    _output.version = input.version + 1;
+    return _output;
   }
-
-private:
-  std::vector<uint8_t> _bytes;
 };
 
 struct Resize {
@@ -346,6 +368,8 @@ struct Resize {
                                    {"Height", SHCCSTR("The target height."), CoreInfo::IntOrIntVar}};
 
   static SHParametersInfo parameters() { return _params; }
+
+  OwnedVar _output{};
 
   SHVar getParam(int index) {
     if (index == 0)
@@ -373,9 +397,9 @@ struct Resize {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int w = uint32_t(input.payload.imageValue.width);
-    int h = uint32_t(input.payload.imageValue.height);
-    int c = uint32_t(input.payload.imageValue.channels);
+    int w = uint32_t(input.payload.imageValue->width);
+    int h = uint32_t(input.payload.imageValue->height);
+    int c = uint32_t(input.payload.imageValue->channels);
 
     int width = int(_width.get().payload.intValue);
     int height = int(_height.get().payload.intValue);
@@ -385,41 +409,45 @@ struct Resize {
       height = int(float(h) * float(width) / float(w));
     }
 
-    auto pixsize = getPixelSize(input);
+    auto pixsize = imageGetPixelSize(input.payload.imageValue);
 
-    _bytes.resize(width * height * c * pixsize);
+    _output = makeImage(width * height * c * pixsize);
+    auto &outImage = *_output->payload.imageValue;
+    outImage.channels = c;
+    outImage.width = uint16_t(width);
+    outImage.height = uint16_t(height);
+    outImage.flags = input.payload.imageValue->flags;
+    uint8_t *outData = outImage.data;
 
     int flags = 0;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+    if ((input.payload.imageValue->flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
       flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
 
     if (pixsize == 1) {
-      auto res = stbir_resize_uint8_generic(input.payload.imageValue.data, w, h, w * c, &_bytes.front(), width, height, width * c,
-                                            c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
-                                            STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
+      auto res = stbir_resize_uint8_generic(input.payload.imageValue->data, w, h, w * c, outData, width, height, width * c, c,
+                                            c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT,
+                                            STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 2) {
-      auto res = stbir_resize_uint16_generic(
-          (uint16_t *)input.payload.imageValue.data, w, h, w * c * 2, (uint16_t *)&_bytes.front(), width, height, width * c * 2,
-          c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
+      auto res = stbir_resize_uint16_generic((uint16_t *)input.payload.imageValue->data, w, h, w * c * 2, (uint16_t *)outData,
+                                             width, height, width * c * 2, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+                                             STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 4) {
-      auto res = stbir_resize_float_generic((float *)input.payload.imageValue.data, w, h, w * c * 4, (float *)&_bytes.front(),
-                                            width, height, width * c * 4, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+      auto res = stbir_resize_float_generic((float *)input.payload.imageValue->data, w, h, w * c * 4, (float *)outData, width,
+                                            height, width * c * 4, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
                                             STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     }
 
-    auto output = Var(&_bytes.front(), uint16_t(width), uint16_t(height), input.payload.imageValue.channels,
-                      input.payload.imageValue.flags);
-    output.version = input.version + 1;
-    return output;
+    _output.version = input.version + 1;
+    return _output;
   }
 
 private:
@@ -497,7 +525,7 @@ struct ImageGetPixel {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &image = _image.get().payload.imageValue;
+    auto &image = *_image.get().payload.imageValue;
     int w = uint32_t(image.width);
     int h = uint32_t(image.height);
 
@@ -513,7 +541,7 @@ struct ImageGetPixel {
       throw std::out_of_range("Image fetch y coordinate out of range");
     }
 
-    auto pixsize = getPixelSize(_image.get());
+    auto pixsize = imageGetPixelSize(_image.get().payload.imageValue);
 
     if (pixsize == 1) {
       return (bool)*_asInteger ? convert<uint8_t>(image, coord, Conv_CastInt4) //
@@ -542,18 +570,10 @@ struct LoadImage {
   PARAM_VAR(_premultiplyAlpha, "PremultiplyAlpha", "Toggle premultiplication of alpha channel", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_filename), PARAM_IMPL_FOR(_bpp), PARAM_IMPL_FOR(_premultiplyAlpha));
 
-  SHVar _output{};
+  OwnedVar _output{};
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-
-  void cleanup(SHContext *context) {
-    PARAM_CLEANUP(context);
-
-    if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
-      stbi_image_free(_output.payload.imageValue.data);
-      _output = Var::Empty;
-    }
-  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -569,11 +589,8 @@ struct LoadImage {
   SHVar activate(SHContext *context, const SHVar &input) {
     bool bytesInput = input.valueType == SHType::Bytes;
 
-    // free the old image if we have one
-    if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
-      stbi_image_free(_output.payload.imageValue.data);
-      _output = Var::Empty;
-    }
+    _output.reset();
+    _output = makeImage();
 
     stbi_set_flip_vertically_on_load_thread(0);
 
@@ -617,49 +634,58 @@ struct LoadImage {
     int x, y, n;
     switch ((BPP)_bpp.payload.enumValue) {
     case BPP::u8:
-      _output.payload.imageValue.data =
+      _output.payload.imageValue->data =
           reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      _output.payload.imageValue.flags = 0;
+      _output.payload.imageValue->flags = 0;
       break;
     case BPP::u16:
-      _output.payload.imageValue.data =
+      _output.payload.imageValue->data =
           reinterpret_cast<uint8_t *>(stbi_load_16_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
+      _output.payload.imageValue->flags = SHIMAGE_FLAGS_16BITS_INT;
       break;
     default:
-      _output.payload.imageValue.data =
+      _output.payload.imageValue->data =
           reinterpret_cast<uint8_t *>(stbi_loadf_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
+      _output.payload.imageValue->flags = SHIMAGE_FLAGS_32BITS_FLOAT;
       break;
     }
 
-    if (!_output.payload.imageValue.data) {
+    // Set the free function
+    if (_output->payload.imageValue->data) {
+      _output->payload.imageValue->free = [](SHImage *img) { stbi_image_free(img->data); };
+    }
+
+    if (!_output.payload.imageValue->data) {
       throw ActivationError("Failed to load image file");
     }
 
-    _output.payload.imageValue.width = uint16_t(x);
-    _output.payload.imageValue.height = uint16_t(y);
-    _output.payload.imageValue.channels = uint16_t(n);
+    _output.payload.imageValue->width = uint16_t(x);
+    _output.payload.imageValue->height = uint16_t(y);
+    _output.payload.imageValue->channels = uint16_t(n);
 
     // Premultiply the alpha channel if premultiply option is chosen
-    auto pixsize = getPixelSize(_output);
+    auto pixsize = imageGetPixelSize(_output.payload.imageValue);
     if (_premultiplyAlpha.payload.boolValue) {
+      OwnedVar premultipliedOutput = makeImage(imageDeriveDataLength(_output->payload.imageValue));
       // premultiply the alpha channel
       switch (pixsize) {
       case 1:
-        Imaging::premultiplyAlpha<uint8_t>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+        Imaging::premultiplyAlpha<uint8_t>(_output, premultipliedOutput, _output.payload.imageValue->width,
+                                           _output.payload.imageValue->height);
         break;
       case 2:
-        Imaging::premultiplyAlpha<uint16_t>(_output, _output, _output.payload.imageValue.width,
-                                            _output.payload.imageValue.height);
+        Imaging::premultiplyAlpha<uint16_t>(_output, premultipliedOutput, _output.payload.imageValue->width,
+                                            _output.payload.imageValue->height);
         break;
       case 4:
-        Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+        Imaging::premultiplyAlpha<float>(_output, premultipliedOutput, _output.payload.imageValue->width,
+                                         _output.payload.imageValue->height);
         break;
       }
+      std::swap(_output, premultipliedOutput);
     }
 
     _output.version = 0;
@@ -700,7 +726,7 @@ struct WritePNG {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto pixsize = getPixelSize(input);
+    auto pixsize = imageGetPixelSize(input.payload.imageValue);
 
     std::string filename;
     if (_filename->valueType != SHType::None) {
@@ -709,12 +735,12 @@ struct WritePNG {
       }
     }
 
-    int w = int(input.payload.imageValue.width);
-    int h = int(input.payload.imageValue.height);
-    int c = int(input.payload.imageValue.channels);
+    int w = int(input.payload.imageValue->width);
+    int h = int(input.payload.imageValue->height);
+    int c = int(input.payload.imageValue->channels);
 
     // demultiply alpha if needed, limited to 4 channels
-    if (c == 4 && (input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
+    if (c == 4 && (input.payload.imageValue->flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
       _scratch.resize(w * h * 4 * pixsize);
       switch (pixsize) {
       case 1:
@@ -740,10 +766,10 @@ struct WritePNG {
     } else {
       // just write the file or buffer in this case straight
       if (!filename.empty()) {
-        if (0 == stbi_write_png(filename.c_str(), w, h, c, input.payload.imageValue.data, w * c))
+        if (0 == stbi_write_png(filename.c_str(), w, h, c, input.payload.imageValue->data, w * c))
           throw ActivationError("Failed to write PNG file.");
       } else {
-        if (0 == stbi_write_png_to_func(write_func, this, w, h, c, input.payload.imageValue.data, w * c))
+        if (0 == stbi_write_png_to_func(write_func, this, w, h, c, input.payload.imageValue->data, w * c))
           throw ActivationError("Failed to write PNG file.");
         return Var(_output.data(), _output.size());
       }

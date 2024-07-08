@@ -25,20 +25,20 @@ template <typename T> void premultiplyAlpha(T *from, T *to, int32_t w, int32_t h
 // Premultiplies the alpha channel in input image and writes to a pre-allocated output.
 // Assumes input & output are CoreInfo::ImageType. Output flags is set to input's + SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void premultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
-  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
-  auto to = reinterpret_cast<T *>(output.payload.imageValue.data);
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
+  auto to = reinterpret_cast<T *>(output.payload.imageValue->data);
 
   premultiplyAlpha<T>(from, to, w, h);
 
   // mark as premultiplied
-  output.payload.imageValue.flags = input.payload.imageValue.flags;
-  output.payload.imageValue.flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
+  output.payload.imageValue->flags = input.payload.imageValue->flags;
+  output.payload.imageValue->flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 }
 
 // Premultiplies the alpha channel in input image and writes to a pre-allocated bytes buffer.
 // Assumes input & output are CoreInfo::ImageType. Does NOT add SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void premultiplyAlpha(const SHVar &input, std::vector<uint8_t> &bytes, int32_t w, int32_t h) {
-  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
   auto to = reinterpret_cast<T *>(&bytes[0]);
 
   premultiplyAlpha<T>(from, to, w, h);
@@ -70,21 +70,21 @@ template <typename T> void demultiplyAlpha(T *from, T *to, int32_t w, int32_t h)
 // Demultiplies the alpha channel in input image and writes to a pre-allocated output.
 // Assumes input & output are CoreInfo::ImageType. Output flags is set to input's without SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void demultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
-  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
-  auto to = reinterpret_cast<T *>(output.payload.imageValue.data);
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
+  auto to = reinterpret_cast<T *>(output.payload.imageValue->data);
 
   demultiplyAlpha<T>(from, to, w, h);
 
   // remove premultiplied flag
-  output.payload.imageValue.flags = input.payload.imageValue.flags;
-  output.payload.imageValue.flags &= ~SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
+  output.payload.imageValue->flags = input.payload.imageValue->flags;
+  output.payload.imageValue->flags &= ~SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 }
 
 // Demultiplies the alpha channel in input image and writes the resulting image to a given vector of bytes
 // bytes's data must be pre-allocated before calling htis function
 // Does not add SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag to output image
 template <typename T> void demultiplyAlpha(const SHVar &input, std::vector<uint8_t> &bytes, int32_t w, int32_t h) {
-  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue->data);
   auto to = reinterpret_cast<T *>(&bytes[0]);
 
   demultiplyAlpha<T>(from, to, w, h);
