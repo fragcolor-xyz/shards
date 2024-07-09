@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::custom_state::CustomStateContainer;
 use crate::read;
 use crate::ParamHelper;
 use crate::RcStrWrapper;
@@ -1493,11 +1494,11 @@ fn resolve_var(
                   blocks: vec![Block {
                     content: BlockContent::Func(f.clone()),
                     line_info: Some(line_info),
-                    custom_state: None,
+                    custom_state: CustomStateContainer::new(),
                   }],
                 },
               }],
-              custom_state: None,
+              custom_state: CustomStateContainer::new(),
             },
           };
           as_var(&value2, line_info, None, e)
@@ -2887,18 +2888,18 @@ fn eval_pipeline(
                             Param {
                               name: None,
                               value: Value::String(name.resolve()),
-                              custom_state: None,
+                              custom_state: CustomStateContainer::new(),
                               is_default: None,
                             },
                             types.clone(),
                           ]),
-                          custom_state: None,
+                          custom_state: CustomStateContainer::new(),
                         }),
                         line_info: block.line_info,
                         custom_state: block.custom_state.clone(),
                       }],
                     })],
-                    custom_state: None,
+                    custom_state: CustomStateContainer::new(),
                   };
 
                   let cvar = eval_eval_expr(&make_trait_shards, e)?;
