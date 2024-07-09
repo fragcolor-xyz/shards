@@ -14,10 +14,13 @@
 #include <shards/common_types.hpp>
 #include <shards/inlined.hpp>
 #include <shards/gfx/moving_average.hpp>
+#include "time.hpp"
 #include <cassert>
 #include <cmath>
 #include <optional>
 #include <sstream>
+
+using namespace std::chrono_literals;
 
 namespace shards {
 struct CoreInfo2 {
@@ -284,6 +287,8 @@ struct Pause {
 
   ParamVar time{};
 
+  static inline thread_local shards::Time::DoOnce doOnce{2s};
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored."); }
 
@@ -297,10 +302,6 @@ struct Pause {
   SHVar getParam(int index) { return time; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw ComposeError("Pause shard cannot be used on a worker thread.");
-    }
-
     reqs.clear();
     collectAllRequiredVariables(data.shared, reqs, time);
 
@@ -315,13 +316,27 @@ struct Pause {
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     const auto &t = time.get();
-    if (t.valueType == SHType::None)
-      suspend(context, 0.0);
-    else if (t.valueType == SHType::Int)
-      suspend(context, double(t.payload.intValue));
-    else
-      suspend(context, t.payload.floatValue);
-    return input;
+    if (context->onWorkerThread) {
+      doOnce([&]() {
+        SHLOG_WARNING("Avoid using Pause on worker threads, it will block the worker thread. (wire: {})",
+                      context->currentWire()->name);
+      });
+      if (t.valueType == SHType::None)
+        std::this_thread::yield();
+      else if (t.valueType == SHType::Int)
+        std::this_thread::sleep_for(std::chrono::duration<SHInt, std::ratio<1>>(t.payload.intValue));
+      else
+        std::this_thread::sleep_for(std::chrono::duration<double, std::ratio<1>>(t.payload.floatValue));
+      return input;
+    } else {
+      if (t.valueType == SHType::None)
+        suspend(context, 0.0);
+      else if (t.valueType == SHType::Int)
+        suspend(context, double(t.payload.intValue));
+      else
+        suspend(context, t.payload.floatValue);
+      return input;
+    }
   }
 };
 
