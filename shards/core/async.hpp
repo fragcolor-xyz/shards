@@ -22,7 +22,7 @@
 #endif
 
 // Can not create this many workers, create on demand instead
-#if SH_EMSCRIPTEN || 1
+#if SH_EMSCRIPTEN
 #define SH_ENABLE_TIDE_POOL 0
 #else
 #define SH_ENABLE_TIDE_POOL 1
@@ -321,7 +321,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 }
 
 template <typename FUNC, typename CANCELLATION>
-inline void maybeAwait(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
+inline void maybeAwait(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
   if (context->onWorkerThread) {
     func();
   } else {

@@ -32,7 +32,7 @@ int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routin
 }
 
 static const char *vfs = //
-#if SH_EMSCRIPTEN || 1
+#if SH_EMSCRIPTEN
     "shards-memory-locked";
 #else
     nullptr;
