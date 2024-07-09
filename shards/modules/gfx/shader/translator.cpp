@@ -34,7 +34,7 @@ void TranslationContext::processShard(ShardPtr shard) {
 
 void TranslationContext::finalize() {
   auto top = takeWGSLTop();
-  if(top) {
+  if (top) {
     const std::string &varName = getUniqueVariableName("unused");
     addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), top->toBlock(), ";\n"));
   }
@@ -95,20 +95,20 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
     for (auto &req : composeResult.requiredInfo) {
       tryExpandIntoVariable(req.name);
 
-      const Type *fieldType{};
-      const TranslationBlockRef *parent{};
-      if (!findVariable(req.name, fieldType, parent)) {
+      auto foundVariable = findVariable(req.name);
+      if (!foundVariable) {
         throw ShaderComposeError(fmt::format("Can not compose shader wire: Requred variable {} does not exist", req.name));
       }
+      auto &fieldType = foundVariable->fieldType;
 
       if (!argsDecl.empty())
         argsDecl += ", ";
       std::string wgslVarName = getUniqueVariableName(req.name);
-      argsDecl += fmt::format("{}: {}", wgslVarName, getWGSLTypeName(*fieldType));
-      translated.arguments.emplace_back(TranslatedFunctionArgument{*fieldType, wgslVarName, req.name});
+      argsDecl += fmt::format("{}: {}", wgslVarName, getWGSLTypeName(fieldType));
+      translated.arguments.emplace_back(TranslatedFunctionArgument{fieldType, wgslVarName, req.name});
 
       functionScope.variables.mapUniqueVariableName(req.name, wgslVarName);
-      functionScope.variables.variables.insert_or_assign(req.name, VariableInfo(*fieldType, true));
+      functionScope.variables.variables.insert_or_assign(req.name, VariableInfo(fieldType, true));
     }
   }
 
@@ -155,29 +155,55 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   return translated;
 }
 
-bool TranslationContext::findVariableGlobal(const std::string &varName, const Type *&outFieldType) const {
+std::optional<FoundVariable> TranslationContext::findVariableGlobal(const std::string &varName) const {
+  auto globalAIt = globals.aliasses.find(varName);
+  if (globalAIt != globals.aliasses.end()) {
+    return FoundVariable(true, nullptr, globalAIt->second.type, &globalAIt->second);
+  }
   auto globalIt = globals.variables.find(varName);
   if (globalIt != globals.variables.end()) {
-    outFieldType = &globalIt->second.type;
-    return true;
+    return FoundVariable(false, nullptr, globalIt->second.type, globals.resolveUniqueVariableName(varName));
   }
-  return false;
+  return std::nullopt;
 }
 
-bool TranslationContext::findVariable(const std::string &varName, const Type *&outFieldType,
-                                      const TranslationBlockRef *&outParent) const {
+std::optional<FoundVariable> TranslationContext::findScopedVariable(const std::string &varName) const {
+
   for (auto it = stack.crbegin(); it != stack.crend(); ++it) {
+    auto &aliasses = it->variables.aliasses;
+    auto it0 = aliasses.find(varName);
+    if (it0 != aliasses.end()) {
+      return FoundVariable(true, &*it, it0->second.type, &it0->second);
+    }
     auto &variables = it->variables;
     auto it1 = variables.variables.find(varName);
     if (it1 != variables.variables.end()) {
-      outFieldType = &it1->second.type;
-      outParent = &*it;
-      return true;
+      return FoundVariable(false, &*it, it1->second.type, variables.resolveUniqueVariableName(varName));
     }
   }
 
-  outParent = nullptr;
-  return findVariableGlobal(varName, outFieldType);
+  return std::nullopt;
+}
+
+std::optional<FoundVariable> TranslationContext::findVariable(const std::string &varName) const {
+  auto var = findScopedVariable(varName);
+  if (var)
+    return var;
+
+  return findVariableGlobal(varName);
+}
+
+WGSLBlock TranslationContext::expandFoundVariable(const FoundVariable &foundVar) {
+  if (foundVar.isAlias) {
+    return WGSLBlock(foundVar.fieldType, std::get<const AliasInfo *>(foundVar.info)->block->clone());
+  } else {
+    auto uniqueVarName = std::get<std::string_view>(foundVar.info);
+    if (foundVar.parent) {
+      return WGSLBlock(foundVar.fieldType, blocks::makeCompoundBlock(uniqueVarName));
+    } else {
+      return WGSLBlock(foundVar.fieldType, blocks::makeBlock<blocks::ReadGlobal>(uniqueVarName));
+    }
+  }
 }
 
 WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable,
@@ -189,6 +215,10 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     const std::string *outVariableName{};
 
     auto &variables = storage.variables;
+    auto ita = storage.aliasses.find(varName);
+    if (ita != storage.aliasses.end()) {
+      throw ShaderComposeError(fmt::format("Can not set \"{}\", it's already defined as alias", varName));
+    }
     auto it = variables.find(varName);
     if (forceNewVariable || it == variables.end()) {
       variables.insert_or_assign(varName, fieldType);
@@ -229,9 +259,14 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     TranslationBlockRef *parent{};
     bool isNewVariable = true;
     if (allowUpdate) {
-      const TranslationBlockRef *foundParent{};
-      if (findVariable(varName, foundFieldType, foundParent)) {
-        parent = const_cast<decltype(parent)>(foundParent);
+      auto foundVariable = findScopedVariable(varName);
+      if (foundVariable) {
+        shassert(foundVariable->parent);
+
+        if (foundVariable->isAlias)
+          throw ShaderComposeError(fmt::format("Can update \"{}\", it's an alias", varName));
+
+        parent = const_cast<decltype(parent)>(foundVariable->parent);
         isNewVariable = false;
 
         // In case of function parameters, show the variables, since they cannot be assigned otherwise
@@ -266,6 +301,35 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
   }
 }
 
+WGSLBlock TranslationContext::assignAlias(const std::string &varName, bool global, std::unique_ptr<IWGSLGenerated> &&value) {
+  auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const Type &fieldType) {
+    auto it = storage.variables.find(varName);
+    if (it != storage.variables.end()) {
+      throw ShaderComposeError(fmt::format("Can not set alias \"{}\", it's already defined as a variable", varName));
+    }
+    auto ita = storage.aliasses.find(varName);
+    if (ita != storage.aliasses.end()) {
+      throw ShaderComposeError(fmt::format("Can not set alias \"{}\", it's already defined as another alias", varName));
+    }
+    storage.aliasses.insert_or_assign(varName, AliasInfo(fieldType, value->toBlock()));
+  };
+
+  WGSLBlock retVal(value->getType(), value->toBlock());
+
+  if (global) {
+    // Store global variable type info & check update
+    updateStorage(globals, varName, retVal.fieldType);
+  } else {
+    TranslationBlockRef *parent = &getTop();
+    if (!parent)
+      throw ShaderComposeError(fmt::format("Can not assign \"{}\", not a valid scope", varName));
+    updateStorage(parent->variables, varName, retVal.fieldType);
+  }
+
+  // Push assigned value
+  return retVal;
+}
+
 bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
   auto &top = getTop();
   auto it = top.virtualSequences.find(varName);
@@ -295,17 +359,12 @@ bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
 WGSLBlock TranslationContext::reference(const std::string &varName) {
   tryExpandIntoVariable(varName);
 
-  const Type *fieldType{};
-  const TranslationBlockRef *parent{};
-  if (!findVariable(varName, fieldType, parent)) {
+  auto foundVariable = findVariable(varName);
+  if (!foundVariable) {
     throw ShaderComposeError(fmt::format("Can not get/ref: Variable {} does not exist here", varName));
   }
 
-  if (parent) {
-    return WGSLBlock(*fieldType, blocks::makeCompoundBlock(parent->variables.resolveUniqueVariableName(varName)));
-  } else {
-    return WGSLBlock(*fieldType, blocks::makeBlock<blocks::ReadGlobal>(globals.resolveUniqueVariableName(varName)));
-  }
+  return expandFoundVariable(*foundVariable);
 }
 
 void TranslationRegistry::registerHandler(const char *blockName, ITranslationHandler *translateable) {

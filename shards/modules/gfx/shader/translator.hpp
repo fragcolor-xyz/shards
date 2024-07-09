@@ -16,8 +16,8 @@ template <typename T> using UniquePtr = std::unique_ptr<T>;
 struct ShaderComposeError : public std::runtime_error {
   Shard *shard;
 
-  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(what), shard(shard){};
-  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(std::move(what)), shard(shard){};
+  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(what), shard(shard) {};
+  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(std::move(what)), shard(shard) {};
 };
 
 struct IAppender {
@@ -51,6 +51,18 @@ struct VariableInfo {
 
 typedef std::map<std::string, VariableInfo> VariableInfoMap;
 
+struct AliasInfo {
+  Type type;
+  blocks::BlockPtr block;
+
+  AliasInfo() = default;
+  AliasInfo(Type type, blocks::BlockPtr &&block) : type(type), block(std::move(block)) {}
+  AliasInfo(AliasInfo &&) = default;
+  AliasInfo &operator=(AliasInfo &&) = default;
+};
+
+typedef std::map<std::string, AliasInfo> AliasInfoMap;
+
 // Filters invalid characters out of variable names
 inline std::string filterVariableName(std::string_view varName) {
   std::string result;
@@ -68,6 +80,9 @@ inline std::string filterVariableName(std::string_view varName) {
 struct VariableStorage {
   // Stores type assignment
   VariableInfoMap variables;
+
+  // Stores alliasses
+  AliasInfoMap aliasses;
 
   // Maps variable names to globally unique variable names
   std::map<std::string, std::string> uniqueVariableNames;
@@ -132,6 +147,16 @@ struct TranslationBlockRef {
   }
 };
 
+struct FoundVariable {
+  bool isAlias{};
+  const TranslationBlockRef *parent;
+  const Type &fieldType;
+  using Info = std::variant<std::string_view, const AliasInfo *>;
+  Info info;
+  FoundVariable(bool isAlias, const TranslationBlockRef *parent, const Type &fieldType, Info info)
+      : isAlias(isAlias), parent(parent), fieldType(fieldType), info(info) {}
+};
+
 struct TranslationRegistry;
 
 struct TranslatedFunctionArgument {
@@ -182,7 +207,7 @@ public:
     return stack.back();
   }
 
-  TempVariableAllocator& getTempVariableAllocator() { return tempVariableAllocator; }
+  TempVariableAllocator &getTempVariableAllocator() { return tempVariableAllocator; }
 
   // Add a new generated shader blocks without entering it
   template <typename T> void addNew(std::unique_ptr<T> &&ptr) {
@@ -226,9 +251,13 @@ public:
   }
 
   // Assign a block to a temporary variable and return it's name
-  template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {
+  template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr, bool asMutable = false) {
     const std::string &varName = getUniqueVariableName();
-    addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), std::move(ptr), ";\n"));
+    if (asMutable) {
+      addNew(blocks::makeCompoundBlock(fmt::format("var {} = ", varName), std::move(ptr), ";\n"));
+    } else {
+      addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), std::move(ptr), ";\n"));
+    }
     return varName;
   }
 
@@ -240,7 +269,13 @@ public:
   // Set the intermediate wgsl source but reference it as a single variable
   // use to avoide duplicating function calls when setting the result as a stack value
   template <typename T> const std::string &setWGSLTopVar(Type type, std::unique_ptr<T> &&ptr) {
-    const std::string &varName = assignTempVar(std::move(ptr));
+    bool asMutable = false;
+    if (std::get_if<TextureType>(&type) || std::get_if<SamplerType>(&type)) {
+      // NOTE: Textures and samplers have to be stored in 'var' and can not be 'let'
+      asMutable = true;
+    }
+
+    const std::string &varName = assignTempVar(std::move(ptr), asMutable);
     setWGSLTop<WGSLSource>(type, varName);
     return varName;
   }
@@ -261,11 +296,15 @@ public:
   }
 
   // Tries to find a global variable
-  bool findVariableGlobal(const std::string &varName, const Type *&outFieldType) const;
+  std::optional<FoundVariable> findVariableGlobal(const std::string &varName) const;
+
+  // Tries to find a variable in scopes
+  std::optional<FoundVariable> findScopedVariable(const std::string &varName) const;
 
   // Tries to find a variable in all scopes & globally
-  // outParent will be null in case of global variables
-  bool findVariable(const std::string &varName, const Type *&outFieldType, const TranslationBlockRef *&outParent) const;
+  std::optional<FoundVariable> findVariable(const std::string &varName) const;
+
+  WGSLBlock expandFoundVariable(const FoundVariable &foundVar);
 
   // Tries to expand sequences in the current scope into their respective matrix types
   // returns true if it did so, the variable can be acessed using findVariable
@@ -275,6 +314,10 @@ public:
   // returns a reference to the variable in the same format as `reference` does
   WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable,
                            std::unique_ptr<IWGSLGenerated> &&value);
+
+  // Assigns or updates a variable
+  // returns a reference to the variable in the same format as `reference` does
+  WGSLBlock assignAlias(const std::string &varName, bool global, std::unique_ptr<IWGSLGenerated> &&value);
 
   // Returns a shader block that references a variable by name
   // the variable can either be defined in the current, parent or global scope
