@@ -1,5 +1,7 @@
 ; this script works only in a debug build
 
+Msg("Compressing strings...")
+
 @wire(document-shard {
   Shards.Help ; don't do anything, we just want to create internally the shard to populate strings
 })
