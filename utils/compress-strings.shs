@@ -19,7 +19,7 @@ Shards.EnumTypes | TryMany(document-enum Threads: 4)
 
 _ExportStrings | ToBytes | Brotli.Compress | BytesToInts | Map(ToHex) = bytes-array
 
-Count(bytes-array) | ToString | AppendTo(code)
+Count(bytes-array) | Log("Strings to compress") | ToString | AppendTo(code)
 
 "> __shards_compressed_strings = {\n" | AppendTo(code)
 
@@ -32,3 +32,5 @@ bytes-array | ForEach({
 "};\n" | AppendTo(code)
 
 "shccstrings.hpp" | FS.Write(code Overwrite: true)
+
+Msg("Compressed strings written to shccstrings.hpp")
