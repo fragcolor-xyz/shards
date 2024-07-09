@@ -22,8 +22,8 @@ std::vector<uint8_t> convertToRGBA(const TextureDesc &desc) {
   size_t rowStride = desc.source.rowStride != 0 ? desc.source.rowStride : width * 3;
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      size_t srcIndex = (y * rowStride + x) * 3;
-      size_t dstIndex = (y * rowStride + x) * 4;
+      size_t srcIndex = y * rowStride + x * 3;
+      size_t dstIndex = (y * width + x) * 4;
 
       rgbaData[dstIndex] = srcData[srcIndex];
       rgbaData[dstIndex + 1] = srcData[srcIndex + 1];
