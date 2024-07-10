@@ -194,7 +194,11 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
           let event = &in_event.scroll;
           let virtual_delta_x = event.delta.x * SCROLL_SPEED;
           let virtual_delta_y = event.delta.y * SCROLL_SPEED;
-          Some(Event::Scroll(egui::vec2(virtual_delta_x, virtual_delta_y)))
+          Some(Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(virtual_delta_x, virtual_delta_y),
+            modifiers: Modifiers::default(),
+          })
         }
         egui_InputEventType_Text => {
           let event = &in_event.text;
@@ -214,16 +218,16 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
             Err(_) => None,
           }
         }
-        egui_InputEventType_CompositionStart => Some(Event::CompositionStart),
+        egui_InputEventType_CompositionStart => Some(Event::Ime(egui::ImeEvent::Enabled)),
         egui_InputEventType_CompositionUpdate => {
           let event = &in_event.compositionUpdate;
           let text = CStr::from_ptr(event.text).to_str()?.to_owned();
-          Some(Event::CompositionUpdate(text))
+          Some(Event::Ime(egui::ImeEvent::Preedit(text)))
         }
         egui_InputEventType_CompositionEnd => {
           let event = &in_event.compositionEnd;
           let text = CStr::from_ptr(event.text).to_str()?.to_owned();
-          Some(Event::CompositionEnd(text))
+          Some(Event::Ime(egui::ImeEvent::Commit(text)))
         }
         egui_InputEventType_Copy => Some(Event::Copy),
         egui_InputEventType_Cut => Some(Event::Cut),

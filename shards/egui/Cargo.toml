@@ -11,12 +11,12 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 lazy_static = "1.4.0"
-egui = { version = "0.28.0", features = ["persistence"] }
+egui = { version = "0.28.1", features = ["persistence"] }
 egui_commonmark = { version = "0.17.0" }
 egui_dock = { version = "0.13.0" }
-egui_extras = { version = "0.28.0", features = ["serde"]}
-egui_memory_editor = { version = "0.2.9" }
-egui_plot = { version = "0.28.0" }
+egui_extras = { version = "0.28.1", features = ["serde"]}
+egui_memory_editor = { version = "0.2.9", git = "https://github.com/shards-lang/egui_memory_editor.git", rev = "5e43457129fd415b827c23370b791ad0c96fab96" }
+egui_plot = { version = "0.28.1" }
 syntect = { version = "5.0.0", default-features = false, features = [
     "default-fancy",
 ] }

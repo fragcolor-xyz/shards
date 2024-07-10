@@ -1,5 +1,5 @@
 use crate::util::{self, try_into_color};
-use egui::{Color32, LayerId, Pos2, Rect, Rgba, Rounding, Stroke, Ui, Vec2};
+use egui::{Color32, LayerId, Pos2, Rect, Rgba, Rounding, Stroke, Ui, UiStackInfo, Vec2};
 use shards::core::register_shard;
 use shards::types::{
   common_type, Context, ExposedTypes, InstanceData, OptionalString, ParamVar, ShardsVar, Type,
@@ -96,6 +96,7 @@ impl Shard for CanvasShard {
       layer_id.id,
       egui::Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h)),
       Rect::EVERYTHING,
+      UiStackInfo::default(),
     );
 
     util::activate_ui_contents(
