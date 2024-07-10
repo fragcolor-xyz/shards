@@ -19,7 +19,7 @@ pub struct LineInfo {
   pub column: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ShardsError {
   pub message: String,
   pub loc: LineInfo,

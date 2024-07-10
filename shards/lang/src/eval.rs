@@ -2150,7 +2150,11 @@ fn create_shard(
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
           if param_name == name.as_str() {
-            set_shard_parameter(info, e, &param.value, &s, i, line_info)?;
+            if let Err(err) = set_shard_parameter(info, e, &param.value, &s, i, line_info) {
+              // param.custom_state.remove::<ShardsError>();
+              // param.custom_state.set(err.clone());
+              return Err(err);
+            }
             found = true;
             break;
           }
