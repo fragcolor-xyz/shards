@@ -7,6 +7,7 @@ use crate::VarTextBuffer;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use egui::RichText;
 use shards::shard::Shard;
 use shards::shardsc;
@@ -47,6 +48,12 @@ pub struct TextField {
     BOOL_VAR_OR_NONE_SLICE
   )]
   justify_width: ParamVar,
+  #[shard_param(
+    "DesiredWidth",
+    "The desired width of the text field.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  desired_width: ParamVar,
   #[shard_param("Multiline", "Support multiple lines.", BOOL_TYPES_SLICE)]
   multiline: ClonedVar,
   #[shard_param("Password", "Support multiple lines.", BOOL_TYPES_SLICE)]
@@ -69,6 +76,7 @@ impl Default for TextField {
       requiring: Vec::new(),
       variable: ParamVar::default(),
       justify_width: ParamVar::default(),
+      desired_width: ParamVar::default(),
       multiline: false.into(),
       password: false.into(),
       hint: ParamVar::default(),
@@ -192,10 +200,14 @@ impl Shard for TextField {
       text_edit = text_edit.hint_text(RichText::from(hint).color(egui::Color32::GRAY).italics());
     }
 
-    text_edit = if !self.justify_width.get().is_none() && self.justify_width.get().try_into()? {
+    text_edit = if TryInto::<bool>::try_into(self.justify_width.get()).unwrap_or_default() {
       text_edit.desired_width(f32::INFINITY)
     } else {
-      text_edit
+      if let Ok(width) = TryInto::<f32>::try_into(self.desired_width.get()) {
+        text_edit.desired_width(width)
+      } else {
+        text_edit
+      }
     };
 
     let response = ui.add(text_edit);
