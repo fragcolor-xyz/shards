@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use egui_memory_editor::MemoryEditor;
+use shards::core::register_enum;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::shardsc;
@@ -15,6 +16,17 @@ use shards::types::Var;
 use std::ops::Range;
 
 pub mod image_util;
+
+#[derive(shards::shards_enum)]
+#[enum_info(b"txtW", "TextWrap", "Text wrapping options for text widgets.")]
+pub enum TextWrap {
+  #[enum_value("Extends the parent widget's width to wrap text.")]
+  Extend = 0x0,
+  #[enum_value("Wraps text to the width of the parent widget extending the next line.")]
+  Wrap = 0x1,
+  #[enum_value("Truncates text that does not fit within the parent widget.")]
+  Truncate = 0x2,
+}
 
 /// Checkbox with a text label.
 struct Checkbox {
@@ -268,7 +280,7 @@ pub fn register_shards() {
   register_legacy_shard::<Console>();
   register_legacy_shard::<Hyperlink>();
   register_legacy_shard::<RenderTarget>();
-  register_legacy_shard::<Label>();
+  register_shard::<label::Label>();
   register_legacy_shard::<Link>();
   register_legacy_shard::<ListBox>();
   register_legacy_shard::<FloatInput>();
@@ -301,4 +313,5 @@ pub fn register_shards() {
   register_legacy_shard::<WireVariable>();
   register_legacy_shard::<CodeEditor>();
   register_legacy_shard::<HexViewer>();
+  register_enum::<TextWrap>();
 }

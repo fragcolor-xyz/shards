@@ -6,7 +6,7 @@ use super::POPUPLOCATION_TYPES;
 use crate::util;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::cstr;
+use egui::PopupCloseBehavior;
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
@@ -187,8 +187,13 @@ impl Shard for PopupWrapper {
           let above_or_below: PopupLocation = self.above_or_below.get().try_into()?;
           above_or_below.into()
         };
-        if let Some(inner) =
-          egui::popup::popup_above_or_below_widget(ui, *popup_id, &response, above_or_below, |ui| {
+        if let Some(inner) = egui::popup::popup_above_or_below_widget(
+          ui,
+          *popup_id,
+          &response,
+          above_or_below,
+          PopupCloseBehavior::CloseOnClickOutside,
+          |ui| {
             if !self.min_width.get().is_none() {
               ui.set_min_width(self.min_width.get().try_into()?);
             }
@@ -200,8 +205,8 @@ impl Shard for PopupWrapper {
               &mut self.parents,
               &mut self.contents,
             )
-          })
-        {
+          },
+        ) {
           // Only if popup is open will there be an inner result. In such a case, verify that nothing went wrong.
           inner?;
         }

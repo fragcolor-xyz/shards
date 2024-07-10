@@ -592,11 +592,11 @@ impl Shard for StyleShard {
     })?;
 
     when_set(&self.text_cursor_width, |v| {
-      Ok(visuals.text_cursor.width = v.try_into()?)
+      Ok(visuals.text_cursor.stroke.width = v.try_into()?)
     })?;
 
     when_set(&self.text_cursor_preview, |v| {
-      Ok(visuals.text_cursor_preview = v.try_into()?)
+      Ok(visuals.text_cursor.preview = v.try_into()?)
     })?;
 
     when_set(&self.clip_rect_margin, |v| {

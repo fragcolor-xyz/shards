@@ -128,7 +128,7 @@
           Contents: {
             ; input pass into
             Assert.Is(@input Break: true)
-            "TopRight" | UI.Label(Wrap: false)
+            "TopRight" | UI.Label(Wrap: TextWrap::Extend)
           }
         ) |
         @input |
@@ -182,7 +182,7 @@
           Contents: {
             ; input pass into
             Assert.Is(@input Break: true)
-            "BottomRight" | UI.Label(Wrap: false)
+            "BottomRight" | UI.Label(Wrap: TextWrap::Extend)
           }
         ) |
         ; content passthrough
@@ -301,7 +301,7 @@
             UI.Columns(
               [{ ; input pass into
                  Assert.Is(@input Break: true)
-                 "Left" | UI.Label} 
+                 "Left" | UI.Label}
                { ; input pass into
                  Assert.Is(@input Break: true)
                  "Right" | UI.Label}]
