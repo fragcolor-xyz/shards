@@ -44,8 +44,9 @@ if(EMSCRIPTEN)
   endif()
 
   target_link_options(shards PUBLIC
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_NAME=shards"
-    "SHELL:-s NO_EXIT_RUNTIME=1"
+    "-sMODULARIZE=1"
+    "-sEXPORT_NAME=shards"
+    "-sNO_EXIT_RUNTIME=1"
+    "-sALLOW_MEMORY_GROWTH=1"
   )
 endif()
