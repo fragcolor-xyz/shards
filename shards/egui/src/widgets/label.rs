@@ -38,7 +38,7 @@ impl Default for Label {
     Self {
       requiring: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      wrap: ClonedVar(TextWrap::Truncate.into()),
+      wrap: ClonedVar(TextWrap::Extend.into()),
       style: ClonedVar::default(),
     }
   }

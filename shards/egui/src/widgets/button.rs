@@ -59,7 +59,7 @@ impl Default for Button {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       label: ParamVar::new(Var::ephemeral_string("")),
       action: ShardsVar::default(),
-      wrap: ClonedVar(TextWrap::Truncate.into()),
+      wrap: ClonedVar(TextWrap::Extend.into()),
       style: ClonedVar::default(),
       required: Vec::new(),
     }
