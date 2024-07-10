@@ -21,7 +21,7 @@ GFX.MainWindow(
         UI.Area(
           Anchor: Anchor::TopRight
           Contents: {
-            "TopRight" | UI.Label(Wrap: false)
+            "TopRight" | UI.Label(Wrap: TextWrap::Extend)
           }
         )
         UI.Area(
@@ -51,11 +51,12 @@ GFX.MainWindow(
         UI.Area(
           Anchor: Anchor::BottomRight
           Contents: {
-            "BottomRight" | UI.Label(Wrap: false)
+            "BottomRight" | UI.Label(Wrap: TextWrap::Extend)
           }
         )
       }
-    ) | UI.Render(ui-draw-queue)
+    ) | UI.Render(ui-draw-queue
+)
 
     GFX.Render(Steps: render-steps)
   }

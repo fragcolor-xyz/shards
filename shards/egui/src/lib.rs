@@ -34,6 +34,7 @@ extern crate lazy_static;
 extern crate shards_lang;
 
 pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
+pub static ANY_TABLE_OR_NONE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var, common_type::none];
 pub static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 pub static BOOL_VAR_SLICE: &[Type] = &[common_type::bool, common_type::bool_var];
 pub static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[

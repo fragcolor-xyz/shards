@@ -23,8 +23,8 @@ pub struct EguiHost {
 
 impl Default for EguiHost {
   fn default() -> Self {
-    let mut instance = ParamVar::new_named(CONTEXTS_NAME);
-    let mut parents = ParamVar::new_named(PARENTS_UI_NAME);
+    let instance = ParamVar::new_named(CONTEXTS_NAME);
+    let parents = ParamVar::new_named(PARENTS_UI_NAME);
 
     let exposed = vec![
       ExposedInfo {
@@ -85,10 +85,7 @@ impl EguiHost {
     let ui_ctx = self.context.as_ref().unwrap();
     let mut dnd_value = ui_ctx.dnd_value.borrow_mut();
     if !dnd_value.0.is_none() {
-      if !ui_ctx
-        .egui_ctx
-        .memory(|mem| mem.is_anything_being_dragged())
-      {
+      if ui_ctx.egui_ctx.dragged_id().is_none() {
         let v_empty = Var::default();
         dnd_value.assign(&v_empty);
       }

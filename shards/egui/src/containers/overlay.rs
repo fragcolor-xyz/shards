@@ -89,7 +89,7 @@ impl Shard for OverlayShard {
     let max_rect = ui.max_rect();
     let mut used_ui = ui.min_rect();
     for c in &mut self.calls {
-      let mut child_ui = ui.child_ui(max_rect, ui.layout().clone());
+      let mut child_ui = ui.child_ui(max_rect, ui.layout().clone(), None);
 
       let none_var = Var::default();
       util::activate_ui_contents(_context, &none_var, &mut child_ui, &mut self.parents, c)?;

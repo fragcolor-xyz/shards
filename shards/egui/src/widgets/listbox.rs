@@ -332,7 +332,7 @@ impl LegacyShard for ListBox {
               inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
               inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
 
-              let mut content_ui = ui.child_ui_with_id_source(inner_rect, *ui.layout(), i);
+              let mut content_ui = ui.child_ui_with_id_source(inner_rect, *ui.layout(), i, None);
               util::activate_ui_contents(
                 context,
                 &seq[i],
@@ -356,6 +356,7 @@ impl LegacyShard for ListBox {
                   stroke: visuals.bg_stroke,
                   fill_texture_id: egui::TextureId::Managed(0),
                   uv: Rect::ZERO,
+                  blur_width: 0.0,
                 });
                 ui.painter().set(background_id, shape);
               }

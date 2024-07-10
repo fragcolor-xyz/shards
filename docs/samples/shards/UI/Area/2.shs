@@ -40,25 +40,26 @@ GFX.MainWindow(
           Anchor: Anchor::TopRight
           Order: Order::Foreground
           Contents: {
-            "3rd Highest: Foreground" | UI.Label(Wrap: false)
+            "3rd Highest: Foreground" | UI.Label(Wrap: TextWrap::Extend)
           }
         )
         UI.Area(
           Anchor: Anchor::Right
           Order: Order::Tooltip
           Contents: {
-            "2nd Highest: Tooltip" | UI.Label(Wrap: false)
+            "2nd Highest: Tooltip" | UI.Label(Wrap: TextWrap::Extend)
           }
         )
         UI.Area(
           Anchor: Anchor::BottomRight
           Order: Order::Debug
           Contents: {
-            "Highest: Debug" | UI.Label(Wrap: false)
+            "Highest: Debug" | UI.Label(Wrap: TextWrap::Extend)
           }
         )
       }
-    ) | UI.Render(ui-draw-queue)
+    ) | UI.Render(ui-draw-queue
+)
     GFX.Render(Steps: render-steps)
   }
 )

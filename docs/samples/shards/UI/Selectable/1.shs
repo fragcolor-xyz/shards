@@ -23,9 +23,9 @@ GFX.MainWindow(
             Clicked: { @select(1) }
           )
           UI.Selectable(
-            Contents: { 
+            Contents: {
               UI.Button("Select Button 2" { "Select Button 2 Clicked" | Log })
-              "Another part of the same selectable as Select Button 2" | UI.Label(Wrap: true)
+              "Another part of the same selectable as Select Button 2" | UI.Label(Wrap: TextWrap::Extend)
             }
             IsSelected: { @is-selected(2) }
             Clicked: { @select(2) }
@@ -38,7 +38,8 @@ GFX.MainWindow(
           ] | String.Join | UI.Label
         }
       )
-    ) | UI.Render(ui-draw-queue)
+    ) | UI.Render(ui-draw-queue
+)
 
     GFX.Render(Steps: render-steps)
   }

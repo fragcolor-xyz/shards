@@ -3,10 +3,12 @@
 
 use crate::util;
 use crate::widgets::text_util;
-use crate::ANY_TABLE_SLICE;
+use crate::widgets::TEXTWRAP_TYPE;
+use crate::ANY_TABLE_OR_NONE_SLICE;
 use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
+use egui::TextWrapMode;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::common_type;
@@ -22,9 +24,10 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::WireState;
 use shards::types::ANY_TYPES;
-use shards::types::BOOL_OR_NONE_SLICE;
 use shards::types::BOOL_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
+
+use super::TextWrap;
 
 #[derive(shard)]
 #[shard_info("UI.Button", "Clickable button with text.")]
@@ -37,9 +40,9 @@ struct Button {
     SHARDS_OR_NONE_TYPES
   )]
   action: ShardsVar,
-  #[shard_param("Style", "The text style.", ANY_TABLE_SLICE)]
+  #[shard_param("Style", "The text style.", ANY_TABLE_OR_NONE_SLICE)]
   style: ClonedVar,
-  #[shard_param("Wrap", "Wrap the text depending on the layout.", BOOL_OR_NONE_SLICE)]
+  #[shard_param("Wrap", "The text wrapping mode.", [*TEXTWRAP_TYPE, common_type::bool])]
   wrap: ClonedVar,
   #[shard_warmup]
   contexts: ParamVar,
@@ -54,9 +57,9 @@ impl Default for Button {
     Self {
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      label: ParamVar::default(),
+      label: ParamVar::new(Var::ephemeral_string("")),
       action: ShardsVar::default(),
-      wrap: ClonedVar::default(),
+      wrap: ClonedVar(TextWrap::Extend.into()),
       style: ClonedVar::default(),
       required: Vec::new(),
     }
@@ -121,9 +124,21 @@ impl Shard for Button {
       let mut button = egui::Button::new(text);
 
       let wrap = &self.wrap.0;
-      if !wrap.is_none() {
+      if wrap.is_bool() {
         let wrap: bool = wrap.try_into()?;
-        button = button.wrap(wrap);
+        if wrap {
+          button = button.wrap_mode(TextWrapMode::Wrap);
+        } else {
+          button = button.wrap_mode(TextWrapMode::Extend);
+        }
+      } else {
+        let wrap: TextWrap = wrap.try_into()?;
+        let wrap = match wrap {
+          TextWrap::Truncate => TextWrapMode::Truncate,
+          TextWrap::Wrap => TextWrapMode::Wrap,
+          TextWrap::Extend => TextWrapMode::Extend,
+        };
+        button = button.wrap_mode(wrap);
       }
 
       let mut button_clicked = false;

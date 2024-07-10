@@ -12,9 +12,9 @@ use super::IntSlider;
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
-
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
+use egui::TextWrapMode;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
@@ -254,7 +254,7 @@ macro_rules! impl_ui_slider {
               if !style.is_none() {
                 text = text_util::get_styled_text(text, &style.try_into()?)?;
               }
-              ui.add(egui::Label::new(text).wrap(false));
+              ui.add(egui::Label::new(text).wrap_mode(TextWrapMode::Truncate));
             }
 
             Ok::<(), &str>(())
@@ -512,7 +512,7 @@ macro_rules! impl_ui_n_slider {
               if !style.is_none() {
                 text = text_util::get_styled_text(text, &style.try_into()?)?;
               }
-              ui.add(egui::Label::new(text).wrap(false));
+              ui.add(egui::Label::new(text).wrap_mode(TextWrapMode::Truncate));
             }
 
             Ok::<(), &str>(())
