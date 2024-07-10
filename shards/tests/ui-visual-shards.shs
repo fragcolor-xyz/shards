@@ -1,0 +1,27 @@
+@wire(main {
+  Once({
+    GFX.DrawQueue = ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+    "ui-nested.shs" | FS.Read | Shards.Read(AstType::Object) = ast
+    Shards.Print >= text-code
+  })
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
+    UI({
+      UI.Window(Title: "Shards" MinWidth: 512.0 Contents: {
+        UI.Shards(ast) | When(IsTrue {
+          Msg("Reloading code")
+          ast | Shards.Print > text-code
+        })
+      })
+
+      UI.Window(Title: "Code" Contents: {
+        UI.CodeEditor(text-code "Shards")
+      })
+    }) | UI.Render(ui-draw-queue)
+    GFX.Render(Steps: render-steps)
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root main)
+@run(root FPS: 60)

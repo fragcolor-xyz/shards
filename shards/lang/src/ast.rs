@@ -348,6 +348,7 @@ pub struct Param {
   /// Stored directly in the AST node for efficient access and simpler management.
   /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
   pub custom_state: Option<Box<dyn CustomAny>>,
+  pub is_default: Option<bool>, // This is used to determine if the param is default or not, optional
 }
 
 impl_custom_state!(Param);
@@ -428,6 +429,15 @@ pub enum Statement {
   Pipeline(Pipeline),
 }
 
+impl Statement {
+  pub fn as_pipeline_mut(&mut self) -> Option<&mut Pipeline> {
+    match self {
+      Statement::Pipeline(pipeline) => Some(pipeline),
+      _ => None,
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,
@@ -449,6 +459,7 @@ impl_custom_state!(Sequence);
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
+  pub version: u64, // optional field to store the version of the program when live editing
 }
 
 pub trait RewriteFunction {
@@ -508,6 +519,7 @@ impl<'de> Deserialize<'de> for Program {
         statements: helper.sequence,
         custom_state: None,
       },
+      version: 0,
     })
   }
 }
@@ -949,6 +961,7 @@ impl<'de> Deserialize<'de> for Param {
           name,
           value,
           custom_state: None,
+          is_default: None,
         })
       }
     }

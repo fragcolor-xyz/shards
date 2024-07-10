@@ -606,6 +606,7 @@ pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, S
     metadata: Metadata {
       name: env.name.clone(),
     },
+    version: 0,
   })
 }
 
@@ -860,6 +861,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
     name: param_name,
     value: param_value,
     custom_state: None,
+    is_default: None,
   })
 }
 

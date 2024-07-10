@@ -53,7 +53,13 @@ impl Number {
   fn to_string(&self) -> String {
     match self {
       Number::Integer(i) => format!("{}", i),
-      Number::Float(f) => format!("{}", f),
+      Number::Float(f) => {
+        if f.fract() == 0.0 {
+          format!("{}.0", f)
+        } else {
+          format!("{}", f)
+        }
+      }
       Number::Hexadecimal(s) => format!("{}", s),
     }
   }
@@ -227,10 +233,15 @@ impl AstVisitor for PrintVisitor {
   }
 
   fn visit_param(&mut self, param: &Param) {
-    if let Some(name) = &param.name {
-      self.write(&format!("{}: ", name));
+    match param.is_default {
+      Some(true) => {} // do nothing, omit default params
+      _ => {
+        if let Some(name) = &param.name {
+          self.write(&format!("{}: ", name));
+        }
+        param.value.accept(self);
+      }
     }
-    param.value.accept(self);
   }
 
   fn visit_identifier(&mut self, identifier: &Identifier) {

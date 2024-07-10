@@ -1,0 +1,38 @@
+; this script works only in a debug build
+
+Msg("Compressing strings...")
+
+@wire(document-shard {
+  Shards.Help ; don't do anything, we just want to create internally the shard to populate strings
+})
+
+@wire(document-enum {
+  = enum-id
+  enum-id | Shards.EnumTypeHelp ; done here, we populated the strings
+})
+
+; process documentation in parallel
+Shards.Enumerate | TryMany(document-shard Threads: 4)
+Shards.EnumTypes | TryMany(document-enum Threads: 4)
+
+; finally compress strings here
+
+"constexpr std::array<uint8_t, " >= code
+
+_ExportStrings | ToBytes | Brotli.Compress | BytesToInts | Map(ToHex) = bytes-array
+
+Count(bytes-array) | Log("Strings to compress") | ToString | AppendTo(code)
+
+"> __shards_compressed_strings = {\n" | AppendTo(code)
+
+bytes-array | ForEach({
+  {" " | AppendTo(code)}
+  AppendTo(code)
+  ",\n" | AppendTo(code)
+})
+
+"};\n" | AppendTo(code)
+
+"shccstrings.hpp" | FS.Write(code Overwrite: true)
+
+Msg("Compressed strings written to shccstrings.hpp")

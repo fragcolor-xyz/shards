@@ -286,6 +286,13 @@ fn emoji(s: &str) -> egui::RichText {
     .size(14.0)
 }
 
+fn chars(s: &str) -> egui::RichText {
+  egui::RichText::new(s)
+    .family(egui::FontFamily::Proportional)
+    .strong()
+    .size(15.0)
+}
+
 fn get_first_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
   for statement in &mut ast.statements {
     match statement {
@@ -351,6 +358,41 @@ impl<'a> VisualAst<'a> {
 
   pub fn render(&mut self, ast: &mut Sequence) -> Option<Response> {
     ast.accept_mut(self)
+  }
+
+  fn populate_params(x: &mut Function, info: &SeqVar) {
+    // only if we really need to sort
+    let mut params = x.params.take();
+    // reset current params
+    x.params = Some(Vec::new());
+
+    // helper if needed as well
+    let mut helper = params.as_mut().map(|x| ParamHelperMut::new(x));
+
+    for (idx, param) in info.into_iter().enumerate() {
+      let param = param.as_table().unwrap();
+      let name: &str = param.get_fast_static("name").try_into().unwrap();
+
+      let new_param = helper
+        .as_mut()
+        .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
+        .cloned();
+
+      let param_to_add = new_param.unwrap_or_else(|| {
+        let default_value = param.get_fast_static("default");
+        Param {
+          name: Some(name.into()),
+          value: var_to_value(&default_value).unwrap(),
+          custom_state: None,
+          is_default: Some(true),
+        }
+      });
+
+      x.params.as_mut().unwrap().push(param_to_add);
+    }
+
+    // set flag to true
+    x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
@@ -425,53 +467,18 @@ impl<'a> VisualAst<'a> {
 
     let response = self.ui.label(shard_name_rt).on_hover_text(help_text);
 
+    let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
+
+    if !params_sorted {
+      if let Some(params) = params {
+        Self::populate_params(x, params);
+      }
+    }
+
     if self.parent_selected {
-      let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
       if let Some(params) = params {
         // We have documentation...
         if !params.is_empty() {
-          let mut params_copy = if !params_sorted {
-            // only if we really need to sort
-            let params = x.params.clone();
-            // reset current params
-            x.params = Some(Vec::new());
-            Some(params)
-          } else {
-            None
-          };
-
-          // helper if needed as well
-          let mut helper = params_copy
-            .as_mut()
-            .map(|params| params.as_mut().map(|x| ParamHelperMut::new(x)));
-
-          if !params_sorted {
-            for (idx, param) in params.into_iter().enumerate() {
-              let param = param.as_table().unwrap();
-              let name: &str = param.get_fast_static("name").try_into().unwrap();
-
-              let new_param = helper
-                .as_mut()
-                .and_then(|h| h.as_mut())
-                .and_then(|ast| ast.get_param_by_name_or_index_mut(name, idx))
-                .cloned();
-
-              let param_to_add = new_param.unwrap_or_else(|| {
-                let default_value = param.get_fast_static("default");
-                Param {
-                  name: Some(name.into()),
-                  value: var_to_value(&default_value).unwrap(),
-                  custom_state: None,
-                }
-              });
-
-              x.params.as_mut().unwrap().push(param_to_add);
-            }
-
-            // set flag to true
-            x.get_custom_state::<FunctionState>().unwrap().params_sorted = true;
-          }
-
           egui::ScrollArea::both().show(self.ui, |ui| {
             for (idx, param) in params.into_iter().enumerate() {
               let param = param.as_table().unwrap();
@@ -492,8 +499,18 @@ impl<'a> VisualAst<'a> {
               } else {
                 help_text
               };
+              let default_value = param.get_fast_static("default");
+              let is_at_default_value = x
+                .params
+                .as_ref()
+                .map(|params| {
+                  let param = &params[idx];
+                  let default_value = var_to_value(&default_value).unwrap();
+                  &param.value == &default_value
+                })
+                .unwrap_or(false);
               egui::CollapsingHeader::new(name)
-                .default_open(true)
+                .default_open(!is_at_default_value)
                 .show(ui, |ui| {
                   ui.horizontal(|ui| {
                     // button to reset to default
@@ -504,7 +521,6 @@ impl<'a> VisualAst<'a> {
                     {
                       // reset to default
                       shlog_debug!("Resetting: {} to default value.", name);
-                      let default_value = param.get_fast_static("default");
                       x.params.as_mut().map(|params| {
                         params[idx].value = var_to_value(&default_value).unwrap();
                       });
@@ -542,6 +558,9 @@ impl<'a> VisualAst<'a> {
 
                   x.params.as_mut().map(|params| {
                     let param = &mut params[idx];
+
+                    // this will be useful later in print for example!
+                    param.is_default = Some(is_at_default_value);
 
                     // draw the value
                     let mut mutator =
@@ -849,21 +868,25 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                   ]),
                   custom_state: None,
@@ -1125,21 +1148,25 @@ fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapState
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                     Param {
                       name: None,
                       value: Value::Number(Number::Integer(255)),
                       custom_state: None,
+                      is_default: Some(false),
                     },
                   ]),
                   custom_state: None,
@@ -1223,6 +1250,32 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 }],
               }));
 
+              // and immediately trigger a swap request
+              // switch to shard selection
+              let new_block = sequence
+                .statements
+                .last_mut()
+                .unwrap()
+                .as_pipeline_mut()
+                .unwrap()
+                .blocks
+                .last_mut()
+                .unwrap();
+              let window_pos = ui
+                .ctx()
+                .input(|i| i.pointer.hover_pos().unwrap_or_default());
+              self.context.swap_state = Some(SwapState::Block(BlockSwapState {
+                common: SwapStateCommon {
+                  id: Id::new(nanoid!()),
+                  receiver: None,
+                  window_pos,
+                },
+                block: new_block as *mut Block,
+                search_string: "".into(),
+                previous_search_string: "".into(),
+                search_results: Vec::new(),
+              }));
+
               self.context.has_changed = true;
             }
             ui.button(emoji("💡")).on_hover_text("Ask AI.")
@@ -1280,6 +1333,24 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   custom_state: None,
                 });
 
+                // and immediately trigger a swap request
+                // switch to shard selection
+                let new_block = pipeline.blocks.last_mut().unwrap();
+                let window_pos = ui
+                  .ctx()
+                  .input(|i| i.pointer.hover_pos().unwrap_or_default());
+                self.context.swap_state = Some(SwapState::Block(BlockSwapState {
+                  common: SwapStateCommon {
+                    id: Id::new(nanoid!()),
+                    receiver: None,
+                    window_pos,
+                  },
+                  block: new_block as *mut Block,
+                  search_string: "".into(),
+                  previous_search_string: "".into(),
+                  search_results: Vec::new(),
+                }));
+
                 self.context.has_changed = true;
               }
               ui.button(emoji("💡")).on_hover_text("Ask AI.")
@@ -1297,19 +1368,19 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let mut combined_response = None;
     let (r_a, r_b) = match assignment {
       Assignment::AssignRef(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("➰"));
+        self.ui.label(chars("="));
         identifier.accept_mut(self)
       }),
       Assignment::AssignSet(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("➡"));
+        self.ui.label(chars(">="));
         identifier.accept_mut(self)
       }),
       Assignment::AssignUpd(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("⤴"));
+        self.ui.label(chars(">"));
         identifier.accept_mut(self)
       }),
       Assignment::AssignPush(pipeline, identifier) => (pipeline.accept_mut(self), {
-        self.ui.label(emoji("⏩"));
+        self.ui.label(chars(">>"));
         identifier.accept_mut(self)
       }),
     };
@@ -2282,6 +2353,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
         name: None,
         value: Value::Identifier(x.clone()),
         custom_state: None,
+        is_default: Some(false),
       }]),
       custom_state: None,
     }),
@@ -2300,6 +2372,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
           name: None,
           value: Value::String(y.clone()),
           custom_state: None,
+          is_default: Some(false),
         }]),
         custom_state: None,
       }),
@@ -2327,6 +2400,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
         name: None,
         value: Value::Identifier(x.clone()),
         custom_state: None,
+        is_default: Some(false),
       }]),
       custom_state: None,
     }),
@@ -2345,6 +2419,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
           name: None,
           value: Value::Number(Number::Integer(*y as i64)),
           custom_state: None,
+          is_default: Some(false),
         }]),
         custom_state: None,
       }),
@@ -2454,6 +2529,8 @@ impl Shard for UIShardsShard {
   fn cleanup(&mut self, ctx: Option<&ShardsContext>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
 
+    self.ast = None;
+
     Ok(())
   }
 
@@ -2470,29 +2547,33 @@ impl Shard for UIShardsShard {
   }
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
-    let ast = self.ast_object.get();
-    if ast.is_none() {
+    let ast_var = self.ast_object.get();
+    if ast_var.is_none() {
       return Ok(false.into());
     }
 
-    self.ast = Some(Var::from_object_as_clone(ast, &AST_TYPE)?);
-    if self.context.seqs_zoom_stack.is_empty() {
-      let ast = Var::get_mut_from_clone1(&self.ast)?;
+    self.ast = Some(Var::from_object_as_clone(ast_var, &AST_TYPE)?);
+    let ast = Var::get_mut_from_clone1(&self.ast)?;
+    if ast.version == 0 {
+      self.context.seqs_zoom_stack.clear();
       let seq_ptr = &mut ast.sequence as *mut Sequence;
       self.context.seqs_zoom_stack.push(seq_ptr);
+      self.context.seqs_stack.clear();
+      self.context.swap_state = None;
+      ast.version = 1;
     }
 
     self.context.has_changed = false;
 
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
 
-    // Set the minimum and maximum size of the UI
-    // This allows us to have a fully user controlled UI/Window
-    let x = ui.available_size_before_wrap().x;
-    let y = ui.available_size_before_wrap().y;
-    let min_max = egui::Vec2::new(x, y);
-    ui.set_min_size(min_max);
-    ui.set_max_size(min_max);
+    // // Set the minimum and maximum size of the UI
+    // // This allows us to have a fully user controlled UI/Window
+    // let x = ui.available_size_before_wrap().x;
+    // let y = ui.available_size_before_wrap().y;
+    // let min_max = egui::Vec2::new(x, y);
+    // ui.set_min_size(min_max);
+    // ui.set_max_size(min_max);
 
     egui::ScrollArea::new([true, true]).show(ui, |ui| {
       // go backward / zoom out

@@ -3101,6 +3101,10 @@ impl Var {
       Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
     }
   }
+
+  pub fn as_str(&self) -> Result<&str, &'static str> {
+    self.try_into()
+  }
 }
 
 impl TryFrom<&Var> for SHString {
