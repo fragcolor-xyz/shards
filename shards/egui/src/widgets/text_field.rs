@@ -4,10 +4,10 @@
 use crate::util;
 use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
-use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use egui::RichText;
 use shards::shard::Shard;
 use shards::shardsc;
@@ -52,7 +52,7 @@ pub struct TextField {
     "The desired width of the text field.",
     FLOAT_VAR_OR_NONE_SLICE
   )]
-  desired_width: ClonedVar,
+  desired_width: ParamVar,
   #[shard_param(
     "ClipText",
     "Whether to clip the text if it exceeds the width of the text field. Or expand the text field to fit the text.",
@@ -81,7 +81,7 @@ impl Default for TextField {
       requiring: Vec::new(),
       variable: ParamVar::default(),
       justify_width: false.into(),
-      desired_width: ClonedVar::default(),
+      desired_width: ParamVar::default(),
       clip_text: true.into(),
       multiline: false.into(),
       password: false.into(),
@@ -210,7 +210,7 @@ impl Shard for TextField {
     text_edit = if justify_width {
       text_edit.desired_width(f32::INFINITY)
     } else {
-      if let Ok(desired_width) = TryInto::<f64>::try_into(&self.desired_width.0) {
+      if let Ok(desired_width) = TryInto::<f64>::try_into(self.desired_width.get()) {
         text_edit.desired_width(desired_width as f32)
       } else {
         text_edit
