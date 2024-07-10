@@ -387,14 +387,13 @@ impl<'a> VisualAst<'a> {
     }
 
     // set flag to true
-    x.custom_state
-      .get_mut::<FunctionState>()
-      .unwrap()
-      .params_sorted = true;
+    x.custom_state.with_mut::<FunctionState, _, _>(|s| {
+      s.params_sorted = true;
+    });
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
-    let state = x.custom_state.get_or_insert_custom_state(|| FunctionState {
+    let state = x.custom_state.get_or_insert_with(|| FunctionState {
       params_sorted: false,
     });
     let params_sorted = state.params_sorted;
@@ -1197,7 +1196,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
     sequence
       .custom_state
-      .get_or_insert_custom_state(|| SequenceState {
+      .get_or_insert_with(|| SequenceState {
         selected: self.parent_selected,
       })
       .selected = self.parent_selected;
@@ -1429,8 +1428,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
         (BlockAction::Duplicate, r) => {
           self.context.has_changed = true;
-          let mut block = pipeline.blocks[i].clone();
-          block.custom_state.get_mut::<BlockState>().map(|x| {
+          let block = pipeline.blocks[i].clone();
+          block.custom_state.with_mut::<BlockState, _, _>(|x| {
             x.id = Id::new(nanoid!(16));
           });
           pipeline.blocks.insert(i, block);
@@ -1442,12 +1441,11 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           pipeline.blocks.get_mut(i).map(|x| {
             let selected = x
               .custom_state
-              .get_mut::<BlockState>()
-              .map(|x| x.selected)
+              .with_mut::<BlockState, _, _>(|x| x.selected)
               .unwrap_or(false);
             *x = block;
             x.custom_state
-              .get_or_insert_custom_state(|| BlockState {
+              .get_or_insert_with(|| BlockState {
                 selected,
                 id: Id::new(nanoid!(16)),
               })
@@ -1480,12 +1478,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
   fn visit_block(&mut self, block: &mut Block) -> (BlockAction, Option<Response>) {
     let (selected, id) = {
-      let state = block
-        .custom_state
-        .get_or_insert_custom_state(|| BlockState {
-          selected: false,
-          id: Id::new(nanoid!(16)),
-        });
+      let state = block.custom_state.get_or_insert_with(|| BlockState {
+        selected: false,
+        id: Id::new(nanoid!(16)),
+      });
       (state.selected, state.id)
     };
 
@@ -1652,8 +1648,9 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       })
       .inner;
 
-    let state = block.custom_state.get_mut::<BlockState>().unwrap();
-    state.selected = selected;
+    block
+      .custom_state
+      .with_mut::<BlockState, _, _>(|x| x.selected = selected);
 
     if let Some(SwapState::Block(swap_state)) = &mut self.context.swap_state {
       if block as *mut _ == swap_state.block {
@@ -2591,7 +2588,7 @@ impl Shard for UIShardsShard {
         ui,
         root
           .custom_state
-          .get_or_insert_custom_state(|| SequenceState { selected: false })
+          .get_or_insert_with(|| SequenceState { selected: false })
           .selected,
       );
       root.accept_mut(&mut mutator);

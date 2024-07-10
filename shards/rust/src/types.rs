@@ -80,6 +80,7 @@ use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
 use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::SHObjectInfo;
+use crate::SHSetShardError;
 use crate::SHStringWithLen;
 use crate::SHType_Type;
 use crate::SHVar__bindgen_ty_1;
@@ -444,7 +445,6 @@ impl ShardRef {
 
   pub fn cleanup(&self, context: Option<&Context>) -> Result<(), &'static str> {
     unsafe {
-      // TODO: Cleanup
       let result = (*self.0).cleanup.unwrap()(
         self.0,
         if let Some(_ref) = context {
@@ -519,6 +519,19 @@ impl ShardRef {
 
   pub fn get_line_info(&self) -> (u32, u32) {
     unsafe { ((*self.0).line, (*self.0).column) }
+  }
+
+  pub fn set_error_callback(
+    &mut self,
+    callback: Option<unsafe extern "C" fn(*mut Shard, *mut c_void, SHStringWithLen)>,
+    error_data: *mut c_void,
+  ) {
+    unsafe {
+      (*self.0).setError = callback;
+      // Assuming there's a field to store the error_data pointer in the Shard struct
+      // If not, you may need to add it to your Shard struct definition
+      (*self.0).errorData = error_data;
+    }
   }
 }
 

@@ -6,9 +6,11 @@ use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
+use std::os::raw::c_void;
 
 use nanoid::nanoid;
 use shards::cstr;
+use shards::SHStringWithLen;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -22,6 +24,7 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
+use shards::Shard;
 use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
@@ -2115,7 +2118,46 @@ fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> 
   get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
 }
 
+unsafe extern "C" fn error_callback(
+  shard: *mut Shard,
+  error_data: *mut c_void,
+  msg: SHStringWithLen,
+) {
+  // cast error_data to our ast &Function
+  let func = &*(error_data as *const Function);
+  let msg: &str = msg.into();
+  func.custom_state.set(ShardsError {
+    message: msg.into(),
+    loc: LineInfo {
+      line: (*shard).line,
+      column: (*shard).column,
+    },
+  });
+}
+
 fn create_shard(
+  shard: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
+  match create_shard_inner(shard, line_info, e) {
+    Ok(mut s) => {
+      // clean any previous error
+      shard.custom_state.remove::<ShardsError>();
+      // also populate error call back
+      s.0
+        .set_error_callback(Some(error_callback), shard as *const _ as *mut c_void);
+      Ok(s)
+    }
+    Err(e) => {
+      // set the error
+      shard.custom_state.set(e.clone());
+      Err(e)
+    }
+  }
+}
+
+fn create_shard_inner(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
@@ -2150,11 +2192,7 @@ fn create_shard(
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
           if param_name == name.as_str() {
-            if let Err(err) = set_shard_parameter(info, e, &param.value, &s, i, line_info) {
-              // param.custom_state.remove::<ShardsError>();
-              // param.custom_state.set(err.clone());
-              return Err(err);
-            }
+            set_shard_parameter(info, e, &param.value, &s, i, line_info)?;
             found = true;
             break;
           }

@@ -746,8 +746,12 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
+typedef void(__cdecl *SHSetShardError)(struct Shard *, void* errorData, struct SHStringWithLen msg);
+
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
+
+  // magic tricks to make some shards inline
   SHInlineShards inlineShardId;
 
   // used to manage the lifetime of this shard, should be set to 0
@@ -762,6 +766,8 @@ struct Shard {
   // some debug/utility info
   uint32_t line;
   uint32_t column;
+  SHSetShardError setError; // internally used if available
+  void *errorData;          // internally used if available
 
   // \-- The interface to fill --/
 
