@@ -696,6 +696,7 @@ struct SHInstanceData {
   // Info related to our activation
   struct SHTypeInfo inputType;
   SHExposedTypesInfo shared;
+  
   // if this activation might happen in a worker thread
   // for example cos this shard is within an Await shard
   // useful to fail during compose if we don't wish this

@@ -356,11 +356,6 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    // TODO: Split onWorkerThread into await and running on worker
-    // if (WIRE_MODE == RunWireMode::Inline && data.onWorkerThread) {
-    //   throw ComposeError("Cannot run a wire inline (Do) on a worker thread");
-    // }
-
     auto res = BaseRunner::compose(data);
     if (!wire) {
       OVERRIDE_ACTIVATE(data, activateNil);
