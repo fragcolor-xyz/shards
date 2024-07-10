@@ -320,6 +320,19 @@ impl Drop for Wire {
   }
 }
 
+// typedef void(__cdecl *SHSetWireError)(const SHWire *, void *errorData, struct SHStringWithLen msg);
+type SHSetWireError = unsafe extern "C" fn(*const SHWire, *mut c_void, SHStringWithLen);
+
+// void shards_set_wire_error_callback(SHWire *wire, SHSetWireError setWireError, void *errorData)
+// the above is defined c side, lets declare it here
+extern "C" {
+  pub fn shards_set_wire_error_callback(
+    wire: SHWireRef,
+    setWireError: SHSetWireError,
+    errorData: *mut c_void,
+  );
+}
+
 impl Wire {
   pub fn new(name: &str) -> Self {
     let name = SHStringWithLen {
@@ -359,6 +372,17 @@ impl Wire {
 
   pub fn get_info(&self) -> SHWireInfo {
     unsafe { (*Core).getWireInfo.unwrap()(self.0 .0) }
+  }
+
+  pub fn set_error_callback(
+    self,
+    callback: unsafe extern "C" fn(*const SHWire, *mut c_void, SHStringWithLen),
+    error_data: *mut c_void,
+  ) -> Self {
+    unsafe {
+      shards_set_wire_error_callback(self.0 .0, callback, error_data);
+    }
+    self
   }
 }
 

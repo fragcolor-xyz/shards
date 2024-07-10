@@ -24,6 +24,7 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
+use shards::SHWire;
 use shards::Shard;
 use shards::{shccstr, shlog_error};
 
@@ -2816,6 +2817,23 @@ fn process_template(
   }
 }
 
+unsafe extern "C" fn wire_error_callback(
+  _wire: *const SHWire,
+  error_data: *mut c_void,
+  msg: SHStringWithLen,
+) {
+  // cast error_data to our ast &Function
+  let func = &*(error_data as *const Function);
+  let msg: &str = msg.into();
+  func.custom_state.set(ShardsError {
+    message: msg.into(),
+    loc: LineInfo {
+      line: 0,   // should not matter for now at least
+      column: 0, // should not matter for now at least
+    },
+  });
+}
+
 fn eval_pipeline(
   pipeline: &Pipeline,
   e: &mut EvalEnv,
@@ -3107,7 +3125,8 @@ fn eval_pipeline(
               e.deferred_wires.insert(
                 name,
                 (
-                  Wire::new(&wire_name),
+                  Wire::new(&wire_name)
+                    .set_error_callback(wire_error_callback, func as *const _ as *mut _),
                   params_ptr,
                   block.line_info.unwrap_or_default(),
                 ),
