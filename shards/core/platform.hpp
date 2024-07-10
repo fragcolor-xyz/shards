@@ -13,6 +13,9 @@
 
 #if TARGET_OS_IPHONE // includes all iOS-based devices including visionOS
 #define SH_IOS 1
+#if TARGET_OS_VISION // nested there is also vision pro
+#define SH_VISION 1
+#endif
 #else
 #define SH_OSX 1
 #endif
