@@ -165,6 +165,7 @@ struct MainWindow final {
     windowOptions.title = SHSTRVIEW(*_title);
     _windowContext->window = std::make_shared<Window>();
     _windowContext->window->init(windowOptions);
+    _windowContext->windowMesh = shContext->main->mesh;
 
     // Adjust window size so they're specified in virtual points
     float uiScale = _windowContext->window->getUIScale();
@@ -354,7 +355,15 @@ struct ResizeWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->resize((int2)toInt2(input)); });
+    // This will hang on windows with thread fiber, so send a message instead
+    auto windowMesh = _requiredWindowContext->windowMesh.lock();
+    if (!windowMesh)
+      return input;
+    if (windowMesh == shContext->main->mesh.lock()) {
+      callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->resize((int2)toInt2(input)); });
+    } else {
+      _requiredWindowContext->inputMaster.postMessage(ResizeWindowMessage{(int2)toInt2(input)});
+    }
     return input;
   }
 };

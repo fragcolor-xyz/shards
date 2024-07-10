@@ -103,6 +103,8 @@ void InputMaster::handleMessage(const Message &message, gfx::Window& window) {
 #endif
         } else if constexpr (std::is_same_v<T, TerminateMessage>) {
           terminateRequested = true;
+        } else if constexpr (std::is_same_v<T, ResizeWindowMessage>) {
+          window.resize(arg.newSize);
         }
       },
       message);
