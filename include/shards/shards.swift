@@ -72,6 +72,7 @@ RegisterShard(MyShard1.name.utf8Start.withMemoryRebound(to: Int8.self, capacity:
 
 import Foundation
 import shards
+import UIKit
 
 public struct Globals {
     public var Core: UnsafeMutablePointer<SHCore>
@@ -1121,33 +1122,19 @@ class Shards {
 }
 
 extension UIView {
-    var safeAreaBottom: CGFloat {
+    var safeArea: UIEdgeInsets {
         if #available(iOS 11, *) {
-            if let window = UIApplication.shared.keyWindowInConnectedScenes {
-                return window.safeAreaInsets.bottom
+            if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first {
+                return window.safeAreaInsets
             }
         }
-        return 0
-    }
-
-    var safeAreaTop: CGFloat {
-        if #available(iOS 11, *) {
-            if let window = UIApplication.shared.keyWindowInConnectedScenes {
-                return window.safeAreaInsets.top
-            }
-        }
-        return 0
+        return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
     }
 }
 
-@_cdecl("shards_get_uiview_safe_area_bottom")
-public func getViewSafeAreaBottom(viewPtr: UnsafeMutableRawPointer?): CGFloat {
+@_cdecl("shards_get_uiview_safe_area")
+public func getViewSafeArea(uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?) {
     let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
-    return view.safeAreaBottom
+    uiEdgeInsets.pointee = view.safeArea
 }
 
-@_cdecl("shards_get_uiview_safe_area_top")
-public func getViewSafeAreaTop(viewPtr: UnsafeMutableRawPointer?): CGFloat {
-    let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
-    return view.safeAreaTop
-}

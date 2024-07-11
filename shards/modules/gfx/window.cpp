@@ -496,7 +496,11 @@ struct WindowInsets {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     // auto &window = _requiredWindowContext->window;
     // Actually is static for now, but keep this here might it be of use in the future
-    return toVar(Window::viewInset);
+    float scale = 1.0f;
+#if SH_APPLE
+    scale *= _requiredWindowContext->window->getInputScale().x;
+#endif
+    return toVar(Window::viewInset * scale);
   }
 };
 

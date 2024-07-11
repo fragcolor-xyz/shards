@@ -19,9 +19,11 @@
 #endif
 
 #if SH_IOS
+struct UIEdgeInsets {
+  double top, left, bottom, right;
+};
 extern "C" {
-float shards_get_uiview_safe_area_bottom(void *metalView);
-float shards_get_uiview_safe_area_top(void *metalView);
+void shards_get_uiview_safe_area(UIEdgeInsets *outInsets, void *metalView);
 }
 #elif SH_ANDROID
 #include <jni.h>
@@ -96,10 +98,6 @@ void Window::init(const WindowCreationOptions &options) {
 
 #if SH_APPLE
   metalView.emplace(window);
-  SDL_MetalView uiView = metalView->view;
-  viewInset.y = shards_get_uiview_safe_area_top(uiView);
-  viewInset.w = shards_get_uiview_safe_area_bottom(uiView);
-  SPDLOG_INFO("Safe area insets: top: {}, bottom: {}", viewInset.y, viewInset.w);
 #endif
 }
 
@@ -121,6 +119,14 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
   while (pollEvent(event)) {
     events.push_back(event);
   }
+
+  // Update edge insets
+#if SH_IOS
+  SDL_MetalView uiView = metalView->view;
+  UIEdgeInsets insets{};
+  shards_get_uiview_safe_area(&insets, uiView);
+  viewInset = float4(insets.left, insets.top, insets.right, insets.bottom);
+#endif
 }
 
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
