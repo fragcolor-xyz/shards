@@ -479,19 +479,6 @@ struct Pixels : public PixelBase {
 
   OwnedVar _output;
 
-  Pixels() {
-    // _output = SHVar(); // zero it
-    // _output.valueType = SHType::Image;
-    // _output.payload.imageValue->channels = 4;
-    // _output.payload.imageValue->flags = 0;
-  }
-
-  ~Pixels() {
-    // if (_output.payload.imageValue.data) {
-    //   delete[] _output.payload.imageValue.data;
-    // }
-  }
-
   SHVar activate(SHContext *context, const SHVar &input) {
     int left = input.payload.int4Value[0];
     int top = input.payload.int4Value[1];
@@ -513,7 +500,6 @@ struct Pixels : public PixelBase {
       w = std::clamp(w, 2, grabber->width());
       h = std::clamp(h, 2, grabber->height());
 
-      _output.reset();
       auto nbytes = 4 * w * h;
       _output = makeImage(w * h * nbytes);
       SHImage &outImage = *_output.payload.imageValue;
