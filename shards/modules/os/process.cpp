@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "shards/core/module.hpp"
 #ifdef _WIN32
 #include "winsock2.h"
 #endif
 
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
 
 // workaround for a boost bug..
 #ifndef __kernel_entry
@@ -93,9 +93,7 @@ struct Run {
   void cleanup(SHContext *context) { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    std::optional<boost::process::child *> pCmd;
-    _input = input;
-    _outputBuf = maybeAwaitne(
+    return awaitne(
         context,
         [&]() {
           // add any arguments we have
@@ -214,10 +212,45 @@ struct StackTrace {
     return Var(_output);
   }
 };
-}; // namespace Process
+
+struct Exe {
+  std::string _buf;
+
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
+  static SHOptionalString help() { return SHCCSTR("Gives the current executable path."); }
+
+  PARAM_IMPL();
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _buf.clear();
+#ifdef _WIN32
+    _buf.resize(_MAX_PATH);
+    _buf.resize(GetModuleFileNameA(nullptr, _buf.data(), _MAX_PATH));
+#elif defined __ANDROID__
+#if __ANDROID_API__ >= 21
+    _buf = getprogname();
+#endif
+#elif defined __linux__ && defined _GNU_SOURCE
+    _buf = program_invocation_short_name;
+#elif defined __APPLE__ || defined BSD
+    _buf = getprogname();
+#endif
+    return Var(_buf);
+  }
+};
+} // namespace Process
 
 SHARDS_REGISTER_FN(process) {
   REGISTER_SHARD("Process.Run", Process::Run);
   REGISTER_SHARD("Process.StackTrace", Process::StackTrace);
+  REGISTER_SHARD("Process.Exe", Process::Exe);
 }
-}; // namespace shards
+} // namespace shards
+// namespace shards
