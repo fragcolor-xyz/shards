@@ -1,142 +1,17 @@
 #![allow(non_upper_case_globals)]
 
+use crate::{custom_state::CustomStateContainer, RcBytesWrapper, RcStrWrapper};
 use core::fmt;
-use std::any::Any;
-use std::fmt::Debug;
-
 use pest::Position;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
-
-use crate::{RcBytesWrapper, RcStrWrapper};
+use std::fmt::Debug;
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
-
-/// CustomAny trait allows for flexible, type-erased storage of custom state within AST nodes.
-/// This approach was chosen to balance performance, flexibility, and simplicity.
-///
-/// Benefits:
-/// - Direct access to custom state without additional lookups
-/// - Simplifies state management by keeping it close to related data
-/// - Minimizes memory overhead through use of Box<dyn CustomAny>
-///
-/// Considerations:
-/// - Adds non-structural data to the AST
-/// - May require special handling during serialization/deserialization
-///
-/// Alternative considered: External state storage with UUID references in AST nodes.
-/// Current approach preferred due to reduced lookup overhead and simpler implementation.
-pub trait CustomAny: Any + Debug + CustomClone + CustomPartialEq {
-  fn as_any(&self) -> &dyn Any;
-  fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-pub trait CustomClone {
-  fn clone_box(&self) -> Box<dyn CustomAny>;
-}
-
-impl Clone for Box<dyn CustomAny> {
-  fn clone(&self) -> Box<dyn CustomAny> {
-    self.clone_box()
-  }
-}
-
-pub trait CustomPartialEq {
-  fn eq_box(&self, other: &dyn CustomAny) -> bool;
-}
-
-impl PartialEq for Box<dyn CustomAny> {
-  fn eq(&self, other: &Self) -> bool {
-    self.eq_box(other.as_ref())
-  }
-}
-
-// Macro to implement CustomAny for common types
-#[macro_export]
-macro_rules! impl_custom_any {
-  ($($t:ty),*) => {
-      $(
-          impl CustomClone for $t {
-              fn clone_box(&self) -> Box<dyn CustomAny> {
-                  Box::new(self.clone())
-              }
-          }
-
-          impl CustomPartialEq for $t {
-              fn eq_box(&self, other: &dyn CustomAny) -> bool {
-                  other
-                      .as_any()
-                      .downcast_ref::<$t>()
-                      .map_or(false, |a| self == a)
-              }
-          }
-
-          impl CustomAny for $t {
-              fn as_any(&self) -> &dyn Any {
-                  self
-              }
-
-              fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-              }
-          }
-      )*
-  };
-}
-
-macro_rules! impl_custom_state {
-  ($type:ident) => {
-    impl $type {
-      /// Sets custom state for this item.
-      /// This method allows attaching arbitrary data to AST nodes,
-      /// enabling flexible extensions without modifying the core AST structure.
-      pub fn set_custom_state<T: 'static + CustomAny>(&mut self, state: T) {
-        self.custom_state = Some(Box::new(state));
-      }
-
-      /// Gets a mutable reference to the custom state of a specific type, if it exists.
-      pub fn get_custom_state<T: 'static + CustomAny>(&mut self) -> Option<&mut T> {
-        self
-          .custom_state
-          .as_mut()
-          .and_then(|state| state.as_any_mut().downcast_mut::<T>())
-      }
-
-      /// Uses a custom state of a specific type, if it exists within a closure.
-      /// This method simplifies working with custom state by providing a safe, ergonomic API.
-      pub fn with_custom_state<T: 'static, R, F>(&mut self, f: F) -> Option<R>
-      where
-        T: CustomAny,
-        F: FnOnce(&mut T) -> R,
-      {
-        self.get_custom_state::<T>().map(|state| f(state))
-      }
-
-      /// Gets or inserts custom state of a specific type.
-      /// If the state doesn't exist, it's created using the provided default function.
-      pub fn get_or_insert_custom_state<T: 'static + CustomAny, F>(&mut self, default: F) -> &mut T
-      where
-        F: FnOnce() -> T,
-      {
-        if self.custom_state.is_none() {
-          self.custom_state = Some(Box::new(default()));
-        }
-
-        self.get_custom_state().unwrap()
-      }
-
-      /// Clears all custom state from this item.
-      /// Useful when a "clean" AST representation is needed, free of runtime-specific data.
-      pub fn clear_custom_state(&mut self) {
-        self.custom_state = None;
-      }
-    }
-  };
-}
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
@@ -144,7 +19,7 @@ pub struct LineInfo {
   pub column: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ShardsError {
   pub message: String,
   pub loc: LineInfo,
@@ -344,14 +219,10 @@ pub struct Param {
   pub name: Option<RcStrWrapper>,
   pub value: Value,
 
-  /// Custom state for UI or other runtime-specific data.
-  /// Stored directly in the AST node for efficient access and simpler management.
-  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  pub custom_state: Option<Box<dyn CustomAny>>,
   pub is_default: Option<bool>, // This is used to determine if the param is default or not, optional
-}
 
-impl_custom_state!(Param);
+  pub custom_state: CustomStateContainer,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
@@ -360,14 +231,9 @@ pub struct Function {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub params: Option<Vec<Param>>,
 
-  /// Custom state for UI or other runtime-specific data.
-  /// Stored directly in the AST node for efficient access and simpler management.
-  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
   #[serde(skip)]
-  pub custom_state: Option<Box<dyn CustomAny>>,
+  pub custom_state: CustomStateContainer,
 }
-
-impl_custom_state!(Function);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum BlockContent {
@@ -398,13 +264,8 @@ pub struct Block {
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
 
-  /// Custom state for UI or other runtime-specific data.
-  /// Stored directly in the AST node for efficient access and simpler management.
-  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  pub custom_state: Option<Box<dyn CustomAny>>,
+  pub custom_state: CustomStateContainer,
 }
-
-impl_custom_state!(Block);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pipeline {
@@ -447,19 +308,13 @@ pub struct Metadata {
 pub struct Sequence {
   pub statements: Vec<Statement>,
 
-  /// Custom state for UI or other runtime-specific data.
-  /// Stored directly in the AST node for efficient access and simpler management.
-  /// Uses Box<dyn CustomAny> to minimize memory overhead when unused.
-  pub custom_state: Option<Box<dyn CustomAny>>,
+  pub custom_state: CustomStateContainer,
 }
-
-impl_custom_state!(Sequence);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
-  pub version: u64, // optional field to store the version of the program when live editing
 }
 
 pub trait RewriteFunction {
@@ -483,7 +338,7 @@ impl<'de> Deserialize<'de> for Sequence {
     let statements = Vec::deserialize(deserializer)?;
     Ok(Sequence {
       statements,
-      custom_state: None,
+      custom_state: CustomStateContainer::new(),
     })
   }
 }
@@ -517,9 +372,8 @@ impl<'de> Deserialize<'de> for Program {
       metadata: helper.metadata,
       sequence: Sequence {
         statements: helper.sequence,
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       },
-      version: 0,
     })
   }
 }
@@ -755,7 +609,7 @@ impl<'de> Deserialize<'de> for Block {
         Ok(Block {
           content,
           line_info,
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         })
       }
     }
@@ -960,8 +814,8 @@ impl<'de> Deserialize<'de> for Param {
         Ok(Param {
           name,
           value,
-          custom_state: None,
           is_default: None,
+          custom_state: CustomStateContainer::new(),
         })
       }
     }

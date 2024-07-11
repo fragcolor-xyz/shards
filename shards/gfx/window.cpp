@@ -59,6 +59,11 @@ void Window::init(const WindowCreationOptions &options) {
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
+#if SH_VISION
+  // for whatever reason, vision has 1 keyboard always and this will prevent the keyboard from showing up
+  SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "1");
+#endif
+
   SDL_PropertiesID props = SDL_CreateProperties();
   SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN, true);
   SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);

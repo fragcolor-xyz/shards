@@ -1,3 +1,4 @@
+use crate::custom_state::CustomStateContainer;
 use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
@@ -124,7 +125,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
         blocks: vec![Block {
           content: BlockContent::Empty,
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }],
       }
     }
@@ -197,7 +198,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       Ok(FunctionValue::Function(Function {
         name: identifier,
         params,
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }))
     }
     Rule::VarName => {
@@ -378,14 +379,14 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           _ => Ok(FunctionValue::Function(Function {
             name: identifier,
             params,
-            custom_state: None,
+            custom_state: CustomStateContainer::new(),
           })),
         }
       } else {
         Ok(FunctionValue::Function(Function {
           name: identifier,
           params,
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }))
       }
     }
@@ -481,7 +482,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::Expr => blocks.push(Block {
         content: BlockContent::Expr(process_sequence(
@@ -492,40 +493,40 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::Shard => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Shard(func),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
       },
       Rule::Func => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Func(func),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
         FunctionValue::Program(program) => blocks.push(Block {
           content: BlockContent::Program(program),
           line_info: Some(pos.into()),
-          custom_state: None,
+          custom_state: CustomStateContainer::new(),
         }),
       },
       Rule::TakeTable => blocks.push(Block {
@@ -534,7 +535,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeTable(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::TakeSeq => blocks.push(Block {
         content: {
@@ -542,18 +543,18 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           BlockContent::TakeSeq(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::ConstValue => blocks.push(Block {
         // this is an indirection, process_value will handle the case of a ConstValue
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::Enum => blocks.push(Block {
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       Rule::Shards => blocks.push(Block {
         content: BlockContent::Shards(process_sequence(
@@ -564,7 +565,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           env,
         )?),
         line_info: Some(pos.into()),
-        custom_state: None,
+        custom_state: CustomStateContainer::new(),
       }),
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
@@ -591,7 +592,7 @@ pub(crate) fn process_sequence(
     .collect::<Result<Vec<_>, _>>()?;
   Ok(Sequence {
     statements,
-    custom_state: None,
+    custom_state: CustomStateContainer::new(),
   })
 }
 
@@ -606,7 +607,6 @@ pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, S
     metadata: Metadata {
       name: env.name.clone(),
     },
-    version: 0,
   })
 }
 
@@ -860,7 +860,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
   Ok(Param {
     name: param_name,
     value: param_value,
-    custom_state: None,
+    custom_state: CustomStateContainer::new(),
     is_default: None,
   })
 }
@@ -945,8 +945,6 @@ pub struct ReadShard {
   base_path: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
-
-  rc_ast: Option<Rc<Program>>,
 }
 
 impl Default for ReadShard {
@@ -956,7 +954,6 @@ impl Default for ReadShard {
       output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
       required_variables: ExposedTypes::default(),
-      rc_ast: None,
     }
   }
 }
@@ -1042,8 +1039,7 @@ impl Shard for ReadShard {
         self.output = s.into();
       }
       Ok(AstType::Object) => {
-        self.rc_ast = Some(Rc::new(prog));
-        self.output = Var::new_object(self.rc_ast.as_ref().unwrap(), &AST_TYPE).into();
+        self.output = Var::new_ref_counted(prog, &AST_TYPE).into();
       }
       Err(_) => {
         shlog_error!("Invalid output type for ReadShard");

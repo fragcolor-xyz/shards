@@ -68,7 +68,7 @@ public:
 
   const std::vector<egui::InputEvent> &getTranslatedEvents() const { return events; }
 
-  // Manualy push an event into the result
+  // Manually push an event into the result
   void pushEvent(const egui::InputEvent &event) { events.push_back(event); }
 
   const egui::Input *getOutput();

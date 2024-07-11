@@ -965,7 +965,13 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       } catch (std::exception &ex) {
         auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
                                       blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+        // error log it
         SHLOG_ERROR("{}", verboseMsg);
+        // set error if we can
+        if (blk->setError) {
+          blk->setError(blk, blk->errorData, SHStringWithLen{verboseMsg.data(), verboseMsg.size()});
+        }
+        // and finally throw it
         throw ComposeError(verboseMsg);
       }
     }
@@ -1101,6 +1107,11 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
     if (data.privateContext) {
       CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
       context->errorStack.push_back(ex.what());
+
+      // also set errors if callback is available
+      if (wire_->setWireError) {
+        wire_->setWireError(wire_, wire_->errorData, SHStringWithLen{ex.what(), strlen(ex.what())});
+      }
     }
     throw;
   }
@@ -2903,6 +2914,12 @@ void shards_decompress_strings() {
 #ifdef SH_COMPRESSED_STRINGS
   shards::decompressStrings();
 #endif
+}
+
+void shards_set_wire_error_callback(SHWireRef wireRef, SHSetWireError setWireError, void *errorData) {
+  auto &wire = SHWire::sharedFromRef(wireRef);
+  wire->setWireError = setWireError;
+  wire->errorData = errorData;
 }
 }
 

@@ -1,13 +1,16 @@
 use crate::ast::*;
+use crate::custom_state::CustomStateContainer;
 use crate::read;
 use crate::ParamHelper;
 use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
+use std::os::raw::c_void;
 
 use nanoid::nanoid;
 use shards::cstr;
+use shards::SHStringWithLen;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -21,6 +24,8 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
+use shards::SHWire;
+use shards::Shard;
 use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
@@ -1493,11 +1498,11 @@ fn resolve_var(
                   blocks: vec![Block {
                     content: BlockContent::Func(f.clone()),
                     line_info: Some(line_info),
-                    custom_state: None,
+                    custom_state: CustomStateContainer::new(),
                   }],
                 },
               }],
-              custom_state: None,
+              custom_state: CustomStateContainer::new(),
             },
           };
           as_var(&value2, line_info, None, e)
@@ -2114,7 +2119,46 @@ fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> 
   get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
 }
 
+unsafe extern "C" fn error_callback(
+  shard: *mut Shard,
+  error_data: *mut c_void,
+  msg: SHStringWithLen,
+) {
+  // cast error_data to our ast &Function
+  let func = &*(error_data as *const Function);
+  let msg: &str = msg.into();
+  func.custom_state.set(ShardsError {
+    message: msg.into(),
+    loc: LineInfo {
+      line: (*shard).line,
+      column: (*shard).column,
+    },
+  });
+}
+
 fn create_shard(
+  shard: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
+  match create_shard_inner(shard, line_info, e) {
+    Ok(mut s) => {
+      // clean any previous error
+      shard.custom_state.remove::<ShardsError>();
+      // also populate error call back
+      s.0
+        .set_error_callback(Some(error_callback), shard as *const _ as *mut c_void);
+      Ok(s)
+    }
+    Err(e) => {
+      // set the error
+      shard.custom_state.set(e.clone());
+      Err(e)
+    }
+  }
+}
+
+fn create_shard_inner(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
@@ -2773,6 +2817,23 @@ fn process_template(
   }
 }
 
+unsafe extern "C" fn wire_error_callback(
+  _wire: *const SHWire,
+  error_data: *mut c_void,
+  msg: SHStringWithLen,
+) {
+  // cast error_data to our ast &Function
+  let func = &*(error_data as *const Function);
+  let msg: &str = msg.into();
+  func.custom_state.set(ShardsError {
+    message: msg.into(),
+    loc: LineInfo {
+      line: 0,   // should not matter for now at least
+      column: 0, // should not matter for now at least
+    },
+  });
+}
+
 fn eval_pipeline(
   pipeline: &Pipeline,
   e: &mut EvalEnv,
@@ -2887,18 +2948,18 @@ fn eval_pipeline(
                             Param {
                               name: None,
                               value: Value::String(name.resolve()),
-                              custom_state: None,
+                              custom_state: CustomStateContainer::new(),
                               is_default: None,
                             },
                             types.clone(),
                           ]),
-                          custom_state: None,
+                          custom_state: CustomStateContainer::new(),
                         }),
                         line_info: block.line_info,
                         custom_state: block.custom_state.clone(),
                       }],
                     })],
-                    custom_state: None,
+                    custom_state: CustomStateContainer::new(),
                   };
 
                   let cvar = eval_eval_expr(&make_trait_shards, e)?;
@@ -3064,7 +3125,8 @@ fn eval_pipeline(
               e.deferred_wires.insert(
                 name,
                 (
-                  Wire::new(&wire_name),
+                  Wire::new(&wire_name)
+                    .set_error_callback(wire_error_callback, func as *const _ as *mut _),
                   params_ptr,
                   block.line_info.unwrap_or_default(),
                 ),

@@ -4,6 +4,7 @@
 use crate::util;
 use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
@@ -23,7 +24,6 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -43,10 +43,22 @@ pub struct TextField {
   variable: ParamVar,
   #[shard_param(
     "JustifyWidth",
-    "Whether to take up all available space for its desired width.",
-    BOOL_VAR_OR_NONE_SLICE
+    "Whether to take up all available space for its desired width. Takes priority over Desired Width.",
+    BOOL_TYPES_SLICE
   )]
-  justify_width: ParamVar,
+  justify_width: ClonedVar,
+  #[shard_param(
+    "DesiredWidth",
+    "The desired width of the text field.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  desired_width: ClonedVar,
+  #[shard_param(
+    "ClipText",
+    "Whether to clip the text if it exceeds the width of the text field. Or expand the text field to fit the text.",
+    BOOL_TYPES_SLICE
+  )]
+  clip_text: ClonedVar,
   #[shard_param("Multiline", "Support multiple lines.", BOOL_TYPES_SLICE)]
   multiline: ClonedVar,
   #[shard_param("Password", "Support multiple lines.", BOOL_TYPES_SLICE)]
@@ -68,7 +80,9 @@ impl Default for TextField {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       requiring: Vec::new(),
       variable: ParamVar::default(),
-      justify_width: ParamVar::default(),
+      justify_width: false.into(),
+      desired_width: ClonedVar::default(),
+      clip_text: true.into(),
       multiline: false.into(),
       password: false.into(),
       hint: ParamVar::default(),
@@ -192,11 +206,19 @@ impl Shard for TextField {
       text_edit = text_edit.hint_text(RichText::from(hint).color(egui::Color32::GRAY).italics());
     }
 
-    text_edit = if !self.justify_width.get().is_none() && self.justify_width.get().try_into()? {
+    let justify_width: bool = (&self.justify_width.0).try_into().unwrap(); // qed, shards validation
+    text_edit = if justify_width {
       text_edit.desired_width(f32::INFINITY)
     } else {
-      text_edit
+      if let Ok(desired_width) = TryInto::<f64>::try_into(&self.desired_width.0) {
+        text_edit.desired_width(desired_width as f32)
+      } else {
+        text_edit
+      }
     };
+
+    let clip_text: bool = (&self.clip_text.0).try_into().unwrap(); // qed, shards validation
+    text_edit = text_edit.clip_text(clip_text);
 
     let response = ui.add(text_edit);
 
