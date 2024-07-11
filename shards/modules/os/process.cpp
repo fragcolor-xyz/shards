@@ -1,12 +1,21 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifdef _WIN32
-#include "winsock2.h"
-#endif
-
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
+#include <shards/common_types.hpp>
+
+#include <stdlib.h>
+
+#ifdef _WIN32
+#include "winsock2.h"
+#define SHAlloc SHAlloc1
+#define SHFree SHFree1
+#include <windows.h>
+#include <ShlObj.h>
+#undef SHAlloc
+#undef SHFree
+#endif
 
 // workaround for a boost bug..
 #ifndef __kernel_entry
@@ -28,74 +37,110 @@
 namespace shards {
 namespace Process {
 struct Run {
-  std::string _moduleName;
-  ParamVar _arguments{};
   std::array<SHExposedTypeInfo, 1> _requiring;
-  OwnedVar _input;
-  std::string _innerBuf;
-  OwnedVar _outputBuf;
-  std::string _innerErrorBuf;
-  std::string _errorBuf;
-  int64_t _timeout{30};
+  std::string _outBuf;
+  std::string _errBuf;
+  std::optional<boost::process::child *> _cmd;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static inline Parameters params{
-      {"Executable", SHCCSTR("The executable to run."), {CoreInfo::PathType, CoreInfo::StringType}},
-      {"Arguments",
-       SHCCSTR("The arguments to pass to the executable."),
-       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType}},
-      {"Timeout", SHCCSTR("The maximum time to wait for the executable to finish in seconds."), {CoreInfo::IntType}}};
-  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _moduleName = SHSTRVIEW(value);
-      break;
-    case 1:
-      _arguments = value;
-      break;
-    case 2:
-      _timeout = value.payload.intValue;
-      break;
-    default:
-      throw SHException("setParam out of range");
-    }
+  PARAM_PARAMVAR(_executable, "Executable", "The executable to run.",
+                 {CoreInfo::PathType, CoreInfo::PathVarType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_arguments, "Arguments", "The arguments to pass to the executable.",
+                 {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+  PARAM_VAR(_timeout, "Timeout", "The maximum time to wait for the executable to finish in seconds.",
+            {CoreInfo::NoneType, CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_executable), PARAM_IMPL_FOR(_arguments), PARAM_IMPL_FOR(_timeout));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_moduleName);
-    case 1:
-      return _arguments;
-    case 2:
-      return Var(_timeout);
-    default:
-      throw SHException("getParam out of range");
-    }
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  SHExposedTypesInfo requiredVariables() {
-    if (_arguments.isVariable()) {
-      _requiring[0].name = _arguments.variableName();
-      _requiring[0].help = SHCCSTR("The required variable containing the arguments for the command to run.");
-      _requiring[0].exposedType = CoreInfo::StringSeqType;
-      return {_requiring.data(), 1, 0};
+  SHVar run(std::string moduleName, std::vector<std::string> argsArray, const SHVar &input) {
+    // use async asio to avoid deadlocks
+    boost::asio::io_service ios;
+    std::future<std::string> ostr;
+    std::future<std::string> estr;
+    boost::process::opstream ipipe;
+
+    // try PATH first
+    auto exePath = boost::filesystem::path(moduleName);
+    if (!boost::filesystem::exists(exePath)) {
+      // fallback to searching PATH
+      exePath = boost::process::search_path(moduleName);
+    }
+
+    if (exePath.empty()) {
+      throw ActivationError("Executable not found");
+    }
+
+    exePath = exePath.make_preferred();
+
+    boost::process::child cmd(exePath, argsArray, boost::process::std_out > ostr, boost::process::std_err > estr,
+                              boost::process::std_in < ipipe, ios);
+
+    _cmd = &cmd;
+
+    if (!ipipe) {
+      throw ActivationError("Failed to open streams for child process");
+    }
+
+    ipipe << SHSTRVIEW(input) << std::endl;
+    ipipe.pipe().close(); // send EOF
+
+    SHLOG_TRACE("Process started");
+
+    auto timeout = std::chrono::seconds(_timeout->isNone() ? 30 : (int)*_timeout);
+    auto endTime = std::chrono::system_clock::now() + timeout;
+    ios.run_for(timeout);
+
+    SHLOG_TRACE("Process finished");
+
+    if (cmd.running()) {
+      SHLOG_TRACE("Process still running after service wait");
+      if (std::chrono::system_clock::now() > endTime) {
+        cmd.terminate();
+        throw ActivationError("Process timed out");
+      } else {
+        // give a further 1 second to terminate
+        if (!cmd.wait_for(std::chrono::seconds(1))) {
+          cmd.terminate();
+        }
+      }
+    }
+
+    // we still need to wait termination
+    _outBuf = ostr.get();
+    _errBuf = estr.get();
+
+    if (cmd.exit_code() != 0) {
+      SHLOG_INFO(_outBuf);
+      SHLOG_ERROR(_errBuf);
+      std::string err("The process exited with a non-zero exit code: ");
+      err += std::to_string(cmd.exit_code());
+      throw ActivationError(err);
     } else {
-      return {};
+      if (_errBuf.size() > 0) {
+        // print anyway this stream too
+        SHLOG_INFO("(stderr) {}", _errBuf);
+      }
+      SHLOG_TRACE("Process finished successfully");
+      return Var(_outBuf);
     }
   }
-
-  void warmup(SHContext *context) { _arguments.warmup(context); }
-
-  void cleanup(SHContext *context) { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     return awaitne(
         context,
         [&]() {
+          auto moduleName = (std::string)(Var &)_executable.get();
+
           // add any arguments we have
           std::vector<std::string> argsArray;
           auto argsVar = _arguments.get();
@@ -115,87 +160,14 @@ struct Run {
               }
             }
           }
-
-          // use async asio to avoid deadlocks
-          boost::asio::io_service ios;
-          std::future<std::string> ostr;
-          std::future<std::string> estr;
-          boost::process::opstream ipipe;
-
-          // try PATH first
-          auto exePath = boost::filesystem::path(_moduleName);
-          if (!boost::filesystem::exists(exePath)) {
-            // fallback to searching PATH
-            exePath = boost::process::search_path(_moduleName);
-          }
-
-          if (exePath.empty()) {
-            throw ActivationError("Executable not found");
-          }
-
-          exePath = exePath.make_preferred();
-
-          boost::process::child cmd(exePath, argsArray, boost::process::std_out > ostr, boost::process::std_err > estr,
-                                    boost::process::std_in < ipipe, ios);
-
-          pCmd = &cmd;
-
-          if (!ipipe) {
-            throw ActivationError("Failed to open streams for child process");
-          }
-
-          ipipe << SHSTRVIEW(_input) << std::endl;
-          ipipe.pipe().close(); // send EOF
-
-          SHLOG_TRACE("Process started");
-
-          auto timeout = std::chrono::seconds(_timeout);
-          auto endTime = std::chrono::system_clock::now() + timeout;
-          ios.run_for(timeout);
-
-          SHLOG_TRACE("Process finished");
-
-          if (cmd.running()) {
-            SHLOG_TRACE("Process still running after service wait");
-            if (std::chrono::system_clock::now() > endTime) {
-              cmd.terminate();
-              throw ActivationError("Process timed out");
-            } else {
-              // give a further 1 second to terminate
-              if (!cmd.wait_for(std::chrono::seconds(1))) {
-                cmd.terminate();
-              }
-            }
-          }
-
-          // we still need to wait termination
-          _innerBuf = ostr.get();
-          _innerErrorBuf = estr.get();
-
-          if (cmd.exit_code() != 0) {
-            if (!_innerBuf.empty())
-              SHLOG_INFO(_innerBuf);
-            if (!_innerErrorBuf.empty())
-              SHLOG_ERROR(_innerErrorBuf);
-            std::string err("The process exited with a non-zero exit code: ");
-            err += std::to_string(cmd.exit_code());
-            throw ActivationError(err);
-          } else {
-            if (_innerErrorBuf.size() > 0) {
-              // print anyway this stream too
-              SHLOG_INFO("(stderr) {}", _innerErrorBuf);
-            }
-            SHLOG_TRACE("Process finished successfully");
-            return Var(_innerBuf);
-          }
+          return run(moduleName, argsArray, input);
         },
         [&] {
-          if (pCmd) {
-            (*pCmd)->terminate();
-            SHLOG_DEBUG("Process terminated");
+          SHLOG_DEBUG("Process terminated");
+          if (_cmd) {
+            (*_cmd)->terminate();
           }
         });
-    return _outputBuf;
   }
 };
 
