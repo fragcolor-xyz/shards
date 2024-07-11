@@ -6,6 +6,7 @@
 #endif
 
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
 
 // workaround for a boost bug..
 #ifndef __kernel_entry
@@ -228,9 +229,6 @@ struct Exe {
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
-
-  // Coped from C:\Projects\shards2\deps\tracy\public\client\TracyProfiler.cpp
-  static const char *GetProcessName() {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     _buf.clear();
