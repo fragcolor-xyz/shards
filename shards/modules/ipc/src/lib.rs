@@ -44,8 +44,8 @@ impl Shard for IPCTakeShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
     self.listener = None;
 
     Ok(())
@@ -142,8 +142,8 @@ impl Shard for IPCPostShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }
