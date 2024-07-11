@@ -3288,55 +3288,6 @@ impl TryFrom<&Var> for &str {
   }
 }
 
-impl TryFrom<&Var> for Cow<'static, str> {
-  type Error = &'static str;
-
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_String
-      && var.valueType != SHType_Path
-      && var.valueType != SHType_ContextVar
-    {
-      Err("Expected String, Path or ContextVar variable, but casting failed.")
-    } else {
-      unsafe {
-        if var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen == 0 {
-          return Ok(Cow::Borrowed(""));
-        }
-      }
-      let s = std::str::from_utf8(unsafe {
-        slice::from_raw_parts(
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *const u8,
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
-        )
-      })
-      .map_err(|_| "Expected valid UTF-8 string, but casting failed.")?;
-      Ok(Cow::Borrowed(s))
-    }
-  }
-}
-
-impl TryFrom<&Var> for Cow<'static, [u8]> {
-  type Error = &'static str;
-
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Bytes {
-      Err("Expected Bytes variable, but casting failed.")
-    } else {
-      unsafe {
-        if var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize == 0 {
-          return Ok(Cow::Borrowed(&[]));
-        }
-      }
-      Ok(Cow::Borrowed(unsafe {
-        slice::from_raw_parts(
-          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
-          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
-        )
-      }))
-    }
-  }
-}
-
 impl<'a> TryFrom<&'a Var> for &'a SHImage {
   type Error = &'static str;
 
