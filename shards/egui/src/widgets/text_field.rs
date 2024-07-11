@@ -43,7 +43,7 @@ pub struct TextField {
   variable: ParamVar,
   #[shard_param(
     "JustifyWidth",
-    "Whether to take up all available space for its desired width. Not compatible with DesiredWidth.",
+    "Whether to take up all available space for its desired width. Takes priority over Desired Width.",
     BOOL_TYPES_SLICE
   )]
   justify_width: ClonedVar,
@@ -206,16 +206,16 @@ impl Shard for TextField {
       text_edit = text_edit.hint_text(RichText::from(hint).color(egui::Color32::GRAY).italics());
     }
 
-    if let Ok(desired_width) = TryInto::<f64>::try_into(&self.desired_width.0) {
-      text_edit = text_edit.desired_width(desired_width as f32);
+    let justify_width: bool = (&self.justify_width.0).try_into().unwrap(); // qed, shards validation
+    text_edit = if justify_width {
+      text_edit.desired_width(f32::INFINITY)
     } else {
-      let justify_width: bool = (&self.justify_width.0).try_into().unwrap(); // qed, shards validation
-      text_edit = if justify_width {
-        text_edit.desired_width(f32::INFINITY)
+      if let Ok(desired_width) = TryInto::<f64>::try_into(&self.desired_width.0) {
+        text_edit.desired_width(desired_width as f32)
       } else {
         text_edit
-      };
-    }
+      }
+    };
 
     let clip_text: bool = (&self.clip_text.0).try_into().unwrap(); // qed, shards validation
     text_edit = text_edit.clip_text(clip_text);
