@@ -1,0 +1,10 @@
+@define(url "<default message>" IgnoreRedefined: true)
+
+@wire(main {
+  @url | ToBytes
+  { IPC.Post("shards-test") }
+  Log("> Sent a message")
+})
+@mesh(root)
+@schedule(root main)
+@run(root)
