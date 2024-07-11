@@ -2,8 +2,6 @@
 ; try opening the following link
 ; shards-test://oL6V5L9EgaqHW5t2zOaR
 
-@define(register "false" IgnoreRedefined: true)
-
 @template(scheme-cmd [] {
   Process.Exe >> scheme-args
   "new" >> scheme-args
@@ -21,32 +19,22 @@
 @wire(main-loop {
   Log("Listening for ipc messages")
   Maybe({
-    IPC.Take("shards-test") | 
-    Log("< Raw message") |
-    FromBytes |
-    Log("< Decoded message")
+    IPC.Take("shards-test")
+    ForEach({
+      Log("< Raw message")
+      FromBytes
+      Log("< Decoded message")
+    })
   })
 } Looped: true)
 
 @wire(main {
-  @register | If(Is("true") {
-    Log("Switching") 
-    SwitchTo(do-register)
-    Log("Switching done") 
-  } {
-    
   @scheme-cmd() = cmd
-    SchemeHandler.IsInstalled("shards-test" cmd) | When(Is(false) {
-      ["new" "./ipc-take.shs" "register:true"] = args
-      "" | Process.Run(
-        Executable: (Process.Exe)
-        Arguments: args
-        Elevated: true
-      )
-    })
-
-    SwitchTo(main-loop)
+  SchemeHandler.IsInstalled("shards-test" cmd) | When(Is(false) {
+    Do(do-register)
   })
+  
+  SwitchTo(main-loop)
 })
 @mesh(root)
 @schedule(root main)
