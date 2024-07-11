@@ -447,14 +447,12 @@ struct ReadTextureShard {
   static inline Type OutputSeqType = Type::SeqOf(CoreInfo::StringType);
 
   PARAM_VAR(_wait, "Wait", "Wait for read to complete", {CoreInfo::BoolType});
-  // OwnedVar _outputs;
   PARAM_IMPL(PARAM_IMPL_FOR(_wait));
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
   OwnedVar _image;
-  // std::vector<uint8_t> _imageBuffer;
 
   ReadTextureShard() { _wait = Var(false); }
 
