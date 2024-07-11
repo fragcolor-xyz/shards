@@ -1678,7 +1678,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_identifier(&mut self, identifier: &mut Identifier) -> Option<Response> {
-    // kiss, for now we support only 1 level of namespacing properly, in eval and most of all fbl.
+    // kiss, for now we support only 1 level of namespace properly, in eval and most of all fbl.
     let response = self
       .ui
       .horizontal(|ui| {
@@ -2464,7 +2464,7 @@ pub struct UIShardsShard {
   #[shard_param("AST", "The Shards AST object to edit in real time, this shard will manipulate and edit this variable in place.", [*AST_VAR_TYPE])]
   ast_object: ParamVar,
 
-  ast: Option<Rc<Program>>,
+  ast: ClonedVar,
   context: Context,
 }
 
@@ -2474,7 +2474,7 @@ impl Default for UIShardsShard {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       ast_object: ParamVar::default(),
-      ast: None,
+      ast: ClonedVar::default(),
       context: Context {
         swap_state: None,
         seqs_zoom_stack: Vec::new(),
@@ -2516,7 +2516,7 @@ impl Shard for UIShardsShard {
   fn cleanup(&mut self, ctx: Option<&ShardsContext>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
 
-    self.ast = None;
+    self.ast = ClonedVar::default(); // drop the AST object
 
     Ok(())
   }
@@ -2535,19 +2535,14 @@ impl Shard for UIShardsShard {
 
   fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
     let ast_var = self.ast_object.get();
-    if ast_var.is_none() {
-      return Ok(false.into());
-    }
-
-    self.ast = Some(Var::from_object_as_clone(ast_var, &AST_TYPE)?);
-    let ast = Var::get_mut_from_clone1(&self.ast)?;
-    if ast.version == 0 {
+    let ast = unsafe { &mut *Var::from_ref_counted_object::<Program>(ast_var, &AST_TYPE)? };
+    if self.ast.0 != *ast_var {
+      self.ast = ast_var.into(); // take ownership/increase refcount
       self.context.seqs_zoom_stack.clear();
       let seq_ptr = &mut ast.sequence as *mut Sequence;
       self.context.seqs_zoom_stack.push(seq_ptr);
       self.context.seqs_stack.clear();
       self.context.swap_state = None;
-      ast.version = 1;
     }
 
     self.context.has_changed = false;

@@ -607,7 +607,6 @@ pub fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, S
     metadata: Metadata {
       name: env.name.clone(),
     },
-    version: 0,
   })
 }
 
@@ -946,8 +945,6 @@ pub struct ReadShard {
   base_path: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
-
-  rc_ast: Option<Rc<Program>>,
 }
 
 impl Default for ReadShard {
@@ -957,7 +954,6 @@ impl Default for ReadShard {
       output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
       required_variables: ExposedTypes::default(),
-      rc_ast: None,
     }
   }
 }
@@ -1043,8 +1039,7 @@ impl Shard for ReadShard {
         self.output = s.into();
       }
       Ok(AstType::Object) => {
-        self.rc_ast = Some(Rc::new(prog));
-        self.output = Var::new_object(self.rc_ast.as_ref().unwrap(), &AST_TYPE).into();
+        self.output = Var::new_ref_counted(prog, &AST_TYPE).into();
       }
       Err(_) => {
         shlog_error!("Invalid output type for ReadShard");

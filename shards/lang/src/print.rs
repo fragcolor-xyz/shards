@@ -437,7 +437,7 @@ impl Shard for ShardsPrintShard {
     // ok we have 3 types, string (json), bytes (binary), and object (Program Rc etc)
     let string_ast: Result<&str, _> = input.try_into();
     let bytes_ast: Result<&[u8], _> = input.try_into();
-    let object_ast = Var::from_object_as_clone::<Program>(input, &AST_TYPE);
+    let object_ast = unsafe { Var::from_ref_counted_object::<Program>(input, &AST_TYPE) };
     match (string_ast, bytes_ast, object_ast) {
       (Ok(string), _, _) => {
         let program = serde_json::from_str::<Program>(string).map_err(|e| {
@@ -464,7 +464,7 @@ impl Shard for ShardsPrintShard {
         self.output = Var::ephemeral_string(formatted.as_str()).into();
       }
       (_, _, Ok(rc)) => {
-        let program = &*rc;
+        let program = unsafe { &*rc };
         let printed = print_ast(&program.sequence);
         let formatted = format_str(&printed).map_err(|e| {
           shlog_error!("Failed to format shards code: {}", e);

@@ -1,13 +1,13 @@
 #![allow(non_upper_case_globals)]
 
+use crate::{custom_state::CustomStateContainer, RcBytesWrapper, RcStrWrapper};
 use core::fmt;
-use std::fmt::Debug;
 use pest::Position;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
-use crate::{custom_state::CustomStateContainer, RcBytesWrapper, RcStrWrapper};
+use std::fmt::Debug;
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
@@ -315,7 +315,6 @@ pub struct Sequence {
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
-  pub version: u64, // optional field to store the version of the program when live editing
 }
 
 pub trait RewriteFunction {
@@ -375,7 +374,6 @@ impl<'de> Deserialize<'de> for Program {
         statements: helper.sequence,
         custom_state: CustomStateContainer::new(),
       },
-      version: 0,
     })
   }
 }
