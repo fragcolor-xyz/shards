@@ -5729,6 +5729,13 @@ impl TableVar {
       &*tab_ptr
     }
   }
+
+  pub fn clear(&mut self) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      (*t.api).tableClear.unwrap()(t);
+    }
+  }
 }
 
 // Table / SHTable
