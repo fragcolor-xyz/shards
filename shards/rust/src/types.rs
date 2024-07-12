@@ -111,7 +111,7 @@ use std::os::raw::c_char;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::str::Utf8Error;
-use std::sync::atomic::AtomicI32;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::RwLock;
 
 #[macro_export]
@@ -2686,17 +2686,22 @@ impl From<&[u8]> for Var {
 }
 
 struct RefCounted<T> {
-  rc: AtomicI32,
+  rc: AtomicU32,
   value: T,
 }
 
 impl<T> RefCounted<T> {
-  fn inc_ref(&mut self) {
-    self.rc.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+  fn inc_ref(&self) {
+    let prev_count = self.rc.fetch_add(1, Ordering::SeqCst);
+    // Assert that the reference count does not overflow
+    assert!(prev_count < u32::MAX, "Reference count overflowed");
   }
 
-  fn dec_ref(&mut self) -> i32 {
-    self.rc.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) - 1
+  fn dec_ref(&self) -> u32 {
+    let prev_count = self.rc.fetch_sub(1, Ordering::SeqCst);
+    // Assert that the reference count does not underflow
+    assert!(prev_count > 0, "Reference count underflowed");
+    prev_count - 1
   }
 }
 
@@ -2727,12 +2732,18 @@ where
   }
 
   unsafe extern "C" fn reference<T>(arg1: *mut c_void) {
+    // Cast the raw pointer to RefCounted<T>
     let rc = arg1 as *mut RefCounted<T>;
+    // Increment the reference count
     (*rc).inc_ref();
   }
+
   unsafe extern "C" fn release<T>(arg1: *mut c_void) {
+    // Cast the raw pointer to RefCounted<T>
     let rc = arg1 as *mut RefCounted<T>;
+    // Decrement the reference count and check if it reaches zero
     if (*rc).dec_ref() == 0 {
+      // If the reference count is zero, drop the Box to deallocate the memory
       drop(Box::from_raw(rc));
     }
   }
@@ -2861,7 +2872,7 @@ impl Var {
 
   pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
     let rc = Box::new(RefCounted::<T> {
-      rc: AtomicI32::new(0),
+      rc: AtomicU32::new(0),
       value: obj,
     });
     unsafe {

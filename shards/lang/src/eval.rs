@@ -4107,6 +4107,7 @@ impl LegacyShard for EvalShard {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    // todo add ast object!!
     let maybe_bytes: Result<&[u8], _> = input.try_into();
     let prog = if let Ok(bytes) = maybe_bytes {
       // deserialize sequence from bytes
