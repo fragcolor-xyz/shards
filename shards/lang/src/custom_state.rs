@@ -54,7 +54,7 @@ pub struct CustomStateContainer {
 impl CustomStateContainer {
   pub fn new() -> Self {
     CustomStateContainer {
-      states: RefCell::new(HashMap::new()),
+      states: RefCell::new(HashMap::with_capacity(0)), // make it cheap to create a new one, don't allocate until needed
     }
   }
 

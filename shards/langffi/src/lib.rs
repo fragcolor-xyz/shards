@@ -275,6 +275,15 @@ pub extern "C" fn shards_print_ast(ast: &Var) -> Var {
 }
 
 #[no_mangle]
+pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+  let ast_clone = ast.clone();
+  Var::new_ref_counted(ast_clone, &AST_TYPE)
+}
+
+#[no_mangle]
 pub extern "C" fn shards_free_wire(wire: *mut Wire) {
   unsafe {
     drop(Box::from_raw(wire));
