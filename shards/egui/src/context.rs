@@ -3,7 +3,6 @@
 
 use crate::bindings;
 use crate::bindings::make_native_io_output;
-use crate::bindings::make_texture_updates;
 use crate::egui_host::EguiHost;
 use crate::util;
 
@@ -28,11 +27,8 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::FRAG_CC;
-use shards::types::NONE_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use std::f32::consts::E;
 use std::ffi::CStr;
-use std::rc::Rc;
 
 struct UIOutput {
   full_output: egui::FullOutput,
@@ -49,6 +45,8 @@ impl Drop for UIOutput {
     }
   }
 }
+
+ref_counted_object_type_impl!(UIOutput);
 
 static UI_OUTPUT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"uiui"));
 

@@ -8,11 +8,13 @@ use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, FRAG_CC,
   STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{fourCharacterCode, shard, shard_impl, shlog_debug, shlog_error, shlog_trace};
+use shards::{
+  fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
+  shlog_trace,
+};
 use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 pub struct ReadEnv {
   name: RcStrWrapper,
@@ -957,6 +959,8 @@ impl Default for ReadShard {
     }
   }
 }
+
+ref_counted_object_type_impl!(Program);
 
 #[shard_impl]
 impl Shard for ReadShard {

@@ -2685,19 +2685,23 @@ impl From<&[u8]> for Var {
   }
 }
 
-struct RefCounted<T> {
+pub trait RCObjectVar {
+  fn get_info(&self) -> *mut SHObjectInfo;
+}
+
+pub struct RefCounted<T> {
   rc: AtomicU32,
   value: T,
 }
 
 impl<T> RefCounted<T> {
-  fn inc_ref(&self) {
+  pub fn inc_ref(&self) {
     let prev_count = self.rc.fetch_add(1, Ordering::SeqCst);
     // Assert that the reference count does not overflow
     assert!(prev_count < u32::MAX, "Reference count overflowed");
   }
 
-  fn dec_ref(&self) -> u32 {
+  pub fn dec_ref(&self) -> u32 {
     let prev_count = self.rc.fetch_sub(1, Ordering::SeqCst);
     // Assert that the reference count does not underflow
     assert!(prev_count > 0, "Reference count underflowed");
@@ -2705,62 +2709,43 @@ impl<T> RefCounted<T> {
   }
 }
 
-fn refcount_object_info<T: 'static>() -> *mut SHObjectInfo
-where
-{
-  use std::marker::PhantomData;
-  use std::sync::Mutex;
-  use typemap::{ShareMap, TypeMap};
+#[macro_export]
+macro_rules! ref_counted_object_type_impl {
+  ($type:ident) => {
+    lazy_static! {
+      static ref TYPE_OBJECT_NAME: &'static str = concat!(stringify!($type), "\0");
+      static ref TYPE_OBJECT_INFO: shards::SHObjectInfo = {
+        unsafe extern "C" fn reference(arg1: *mut std::os::raw::c_void) {
+          let rc = arg1 as *mut shards::types::RefCounted<$type>;
+          (*rc).inc_ref();
+        }
 
-  struct Key<T>(PhantomData<T>);
+        unsafe extern "C" fn release(arg1: *mut std::os::raw::c_void) {
+          let rc = arg1 as *mut shards::types::RefCounted<$type>;
+          if (*rc).dec_ref() == 0 {
+            drop(Box::from_raw(rc));
+          }
+        }
 
-  struct Inner {
-    name: CString,
-    obj_info: SHObjectInfo,
-  }
-
-  impl<T: 'static> typemap::Key for Key<T> {
-    type Value = Box<Inner>;
-  }
-
-  lazy_static! {
-    static ref INIT: RwLock<ShareMap> = RwLock::new(TypeMap::custom());
-  }
-
-  if let Some(obj) = INIT.read().unwrap().get::<Key<T>>() {
-    return &obj.as_ref().obj_info as *const _ as *mut _;
-  }
-
-  unsafe extern "C" fn reference<T>(arg1: *mut c_void) {
-    // Cast the raw pointer to RefCounted<T>
-    let rc = arg1 as *mut RefCounted<T>;
-    // Increment the reference count
-    (*rc).inc_ref();
-  }
-
-  unsafe extern "C" fn release<T>(arg1: *mut c_void) {
-    // Cast the raw pointer to RefCounted<T>
-    let rc = arg1 as *mut RefCounted<T>;
-    // Decrement the reference count and check if it reaches zero
-    if (*rc).dec_ref() == 0 {
-      // If the reference count is zero, drop the Box to deallocate the memory
-      drop(Box::from_raw(rc));
+        shards::SHObjectInfo {
+          name: TYPE_OBJECT_NAME.as_ptr() as *const i8,
+          serialize: None,
+          free: None,
+          deserialize: None,
+          reference: Some(reference),
+          release: Some(release),
+          hash: None,
+          isThreadSafe: false,
+        }
+      };
     }
-  }
 
-  let mut lock = INIT.write().unwrap();
-  let entry = lock.entry::<Key<T>>();
-  let pb = entry.or_insert(Box::new(Inner {
-    name: CString::new(std::any::type_name::<T>()).unwrap(),
-    obj_info: SHObjectInfo {
-      reference: Some(reference::<T>),
-      release: Some(release::<T>),
-      ..Default::default()
-    },
-  }));
-  pb.obj_info.name = pb.name.as_ptr();
-
-  return &mut pb.as_mut().obj_info;
+    impl shards::types::RCObjectVar for $type {
+      fn get_info(&self) -> *mut shards::SHObjectInfo {
+        &*TYPE_OBJECT_INFO as *const _ as *mut _
+      }
+    }
+  };
 }
 
 impl Var {
@@ -2870,7 +2855,8 @@ impl Var {
     }
   }
 
-  pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
+  pub fn new_ref_counted<T: RCObjectVar>(obj: T, info: &Type) -> Var {
+    let info_ptr = obj.get_info();
     let rc = Box::new(RefCounted::<T> {
       rc: AtomicU32::new(0),
       value: obj,
@@ -2880,7 +2866,7 @@ impl Var {
         valueType: SHType_Object,
         flags: SHVAR_FLAGS_USES_OBJINFO as u16,
         __bindgen_anon_1: SHVar__bindgen_ty_1 {
-          objectInfo: refcount_object_info::<T>(),
+          objectInfo: info_ptr,
         },
         payload: SHVarPayload {
           __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
