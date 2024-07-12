@@ -1,118 +1,63 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
-use crate::core::cloneVar;
-use crate::core::destroyVar;
-use crate::core::Core;
+
+// Core Modules
+use crate::core::{cloneVar, destroyVar, Core};
 use crate::fourCharacterCode;
-use crate::shardsc::SHBool;
-use crate::shardsc::SHColor;
-use crate::shardsc::SHComposeResult;
-use crate::shardsc::SHContext;
-use crate::shardsc::SHEnumInfo;
-use crate::shardsc::SHEnumTypeInfo;
-use crate::shardsc::SHExposedTypeInfo;
-use crate::shardsc::SHExposedTypesInfo;
-use crate::shardsc::SHImage;
-use crate::shardsc::SHInstanceData;
-use crate::shardsc::SHMeshRef;
-use crate::shardsc::SHObjectTypeInfo;
-use crate::shardsc::SHOptionalString;
-use crate::shardsc::SHOptionalStrings;
-use crate::shardsc::SHParameterInfo;
-use crate::shardsc::SHParametersInfo;
-use crate::shardsc::SHPointer;
-use crate::shardsc::SHSeq;
-use crate::shardsc::SHString;
-use crate::shardsc::SHStrings;
-use crate::shardsc::SHTable;
-use crate::shardsc::SHTableIterator;
-use crate::shardsc::SHTableTypeInfo;
-use crate::shardsc::SHTraits;
-use crate::shardsc::SHTypeInfo;
-use crate::shardsc::SHTypeInfo_Details;
-use crate::shardsc::SHType_Any;
-use crate::shardsc::SHType_Array;
-use crate::shardsc::SHType_Bool;
-use crate::shardsc::SHType_Bytes;
-use crate::shardsc::SHType_Color;
-use crate::shardsc::SHType_ContextVar;
-use crate::shardsc::SHType_Enum;
-use crate::shardsc::SHType_Float;
-use crate::shardsc::SHType_Float2;
-use crate::shardsc::SHType_Float3;
-use crate::shardsc::SHType_Float4;
-use crate::shardsc::SHType_Image;
-use crate::shardsc::SHType_Int;
-use crate::shardsc::SHType_Int16;
-use crate::shardsc::SHType_Int2;
-use crate::shardsc::SHType_Int3;
-use crate::shardsc::SHType_Int4;
-use crate::shardsc::SHType_Int8;
-use crate::shardsc::SHType_None;
-use crate::shardsc::SHType_Object;
-use crate::shardsc::SHType_Path;
-use crate::shardsc::SHType_Seq;
-use crate::shardsc::SHType_Set;
-use crate::shardsc::SHType_ShardRef;
-use crate::shardsc::SHType_String;
-use crate::shardsc::SHType_Table;
-use crate::shardsc::SHType_Wire;
-use crate::shardsc::SHTypesInfo;
-use crate::shardsc::SHVar;
-use crate::shardsc::SHVarPayload;
-use crate::shardsc::SHVarPayload__bindgen_ty_1;
-use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_1;
-use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_2;
-use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_4;
-use crate::shardsc::SHWire;
-use crate::shardsc::SHWireInfo;
-use crate::shardsc::SHWireRef;
-use crate::shardsc::SHWireState;
-use crate::shardsc::SHWireState_Continue;
-use crate::shardsc::SHWireState_Rebase;
-use crate::shardsc::SHWireState_Restart;
-use crate::shardsc::SHWireState_Return;
-use crate::shardsc::SHWireState_Stop;
-use crate::shardsc::Shard;
-use crate::shardsc::ShardPtr;
-use crate::shardsc::Shards;
-use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
-use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
-use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
-use crate::SHObjectInfo;
-use crate::SHSetShardError;
-use crate::SHStringWithLen;
-use crate::SHType_Type;
-use crate::SHVar__bindgen_ty_1;
-use crate::SHWireState_Error;
-use crate::SHVAR_FLAGS_EXTERNAL;
-use crate::SHVAR_FLAGS_USES_OBJINFO;
-use core::convert::TryFrom;
-use core::convert::TryInto;
-use core::fmt::{Debug, Formatter};
-use core::mem::transmute;
-use core::ops::Index;
-use core::ops::IndexMut;
-use core::slice;
-use serde::de::MapAccess;
-use serde::de::SeqAccess;
-use serde::de::Visitor;
-use serde::ser::{SerializeMap, SerializeSeq};
-use serde::Deserializer;
-use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-use std::ffi::c_void;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::i32::MAX;
-use std::os::raw::c_char;
-use std::pin::Pin;
-use std::rc::Rc;
-use std::str::Utf8Error;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::RwLock;
+
+// Shard Constants
+use crate::shardsc::{
+  SHBool, SHColor, SHComposeResult, SHContext, SHEnumInfo, SHEnumTypeInfo, SHExposedTypeInfo,
+  SHExposedTypesInfo, SHImage, SHInstanceData, SHMeshRef, SHObjectTypeInfo, SHOptionalString,
+  SHOptionalStrings, SHParameterInfo, SHParametersInfo, SHPointer, SHSeq, SHString, SHStrings,
+  SHTable, SHTableIterator, SHTableTypeInfo, SHTraits, SHTypeInfo, SHTypeInfo_Details, SHType_Any,
+  SHType_Array, SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum,
+  SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4, SHType_Image, SHType_Int,
+  SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4, SHType_Int8, SHType_None, SHType_Object,
+  SHType_Path, SHType_Seq, SHType_Set, SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire,
+  SHTypesInfo, SHVar, SHVarPayload, SHVarPayload__bindgen_ty_1,
+  SHVarPayload__bindgen_ty_1__bindgen_ty_1, SHVarPayload__bindgen_ty_1__bindgen_ty_2,
+  SHVarPayload__bindgen_ty_1__bindgen_ty_4, SHWire, SHWireInfo, SHWireRef, SHWireState,
+  SHWireState_Continue, SHWireState_Rebase, SHWireState_Restart, SHWireState_Return,
+  SHWireState_Stop, Shard, ShardPtr, Shards, SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT,
+  SHVAR_FLAGS_EXTERNAL, SHVAR_FLAGS_REF_COUNTED, SHVAR_FLAGS_USES_OBJINFO,
+};
+
+// Additional Shard Utilities
+use crate::{
+  SHObjectInfo, SHSetShardError, SHStringWithLen, SHType_Type, SHVar__bindgen_ty_1,
+  SHWireState_Error,
+};
+
+// Core Conversions
+use core::{
+  convert::{TryFrom, TryInto},
+  fmt::{Debug, Formatter},
+  mem::transmute,
+  ops::{Index, IndexMut},
+  slice,
+};
+
+// Serde for Serialization/Deserialization
+use serde::{
+  de::{MapAccess, SeqAccess, Visitor},
+  ser::{SerializeMap, SerializeSeq},
+  Deserialize, Deserializer, Serialize,
+};
+
+// Standard Libraries
+use std::{
+  borrow::Cow,
+  ffi::{c_void, CStr, CString},
+  hash::{Hash, Hasher},
+  i32::MAX,
+  os::raw::c_char,
+  pin::Pin,
+  rc::Rc,
+  str::Utf8Error,
+  sync::atomic::{AtomicU32, Ordering},
+  sync::RwLock,
+};
 
 #[macro_export]
 macro_rules! cstr {
@@ -2686,7 +2631,7 @@ impl From<&[u8]> for Var {
 }
 
 pub trait RCObjectVar {
-  fn get_info(&self) -> *mut SHObjectInfo;
+  fn get_info() -> *mut SHObjectInfo;
 }
 
 pub struct RefCounted<T> {
@@ -2741,7 +2686,7 @@ macro_rules! ref_counted_object_type_impl {
     }
 
     impl shards::types::RCObjectVar for $type {
-      fn get_info(&self) -> *mut shards::SHObjectInfo {
+      fn get_info() -> *mut shards::SHObjectInfo {
         &*TYPE_OBJECT_INFO as *const _ as *mut _
       }
     }
@@ -2856,7 +2801,7 @@ impl Var {
   }
 
   pub fn new_ref_counted<T: RCObjectVar>(obj: T, info: &Type) -> Var {
-    let info_ptr = obj.get_info();
+    let info_ptr = T::get_info();
     let rc = Box::new(RefCounted::<T> {
       rc: AtomicU32::new(0),
       value: obj,
