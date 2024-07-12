@@ -202,6 +202,9 @@ struct StyleShard {
   #[shard_param("IconSpacing", "Checkboxes, radio button and collapsing headers have an icon at the start. This is the spacing between the icon and the text", [common_type::none, common_type::float, common_type::float_var])]
   icon_spacing: ParamVar,
 
+  #[shard_param("DefaultAreaSize", "The size used for the [`Ui::max_rect`] the first frame. Text will wrap at this width, and images that expand to fill the available space will expand to this size.", [common_type::none, common_type::float2, common_type::float2_var])]
+  default_area_size: ParamVar,
+
   #[shard_param("TooltipWidth", "Width of a tooltip (on_hover_ui, on_hover_text etc).", [common_type::none, common_type::float, common_type::float_var])]
   tooltip_width: ParamVar,
 
@@ -330,6 +333,7 @@ impl Default for StyleShard {
       icon_width: ParamVar::default(),
       icon_width_inner: ParamVar::default(),
       icon_spacing: ParamVar::default(),
+      default_area_size: ParamVar::default(),
       tooltip_width: ParamVar::default(),
       indent_ends_with_horizontal_line: ParamVar::default(),
       combo_height: ParamVar::default(),
@@ -516,6 +520,10 @@ impl Shard for StyleShard {
 
     when_set(&self.icon_spacing, |v| {
       Ok(spacing.icon_spacing = v.try_into()?)
+    })?;
+
+    when_set(&self.default_area_size, |v| {
+      Ok(spacing.default_area_size = into_vec2(v)?)
     })?;
 
     when_set(&self.tooltip_width, |v| {
