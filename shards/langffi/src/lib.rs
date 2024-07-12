@@ -50,12 +50,7 @@ pub extern "C" fn shards_read(
 
   match result {
     Ok(p) => SHLAst {
-      ast: {
-        let tmp = Var::new_ref_counted(p, &AST_TYPE);
-        let mut ref_counted = Var::default();
-        shards::core::cloneVar(&mut ref_counted, &tmp);
-        ref_counted
-      },
+      ast: Var::new_ref_counted(p, &AST_TYPE),
       error: std::ptr::null_mut(),
     },
     Err(error) => {
@@ -80,12 +75,7 @@ pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
   let decoded_bin: Result<Program, _> = flexbuffers::from_slice(bytes);
   match decoded_bin {
     Ok(p) => SHLAst {
-      ast: {
-        let tmp = Var::new_ref_counted(p, &AST_TYPE);
-        let mut ref_counted = Var::default();
-        shards::core::cloneVar(&mut ref_counted, &tmp);
-        ref_counted
-      },
+      ast: Var::new_ref_counted(p, &AST_TYPE),
       error: std::ptr::null_mut(),
     },
     Err(error) => {
