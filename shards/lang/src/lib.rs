@@ -15,6 +15,7 @@ pub mod read;
 pub mod rule_visitor;
 pub mod directory;
 pub mod custom_state;
+pub mod graph;
 
 use crate::ast::*;
 

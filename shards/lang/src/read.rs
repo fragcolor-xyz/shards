@@ -20,7 +20,8 @@ pub struct ReadEnv {
   script_directory: String,
   included: RefCell<HashSet<RcStrWrapper>>,
   dependencies: RefCell<Vec<String>>,
-  parent: Option<*const ReadEnv>,
+  parent: Option<*mut ReadEnv>,
+  index: u64,
 }
 
 impl ReadEnv {
@@ -32,6 +33,7 @@ impl ReadEnv {
       included: RefCell::new(HashSet::new()),
       dependencies: RefCell::new(Vec::new()),
       parent: None,
+      index: 0,
     }
   }
 
@@ -67,6 +69,18 @@ pub fn get_root_env<'a>(env: &'a ReadEnv) -> &'a ReadEnv {
       node = (*node).parent.unwrap();
     }
     &*node
+  }
+}
+
+pub fn increase_index<'a>(env: &'a mut ReadEnv) -> usize {
+  let mut node: *mut ReadEnv = env;
+  unsafe {
+    while (*node).parent.is_some() {
+      node = (*node).parent.unwrap();
+    }
+    let index = (*node).index;
+    (*node).index += 1;
+    index
   }
 }
 

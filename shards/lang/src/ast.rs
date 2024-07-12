@@ -167,7 +167,7 @@ pub enum Value {
   Shard(Function),
   #[serde(rename = "shs")]
   Shards(Sequence),
-  #[serde(rename = "eExpr")]
+  #[serde(rename = "eexpr")]
   EvalExpr(Sequence),
   #[serde(rename = "expr")]
   Expr(Sequence),
@@ -216,23 +216,22 @@ impl Value {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Param {
+  pub id: u64,
+
   pub name: Option<RcStrWrapper>,
   pub value: Value,
 
   pub is_default: Option<bool>, // This is used to determine if the param is default or not, optional
-
-  pub custom_state: CustomStateContainer,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
+  pub id: u64,
+
   #[serde(flatten)]
   pub name: Identifier,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub params: Option<Vec<Param>>,
-
-  #[serde(skip)]
-  pub custom_state: CustomStateContainer,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -249,7 +248,7 @@ pub enum BlockContent {
   TakeTable(Identifier, Vec<RcStrWrapper>), // Rule: TakeTable
   #[serde(rename = "ts")]
   TakeSeq(Identifier, Vec<u32>), // Rule: TakeSeq
-  #[serde(rename = "eExpr")]
+  #[serde(rename = "eexpr")]
   EvalExpr(Sequence), // Rule: EvalExpr
   #[serde(rename = "expr")]
   Expr(Sequence), // Rule: Expr
@@ -261,10 +260,10 @@ pub enum BlockContent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
+  pub id: u64,
+
   pub content: BlockContent,
   pub line_info: Option<LineInfo>,
-
-  pub custom_state: CustomStateContainer,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -306,9 +305,9 @@ pub struct Metadata {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sequence {
-  pub statements: Vec<Statement>,
+  pub id: u64,
 
-  pub custom_state: CustomStateContainer,
+  pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -467,7 +466,7 @@ impl Serialize for Block {
       BlockContent::Const(val) => state.serialize_field("const", val),
       BlockContent::TakeTable(id, vec) => state.serialize_field("tt", &(id, vec)),
       BlockContent::TakeSeq(id, vec) => state.serialize_field("ts", &(id, vec)),
-      BlockContent::EvalExpr(seq) => state.serialize_field("eExpr", seq),
+      BlockContent::EvalExpr(seq) => state.serialize_field("eexpr", seq),
       BlockContent::Expr(seq) => state.serialize_field("expr", seq),
       BlockContent::Func(func) => state.serialize_field("func", func),
       BlockContent::Program(prog) => state.serialize_field("prog", prog),
@@ -487,6 +486,7 @@ impl<'de> Deserialize<'de> for Block {
     D: Deserializer<'de>,
   {
     enum Field {
+      Id,
       None,
       Sh,
       Shs,
@@ -511,7 +511,7 @@ impl<'de> Deserialize<'de> for Block {
           type Value = Field;
 
           fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("`none`, `sh`, `shs`, `const`, `tt`, `ts`, `eExpr`, `expr`, `func`, `prog`, or `line_info`")
+            formatter.write_str("`id`, `none`, `sh`, `shs`, `const`, `tt`, `ts`, `eexpr`, `expr`, `func`, `prog`, or `line_info`")
           }
 
           fn visit_str<E>(self, value: &str) -> Result<Field, E>
@@ -519,13 +519,14 @@ impl<'de> Deserialize<'de> for Block {
             E: de::Error,
           {
             match value {
+              "id" => Ok(Field::Id),
               "none" => Ok(Field::None),
               "sh" => Ok(Field::Sh),
               "shs" => Ok(Field::Shs),
               "const" => Ok(Field::Const),
               "tt" => Ok(Field::Tt),
               "ts" => Ok(Field::Ts),
-              "eExpr" => Ok(Field::EExpr),
+              "eexpr" => Ok(Field::EExpr),
               "expr" => Ok(Field::Expr),
               "func" => Ok(Field::Func),
               "prog" => Ok(Field::Prog),
@@ -552,11 +553,13 @@ impl<'de> Deserialize<'de> for Block {
       where
         V: MapAccess<'de>,
       {
+        let mut id = None;
         let mut content = None;
         let mut line_info = None;
 
         while let Some(key) = map.next_key()? {
           match key {
+            Field::Id => id = Some(map.next_value()?),
             Field::None => {
               map.next_value::<()>()?;
               content = Some(BlockContent::Empty);
@@ -607,15 +610,15 @@ impl<'de> Deserialize<'de> for Block {
         let content = content.ok_or_else(|| de::Error::missing_field("content"))?;
 
         Ok(Block {
+          id: id.unwrap(),
           content,
           line_info,
-          custom_state: CustomStateContainer::new(),
         })
       }
     }
 
     const FIELDS: &[&str] = &[
-      "none", "sh", "shs", "const", "tt", "ts", "eExpr", "expr", "func", "prog",
+      "id", "none", "sh", "shs", "const", "tt", "ts", "eexpr", "expr", "func", "prog",
     ];
     deserializer.deserialize_struct("Block", FIELDS, BlockVisitor)
   }
@@ -654,7 +657,7 @@ impl Serialize for Param {
       Value::Table(table) => state.serialize_field("table", table),
       Value::Shard(func) => state.serialize_field("sh", func),
       Value::Shards(seq) => state.serialize_field("shs", seq),
-      Value::EvalExpr(seq) => state.serialize_field("eExpr", seq),
+      Value::EvalExpr(seq) => state.serialize_field("eexpr", seq),
       Value::Expr(seq) => state.serialize_field("expr", seq),
       Value::TakeTable(id, vec) => state.serialize_field("tt", &(id, vec)),
       Value::TakeSeq(id, vec) => state.serialize_field("ts", &(id, vec)),
@@ -671,9 +674,10 @@ impl<'de> Deserialize<'de> for Param {
     D: Deserializer<'de>,
   {
     enum Field {
+      Id,
       Name,
       None,
-      Id,
+      Iden,
       Bool,
       Enum,
       Num,
@@ -717,9 +721,10 @@ impl<'de> Deserialize<'de> for Param {
             E: de::Error,
           {
             match value {
+              "id" => Ok(Field::Id),
               "name" => Ok(Field::Name),
               "none" => Ok(Field::None),
-              "id" => Ok(Field::Id),
+              "iden" => Ok(Field::Iden),
               "bool" => Ok(Field::Bool),
               "enum" => Ok(Field::Enum),
               "num" => Ok(Field::Num),
@@ -737,7 +742,7 @@ impl<'de> Deserialize<'de> for Param {
               "table" => Ok(Field::Table),
               "sh" => Ok(Field::Sh),
               "shs" => Ok(Field::Shs),
-              "eExpr" => Ok(Field::EExpr),
+              "eexpr" => Ok(Field::EExpr),
               "expr" => Ok(Field::Expr),
               "tt" => Ok(Field::Tt),
               "ts" => Ok(Field::Ts),
@@ -764,17 +769,19 @@ impl<'de> Deserialize<'de> for Param {
       where
         V: MapAccess<'de>,
       {
+        let mut id = None;
         let mut name = None;
         let mut value = None;
 
         while let Some(key) = map.next_key()? {
           match key {
+            Field::Id => id = Some(map.next_value()?),
             Field::Name => name = Some(map.next_value()?),
             Field::None => {
               map.next_value::<()>()?;
               value = Some(Value::None(()));
             }
-            Field::Id => value = Some(Value::Identifier(map.next_value()?)),
+            Field::Iden => value = Some(Value::Identifier(map.next_value()?)),
             Field::Bool => value = Some(Value::Boolean(map.next_value()?)),
             Field::Enum => {
               let (e1, e2): (RcStrWrapper, RcStrWrapper) = map.next_value()?;
@@ -812,17 +819,17 @@ impl<'de> Deserialize<'de> for Param {
         let value = value.ok_or_else(|| de::Error::missing_field("value"))?;
 
         Ok(Param {
+          id: id.unwrap(),
           name,
           value,
           is_default: None,
-          custom_state: CustomStateContainer::new(),
         })
       }
     }
 
     const FIELDS: &[&str] = &[
-      "name", "none", "id", "bool", "enum", "num", "str", "bytes", "i2", "i3", "i4", "i8", "i16",
-      "f2", "f3", "f4", "seq", "table", "sh", "shs", "eExpr", "expr", "tt", "ts", "func",
+      "id", "name", "none", "iden", "bool", "enum", "num", "str", "bytes", "i2", "i3", "i4", "i8",
+      "i16", "f2", "f3", "f4", "seq", "table", "sh", "shs", "eexpr", "expr", "tt", "ts", "func",
     ];
     deserializer.deserialize_struct("Param", FIELDS, ParamVisitor)
   }
