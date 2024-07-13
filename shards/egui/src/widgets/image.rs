@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
+use super::image_util::AutoTexturePtr;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -39,6 +40,8 @@ struct Image {
   requiring: ExposedTypes,
   cached_ui_image: image_util::CachedUIImage,
   current_version: u64,
+  step_textures: Vec<AutoTexturePtr>,
+  step_counter: u64,
 }
 
 impl Default for Image {
@@ -51,6 +54,8 @@ impl Default for Image {
       scaling_aware: ParamVar::default(),
       cached_ui_image: Default::default(),
       current_version: 0,
+      step_textures: Vec::new(),
+      step_counter: 0,
     }
   }
 }
@@ -104,6 +109,10 @@ impl Shard for Image {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+
+    self.step_textures.clear();
+    self.step_counter = 0;
+
     Ok(())
   }
 
@@ -145,9 +154,17 @@ impl Image {
     }
   }
 
-  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    // support rendering multiple images from same shard
+    let current_step = shards::core::step_count(context);
+    if self.step_counter != current_step {
+      self.step_counter = current_step;
+      self.step_textures.clear();
+    }
+
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+      let (texture_id, texture_size) =
+        image_util::get_egui_texture_from_gfx(input, &mut self.step_textures)?;
 
       let size = image_util::resolve_image_size(
         ui,

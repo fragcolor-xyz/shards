@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use egui_memory_editor::MemoryEditor;
+use image_util::AutoTexturePtr;
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
@@ -95,6 +96,8 @@ struct RenderTarget {
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
+  step_textures: Vec<AutoTexturePtr>,
+  step_counter: u64,
 }
 
 /// Displays text.

@@ -38,6 +38,8 @@ impl Default for RenderTarget {
       parents,
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
+      step_textures: Vec::new(),
+      step_counter: 0,
     }
   }
 }
@@ -140,6 +142,9 @@ impl LegacyShard for RenderTarget {
     self.scale.cleanup(ctx);
     self.parents.cleanup(ctx);
 
+    self.step_textures.clear();
+    self.step_counter = 0;
+
     Ok(())
   }
 
@@ -149,9 +154,18 @@ impl LegacyShard for RenderTarget {
 }
 
 impl RenderTarget {
-  fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    // support rendering multiple images from same shard
+    let current_step = shards::core::step_count(context);
+    if self.step_counter != current_step {
+      self.step_counter = current_step;
+      self.step_textures.clear();
+    }
+
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+      let (texture_id, texture_size) =
+        image_util::get_egui_texture_from_gfx(input, &mut self.step_textures)?;
+
       let scale = image_util::into_vec2(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
@@ -174,7 +188,7 @@ impl RenderTarget {
 
   impl_legacy_override_activate! {
     extern "C" fn texture_activate() -> Var {
-      RenderTarget::activateTexture()
+      RenderTarget::activate_texture()
     }
   }
 }

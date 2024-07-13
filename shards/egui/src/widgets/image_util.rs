@@ -3,7 +3,10 @@
 
 use crate::bindings::gfx_TexturePtr;
 use crate::bindings::gfx_TexturePtr_getResolution_ext;
+use crate::bindings::gfx_TexturePtr_refAt;
+use crate::bindings::gfx_TexturePtr_unrefAt;
 use crate::bindings::linalg_aliases_int2;
+use crate::bindings::GenericSharedPtr;
 use egui::vec2;
 use shards::fourCharacterCode;
 use shards::shardsc::SHImage;
@@ -93,14 +96,37 @@ impl CachedUIImage {
   }
 }
 
+pub struct AutoTexturePtr(pub GenericSharedPtr);
+
+impl AutoTexturePtr {
+  pub fn new(ptr: *mut gfx_TexturePtr) -> Self {
+    let mut sp = GenericSharedPtr::default();
+    unsafe {
+      gfx_TexturePtr_refAt(&mut sp as *mut _, ptr);
+    }
+    Self(sp)
+  }
+}
+
+impl Drop for AutoTexturePtr {
+  fn drop(&mut self) {
+    unsafe {
+      gfx_TexturePtr_unrefAt(&mut self.0 as *mut _);
+    }
+  }
+}
+
 pub fn get_egui_texture_from_gfx(
   input: &Var,
+  refs: &mut Vec<AutoTexturePtr>,
 ) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let texture_ptr: *mut gfx_TexturePtr =
     Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(input, &TEXTURE_TYPE)?;
   if texture_ptr.is_null() {
     return Err("Invalid texture pointer");
   }
+
+  refs.push(AutoTexturePtr::new(texture_ptr));
 
   let texture_size = {
     let mut texture_res = linalg_aliases_int2::default();
