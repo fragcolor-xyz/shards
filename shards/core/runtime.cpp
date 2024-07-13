@@ -1297,8 +1297,6 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
-  wire->mesh.lock()->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
-
   try {
     auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
     switch (state) {
@@ -1427,6 +1425,8 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
       SH_CORO_SUSPENDED(wire);
       coroutineSuspend(*context.continuation);
       SH_CORO_RESUMED(wire);
+
+      ++context.stepCounter;
 
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
@@ -2808,6 +2808,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->sleep = [](double seconds) noexcept { shards::sleep(seconds); };
+
+  result->getStepCount = [](SHContext *context) noexcept { return context->stepCounter; };
 
   result->getRootPath = []() noexcept { return shards::GetGlobals().RootPath.c_str(); };
 

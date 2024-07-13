@@ -2021,7 +2021,7 @@ struct Spawn : public CapturingSpawners {
     mesh->schedule(c->wire, input, false);
 
     SHWire *rootWire = context->rootWire();
-    mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+    mesh->dispatcher.trigger(SHWire::OnDetachedEvent{
         .wire = rootWire,
         .childWire = c->wire.get(),
     });
@@ -2086,7 +2086,7 @@ struct WhenDone : Spawn {
       mesh->schedule(c->wire, Var::Empty, false);
 
       SHWire *rootWire = context->rootWire();
-      mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+      mesh->dispatcher.trigger(SHWire::OnDetachedEvent{
           .wire = rootWire,
           .childWire = c->wire.get(),
       });

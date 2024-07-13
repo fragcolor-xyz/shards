@@ -245,7 +245,7 @@ struct BaseRunner : public WireBase {
       _mesh->schedule(wire, input, false);
 
       SHWire *rootWire = context->rootWire();
-      _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+      _mesh->dispatcher.trigger(SHWire::OnDetachedEvent{
           .wire = rootWire,
           .childWire = wire.get(),
       });

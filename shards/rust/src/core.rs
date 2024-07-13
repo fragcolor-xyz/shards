@@ -16,6 +16,7 @@ use crate::types::Parameters;
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::WireState;
+use crate::util::from_raw_parts_allow_null;
 use core::convert::TryInto;
 use core::ffi::c_void;
 use core::slice;
@@ -24,7 +25,6 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::future::Future;
 use std::os::raw::c_char;
-use crate::util::from_raw_parts_allow_null;
 
 const ABI_VERSION: u32 = 0x20200101;
 
@@ -270,6 +270,14 @@ macro_rules! shlog_warn {
 pub fn sleep(seconds: f64) {
   unsafe {
     (*Core).sleep.unwrap()(seconds);
+  }
+}
+
+#[inline(always)]
+pub fn step_count(context: &SHContext) -> u64 {
+  unsafe {
+    let ctx = context as *const SHContext as *mut SHContext;
+    (*Core).getStepCount.unwrap()(ctx)
   }
 }
 

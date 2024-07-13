@@ -253,10 +253,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     const SHWire *wire;
   };
 
-  struct OnUpdateEvent {
-    const SHWire *wire;
-  };
-
   struct OnCleanupEvent {
     const SHWire *wire;
   };
@@ -271,7 +267,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   };
 
   // Triggered whenever a new wire is detached from this wire
-  struct OnWireDetachedEvent {
+  struct OnDetachedEvent {
     const SHWire *wire;
     const SHWire *childWire;
   };
