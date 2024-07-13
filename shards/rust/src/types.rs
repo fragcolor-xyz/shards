@@ -2801,7 +2801,6 @@ impl Var {
   }
 
   pub fn new_ref_counted<T: RCObjectVar>(obj: T, info: &Type) -> Var {
-    let info_ptr = T::get_info();
     let rc = Box::new(RefCounted::<T> {
       rc: AtomicU32::new(0),
       value: obj,
@@ -2811,7 +2810,7 @@ impl Var {
         valueType: SHType_Object,
         flags: SHVAR_FLAGS_USES_OBJINFO as u16,
         __bindgen_anon_1: SHVar__bindgen_ty_1 {
-          objectInfo: info_ptr,
+          objectInfo: T::get_info(),
         },
         payload: SHVarPayload {
           __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
@@ -5676,6 +5675,21 @@ impl TableVar {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       (*t.api).tableClear.unwrap()(t);
+    }
+  }
+
+  pub fn remove(&mut self, k: Var) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      (*t.api).tableRemove.unwrap()(t, k);
+    }
+  }
+
+  pub fn remove_static(&mut self, k: &'static str) {
+    let k = Var::ephemeral_string(k);
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      (*t.api).tableRemove.unwrap()(t, k);
     }
   }
 }
