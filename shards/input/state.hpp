@@ -95,6 +95,9 @@ struct InputState {
 
   Pointers pointers;
 
+  std::shared_ptr<SDL_TouchID> currentTouchDevice{};
+  std::vector<std::shared_ptr<SDL_Finger *>> currentFingers{};
+
   bool isKeyHeld(SDL_Keycode keycode) const { return heldKeys.contains(keycode); }
 
   bool isMouseButtonHeld(int buttonIndex) const {
@@ -113,6 +116,8 @@ struct InputState {
     modifiers = SDL_Keymod(0);
     cursorPosition = float2{};
     heldKeys.clear();
+    currentTouchDevice.reset();
+    currentFingers.clear();
   }
 
   void update() { // Retrieve up-to-date keyboard state
@@ -139,9 +144,12 @@ struct InputState {
     pointers.pointers.clear();
     int numDevices{};
     auto touchDevices = SDL_GetTouchDevices(&numDevices);
+    currentTouchDevice.reset(touchDevices, SDL_free);
+    currentFingers.resize(numDevices);
     for (int d = 0; d < numDevices; d++) {
       int numFingers{};
       auto fingers = SDL_GetTouchFingers(touchDevices[d], &numFingers);
+      currentFingers[d].reset(fingers, SDL_free);
       for (int f = 0; f < numFingers; f++) {
         auto finger = fingers[f];
         if (finger) {
