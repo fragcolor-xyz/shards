@@ -1679,14 +1679,15 @@ struct ParallelBase : public CapturingSpawners {
         ManyWire *cref;
         std::vector<std::reference_wrapper<SHVar>> _vars;
 
-        void before_compose(SHWire *wire) {}
-        void before_tick(SHWire *wire) {}
-        void before_stop(SHWire *wire) {
-          // destroy fresh cloned variables
+        ~Observer() {
           for (auto &v : _vars) {
             destroyVar(v.get());
           }
         }
+
+        void before_compose(SHWire *wire) {}
+        void before_tick(SHWire *wire) {}
+        void before_stop(SHWire *wire) {}
         void before_prepare(SHWire *wire) {}
 
         void before_start(SHWire *wire) {
