@@ -1674,55 +1674,58 @@ struct ParallelBase : public CapturingSpawners {
       DEFER({ popThreadName(); });
 #endif
 
-      struct Observer {
-        ParallelBase *server;
-        ManyWire *cref;
-        std::vector<std::reference_wrapper<SHVar>> _vars;
-
-        ~Observer() {
-          for (auto &v : _vars) {
+      {
+        std::vector<std::reference_wrapper<SHVar>> capturedVars;
+        DEFER({
+          for (auto &v : capturedVars) {
             destroyVar(v.get());
           }
-        }
+        });
 
-        void before_compose(SHWire *wire) {}
-        void before_tick(SHWire *wire) {}
-        void before_stop(SHWire *wire) {}
-        void before_prepare(SHWire *wire) {}
+        struct Observer {
+          ParallelBase *server;
+          ManyWire *cref;
+          std::vector<std::reference_wrapper<SHVar>> &capturedVars;
 
-        void before_start(SHWire *wire) {
-          // capture variables / we could recycle but better to overwrite in case it was edited before
-          // (remember we recycle wires)
-          for (auto &v : server->_vars) {
-            auto &var = v.get();
-            std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            auto &p = cref->wire->getVariable(toSWL(name));
-            cloneVar(p, var);
-            _vars.emplace_back(p);
+          void before_compose(SHWire *wire) {}
+          void before_tick(SHWire *wire) {}
+          void before_stop(SHWire *wire) {}
+          void before_prepare(SHWire *wire) {}
+
+          void before_start(SHWire *wire) {
+            // capture variables / we could recycle but better to overwrite in case it was edited before
+            // (remember we recycle wires)
+            for (auto &v : server->_vars) {
+              auto &var = v.get();
+              std::string_view name = v.variableName(); // TODO remove this, it calls strlen
+              auto &p = cref->wire->getVariable(toSWL(name));
+              cloneVar(p, var);
+              capturedVars.emplace_back(p);
+            }
+          }
+        } obs{this, cref, capturedVars};
+
+        bool success = true;
+        cref->mesh->schedule(obs, cref->wire, getInput(input, idx), false); // don't compose
+        while (!cref->mesh->empty()) {
+          if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
+            success = false;
+            break;
           }
         }
-      } obs{this, cref};
 
-      bool success = true;
-      cref->mesh->schedule(obs, cref->wire, getInput(input, idx), false); // don't compose
-      while (!cref->mesh->empty()) {
-        if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
-          success = false;
-          break;
+        _successes[idx] = success;
+
+        if (success) {
+          SHLOG_TRACE("ParallelBase: wire {} succeeded", idx);
+          anySuccess = true;
+          stop(cref->wire.get(), &_outputs[idx]);
+        } else {
+          SHLOG_TRACE("ParallelBase: wire {} failed", idx);
+          _outputs[idx] = Var::Empty; // flag as empty to signal failure
+          // ensure it's stopped anyway
+          stop(cref->wire.get());
         }
-      }
-
-      _successes[idx] = success;
-
-      if (success) {
-        SHLOG_TRACE("ParallelBase: wire {} succeeded", idx);
-        anySuccess = true;
-        stop(cref->wire.get(), &_outputs[idx]);
-      } else {
-        SHLOG_TRACE("ParallelBase: wire {} failed", idx);
-        _outputs[idx] = Var::Empty; // flag as empty to signal failure
-        // ensure it's stopped anyway
-        stop(cref->wire.get());
       }
 
       // if we throw we are screwed but thread should panic and terminate anyways
