@@ -8,7 +8,6 @@ use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
-use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Image;
@@ -93,7 +92,7 @@ impl Shard for Image {
           data.activate = Image::activate_texture_override;
         }
       }
-      _ => (),
+      _ => return Err("Invalid input type"),
     }
     // Always passthrough the input
     Ok(data.inputType)
@@ -176,7 +175,7 @@ impl Image {
 
       let img = SizedTexture {
         id: texture_id,
-        size: size,
+        size,
       };
       ui.image(img);
 

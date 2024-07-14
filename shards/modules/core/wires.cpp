@@ -618,7 +618,7 @@ struct StopWire : public WireBase {
         wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
-    }
+      }
     }
 
     if (unlikely(!wire || context == wire->context)) {
@@ -1590,6 +1590,7 @@ struct ParallelBase : public CapturingSpawners {
     }
     _outputs.clear();
 
+    // _wires seem to be used only in StepMany and DoMany
     for (auto &cref : _wires) {
       if (cref) {
         if (cref->mesh) {
@@ -1676,10 +1677,16 @@ struct ParallelBase : public CapturingSpawners {
       struct Observer {
         ParallelBase *server;
         ManyWire *cref;
+        std::vector<std::reference_wrapper<SHVar>> _vars;
 
         void before_compose(SHWire *wire) {}
         void before_tick(SHWire *wire) {}
-        void before_stop(SHWire *wire) {}
+        void before_stop(SHWire *wire) {
+          // destroy fresh cloned variables
+          for (auto &v : _vars) {
+            destroyVar(v.get());
+          }
+        }
         void before_prepare(SHWire *wire) {}
 
         void before_start(SHWire *wire) {
@@ -1688,7 +1695,9 @@ struct ParallelBase : public CapturingSpawners {
           for (auto &v : server->_vars) {
             auto &var = v.get();
             std::string_view name = v.variableName(); // TODO remove this, it calls strlen
-            cloneVar(cref->wire->getVariable(toSWL(name)), var);
+            auto &p = cref->wire->getVariable(toSWL(name));
+            cloneVar(p, var);
+            _vars.emplace_back(p);
           }
         }
       } obs{this, cref};
