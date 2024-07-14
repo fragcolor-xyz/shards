@@ -1145,7 +1145,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   // Build a SHTypeInfo for the var
   SHInstanceData data{};
   auto varType = deriveTypeInfo(value, data);
-  DEFER({ freeDerivedInfo(varType); });
+  DEFER(freeTypeInfo(varType));
 
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
     // This only does a quick check to see if the type is roughly correct
