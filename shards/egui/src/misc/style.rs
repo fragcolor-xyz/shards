@@ -4,6 +4,7 @@
 use crate::util::{
   apply_widget_visuals, into_color, into_margin, into_rounding, into_shadow, into_stroke, into_vec2,
 };
+use crate::widgets::{TextWrap, TEXTWRAP_TYPE};
 use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
@@ -146,7 +147,7 @@ struct StyleShard {
   )]
   drag_value_text_style: ParamVar,
 
-  #[shard_param("Wrap", "If set, labels buttons wtc will use this to determine whether or not to wrap the text at the right edge of the Ui they are in.", [common_type::none, common_type::bool])]
+  #[shard_param("Wrap", "If set, labels, buttons, etc will use this to determine wrap behavior of the text at the right edge of the Ui they are in.", [common_type::none, common_type::bool, *TEXTWRAP_TYPE])]
   wrap: ParamVar,
 
   #[shard_param("AnimationTime", "How many seconds a typical animation should last.", [common_type::none, common_type::float, common_type::float_var])]
@@ -414,7 +415,19 @@ impl Shard for StyleShard {
       Ok(style.animation_time = v.try_into()?)
     })?;
 
-    when_set(&self.wrap, |v| Ok(style.wrap = Some(v.try_into()?)))?;
+    let wrap_enum: Result<TextWrap, _> = self.wrap.get().try_into();
+    let wrap_bool: Result<bool, _> = self.wrap.get().try_into();
+    match (wrap_enum, wrap_bool) {
+      (Ok(wrap), _) => match wrap {
+        TextWrap::Extend => style.wrap_mode = Some(egui::TextWrapMode::Extend),
+        TextWrap::Wrap => style.wrap_mode = Some(egui::TextWrapMode::Wrap),
+        TextWrap::Truncate => style.wrap_mode = Some(egui::TextWrapMode::Truncate),
+      },
+
+      (_, Ok(true)) => style.wrap_mode = Some(egui::TextWrapMode::Wrap),
+      (_, Ok(false)) => style.wrap_mode = Some(egui::TextWrapMode::Extend),
+      _ => {}
+    }
 
     when_set(&self.explanation_tooltips, |v| {
       Ok(style.explanation_tooltips = v.try_into()?)
