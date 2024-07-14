@@ -50,9 +50,9 @@ impl Default for EguiHost {
     Self {
       context: None,
       full_output: None,
-      instance: instance,
-      parents: parents,
-      exposed: exposed,
+      instance,
+      parents,
+      exposed,
     }
   }
 }

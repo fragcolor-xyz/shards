@@ -3,30 +3,20 @@
 
 use crate::util;
 use crate::CONTEXTS_NAME;
-use crate::EGUI_CTX_TYPE;
-use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_enum;
-use shards::core::register_legacy_enum;
-use shards::core::register_legacy_shard;
 use shards::core::register_shard;
-use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
-use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
-use shards::types::FRAG_CC;
 use shards::types::NONE_TYPES;
-use shards::SHType_Enum;
 
 #[derive(shards::shards_enum)]
 #[enum_info(
