@@ -955,7 +955,7 @@ struct SwitchTo : public WireBase {
     // capture variables
     for (auto &v : _vars) {
       auto &var = v.get();
-      std::string_view name = v.variableName(); // TODO remove this, it calls strlen
+      std::string_view name = v.variableNameView();
       auto &v_ref = pWire->getVariable(toSWL(name));
       cloneVar(v_ref, var);
     }
@@ -969,7 +969,7 @@ struct SwitchTo : public WireBase {
       if (pWire->state == SHWire::State::Failed) {
         // destroy fresh cloned variables
         for (auto &v : _vars) {
-          std::string_view name = v.variableName(); // TODO remove this, it calls strlen
+          std::string_view name = v.variableNameView();
           destroyVar(pWire->getVariable(toSWL(name)));
         }
         SHLOG_ERROR("Wire {} failed to start.", pWire->name);
@@ -1602,7 +1602,7 @@ struct ParallelBase : public CapturingSpawners {
         if (capturing) {
           for (auto &v : _vars) {
             // notice, this should be already destroyed by the wire releaseVariable
-            std::string_view name = v.variableName(); // TODO remove this, it calls strlen
+            std::string_view name = v.variableNameView();
             destroyVar(cref->wire->getVariable(toSWL(name)));
           }
         }
@@ -1681,7 +1681,7 @@ struct ParallelBase : public CapturingSpawners {
         auto &ref = capturedVars.emplace_back(var);
         // set external flag
         ref.flags |= SHVAR_FLAGS_EXTERNAL;
-        std::string_view name = v.variableName(); // TODO remove this, it calls strlen
+        std::string_view name = v.variableNameView();
         cref->mesh->addRef(toSWL(name), &ref);
       }
 

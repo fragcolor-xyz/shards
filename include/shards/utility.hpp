@@ -180,6 +180,11 @@ public:
     else
       return nullptr;
   }
+
+  std::string_view variableNameView() const {
+    shassert(isVariable());
+    return std::string_view(_v.payload.stringValue, _v.payload.stringLen);
+  }
 };
 
 // Contains help text for a specific enum member
