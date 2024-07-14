@@ -2,7 +2,6 @@ use super::*;
 use egui::epaint;
 use egui::ClippedPrimitive;
 use egui::Context;
-use egui::FullOutput;
 use egui::TextureId;
 use std::ffi::CString;
 use std::marker::PhantomData;

@@ -551,7 +551,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   };
 
   template <class Observer>
-  void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
+  void schedule(Observer &observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
     ZoneScoped;
 
     // set pristine flag to false
@@ -576,10 +576,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHInstanceData data = instanceData;
       data.wire = wire.get();
       data.inputType = shards::deriveTypeInfo(input, data);
+      DEFER({ shards::freeDerivedInfo(data.inputType); });
       auto validation = shards::composeWire(wire.get(), data);
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
-      shards::freeDerivedInfo(data.inputType);
 
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {
@@ -627,7 +627,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     }
   }
 
-  template <class Observer> bool tick(Observer observer) {
+  template <class Observer> bool tick(Observer &observer) {
     ZoneScoped;
 
     auto noErrors = true;

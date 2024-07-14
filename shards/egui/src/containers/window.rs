@@ -302,7 +302,7 @@ impl Shard for WindowShard {
             window = window.resizable(false);
           }
           WindowFlags::Scrollbars => {
-            window = window.scroll2([true, true]);
+            window = window.scroll([true, true]);
           }
           WindowFlags::NoCollapse => {
             window = window.collapsible(false);

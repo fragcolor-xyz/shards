@@ -1,20 +1,17 @@
-use std::borrow::Borrow;
-
 use super::DockArea;
 use super::Tab;
 use super::TabData;
 use super::EXPERIMENTAL_TRUE;
 use crate::util;
-use crate::util::with_object_stack_var;
+
 use crate::CONTEXTS_NAME;
-use crate::EGUI_CTX_TYPE;
-use crate::EGUI_UI_TYPE;
+
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
@@ -411,7 +408,7 @@ impl LegacyShard for DockArea {
     let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
 
     let parents_stack_var = self.parents.get().clone();
-    let mut viewer = MyTabViewer::new(context, input, &mut self.parents);
+    let mut viewer = MyTabViewer::new(context, &mut self.parents);
     if let Some(ui) = util::get_current_parent_opt(&parents_stack_var)? {
       dock.show_inside(ui, &mut viewer);
     } else {
@@ -430,17 +427,12 @@ pub fn register_shards() {
 
 struct MyTabViewer<'a> {
   context: &'a Context,
-  input: &'a Var,
   parents: &'a mut ParamVar,
 }
 
 impl<'a> MyTabViewer<'a> {
-  pub fn new(context: &'a Context, input: &'a Var, parents: &'a mut ParamVar) -> MyTabViewer<'a> {
-    Self {
-      context,
-      input,
-      parents,
-    }
+  pub fn new(context: &'a Context, parents: &'a mut ParamVar) -> MyTabViewer<'a> {
+    Self { context, parents }
   }
 }
 

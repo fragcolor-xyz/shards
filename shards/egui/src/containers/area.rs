@@ -7,8 +7,8 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    common_type, Context, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type,
-    Types, Var, ANY_TYPES, SHARDS_OR_NONE_TYPES,
+    common_type, Context, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type, Types, Var,
+    ANY_TYPES, SHARDS_OR_NONE_TYPES,
   },
 };
 
@@ -29,7 +29,9 @@ struct AreaShard {
   pub anchor: ParamVar,
   #[shard_param("Order", "Paint layer to be used for this UI. Default is background", [*crate::ORDER_TYPE])]
   pub order: ParamVar,
+  #[shard_warmup]
   contexts: ParamVar,
+  #[shard_warmup]
   parents: ParamVar,
   inner_exposed: ExposedTypes,
   #[shard_required]
@@ -62,14 +64,10 @@ impl Shard for AreaShard {
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.warmup_helper(context)?;
-    self.contexts.warmup(context);
-    self.parents.warmup(context);
     Ok(())
   }
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-    self.contexts.cleanup(ctx);
-    self.parents.cleanup(ctx);
     Ok(())
   }
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {

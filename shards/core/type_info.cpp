@@ -13,25 +13,25 @@ void freeTypeInfo(SHTypeInfo info) {
     break;
   case SHType::ContextVar: {
     for (uint32_t i = 0; info.contextVarTypes.len > i; i++) {
-      freeDerivedInfo(info.contextVarTypes.elements[i]);
+      freeTypeInfo(info.contextVarTypes.elements[i]);
     }
     shards::arrayFree(info.contextVarTypes);
   } break;
   case SHType::Set: {
     for (uint32_t i = 0; info.setTypes.len > i; i++) {
-      freeDerivedInfo(info.setTypes.elements[i]);
+      freeTypeInfo(info.setTypes.elements[i]);
     }
     shards::arrayFree(info.setTypes);
   } break;
   case SHType::Seq: {
     for (uint32_t i = 0; info.seqTypes.len > i; i++) {
-      freeDerivedInfo(info.seqTypes.elements[i]);
+      freeTypeInfo(info.seqTypes.elements[i]);
     }
     shards::arrayFree(info.seqTypes);
   } break;
   case SHType::Table: {
     for (uint32_t i = 0; info.table.types.len > i; i++) {
-      freeDerivedInfo(info.table.types.elements[i]);
+      freeTypeInfo(info.table.types.elements[i]);
     }
     for (uint32_t i = 0; info.table.keys.len > i; i++) {
       destroyVar(info.table.keys.elements[i]);
@@ -119,6 +119,8 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       if (!types.count(derived)) {
         shards::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
+      } else {
+        freeTypeInfo(derived);
       }
     }
     varType.fixedSize = value.payload.seqValue.len;

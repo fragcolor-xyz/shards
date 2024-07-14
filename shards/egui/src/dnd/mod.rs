@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::util;
 use crate::Context as UIContext;
 use crate::EguiId;
@@ -140,19 +138,12 @@ pub fn drop_target<R>(
   let outer_rect = Rect::from_min_max(outer_rect_bounds.min, content_ui.min_rect().max + margin);
   let (rect, response) = ui.allocate_at_least(outer_rect.size(), egui::Sense::hover());
 
-  let style = if is_being_dragged && can_accept_what_is_being_dragged && response.hovered() {
-    ui.visuals().widgets.active
-  } else {
-    ui.visuals().widgets.inactive
-  };
-
   if is_being_dragged && !ctx.dnd_value.borrow().0.is_none() {
     let style = ui.visuals().widgets.active;
     let mut fill: Rgba = style.bg_fill.into();
-    let mut stroke_color = style.bg_stroke.color.into();
+    let mut stroke_color = Rgba::RED;
     if !can_accept_what_is_being_dragged {
       fill = ui.visuals().gray_out(fill.into()).into();
-      stroke_color = Rgba::RED;
 
       if response.hovered() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
@@ -166,7 +157,7 @@ pub fn drop_target<R>(
     }
 
     if visualize {
-      let mut stroke = Stroke {
+      let stroke = Stroke {
         color: stroke_color.into(),
         ..style.bg_stroke
       };
@@ -225,8 +216,6 @@ struct DragDrop {
   #[shard_required]
   required: ExposedTypes,
   inner_exposed: ExposedTypes,
-  // A copy of the value being dragged
-  payload: Option<Arc<ClonedVar>>,
   prev_size: Vec2,
 }
 
@@ -242,7 +231,6 @@ impl Default for DragDrop {
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
       visualize: ClonedVar::default(),
-      payload: None,
       prev_size: Vec2::ZERO,
     }
   }

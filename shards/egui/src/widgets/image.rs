@@ -3,11 +3,11 @@
 
 use super::image_util;
 use crate::util;
+use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
-use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Image;
@@ -27,6 +27,8 @@ use shards::types::BOOL_VAR_OR_NONE_SLICE;
 struct Image {
   #[shard_warmup]
   parents: ParamVar,
+  #[shard_warmup]
+  contexts: ParamVar,
   #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
   scale: ParamVar,
   // This will be in UI points (ScalingAware: false) or in pixels (ScalingAware: true)
@@ -45,6 +47,7 @@ impl Default for Image {
   fn default() -> Self {
     Self {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
       size: ParamVar::default(),
@@ -88,7 +91,7 @@ impl Shard for Image {
           data.activate = Image::activate_texture_override;
         }
       }
-      _ => (),
+      _ => return Err("Invalid input type"),
     }
     // Always passthrough the input
     Ok(data.inputType)
@@ -104,6 +107,7 @@ impl Shard for Image {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+
     Ok(())
   }
 
@@ -146,8 +150,9 @@ impl Image {
   }
 
   fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let ctx = util::get_current_context(&self.contexts)?;
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
 
       let size = image_util::resolve_image_size(
         ui,
@@ -159,7 +164,7 @@ impl Image {
 
       let img = SizedTexture {
         id: texture_id,
-        size: size,
+        size,
       };
       ui.image(img);
 

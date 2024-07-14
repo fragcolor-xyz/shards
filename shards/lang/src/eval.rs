@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::custom_state::CustomStateContainer;
 use crate::read;
+use crate::read::AST_TYPE;
 use crate::ParamHelper;
 use crate::RcStrWrapper;
 use crate::ShardsExtension;
@@ -4108,21 +4109,37 @@ impl LegacyShard for EvalShard {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let maybe_bytes: Result<&[u8], _> = input.try_into();
-    let prog = if let Ok(bytes) = maybe_bytes {
-      // deserialize sequence from bytes
-      let prog: Program = flexbuffers::from_slice(bytes).map_err(|e| {
-        shlog_error!("failed to deserialize Shards: {:?}", e);
-        "failed to deserialize Shards"
-      })?;
+    let maybe_string: Result<&str, _> = input.try_into();
+    let maybe_object = unsafe { Var::from_ref_counted_object::<Program>(input, &AST_TYPE) };
+
+    let mut prog = match (maybe_bytes, maybe_string, maybe_object) {
+      (Ok(bytes), _, _) => {
+        // deserialize sequence from bytes
+        Some(flexbuffers::from_slice::<Program>(bytes).map_err(|e| {
+          shlog_error!("failed to deserialize Shards: {:?}", e);
+          "failed to deserialize Shards"
+        })?)
+      }
+      (_, Ok(s), _) => {
+        // deserialize sequence from string
+        Some(serde_json::from_str(s).map_err(|e| {
+          shlog_error!("failed to deserialize Shards: {:?}", e);
+          "failed to deserialize Shards"
+        })?)
+      }
+      (_, _, Ok(_)) => None,
+      _ => {
+        return Err("Invalid input type, expected bytes, string or ast object");
+      }
+    };
+
+    // ok if we are here we have a valid program, if prog is some, it's either string or bytes
+    // if it's none, it's an ast object
+    // anyways let's grab a reference now
+    let prog = if let Some(ref mut prog) = prog {
       prog
     } else {
-      let s: &str = input.try_into()?;
-      // deserialize sequence from string
-      let prog: Program = serde_json::from_str(s).map_err(|e| {
-        shlog_error!("failed to deserialize Shards: {:?}", e);
-        "failed to deserialize Shards"
-      })?;
-      prog
+      unsafe { &mut (*maybe_object.unwrap()) }
     };
 
     let namespace = self.namespace.get();

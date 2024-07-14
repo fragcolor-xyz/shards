@@ -179,6 +179,7 @@ impl Shard for ImageButton {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+
     Ok(())
   }
 
@@ -190,6 +191,8 @@ impl Shard for ImageButton {
 impl ImageButton {
   fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
+    let ctx = util::get_current_context(&self.contexts)?;
+
     let (texture_id, texture_size) = {
       let texture = self
         .cached_ui_image
@@ -206,13 +209,17 @@ impl ImageButton {
       )
     };
 
-    self.activate_common(context, input, ui, texture_id, texture_size)
+    self.activate_common(ctx, context, input, ui, texture_id, texture_size)
   }
 
   fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
-    let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+    let ctx = util::get_current_context(&self.contexts)?;
+
+    let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
+
     self.activate_common(
+      ctx,
       context,
       input,
       ui,
@@ -229,6 +236,7 @@ impl ImageButton {
 
   fn activate_common(
     &mut self,
+    egui_ctx: &mut crate::Context,
     context: &Context,
     input: &Var,
     ui: &mut egui::Ui,
@@ -264,10 +272,9 @@ impl ImageButton {
     }
 
     // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
-    let ctx = util::get_current_context(&self.contexts)?;
-    ctx.prev_response = Some(response);
+    egui_ctx.prev_response = Some(response);
     if button_clicked {
-      ctx.override_selection_response = ctx.prev_response.clone();
+      egui_ctx.override_selection_response = egui_ctx.prev_response.clone();
     }
 
     // button not clicked during this frame

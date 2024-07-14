@@ -1414,9 +1414,9 @@ TEST_CASE("Function") {
 #define TEST_SUCCESS_CASE(testName, code)                                                              \
   SECTION(testName) {                                                                                  \
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); \
-    REQUIRE(seq.ast);                                                                                  \
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});                         \
-    shards_free_sequence(seq.ast);                                                                     \
+    shards::OwnedVar ast{seq.ast};                                                                     \
+    REQUIRE(ast.valueType == SHType::Object);                                                          \
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});                            \
     REQUIRE(wire.wire);                                                                                \
     auto mesh = SHMesh::make();                                                                        \
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));                                               \
@@ -1427,9 +1427,9 @@ TEST_CASE("Function") {
 #define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage)                                     \
   SECTION(testName) {                                                                                  \
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); \
-    REQUIRE(seq.ast);                                                                                  \
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});                         \
-    shards_free_sequence(seq.ast);                                                                     \
+    shards::OwnedVar ast{seq.ast};                                                                     \
+    REQUIRE(ast.valueType == SHType::Object);                                                          \
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});                            \
     REQUIRE(wire.error);                                                                               \
     std::string a(wire.error->message);                                                                \
     std::string b(expectedErrorMessage);                                                               \
@@ -1459,9 +1459,9 @@ TEST_CASE("shards-lang") {
   SECTION("TableTake 2") {
     auto code = "{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1473,9 +1473,9 @@ TEST_CASE("shards-lang") {
     auto code = "{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
                 "| Log | Assert.Is(2)";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1486,9 +1486,9 @@ TEST_CASE("shards-lang") {
   SECTION("Enums 1") {
     auto code = "Msg(Enum::NotExisting)";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.error);
     DEFER(shards_free_error(wire.error));
     std::string a(wire.error->message);
@@ -1499,9 +1499,9 @@ TEST_CASE("shards-lang") {
   SECTION("Enums 2") {
     auto code = "Const(Type::String) | Log";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1512,9 +1512,9 @@ TEST_CASE("shards-lang") {
   SECTION("Enums 3") {
     auto code = "Type::String | Log";
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1525,22 +1525,22 @@ TEST_CASE("shards-lang") {
   SECTION("Namespaces 1") {
     auto code1 = "10 = n";
     auto seq1 = shards_read(SHStringWithLen{}, SHStringWithLen{code1, strlen(code1)}, SHStringWithLen{});
-    REQUIRE(seq1.ast);
-    DEFER(shards_free_sequence(seq1.ast));
+    shards::OwnedVar ast1{seq1.ast};
+    REQUIRE(ast1.valueType == SHType::Object);
 
     auto code2 = "x/n | Math.Add(2) | Log";
     auto seq2 = shards_read(SHStringWithLen{}, SHStringWithLen{code2, strlen(code2)}, SHStringWithLen{});
-    REQUIRE(seq2.ast);
-    DEFER(shards_free_sequence(seq2.ast));
+    shards::OwnedVar ast2{seq2.ast};
+    REQUIRE(ast2.valueType == SHType::Object);
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
 
-    auto err = shards_eval_env(env, seq1.ast);
+    auto err = shards_eval_env(env, &ast1);
     REQUIRE_FALSE(err);
 
     auto sub_env = shards_create_env(SHStringWithLen{});
 
-    err = shards_eval_env(sub_env, seq2.ast);
+    err = shards_eval_env(sub_env, &ast2);
     REQUIRE_FALSE(err);
 
     EvalEnv *envs[] = {env, sub_env};
@@ -1556,38 +1556,38 @@ TEST_CASE("shards-lang") {
   SECTION("Namespaces 2") {
     auto code1 = "10 = n";
     auto seq1 = shards_read(SHStringWithLen{}, SHStringWithLen{code1, strlen(code1)}, SHStringWithLen{});
-    REQUIRE(seq1.ast);
-    DEFER(shards_free_sequence(seq1.ast));
+    shards::OwnedVar ast1{seq1.ast};
+    REQUIRE(ast1.valueType == SHType::Object);
 
     auto code2 = "x/n | Math.Add(2) | Log = r2"; // access still needs to be explicit
     auto seq2 = shards_read(SHStringWithLen{}, SHStringWithLen{code2, strlen(code2)}, SHStringWithLen{});
-    REQUIRE(seq2.ast);
-    DEFER(shards_free_sequence(seq2.ast));
+    shards::OwnedVar ast2{seq2.ast};
+    REQUIRE(ast2.valueType == SHType::Object);
 
     auto code3 = "r2 | Math.Add(2) | Log";
     auto seq3 = shards_read(SHStringWithLen{}, SHStringWithLen{code3, strlen(code3)}, SHStringWithLen{});
-    REQUIRE(seq3.ast);
-    DEFER(shards_free_sequence(seq3.ast));
+    shards::OwnedVar ast3{seq3.ast};
+    REQUIRE(ast3.valueType == SHType::Object);
 
     auto code4 = "x/n | Math.Add(x/y/r2) | Log";
     auto seq4 = shards_read(SHStringWithLen{}, SHStringWithLen{code4, strlen(code4)}, SHStringWithLen{});
-    REQUIRE(seq4.ast);
-    DEFER(shards_free_sequence(seq4.ast));
+    shards::OwnedVar ast4{seq4.ast};
+    REQUIRE(ast4.valueType == SHType::Object);
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
-    auto err = shards_eval_env(env, seq1.ast);
+    auto err = shards_eval_env(env, &ast1);
     REQUIRE_FALSE(err);
 
     auto sub_env1 = shards_create_sub_env(env, SHStringWithLen{"y", strlen("y")});
-    err = shards_eval_env(sub_env1, seq2.ast);
+    err = shards_eval_env(sub_env1, &ast2);
     REQUIRE_FALSE(err);
 
     auto sub_env2 = shards_create_sub_env(sub_env1, SHStringWithLen{});
-    err = shards_eval_env(sub_env2, seq3.ast);
+    err = shards_eval_env(sub_env2, &ast3);
     REQUIRE_FALSE(err);
 
     auto another_env = shards_create_env(SHStringWithLen{});
-    err = shards_eval_env(another_env, seq4.ast);
+    err = shards_eval_env(another_env, &ast4);
     REQUIRE_FALSE(err);
 
     EvalEnv *envs[] = {env, sub_env1, sub_env2, another_env};
@@ -1607,11 +1607,10 @@ TEST_CASE("shards-lang") {
       })
       2 | Do(wire1) | Assert.Is(3)
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1629,11 +1628,10 @@ TEST_CASE("shards-lang") {
       "World" | AppendTo(s)
       s | Log
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1650,11 +1648,10 @@ TEST_CASE("shards-lang") {
       2 | @group1(1) | Assert.Is(3)
       3 | @group1(2) | Assert.Is(5)
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
@@ -1675,23 +1672,16 @@ TEST_CASE("shards-lang") {
       })
       #(@range(0 5)) | Log
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
 
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-
-    // REQUIRE(wire.error);
-    // DEFER(shards_free_error(wire.error));
-    // std::string a(wire.error->message);
-    // std::string b("Assert failed - Is");
-    // REQUIRE(a == b);
   }
 
   SECTION("Test @mesh & @schedule & @run") {
@@ -1703,23 +1693,16 @@ TEST_CASE("shards-lang") {
       @schedule(main wire1)
       @run(main 1.0 5)
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
+    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
 
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-
-    // REQUIRE(wire.error);
-    // DEFER(shards_free_error(wire.error));
-    // std::string a(wire.error->message);
-    // std::string b("Assert failed - Is");
-    // REQUIRE(a == b);
   }
 
   TEST_SUCCESS_CASE("Color Log Test", "@color(0x112233) | Log \n @color(0x1122) | Log \n @color(0x11223344) | Log \n @color(0.1 "
@@ -1739,13 +1722,12 @@ TEST_CASE("shards-lang") {
 
       Do(w)
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
 
     auto env = shards_create_env("x"_swl);
-    auto err = shards_eval_env(env, seq.ast);
+    auto err = shards_eval_env(env, &ast);
     REQUIRE_FALSE(err);
 
     auto wire = shards_transform_env(env, "x"_swl);
@@ -1754,12 +1736,6 @@ TEST_CASE("shards-lang") {
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-
-    // REQUIRE(wire.error);
-    // DEFER(shards_free_error(wire.error));
-    // std::string a(wire.error->message);
-    // std::string b("Assert failed - Is");
-    // REQUIRE(a == b);
   }
 
   SECTION("Namespaces 4") {
@@ -1777,19 +1753,12 @@ TEST_CASE("shards-lang") {
       Do(w1)
       Do(w2)
     )";
-    auto seq =
-        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
+    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{});
+    shards::OwnedVar ast{seq.ast};
+    REQUIRE(ast.valueType == SHType::Object);
 
     auto env = shards_create_env("x"_swl);
-    auto err = shards_eval_env(env, seq.ast);
-
-    // REQUIRE(err);
-    // DEFER(shards_free_error(err));
-    // std::string a(err->message);
-    // std::string b("Assert failed - Is");
-    // REQUIRE(a == b);
+    auto err = shards_eval_env(env, &ast);
 
     REQUIRE_FALSE(err);
 

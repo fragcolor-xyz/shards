@@ -4,6 +4,7 @@ use shards::SHStringWithLen;
 use shards::{shlog_error, types::*};
 use shards_lang::cli::process_args;
 use shards_lang::eval::{self, *};
+use shards_lang::read::AST_TYPE;
 use shards_lang::{ast::*, RcStrWrapper};
 use shards_lang::{print, read};
 use std::collections::HashMap;
@@ -18,7 +19,8 @@ pub struct SHLError {
 
 #[repr(C)]
 pub struct SHLAst {
-  ast: *mut Sequence,
+  /// of Program ast object, ref counted, count at 0 when returned, receiver must clone it!
+  ast: Var,
   error: *mut SHLError,
 }
 
@@ -48,7 +50,7 @@ pub extern "C" fn shards_read(
 
   match result {
     Ok(p) => SHLAst {
-      ast: Box::into_raw(Box::new(p.sequence)),
+      ast: Var::new_ref_counted(p, &AST_TYPE),
       error: std::ptr::null_mut(),
     },
     Err(error) => {
@@ -60,7 +62,7 @@ pub extern "C" fn shards_read(
         column: error.loc.column,
       };
       SHLAst {
-        ast: std::ptr::null_mut(),
+        ast: Var::default(),
         error: Box::into_raw(Box::new(shards_error)),
       }
     }
@@ -72,8 +74,8 @@ pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
   let bytes = unsafe { from_raw_parts_allow_null(bytes, size as usize) };
   let decoded_bin: Result<Program, _> = flexbuffers::from_slice(bytes);
   match decoded_bin {
-    Ok(prog) => SHLAst {
-      ast: Box::into_raw(Box::new(prog.sequence)),
+    Ok(p) => SHLAst {
+      ast: Var::new_ref_counted(p, &AST_TYPE),
       error: std::ptr::null_mut(),
     },
     Err(error) => {
@@ -85,7 +87,7 @@ pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
         column: 0,
       };
       SHLAst {
-        ast: std::ptr::null_mut(),
+        ast: Var::default(),
         error: Box::into_raw(Box::new(shards_error)),
       }
     }
@@ -144,10 +146,12 @@ pub extern "C" fn shards_create_sub_env(
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut SHLError {
+pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError {
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
   let env = unsafe { &mut *env };
-  let ast = unsafe { &*ast };
-  for stmt in &ast.statements {
+  for stmt in &ast.sequence.statements {
     if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
@@ -225,11 +229,18 @@ pub extern "C" fn shards_transform_envs(
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) -> SHLWire {
+pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
   let name = name.into();
   // we just want a reference to the sequence, not ownership
-  let seq = unsafe { &*sequence };
-  let result = eval::eval(seq, name, HashMap::new(), new_cancellation_token());
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+  let result = eval::eval(
+    &ast.sequence,
+    name,
+    HashMap::new(),
+    new_cancellation_token(),
+  );
   match result {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
@@ -252,9 +263,11 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
 }
 
 #[no_mangle]
-pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
-  let seq = unsafe { &*ast };
-  let s = print::print_ast(seq);
+pub extern "C" fn shards_print_ast(ast: &Var) -> Var {
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+  let s = print::print_ast(&ast.sequence);
   let s = Var::ephemeral_string(&s);
   let mut v = Var::default();
   shards::core::cloneVar(&mut v, &s);
@@ -262,10 +275,12 @@ pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_free_sequence(sequence: *mut Sequence) {
-  unsafe {
-    drop(Box::from_raw(sequence));
-  }
+pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+  let ast_clone = ast.clone();
+  Var::new_ref_counted(ast_clone, &AST_TYPE)
 }
 
 #[no_mangle]

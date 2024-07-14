@@ -746,7 +746,7 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
-typedef void(__cdecl *SHSetShardError)(struct Shard *, void* errorData, struct SHStringWithLen msg);
+typedef void(__cdecl *SHSetShardError)(struct Shard *, void *errorData, struct SHStringWithLen msg);
 
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
@@ -1037,6 +1037,8 @@ typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 typedef void(__cdecl *SHStringGrow)(SHStringPayload *str, uint32_t newCap);
 typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
 
+typedef uint64_t(__cdecl *SHGetStepCount)(struct SHContext *context);
+
 typedef struct _SHCore {
   // Aligned allocator
   SHAlloc alloc;
@@ -1101,6 +1103,7 @@ typedef struct _SHCore {
   SHTick isEmpty; // returns true if we have no wires to tick
   SHTerminate terminate;
   SHSleep sleep;
+  SHGetStepCount getStepCount;
 
   // Environment utilities
   SHGetRootPath getRootPath;

@@ -4,12 +4,13 @@
 use super::RenderTarget;
 use crate::util;
 use crate::widgets::image_util;
+use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
 use shards::shard::LegacyShard;
-use shards::shardsc::SHType_Object;
+use shards::shardsc::SHType_Object as SHTYPE_OBJECT;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -32,10 +33,9 @@ lazy_static! {
 
 impl Default for RenderTarget {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
     }
@@ -116,20 +116,21 @@ impl LegacyShard for RenderTarget {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     match data.inputType.basicType {
-      SHType_Object
+      SHTYPE_OBJECT
         if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
       {
         decl_override_activate! {
           data.activate = RenderTarget::texture_activate;
         }
       }
-      _ => (),
+      _ => return Err("Invalid input type"),
     }
     // Always passthrough the input
     Ok(data.inputType)
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.contexts.warmup(context);
     self.parents.warmup(context);
     self.scale.warmup(context);
 
@@ -139,6 +140,7 @@ impl LegacyShard for RenderTarget {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.scale.cleanup(ctx);
     self.parents.cleanup(ctx);
+    self.contexts.cleanup(ctx);
 
     Ok(())
   }
@@ -149,9 +151,11 @@ impl LegacyShard for RenderTarget {
 }
 
 impl RenderTarget {
-  fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let ctx = util::get_current_context(&self.contexts)?;
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
+
       let scale = image_util::into_vec2(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
@@ -174,7 +178,7 @@ impl RenderTarget {
 
   impl_legacy_override_activate! {
     extern "C" fn texture_activate() -> Var {
-      RenderTarget::activateTexture()
+      RenderTarget::activate_texture()
     }
   }
 }

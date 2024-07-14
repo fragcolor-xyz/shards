@@ -3,6 +3,7 @@
 #include "input.hpp"
 #include "../core/platform.hpp"
 #include "sdl.hpp"
+#include "shards/defer.hpp"
 #include <functional>
 #include <optional>
 #include <boost/container/flat_set.hpp>
@@ -139,9 +140,11 @@ struct InputState {
     pointers.pointers.clear();
     int numDevices{};
     auto touchDevices = SDL_GetTouchDevices(&numDevices);
+    DEFER(SDL_free(touchDevices)); // TODO cache this to avoid reallocating every frame?
     for (int d = 0; d < numDevices; d++) {
       int numFingers{};
       auto fingers = SDL_GetTouchFingers(touchDevices[d], &numFingers);
+      DEFER(SDL_free(fingers)); // TODO cache this to avoid reallocating every frame?
       for (int f = 0; f < numFingers; f++) {
         auto finger = fingers[f];
         if (finger) {
