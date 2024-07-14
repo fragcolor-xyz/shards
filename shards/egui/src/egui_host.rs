@@ -104,6 +104,7 @@ impl EguiHost {
     let ui_ctx = self.context.as_mut().unwrap();
     ui_ctx.prev_response = None;
     ui_ctx.override_selection_response = None;
+    ui_ctx.begin_frame(shards_context);
 
     let raw_input = crate::bindings::translate_raw_input(egui_input);
     match raw_input {

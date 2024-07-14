@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
-use super::image_util::AutoTexturePtr;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
@@ -61,8 +60,6 @@ struct ImageButton {
   parents: ParamVar,
   #[shard_required]
   required: ExposedTypes,
-  step_textures: Vec<AutoTexturePtr>,
-  step_counter: u64,
 }
 
 impl Default for ImageButton {
@@ -79,8 +76,6 @@ impl Default for ImageButton {
       exposing: Vec::new(),
       should_expose: false,
       cached_ui_image: Default::default(),
-      step_textures: Vec::new(),
-      step_counter: 0,
     }
   }
 }
@@ -185,9 +180,6 @@ impl Shard for ImageButton {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
 
-    self.step_textures.clear();
-    self.step_counter = 0;
-
     Ok(())
   }
 
@@ -199,6 +191,8 @@ impl Shard for ImageButton {
 impl ImageButton {
   fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
+    let ctx = util::get_current_context(&self.contexts)?;
+
     let (texture_id, texture_size) = {
       let texture = self
         .cached_ui_image
@@ -215,23 +209,17 @@ impl ImageButton {
       )
     };
 
-    self.activate_common(context, input, ui, texture_id, texture_size)
+    self.activate_common(ctx, context, input, ui, texture_id, texture_size)
   }
 
   fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    // support rendering multiple images from same shard
-    let current_step = shards::core::step_count(context);
-    if self.step_counter != current_step {
-      self.step_counter = current_step;
-      self.step_textures.clear();
-    }
-
     let ui = util::get_parent_ui(self.parents.get())?;
+    let ctx = util::get_current_context(&self.contexts)?;
 
-    let (texture_id, texture_size) =
-      image_util::get_egui_texture_from_gfx(input, &mut self.step_textures)?;
+    let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
 
     self.activate_common(
+      ctx,
       context,
       input,
       ui,
@@ -248,6 +236,7 @@ impl ImageButton {
 
   fn activate_common(
     &mut self,
+    egui_ctx: &mut crate::Context,
     context: &Context,
     input: &Var,
     ui: &mut egui::Ui,
@@ -283,10 +272,9 @@ impl ImageButton {
     }
 
     // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
-    let ctx = util::get_current_context(&self.contexts)?;
-    ctx.prev_response = Some(response);
+    egui_ctx.prev_response = Some(response);
     if button_clicked {
-      ctx.override_selection_response = ctx.prev_response.clone();
+      egui_ctx.override_selection_response = egui_ctx.prev_response.clone();
     }
 
     // button not clicked during this frame

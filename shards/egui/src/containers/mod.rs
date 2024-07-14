@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+// allow non upper case constants
+#![allow(non_upper_case_globals)]
+
 use shards::core::register_enum;
 use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
@@ -142,7 +145,6 @@ impl From<PopupLocation> for egui::AboveOrBelow {
     match popup_location {
       PopupLocation::Above => egui::AboveOrBelow::Above,
       PopupLocation::Below => egui::AboveOrBelow::Below,
-      _ => unreachable!(),
     }
   }
 }

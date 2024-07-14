@@ -2,8 +2,8 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
-use super::image_util::AutoTexturePtr;
 use crate::util;
+use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
@@ -27,6 +27,8 @@ use shards::types::BOOL_VAR_OR_NONE_SLICE;
 struct Image {
   #[shard_warmup]
   parents: ParamVar,
+  #[shard_warmup]
+  contexts: ParamVar,
   #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
   scale: ParamVar,
   // This will be in UI points (ScalingAware: false) or in pixels (ScalingAware: true)
@@ -39,22 +41,19 @@ struct Image {
   requiring: ExposedTypes,
   cached_ui_image: image_util::CachedUIImage,
   current_version: u64,
-  step_textures: Vec<AutoTexturePtr>,
-  step_counter: u64,
 }
 
 impl Default for Image {
   fn default() -> Self {
     Self {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
       size: ParamVar::default(),
       scaling_aware: ParamVar::default(),
       cached_ui_image: Default::default(),
       current_version: 0,
-      step_textures: Vec::new(),
-      step_counter: 0,
     }
   }
 }
@@ -109,9 +108,6 @@ impl Shard for Image {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
 
-    self.step_textures.clear();
-    self.step_counter = 0;
-
     Ok(())
   }
 
@@ -153,17 +149,10 @@ impl Image {
     }
   }
 
-  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    // support rendering multiple images from same shard
-    let current_step = shards::core::step_count(context);
-    if self.step_counter != current_step {
-      self.step_counter = current_step;
-      self.step_textures.clear();
-    }
-
+  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let ctx = util::get_current_context(&self.contexts)?;
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) =
-        image_util::get_egui_texture_from_gfx(input, &mut self.step_textures)?;
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
 
       let size = image_util::resolve_image_size(
         ui,

@@ -1,7 +1,6 @@
 use egui::Sense;
-use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, ClonedVar, SeqVar, ShardsVar, NONE_TYPES, SEQ_OF_SHARDS_TYPES};
+use shards::types::{ClonedVar, SeqVar, ShardsVar, NONE_TYPES, SEQ_OF_SHARDS_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
 use crate::{util, PARENTS_UI_NAME};

@@ -7,6 +7,7 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use crate::layouts::LAYOUT_FRAME_TYPE;
+use bindings::SHContext;
 use egui::Response;
 use shards::core::cloneVar;
 use shards::core::register_enum;
@@ -18,11 +19,10 @@ use shards::types::OptionalString;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
-use shards::SHObjectTypeInfo;
-use shards::SHTraits;
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ffi::CString;
+use widgets::image_util::AutoTexturePtr;
 
 #[macro_use]
 extern crate shards;
@@ -30,11 +30,12 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate shards_lang;
-
 pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
-pub static ANY_TABLE_OR_NONE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var, common_type::none];
+pub static ANY_TABLE_OR_NONE_SLICE: &[Type] = &[
+  common_type::any_table,
+  common_type::any_table_var,
+  common_type::none,
+];
 pub static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 pub static BOOL_VAR_SLICE: &[Type] = &[common_type::bool, common_type::bool_var];
 pub static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
@@ -66,10 +67,8 @@ pub static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
 ];
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguU"));
-static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
 
 static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
-static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 
 lazy_static! {
   static ref LAYOUTCLASS_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"layc"));
@@ -131,6 +130,20 @@ pub struct Context {
   pub dnd_value: RefCell<ClonedVar>,
   pub prev_response: Option<Response>,
   pub override_selection_response: Option<Response>,
+  // Frame based texture cache/keep-alive
+  step_textures: Vec<AutoTexturePtr>,
+  step_counter: u64,
+}
+
+impl Context {
+  pub fn begin_frame(&mut self, context: &shards::SHContext) {
+    // support rendering multiple images from same shard
+    let current_step = shards::core::step_count(context);
+    if self.step_counter != current_step {
+      self.step_counter = current_step;
+      self.step_textures.clear();
+    }
+  }
 }
 
 mod egui_host;

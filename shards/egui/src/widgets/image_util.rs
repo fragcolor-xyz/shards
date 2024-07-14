@@ -117,8 +117,8 @@ impl Drop for AutoTexturePtr {
 }
 
 pub fn get_egui_texture_from_gfx(
+  ctx: &mut crate::Context,
   input: &Var,
-  refs: &mut Vec<AutoTexturePtr>,
 ) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let texture_ptr: *mut gfx_TexturePtr =
     Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(input, &TEXTURE_TYPE)?;
@@ -126,7 +126,7 @@ pub fn get_egui_texture_from_gfx(
     return Err("Invalid texture pointer");
   }
 
-  refs.push(AutoTexturePtr::new(texture_ptr));
+  ctx.step_textures.push(AutoTexturePtr::new(texture_ptr));
 
   let texture_size = {
     let mut texture_res = linalg_aliases_int2::default();

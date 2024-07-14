@@ -93,11 +93,10 @@ struct Hyperlink {
 }
 
 struct RenderTarget {
+  contexts: ParamVar,
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
-  step_textures: Vec<AutoTexturePtr>,
-  step_counter: u64,
 }
 
 /// Displays text.

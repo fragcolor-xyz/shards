@@ -13,12 +13,11 @@ use crate::shards::shard::Shard;
 use crate::util::{self};
 use crate::{shards::shard, util::with_possible_panic};
 
-use crate::{EguiId, CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
+use crate::{CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
 
 pub struct AutoGrid {
   pub max_grid_width: Option<f32>,
   pub item_width: f32,
-  pub item_height: Option<f32>,
   pub column_spacing: Option<f32>,
   pub row_spacing: Option<f32>,
   pub center: bool,
@@ -29,7 +28,6 @@ impl Default for AutoGrid {
     Self {
       max_grid_width: None,
       item_width: 100.0,
-      item_height: None,
       column_spacing: None,
       row_spacing: None,
       center: true,
@@ -163,8 +161,6 @@ struct AutoGridShard {
   pub max_grid_width: ParamVar,
   #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
   pub item_width: ParamVar,
-  // #[shard_param("ItemHeight", "The height of each item.", FLOAT_VAR_SLICE)]
-  // pub item_height: ParamVar,
   #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_SLICE)]
   pub column_spacing: ParamVar,
   #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_SLICE)]
