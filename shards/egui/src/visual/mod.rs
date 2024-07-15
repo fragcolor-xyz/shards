@@ -924,7 +924,6 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
           TextEdit::singleline(&mut swap_state.search_string)
             .clip_text(false)
             .desired_width(if len == 0 { 40.0 } else { 0.0 })
-            .hint_text("String")
             .ui(ui);
           let result = ui
             .horizontal(|ui| {
@@ -1240,11 +1239,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self
           .ui
           .horizontal(|ui| {
-            if ui
-              .button(emoji("➕"))
-              .on_hover_text("Add new statement.")
-              .clicked()
-            {
+            let response = ui.button(emoji("➕")).on_hover_text("Add new statement.");
+            if response.clicked() {
               // add a new statement
               sequence.statements.push(Statement::Pipeline(Pipeline {
                 blocks: vec![Block {
@@ -1289,7 +1285,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
               self.context.has_changed = true;
             }
-            ui.button(emoji("💡")).on_hover_text("Ask AI.")
+            response
           })
           .inner,
       )
@@ -1313,19 +1309,16 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             assignment.accept_mut(&mut mutator);
             false
           }
-          Statement::Pipeline(pipeline) => {
-            pipeline.accept_mut(&mut mutator);
-            true
-          }
+          Statement::Pipeline(pipeline) => pipeline
+            .accept_mut(&mut mutator)
+            .map(|x| x.enabled())
+            .unwrap_or(false),
         };
         if self.parent_selected && is_pipeline {
           Some(
             ui.horizontal(|ui| {
-              if ui
-                .button(emoji("➕"))
-                .on_hover_text("Add new statement.")
-                .clicked()
-              {
+              let response = ui.button(emoji("➕")).on_hover_text("Add new statement.");
+              if response.clicked() {
                 // add a new statement
                 let pipeline = match statement {
                   Statement::Pipeline(pipeline) => pipeline,
@@ -1364,7 +1357,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
                 self.context.has_changed = true;
               }
-              ui.button(emoji("💡")).on_hover_text("Ask AI.")
+              response
             })
             .inner,
           )
