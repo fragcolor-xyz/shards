@@ -7,8 +7,8 @@ use shards::{
   core::register_shard,
   shard::Shard,
   types::{
-    common_type, Context, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type, Types, Var,
-    ANY_TYPES, SHARDS_OR_NONE_TYPES,
+    common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type, Types,
+    Var, ANY_TYPES, SHARDS_OR_NONE_TYPES,
   },
 };
 
@@ -21,14 +21,16 @@ lazy_static! {
 struct AreaShard {
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
   pub contents: ShardsVar,
-  #[shard_param("Position", "Absolute UI position; or when anchor is set, relative offset. (X/Y)", [common_type::float2, common_type::float2_var])]
+  #[shard_param("Position", "Defines the position of the UI element. If 'Anchor' is set, this acts as a relative offset (X/Y). Accepts fixed and variable float2 types.", [common_type::float2, common_type::float2_var])]
   pub position: ParamVar,
-  #[shard_param("Pivot", "The pivot for the inner UI", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Pivot", "Specifies the pivot point of the UI element. Can be any predefined anchor type or variable.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub pivot: ParamVar,
-  #[shard_param("Anchor", "Side of the screen to anchor the UI to.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Anchor", "Determines the side of the screen where the UI element is anchored. Accepts predefined anchor types or variables.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub anchor: ParamVar,
-  #[shard_param("Order", "Paint layer to be used for this UI. Default is background", [*crate::ORDER_TYPE])]
+  #[shard_param("Order", "Sets the rendering layer for the UI element. The default layer is 'background'.", [*crate::ORDER_TYPE])]
   pub order: ParamVar,
+  #[shard_param("Constrain", "Constrains the UI element to remain within the screen boundaries. Accepts a boolean value.", [common_type::bool])]
+  pub constrain: ClonedVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -47,6 +49,7 @@ impl Default for AreaShard {
       pivot: ParamVar::default(),
       anchor: ParamVar::default(),
       order: ParamVar::default(),
+      constrain: false.into(),
       required: Vec::new(),
       contents: ShardsVar::default(),
       inner_exposed: ExposedTypes::new(),
@@ -92,6 +95,8 @@ impl Shard for AreaShard {
     let ui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
     let mut frame = egui::Area::new(EguiId::new(self, 1).into());
+
+    frame = frame.constrain(self.constrain.0.as_ref().try_into()?);
 
     let order: Option<Order> = self.order.get().try_into().ok();
     frame = frame.order(order.unwrap_or(Order::Background).into());
