@@ -2265,6 +2265,27 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 }
 #endif
 
+#ifdef __APPLE__
+extern "C" void shards_openURL(SHStringWithLen urlString, bool inApp, void *viewControllerPtr);
+#endif
+
+SHVar webBrowseActivation(const SHVar &input) {
+  auto str = SHSTRVIEW(input);
+  SHStringWithLen urlString = toSWL(str);
+#ifdef __APPLE__
+#if SH_IOS
+  if (entt::locator<UIViewControllerContainer>::has_value()) {
+    shards_openURL(urlString, true, entt::locator<UIViewControllerContainer>::value().viewController);
+  } else {
+    shards_openURL(urlString, false, nullptr);
+  }
+#else
+  shards_openURL(urlString, false, nullptr);
+#endif
+#endif
+  return Var(input);
+}
+
 #define SH_ONCE_TIMER_DEBUG 0
 
 struct LogIntervalTimer {
@@ -2513,6 +2534,9 @@ SHARDS_REGISTER_FN(core) {
   using EmscriptenBrowseShard = LambdaShard<emscriptenBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", EmscriptenBrowseShard);
 #endif
+
+  using WebBrowseShard = LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
+  REGISTER_SHARD("Browse", WebBrowseShard);
 
   REGISTER_SHARD("Return", Return);
   REGISTER_SHARD("Restart", Restart);

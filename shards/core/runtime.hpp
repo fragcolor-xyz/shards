@@ -1011,6 +1011,15 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
   return fut["result"].as<T>();
 }
 #endif
+
+#if SH_IOS
+// such as: auto &container = entt::locator<UIViewControllerContainer>::value();
+// and: entt::locator<UIViewControllerContainer>::emplace(viewControllerContainer);
+// and entt::locator<UIViewControllerContainer>::has_value()
+struct UIViewControllerContainer {
+  void *viewController{nullptr};
+};
+#endif
 } // namespace shards
 
 #endif // SH_CORE_RUNTIME

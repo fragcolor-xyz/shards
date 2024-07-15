@@ -109,3 +109,9 @@ endif()
 if(ENABLE_FFI AND WIN32)
   target_link_libraries(shards-module-core Dbghelp)
 endif()
+
+if(APPLE)
+  # Build swift sources
+  add_library(shards_core_swift core.swift ${SHARDS_DIR}/include/shards/shards.swift)
+  target_include_directories(shards_core_swift PRIVATE ${SHARDS_DIR}/include)
+endif()
