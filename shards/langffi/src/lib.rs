@@ -329,6 +329,11 @@ pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mu
   }
 }
 
+#[cfg(windows)]
+extern "C" {
+  pub fn DebugBreak();
+}
+
 #[no_mangle]
 pub extern "C" fn setup_panic_hook() {
   // Had to put this in this crate otherwise we would have duplicated symbols
@@ -344,7 +349,7 @@ pub extern "C" fn setup_panic_hook() {
     }
     #[cfg(windows)]
     unsafe {
-      windows::Win32::System::Diagnostics::Debug::DebugBreak();
+      DebugBreak();
     }
   }));
 }
