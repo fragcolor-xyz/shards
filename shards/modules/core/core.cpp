@@ -2269,10 +2269,49 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 extern "C" void shards_openURL(SHStringWithLen urlString, bool inApp, void *viewControllerPtr);
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+void openURLWindows(const char *url) { ShellExecuteA(0, "open", url, 0, 0, SW_SHOWNORMAL); }
+#endif
+
+#ifdef __ANDROID__
+#include <jni.h>
+#include <android/native_activity.h>
+void openURLAndroid(ANativeActivity *activity, const char *url) {
+  JNIEnv *env = nullptr;
+  activity->vm->AttachCurrentThread(&env, nullptr);
+
+  jclass uriClass = env->FindClass("android/net/Uri");
+  jmethodID parseMethod = env->GetStaticMethodID(uriClass, "parse", "(Ljava/lang/String;)Landroid/net/Uri;");
+  jstring urlString = env->NewStringUTF(url);
+  jobject uri = env->CallStaticObjectMethod(uriClass, parseMethod, urlString);
+
+  jclass intentClass = env->FindClass("android/content/Intent");
+  jmethodID intentConstructor = env->GetMethodID(intentClass, "<init>", "(Ljava/lang/String;Landroid/net/Uri;)V");
+  jstring actionView = env->NewStringUTF("android.intent.action.VIEW");
+  jobject intent = env->NewObject(intentClass, intentConstructor, actionView, uri);
+
+  jclass activityClass = env->GetObjectClass(activity->clazz);
+  jmethodID startActivityMethod = env->GetMethodID(activityClass, "startActivity", "(Landroid/content/Intent;)V");
+  env->CallVoidMethod(activity->clazz, startActivityMethod, intent);
+
+  activity->vm->DetachCurrentThread();
+}
+#endif
+
+#ifdef __linux__
+#include <stdlib.h>
+void openURLLinux(const char *url) {
+  std::string command = "xdg-open ";
+  command += url;
+  system(command.c_str());
+}
+#endif
+
 SHVar webBrowseActivation(const SHVar &input) {
+#ifdef __APPLE__
   auto str = SHSTRVIEW(input);
   SHStringWithLen urlString = toSWL(str);
-#ifdef __APPLE__
 #if SH_IOS
   if (entt::locator<UIViewControllerContainer>::has_value()) {
     shards_openURL(urlString, true, entt::locator<UIViewControllerContainer>::value().viewController);
@@ -2282,6 +2321,18 @@ SHVar webBrowseActivation(const SHVar &input) {
 #else
   shards_openURL(urlString, false, nullptr);
 #endif
+#elif defined(_WIN32)
+  shards::OwnedVar urlVar = input; // ensure null termination
+  openURLWindows(urlVar.payload.stringValue);
+#elif defined(__ANDROID__)
+  ANativeActivity *activity = entt::locator<ANativeActivity>::value();
+  shards::OwnedVar urlVar = input; // ensure null termination
+  openURLAndroid(activity, urlVar.payload.stringValue);
+#elif defined(__linux__)
+  shards::OwnedVar urlVar = input; // ensure null termination
+  openURLLinux(urlVar.payload.stringValue);
+#else
+  // Unsupported platform
 #endif
   return Var(input);
 }
