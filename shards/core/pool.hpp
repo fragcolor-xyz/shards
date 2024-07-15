@@ -36,7 +36,7 @@ template <typename T, typename Traits = PoolItemTraits<T>> struct Pool {
       itemTraits.release(v);
   }
 
-  // Finds a canditate, based on the largest value returned by the condition that is not INT64_MAX
+  // Finds a candidate, based on the largest value returned by the condition that is not INT64_MAX
   template <typename F> std::enable_if_t<std::is_invocable_r_v<int64_t, F, T &>, T *> findItem(F condition) {
     int64_t largestWeight = INT64_MIN;
     typename decltype(freeList)::iterator targetFreeListIt = freeList.end();
