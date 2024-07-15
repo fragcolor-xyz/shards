@@ -307,7 +307,7 @@ function(add_rust_library)
 
   # Add default required libraries for windows
   if(WIN32)
-    target_link_libraries(${RUST_TARGET_NAME} INTERFACE NtDll Userenv Propsys)
+    target_link_libraries(${RUST_TARGET_NAME} INTERFACE NtDll Userenv Propsys Combase)
   endif()
 endfunction()
 
