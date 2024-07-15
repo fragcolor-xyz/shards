@@ -2253,17 +2253,21 @@ fn set_shard_parameter(
         )
       }
     };
+
     if var_value.as_ref().valueType != SHType_ContextVar {
       return Err((format!("Expected a variable, found {:?}", value), line_info).into());
     }
+
     let (full_name, is_replacement) =
       get_full_name(name, env, line_info, name.namespaces.is_empty())?;
+
     let suffix = if !is_replacement && name.namespaces.is_empty() {
       // suffix is only relevant if we are not a replacement
       find_current_suffix(env)
     } else {
       None
     };
+
     if let Some(suffix) = suffix {
       // fix up the value to be a suffixed variable if we have a suffix
       let new_name = format!("{}{}", full_name, suffix);
@@ -2275,9 +2279,10 @@ fn set_shard_parameter(
         i.try_into().expect("Too many parameters"),
         *new_name.as_ref(),
       ) {
+        let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
         Err(
           (
-            format!("Failed to set parameter (1), error: {}", e),
+            format!("Failed to set parameter `{}` , error: {}", param_name, e),
             line_info,
           )
             .into(),
@@ -2290,9 +2295,10 @@ fn set_shard_parameter(
         i.try_into().expect("Too many parameters"),
         *var_value.as_ref(),
       ) {
+        let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
         Err(
           (
-            format!("Failed to set parameter (2), error: {}", e),
+            format!("Failed to set parameter `{}`, error: {}", param_name, e),
             line_info,
           )
             .into(),
@@ -2306,9 +2312,10 @@ fn set_shard_parameter(
       i.try_into().expect("Too many parameters"),
       *var_value.as_ref(),
     ) {
+      let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
       Err(
         (
-          format!("Failed to set parameter (3), error: {}", e),
+          format!("Failed to set parameter `{}`, error: {}", param_name, e),
           line_info,
         )
           .into(),

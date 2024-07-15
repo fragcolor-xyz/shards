@@ -2,8 +2,9 @@
   Once({
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
-    "ui-nested.shs" | FS.Read | Shards.Read(AstType::Object) = ast
-    Shards.Print >= text-code
+    "strings2.shs" | FS.Read | Shards.Read(AstType::Object) = ast
+    {Shards.Print >= text-code}
+    {Maybe({Shards.Distill = wire-unused})}
   })
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
     UI({
@@ -16,6 +17,10 @@
 
       UI.Window(Title: "Code" Contents: {
         UI.CodeEditor(text-code "Shards")
+      })
+
+      UI.Window(Title: "Debug" Contents: {
+        UI.Settings
       })
     }) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)

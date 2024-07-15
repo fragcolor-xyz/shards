@@ -4,7 +4,7 @@
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
-use std::{any::Any, rc::Rc, sync::mpsc};
+use std::sync::mpsc;
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -433,6 +433,11 @@ impl<'a> VisualAst<'a> {
       })
       .unwrap_or("No help text provided.");
 
+    let error_text = x
+      .custom_state
+      .get::<ShardsError>()
+      .map(|x| x.message.to_owned());
+
     let color = shard_info.map(|x| {
       let c = x.get_fast_static("color");
       Var::color_bytes(c).unwrap_or((255, 255, 255, 255))
@@ -462,7 +467,20 @@ impl<'a> VisualAst<'a> {
         .italics()
     };
 
-    let response = self.ui.label(shard_name_rt).on_hover_text(help_text);
+    let response = if let Some(error_text) = error_text {
+      let help_text_rich = RichText::new(help_text).color(Color32::WHITE);
+      let error_text_rich = RichText::new(error_text).color(Color32::LIGHT_RED);
+
+      self.ui.label(shard_name_rt).on_hover_ui(|ui: &mut Ui| {
+        ui.label(help_text_rich);
+        ui.add_space(5.0);
+        ui.label(error_text_rich);
+      })
+    } else {
+      self.ui.label(shard_name_rt).on_hover_ui(|ui: &mut Ui| {
+        ui.label(RichText::new(help_text).color(Color32::WHITE));
+      })
+    };
 
     let params = shard_info.and_then(|x| x.get_fast_static("parameters").as_seq().ok());
 
@@ -1483,6 +1501,19 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let mut action = BlockAction::Keep;
     let mut selected = selected;
 
+    let restore_style = match &block.content {
+      BlockContent::Shard(f) | BlockContent::Func(f) => {
+        if let Some(_error) = f.custom_state.get::<ShardsError>() {
+          let previous = self.ui.style().visuals.window_stroke;
+          self.ui.style_mut().visuals.window_stroke = egui::Stroke::new(1.5, Color32::RED);
+          Some(previous)
+        } else {
+          None
+        }
+      }
+      _ => None,
+    };
+
     let response = self
       .ui
       .push_id(id, |ui| {
@@ -1661,6 +1692,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           _ => {}
         }
       }
+    }
+
+    if let Some(restore_style) = restore_style {
+      self.ui.style_mut().visuals.window_stroke = restore_style;
     }
 
     (action, Some(response))
