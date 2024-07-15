@@ -331,14 +331,6 @@ fn get_last_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
 }
 
 impl<'a> VisualAst<'a> {
-  pub fn new(context: &'a mut Context, ui: &'a mut Ui) -> Self {
-    VisualAst {
-      context,
-      ui,
-      parent_selected: false,
-    }
-  }
-
   pub fn with_parent_selected(
     context: &'a mut Context,
     ui: &'a mut Ui,
@@ -1304,17 +1296,21 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       .ui
       .with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
         let mut mutator = VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-        let is_pipeline = match statement {
+        let is_expanded = match statement {
           Statement::Assignment(assignment) => {
             assignment.accept_mut(&mut mutator);
             false
           }
-          Statement::Pipeline(pipeline) => pipeline
-            .accept_mut(&mut mutator)
-            .map(|x| x.enabled())
-            .unwrap_or(false),
+          Statement::Pipeline(pipeline) => {
+            pipeline.accept_mut(&mut mutator);
+            pipeline
+              .blocks
+              .last()
+              .map(|x| x.custom_state.get::<BlockState>().unwrap().selected)
+              .unwrap_or(false)
+          }
         };
-        if self.parent_selected && is_pipeline {
+        if self.parent_selected && is_expanded {
           Some(
             ui.horizontal(|ui| {
               let response = ui.button(emoji("➕")).on_hover_text("Add new statement.");
@@ -1407,7 +1403,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     let mut final_response: Option<Response> = None;
     let mut i = 0;
     while i < pipeline.blocks.len() {
-      let response = match self.visit_block(&mut pipeline.blocks[i]) {
+      final_response = match self.visit_block(&mut pipeline.blocks[i]) {
         (BlockAction::Remove, r) => {
           self.context.has_changed = true;
           pipeline.blocks.remove(i);
@@ -1469,14 +1465,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       //     response.rect.translate(Vec2::new(10.0, 0.0)),
       //   );
       // }
-
-      if let Some(previous_response) = final_response.take() {
-        if let Some(response) = response {
-          final_response = Some(previous_response.union(response))
-        } else {
-          final_response = Some(previous_response)
-        }
-      }
     }
 
     final_response
@@ -2598,7 +2586,7 @@ impl Shard for UIShardsShard {
         ui,
         root
           .custom_state
-          .get_or_insert_with(|| SequenceState { selected: false })
+          .get_or_insert_with(|| SequenceState { selected: true })
           .selected,
       );
       root.accept_mut(&mut mutator);

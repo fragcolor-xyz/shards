@@ -2282,7 +2282,7 @@ fn set_shard_parameter(
         let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
         Err(
           (
-            format!("Failed to set parameter `{}` , error: {}", param_name, e),
+            format!("Failed to set parameter '{}' , error: {}", param_name, e),
             line_info,
           )
             .into(),
@@ -2298,7 +2298,7 @@ fn set_shard_parameter(
         let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
         Err(
           (
-            format!("Failed to set parameter `{}`, error: {}", param_name, e),
+            format!("Failed to set parameter '{}', error: {}", param_name, e),
             line_info,
           )
             .into(),
@@ -2315,7 +2315,7 @@ fn set_shard_parameter(
       let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
       Err(
         (
-          format!("Failed to set parameter `{}`, error: {}", param_name, e),
+          format!("Failed to set parameter '{}', error: {}", param_name, e),
           line_info,
         )
           .into(),
