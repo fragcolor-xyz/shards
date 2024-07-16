@@ -266,8 +266,8 @@ if(CODE_COVERAGE)
   if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"
     OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "[A-Za-z]*Clang"
   )
-    add_compile_options(--coverage)
-    add_link_options(--coverage)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX,C>:--coverage>)
+    add_link_options($<$<COMPILE_LANGUAGE:CXX,C>:--coverage>)
   else()
     message(FATAL_ERROR "Code coverage is not supported for the '${CMAKE_CXX_COMPILER_ID}' compiler")
   endif()
