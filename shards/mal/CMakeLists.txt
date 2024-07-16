@@ -21,6 +21,9 @@ function(setup_shards_target TARGET)
     target_link_libraries(${TARGET} replxx shards-core)
   endif()
   set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)
+
+  # Need the lang-ffi bindings
+  add_dependencies(${TARGET} cargo-shards-langffi-rust)
 endfunction()
 
 function(setup_shards_library_target TARGET)
