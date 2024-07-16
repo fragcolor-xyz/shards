@@ -20,6 +20,7 @@ use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
 use shards::types::common_type;
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -32,25 +33,44 @@ use shards::types::IMAGE_TYPES;
 use shards::types::INT2_TYPES;
 use shards::types::INT2_TYPES_SLICE;
 use std::convert::TryInto;
+use std::mem::size_of;
 use usvg::tiny_skia_path::IntSize;
 use usvg::Transform;
 use usvg::TreeParsing;
 
-pub fn pixmap_to_var(pmap: &mut Pixmap) -> Var {
-  Var {
-    valueType: SHType_Image,
-    payload: SHVarPayload {
-      __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-        imageValue: SHImage {
-          width: pmap.width() as u16,
-          height: pmap.height() as u16,
-          channels: 4,
-          flags: SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA as u8,
-          data: pmap.as_mut().data_mut().as_mut_ptr(),
-        },
+#[repr(C)]
+struct PixmapImageContainer {
+  image: SHImage,
+  pixmap: Pixmap,
+}
+
+pub extern "C" fn free_pixmap_image(img: *mut SHImage) {
+  unsafe {
+    let container = img as *mut PixmapImageContainer;
+    std::ptr::drop_in_place(&mut (*container).pixmap);
+  }
+}
+
+pub fn pixmap_to_var(pmap: Pixmap) -> ClonedVar {
+  unsafe {
+    let alloc_size = size_of::<PixmapImageContainer>() - size_of::<SHImage>();
+    let image = (*shards::core::Core).imageNew.unwrap_unchecked()(alloc_size as u32);
+    let container = image as *mut PixmapImageContainer;
+    std::ptr::write(&mut (*container).pixmap, pmap);
+    let pixmap = &(*container).pixmap;
+    (*image).data = pixmap.data().as_ptr() as *mut u8;
+    (*image).width = pixmap.width() as u16;
+    (*image).height = pixmap.height() as u16;
+    (*image).channels = 4;
+    (*image).flags = SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA as u8;
+    (*image).free = Some(free_pixmap_image);
+    ClonedVar(Var {
+      valueType: SHType_Image,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { imageValue: image },
       },
-    },
-    ..Default::default()
+      ..Default::default()
+    })
   }
 }
 
@@ -63,7 +83,7 @@ lazy_static! {
 #[derive(shard)]
 #[shard_info("SVG.ToImage", "Converts an SVG string or bytes to an image.")]
 struct ToImage {
-  pixmap: Option<Pixmap>,
+  output: ClonedVar,
   #[shard_param(
     "Size",
     "The desired output size, if (0, 0) will default to the size defined in the svg data.",
@@ -81,7 +101,7 @@ struct ToImage {
 impl Default for ToImage {
   fn default() -> Self {
     Self {
-      pixmap: None,
+      output: ClonedVar::default(),
       size: ParamVar::default(),
       offset: ParamVar::default(),
       padding: ParamVar::default(),
@@ -121,11 +141,19 @@ impl Shard for ToImage {
       _ => Err("Invalid input type"),
     }?;
 
-    let (sx, sy): (i32, i32) = self.size.get().try_into().unwrap_or_default();
+    let size_var = self.size.get();
+    let (sx, sy) = if size_var.is_none() {
+      let default_size = ntree.size.to_int_size();
+      (default_size.width() as i32, default_size.height() as i32)
+    } else {
+      let (sx, sy): (i32, i32) = size_var.try_into().unwrap_or_default();
+      (sx, sy)
+    };
+
     let (w, h) = if sx <= 0 || sy <= 0 {
       (2, 2) // Fallback for negative size
     } else {
-     (sx as u32, sy as u32)
+      (sx as u32, sy as u32)
     };
 
     let (offset_x, offset_y): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
@@ -141,19 +169,8 @@ impl Shard for ToImage {
       IntSize::from_wh(w, h).expect("Invalid size")
     };
 
-    if self.pixmap.is_none() {
-      self.pixmap = Some(
-        Pixmap::new(pixmap_size.width(), pixmap_size.height()).ok_or("Failed to create pixmap")?,
-      );
-    } else {
-      let pm = self.pixmap.as_ref().unwrap();
-      if pixmap_size.width() != pm.width() || pixmap_size.height() != pm.height() {
-        self.pixmap = Some(
-          Pixmap::new(pixmap_size.width(), pixmap_size.height())
-            .ok_or("Failed to create pixmap")?,
-        );
-      }
-    }
+    let mut pixmap =
+      Pixmap::new(pixmap_size.width(), pixmap_size.height()).ok_or("Failed to create pixmap")?;
 
     let mut rtree = resvg::Tree::from_usvg(&ntree);
 
@@ -172,10 +189,11 @@ impl Shard for ToImage {
 
     rtree.render(
       Transform::from_translate(offset_x + pad_x as f32, offset_y + pad_y as f32),
-      &mut self.pixmap.as_mut().unwrap().as_mut(),
+      &mut pixmap.as_mut(),
     );
 
-    Ok(pixmap_to_var(self.pixmap.as_mut().unwrap()))
+    self.output = pixmap_to_var(pixmap);
+    Ok(self.output.0)
   }
 }
 

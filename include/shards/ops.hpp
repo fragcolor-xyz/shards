@@ -226,20 +226,20 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
-    if ((a.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((a.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       apixsize = 2;
-    else if ((a.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((a.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       apixsize = 4;
-    if ((b.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    if ((b.payload.imageValue->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       bpixsize = 2;
-    else if ((b.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((b.payload.imageValue->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       bpixsize = 4;
-    return apixsize == bpixsize && a.payload.imageValue.channels == b.payload.imageValue.channels &&
-           a.payload.imageValue.width == b.payload.imageValue.width &&
-           a.payload.imageValue.height == b.payload.imageValue.height &&
-           (a.payload.imageValue.data == b.payload.imageValue.data ||
-            (memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                    a.payload.imageValue.channels * a.payload.imageValue.width * a.payload.imageValue.height * apixsize) == 0));
+    return apixsize == bpixsize && a.payload.imageValue->channels == b.payload.imageValue->channels &&
+           a.payload.imageValue->width == b.payload.imageValue->width &&
+           a.payload.imageValue->height == b.payload.imageValue->height &&
+           (a.payload.imageValue->data == b.payload.imageValue->data ||
+            (memcmp(a.payload.imageValue->data, b.payload.imageValue->data,
+                    a.payload.imageValue->channels * a.payload.imageValue->width * a.payload.imageValue->height * apixsize) == 0));
   }
   case SHType::Audio: {
     return a.payload.audioValue.nsamples == b.payload.audioValue.nsamples &&
@@ -356,7 +356,7 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     return astr < bstr;
   }
   case SHType::Image:
-    return a.payload.imageValue.data < b.payload.imageValue.data;
+    return a.payload.imageValue->data < b.payload.imageValue->data;
   case SHType::Seq:
     return _seqLess(a, b);
   case SHType::Table:
@@ -469,7 +469,7 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     return astr <= bstr;
   }
   case SHType::Image:
-    return a.payload.imageValue.data <= b.payload.imageValue.data;
+    return a.payload.imageValue->data <= b.payload.imageValue->data;
   case SHType::Seq:
     return _seqLessEq(a, b);
   case SHType::Table:

@@ -313,7 +313,7 @@ struct Loader {
         for (size_t i = 0; i < accessor.count; i++) {
           switch (accessor.componentType) {
           case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-            ((uint16_t *)dstPtr)[0] = uint16_t(((uint8_t *)srcPtr)[i]);
+            *(uint16_t *)dstPtr = uint16_t(*(uint8_t *)srcPtr);
             break;
           }
           dstPtr += dstElementSize;
@@ -437,7 +437,10 @@ struct Loader {
             ->init(TextureDesc{
                 .format = convertTextureFormat(gltfImage, false),
                 .resolution = resolution,
-                .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+                .source =
+                    TextureSource{
+                        .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+                    },
             })
             .initWithSamplerState(samplerState);
 

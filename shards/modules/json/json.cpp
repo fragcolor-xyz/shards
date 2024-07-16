@@ -23,7 +23,7 @@ void _releaseMemory(SHVar &var) {
     delete[] var.payload.stringValue;
     break;
   case SHType::Image:
-    delete[] var.payload.imageValue.data;
+    shards::imageDecRef(var.payload.imageValue);
     break;
   case SHType::Audio:
     delete[] var.payload.audioValue.samples;
@@ -136,17 +136,16 @@ void to_json(json &j, const SHVar &var) {
     break;
   }
   case SHType::Image: {
-    if (var.payload.imageValue.data) {
-      auto pixsize = shards::getPixelSize(var);
-      auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
+    if (var.payload.imageValue->data) {
+      auto binsize = shards::imageDeriveDataLength(var.payload.imageValue);
       std::vector<uint8_t> buffer;
       buffer.resize(binsize);
-      memcpy(&buffer[0], var.payload.imageValue.data, binsize);
+      memcpy(&buffer[0], var.payload.imageValue->data, binsize);
       j = json{{"type", valType},
-               {"width", var.payload.imageValue.width},
-               {"height", var.payload.imageValue.height},
-               {"channels", var.payload.imageValue.channels},
-               {"flags", var.payload.imageValue.flags},
+               {"width", var.payload.imageValue->width},
+               {"height", var.payload.imageValue->height},
+               {"channels", var.payload.imageValue->channels},
+               {"flags", var.payload.imageValue->flags},
                {"data", buffer}};
     } else {
       j = json{{"type", 0}, {"value", int(SHWireState::Continue)}};
@@ -400,15 +399,15 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::Image: {
     var.valueType = SHType::Image;
-    var.payload.imageValue.width = j.at("width").get<int32_t>();
-    var.payload.imageValue.height = j.at("height").get<int32_t>();
-    var.payload.imageValue.channels = j.at("channels").get<int32_t>();
-    var.payload.imageValue.flags = j.at("flags").get<int32_t>();
-    auto pixsize = shards::getPixelSize(var);
-    auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
-    var.payload.imageValue.data = new uint8_t[binsize];
+    SHImage tmpImage{};
+    tmpImage.width = j.at("width").get<int32_t>();
+    tmpImage.height = j.at("height").get<int32_t>();
+    tmpImage.channels = j.at("channels").get<int32_t>();
+    tmpImage.flags = j.at("flags").get<int32_t>();
+    auto binsize = shards::imageDeriveDataLength(&tmpImage);
+    SHImage& outImage = *(var.payload.imageValue = shards::imageNew(binsize));
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
-    memcpy(var.payload.imageValue.data, &buffer[0], binsize);
+    memcpy(outImage.data, &buffer[0], binsize);
     break;
   }
   case SHType::Bytes: {

@@ -4,6 +4,8 @@
 #include "wires.hpp"
 #include <cassert>
 #include <shards/core/async.hpp>
+#include <shards/core/taskflow.hpp>
+#include <shards/core/platform.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/core/module.hpp>
 #include <shards/common_types.hpp>
@@ -1385,7 +1387,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
-      await(
+      maybeAwait(
           context,
           [this, context, wireVar]() {
             deferredCompose(context);
@@ -1529,22 +1531,17 @@ struct ParallelBase : public CapturingSpawners {
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
   }
 
-  struct TaskFlowDebugInterface : tf::WorkerInterface {
-    std::string debugName;
-
-    TaskFlowDebugInterface(std::string debugName) : debugName(debugName) {}
-    void scheduler_prologue(tf::Worker &worker) { pushThreadName(fmt::format("<idle> tf::Executor ({})", debugName)); }
-    virtual void scheduler_epilogue(tf::Worker &worker, std::exception_ptr ptr) {}
-  };
 
   struct Composer {
     ParallelBase &server;
+    bool onWorkerThread = true;
 
     void compose(SHWire *wire, SHMesh *mesh, bool recycling) {
       if (recycling)
         return;
 
       SHInstanceData data{};
+      data.onWorkerThread = onWorkerThread;
       data.inputType = server._inputType;
       if (!wire->pure) {
         data.shared = server._sharedCopy;
@@ -1566,16 +1563,6 @@ struct ParallelBase : public CapturingSpawners {
 
       SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
     }
-
-#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
-    if (_threads > 0) {
-      const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
-      if (!_exec || _exec->num_workers() != (size_t(threads))) {
-        _exec = std::make_unique<tf::Executor>(size_t(threads),
-                                               std::make_shared<TaskFlowDebugInterface>(fmt::format("{}", wire->name)));
-      }
-    }
-#endif
   }
 
   void cleanup(SHContext *context) {
@@ -1644,6 +1631,8 @@ struct ParallelBase : public CapturingSpawners {
 
     std::atomic_bool anySuccess = false;
 
+    // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
+    tf::Semaphore semaphore(std::max<size_t>(1, _threads));
     flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
       if (_policy == WaitUntil::FirstSuccess && anySuccess) {
         // Early exit if FirstSuccess policy
@@ -1687,6 +1676,7 @@ struct ParallelBase : public CapturingSpawners {
 
       bool success = true;
       cref->mesh->schedule(cref->wire, getInput(input, idx), false); // don't compose
+      cref->wire->context->onWorkerThread = true;
       while (!cref->mesh->empty()) {
         if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
           success = false;
@@ -1712,7 +1702,7 @@ struct ParallelBase : public CapturingSpawners {
       _pool->release(cref);
     });
 
-    auto future = _exec->run(std::move(flow));
+    auto future = TaskFlowInstance::instance().run(std::move(flow));
 
     // we done if we are here
     while (true) {
@@ -1777,7 +1767,6 @@ protected:
   std::vector<std::shared_ptr<SHMesh>> _meshes;
   std::vector<ManyWire *> _wires;
   int64_t _threads{0};
-  std::unique_ptr<tf::Executor> _exec;
 };
 
 struct TryMany : public ParallelBase {
@@ -2202,6 +2191,8 @@ struct DoMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _composer.onWorkerThread = false;
+    
     WireBase::resolveWire();
 
     if (data.inputType.seqTypes.len == 1) {
@@ -2259,7 +2250,7 @@ struct DoMany : public TryMany {
       auto &cref = _wires[i];
       if (!cref) {
         // compose on a worker thread!
-        await(
+        maybeAwait(
             context,
             [this, i]() {
               auto &cref = _wires[i];

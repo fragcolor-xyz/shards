@@ -131,7 +131,7 @@ struct TextureManager {
         .filterMode = WGPUFilterMode_Linear,
     };
 
-    ImmutableSharedBuffer currentData = texture->getData();
+    ImmutableSharedBuffer currentData = texture->getSource().data;
     std::vector<uint8_t> imageData;
     if (set.subRegion && currentData.getLength() > 0) {
       imageData.resize(currentData.getLength());
@@ -164,7 +164,7 @@ struct TextureManager {
         ->init(TextureDesc{
             .format = fmt,
             .resolution = size,
-            .data = std::move(imageData),
+            .source = TextureSource{.data = std::move(imageData)},
         })
         .initWithSamplerState(sampler);
   }

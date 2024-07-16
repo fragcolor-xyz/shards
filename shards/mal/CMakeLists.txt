@@ -21,6 +21,9 @@ function(setup_shards_target TARGET)
     target_link_libraries(${TARGET} replxx shards-core)
   endif()
   set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)
+
+  # Need the lang-ffi bindings
+  add_dependencies(${TARGET} cargo-shards-langffi-rust)
 endfunction()
 
 function(setup_shards_library_target TARGET)
@@ -49,8 +52,9 @@ if(EMSCRIPTEN)
   endif()
 
   target_link_options(shards PUBLIC
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_NAME=shards"
-    "SHELL:-s NO_EXIT_RUNTIME=1"
+    "-sMODULARIZE=1"
+    "-sEXPORT_NAME=shards"
+    "-sNO_EXIT_RUNTIME=1"
+    "-sALLOW_MEMORY_GROWTH=1"
   )
 endif()

@@ -470,12 +470,20 @@ struct Await : public BaseSubFlow {
 
   OwnedVar _output;
   std::mutex mutex;
+  bool _alreadyOnWorker{};
 
   void setParam(int index, const SHVar &value) { _shards = value; }
 
   SHVar getParam(int index) { return _shards; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.onWorkerThread) {
+      SPDLOG_WARN("Await shard is being used on a worker thread, ignoring.");
+      _alreadyOnWorker = true;
+      OVERRIDE_ACTIVATE(data, activateSync);
+    } else {
+      _alreadyOnWorker = false;
+    }
     auto dataCopy = data;
     // flag that we might use a worker
     dataCopy.onWorkerThread = true;
@@ -486,9 +494,11 @@ struct Await : public BaseSubFlow {
 
   void warmup(SHContext *ctx) {
     BaseSubFlow::warmup(ctx);
-    _context.emplace(nullptr, ctx->currentWire(), ctx->flow);
-    _context->wireStack = ctx->wireStack;
-    _context->parent = ctx;
+    if (!_alreadyOnWorker) {
+      _context.emplace(nullptr, ctx->currentWire(), ctx->flow);
+      _context->wireStack = ctx->wireStack;
+      _context->parent = ctx;
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -499,6 +509,14 @@ struct Await : public BaseSubFlow {
       _context->stopFlow();
       // Don't .reset() _context, it's still running on the worker thread
     }
+  }
+
+  SHVar activateSync(SHContext *context, const SHVar &input) {
+    SHVar output{};
+    if (_shards.activate(context, input, output) == SHWireState::Error) {
+      throw SHException("Await shard failed to activate the shards.");
+    }
+    return output;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
