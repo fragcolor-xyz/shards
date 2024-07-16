@@ -27,6 +27,7 @@ glTF loadGltfFromFile(std::string_view file);
 glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength);
 bool isBinary(uint8_t (&peekBuffer)[4]);
 
+std::vector<uint8_t> convertToGlb(const std::string &inputPath);
 } // namespace gfx
 
 #endif /* CDDE58F0_98A7_4185_87DD_DF680AB4C011 */
