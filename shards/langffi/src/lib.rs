@@ -1,6 +1,6 @@
 use shards::core::{register_enum, register_legacy_shard, register_shard, WireErrorListener};
 use shards::util::from_raw_parts_allow_null;
-use shards::{shlog_error, types::*};
+use shards::{shlog_error, shlog_trace, types::*};
 use shards::{SHMeshRef, SHStringWithLen};
 use shards_lang::cli::process_args;
 use shards_lang::eval::{self, *};
@@ -155,6 +155,9 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
   let env = unsafe { &mut *env };
+  if env.program.is_none() {
+    env.program = Some(ast as *const Program);
+  }
   for stmt in &ast.sequence.statements {
     if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);
@@ -282,10 +285,34 @@ pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
   Var::new_ref_counted(ast_clone, &AST_TYPE)
 }
 
+/// To be used before compose or schedule basically to report errors
 #[no_mangle]
 pub extern "C" fn shards_attach_mesh(mesh: SHMeshRef, ast: &Var) {
-  let ast_clone: ClonedVar = ast.into();
-  let listener = WireErrorListener::new(mesh, move |error| {});
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+  let listener = WireErrorListener::new(mesh, |error| {
+    let error = unsafe { &*error };
+    let id = unsafe { (*error.shard).id };
+    let line = unsafe { (*error.shard).line };
+    let column = unsafe { (*error.shard).column };
+    ast
+      .metadata
+      .debug_info
+      .borrow_mut()
+      .id_to_functions
+      .get(&id)
+      .map(|f| {
+        let f = unsafe { &**f };
+        let msg: &str = error.error.0.as_ref().try_into().unwrap();
+        let error = ShardsError {
+          message: msg.to_owned(),
+          loc: LineInfo { line, column },
+        };
+        f.custom_state.set(error)
+      });
+  });
+  ast.metadata.debug_info.borrow_mut().listener = Some(listener);
 }
 
 #[no_mangle]

@@ -92,8 +92,8 @@ enum Definition {
 }
 
 pub struct EvalEnv {
-  pub(crate) program: Option<*const Program>,
-  pub(crate) parent: Option<*const EvalEnv>,
+  pub program: Option<*const Program>,
+  pub parent: Option<*const EvalEnv>,
 
   namespace: RcStrWrapper,
   full_namespace: RcStrWrapper,
@@ -846,14 +846,23 @@ fn find_extension<'a>(
   }
 }
 
-fn get_parent_program<'a>(env: &'a EvalEnv) -> Option<&'a Program> {
-  if let Some(program) = env.program {
-    Some(unsafe { &*program })
-  } else if let Some(parent) = env.parent {
-    get_parent_program(unsafe { &*(parent as *const EvalEnv) })
-  } else {
-    None
+fn get_topmost_program<'a>(env: &'a EvalEnv) -> Option<&'a Program> {
+  let mut current_env = env;
+  let mut topmost_env = env;
+
+  // Traverse to the topmost EvalEnv
+  while let Some(parent) = current_env.parent {
+    topmost_env = unsafe { &*(parent as *const EvalEnv) };
+    current_env = topmost_env;
   }
+
+  // Traverse back down to find the first non-null program
+  current_env = topmost_env;
+  while current_env.program.is_none() && current_env.parent.is_some() {
+    current_env = unsafe { &*(current_env.parent.unwrap() as *const EvalEnv) };
+  }
+
+  current_env.program.map(|program| unsafe { &*program })
 }
 
 fn finalize_wire(
@@ -2141,30 +2150,13 @@ fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> 
   get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
 }
 
-unsafe extern "C" fn error_callback(
-  shard: *mut Shard,
-  error_data: *mut c_void,
-  msg: SHStringWithLen,
-) {
-  // cast error_data to our ast &Function
-  let func: &Function = &*(error_data as *const Function);
-  let msg: &str = msg.into();
-  func.custom_state.set(ShardsError {
-    message: msg.into(),
-    loc: LineInfo {
-      line: (*shard).line,
-      column: (*shard).column,
-    },
-  });
-}
-
 fn create_shard(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<AutoShardRef, ShardsError> {
   // add an id to the shard
-  let id = get_parent_program(e).map(|p| {
+  let id = get_topmost_program(e).map(|p| {
     let mut debug_info = p.metadata.debug_info.borrow_mut();
     debug_info.id_counter += 1;
     let id = debug_info.id_counter;
@@ -2855,23 +2847,6 @@ fn process_template(
   } else {
     Ok(None)
   }
-}
-
-unsafe extern "C" fn wire_error_callback(
-  _wire: *const SHWire,
-  error_data: *mut c_void,
-  msg: SHStringWithLen,
-) {
-  // cast error_data to our ast &Function
-  let func = &*(error_data as *const Function);
-  let msg: &str = msg.into();
-  func.custom_state.set(ShardsError {
-    message: msg.into(),
-    loc: LineInfo {
-      line: 0,   // should not matter for now at least
-      column: 0, // should not matter for now at least
-    },
-  });
 }
 
 fn eval_pipeline(
