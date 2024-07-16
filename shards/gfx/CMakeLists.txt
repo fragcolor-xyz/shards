@@ -53,14 +53,14 @@ endif()
 add_library(gfx ${GFX_SOURCES})
 
 # Always optimize files with hot-paths
-set_source_files_properties(
-  drawables/mesh_tree_drawable.cpp
-  gltf/gltf.cpp
-  texture_file/texture_file.cpp
-  pipeline_hashes.cpp
-  PROPERTIES
-  COMPILE_FLAGS -O3
-  SKIP_PRECOMPILE_HEADERS ON)
+# set_source_files_properties(
+#   drawables/mesh_tree_drawable.cpp
+#   gltf/gltf.cpp
+#   texture_file/texture_file.cpp
+#   pipeline_hashes.cpp
+#   PROPERTIES
+#   COMPILE_FLAGS -O3
+#   SKIP_PRECOMPILE_HEADERS ON)
 
 target_compile_features(gfx PUBLIC cxx_std_20)
 
