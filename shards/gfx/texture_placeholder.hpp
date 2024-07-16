@@ -40,7 +40,7 @@ struct PlaceholderTexture {
     } break;
     }
 
-    desc.data = std::move(data);
+    desc.source.data = std::move(data);
 
     TexturePtr texture = std::make_shared<Texture>();
     texture->init(desc);

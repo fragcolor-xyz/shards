@@ -769,15 +769,6 @@ struct Var : public SHVar {
     payload.bytesValue = const_cast<uint8_t *>(bytes.data());
   }
 
-  explicit Var(const uint8_t *data, uint16_t width, uint16_t height, uint8_t channels, uint8_t flags = 0) : SHVar() {
-    valueType = SHType::Image;
-    payload.imageValue.width = width;
-    payload.imageValue.height = height;
-    payload.imageValue.channels = channels;
-    payload.imageValue.flags = flags;
-    payload.imageValue.data = const_cast<uint8_t *>(data);
-  }
-
   explicit Var(int src) : SHVar() {
     valueType = SHType::Int;
     payload.intValue = src;
@@ -924,7 +915,7 @@ struct Var : public SHVar {
     payload.shardValue = shard;
   }
 
-  explicit Var(SHImage img) : SHVar() {
+  explicit Var(SHImage* img) : SHVar() {
     valueType = SHType::Image;
     payload.imageValue = img;
   }
@@ -952,16 +943,13 @@ struct Var : public SHVar {
   }
 
   // Template constructor for const char[N], enabled only when N > 1
-  template <std::size_t N, typename = std::enable_if_t<(N > 1)>>
-  Var(const char (&src)[N]) : Var(std::string_view(src, N - 1)) {}
+  template <std::size_t N, typename = std::enable_if_t<(N > 1)>> Var(const char (&src)[N]) : Var(std::string_view(src, N - 1)) {}
 
   // Constructor for empty string literals
   Var(const char (&src)[1]) : Var(std::string_view(src, 0)) {}
 
   static Var ContextVar(const std::string &src) { return ContextVar(std::string_view(src)); }
-  template <std::size_t N> static Var ContextVar(const char (&src)[N]) {
-    return ContextVar(std::string_view(src, N - 1));
-  }
+  template <std::size_t N> static Var ContextVar(const char (&src)[N]) { return ContextVar(std::string_view(src, N - 1)); }
   static Var ContextVar(std::string_view src) {
     Var res{};
     res.valueType = SHType::ContextVar;

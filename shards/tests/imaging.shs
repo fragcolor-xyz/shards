@@ -1,39 +1,34 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
-
-@mesh(root)
-
-@wire(test {
-  LoadImage("../../assets/simple1.PNG") >= baseImg |
-  StripAlpha |
-  WritePNG("testbase.png") |
-  Ref(img) |
-  Repeat({
-    Get(img) |
-    Convolve(50) |
-    WritePNG("test.png") |
-    Log |
-    ImageToFloats |
-    Ref(s) |
-    Count(s) |
-    Log |
-    Get(s) |
-    FloatsToImage(99 99 3) |
-    WritePNG("test2.png") |
-    FillAlpha |
-    ResizeImage(200, 200) |
-    WritePNG("test2Resized.png")
-  } Times: 30) |
+LoadImage("../../assets/simple1.PNG") >= baseImg
+StripAlpha
+WritePNG("testbase.png")
+Ref(img)
+Repeat({
+  Get(img)
+  Convolve(50)
+  WritePNG("test.png")
   Log
-  baseImg |
-  ResizeImage(Width: 200 Height: 0) |
-  WritePNG("testResized1.png")
-  baseImg |
-  ResizeImage(Width: 0 Height: 200) |
-  WritePNG("testResized2.png")
-  WritePNG | ExpectBytes |
-  LoadImage | ImageToBytes | ExpectBytes
-})
+  ImageToFloats
+  Ref(s)
+  Count(s)
+  Log
+  Get(s)
+  FloatsToImage(99 99 3)
+  WritePNG("test2.png")
+  FillAlpha
+  ResizeImage(200 200)
+  WritePNG("test2Resized.png")
+} Times: 30)
+Log
+baseImg
+ResizeImage(Width: 200 Height: 0)
+WritePNG("testResized1.png")
+baseImg
+ResizeImage(Width: 0 Height: 200)
+WritePNG("testResized2.png")
+WritePNG | ExpectBytes
+LoadImage | ImageToBytes | ExpectBytes
 
-@schedule(root test)
-@run(root FPS: 10) | Assert.Is(true)
+"../../assets/Freesample.svg"
+FS.Read(Bytes: true)
+SVG.ToImage
+WritePNG("svgtest.png")

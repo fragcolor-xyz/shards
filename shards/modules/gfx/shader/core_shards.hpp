@@ -67,8 +67,14 @@ template <typename TShard> struct SetTranslator {
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
     bool storeMutable{};
+    bool storeAsAlias{};
     if constexpr (std::is_same_v<TShard, shards::Ref>) {
-      storeMutable = false;
+      if (std::get_if<TextureType>(&wgslValue->getType()) || std::get_if<SamplerType>(&wgslValue->getType())) {
+        // NOTE: Textures and samplers can not be stored in 'var' or 'let' on dawn
+        storeAsAlias = true;
+      } else {
+        storeMutable = false;
+      }
     } else {
       if (!std::get_if<NumType>(&wgslValue->getType())) {
         throw ShaderComposeError(fmt::format("Type {} can not be stored as a mutable variable", wgslValue->getType()));
@@ -76,8 +82,13 @@ template <typename TShard> struct SetTranslator {
       storeMutable = true;
     }
 
-    WGSLBlock reference = context.assignVariable(varName, shard->_global, false, storeMutable, std::move(wgslValue));
-    context.setWGSLTop<WGSLBlock>(std::move(reference));
+    if (storeAsAlias) {
+      WGSLBlock reference = context.assignAlias(varName, shard->_global, std::move(wgslValue));
+      context.setWGSLTop<WGSLBlock>(std::move(reference));
+    } else {
+      WGSLBlock reference = context.assignVariable(varName, shard->_global, false, storeMutable, std::move(wgslValue));
+      context.setWGSLTop<WGSLBlock>(std::move(reference));
+    }
   }
 };
 
@@ -683,7 +694,8 @@ struct RefTexture {
 
     auto block =
         std::make_unique<blocks::Custom>([resolvedName = _resolvedName](IGeneratorContext &ctx) { ctx.texture(resolvedName); });
-    context.setWGSLTopVar(_textureType, std::move(block));
+    // context.setWGSLTopVar(_textureType, std::move(block));
+    context.setWGSLTop<WGSLBlock>(_textureType, std::move(block));
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
@@ -721,7 +733,7 @@ struct RefSampler {
 
     auto block = std::make_unique<blocks::Custom>(
         [resolvedName = _resolvedName](IGeneratorContext &ctx) { ctx.textureDefaultSampler(resolvedName); });
-    context.setWGSLTopVar(_samplerType, std::move(block));
+    context.setWGSLTop<WGSLBlock>(_samplerType, std::move(block));
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }

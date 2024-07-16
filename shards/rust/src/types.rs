@@ -1484,11 +1484,19 @@ impl Serialize for Var {
         s.end()
       }
       SHType_Image => {
-        let width = unsafe { self.payload.__bindgen_anon_1.imageValue.width };
-        let height = unsafe { self.payload.__bindgen_anon_1.imageValue.height };
-        let channels = unsafe { self.payload.__bindgen_anon_1.imageValue.channels };
-        let flags = unsafe { self.payload.__bindgen_anon_1.imageValue.flags };
-        let data = unsafe { self.payload.__bindgen_anon_1.imageValue.data };
+        let image = unsafe {
+          self
+            .payload
+            .__bindgen_anon_1
+            .imageValue
+            .as_ref()
+            .unwrap_unchecked()
+        };
+        let width = image.width;
+        let height = image.height;
+        let channels = image.channels;
+        let flags = image.flags;
+        let data = image.data;
         let pixsize = if (flags as u32 & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT {
           2
         } else if (flags as u32 & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT {
@@ -1687,11 +1695,41 @@ impl<'de> Deserialize<'de> for ClonedVar {
             let channels: u8 = seq.next_element()?.unwrap();
             let flags: u8 = seq.next_element()?.unwrap();
             let value: &[u8] = seq.next_element()?.unwrap();
-            v.payload.__bindgen_anon_1.imageValue.width = width;
-            v.payload.__bindgen_anon_1.imageValue.height = height;
-            v.payload.__bindgen_anon_1.imageValue.channels = channels;
-            v.payload.__bindgen_anon_1.imageValue.flags = flags;
-            v.payload.__bindgen_anon_1.imageValue.data = value.as_ptr() as *mut u8;
+
+            let dataLen = unsafe {
+              let mut dummyImg = SHImage {
+                width,
+                height,
+                channels,
+                flags,
+                ..Default::default()
+              };
+              (*Core).imageDeriveDataLength.unwrap_unchecked()(&mut dummyImg)
+            };
+            if value.len() != dataLen as usize {
+              return Err(serde::de::Error::custom(format!(
+                "Invalid image data length: expected {}, got {}",
+                dataLen,
+                value.len()
+              )));
+            }
+
+            return Ok(unsafe {
+              let image = (*Core).imageNew.unwrap_unchecked()(dataLen);
+              (*image).width = width;
+              (*image).height = height;
+              (*image).channels = channels;
+              (*image).flags = flags;
+              std::ptr::copy_nonoverlapping(value.as_ptr(), (*image).data, dataLen as usize);
+
+              ClonedVar(Var {
+                valueType: SHType_Image,
+                payload: SHVarPayload {
+                  __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { imageValue: image },
+                },
+                ..Default::default()
+              })
+            });
           }
           SHType_Seq => {
             let seq: AutoSeqVar = seq.next_element()?.unwrap();
@@ -3237,7 +3275,16 @@ impl<'a> TryFrom<&'a Var> for &'a SHImage {
     if var.valueType != SHType_Image {
       Err("Expected Image variable, but casting failed.")
     } else {
-      unsafe { Ok(&var.payload.__bindgen_anon_1.imageValue) }
+      unsafe {
+        Ok(
+          &var
+            .payload
+            .__bindgen_anon_1
+            .imageValue
+            .as_ref()
+            .unwrap_unchecked(),
+        )
+      }
     }
   }
 }

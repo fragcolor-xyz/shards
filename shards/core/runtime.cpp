@@ -417,6 +417,65 @@ void unregisterWire(SHWire *wire) {
   }
 }
 
+void imageIncRef(SHImage *ptr) {
+  shassert(ptr);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(ptr->refCount);
+  shassert(atomicRefCount > 0);
+  atomicRefCount.add(1);
+}
+void imageDecRef(SHImage *ptr) {
+  shassert(ptr);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(ptr->refCount);
+  shassert(atomicRefCount > 0);
+  if (atomicRefCount.fetch_sub(1) == 1) {
+    if (ptr->free)
+      ptr->free(ptr);
+    ::operator delete[](ptr, std::align_val_t(16));
+  }
+}
+SHImage *imageNew(uint32_t dataLen) {
+  size_t headerSize = sizeof(SHImage);
+  SHImage *image = reinterpret_cast<SHImage *>(new (std::align_val_t(16)) uint8_t[headerSize + dataLen]);
+  memset(image, 0, sizeof(SHImage));
+  image->refCount = 1;
+  if (dataLen > 0) {
+    image->data = (uint8_t *)&image[1];
+    shassert((size_t(image->data) & 0xf) == 0);
+  }
+  return image;
+}
+SHImage *imageClone(SHImage *src) {
+  shassert(src);
+  uint32_t dataLen = imageDeriveDataLength(src);
+  SHImage *newImage = imageNew(dataLen);
+  memcpy(newImage, src->data, dataLen);
+  return src;
+}
+
+uint32_t imageGetPixelSize(SHImage *img) {
+  shassert(img);
+  auto pixsize = 1;
+  if ((img->flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    pixsize = 2;
+  else if ((img->flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    pixsize = 4;
+  return pixsize;
+}
+
+uint32_t imageGetRowStride(SHImage *img) {
+  shassert(img);
+  if (img->rowStride)
+    return img->rowStride;
+  return uint32_t(img->width * img->channels * imageGetPixelSize(img));
+}
+
+uint32_t imageDeriveDataLength(SHImage *img) {
+  shassert(img);
+  auto spixsize = imageGetPixelSize(img);
+
+  return uint32_t(img->height * img->width * img->channels * spixsize);
+}
+
 entt::id_type findId(SHContext *ctx) noexcept {
   entt::id_type id = entt::null;
 
@@ -1579,6 +1638,9 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     auto set = (SHHashSet *)var.payload.setValue.opaque;
     delete set;
   } break;
+  case SHType::Image:
+    imageDecRef(var.payload.imageValue);
+    break;
   case SHType::ShardRef:
     decRef(var.payload.shardValue);
     break;
@@ -1657,37 +1719,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.payload.stringLen = srcSize;
   } break;
   case SHType::Image: {
-    auto spixsize = 1;
-    auto dpixsize = 1;
-    if ((src.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      spixsize = 2;
-    else if ((src.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      spixsize = 4;
-    if ((dst.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      dpixsize = 2;
-    else if ((dst.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      dpixsize = 4;
-
-    size_t srcImgSize = src.payload.imageValue.height * src.payload.imageValue.width * src.payload.imageValue.channels * spixsize;
-    size_t dstCapacity =
-        dst.payload.imageValue.height * dst.payload.imageValue.width * dst.payload.imageValue.channels * dpixsize;
-    if (dst.valueType != SHType::Image || srcImgSize > dstCapacity) {
-      destroyVar(dst);
-      dst.valueType = SHType::Image;
-      dst.payload.imageValue.data = new uint8_t[srcImgSize];
-    }
-
-    dst.version++;
-
-    dst.payload.imageValue.flags = src.payload.imageValue.flags;
-    dst.payload.imageValue.height = src.payload.imageValue.height;
-    dst.payload.imageValue.width = src.payload.imageValue.width;
-    dst.payload.imageValue.channels = src.payload.imageValue.channels;
-
-    if (src.payload.imageValue.data == dst.payload.imageValue.data)
-      return;
-
-    memcpy(dst.payload.imageValue.data, src.payload.imageValue.data, srcImgSize);
+    destroyVar(dst);
+    dst.valueType = SHType::Image;
+    dst.payload.imageValue = src.payload.imageValue;
+    imageIncRef(dst.payload.imageValue);
   } break;
   case SHType::Audio: {
     size_t srcSize = src.payload.audioValue.nsamples * src.payload.audioValue.channels * sizeof(float);
@@ -2877,6 +2912,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->findObjectInfo = &shards::findObjectInfo;
 
   result->type2Name = [](SHType type) { return type2Name_raw(type); };
+
+  result->imageIncRef = [](SHImage *img) { return imageIncRef(img); };
+  result->imageDecRef = [](SHImage *img) { return imageDecRef(img); };
+  result->imageNew = [](uint32_t len) { return imageNew(len); };
+  result->imageClone = [](SHImage *img) { return imageClone(img); };
+  result->imageDeriveDataLength = [](SHImage *img) { return imageDeriveDataLength(img); };
 
   return result;
 }

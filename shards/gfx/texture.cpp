@@ -11,6 +11,30 @@ TextureDesc TextureDesc::getDefault() {
   return TextureDesc{.format = {.pixelFormat = WGPUTextureFormat_RGBA8Unorm}, .resolution = int2(512, 512)};
 }
 
+std::vector<uint8_t> convertToRGBA(const TextureDesc &desc) {
+  shassert(desc.source.numChannels == 3);
+  auto width = desc.resolution.x;
+  auto height = desc.resolution.y;
+  std::vector<uint8_t> rgbaData(width * height * 4);
+
+  shassert(desc.source.data);
+  auto srcData = desc.source.data.getData();
+  size_t rowStride = desc.source.rowStride != 0 ? desc.source.rowStride : width * 3;
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; ++x) {
+      size_t srcIndex = y * rowStride + x * 3;
+      size_t dstIndex = (y * width + x) * 4;
+
+      rgbaData[dstIndex] = srcData[srcIndex];
+      rgbaData[dstIndex + 1] = srcData[srcIndex + 1];
+      rgbaData[dstIndex + 2] = srcData[srcIndex + 2];
+
+      rgbaData[dstIndex + 3] = 255;
+    }
+  }
+  return rgbaData;
+}
+
 std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format, std::string &&label) {
   TextureDesc desc{
       .format =
@@ -78,11 +102,11 @@ std::shared_ptr<Texture> Texture::clone() const {
 }
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers,
-                             WGPUTexture texture, const ImmutableSharedBuffer &isb) {
+                             WGPUTexture texture, const uint8_t *data, size_t dataLength, uint32_t rowDataLength_) {
   ZoneScoped;
 
   const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
-  uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
+  uint32_t rowDataLength = rowDataLength_ != 0 ? rowDataLength_ : inputFormat.pixelSize * resolution.x;
 
   WGPUImageCopyTexture dst{
       .texture = texture,
@@ -98,7 +122,12 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
       .height = uint32_t(resolution.y),
       .depthOrArrayLayers = numArrayLayers,
   };
-  wgpuQueueWriteTexture(context.wgpuQueue, &dst, isb.getData(), isb.getLength(), &layout, &writeSize);
+  wgpuQueueWriteTexture(context.wgpuQueue, &dst, data, dataLength, &layout, &writeSize);
+}
+
+static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers,
+                             WGPUTexture texture, const ImmutableSharedBuffer &isb, uint32_t rowDataLength_) {
+  writeTextureData(context, format, resolution, numArrayLayers, texture, isb.getData(), isb.getLength(), rowDataLength_);
 }
 
 void Texture::initContextData(Context &context, TextureContextData &contextData) { contextData.init(getLabel()); }
@@ -123,7 +152,7 @@ void Texture::updateContextData(Context &context, TextureContextData &contextDat
   } else {
     WGPUTextureDescriptor wgpuDesc = {};
     wgpuDesc.usage = WGPUTextureUsage_TextureBinding;
-    if (desc.data) {
+    if (desc.source.data) {
       wgpuDesc.usage |= WGPUTextureUsage_CopyDst;
     }
 
@@ -160,9 +189,15 @@ void Texture::updateContextData(Context &context, TextureContextData &contextDat
     contextData.texture.reset(wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc));
     shassert(contextData.texture);
 
-    if (desc.data)
-      writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,
-                       desc.data);
+    if (desc.source.data)
+      if (desc.source.numChannels == 3) {
+        auto rgbaData = convertToRGBA(desc);
+        writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,
+                         rgbaData.data(), rgbaData.size(), 0);
+      } else {
+        writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,
+                         desc.source.data, desc.source.rowStride);
+      }
   }
 }
 

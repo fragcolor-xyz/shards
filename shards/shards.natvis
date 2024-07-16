@@ -68,6 +68,7 @@
 		<DisplayString Condition="valueType == SHType::Object">{payload.objectValue}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Bool">{payload.boolValue}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Enum">{payload.enumValue} (Enum)</DisplayString>
+		<DisplayString Condition="valueType == SHType::Image">Image({payload.imageValue-&gt;width}x{payload.imageValue-&gt;height} c:{payload.imageValue-&gt;channels,d} rc:{payload.imageValue-&gt;refCount}) (Enum)</DisplayString>
 		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Any">Any</DisplayString>

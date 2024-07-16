@@ -56,7 +56,10 @@ TexturePtr textureFromFile(const char *path) {
     texture->init(TextureDesc{
         .format = format,
         .resolution = size,
-        .data = ImmutableSharedBuffer(data, dataSize, [](void *data, void *_) { stbi_image_free(data); }),
+        .source =
+            TextureSource{
+                .data = ImmutableSharedBuffer(data, dataSize, [](void *data, void *_) { stbi_image_free(data); }),
+            },
     });
   }
 

@@ -178,7 +178,7 @@ struct Evolve {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    return awaitne(
+    return maybeAwaitne(
         context,
         [&]() {
           // Init on the first run!

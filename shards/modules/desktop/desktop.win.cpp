@@ -477,20 +477,7 @@ struct Pixels : public PixelBase {
   static SHTypesInfo inputTypes() { return CoreInfo::Int4Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  SHVar _output;
-
-  Pixels() {
-    _output = SHVar(); // zero it
-    _output.valueType = SHType::Image;
-    _output.payload.imageValue.channels = 4;
-    _output.payload.imageValue.flags = 0;
-  }
-
-  ~Pixels() {
-    if (_output.payload.imageValue.data) {
-      delete[] _output.payload.imageValue.data;
-    }
-  }
+  OwnedVar _output;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int left = input.payload.int4Value[0];
@@ -513,17 +500,9 @@ struct Pixels : public PixelBase {
       w = std::clamp(w, 2, grabber->width());
       h = std::clamp(h, 2, grabber->height());
 
-      // ensure storage for the image
-      if (w != _output.payload.imageValue.width || h != _output.payload.imageValue.height) {
-        // recreate output buffer
-        if (_output.payload.imageValue.data) {
-          delete[] _output.payload.imageValue.data;
-        }
-        auto nbytes = 4 * w * h;
-        _output.payload.imageValue.data = new uint8_t[nbytes];
-        _output.payload.imageValue.width = w;
-        _output.payload.imageValue.height = h;
-      }
+      auto nbytes = 4 * w * h;
+      _output = makeImage(w * h * nbytes);
+      SHImage &outImage = *_output.payload.imageValue;
 
       // grab from the bgra image
       auto yindex = y;
@@ -532,10 +511,10 @@ struct Pixels : public PixelBase {
         for (auto j = 0; j < w; j++) {
           auto sindex = ((grabber->width() * yindex) + xindex) * 4;
           auto dindex = ((w * i) + j) * 4;
-          _output.payload.imageValue.data[dindex + 2] = img[sindex + 0];
-          _output.payload.imageValue.data[dindex + 1] = img[sindex + 1];
-          _output.payload.imageValue.data[dindex + 0] = img[sindex + 2];
-          _output.payload.imageValue.data[dindex + 3] = img[sindex + 3];
+          outImage.data[dindex + 2] = img[sindex + 0];
+          outImage.data[dindex + 1] = img[sindex + 1];
+          outImage.data[dindex + 0] = img[sindex + 2];
+          outImage.data[dindex + 3] = img[sindex + 3];
           xindex++;
         }
         yindex++;
@@ -1029,11 +1008,20 @@ struct CursorBitmap {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  HDC _hdcMem;
-  HBITMAP _bitmap;
-  SHImage _img;
+  HDC _hdcMem{};
+  HBITMAP _bitmap{};
+  // SHImage _img;
+  OwnedVar _output;
 
-  CursorBitmap() {
+  ~CursorBitmap() {
+    DeleteObject(_bitmap);
+    DeleteDC(_hdcMem);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (_bitmap)
+      DeleteObject(_bitmap);
+
     auto iconw = GetSystemMetrics(SM_CXICON);
     auto iconh = GetSystemMetrics(SM_CYICON);
     BITMAPINFO info{};
@@ -1044,32 +1032,24 @@ struct CursorBitmap {
     info.bmiHeader.biBitCount = 24;
     info.bmiHeader.biCompression = BI_RGB;
 
-    _img.channels = 3;
-    _img.flags = 0;
-    _img.width = iconw;
-    _img.height = iconh;
-
     _hdcMem = CreateCompatibleDC(0);
-    _bitmap = CreateDIBSection(_hdcMem, &info, DIB_RGB_COLORS, (void **)&_img.data, 0, 0);
-    assert(_img.data != nullptr);
-  }
 
-  ~CursorBitmap() {
-    DeleteObject(_bitmap);
-    DeleteDC(_hdcMem);
-  }
+    _output = makeImage(iconw * iconh * 3);
+    SHImage &outImage = *_output.payload.imageValue;
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+    _bitmap = CreateDIBSection(_hdcMem, &info, DIB_RGB_COLORS, (void **)&outImage.data, 0, 0);
+
     auto oldObj = SelectObject(_hdcMem, _bitmap);
     CURSORINFO ci;
     ci.cbSize = sizeof(ci);
+
     // reset to 0s the bitmap, cos the next call won't fill all!
-    memset(_img.data, 0x0, _img.width * _img.height * _img.channels);
+    memset(outImage.data, 0x0, outImage.width * outImage.height * outImage.channels);
     if (GetCursorInfo(&ci)) {
       DrawIconEx(_hdcMem, 0, 0, ci.hCursor, 0, 0, 0, 0, DI_NORMAL);
     }
     SelectObject(_hdcMem, oldObj);
-    return Var(_img);
+    return _output;
   }
 };
 
