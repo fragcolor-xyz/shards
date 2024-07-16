@@ -260,6 +260,7 @@ pub struct Context {
   seqs_zoom_stack: Vec<*mut Sequence>,
   seqs_stack: Vec<*mut Sequence>,
   has_changed: bool,
+  non_error_stroke: Option<egui::Stroke>,
 }
 
 pub struct VisualAst<'a> {
@@ -385,10 +386,12 @@ impl<'a> VisualAst<'a> {
   }
 
   fn mutate_shard(&mut self, x: &mut Function) -> Option<Response> {
-    let state = x.custom_state.get_or_insert_with(|| FunctionState {
-      params_sorted: false,
-    });
-    let params_sorted = state.params_sorted;
+    let params_sorted = x.custom_state.with_or_insert_with(
+      || FunctionState {
+        params_sorted: false,
+      },
+      |x| x.params_sorted,
+    );
 
     // // check if we have a result from a pending operation
     // let has_result = state
@@ -427,8 +430,7 @@ impl<'a> VisualAst<'a> {
 
     let error_text = x
       .custom_state
-      .get::<ShardsError>()
-      .map(|x| x.message.to_owned());
+      .with::<ShardsError, _, _>(|s| s.message.clone());
 
     let color = shard_info.map(|x| {
       let c = x.get_fast_static("color");
@@ -1198,12 +1200,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
   }
 
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> Option<Response> {
-    sequence
-      .custom_state
-      .get_or_insert_with(|| SequenceState {
+    sequence.custom_state.with_or_insert_with(
+      || SequenceState {
         selected: self.parent_selected,
-      })
-      .selected = self.parent_selected;
+      },
+      |x| x.selected = self.parent_selected,
+    );
+
     self.context.seqs_stack.push(sequence as *mut Sequence);
 
     if self.parent_selected && self.context.seqs_zoom_stack.len() > 0 {
@@ -1306,7 +1309,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             pipeline
               .blocks
               .last()
-              .map(|x| x.custom_state.get::<BlockState>().unwrap().selected)
+              .and_then(|x| x.custom_state.with::<BlockState, _, _>(|x| x.selected))
               .unwrap_or(false)
           }
         };
@@ -1446,12 +1449,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               .with_mut::<BlockState, _, _>(|x| x.selected)
               .unwrap_or(false);
             *x = block;
-            x.custom_state
-              .get_or_insert_with(|| BlockState {
+            x.custom_state.with_or_insert_with(
+              || BlockState {
                 selected,
                 id: Id::new(nanoid!(16)),
-              })
-              .selected = selected;
+              },
+              |x| x.selected = selected,
+            )
           });
           i += 1;
           r
@@ -1472,27 +1476,28 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
   fn visit_block(&mut self, block: &mut Block) -> (BlockAction, Option<Response>) {
     let (selected, id) = {
-      let state = block.custom_state.get_or_insert_with(|| BlockState {
-        selected: false,
-        id: Id::new(nanoid!(16)),
-      });
-      (state.selected, state.id)
+      block.custom_state.with_or_insert_with(
+        || BlockState {
+          selected: false,
+          id: Id::new(nanoid!(16)),
+        },
+        |s| (s.selected, s.id),
+      )
     };
 
     let mut action = BlockAction::Keep;
     let mut selected = selected;
-
-    let restore_style = match &block.content {
+    let error = match &block.content {
       BlockContent::Shard(f) | BlockContent::Func(f) => {
-        if let Some(_error) = f.custom_state.get::<ShardsError>() {
-          let previous = self.ui.style().visuals.window_stroke;
-          self.ui.style_mut().visuals.window_stroke = egui::Stroke::new(1.5, Color32::RED);
-          Some(previous)
-        } else {
-          None
-        }
+        f.custom_state.with::<ShardsError, _, _>(|x| x.clone())
       }
       _ => None,
+    };
+
+    if error.is_some() {
+      self.ui.style_mut().visuals.window_stroke = egui::Stroke::new(1.5, Color32::RED);
+    } else {
+      self.ui.style_mut().visuals.window_stroke = self.context.non_error_stroke.unwrap();
     };
 
     let response = self
@@ -1673,10 +1678,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           _ => {}
         }
       }
-    }
-
-    if let Some(restore_style) = restore_style {
-      self.ui.style_mut().visuals.window_stroke = restore_style;
     }
 
     (action, Some(response))
@@ -2496,6 +2497,7 @@ impl Default for UIShardsShard {
         seqs_zoom_stack: Vec::new(),
         seqs_stack: Vec::new(),
         has_changed: false,
+        non_error_stroke: None,
       },
     }
   }
@@ -2564,6 +2566,7 @@ impl Shard for UIShardsShard {
     self.context.has_changed = false;
 
     let ui = get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
+    self.context.non_error_stroke = Some(ui.style().visuals.window_stroke);
 
     // // Set the minimum and maximum size of the UI
     // // This allows us to have a fully user controlled UI/Window
@@ -2586,8 +2589,7 @@ impl Shard for UIShardsShard {
         ui,
         root
           .custom_state
-          .get_or_insert_with(|| SequenceState { selected: true })
-          .selected,
+          .with_or_insert_with(|| SequenceState { selected: true }, |x| x.selected),
       );
       root.accept_mut(&mut mutator);
     });

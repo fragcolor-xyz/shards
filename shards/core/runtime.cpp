@@ -616,11 +616,16 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
         if constexpr (HANDLES_RETURN)
           context->continueFlow();
         return SHWireState::Return;
-      case SHWireState::Error:
-        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk),
-                    context->getErrorMessage(), blk->line, blk->column);
+      case SHWireState::Error: {
+        auto &err = context->getErrorMessage();
+        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk), err, blk->line,
+                    blk->column);
         context->pushError(fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), context->getErrorMessage(),
                                        blk->line, blk->column));
+        // if (blk->setError) {
+        //   blk->setError(blk, blk->errorData, SHStringWithLen{err.data(), uint32_t(err.size())});
+        // }
+      }
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
@@ -1446,6 +1451,9 @@ endOfWire:
     // print our stack log nicely now
     auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
     SHLOG_ERROR(msg);
+    if (wire->setWireError) {
+      wire->setWireError(wire, wire->errorData, SHStringWithLen{msg.data(), msg.size()});
+    }
     mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, std::move(msg)});
 
     if (wire->resumer) {

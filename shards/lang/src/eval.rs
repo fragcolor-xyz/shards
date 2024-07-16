@@ -126,6 +126,8 @@ pub struct EvalEnv {
   meshes: HashMap<Identifier, MeshVar>,
 
   extensions: HashMap<Identifier, Box<dyn ShardsExtension>>,
+
+  complexity: u64,
 }
 
 impl Drop for EvalEnv {
@@ -161,6 +163,7 @@ impl EvalEnv {
       meshes: HashMap::new(),
       extensions: HashMap::new(),
       traits: HashMap::new(),
+      complexity: 0,
     };
 
     if let Some(parent) = parent {
@@ -169,6 +172,7 @@ impl EvalEnv {
       let parent = unsafe { &*parent };
       env.full_namespace = parent.full_namespace.clone();
       env.settings = parent.settings.clone();
+      env.complexity = parent.complexity;
     }
 
     if let Some(namespace) = namespace {
@@ -2126,7 +2130,7 @@ unsafe extern "C" fn error_callback(
   msg: SHStringWithLen,
 ) {
   // cast error_data to our ast &Function
-  let func = &*(error_data as *const Function);
+  let func: &Function = &*(error_data as *const Function);
   let msg: &str = msg.into();
   func.custom_state.set(ShardsError {
     message: msg.into(),
