@@ -27,11 +27,9 @@ var LibraryGFXEvents = {
     canvasContainer.onmousemove = (e) => {
       e.type_ = 0;
       this.eventHandlerPostMouseEvent(eh, e);
-      e.preventDefault();
     };
     const handleMouseEvent = (e) => {
       this.eventHandlerPostMouseEvent(eh, e);
-      e.preventDefault();
     };
     canvasContainer.onmousedown = (e) => {
       e.type_ = 1;
@@ -87,7 +85,6 @@ var LibraryGFXEvents = {
       deltaY = (deltaY == 0) ? 0 : (deltaY > 0 ? Math.max(deltaY, 1) : Math.min(deltaY, -1));
 
       this.eventHandlerPostWheelEvent(eh, { deltaY: deltaY });
-      event.preventDefault();
     });
 
     (async function resizeCanvasLoop() {
