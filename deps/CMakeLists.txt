@@ -58,7 +58,6 @@ if(NOT EMSCRIPTEN)
         URL      https://develop.fragcolor.com/libressl-3.9.2.tar.gz
         URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
         ${LIBRESSL_PATCH_COMMAND}
-        DOWNLOAD_EXTRACT_TIMESTAMP true
       )
       FetchContent_MakeAvailable(libressl)
     endif()
@@ -91,7 +90,6 @@ else()
     URL      https://develop.fragcolor.com/boost-1.81.0-shards-5.7z
     # URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards-5/output.7z
     URL_HASH SHA256=a890f672200cf9f018cbd75a433a4dd7837e09a97b0b9287861a497a4a744626
-    DOWNLOAD_EXTRACT_TIMESTAMP true
   )
   FetchContent_MakeAvailable(boost)
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
