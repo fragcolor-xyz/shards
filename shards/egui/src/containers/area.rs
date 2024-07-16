@@ -2,7 +2,7 @@ use crate::{
   util::{self, with_possible_panic},
   Anchor, EguiId, Order, CONTEXTS_NAME, PARENTS_UI_NAME,
 };
-use egui::{Pos2, Rect, Vec2};
+use egui::{AreaState, Pos2, Rect, Vec2};
 use shards::{
   core::register_shard,
   shard::Shard,
@@ -31,6 +31,8 @@ struct AreaShard {
   pub order: ParamVar,
   #[shard_param("Constrain", "Constrains the UI element to remain within the screen boundaries. Accepts a boolean value.", [common_type::bool])]
   pub constrain: ClonedVar,
+  #[shard_param("ForcedSize", "Force area to be the given size, will update the area state", [common_type::none, common_type::float2, common_type::float2_var])]
+  pub forced_size: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -50,6 +52,7 @@ impl Default for AreaShard {
       anchor: ParamVar::default(),
       order: ParamVar::default(),
       constrain: false.into(),
+      forced_size: ParamVar::default(),
       required: Vec::new(),
       contents: ShardsVar::default(),
       inner_exposed: ExposedTypes::new(),
@@ -94,7 +97,8 @@ impl Shard for AreaShard {
 
     let ui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
-    let mut frame = egui::Area::new(EguiId::new(self, 1).into());
+    let frame_id = EguiId::new(self, 1).into();
+    let mut frame = egui::Area::new(frame_id);
 
     frame = frame.constrain(self.constrain.0.as_ref().try_into()?);
 
@@ -114,6 +118,10 @@ impl Shard for AreaShard {
     let result = with_possible_panic(|| {
       frame
         .show(ui_ctx, |ui| {
+          if let Some((w, h)) = self.forced_size.get().try_into().ok() as Option<(f32, f32)> {
+            ui.set_min_size(Vec2::new(w, h));
+            ui.set_max_size(Vec2::new(w, h));
+          }
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
         .inner
