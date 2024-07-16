@@ -7,17 +7,6 @@
 
 using namespace shards;
 
-// static inline std::string getCommand(Var & argsToSelf) {
-//   std::string_view args;
-//   if (!argsToSelf.isNone()) {
-//     args = (std::string_view)argsToSelf;
-//   } else {
-//     args = " ";
-//   }
-
-//   return fmt::format("{} {}%1", shards::GetGlobals().ExePath, args);
-// }
-
 struct RegisterSchemeHandler {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::NoneType; }
@@ -42,7 +31,7 @@ struct RegisterSchemeHandler {
 
 #ifdef _WIN32
   void registerHandler() {
-    // HKEY_CLASSES_ROOT/
+    // HKEY_CURRENT_USER/Software/Classes/
     // your-protocol-name/
     //   (Default)    "URL:your-protocol-name Protocol"
     //   URL Protocol ""
