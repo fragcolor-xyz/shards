@@ -3,6 +3,7 @@
 use crate::shard::legacy_shard_construct;
 use crate::shard::shard_construct;
 use crate::shard::LegacyShard;
+use crate::shardsc::Shard as SHShard;
 use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::*;
 use crate::types::ClonedVar;
@@ -790,4 +791,66 @@ impl Hash for Var {
 
 pub fn hash_var(v: &Var) -> Var {
   unsafe { (*Core).hashVar.unwrap()(v as *const _) }
+}
+
+#[repr(C)]
+pub struct OnErrorEvent {
+  wire: *const SHWire,
+  shard: *const SHShard, // can be nullptr
+  error: ClonedVar,
+}
+
+#[repr(C)]
+struct WireOnErrorEventListener;
+
+type WireOnErrorEventFunc = extern "C" fn(e: *const OnErrorEvent, user_data: *mut c_void);
+
+extern "C" {
+  fn createWireOnErrorEventListener(
+    mesh: SHMeshRef, // SHMeshRef
+    func: WireOnErrorEventFunc,
+    user_data: *mut c_void,
+  ) -> *mut WireOnErrorEventListener;
+
+  fn destroyWireOnErrorEventListener(listener: *mut WireOnErrorEventListener);
+}
+
+pub struct WireErrorListener {
+  listener: *mut WireOnErrorEventListener,
+}
+
+impl WireErrorListener {
+  pub fn new<F>(mesh: SHMeshRef, callback: F) -> Self
+  where
+    F: FnMut(*const OnErrorEvent) + 'static,
+  {
+    let boxed_callback = Box::new(callback);
+
+    extern "C" fn trampoline(e: *const OnErrorEvent, user_data: *mut c_void) {
+      let callback: &mut Box<dyn FnMut(*const OnErrorEvent)> =
+        unsafe { &mut *(user_data as *mut _) };
+      callback(e);
+    }
+
+    let listener = unsafe {
+      createWireOnErrorEventListener(
+        mesh,
+        trampoline,
+        Box::into_raw(boxed_callback) as *mut c_void,
+      )
+    };
+
+    Self { listener }
+  }
+}
+
+impl Drop for WireErrorListener {
+  fn drop(&mut self) {
+    unsafe {
+      let boxed_callback: Box<Box<dyn FnMut(*const OnErrorEvent)>> =
+        Box::from_raw(self.listener as *mut _);
+      drop(boxed_callback); // Ensure the callback is properly dropped
+      destroyWireOnErrorEventListener(self.listener);
+    }
+  }
 }

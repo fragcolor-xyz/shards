@@ -80,10 +80,6 @@ template <typename T> struct WireDoppelgangerPool {
       }
       composer.compose(wire.get(), anything, false);
 
-      // also propagate error callbacks etc,
-      wire->setWireError = _master->setWireError;
-      wire->errorData = _master->errorData;
-
       return fresh.get();
     } else {
       auto res = _avail.extract(_avail.begin());

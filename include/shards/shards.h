@@ -746,8 +746,6 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
-typedef void(__cdecl *SHSetShardError)(struct Shard *, void *errorData, struct SHStringWithLen msg);
-
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
 
@@ -766,8 +764,9 @@ struct Shard {
   // some debug/utility info
   uint32_t line;
   uint32_t column;
-  SHSetShardError setError; // internally used if available
-  void *errorData;          // internally used if available
+
+  // internal use only, to optionally identify the shard
+  uint64_t id;
 
   // \-- The interface to fill --/
 

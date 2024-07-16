@@ -618,13 +618,13 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
         return SHWireState::Return;
       case SHWireState::Error: {
         auto &err = context->getErrorMessage();
-        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk), err, blk->line,
-                    blk->column);
-        context->pushError(fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), context->getErrorMessage(),
-                                       blk->line, blk->column));
-        // if (blk->setError) {
-        //   blk->setError(blk, blk->errorData, SHStringWithLen{err.data(), uint32_t(err.size())});
-        // }
+        auto msg = fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), err, blk->line, blk->column);
+        SHLOG_ERROR(msg);
+        context->pushError(std::move(msg));
+        auto wire = context->currentWire();
+        auto mesh = context->currentWire()->mesh.lock();
+        shards::OwnedVar errVar((Var(context->getErrorMessage())));
+        mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, nullptr, std::move(errVar)});
       }
       case SHWireState::Stop:
       case SHWireState::Restart:
@@ -972,9 +972,14 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
                                       blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         // error log it
         SHLOG_ERROR("{}", verboseMsg);
-        // set error if we can
-        if (blk->setError) {
-          blk->setError(blk, blk->errorData, SHStringWithLen{verboseMsg.data(), verboseMsg.size()});
+        // send error if we can
+        if (data.wire) {
+          auto mesh = data.wire->mesh.lock();
+          if (mesh) {
+            std::string_view what{ex.what()};
+            shards::OwnedVar err{Var(what)};
+            mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+          }
         }
         // and finally throw it
         throw ComposeError(verboseMsg);
@@ -1113,9 +1118,12 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
       CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
       context->errorStack.push_back(ex.what());
 
-      // also set errors if callback is available
-      if (wire_->setWireError) {
-        wire_->setWireError(wire_, wire_->errorData, SHStringWithLen{ex.what(), strlen(ex.what())});
+      // also send error event if possible
+      auto mesh = wire_->mesh.lock();
+      if (mesh) {
+        std::string_view what{ex.what()};
+        shards::OwnedVar err{Var(what)};
+        mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
       }
     }
     throw;
@@ -1451,10 +1459,8 @@ endOfWire:
     // print our stack log nicely now
     auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
     SHLOG_ERROR(msg);
-    if (wire->setWireError) {
-      wire->setWireError(wire, wire->errorData, SHStringWithLen{msg.data(), msg.size()});
-    }
-    mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, std::move(msg)});
+    shards::OwnedVar errVar((Var(context.formatErrorStack())));
+    mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, nullptr, std::move(errVar)});
 
     if (wire->resumer) {
       // also stop the resumer parent in this case
@@ -2925,13 +2931,28 @@ void shards_decompress_strings() {
   shards::decompressStrings();
 #endif
 }
+}
 
-void shards_set_wire_error_callback(SHWireRef wireRef, SHSetWireError setWireError, void *errorData) {
-  auto &wire = SHWire::sharedFromRef(wireRef);
-  wire->setWireError = setWireError;
-  wire->errorData = errorData;
+struct WireOnErrorEventListener {
+  entt::connection connection;
+  WireOnErrorEventFunc func;
+  void *userdata;
+
+  void onErrorEvent(SHWire::OnErrorEvent &e) { func(e, userdata); }
+
+  WireOnErrorEventListener(SHMesh *mesh, WireOnErrorEventFunc func, void *userdata) : func(func), userdata(userdata) {
+    connection = mesh->dispatcher.sink<SHWire::OnErrorEvent>().connect<&WireOnErrorEventListener::onErrorEvent>(this);
+  }
+
+  ~WireOnErrorEventListener() { connection.release(); }
+};
+
+WireOnErrorEventListener *createWireOnErrorEventListener(SHMeshRef mesh, WireOnErrorEventFunc func, void *userdata) {
+  auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+  return new WireOnErrorEventListener(smesh->get(), func, userdata);
 }
-}
+
+void destroyWireOnErrorEventListener(WireOnErrorEventListener *listener) { delete listener; }
 
 namespace shards {
 void decRef(ShardPtr shard) {

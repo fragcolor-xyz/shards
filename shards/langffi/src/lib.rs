@@ -1,7 +1,7 @@
-use shards::core::{register_enum, register_legacy_shard, register_shard};
+use shards::core::{register_enum, register_legacy_shard, register_shard, WireErrorListener};
 use shards::util::from_raw_parts_allow_null;
-use shards::SHStringWithLen;
 use shards::{shlog_error, types::*};
+use shards::{SHMeshRef, SHStringWithLen};
 use shards_lang::cli::process_args;
 use shards_lang::eval::{self, *};
 use shards_lang::read::AST_TYPE;
@@ -107,10 +107,10 @@ pub extern "C" fn shards_save_ast(ast: *mut Program) -> Var {
 #[no_mangle]
 pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv {
   if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, None)))
+    Box::into_raw(Box::new(EvalEnv::new(None, None, None)))
   } else {
     let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
+    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None, None)))
   }
 }
 
@@ -138,10 +138,14 @@ pub extern "C" fn shards_create_sub_env(
 ) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
   if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, Some(env))))
+    Box::into_raw(Box::new(EvalEnv::new(None, Some(env), None)))
   } else {
     let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), Some(env))))
+    Box::into_raw(Box::new(EvalEnv::new(
+      Some(namespace.into()),
+      Some(env),
+      None,
+    )))
   }
 }
 
@@ -235,12 +239,7 @@ pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
   let ast = unsafe {
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
-  let result = eval::eval(
-    &ast.sequence,
-    name,
-    HashMap::new(),
-    new_cancellation_token(),
-  );
+  let result = eval::eval(&ast, name, HashMap::new(), new_cancellation_token());
   match result {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
@@ -281,6 +280,12 @@ pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
   };
   let ast_clone = ast.clone();
   Var::new_ref_counted(ast_clone, &AST_TYPE)
+}
+
+#[no_mangle]
+pub extern "C" fn shards_attach_mesh(mesh: SHMeshRef, ast: &Var) {
+  let ast_clone: ClonedVar = ast.into();
+  let listener = WireErrorListener::new(mesh, move |error| {});
 }
 
 #[no_mangle]

@@ -7,7 +7,7 @@ use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
-use std::fmt::Debug;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug};
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
@@ -299,9 +299,18 @@ impl Statement {
   }
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DebugInfo {
+  pub id_to_functions: HashMap<u64, *const Function>,
+  pub id_counter: u64,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,
+
+  #[serde(skip)]
+  pub debug_info: RefCell<DebugInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

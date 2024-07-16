@@ -10,6 +10,7 @@ use core::convert::TryInto;
 use std::os::raw::c_void;
 
 use nanoid::nanoid;
+use shards::core::WireErrorListener;
 use shards::cstr;
 use shards::SHStringWithLen;
 use shards::SHType_Trait;
@@ -91,6 +92,7 @@ enum Definition {
 }
 
 pub struct EvalEnv {
+  pub(crate) program: Option<*const Program>,
   pub(crate) parent: Option<*const EvalEnv>,
 
   namespace: RcStrWrapper,
@@ -142,8 +144,13 @@ impl Drop for EvalEnv {
 }
 
 impl EvalEnv {
-  pub fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
+  pub fn new(
+    namespace: Option<RcStrWrapper>,
+    parent: Option<*const EvalEnv>,
+    program: Option<*const Program>,
+  ) -> Self {
     let mut env = EvalEnv {
+      program,
       parent: None,
       namespace: RcStrWrapper::from(""),
       full_namespace: RcStrWrapper::from(""),
@@ -839,6 +846,16 @@ fn find_extension<'a>(
   }
 }
 
+fn get_parent_program<'a>(env: &'a EvalEnv) -> Option<&'a Program> {
+  if let Some(program) = env.program {
+    Some(unsafe { &*program })
+  } else if let Some(parent) = env.parent {
+    get_parent_program(unsafe { &*(parent as *const EvalEnv) })
+  } else {
+    None
+  }
+}
+
 fn finalize_wire(
   wire: &Wire,
   name: &Identifier,
@@ -1044,7 +1061,7 @@ pub(crate) fn eval_sequence(
   parent: Option<&mut EvalEnv>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<EvalEnv, ShardsError> {
-  let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv));
+  let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv), None);
   eval_sequence_inline(seq, &mut sub_env, cancellation_token)?;
   Ok(sub_env)
 }
@@ -1429,7 +1446,7 @@ fn resolve_var(
     }
     Value::TakeTable(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e));
+      let mut sub_env = EvalEnv::new(None, Some(e), None);
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -1454,7 +1471,7 @@ fn resolve_var(
     }
     Value::TakeSeq(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e));
+      let mut sub_env = EvalEnv::new(None, Some(e), None);
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -2146,13 +2163,24 @@ fn create_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<AutoShardRef, ShardsError> {
+  // add an id to the shard
+  let id = get_parent_program(e).map(|p| {
+    let mut debug_info = p.metadata.debug_info.borrow_mut();
+    debug_info.id_counter += 1;
+    let id = debug_info.id_counter;
+    debug_info
+      .id_to_functions
+      .insert(id, shard as *const Function);
+    id
+  });
+
   match create_shard_inner(shard, line_info, e) {
-    Ok(mut s) => {
+    Ok(s) => {
       // clean any previous error
       shard.custom_state.remove::<ShardsError>();
-      // also populate error call back
-      s.0
-        .set_error_callback(Some(error_callback), shard as *const _ as *mut c_void);
+      if let Some(id) = id {
+        unsafe { (*s.0 .0).id = id };
+      }
       Ok(s)
     }
     Err(e) => {
@@ -2624,7 +2652,7 @@ fn process_macro(
       );
     }
 
-    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv));
+    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2737,7 +2765,7 @@ fn process_template(
       );
     }
 
-    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv));
+    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
@@ -3137,8 +3165,7 @@ fn eval_pipeline(
               e.deferred_wires.insert(
                 name,
                 (
-                  Wire::new(&wire_name)
-                    .set_error_callback(wire_error_callback, func as *const _ as *mut _),
+                  Wire::new(&wire_name),
                   params_ptr,
                   block.line_info.unwrap_or_default(),
                 ),
@@ -3977,14 +4004,14 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) -> Result<(), ShardsError
 }
 
 pub fn eval(
-  seq: &Sequence,
+  prog: &Program,
   name: &str,
   defines: HashMap<String, String>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<Wire, ShardsError> {
   profiling::scope!("eval", name);
 
-  let mut parent = EvalEnv::new(None, None);
+  let mut parent = EvalEnv::new(None, None, Some(prog as *const Program));
   // add defines
   let defines: Vec<(RcStrWrapper, Value)> = defines
     .iter()
@@ -4005,7 +4032,11 @@ pub fn eval(
     );
   }
 
-  let mut env = eval_sequence(seq, Some(&mut parent), cancellation_token.clone())?;
+  let mut env = eval_sequence(
+    &prog.sequence,
+    Some(&mut parent),
+    cancellation_token.clone(),
+  )?;
 
   transform_env(&mut env, name)
 }
@@ -4156,9 +4187,9 @@ impl LegacyShard for EvalShard {
     let namespace = self.namespace.get();
     let mut env = if namespace.is_string() {
       let namespace: &str = namespace.try_into()?;
-      EvalEnv::new(Some(namespace.into()), None)
+      EvalEnv::new(Some(namespace.into()), None, Some(prog as *const Program))
     } else {
-      EvalEnv::new(None, None)
+      EvalEnv::new(None, None, Some(prog as *const Program))
     };
 
     let defines = self.defines.get();
@@ -4217,12 +4248,11 @@ macro_rules! include_shards {
     let code = include_str!($file);
     let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
     let mut env = read::ReadEnv::new("", ".", ".");
-    let seq =
+    let prog =
       read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
-    let seq = seq.sequence;
     let defines = std::collections::HashMap::new();
     let token = new_cancellation_token();
-    let wire = eval::eval(&seq, "include_shards", defines, token).unwrap();
+    let wire = eval::eval(&prog, "include_shards", defines, token).unwrap();
     let mut mesh = Mesh::default();
     if !mesh.compose(wire.0) {
       panic!("Failed to compose wire");

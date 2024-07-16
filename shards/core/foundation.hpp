@@ -263,7 +263,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   struct OnErrorEvent {
     const SHWire *wire;
-    std::string error;
+    const Shard *shard; // can be nullptr
+    shards::OwnedVar error;
   };
 
   // Triggered whenever a new wire is detached from this wire
@@ -336,9 +337,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;
-
-  mutable SHSetWireError setWireError{nullptr};
-  mutable void *errorData{nullptr};
 
 #if SH_CORO_NEED_STACK_MEM
   // this is the eventual coroutine stack memory buffer

@@ -24,10 +24,7 @@ use crate::shardsc::{
 };
 
 // Additional Shard Utilities
-use crate::{
-  SHObjectInfo, SHSetShardError, SHStringWithLen, SHType_Type, SHVar__bindgen_ty_1,
-  SHWireState_Error,
-};
+use crate::{SHObjectInfo, SHStringWithLen, SHType_Type, SHVar__bindgen_ty_1, SHWireState_Error};
 
 // Core Conversions
 use core::{
@@ -265,19 +262,6 @@ impl Drop for Wire {
   }
 }
 
-// typedef void(__cdecl *SHSetWireError)(const SHWire *, void *errorData, struct SHStringWithLen msg);
-type SHSetWireError = unsafe extern "C" fn(*const SHWire, *mut c_void, SHStringWithLen);
-
-// void shards_set_wire_error_callback(SHWire *wire, SHSetWireError setWireError, void *errorData)
-// the above is defined c side, lets declare it here
-extern "C" {
-  pub fn shards_set_wire_error_callback(
-    wire: SHWireRef,
-    setWireError: SHSetWireError,
-    errorData: *mut c_void,
-  );
-}
-
 impl Wire {
   pub fn new(name: &str) -> Self {
     let name = SHStringWithLen {
@@ -317,17 +301,6 @@ impl Wire {
 
   pub fn get_info(&self) -> SHWireInfo {
     unsafe { (*Core).getWireInfo.unwrap()(self.0 .0) }
-  }
-
-  pub fn set_error_callback(
-    self,
-    callback: unsafe extern "C" fn(*const SHWire, *mut c_void, SHStringWithLen),
-    error_data: *mut c_void,
-  ) -> Self {
-    unsafe {
-      shards_set_wire_error_callback(self.0 .0, callback, error_data);
-    }
-    self
   }
 }
 
@@ -488,19 +461,6 @@ impl ShardRef {
 
   pub fn get_line_info(&self) -> (u32, u32) {
     unsafe { ((*self.0).line, (*self.0).column) }
-  }
-
-  pub fn set_error_callback(
-    &mut self,
-    callback: Option<unsafe extern "C" fn(*mut Shard, *mut c_void, SHStringWithLen)>,
-    error_data: *mut c_void,
-  ) {
-    unsafe {
-      (*self.0).setError = callback;
-      // Assuming there's a field to store the error_data pointer in the Shard struct
-      // If not, you may need to add it to your Shard struct definition
-      (*self.0).errorData = error_data;
-    }
   }
 }
 
