@@ -4,8 +4,7 @@
       {name: "dqoiwdj"}
       {name: "nioadn"}
       {name: "qiwoje"}
-      {name: "Invalid item" extra-data: 11111}
-    ] >= items
+      {name: "Invalid item" extra-data: 11111}] >= items
 
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
@@ -22,54 +21,60 @@
       When({UI.Property(UIProperty::IsAnythingBeingDragged)} {
         UI.Area(Contents: {
           UI.DragAndDrop({
-            UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
-          }
-          Drop: {
-            Log("Global drop")
-          })
-        } Position: @f2(0 0) Order: Order::Background)
+              UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
+            }
+            Drop: {
+              Log("Global drop")
+            }
+            Visualize: true
+          )
+        } Position: @f2(0 0) ForcedSize: screen-size Order: Order::Background)
       })
 
       UI.Area(Contents: {
-        Once({ null | Expect(@type(Type::Any)) >= dropped-item })
+        Once({null | Expect(@type(Type::Any)) >= dropped-item})
         UI.DragAndDrop({
-          UI.Frame(
-            InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
-            FillColor: @color(40 40 40)
-            StrokeColor: @color(90 90 32) StrokeWidth: 2.0
-            Contents: {
-              "The strict drop box" | UI.Label
-            })
-        } Drop: {
-          = item
-          Log("Dropping item")
-          item > dropped-item
-        } Hover: {
-          Maybe({
-            Expect(@type({name: Type::String}))
-            true
-          } { false } Silent: true)
-        })
+            UI.Frame(
+              InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+              FillColor: @color(40 40 40)
+              StrokeColor: @color(90 90 32) StrokeWidth: 2.0
+              Contents: {
+                "The strict drop box" | UI.Label
+              }
+            )
+          } Drop: {
+            = item
+            Log("Dropping item")
+            item > dropped-item
+          } Hover: {
+            Maybe({
+              Expect(@type({name: Type::String}))
+              true
+            } {false} Silent: true)
+          }
+        )
         dropped-item | WhenNot({IsNone} {
           ToString | UI.Label
         })
       } Position: @f2(50 300) Order: Order::Middle)
 
-      Once({ null | Expect(@type(Type::Any)) >= dropped-item-2 })
+      Once({null | Expect(@type(Type::Any)) >= dropped-item-2})
       UI.Area(Contents: {
         UI.DragAndDrop({
-          UI.Frame(
-            InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
-            FillColor: @color(50 50 21)
-            StrokeColor: @color(100 100 100) StrokeWidth: 2.0
-            Contents: {
-              "The anything drop box" | UI.Label
-            })
-        } Drop: {
-          = item
-          Log("Dropping item")
-          item > dropped-item-2
-        })
+            UI.Frame(
+              InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+              FillColor: @color(50 50 21)
+              StrokeColor: @color(100 100 100) StrokeWidth: 2.0
+              Contents: {
+                "The anything drop box" | UI.Label
+              }
+            )
+          } Drop: {
+            = item
+            Log("Dropping item")
+            item > dropped-item-2
+          }
+        )
         dropped-item-2 | WhenNot({IsNone} {
           ToString | UI.Label
         })
@@ -82,7 +87,7 @@
           UI.DragAndDrop({
             "Select " >= label
             item:name | ExpectString | AppendTo(label)
-            UI.Button(label { "Hi" Log })
+            UI.Button(label {"Hi" | Log})
           })
         })
       } Position: @f2(50 50) Order: Order::Middle)
