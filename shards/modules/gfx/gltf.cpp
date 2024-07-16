@@ -634,6 +634,6 @@ struct GLBPacker {
 
 void registerGLTFShards() {
   REGISTER_SHARD("GFX.glTF", GLTFShard);
-  REGISTER_SHARD("_GLTF.PackGLB", GLBPacker);
+  REGISTER_SHARD("GLTF.PackGLB", GLBPacker);
 }
 } // namespace gfx
