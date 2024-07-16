@@ -46,6 +46,8 @@ pub fn resolve_image_size(
   };
 
   let scale = into_vec2(scale_var).unwrap_or(vec2(1.0, 1.0));
+  // scale cannot be negative, so clamp to 0.0
+  let scale = vec2(scale.x.max(0.0), scale.y.max(0.0));
   pt_size = pt_size * scale;
   let scaling_aware: bool = (aware_var.get().try_into()).unwrap_or(false);
   if scaling_aware {
