@@ -317,6 +317,7 @@ macro_rules! get_like {
     #[derive(Default)]
     struct $shard_name {
       rb: RequestBase,
+      on_worker_thread: bool,
     }
 
     impl LegacyShard for $shard_name {
@@ -370,11 +371,16 @@ macro_rules! get_like {
       }
 
       fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.on_worker_thread = data.onWorkerThread;
         self.rb._compose(data)
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        Ok(run_blocking(self, context, input))
+        if self.on_worker_thread {
+          self.activate_blocking(context, input)
+        } else {
+          Ok(run_blocking(self, context, input))
+        }
       }
     }
 
@@ -454,6 +460,7 @@ macro_rules! post_like {
     #[derive(Default)]
     struct $shard_name {
       rb: RequestBase,
+      on_worker_thread: bool,
     }
 
     impl LegacyShard for $shard_name {
@@ -507,11 +514,16 @@ macro_rules! post_like {
       }
 
       fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.on_worker_thread = data.onWorkerThread;
         self.rb._compose(data)
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        Ok(run_blocking(self, context, input))
+        if self.on_worker_thread {
+          self.activate_blocking(context, input)
+        } else {
+          Ok(run_blocking(self, context, input))
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 
 #include "./context.hpp"
+#include <input/sdl.hpp>
 #include <catch2/catch_all.hpp>
 #include <gfx/utils.hpp>
 #include <spdlog/fmt/fmt.h>

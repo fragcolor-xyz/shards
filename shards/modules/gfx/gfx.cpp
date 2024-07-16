@@ -57,8 +57,6 @@ struct RenderShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
-    composeCheckGfxThread(data);
-
     return CoreInfo::NoneType;
   }
 

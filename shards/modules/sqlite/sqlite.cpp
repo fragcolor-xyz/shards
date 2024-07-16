@@ -13,7 +13,9 @@
 #include <shards/core/async.hpp>
 #include <boost/filesystem.hpp>
 #include <shared_mutex>
+
 using namespace boost::filesystem;
+using namespace std::chrono_literals;
 
 #ifdef __clang__
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
@@ -29,9 +31,9 @@ extern "C" {
 int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
 }
 
-static const char *vfs =
+static const char *vfs = //
 #if SH_EMSCRIPTEN
-    "unix-flock";
+    "shards-memory-locked";
 #else
     nullptr;
 #endif
@@ -49,6 +51,178 @@ static auto logger = shards::logging::getOrCreate("sqlite");
 
 namespace shards {
 namespace DB {
+
+#define SQLITE_NO_LOCK 0
+#define SQLITE_SHARED_LOCK 1
+#define SQLITE_RESERVED_LOCK 2
+#define SQLITE_PENDING_LOCK 3
+#define SQLITE_EXCLUSIVE_LOCK 4
+
+struct MemoryLockedVfs : sqlite3_vfs {
+  static inline const char *backendVfs = //
+#if SH_EMSCRIPTEN
+      "unix";
+#else
+      nullptr;
+#endif
+
+  sqlite3_vfs *fallback{};
+  sqlite3_io_methods ioMethods{};
+  const sqlite3_io_methods *fallbackIoMethods{};
+
+  enum Lock { None, Shared, Unique };
+  // These are shared betweent threads and the mutex is held possibly by multiple
+  struct SharedFileNode {
+    std::shared_timed_mutex mutex;
+    std::atomic_int refCount = 0;
+  };
+  // These are only controlled from the same thread an keep the lock state owned by this node
+  struct UniqueFileNode {
+    std::shared_ptr<SharedFileNode> shared;
+    Lock currentLock{};
+  };
+  std::shared_mutex setMutex;
+  std::unordered_map<std::string, std::shared_ptr<SharedFileNode>> fileNodes;
+  std::unordered_map<sqlite3_file *, std::shared_ptr<UniqueFileNode>> fileNodeMap;
+
+  void initIoMethods(const sqlite3_io_methods *base) {
+    memcpy(&ioMethods, base, sizeof(sqlite3_io_methods));
+    fallbackIoMethods = base;
+    ioMethods.xClose = [](sqlite3_file *pFile) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.closeFile(pFile);
+    };
+    ioMethods.xLock = [](sqlite3_file *pFile, int lockType) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.lockFile(pFile, lockType);
+    };
+    ioMethods.xUnlock = [](sqlite3_file *pFile, int lockType) -> int {
+      auto &self = MemoryLockedVfs::instance();
+      return self.unlockFile(pFile, lockType);
+    };
+    ioMethods.xCheckReservedLock = [](sqlite3_file *pFile, int *pResOut) -> int {
+      *pResOut = 0;
+      return SQLITE_OK;
+    };
+    ioMethods.xShmBarrier = nullptr;
+    ioMethods.xShmUnmap = nullptr;
+    ioMethods.xShmLock = nullptr;
+    ioMethods.xShmMap = nullptr;
+  }
+
+  int lockFile(sqlite3_file *pFile, int lockType) {
+    std::shared_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    l.unlock();
+
+    if (lockType >= SQLITE_PENDING_LOCK) {
+      if (node->currentLock == Lock::None) {
+        if (!node->shared->mutex.try_lock_for(10ms))
+          return SQLITE_BUSY;
+      } else {
+        if (node->currentLock != Lock::Unique) {
+          if (node->currentLock == Lock::Shared) {
+            node->shared->mutex.unlock_shared();
+            node->currentLock = Lock::None;
+          }
+        }
+        // This might leave lock in a different state than before, but maybe it's fine?
+        if (!node->shared->mutex.try_lock_for(100ms))
+          return SQLITE_BUSY;
+      }
+      node->currentLock = Lock::Unique;
+    } else {
+      if (node->currentLock == Lock::None) {
+        if (!node->shared->mutex.try_lock_shared_for(10ms))
+          return SQLITE_BUSY;
+        node->currentLock = Lock::Shared;
+      }
+    }
+    return SQLITE_OK;
+  }
+
+  int unlockFile(sqlite3_file *pFile, int lockType) {
+    std::shared_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    l.unlock();
+
+    bool wantSharedLock = lockType > SQLITE_NO_LOCK && lockType < SQLITE_PENDING_LOCK;
+    if (wantSharedLock && node->currentLock == Lock::Shared) {
+      return SQLITE_OK;
+    }
+
+    if (node->currentLock == Lock::Unique) {
+      node->shared->mutex.unlock();
+      node->currentLock = Lock::None;
+    } else if (node->currentLock == Lock::Shared) {
+      node->shared->mutex.unlock_shared();
+      node->currentLock = Lock::None;
+    }
+
+    if (wantSharedLock) {
+      // Happens in case of downgrading
+      // This might leave lock in a different state than before, but maybe it's fine?
+      if (!node->shared->mutex.try_lock_shared_for(100ms))
+        return SQLITE_BUSY;
+      node->currentLock = Lock::Shared;
+    }
+
+    return SQLITE_OK;
+  }
+
+  int closeFile(sqlite3_file *pFile) {
+    std::unique_lock<std::shared_mutex> l(setMutex);
+    auto node = fileNodeMap[pFile];
+    node->shared->refCount--;
+    fileNodeMap.erase(pFile);
+    return fallbackIoMethods->xClose(pFile);
+  }
+
+  int openFile(sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) {
+    std::unique_lock<std::shared_mutex> l(setMutex);
+    int result = fallback->xOpen(fallback, zName, pFile, flags, pOutFlags);
+    if (result == SQLITE_OK) {
+      if (zName == nullptr)
+        return result; // Ignore open on nullptr
+      if (!ioMethods.xFileSize)
+        initIoMethods(pFile->pMethods);
+      pFile->pMethods = &ioMethods;
+
+      auto normalizedPath = boost::filesystem::absolute(boost::filesystem::path(zName)).normalize().string();
+      auto it = fileNodes.find(normalizedPath);
+      auto uniqueNode = std::make_shared<UniqueFileNode>();
+      std::shared_ptr<SharedFileNode> node;
+      if (it == fileNodes.end()) {
+        node = std::make_shared<SharedFileNode>();
+        fileNodes[normalizedPath] = node;
+        uniqueNode->shared = node;
+      } else {
+        node = it->second;
+      }
+      node->refCount++;
+      uniqueNode->shared = node;
+      fileNodeMap[pFile] = uniqueNode;
+    }
+    return result;
+  }
+
+  MemoryLockedVfs() {
+    sqlite3_vfs_register(this, 0);
+    fallback = sqlite3_vfs_find(backendVfs);
+    memcpy(this, fallback, sizeof(sqlite3_vfs));
+    this->zName = "shards-memory-locked";
+
+    xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
+      auto &self = *(MemoryLockedVfs *)pVfs;
+      return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
+    };
+  }
+  static MemoryLockedVfs &instance() {
+    static MemoryLockedVfs vfs;
+    return vfs;
+  }
+};
+
 struct Connection {
   sqlite3 *db{};
   std::mutex mutex;
@@ -157,9 +331,6 @@ struct Base {
   bool _withinTransaction{false};
 
   void compose(SHInstanceData &data) {
-    if (data.onWorkerThread)
-      throw ComposeError("Can not run on worker thread");
-
     _withinTransaction = false;
     if (data.shared.len > 0) {
       for (uint32_t i = data.shared.len; i > 0; i--) {
@@ -391,7 +562,7 @@ struct Query : public Base {
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
 
-    return awaitne(
+    return maybeAwaitne(
         context,
         [&]() -> SHVar {
           // ok if we are not within a transaction, we need to check if transaction lock is locked!
@@ -509,7 +680,7 @@ struct Transaction : public Base {
       SH_SUSPEND(context, 0);
     }
 
-    await(
+    maybeAwait(
         context,
         [&] {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -526,7 +697,7 @@ struct Transaction : public Base {
     SHVar output{};
     auto state = _queries.activate(context, input, output);
 
-    await(
+    maybeAwait(
         context,
         [&] {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -632,7 +803,7 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
-    return awaitne(
+    return maybeAwaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
@@ -693,7 +864,7 @@ struct Backup : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, true);
 
-    return awaitne(
+    return maybeAwaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
@@ -752,6 +923,7 @@ struct Backup : public Base {
 } // namespace shards
 SHARDS_REGISTER_FN(sqlite) {
   using namespace shards::DB;
+  MemoryLockedVfs::instance();
   REGISTER_SHARD("DB.Query", Query);
   REGISTER_SHARD("DB.Transaction", Transaction);
   REGISTER_SHARD("DB.LoadExtension", LoadExtension);

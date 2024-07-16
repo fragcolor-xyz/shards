@@ -36,6 +36,15 @@ struct TextureFormatException : public std::runtime_error {
   }
 };
 
+struct ImageRefTextureBuffer : public ImmutableSharedBuffer::IContainer {
+  SHImage *image;
+  ImageRefTextureBuffer(SHImage *image) : image(image) { imageIncRef(image); }
+  ~ImageRefTextureBuffer() { imageDecRef(image); }
+
+  virtual size_t getLength() override { return imageDeriveDataLength(image); }
+  virtual const uint8_t *getData() override { return image->data; }
+};
+
 struct TextureShard {
   using TextureType = ShardsTypes::TextureType_;
 
@@ -258,34 +267,17 @@ struct TextureShard {
     size_t imageSize = inputFormat.pixelSize * image.width * image.height;
 
     // Copy the data since we can't keep a reference to the image variable
-    ImmutableSharedBuffer isb{};
-    if (image.channels == 3) {
-      std::vector<uint8_t> imageDataRGBA = convertToRGBA(image);
-      isb = ImmutableSharedBuffer(std::move(imageDataRGBA));
-    } else {
-      isb = ImmutableSharedBuffer(image.data, imageSize);
-    }
-    texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
-  }
-
-  std::vector<uint8_t> convertToRGBA(const SHImage &image) {
-    std::vector<uint8_t> rgbaData(image.width * image.height * 4);
-
-    for (size_t y = 0; y < image.height; ++y) {
-      for (size_t x = 0; x < image.width; ++x) {
-        size_t srcIndex = (y * image.width + x) * 3;
-        size_t dstIndex = (y * image.width + x) * 4;
-
-        rgbaData[dstIndex] = image.data[srcIndex];
-        rgbaData[dstIndex + 1] = image.data[srcIndex + 1];
-        rgbaData[dstIndex + 2] = image.data[srcIndex + 2];
-
-        rgbaData[dstIndex + 3] = 255;
-      }
-    }
-
-    SHLOG_TRACE("RGB conversion completed");
-    return rgbaData;
+    ImmutableSharedBuffer isb(std::make_shared<ImageRefTextureBuffer>(const_cast<SHImage *>(&image)));
+    texture->init(TextureDesc{
+        .format = format,
+        .resolution = int2(image.width, image.height),
+        .source =
+            TextureSource{
+                .numChannels = image.channels,
+                .rowStride = image.rowStride,
+                .data = std::move(isb),
+            },
+    });
   }
 
   void activateRenderableTexture() {
@@ -311,7 +303,7 @@ struct TextureShard {
         .resolution = resolution,
     });
 
-    Var &labelVar = (Var&)_label.get();
+    Var &labelVar = (Var &)_label.get();
     if (!labelVar.isNone()) {
       if (SHSTRVIEW(labelVar) != texture->getLabel()) {
         texture->initWithLabel(std::string(labelVar));
@@ -347,7 +339,7 @@ struct TextureShard {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_createFromImage)
-      activateFromImage(input.payload.imageValue);
+      activateFromImage(*input.payload.imageValue);
     else
       activateRenderableTexture();
 
@@ -455,14 +447,12 @@ struct ReadTextureShard {
   static inline Type OutputSeqType = Type::SeqOf(CoreInfo::StringType);
 
   PARAM_VAR(_wait, "Wait", "Wait for read to complete", {CoreInfo::BoolType});
-  // OwnedVar _outputs;
   PARAM_IMPL(PARAM_IMPL_FOR(_wait));
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
-  SHVar _image;
-  std::vector<uint8_t> _imageBuffer;
+  OwnedVar _image;
 
   ReadTextureShard() { _wait = Var(false); }
 
@@ -497,12 +487,19 @@ struct ReadTextureShard {
     if (!*_wait)
       _requiredGraphicsContext->renderer->pollBufferCopies();
 
-    _image.valueType = SHType::Image;
-    auto &outImage = _image.payload.imageValue;
+    struct SHCustomImage {
+      SHImage image;
+      std::vector<uint8_t> userData;
+    };
+
     if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
+      _image = makeImage(sizeof(SHCustomImage) - sizeof(SHImage));
+      auto &outImage = *_image.payload.imageValue;
       outImage.data = nullptr;
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
-    } else {
+    } else if (!_readBuffer->data.empty()) {
+      _image = makeImage(sizeof(SHCustomImage) - sizeof(SHImage));
+      auto &outImage = *_image.payload.imageValue;
       if (isSupportedFormat(_readBuffer->pixelFormat)) {
         auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
         size_t componentSize = getStorageTypeSize(fmtDesc.storageType);
@@ -516,13 +513,18 @@ struct ReadTextureShard {
         }
         outImage.width = _readBuffer->size.x;
         outImage.height = _readBuffer->size.y;
-        size_t rowLength = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x;
-        size_t imageSize = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x * _readBuffer->size.y;
-        _imageBuffer.resize(imageSize);
-        outImage.data = _imageBuffer.data();
-        for (int y = 0; y < _readBuffer->size.y; ++y) {
-          memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride * y, rowLength);
-        }
+
+        auto customImage = reinterpret_cast<SHCustomImage *>(_image.payload.imageValue);
+        new (&customImage->userData) std::vector<uint8_t>(std::move(_readBuffer->data));
+
+        outImage.data = customImage->userData.data();
+        outImage.rowStride = _readBuffer->stride;
+        shassert(outImage.data);
+
+        outImage.free = [](SHImage *image) {
+          auto customImage = reinterpret_cast<SHCustomImage *>(image);
+          std::destroy_at(&customImage->userData);
+        };
       } else {
         throw formatException("Unsupported image storage type {}", magic_enum::enum_name(_readBuffer->pixelFormat));
       }

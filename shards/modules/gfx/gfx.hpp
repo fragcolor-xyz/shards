@@ -59,13 +59,6 @@ typedef shards::RequiredContextVariable<GraphicsRendererContext, GraphicsRendere
                                         GraphicsRendererContext::VariableName, false>
     OptionalGraphicsRendererContext;
 
-inline void composeCheckGfxThread(const SHInstanceData &data) {
-  if (data.onWorkerThread) {
-    throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
-                               "within an Await shard)");
-  }
-}
-
 } // namespace gfx
 
 #endif // SH_EXTRA_GFX

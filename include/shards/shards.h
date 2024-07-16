@@ -233,13 +233,19 @@ struct SHColor {
 #define SHIMAGE_FLAGS_16BITS_INT (1 << 2)
 #define SHIMAGE_FLAGS_32BITS_FLOAT (1 << 3)
 
+struct SHImage;
+typedef void(__cdecl *SHImageFreeProc)(struct SHImage *image);
+
 struct SHImage {
+  uint32_t refCount;
   uint16_t width;
   uint16_t height;
+  uint16_t rowStride;
   uint8_t channels;
   uint8_t flags;
   uint8_t *data;
-};
+  SHImageFreeProc free;
+} __attribute__((aligned(16)));
 
 struct SHAudio {
   uint32_t sampleRate; // set to 0 if unknown/not relevant
@@ -589,7 +595,7 @@ struct SHVarPayload {
 
     struct SHColor colorValue;
 
-    struct SHImage imageValue;
+    struct SHImage *imageValue;
 
     struct SHAudio audioValue;
 
@@ -690,6 +696,7 @@ struct SHInstanceData {
   // Info related to our activation
   struct SHTypeInfo inputType;
   SHExposedTypesInfo shared;
+  
   // if this activation might happen in a worker thread
   // for example cos this shard is within an Await shard
   // useful to fail during compose if we don't wish this
@@ -1038,6 +1045,12 @@ typedef void(__cdecl *SHStringFree)(SHStringPayload *str);
 
 typedef uint64_t(__cdecl *SHGetStepCount)(struct SHContext *context);
 
+typedef void(__cdecl *SHImageIncRefProc)(struct SHImage *);
+typedef void(__cdecl *SHImageDecRefProc)(struct SHImage *);
+typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
+typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
+typedef uint32_t (__cdecl *SHImageDeriveDataLengthProc)(struct SHImage *);
+
 typedef struct _SHCore {
   // Aligned allocator
   SHAlloc alloc;
@@ -1149,6 +1162,13 @@ typedef struct _SHCore {
   SHReadCachedString readCachedString;
   SHWriteCachedString writeCachedString;
   SHDecompressStrings decompressStrings;
+
+  // Image object manipulation
+  SHImageIncRefProc imageIncRef;
+  SHImageDecRefProc imageDecRef;
+  SHImageNewProc imageNew;
+  SHImageCloneProc imageClone;
+  SHImageDeriveDataLengthProc imageDeriveDataLength;
 
   // equality utilities
   SHIsEqualVar isEqualVar;

@@ -22,29 +22,26 @@ struct FromImage {
       if (input.valueType != SHType::Image)
         throw ActivationError("Expected Image type.");
 
-      int pixsize = int(getPixelSize(input));
+      SHImage &image = *input.payload.imageValue;
+      const int pixSize = imageGetPixelSize(&image);
+      const int componentLen = image.height * image.width * image.channels;
 
-      const int w = int(input.payload.imageValue.width);
-      const int h = int(input.payload.imageValue.height);
-      const int c = int(input.payload.imageValue.channels);
-      const int flatsize = w * h * c * pixsize;
+      output.resize(componentLen, Var(0.0));
 
-      output.resize(flatsize, Var(0.0));
-
-      if (pixsize == 1) {
-        for (int i = 0; i < flatsize; i++) {
-          const auto fval = double(input.payload.imageValue.data[i]) / 255.0;
+      if (pixSize == 1) {
+        for (int i = 0; i < componentLen; i++) {
+          const auto fval = double(image.data[i]) / 255.0;
           output[i].payload.floatValue = fval;
         }
-      } else if (pixsize == 2) {
-        const auto u16 = reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-        for (int i = 0; i < flatsize; i++) {
+      } else if (pixSize == 2) {
+        const auto u16 = reinterpret_cast<uint16_t *>(image.data);
+        for (int i = 0; i < componentLen; i++) {
           const auto fval = double(u16[i]) / 65535.0;
           output[i].payload.floatValue = fval;
         }
-      } else if (pixsize == 4) {
-        const auto f32 = reinterpret_cast<float *>(input.payload.imageValue.data);
-        for (int i = 0; i < flatsize; i++) {
+      } else if (pixSize == 4) {
+        const auto f32 = reinterpret_cast<float *>(image.data);
+        for (int i = 0; i < componentLen; i++) {
           output[i].payload.floatValue = f32[i];
         }
       }
@@ -55,22 +52,31 @@ struct FromImage {
 };
 
 struct FromSeq {
-  template <SHType OF> void toImage(std::vector<uint8_t> &buffer, int w, int h, int c, const SHVar &input) {
+  template <SHType OF> OwnedVar toImage(int w, int h, int c, const SHVar &input) {
+    OwnedVar output;
+
     // TODO SIMD this
     if (input.payload.seqValue.len == 0)
       throw ActivationError("Input sequence was empty.");
 
-    const int flatsize = std::min(w * h * c, int(input.payload.seqValue.len));
-    buffer.resize(flatsize);
+    const int componentLen = w * h * c;
+    const int imageDataLen = std::min(componentLen, int(input.payload.seqValue.len));
+    output = makeImage(imageDataLen);
+    SHImage &image = *output.payload.imageValue;
+    image.channels = c;
+    image.width = w;
+    image.height = h;
 
     if constexpr (OF == SHType::Float) {
       // assuming it's scaled 0-1
-      for (int i = 0; i < flatsize; i++) {
-        buffer[i] = uint8_t(input.payload.seqValue.elements[i].payload.floatValue * 255.0);
+      for (int i = 0; i < componentLen; i++) {
+        image.data[i] = uint8_t(input.payload.seqValue.elements[i].payload.floatValue * 255.0);
       }
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
     }
+
+    return output;
   }
 
   template <SHType OF> void toBytes(std::vector<uint8_t> &buffer, const SHVar &input) {
@@ -209,6 +215,8 @@ template <SHType FROMTYPE> struct ToImage {
 
   static SHParametersInfo parameters() { return _params; }
 
+  OwnedVar _output;
+
   SHVar getParam(int index) {
     switch (index) {
     case 0:
@@ -236,17 +244,18 @@ template <SHType FROMTYPE> struct ToImage {
     }
   }
 
+  void cleanup(SHContext *) { _output.reset(); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     FromSeq c;
-    c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels), input);
-    return Var(&_buffer.front(), _width, _height, _channels, 0);
+    _output = c.toImage<FROMTYPE>(int(_width), int(_height), int(_channels), input);
+    return _output;
   }
 
 private:
   uint8_t _channels = 1;
   uint16_t _width = 16;
   uint16_t _height = 16;
-  std::vector<uint8_t> _buffer;
 };
 
 template <SHType FROMTYPE> struct ToBytes {
@@ -801,13 +810,9 @@ struct ImageToBytes {
   static SHOptionalString help() { return SHCCSTR("Converts an image to its byte representation."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto pixsize = getPixelSize(input);
-
-    int w = int(input.payload.imageValue.width);
-    int h = int(input.payload.imageValue.height);
-    int c = int(input.payload.imageValue.channels);
-
-    return Var((uint8_t *)input.payload.imageValue.data, uint32_t(w * h * c * pixsize));
+    SHImage &image = *input.payload.imageValue;
+    uint32_t imageDataLength = imageDeriveDataLength(&image);
+    return Var((uint8_t *)image.data, imageDataLength);
   }
 };
 

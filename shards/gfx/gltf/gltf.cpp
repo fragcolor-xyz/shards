@@ -439,7 +439,10 @@ struct Loader {
             ->init(TextureDesc{
                 .format = convertTextureFormat(gltfImage, false),
                 .resolution = resolution,
-                .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+                .source =
+                    TextureSource{
+                        .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+                    },
             })
             .initWithSamplerState(samplerState);
 

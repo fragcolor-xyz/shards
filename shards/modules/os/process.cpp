@@ -95,7 +95,7 @@ struct Run {
   SHVar activate(SHContext *context, const SHVar &input) {
     std::optional<boost::process::child *> pCmd;
     _input = input;
-    _outputBuf = awaitne(
+    _outputBuf = maybeAwaitne(
         context,
         [&]() {
           // add any arguments we have

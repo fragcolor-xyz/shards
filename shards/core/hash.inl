@@ -232,14 +232,12 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
     shassert(error == XXH_OK);
   } break;
   case SHType::Image: {
-    SHImage i = var.payload.imageValue;
+    SHImage i = *var.payload.imageValue;
     i.data = nullptr;
     error = hashUpdate<TDigest>(state, &i, sizeof(SHImage));
     shassert(error == XXH_OK);
-    auto pixsize = getPixelSize(var);
-    error = hashUpdate<TDigest>(
-        state, var.payload.imageValue.data,
-        size_t(var.payload.imageValue.channels * var.payload.imageValue.width * var.payload.imageValue.height * pixsize));
+    uint32_t imageSize = imageDeriveDataLength(var.payload.imageValue);
+    error = hashUpdate<TDigest>(state, var.payload.imageValue->data, size_t(imageSize));
     shassert(error == XXH_OK);
   } break;
   case SHType::Audio: {

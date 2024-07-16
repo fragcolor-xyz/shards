@@ -53,14 +53,14 @@ endif()
 add_library(gfx ${GFX_SOURCES})
 
 # Always optimize files with hot-paths
-set_source_files_properties(
-  drawables/mesh_tree_drawable.cpp
-  gltf/gltf.cpp
-  texture_file/texture_file.cpp
-  pipeline_hashes.cpp
-  PROPERTIES
-  COMPILE_FLAGS -O3
-  SKIP_PRECOMPILE_HEADERS ON)
+# set_source_files_properties(
+#   drawables/mesh_tree_drawable.cpp
+#   gltf/gltf.cpp
+#   texture_file/texture_file.cpp
+#   pipeline_hashes.cpp
+#   PROPERTIES
+#   COMPILE_FLAGS -O3
+#   SKIP_PRECOMPILE_HEADERS ON)
 
 target_compile_features(gfx PUBLIC cxx_std_20)
 
@@ -111,10 +111,7 @@ if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
 endif()
 
 if(EMSCRIPTEN)
-  target_link_options(gfx PUBLIC
-    "-sUSE_WEBGPU=1"
-    "-sALLOW_MEMORY_GROWTH=1"
-  )
+  target_link_options(gfx PUBLIC "-sUSE_WEBGPU=1")
 
   em_link_js_library(gfx gfx_wgpu.js)
   em_link_js_library(gfx gfx_events.js)

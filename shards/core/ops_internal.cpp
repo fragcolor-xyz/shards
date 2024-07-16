@@ -170,10 +170,10 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << "Path: " << sView;
   } break;
   case SHType::Image:
-    os << "Image";
-    os << " Width: " << var.payload.imageValue.width;
-    os << " Height: " << var.payload.imageValue.height;
-    os << " Channels: " << (int)var.payload.imageValue.channels;
+    os << "Image(" << std::hex << var.payload.imageValue << std::dec << ")";
+    os << " Width: " << var.payload.imageValue->width;
+    os << " Height: " << var.payload.imageValue->height;
+    os << " Channels: " << (int)var.payload.imageValue->channels;
     break;
   case SHType::Audio:
     os << "Audio";

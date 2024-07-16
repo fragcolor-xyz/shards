@@ -303,37 +303,23 @@ struct Serialization {
       break;
     }
     case SHType::Image: {
-      size_t currentSize = 0;
-      if (recycle) {
-        auto bpp = 1;
-        if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-          bpp = 2;
-        else if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-          bpp = 4;
-        currentSize =
-            output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * bpp;
-      }
+      SHImage tmpImage{};
+      read((uint8_t *)&tmpImage.channels, sizeof(tmpImage.channels));
+      read((uint8_t *)&tmpImage.flags, sizeof(tmpImage.flags));
+      read((uint8_t *)&tmpImage.width, sizeof(tmpImage.width));
+      read((uint8_t *)&tmpImage.height, sizeof(tmpImage.height));
 
-      read((uint8_t *)&output.payload.imageValue.channels, sizeof(output.payload.imageValue.channels));
-      read((uint8_t *)&output.payload.imageValue.flags, sizeof(output.payload.imageValue.flags));
-      read((uint8_t *)&output.payload.imageValue.width, sizeof(output.payload.imageValue.width));
-      read((uint8_t *)&output.payload.imageValue.height, sizeof(output.payload.imageValue.height));
+      size_t imageDataLen = imageDeriveDataLength(&tmpImage);
 
-      auto pixsize = getPixelSize(output);
+      output.valueType = SHType::Image;
+      output.payload.imageValue = imageNew(imageDataLen);
+      SHImage &image = *output.payload.imageValue;
+      image.channels = tmpImage.channels;
+      image.flags = tmpImage.flags;
+      image.width = tmpImage.width;
+      image.height = tmpImage.height;
 
-      size_t size =
-          output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * pixsize;
-
-      if (currentSize > 0 && currentSize < size) {
-        // delete first & alloc
-        delete[] output.payload.imageValue.data;
-        output.payload.imageValue.data = new uint8_t[size];
-      } else if (currentSize == 0) {
-        // just alloc
-        output.payload.imageValue.data = new uint8_t[size];
-      }
-
-      read((uint8_t *)output.payload.imageValue.data, size);
+      read((uint8_t *)image.data, imageDataLen);
       break;
     }
     case SHType::Audio: {
@@ -636,18 +622,18 @@ struct Serialization {
       break;
     }
     case SHType::Image: {
-      auto pixsize = getPixelSize(input);
-      write((const uint8_t *)&input.payload.imageValue.channels, sizeof(input.payload.imageValue.channels));
-      total += sizeof(input.payload.imageValue.channels);
-      write((const uint8_t *)&input.payload.imageValue.flags, sizeof(input.payload.imageValue.flags));
-      total += sizeof(input.payload.imageValue.flags);
-      write((const uint8_t *)&input.payload.imageValue.width, sizeof(input.payload.imageValue.width));
-      total += sizeof(input.payload.imageValue.width);
-      write((const uint8_t *)&input.payload.imageValue.height, sizeof(input.payload.imageValue.height));
-      total += sizeof(input.payload.imageValue.height);
-      auto size = input.payload.imageValue.channels * input.payload.imageValue.height * input.payload.imageValue.width * pixsize;
-      write((const uint8_t *)input.payload.imageValue.data, size);
-      total += size;
+      SHImage &image = *input.payload.imageValue;
+      write((const uint8_t *)&image.channels, sizeof(image.channels));
+      total += sizeof(image.channels);
+      write((const uint8_t *)&image.flags, sizeof(image.flags));
+      total += sizeof(image.flags);
+      write((const uint8_t *)&image.width, sizeof(image.width));
+      total += sizeof(image.width);
+      write((const uint8_t *)&image.height, sizeof(image.height));
+      total += sizeof(image.height);
+      auto imageDataLength = imageDeriveDataLength(&image);
+      write((const uint8_t *)image.data, imageDataLength);
+      total += imageDataLength;
       break;
     }
     case SHType::Audio: {
