@@ -72,7 +72,6 @@ RegisterShard(MyShard1.name.utf8Start.withMemoryRebound(to: Int8.self, capacity:
 
 import Foundation
 import shards
-import UIKit
 
 public struct Globals {
     public var Core: UnsafeMutablePointer<SHCore>
@@ -1121,6 +1120,9 @@ class Shards {
     }
 }
 
+
+#if canImport(UIKit)
+import UIKit
 extension UIView {
     var safeArea: UIEdgeInsets {
         if #available(iOS 11, *) {
@@ -1137,4 +1139,4 @@ public func getViewSafeArea(uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, vi
     let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
     uiEdgeInsets.pointee = view.safeArea
 }
-
+#endif
