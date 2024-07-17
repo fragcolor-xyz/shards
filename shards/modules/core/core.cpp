@@ -11,6 +11,12 @@
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 
+#if SH_ANDROID
+extern "C" {
+void *SDL_AndroidGetActivity(void);
+}
+#endif
+
 namespace shards {
 
 struct JointOp {
@@ -2265,41 +2271,22 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 }
 #endif
 
-#ifdef __APPLE__
+#if SH_APPLE
 extern "C" void shards_openURL(SHStringWithLen urlString, bool inApp, void *viewControllerPtr);
 #endif
 
-#ifdef _WIN32
+#if SH_WINDOWS
 #include <windows.h>
 void openURLWindows(const char *url) { ShellExecuteA(0, "open", url, 0, 0, SW_SHOWNORMAL); }
 #endif
 
-#ifdef __ANDROID__
-#include <jni.h>
-#include <android/native_activity.h>
-void openURLAndroid(ANativeActivity *activity, const char *url) {
-  JNIEnv *env = nullptr;
-  activity->vm->AttachCurrentThread(&env, nullptr);
-
-  jclass uriClass = env->FindClass("android/net/Uri");
-  jmethodID parseMethod = env->GetStaticMethodID(uriClass, "parse", "(Ljava/lang/String;)Landroid/net/Uri;");
-  jstring urlString = env->NewStringUTF(url);
-  jobject uri = env->CallStaticObjectMethod(uriClass, parseMethod, urlString);
-
-  jclass intentClass = env->FindClass("android/content/Intent");
-  jmethodID intentConstructor = env->GetMethodID(intentClass, "<init>", "(Ljava/lang/String;Landroid/net/Uri;)V");
-  jstring actionView = env->NewStringUTF("android.intent.action.VIEW");
-  jobject intent = env->NewObject(intentClass, intentConstructor, actionView, uri);
-
-  jclass activityClass = env->GetObjectClass(activity->clazz);
-  jmethodID startActivityMethod = env->GetMethodID(activityClass, "startActivity", "(Landroid/content/Intent;)V");
-  env->CallVoidMethod(activity->clazz, startActivityMethod, intent);
-
-  activity->vm->DetachCurrentThread();
+#if SH_ANDROID
+extern "C" {
+int SDL_SYS_OpenURL(const char *url);
 }
 #endif
 
-#ifdef __linux__
+#if SH_LINUX
 #include <stdlib.h>
 void openURLLinux(const char *url) {
   std::string command = "xdg-open ";
@@ -2309,7 +2296,7 @@ void openURLLinux(const char *url) {
 #endif
 
 SHVar webBrowseActivation(const SHVar &input) {
-#ifdef __APPLE__
+#if SH_APPLE
   auto str = SHSTRVIEW(input);
   SHStringWithLen urlString = toSWL(str);
 #if SH_IOS
@@ -2321,14 +2308,13 @@ SHVar webBrowseActivation(const SHVar &input) {
 #else
   shards_openURL(urlString, false, nullptr);
 #endif
-#elif defined(_WIN32)
+#elif SH_WINDOWS
   shards::OwnedVar urlVar = input; // ensure null termination
   openURLWindows(urlVar.payload.stringValue);
-#elif defined(__ANDROID__)
-  ANativeActivity *activity = entt::locator<ANativeActivity>::value();
+#elif SH_ANDROID
   shards::OwnedVar urlVar = input; // ensure null termination
-  openURLAndroid(activity, urlVar.payload.stringValue);
-#elif defined(__linux__)
+  SDL_SYS_OpenURL(urlVar.payload.stringValue);
+#elif SH_LINUX
   shards::OwnedVar urlVar = input; // ensure null termination
   openURLLinux(urlVar.payload.stringValue);
 #else
@@ -2576,7 +2562,7 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Lowest", LowestShard);
   REGISTER_SHARD("Highest", HighestShard);
 
-#ifdef __EMSCRIPTEN__
+#if SH_EMSCRIPTEN
   using EmscriptenEvalShard = LambdaShard<emscriptenEvalActivation, CoreInfo::StringType, CoreInfo::StringType>;
   // _ prefix = internal shard
   REGISTER_SHARD("_Emscripten.Eval", EmscriptenEvalShard);
