@@ -1,7 +1,7 @@
-use shards::core::{register_enum, register_legacy_shard, register_shard, WireErrorListener};
+use shards::core::{register_enum, register_legacy_shard, register_shard};
 use shards::util::from_raw_parts_allow_null;
+use shards::SHStringWithLen;
 use shards::{shlog_error, shlog_trace, types::*};
-use shards::{SHMeshRef, SHStringWithLen};
 use shards_lang::cli::process_args;
 use shards_lang::eval::{self, *};
 use shards_lang::read::AST_TYPE;
@@ -287,32 +287,39 @@ pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
 
 /// To be used before compose or schedule basically to report errors
 #[no_mangle]
-pub extern "C" fn shards_attach_mesh(mesh: SHMeshRef, ast: &Var) {
+pub extern "C" fn shards_propagate_error(
+  ast: &Var,
+  wire_id: u64,
+  shard_id: u64,
+  line: u32,
+  column: u32,
+  error: &Var,
+) {
   let ast = unsafe {
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
-  let listener = WireErrorListener::new(mesh, |error| {
-    let error = unsafe { &*error };
-    let id = unsafe { (*error.shard).id };
-    let line = unsafe { (*error.shard).line };
-    let column = unsafe { (*error.shard).column };
+
+  // prefer shard_id, if shard_id is 0, then use wire_id
+  let func_id = if shard_id == 0 { wire_id } else { shard_id };
+
+  if func_id != 0 {
     ast
       .metadata
       .debug_info
       .borrow_mut()
       .id_to_functions
-      .get(&id)
+      .get_mut(&func_id)
       .map(|f| {
+        shlog_trace!("Propagating error to id {}, func: ({:?})", func_id, f);
         let f = unsafe { &**f };
-        let msg: &str = error.error.0.as_ref().try_into().unwrap();
+        let msg: &str = error.try_into().unwrap();
         let error = ShardsError {
           message: msg.to_owned(),
           loc: LineInfo { line, column },
         };
         f.custom_state.set(error)
       });
-  });
-  ast.metadata.debug_info.borrow_mut().listener = Some(listener);
+  }
 }
 
 #[no_mangle]

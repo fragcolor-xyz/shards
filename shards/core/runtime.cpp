@@ -2967,33 +2967,17 @@ SHVar hash_bytes_xx64_legacy(const void *data, size_t len, uint64_t seed) {
   return res;
 }
 
+void shards_set_wire_debug_id(SHWireRef wire, uint64_t id) {
+  auto &sc = SHWire::sharedFromRef(wire);
+  sc->debugId = id;
+}
+
 void shards_decompress_strings() {
 #ifdef SH_COMPRESSED_STRINGS
   shards::decompressStrings();
 #endif
 }
 }
-
-struct WireOnErrorEventListener {
-  entt::connection connection;
-  WireOnErrorEventFunc func;
-  void *userdata;
-
-  void onErrorEvent(SHWire::OnErrorEvent &e) { func(e, userdata); }
-
-  WireOnErrorEventListener(SHMesh *mesh, WireOnErrorEventFunc func, void *userdata) : func(func), userdata(userdata) {
-    connection = mesh->dispatcher.sink<SHWire::OnErrorEvent>().connect<&WireOnErrorEventListener::onErrorEvent>(this);
-  }
-
-  ~WireOnErrorEventListener() { connection.release(); }
-};
-
-WireOnErrorEventListener *createWireOnErrorEventListener(SHMeshRef mesh, WireOnErrorEventFunc func, void *userdata) {
-  auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-  return new WireOnErrorEventListener(smesh->get(), func, userdata);
-}
-
-void destroyWireOnErrorEventListener(WireOnErrorEventListener *listener) { delete listener; }
 
 namespace shards {
 void decRef(ShardPtr shard) {

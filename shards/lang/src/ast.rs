@@ -5,7 +5,7 @@ use core::fmt;
 use pest::Position;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
-  core::WireErrorListener, types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String
+  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
 use std::{cell::RefCell, collections::HashMap, fmt::Debug};
 
@@ -303,7 +303,6 @@ impl Statement {
 pub struct DebugInfo {
   pub id_to_functions: HashMap<u64, *const Function>,
   pub id_counter: u64,
-  pub listener: Option<WireErrorListener>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

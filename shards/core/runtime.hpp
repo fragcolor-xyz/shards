@@ -1021,13 +1021,4 @@ struct UIViewControllerContainer {
 };
 #endif
 } // namespace shards
-
-struct WireOnErrorEventListener;
-typedef void (*WireOnErrorEventFunc)(SHWire::OnErrorEvent &e, void *userdata);
-
-extern "C" {
-WireOnErrorEventListener *createWireOnErrorEventListener(SHMeshRef mesh, WireOnErrorEventFunc func, void *userdata);
-void destroyWireOnErrorEventListener(WireOnErrorEventListener *listener);
-}
-
 #endif // SH_CORE_RUNTIME

@@ -262,6 +262,10 @@ impl Drop for Wire {
   }
 }
 
+extern "C" {
+  fn shards_set_wire_debug_id(wire: SHWireRef, id: u64);
+}
+
 impl Wire {
   pub fn new(name: &str) -> Self {
     let name = SHStringWithLen {
@@ -269,6 +273,11 @@ impl Wire {
       len: name.len() as u64,
     };
     Wire(WireRef(unsafe { (*Core).createWire.unwrap()(name) }))
+  }
+
+  pub fn set_debug_id(self, id: u64) -> Self {
+    unsafe { shards_set_wire_debug_id(self.0 .0, id) };
+    self
   }
 
   pub fn add_shard(&self, shard: ShardRef) {

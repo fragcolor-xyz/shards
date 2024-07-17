@@ -7,12 +7,9 @@ use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
-use std::os::raw::c_void;
 
 use nanoid::nanoid;
-use shards::core::WireErrorListener;
 use shards::cstr;
-use shards::SHStringWithLen;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -26,8 +23,7 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use shards::SHWire;
-use shards::Shard;
+use shards::SHWireRef;
 use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
@@ -3140,7 +3136,19 @@ fn eval_pipeline(
               e.deferred_wires.insert(
                 name,
                 (
-                  Wire::new(&wire_name),
+                  Wire::new(&wire_name).set_debug_id({
+                    get_topmost_program(e)
+                      .map(|p| {
+                        let mut debug_info = p.metadata.debug_info.borrow_mut();
+                        debug_info.id_counter += 1;
+                        let id = debug_info.id_counter;
+                        debug_info
+                          .id_to_functions
+                          .insert(id, func as *const Function);
+                        id
+                      })
+                      .unwrap_or(0)
+                  }),
                   params_ptr,
                   block.line_info.unwrap_or_default(),
                 ),
