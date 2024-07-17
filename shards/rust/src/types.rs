@@ -2711,7 +2711,7 @@ macro_rules! ref_counted_object_type_impl {
         }
 
         shards::SHObjectInfo {
-          name: TYPE_OBJECT_NAME.as_ptr() as *const i8,
+          name: TYPE_OBJECT_NAME.as_ptr() as  *const ::core::ffi::c_char,
           serialize: None,
           free: None,
           deserialize: None,
