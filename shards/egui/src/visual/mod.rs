@@ -168,6 +168,7 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
       Ok(Value::Identifier(Identifier {
         name: name.into(),
         namespaces,
+        custom_state: CustomStateContainer::new(),
       }))
     }
     _ => Err(format!("Unsupported Var type: {:?}", var.valueType)),
@@ -868,6 +869,7 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
                   name: Identifier {
                     name: "color".into(),
                     namespaces: Vec::new(),
+                    custom_state: CustomStateContainer::new(),
                   },
                   params: Some(vec![
                     // 4 Number/Integer values
@@ -961,6 +963,7 @@ fn select_shard_modal(ui: &mut Ui, swap_state: &mut BlockSwapState) -> SwapState
                     name: Identifier {
                       name: result.clone().into(),
                       namespaces: Vec::new(),
+                      custom_state: CustomStateContainer::new(),
                     },
                     params: None,
                     custom_state: CustomStateContainer::new(),
@@ -1145,6 +1148,7 @@ fn select_value_modal(ui: &mut Ui, swap_state: &mut ParamSwapState) -> SwapState
                   name: Identifier {
                     name: "color".into(),
                     namespaces: Vec::new(),
+                    custom_state: CustomStateContainer::new(),
                   },
                   params: Some(vec![
                     Param {
@@ -1243,6 +1247,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     name: Identifier {
                       name: "Pass".into(),
                       namespaces: Vec::new(),
+                      custom_state: CustomStateContainer::new(),
                     },
                     params: None,
                     custom_state: CustomStateContainer::new(),
@@ -1328,6 +1333,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     name: Identifier {
                       name: "Pass".into(),
                       namespaces: Vec::new(),
+                      custom_state: CustomStateContainer::new(),
                     },
                     params: None,
                     custom_state: CustomStateContainer::new(),
@@ -2352,6 +2358,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
       name: Identifier {
         name: "Get".into(),
         namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
       },
       params: Some(vec![Param {
         name: None,
@@ -2371,6 +2378,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
         name: Identifier {
           name: "Take".into(),
           namespaces: Vec::new(),
+          custom_state: CustomStateContainer::new(),
         },
         params: Some(vec![Param {
           name: None,
@@ -2399,6 +2407,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
       name: Identifier {
         name: "Get".into(),
         namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
       },
       params: Some(vec![Param {
         name: None,
@@ -2418,6 +2427,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
         name: Identifier {
           name: "Take".into(),
           namespaces: Vec::new(),
+          custom_state: CustomStateContainer::new(),
         },
         params: Some(vec![Param {
           name: None,

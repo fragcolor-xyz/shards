@@ -97,6 +97,7 @@ fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
   Ok(Identifier {
     name: identifiers.pop().unwrap(), // qed
     namespaces: identifiers,
+    custom_state: CustomStateContainer::new(),
   })
 }
 
@@ -183,6 +184,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       let identifier = Identifier {
         name: exp.as_str().to_owned().into(),
         namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
       };
       let next = inner.next();
 

@@ -3,6 +3,7 @@ use shards::util::from_raw_parts_allow_null;
 use shards::SHStringWithLen;
 use shards::{shlog_error, shlog_trace, types::*};
 use shards_lang::cli::process_args;
+use shards_lang::custom_state::CustomStateContainer;
 use shards_lang::eval::{self, *};
 use shards_lang::read::AST_TYPE;
 use shards_lang::{ast::*, RcStrWrapper};
@@ -121,6 +122,7 @@ pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) 
   env.forbidden_funcs.insert(Identifier {
     name: RcStrWrapper::from(name),
     namespaces: Vec::new(),
+    custom_state: CustomStateContainer::new(),
   });
 }
 
@@ -307,15 +309,25 @@ pub extern "C" fn shards_propagate_error(
       .borrow_mut()
       .id_to_functions
       .get_mut(&func_id)
-      .map(|f| {
-        shlog_trace!("Propagating error to id {}, func: ({:?})", func_id, f);
-        let f = unsafe { &**f };
-        let msg: &str = error.try_into().unwrap();
-        let error = ShardsError {
-          message: msg.to_owned(),
-          loc: LineInfo { line, column },
-        };
-        f.custom_state.set(error)
+      .map(|db| match db {
+        DebugPtr::Function(f) => {
+          let f = unsafe { &**f };
+          let msg: &str = error.try_into().unwrap();
+          let error = ShardsError {
+            message: msg.to_owned(),
+            loc: LineInfo { line, column },
+          };
+          f.custom_state.set(error)
+        }
+        DebugPtr::Identifier(i) => {
+          let i = unsafe { &**i };
+          let msg: &str = error.try_into().unwrap();
+          let error = ShardsError {
+            message: msg.to_owned(),
+            loc: LineInfo { line, column },
+          };
+          i.custom_state.set(error)
+        }
       });
   }
 }
