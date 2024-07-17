@@ -168,7 +168,9 @@ impl LegacyShard for super::Sized {
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let max_size = vec2((&self.width.0).try_into()?, (&self.height.0).try_into()?);
+      let mut max_size = vec2((&self.width.0).try_into()?, (&self.height.0).try_into()?);
+      max_size.x = max_size.x.max(0.0);
+      max_size.y = max_size.y.max(0.0);
 
       let mut sized: Vec2 = max_size;
       let available_size = ui.available_size();

@@ -221,8 +221,17 @@ struct StyleShard {
   #[shard_param("ComboHeight", "Height of a combo-box before showing scroll bars.", [common_type::none, common_type::float, common_type::float_var])]
   combo_height: ParamVar,
 
+  #[shard_param("ScrollBarFloating", "Use floating scroll bar.", [common_type::none, common_type::bool, common_type::bool_var])]
+  scroll_bar_floating: ParamVar,
+
   #[shard_param("ScrollBarWidth", "Width of a scroll bar.", [common_type::none, common_type::float, common_type::float_var])]
   scroll_bar_width: ParamVar,
+
+  #[shard_param("ScrollBarFloatingWidth", "Width of a floating scroll bar (not hovering).", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_floating_width: ParamVar,
+
+  #[shard_param("ScrollBarFloatingAllocatedWidth", "Allocated width of a floating scroll bar (not hovering).", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_floating_allocated_width: ParamVar,
 
   #[shard_param("ScrollHandleMinLength", "Make sure the scroll handle is at least this big", [common_type::none, common_type::float, common_type::float_var])]
   scroll_handle_min_length: ParamVar,
@@ -232,6 +241,9 @@ struct StyleShard {
 
   #[shard_param("ScrollBarOuterMargin", "Margin between scroll bar and the outer container (e.g. right of a vertical scroll bar).", [common_type::none, common_type::float, common_type::float_var])]
   scroll_bar_outer_margin: ParamVar,
+
+  #[shard_param("ScrollBarDormantOpacity", "Opacity of the scroll bar when dormant.", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_dormant_opacity: ParamVar,
 
   // ------ Visuals members ------
   #[shard_param("DarkMode", "If true, the visuals are overall dark with light text. If false, the visuals are overall light with dark text.", [common_type::none, common_type::bool, common_type::bool_var])]
@@ -345,10 +357,16 @@ impl Default for StyleShard {
       tooltip_width: ParamVar::default(),
       indent_ends_with_horizontal_line: ParamVar::default(),
       combo_height: ParamVar::default(),
+
+      // ------ Scroll bar ------
+      scroll_bar_floating: ParamVar::default(),
       scroll_bar_width: ParamVar::default(),
+      scroll_bar_floating_width: ParamVar::default(),
+      scroll_bar_floating_allocated_width: ParamVar::default(),
       scroll_handle_min_length: ParamVar::default(),
       scroll_bar_inner_margin: ParamVar::default(),
       scroll_bar_outer_margin: ParamVar::default(),
+      scroll_bar_dormant_opacity: ParamVar::default(),
 
       // ------ Visuals members ------
       dark_mode: ParamVar::default(),
@@ -560,8 +578,21 @@ impl Shard for StyleShard {
       Ok(spacing.combo_height = v.try_into()?)
     })?;
 
+    // Scroll bar
+    when_set(&self.scroll_bar_floating, |v| {
+      Ok(spacing.scroll.floating = v.try_into()?)
+    })?;
+
     when_set(&self.scroll_bar_width, |v| {
       Ok(spacing.scroll.bar_width = v.try_into()?)
+    })?;
+
+    when_set(&self.scroll_bar_floating_width, |v| {
+      Ok(spacing.scroll.floating_width = v.try_into()?)
+    })?;
+
+    when_set(&self.scroll_bar_floating_allocated_width, |v| {
+      Ok(spacing.scroll.floating_allocated_width = v.try_into()?)
     })?;
 
     when_set(&self.scroll_handle_min_length, |v| {
@@ -574,6 +605,12 @@ impl Shard for StyleShard {
 
     when_set(&self.scroll_bar_outer_margin, |v| {
       Ok(spacing.scroll.bar_outer_margin = v.try_into()?)
+    })?;
+
+    when_set(&self.scroll_bar_dormant_opacity, |v| {
+      let v = v.try_into()?;
+      spacing.scroll.dormant_background_opacity = v;
+      Ok(spacing.scroll.dormant_handle_opacity = v)
     })?;
 
     // Visuals stuff
@@ -661,7 +698,7 @@ impl Shard for StyleShard {
     when_set(&self.striped, |v| Ok(visuals.striped = v.try_into()?))?;
 
     when_set(&self.slider_trailing_fill, |v| {
-      Ok(visuals.slider_trailing_fill = v.try_into()?)
+      Ok(visuals.slider_trailing_fill = v.try_into()?) 
     })?;
 
     when_set(&self.selection, |v| {
