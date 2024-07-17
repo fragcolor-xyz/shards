@@ -236,12 +236,7 @@ struct PlayShard {
         // Quaternion slerp
         float4 a = toVec<float4>(va);
         float4 b = toVec<float4>(vb);
-
-        // Fix for long path rotations (>180 degrees)
-        float dot = linalg::dot(a, b);
-        if (dot < 0.0)
-          a = -a;
-        outputValue = toVar(linalg::slerp(a, b, phase));
+        outputValue = toVar(linalg::qslerp(a, b, phase));
       } else {
         // Generic lerp
         outputValue.valueType = va.valueType;
@@ -336,12 +331,7 @@ struct InterpolateShard {
       // Quaternion slerp
       float4 a = toVec<float4>(_a);
       float4 b = toVec<float4>(_b);
-
-      // Fix for long path rotations (>180 degrees)
-      float dot = linalg::dot(a, b);
-      if (dot < 0.0)
-        a = -a;
-      _lastOutput = toVar(linalg::slerp(a, b, float(phase)));
+      _lastOutput = toVar(linalg::qslerp(a, b, float(phase)));
     } else {
       // Generic lerp
       _lastOutput.valueType = _a.valueType;

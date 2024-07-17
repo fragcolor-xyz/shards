@@ -576,7 +576,7 @@ struct QuaternionSlerp {
     float factor = input.payload.floatValue;
     auto& a = *reinterpret_cast<Vec4 *>(&_a.get());
     auto& b = *reinterpret_cast<Vec4 *>(&_b.get());
-    _output = linalg::slerp<float, 4>(a, b, factor);
+    _output = linalg::qslerp(*a, *b, factor);
     return _output;
   }
 };
