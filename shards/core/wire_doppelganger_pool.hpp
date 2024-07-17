@@ -25,7 +25,6 @@ concept WireDataDeps = requires(TData data) {
 
 template <typename T> struct WireDoppelgangerPool {
   WireDoppelgangerPool(SHWireRef master) {
-    _master = SHWire::sharedFromRef(master);
     // Never call this from setParam or earlier...
     auto vwire = shards::Var(master);
     std::stringstream stream;
@@ -124,7 +123,6 @@ private:
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<T *> _avail;
   std::string _wireStr;
-  std::shared_ptr<SHWire> _master;
 };
 } // namespace shards
 
