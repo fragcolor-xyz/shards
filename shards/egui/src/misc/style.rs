@@ -8,7 +8,7 @@ use crate::widgets::{TextWrap, TEXTWRAP_TYPE};
 use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, TableVar};
+use shards::types::{common_type, ClonedVar, TableVar};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES};
 use shards::util::get_or_var;
 
@@ -118,6 +118,13 @@ struct StyleShard {
 
   #[shard_warmup]
   contexts: ParamVar,
+
+  #[shard_param(
+    "InheritDefault",
+    "Inherit default style instead of current style.",
+    [common_type::bool]
+  )]
+  inherit_default: ClonedVar,
 
   #[shard_param(
     "OverrideTextStyle",
@@ -309,6 +316,7 @@ impl Default for StyleShard {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
+      inherit_default: false.into(),
       override_text_style: ParamVar::default(),
       font_id: ParamVar::default(),
       text_styles: ParamVar::default(),
@@ -403,6 +411,10 @@ impl Shard for StyleShard {
 
   fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
     let mut global_style = None;
+
+    let no_default: bool = (&self.inherit_default.0).try_into()?;
+    let dark_mode: bool = self.dark_mode.get().try_into().unwrap_or(true);
+
     let style = if let Ok(ui) = crate::util::get_parent_ui(self.parents.get()) {
       ui.style_mut()
     } else {
@@ -414,6 +426,16 @@ impl Shard for StyleShard {
       );
       global_style.as_mut().unwrap()
     };
+
+    if no_default {
+      *style = egui::Style::default();
+
+      style.visuals = if dark_mode {
+        egui::Visuals::dark()
+      } else {
+        egui::Visuals::light()
+      };
+    }
 
     when_set(&self.animation_time, |v| {
       Ok(style.animation_time = v.try_into()?)
@@ -557,7 +579,7 @@ impl Shard for StyleShard {
     // Visuals stuff
     let visuals = &mut style.visuals;
 
-    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = v.try_into()?))?;
+    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = dark_mode))?;
 
     when_set(&self.override_text_color, |v| {
       Ok(visuals.override_text_color = Some(into_color(v)?))
