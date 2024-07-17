@@ -1,0 +1,41 @@
+; This tests installing of scheme handlers using IPC
+; try opening the following link
+; shards-test://oL6V5L9EgaqHW5t2zOaR
+
+@template(scheme-cmd [] {
+  Process.Exe >> scheme-args
+  "new" >> scheme-args
+  "ipc-post.shs" | FS.Absolute >> scheme-args
+  "\"url:%1\"" >> scheme-args
+  scheme-args | String.Join(" ") = scheme-cmd
+  scheme-cmd
+})
+
+@wire(do-register {
+  Log("Registering scheme handler")
+  SchemeHandler.Register("shards-test" (@scheme-cmd()))
+})
+
+@wire(main-loop {
+  Log("Listening for ipc messages")
+  Maybe({
+    IPC.Take("shards-test")
+    ForEach({
+      Log("< Raw message")
+      FromBytes
+      Log("< Decoded message")
+    })
+  })
+} Looped: true)
+
+@wire(main {
+  @scheme-cmd() = cmd
+  SchemeHandler.IsInstalled("shards-test" cmd) | When(Is(false) {
+    Do(do-register)
+  })
+  
+  SwitchTo(main-loop)
+})
+@mesh(root)
+@schedule(root main)
+@run(root TickTime: 1.0)
