@@ -155,9 +155,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
   let env = unsafe { &mut *env };
-  if env.program.is_none() {
-    env.program = Some(ast as *const Program);
-  }
+  env.program = Some(ast as *const Program);
   for stmt in &ast.sequence.statements {
     if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);

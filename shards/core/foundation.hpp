@@ -302,7 +302,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::string name{"unnamed"};
   entt::id_type id{entt::null};
-  uint64_t debugId{0};
+  uint64_t debugId{0}; // used for debugging
+  shards::OwnedVar astObject; // optional, used for debugging
 
   // The wire's running coroutine
   shards::Coroutine coro;
