@@ -44,7 +44,7 @@
           }
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
+    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
     avocado-a >> drawables
   })
 
@@ -73,7 +73,7 @@
           }
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
+    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
 
     @f3(1 0 0) Math.Translation >= t2
     {
@@ -86,7 +86,7 @@
           baseColor: @f4(1.0 0.0 1.0 1.0)
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
+    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
   })
 
   @default-window(@f3(20.0 3.0 0.0) @f3(0 0 0))

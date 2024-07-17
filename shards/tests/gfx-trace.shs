@@ -24,7 +24,7 @@
   Animation.Timer = time
   @spin-transform(time @f3(0.0 0 0)) = transform-0
 
-  transform-0 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb")
+  transform-0 | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb")
   GFX.Draw(Queue: queue)
 
   @f3(0.1 0.0 0.0) | Math.Translation = t

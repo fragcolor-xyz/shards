@@ -58,11 +58,11 @@ jobs:
         run: |
           cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
           cmake --build build --target shards test-gfx
-      - name: Checkout glTF-Sample-Models
+      - name: Checkout glTF-Sample-Assets
         uses: actions/checkout@v3
         with:
-          repository: KhronosGroup/glTF-Sample-Models
-          path: external/glTF-Sample-Models
+          repository: shards-lang/glTF-Sample-Assets
+          path: external/glTF-Sample-Assets
           fetch-depth: 1
       - name: Test (GPU)
         env:
@@ -117,7 +117,7 @@ jobs:
 
           echo "Running ui-drag-and-drop"
           build/shards new shards/tests/ui-drag-and-drop.shs
-          
+
           echo "Running ui-selectable-drag"
           build/shards new shards/tests/ui-selectable-drag.shs
 

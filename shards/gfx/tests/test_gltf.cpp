@@ -34,9 +34,9 @@ static TestModelDesc testSkinnedModels[] = {
 // clang-format on
 
 auto load(const TestModelDesc &desc) {
-  auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", desc.name));
+  auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Assets/Models/{0}/glTF-Binary/{0}.glb", desc.name));
   if (!fs::exists(glbPath)) {
-    glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF/{0}.gltf", desc.name));
+    glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Assets/Models/{0}/glTF/{0}.gltf", desc.name));
   }
 
   return loadGltfFromFile(glbPath.string().c_str()).root;

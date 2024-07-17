@@ -69,7 +69,7 @@
 @wire(test-path-dynamic {
   Once({
     @default-setup
-    "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= path-var
+    "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" >= path-var
     Math.MatIdentity | GFX.glTF(Path: path-var) >> drawables
   })
 
@@ -82,7 +82,7 @@
 @wire(test-binary {
   Once({
     @default-setup()
-    "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" | FS.Read(Bytes: true) >= bytes
+    "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" | FS.Read(Bytes: true) >= bytes
     Math.MatIdentity | GFX.glTF(Bytes: bytes) >> drawables
   })
 
@@ -108,9 +108,9 @@
       time | Do(get-view-transform) > view-transform
       @get-xy-wave-transform(0.0 time) > t2
 
-      t1 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> drawables
-      t2 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> drawables
-      t3 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> drawables
+      t1 | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >> drawables
+      t2 | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >> drawables
+      t3 | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >> drawables
       drawables | GFX.Draw(queue)
       GFX.Render(Steps: render-steps View: view)
     }
@@ -125,7 +125,7 @@
     @default-setup
     @f3(-0.05 0 0) | Math.Translation >= t1
     @f3(0.05 0 0) | Math.Translation >= t2
-    t1 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
+    t1 | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
     avocado-a >> drawables
     t2 | GFX.glTF(Copy: avocado-a) >> drawables
   })
@@ -136,19 +136,26 @@
 @schedule(root test-copy)
 @run(root FPS: 120 Iterations: 100) | Assert.Is(true)
 
-@wire(test-pack {
-  Once({
-    @default-setup
-    @f3(-0.05 0 0) | Math.Translation >= t1
-    @f3(0.05 0 0) | Math.Translation >= t2
-    "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" | GLTF.PackGLB = packed-bytes
-    t1 | GFX.glTF(Bytes: packed-bytes) >= avocado-a
-    avocado-a >> drawables
-    t2 | GFX.glTF(Copy: avocado-a) >> drawables
-  })
-
-  @default-window
+@template(test-pack-x [name file scale] {
+  @wire(name {
+    Once({
+      @default-setup
+      scale | Math.Scaling = s
+      file | GLTF.PackGLB = packed-bytes
+      s | GFX.glTF(Bytes: packed-bytes) >> drawables
+    })
+    @default-window
+  } Looped: true)
 })
 
-@schedule(root test-pack)
+@test-pack-x(test-pack-1 "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" @f3(0.5))
+@schedule(root test-pack-1)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+
+@test-pack-x(test-pack-2 "../../external/glTF-Sample-Assets/Models/DamagedHelmet/glTF-Embedded/DamagedHelmet.gltf" @f3(0.1))
+@schedule(root test-pack-2)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+
+@test-pack-x(test-pack-3 "../../external/glTF-Sample-Assets/Models/PotOfCoals/glTF/PotOfCoals.gltf" @f3(0.5))
+@schedule(root test-pack-3)
 @run(root FPS: 120 Iterations: 100) | Assert.Is(true)

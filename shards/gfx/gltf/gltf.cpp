@@ -769,121 +769,67 @@ bool readFile(const std::filesystem::path &path, std::vector<unsigned char> &dat
   return true;
 }
 
-std::vector<unsigned char> parseDataURI(const std::string &uri) {
-  static const std::regex dataURIRegex(R"(data:([^;,]+)?(;base64)?,(.+))");
-  std::smatch match;
-  if (std::regex_match(uri, match, dataURIRegex)) {
-    std::string encodedData = match[3];
-    if (match[2].matched) { // base64
-      // Implement base64 decoding here
-      // For brevity, I'm omitting the actual implementation
-      // You can use a library like OpenSSL or implement it yourself
-      throw std::runtime_error("Base64 decoding not implemented");
-    } else {
-      // URL-encoded data
-      std::string decodedData;
-      std::istringstream iss(encodedData);
-      char ch;
-      while (iss.get(ch)) {
-        if (ch == '%') {
-          int value;
-          iss >> std::hex >> value;
-          decodedData += static_cast<char>(value);
-        } else {
-          decodedData += ch;
-        }
-      }
-      return std::vector<unsigned char>(decodedData.begin(), decodedData.end());
+void embedBuffers(tinygltf::Model &model, const std::filesystem::path &basePath) {
+  for (auto &buffer : model.buffers) {
+    if (!buffer.uri.empty()) {
+      buffer.uri.clear(); // Clear URI as the buffer is now embedded
     }
   }
-  throw std::runtime_error("Invalid data URI");
 }
 
-void embedImages(tinygltf::Model &model, const std::filesystem::path &basePath) {
-  // Create a new buffer for all image data
-  tinygltf::Buffer imageBuffer;
-  size_t imageBufferIndex = model.buffers.size();
-  model.buffers.push_back(imageBuffer);
+struct ImageData {
+  std::string mimeType;
+  std::vector<unsigned char> data;
+};
 
+void embedImages(tinygltf::Model &model, const std::filesystem::path &basePath, std::unordered_map<int, ImageData> &bufferMap) {
+  int idx = 0;
   for (auto &image : model.images) {
-    std::vector<unsigned char> imageData;
-
-    if (!image.uri.empty()) {
-      if (image.uri.substr(0, 5) == "data:") {
-        // Handle data URI
-        imageData = parseDataURI(image.uri);
-      } else {
-        // External image file
-        std::filesystem::path imagePath = basePath / image.uri;
-        if (!readFile(imagePath, imageData)) {
-          throw std::runtime_error("Failed to read image file: " + imagePath.string());
-        }
-      }
+    auto &loadedData = bufferMap[idx++];
+    if (image.bufferView < 0) {
+      // Add buffer storage
+      tinygltf::Buffer imageBuffer;
+      size_t imageBufferIndex = model.buffers.size();
+      model.buffers.push_back(imageBuffer);
 
       // Create a new buffer view for this image
       tinygltf::BufferView bufferView;
       bufferView.buffer = imageBufferIndex;
       bufferView.byteOffset = model.buffers[imageBufferIndex].data.size();
-      bufferView.byteLength = imageData.size();
+      bufferView.byteLength = loadedData.data.size();
       size_t bufferViewIndex = model.bufferViews.size();
       model.bufferViews.push_back(bufferView);
 
       // Add image data to the image buffer
-      model.buffers[imageBufferIndex].data.insert(model.buffers[imageBufferIndex].data.end(), imageData.begin(), imageData.end());
+      model.buffers[imageBufferIndex].data.insert(model.buffers[imageBufferIndex].data.end(), loadedData.data.begin(),
+                                                  loadedData.data.end());
 
       // Update image to use the new buffer view
       image.bufferView = bufferViewIndex;
-
-      // Preserve mimeType if it's not set
-      if (image.mimeType.empty()) {
-        std::string ext = std::filesystem::path(image.uri).extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        if (ext == ".png")
-          image.mimeType = "image/png";
-        else if (ext == ".jpg" || ext == ".jpeg")
-          image.mimeType = "image/jpeg";
-        else if (ext == ".ktx2")
-          image.mimeType = "image/ktx2";
-        // Add more mime types as needed
-      }
-
-      // Clear URI as the image is now embedded
-      image.uri.clear();
-    } else if (image.bufferView >= 0) {
-      // Image is already embedded, pass it through
-      const auto &bufferView = model.bufferViews[image.bufferView];
-      const auto &buffer = model.buffers[bufferView.buffer];
-
-      // Create a new buffer view for this image
-      tinygltf::BufferView newBufferView;
-      newBufferView.buffer = imageBufferIndex;
-      newBufferView.byteOffset = model.buffers[imageBufferIndex].data.size();
-      newBufferView.byteLength = bufferView.byteLength;
-      size_t newBufferViewIndex = model.bufferViews.size();
-      model.bufferViews.push_back(newBufferView);
-
-      // Copy image data to the new buffer
-      model.buffers[imageBufferIndex].data.insert(model.buffers[imageBufferIndex].data.end(),
-                                                  buffer.data.begin() + bufferView.byteOffset,
-                                                  buffer.data.begin() + bufferView.byteOffset + bufferView.byteLength);
-
-      // Update image to use the new buffer view
-      image.bufferView = newBufferViewIndex;
     }
-    // If both uri and bufferView are empty, it's an empty image entry, so we skip it
+    // Clear URI as the image is now embedded
+    image.uri.clear();
   }
 }
 
-void embedBuffers(tinygltf::Model &model, const std::filesystem::path &basePath) {
-  for (auto &buffer : model.buffers) {
-    if (!buffer.uri.empty()) {
-      std::filesystem::path bufferPath = basePath / buffer.uri;
-      if (!readFile(bufferPath, buffer.data)) {
-        throw std::runtime_error("Failed to read buffer file: " + bufferPath.string());
-      }
-      buffer.uri.clear(); // Clear URI as the buffer is now embedded
-    }
+bool isBinary(uint8_t (&bytes)[4]) {
+  // Small snippet from tiny glTF to identify the binary glTF format
+  if (bytes[0] == 'g' && bytes[1] == 'l' && bytes[2] == 'T' && bytes[3] == 'F') {
+    return true;
+  } else {
+    return false;
   }
+}
+
+bool isBinaryFile(const std::string &inputPath) {
+  std::ifstream file(inputPath, std::ios::binary);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open input file: " + inputPath);
+  }
+
+  uint8_t header[4];
+  file.read(reinterpret_cast<char *>(header), sizeof(header));
+  return isBinary(header);
 }
 
 std::vector<uint8_t> convertToGlb(const std::string &inputPath) {
@@ -893,18 +839,25 @@ std::vector<uint8_t> convertToGlb(const std::string &inputPath) {
   std::string warn;
 
   std::filesystem::path input(inputPath);
-  bool isBinary = input.extension() == ".glb";
+  bool isBinary = isBinaryFile(inputPath);
 
   // Get the directory of the input file
   std::filesystem::path baseDir = input.parent_path();
 
+  std::unordered_map<int, ImageData> bufferMap;
+
   // Load input file without loading external images
-  tinygltf::LoadImageDataFunction loadImageData = [](tinygltf::Image *, const int, std::string *, std::string *, int, int,
-                                                     const unsigned char *, int, void *) {
-    // Don't load image data here
+  tinygltf::LoadImageDataFunction loadImageData = [](tinygltf::Image *image, const int image_idx, std::string *err,
+                                                     std::string *warn, int req_width, int req_height, const unsigned char *bytes,
+                                                     int size, void *user_data) {
+    std::unordered_map<int, ImageData> *bufferMap = static_cast<std::unordered_map<int, ImageData> *>(user_data);
+    ImageData imgData;
+    imgData.mimeType = image->mimeType;
+    imgData.data.assign(bytes, bytes + size);
+    bufferMap->emplace(image_idx, imgData);
     return true;
   };
-  loader.SetImageLoader(loadImageData, nullptr);
+  loader.SetImageLoader(loadImageData, &bufferMap);
 
   bool ret = isBinary ? loader.LoadBinaryFromFile(&model, &err, &warn, inputPath)
                       : loader.LoadASCIIFromFile(&model, &err, &warn, inputPath);
@@ -922,10 +875,23 @@ std::vector<uint8_t> convertToGlb(const std::string &inputPath) {
   embedBuffers(model, baseDir);
 
   // Embed all images
-  embedImages(model, baseDir);
+  embedImages(model, baseDir, bufferMap);
+
+  // Verify all URIs have been cleared
+  for (const auto &buffer : model.buffers) {
+    if (!buffer.uri.empty()) {
+      throw std::runtime_error("Buffer URI not cleared after embedding: " + buffer.uri);
+    }
+  }
+  for (const auto &image : model.images) {
+    if (!image.uri.empty()) {
+      throw std::runtime_error("Image URI not cleared after embedding: " + image.uri);
+    }
+  }
 
   // Write to a temporary GLB file
-  std::filesystem::path tempOutputPath = std::filesystem::temp_directory_path() / "temp_output.glb";
+  // std::filesystem::path tempOutputPath = std::filesystem::temp_directory_path() / "temp_output.glb";
+  std::filesystem::path tempOutputPath = "temp_output.glb";
   tinygltf::TinyGLTF writer;
   if (!writer.WriteGltfSceneToFile(&model, tempOutputPath.string(), true, true, false, true)) {
     throw std::runtime_error("Failed to write glTF to .glb");
