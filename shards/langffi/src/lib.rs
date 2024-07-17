@@ -345,7 +345,7 @@ pub extern "C" fn setup_panic_hook() {
     // Trigger a breakpoint.
     #[cfg(unix)]
     unsafe {
-      libc::raise(libc::SIGTRAP);
+    libc::raise(libc::SIGTRAP);
     }
     #[cfg(windows)]
     unsafe {
