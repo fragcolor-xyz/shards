@@ -1676,6 +1676,9 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
 }
 
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
+  if (&dst == &src)
+    return;
+
   shassert((dst.flags & SHVAR_FLAGS_FOREIGN) != SHVAR_FLAGS_FOREIGN && "cannot clone into a foreign var");
   switch (src.valueType) {
   case SHType::Seq: {
@@ -1763,10 +1766,6 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   case SHType::Table: {
     SHMap *map;
     if (dst.valueType == SHType::Table) {
-      // This code checks if the source and destination of a copy are the same.
-      if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
-        return;
-
       // also we assume mutable tables are of our internal type!!
       shassert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
 
@@ -1844,8 +1843,6 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   case SHType::Set: {
     SHHashSet *set;
     if (dst.valueType == SHType::Set) {
-      if (src.payload.setValue.opaque == dst.payload.setValue.opaque)
-        return;
       shassert(dst.payload.setValue.api == &GetGlobals().SetInterface);
       set = (SHHashSet *)dst.payload.setValue.opaque;
       set->clear();
@@ -1925,9 +1922,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     incRef(dst.payload.shardValue);
     break;
   case SHType::Object:
-    if (dst != src) {
-      destroyVar(dst);
-    }
+    destroyVar(dst);
 
     dst.valueType = SHType::Object;
     dst.payload.objectValue = src.payload.objectValue;
