@@ -112,7 +112,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   }
 
   auto mesh = data.wire->mesh.lock();
-  assert(mesh);
+  shassert(mesh && "Mesh should be set");
 
   checkWireMesh(data.wire->name, mesh.get());
 

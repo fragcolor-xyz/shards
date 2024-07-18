@@ -1,8 +1,9 @@
 use shards::core::{register_enum, register_legacy_shard, register_shard};
 use shards::util::from_raw_parts_allow_null;
 use shards::SHStringWithLen;
-use shards::{shlog_error, types::*};
+use shards::{shlog_error, shlog_trace, types::*};
 use shards_lang::cli::process_args;
+use shards_lang::custom_state::CustomStateContainer;
 use shards_lang::eval::{self, *};
 use shards_lang::read::AST_TYPE;
 use shards_lang::{ast::*, RcStrWrapper};
@@ -107,10 +108,10 @@ pub extern "C" fn shards_save_ast(ast: *mut Program) -> Var {
 #[no_mangle]
 pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv {
   if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, None)))
+    Box::into_raw(Box::new(EvalEnv::new(None, None, None)))
   } else {
     let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
+    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None, None)))
   }
 }
 
@@ -121,6 +122,7 @@ pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) 
   env.forbidden_funcs.insert(Identifier {
     name: RcStrWrapper::from(name),
     namespaces: Vec::new(),
+    custom_state: CustomStateContainer::new(),
   });
 }
 
@@ -138,10 +140,14 @@ pub extern "C" fn shards_create_sub_env(
 ) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
   if namespace.len == 0 {
-    Box::into_raw(Box::new(EvalEnv::new(None, Some(env))))
+    Box::into_raw(Box::new(EvalEnv::new(None, Some(env), None)))
   } else {
     let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), Some(env))))
+    Box::into_raw(Box::new(EvalEnv::new(
+      Some(namespace.into()),
+      Some(env),
+      None,
+    )))
   }
 }
 
@@ -151,6 +157,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
   let env = unsafe { &mut *env };
+  env.program = Some(ast as *const Program);
   for stmt in &ast.sequence.statements {
     if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);
@@ -235,12 +242,7 @@ pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
   let ast = unsafe {
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
   };
-  let result = eval::eval(
-    &ast.sequence,
-    name,
-    HashMap::new(),
-    new_cancellation_token(),
-  );
+  let result = eval::eval(&ast, name, HashMap::new(), new_cancellation_token());
   match result {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
@@ -281,6 +283,53 @@ pub extern "C" fn shards_clone_ast(ast: &Var) -> Var {
   };
   let ast_clone = ast.clone();
   Var::new_ref_counted(ast_clone, &AST_TYPE)
+}
+
+/// To be used before compose or schedule basically to report errors
+#[no_mangle]
+pub extern "C" fn shards_propagate_error(
+  ast: &Var,
+  wire_id: u64,
+  shard_id: u64,
+  line: u32,
+  column: u32,
+  error: &Var,
+) {
+  let ast = unsafe {
+    &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
+  };
+
+  // prefer shard_id, if shard_id is 0, then use wire_id
+  let func_id = if shard_id == 0 { wire_id } else { shard_id };
+
+  if func_id != 0 {
+    ast
+      .metadata
+      .debug_info
+      .borrow_mut()
+      .id_to_functions
+      .get_mut(&func_id)
+      .map(|db| match db {
+        DebugPtr::Function(f) => {
+          let f = unsafe { &**f };
+          let msg: &str = error.try_into().unwrap();
+          let error = ShardsError {
+            message: msg.to_owned(),
+            loc: LineInfo { line, column },
+          };
+          f.custom_state.set(error)
+        }
+        DebugPtr::Identifier(i) => {
+          let i = unsafe { &**i };
+          let msg: &str = error.try_into().unwrap();
+          let error = ShardsError {
+            message: msg.to_owned(),
+            loc: LineInfo { line, column },
+          };
+          i.custom_state.set(error)
+        }
+      });
+  }
 }
 
 #[no_mangle]

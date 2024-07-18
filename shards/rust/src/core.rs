@@ -4,6 +4,7 @@ use crate::shard::legacy_shard_construct;
 use crate::shard::shard_construct;
 use crate::shard::LegacyShard;
 use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
+use crate::shardsc::Shard as SHShard;
 use crate::shardsc::*;
 use crate::types::ClonedVar;
 use crate::types::Context;

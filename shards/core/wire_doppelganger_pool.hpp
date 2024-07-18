@@ -25,12 +25,14 @@ concept WireDataDeps = requires(TData data) {
 
 template <typename T> struct WireDoppelgangerPool {
   WireDoppelgangerPool(SHWireRef master) {
+    _master = SHWire::sharedFromRef(master);
+
     // Never call this from setParam or earlier...
     auto vwire = shards::Var(master);
     std::stringstream stream;
     Writer w(stream);
-    Serialization serializer;
-    serializer.serialize(vwire, w);
+    Serialization serializer{true};
+    serializer.serialize(vwire, w); // need to serialize the wire template pointers in this case!
     _wireStr = stream.str();
   }
 
@@ -56,11 +58,11 @@ template <typename T> struct WireDoppelgangerPool {
     if (_avail.size() == 0) {
       lock.unlock();
 
-      Serialization serializer;
+      Serialization serializer{true};
       std::stringstream stream(_wireStr);
       Reader r(stream);
       SHVar vwire{};
-      serializer.deserialize(r, vwire);
+      serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       destroyVar(vwire);
 
@@ -123,6 +125,8 @@ private:
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<T *> _avail;
   std::string _wireStr;
+
+  std::shared_ptr<SHWire> _master; // keep master in any case, for debugging purposes
 };
 } // namespace shards
 

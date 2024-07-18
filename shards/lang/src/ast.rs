@@ -1,13 +1,13 @@
 #![allow(non_upper_case_globals)]
 
 use crate::{custom_state::CustomStateContainer, RcBytesWrapper, RcStrWrapper};
-use core::fmt;
+use core::{fmt, hash::Hash};
 use pest::Position;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
-use std::fmt::Debug;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
@@ -100,7 +100,7 @@ pub enum Number {
   Hexadecimal(RcStrWrapper),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename = "Iden")]
 pub struct Identifier {
   pub name: RcStrWrapper,
@@ -108,6 +108,18 @@ pub struct Identifier {
   #[serde(rename = "ns")]
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub namespaces: Vec<RcStrWrapper>,
+
+  #[serde(skip)]
+  pub custom_state: CustomStateContainer,
+}
+
+impl Eq for Identifier {}
+
+impl Hash for Identifier {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.name.hash(state);
+    self.namespaces.hash(state);
+  }
 }
 
 impl Identifier {
@@ -299,9 +311,24 @@ impl Statement {
   }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum DebugPtr {
+  Function(*const Function),
+  Identifier(*const Identifier),
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DebugInfo {
+  pub id_to_functions: HashMap<u64, DebugPtr>,
+  pub id_counter: u64,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
   pub name: RcStrWrapper,
+
+  #[serde(skip)]
+  pub debug_info: RefCell<DebugInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

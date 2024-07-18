@@ -22,8 +22,8 @@
   ; s0 | Math.MatMul(r0) = tmp0
   s0 = tmp0
   t0 | Math.MatMul(tmp0)
-  ; GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/CesiumMan/glTF-Binary/CesiumMan.glb")
-  GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Fox/glTF-Binary/Fox.glb"
+  ; GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/CesiumMan/glTF-Binary/CesiumMan.glb")
+  GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Fox/glTF-Binary/Fox.glb"
            AnimationController: {
             Ref(animations)
             Once({

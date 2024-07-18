@@ -7,11 +7,10 @@ use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
-use std::os::raw::c_void;
 
 use nanoid::nanoid;
 use shards::cstr;
-use shards::SHStringWithLen;
+use shards::shlog_debug;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -25,8 +24,7 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use shards::SHWire;
-use shards::Shard;
+use shards::SHWireRef;
 use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
@@ -91,7 +89,8 @@ enum Definition {
 }
 
 pub struct EvalEnv {
-  pub(crate) parent: Option<*const EvalEnv>,
+  pub program: Option<*const Program>,
+  pub parent: Option<*const EvalEnv>,
 
   namespace: RcStrWrapper,
   full_namespace: RcStrWrapper,
@@ -126,6 +125,8 @@ pub struct EvalEnv {
   meshes: HashMap<Identifier, MeshVar>,
 
   extensions: HashMap<Identifier, Box<dyn ShardsExtension>>,
+
+  complexity: u64,
 }
 
 impl Drop for EvalEnv {
@@ -140,8 +141,13 @@ impl Drop for EvalEnv {
 }
 
 impl EvalEnv {
-  pub fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
+  pub fn new(
+    namespace: Option<RcStrWrapper>,
+    parent: Option<*const EvalEnv>,
+    program: Option<*const Program>,
+  ) -> Self {
     let mut env = EvalEnv {
+      program,
       parent: None,
       namespace: RcStrWrapper::from(""),
       full_namespace: RcStrWrapper::from(""),
@@ -161,6 +167,7 @@ impl EvalEnv {
       meshes: HashMap::new(),
       extensions: HashMap::new(),
       traits: HashMap::new(),
+      complexity: 0,
     };
 
     if let Some(parent) = parent {
@@ -169,6 +176,7 @@ impl EvalEnv {
       let parent = unsafe { &*parent };
       env.full_namespace = parent.full_namespace.clone();
       env.settings = parent.settings.clone();
+      env.complexity = parent.complexity;
     }
 
     if let Some(namespace) = namespace {
@@ -245,9 +253,10 @@ fn process_vector_built_in_ints_block<const WIDTH: usize>(
 
   if !has_variables {
     let value = extract_ints_vector_var::<WIDTH>(len, params, line_info, e)?;
-    add_const_shard2(value, line_info, e)
+    add_const_shard2(func, value, line_info, e)
   } else {
     let shard = extract_make_ints_shard::<WIDTH>(len, params, line_info, e)?;
+    let shard = shard_with_id(shard, e, func);
     e.shards.push(shard);
     Ok(())
   }
@@ -463,9 +472,10 @@ fn process_vector_built_in_floats_block<const WIDTH: usize>(
 
   if !has_variables {
     let value = extract_floats_vector_var::<WIDTH>(len, params, line_info, e)?;
-    add_const_shard2(value, line_info, e)
+    add_const_shard2(func, value, line_info, e)
   } else {
     let shard = extract_make_floats_shard::<WIDTH>(len, params, line_info, e)?;
+    let shard = shard_with_id(shard, e, func);
     e.shards.push(shard);
     Ok(())
   }
@@ -610,9 +620,10 @@ fn process_color_built_in_function(
 
   if !has_variables {
     let value = handle_color_built_in(func, line_info)?;
-    add_const_shard2(value, line_info, e)
+    add_const_shard2(func, value, line_info, e)
   } else {
     let shard = extract_make_colors_shard(len, params, line_info, e)?;
+    let shard = shard_with_id(shard, e, func);
     e.shards.push(shard);
     Ok(())
   }
@@ -835,6 +846,16 @@ fn find_extension<'a>(
   }
 }
 
+fn get_program<'a>(env: &'a EvalEnv) -> Option<&'a Program> {
+  if let Some(program) = env.program {
+    Some(unsafe { &*program })
+  } else if let Some(parent) = env.parent {
+    get_program(unsafe { &*(parent as *const EvalEnv) })
+  } else {
+    None
+  }
+}
+
 fn finalize_wire(
   wire: &Wire,
   name: &Identifier,
@@ -1040,7 +1061,7 @@ pub(crate) fn eval_sequence(
   parent: Option<&mut EvalEnv>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<EvalEnv, ShardsError> {
-  let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv));
+  let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv), None);
   eval_sequence_inline(seq, &mut sub_env, cancellation_token)?;
   Ok(sub_env)
 }
@@ -1054,7 +1075,7 @@ fn create_take_table_chain(
   add_get_shard(var_name, line, e)?;
   for path_part in path {
     let s = Var::ephemeral_string(path_part.as_str());
-    add_take_shard(&s, line, e)?;
+    add_take_shard(var_name, &s, line, e)?;
   }
   Ok(())
 }
@@ -1068,7 +1089,7 @@ fn create_take_seq_chain(
   add_get_shard(var_name, line, e)?;
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this
-    add_take_shard(&idx, line, e)?;
+    add_take_shard(var_name, &idx, line, e)?;
   }
   Ok(())
 }
@@ -1425,7 +1446,7 @@ fn resolve_var(
     }
     Value::TakeTable(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e));
+      let mut sub_env = EvalEnv::new(None, Some(e), None);
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -1450,7 +1471,7 @@ fn resolve_var(
     }
     Value::TakeSeq(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e));
+      let mut sub_env = EvalEnv::new(None, Some(e), None);
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -2112,6 +2133,7 @@ fn process_type_enum(value: &Value, line_info: LineInfo) -> Result<SVar, ShardsE
 
 fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let s = create_shard(shard, line_info, e)?;
+  let s = shard_with_id(s, e, shard);
   e.shards.push(s);
   Ok(())
 }
@@ -2120,35 +2142,15 @@ fn get_replacement<'a>(shard: &'a Function, e: &'a EvalEnv) -> Option<Function> 
   get_rewrite_func(&shard.name, e).and_then(|rw| rw.rewrite_function(shard))
 }
 
-unsafe extern "C" fn error_callback(
-  shard: *mut Shard,
-  error_data: *mut c_void,
-  msg: SHStringWithLen,
-) {
-  // cast error_data to our ast &Function
-  let func = &*(error_data as *const Function);
-  let msg: &str = msg.into();
-  func.custom_state.set(ShardsError {
-    message: msg.into(),
-    loc: LineInfo {
-      line: (*shard).line,
-      column: (*shard).column,
-    },
-  });
-}
-
 fn create_shard(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<AutoShardRef, ShardsError> {
   match create_shard_inner(shard, line_info, e) {
-    Ok(mut s) => {
+    Ok(s) => {
       // clean any previous error
       shard.custom_state.remove::<ShardsError>();
-      // also populate error call back
-      s.0
-        .set_error_callback(Some(error_callback), shard as *const _ as *mut c_void);
       Ok(s)
     }
     Err(e) => {
@@ -2157,6 +2159,29 @@ fn create_shard(
       Err(e)
     }
   }
+}
+
+fn shard_with_id_ex(shard: AutoShardRef, e: &mut EvalEnv, x: DebugPtr) -> AutoShardRef {
+  // add an id to the shard
+  let id = get_program(e).map(|p| {
+    let mut debug_info = p.metadata.debug_info.borrow_mut();
+    debug_info.id_counter += 1;
+    let id = debug_info.id_counter;
+    debug_info.id_to_functions.insert(id, x);
+    id
+  });
+  if let Some(id) = id {
+    unsafe { (*shard.0 .0).id = id };
+  }
+  shard
+}
+
+fn shard_with_id(shard: AutoShardRef, e: &mut EvalEnv, func: &Function) -> AutoShardRef {
+  shard_with_id_ex(shard, e, DebugPtr::Function(func))
+}
+
+fn shard_with_id_iden(shard: AutoShardRef, e: &mut EvalEnv, iden: &Identifier) -> AutoShardRef {
+  shard_with_id_ex(shard, e, DebugPtr::Identifier(iden))
 }
 
 fn create_shard_inner(
@@ -2326,7 +2351,24 @@ fn set_shard_parameter(
   }
 }
 
-fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn add_const_shard2(
+  func: &Function,
+  value: Var,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
+  let shard = AutoShardRef(shard);
+  shard
+    .0
+    .set_parameter(0, value)
+    .map_err(|e| (e, line_info).into())?;
+  let shard = shard_with_id(shard, e, func);
+  e.shards.push(shard);
+  Ok(())
+}
+
+fn add_const_shard3(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
   let shard = AutoShardRef(shard);
   shard
@@ -2420,6 +2462,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       } else {
         Some(into_get_or_const(value.clone(), line_info, e)?)
       }
+      .map(|shard| shard_with_id_iden(shard, e, name))
     }
     _ => {
       let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
@@ -2433,6 +2476,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
     }
   };
   if let Some(shard) = shard {
+    // we solve above the id assignment
     e.shards.push(shard);
   }
   Ok(())
@@ -2458,13 +2502,19 @@ fn make_sub_shard(
   Ok(shard)
 }
 
-fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn add_take_shard(
+  name: &Identifier,
+  target: &Var,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
   let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, *target)
     .map_err(|e| (format!("{}", e), line_info).into())?;
+  let shard = shard_with_id_iden(shard, e, name);
   e.shards.push(shard);
   Ok(())
 }
@@ -2493,6 +2543,7 @@ fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(
       .set_parameter(0, name)
       .map_err(|e| (format!("{}", e), line).into())?;
   }
+  let shard = shard_with_id_iden(shard, e, name);
   e.shards.push(shard);
   Ok(())
 }
@@ -2505,6 +2556,7 @@ fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Resul
     .0
     .set_parameter(0, name)
     .map_err(|e| (e, line).into())?;
+  // so far this is only used by eval expr so we don't add debug info here
   e.shards.push(shard);
   Ok(())
 }
@@ -2620,7 +2672,7 @@ fn process_macro(
       );
     }
 
-    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv));
+    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2733,7 +2785,7 @@ fn process_template(
       );
     }
 
-    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv));
+    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
@@ -2825,23 +2877,6 @@ fn process_template(
   }
 }
 
-unsafe extern "C" fn wire_error_callback(
-  _wire: *const SHWire,
-  error_data: *mut c_void,
-  msg: SHStringWithLen,
-) {
-  // cast error_data to our ast &Function
-  let func = &*(error_data as *const Function);
-  let msg: &str = msg.into();
-  func.custom_state.set(ShardsError {
-    message: msg.into(),
-    loc: LineInfo {
-      line: 0,   // should not matter for now at least
-      column: 0, // should not matter for now at least
-    },
-  });
-}
-
 fn eval_pipeline(
   pipeline: &Pipeline,
   e: &mut EvalEnv,
@@ -2866,6 +2901,7 @@ fn eval_pipeline(
             sub_env.shards.drain(..).collect(),
             block.line_info.unwrap_or_default(),
           )?;
+          // we do not really need to add the sub shard to debug info here, as the errors are likely to be inside
           e.shards.push(sub);
         }
 
@@ -2880,7 +2916,8 @@ fn eval_pipeline(
       }
       BlockContent::EvalExpr(seq) => {
         let value = eval_eval_expr(&seq, e)?;
-        add_const_shard2(value.0 .0, value.1, e)
+        // we cannot use variation 2 here cos we don't have a func we can use, those blocks will be transformed into a pre-runtime constant
+        add_const_shard3(value.0 .0, value.1, e)
       }
       BlockContent::Expr(seq) => {
         eval_expr(seq, e, block, start_idx, cancellation_token.clone())?;
@@ -2951,6 +2988,7 @@ fn eval_pipeline(
                           name: Identifier {
                             name: "MakeTrait".into(),
                             namespaces: vec![],
+                            custom_state: CustomStateContainer::new(),
                           },
                           params: Some(vec![
                             Param {
@@ -3133,8 +3171,19 @@ fn eval_pipeline(
               e.deferred_wires.insert(
                 name,
                 (
-                  Wire::new(&wire_name)
-                    .set_error_callback(wire_error_callback, func as *const _ as *mut _),
+                  Wire::new(&wire_name).set_debug_id({
+                    get_program(e)
+                      .map(|p| {
+                        let mut debug_info = p.metadata.debug_info.borrow_mut();
+                        debug_info.id_counter += 1;
+                        let id = debug_info.id_counter;
+                        debug_info
+                          .id_to_functions
+                          .insert(id, DebugPtr::Function(func as *const Function));
+                        id
+                      })
+                      .unwrap_or(0)
+                  }),
                   params_ptr,
                   block.line_info.unwrap_or_default(),
                 ),
@@ -3496,7 +3545,8 @@ fn eval_pipeline(
 
               // a @run(...) should transform into a boolean const shard so to be used for error handling
               let no_errors = no_errors.into();
-              add_const_shard2(no_errors, block.line_info.unwrap_or_default(), e)?;
+              // we cannot use variation 2 here cos we don't have a func we can use, those blocks will be transformed into a constant
+              add_const_shard3(no_errors, block.line_info.unwrap_or_default(), e)?;
 
               Ok(())
             } else {
@@ -3597,15 +3647,15 @@ fn eval_pipeline(
           }
           ("platform", true) => {
             let info = process_platform_built_in();
-            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
+            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           ("type", true) => {
             let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
-            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
+            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           ("ast", true) => {
             let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
-            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
+            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           _ => {
             match (
@@ -3618,6 +3668,7 @@ fn eval_pipeline(
               (None, None, None, Some(extension)) => {
                 let shard =
                   extension.process_to_shard(func, block.line_info.unwrap_or_default())?;
+                let shard = shard_with_id(shard, e, func);
                 e.shards.push(shard);
                 Ok(())
               }
@@ -3626,6 +3677,7 @@ fn eval_pipeline(
                 finalize_env(&mut shards_env)?; // finalize the env
                                                 // shards
                 for shard in shards_env.shards.drain(..) {
+                  // draining, no need to add id!
                   e.shards.push(shard);
                 }
                 // also move possible other possible things we defined!
@@ -3684,10 +3736,10 @@ fn eval_pipeline(
                 match value {
                   Definition::Constant(value) => match value {
                     SVar::Cloned(value) => {
-                      add_const_shard2(value.0, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard2(func, value.0, block.line_info.unwrap_or_default(), e)?
                     }
                     SVar::NotCloned(value) => {
-                      add_const_shard2(value, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard2(func, value, block.line_info.unwrap_or_default(), e)?
                     }
                   },
                   Definition::Value(value) => {
@@ -3723,7 +3775,7 @@ fn eval_pipeline(
                       }
                       Value::EvalExpr(seq) => {
                         let value = eval_eval_expr(&seq, e)?;
-                        add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
+                        add_const_shard2(func, value.0 .0, block.line_info.unwrap_or_default(), e)?
                       }
                       Value::Expr(seq) => {
                         eval_expr(seq, e, block, start_idx, new_cancellation_token())?
@@ -3839,6 +3891,7 @@ fn add_assignment_shard(
     e.suffix_assigned.insert(name, suffix.unwrap()); // we know suffix is not none here
   }
 
+  let shard = shard_with_id_iden(shard, e, name);
   e.shards.push(shard);
 
   Ok(())
@@ -3857,6 +3910,7 @@ fn add_assignment_shard_no_suffix(
     .0
     .set_parameter(0, name)
     .map_err(|e| (e, line_info).into())?;
+  // so far this call is used in take seq/table and eval expr, so we don't need to worry debug info
   e.shards.push(shard);
   Ok(())
 }
@@ -3973,14 +4027,14 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) -> Result<(), ShardsError
 }
 
 pub fn eval(
-  seq: &Sequence,
+  prog: &Program,
   name: &str,
   defines: HashMap<String, String>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<Wire, ShardsError> {
   profiling::scope!("eval", name);
 
-  let mut parent = EvalEnv::new(None, None);
+  let mut parent = EvalEnv::new(None, None, Some(prog as *const Program));
   // add defines
   let defines: Vec<(RcStrWrapper, Value)> = defines
     .iter()
@@ -3996,12 +4050,17 @@ pub fn eval(
       Identifier {
         name: name.clone(),
         namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
       },
       Definition::Value(value),
     );
   }
 
-  let mut env = eval_sequence(seq, Some(&mut parent), cancellation_token.clone())?;
+  let mut env = eval_sequence(
+    &prog.sequence,
+    Some(&mut parent),
+    cancellation_token.clone(),
+  )?;
 
   transform_env(&mut env, name)
 }
@@ -4013,6 +4072,7 @@ pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env
     Identifier {
       name: ext.name().to_owned().into(),
       namespaces: Vec::new(),
+      custom_state: CustomStateContainer::new(),
     },
     ext,
   );
@@ -4152,9 +4212,9 @@ impl LegacyShard for EvalShard {
     let namespace = self.namespace.get();
     let mut env = if namespace.is_string() {
       let namespace: &str = namespace.try_into()?;
-      EvalEnv::new(Some(namespace.into()), None)
+      EvalEnv::new(Some(namespace.into()), None, Some(prog as *const Program))
     } else {
-      EvalEnv::new(None, None)
+      EvalEnv::new(None, None, Some(prog as *const Program))
     };
 
     let defines = self.defines.get();
@@ -4172,6 +4232,7 @@ impl LegacyShard for EvalShard {
         Identifier {
           name: (*k).into(),
           namespaces: Vec::new(),
+          custom_state: CustomStateContainer::new(),
         },
         Definition::Value(v),
       );
@@ -4213,12 +4274,11 @@ macro_rules! include_shards {
     let code = include_str!($file);
     let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
     let mut env = read::ReadEnv::new("", ".", ".");
-    let seq =
+    let prog =
       read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
-    let seq = seq.sequence;
     let defines = std::collections::HashMap::new();
     let token = new_cancellation_token();
-    let wire = eval::eval(&seq, "include_shards", defines, token).unwrap();
+    let wire = eval::eval(&prog, "include_shards", defines, token).unwrap();
     let mut mesh = Mesh::default();
     if !mesh.compose(wire.0) {
       panic!("Failed to compose wire");

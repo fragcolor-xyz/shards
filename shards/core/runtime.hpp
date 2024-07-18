@@ -1021,5 +1021,4 @@ struct UIViewControllerContainer {
 };
 #endif
 } // namespace shards
-
 #endif // SH_CORE_RUNTIME

@@ -619,5 +619,21 @@ struct GLTFShard {
   }
 };
 
-void registerGLTFShards() { REGISTER_SHARD("GFX.glTF", GLTFShard); }
+struct GLBPacker {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  std::vector<uint8_t> _output;
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    auto path = SHSTRING_PREFER_SHSTRVIEW(input);
+    _output = convertToGlb(path);
+    return Var(_output);
+  }
+};
+
+void registerGLTFShards() {
+  REGISTER_SHARD("GFX.glTF", GLTFShard);
+  REGISTER_SHARD("GLTF.PackGLB", GLBPacker);
+}
 } // namespace gfx

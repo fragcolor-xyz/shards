@@ -3,7 +3,7 @@
 /// This approach was chosen to balance performance, flexibility, and simplicity.
 ///
 /// Benefits:
-/// - Efficient access to multiple custom states using a `HashMap`
+/// - Efficient access to multiple custom states using a `DashMap`
 /// - Simplifies state management by keeping related data close together
 /// - Maintains low memory overhead through the use of `Box<dyn CustomAny>`
 ///
@@ -13,9 +13,9 @@
 ///
 /// Alternative considered: External state storage with UUID references in AST nodes.
 /// Current approach preferred due to reduced lookup overhead and simpler implementation.
+use dashmap::DashMap;
+use once_cell::sync::OnceCell;
 use std::any::{Any, TypeId};
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fmt::Debug;
 
 pub trait CustomAny: Any + Debug {
@@ -48,33 +48,24 @@ impl<T: 'static + Any + Debug + Clone + PartialEq> CustomAny for T {
 
 #[derive(Debug, Default)]
 pub struct CustomStateContainer {
-  states: RefCell<HashMap<TypeId, Box<dyn CustomAny>>>,
+  states: OnceCell<DashMap<TypeId, Box<dyn CustomAny>>>,
 }
 
 impl CustomStateContainer {
   pub fn new() -> Self {
     CustomStateContainer {
-      states: RefCell::new(HashMap::with_capacity(0)), // make it cheap to create a new one, don't allocate until needed
+      states: OnceCell::new(),
     }
+  }
+
+  fn initialize_states(&self) -> &DashMap<TypeId, Box<dyn CustomAny>> {
+    self.states.get_or_init(DashMap::new)
   }
 
   pub fn set<T: 'static + CustomAny>(&self, state: T) {
     self
-      .states
-      .borrow_mut()
+      .initialize_states()
       .insert(TypeId::of::<T>(), Box::new(state));
-  }
-
-  pub fn get<T: 'static + CustomAny>(&self) -> Option<T>
-  where
-    T: Clone,
-  {
-    self
-      .states
-      .borrow()
-      .get(&TypeId::of::<T>())
-      .and_then(|state| state.as_any().downcast_ref::<T>())
-      .cloned()
   }
 
   pub fn with<T, F, R>(&self, f: F) -> Option<R>
@@ -82,12 +73,11 @@ impl CustomStateContainer {
     T: 'static + CustomAny,
     F: FnOnce(&T) -> R,
   {
-    self
-      .states
-      .borrow()
-      .get(&TypeId::of::<T>())
-      .and_then(|state| state.as_any().downcast_ref::<T>())
-      .map(f)
+    self.states.get().and_then(|states| {
+      states
+        .get(&TypeId::of::<T>())
+        .and_then(|state| state.as_any().downcast_ref::<T>().map(f))
+    })
   }
 
   pub fn with_mut<T, F, R>(&self, f: F) -> Option<R>
@@ -95,62 +85,76 @@ impl CustomStateContainer {
     T: 'static + CustomAny,
     F: FnOnce(&mut T) -> R,
   {
-    self
-      .states
-      .borrow_mut()
-      .get_mut(&TypeId::of::<T>())
-      .and_then(|state| state.as_any_mut().downcast_mut::<T>())
-      .map(f)
+    self.states.get().and_then(|states| {
+      states
+        .get_mut(&TypeId::of::<T>())
+        .and_then(|mut state| state.as_any_mut().downcast_mut::<T>().map(f))
+    })
+  }
+
+  pub fn with_or_insert_with<T, F, R>(&self, default: impl FnOnce() -> T, f: F) -> R
+  where
+    T: 'static + CustomAny,
+    F: FnOnce(&mut T) -> R,
+  {
+    self.initialize_states();
+    let type_id = TypeId::of::<T>();
+    let states = self.states.get().unwrap();
+
+    if let Some(mut state) = states.get_mut(&type_id) {
+      f(state.as_any_mut().downcast_mut::<T>().unwrap())
+    } else {
+      let mut new_state = default();
+      let result = f(&mut new_state);
+      states.insert(type_id, Box::new(new_state));
+      result
+    }
   }
 
   pub fn remove<T: 'static + CustomAny>(&self) {
-    self.states.borrow_mut().remove(&TypeId::of::<T>());
+    if let Some(states) = self.states.get() {
+      states.remove(&TypeId::of::<T>());
+    }
   }
 
   pub fn clear(&self) {
-    self.states.borrow_mut().clear();
-  }
-
-  pub fn get_or_insert_with<T, F>(&self, default: F) -> T
-  where
-    T: 'static + CustomAny + Clone,
-    F: FnOnce() -> T,
-  {
-    let type_id = TypeId::of::<T>();
-    let mut states = self.states.borrow_mut();
-
-    if !states.contains_key(&type_id) {
-      let new_state = default();
-      states.insert(type_id, Box::new(new_state.clone()));
-      new_state
-    } else {
-      states
-        .get(&type_id)
-        .and_then(|state| state.as_any().downcast_ref::<T>())
-        .unwrap()
-        .clone()
+    if let Some(states) = self.states.get() {
+      states.clear();
     }
   }
 }
 
 impl Clone for CustomStateContainer {
   fn clone(&self) -> Self {
+    let cloned_states: Vec<(TypeId, Box<dyn CustomAny>)> =
+      self.states.get().map_or(Vec::new(), |states| {
+        states
+          .iter()
+          .map(|entry| (entry.key().clone(), entry.value().clone_box()))
+          .collect()
+      });
     CustomStateContainer {
-      states: RefCell::new(self.states.borrow().clone()),
+      states: OnceCell::with_value(DashMap::from_iter(cloned_states)),
     }
   }
 }
 
 impl PartialEq for CustomStateContainer {
   fn eq(&self, other: &Self) -> bool {
-    let self_states = self.states.borrow();
-    let other_states = other.states.borrow();
+    let self_states = self.states.get();
+    let other_states = other.states.get();
 
-    self_states.len() == other_states.len()
-      && self_states.iter().all(|(k, v)| {
-        other_states
-          .get(k)
-          .map_or(false, |ov| v.eq_box(ov.as_ref()))
+    let self_states_vec: Vec<_> = self_states.map_or(Vec::new(), |s| s.iter().collect());
+    let other_states_vec: Vec<_> = other_states.map_or(Vec::new(), |s| s.iter().collect());
+
+    self_states_vec.len() == other_states_vec.len()
+      && self_states_vec.iter().all(|self_entry| {
+        other_states_vec
+          .iter()
+          .find(|other_entry| self_entry.key() == other_entry.key())
+          .map_or(false, |other_entry| {
+            self_entry.value().eq_box(other_entry.value().as_ref())
+          })
       })
   }
 }

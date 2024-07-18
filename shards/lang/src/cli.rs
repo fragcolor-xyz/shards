@@ -1,7 +1,7 @@
 use crate::ast::Sequence;
 use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
-use crate::{eval, formatter};
+use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::{sleep, Core};
@@ -262,7 +262,7 @@ fn load(
 
 fn execute_seq(
   args: &Vec<String>,
-  ast: Sequence,
+  ast: Program,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), &'static str> {
   let mut defines = HashMap::new();
@@ -432,5 +432,5 @@ fn execute(
     })?
   };
 
-  Ok(execute_seq(args, ast.sequence, cancellation_token)?)
+  Ok(execute_seq(args, ast, cancellation_token)?)
 }
