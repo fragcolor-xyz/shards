@@ -1,3 +1,16 @@
+@wire(detached {
+  Log
+})
+
+@wire(main {
+  LoadImage("data/RGBA.png") = image
+  Detach(detached)
+})
+
+@mesh(root)
+@schedule(root main)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+
 LoadImage("../../assets/simple1.PNG") >= baseImg
 StripAlpha
 WritePNG("testbase.png")
