@@ -841,10 +841,15 @@ struct ReadFile {
       } else {
         throw ActivationError("Invalid audio source type");
       }
+
       if (res != MA_SUCCESS) {
         SHLOG_ERROR("Failed to open audio source {}", source);
         throw ActivationError("Failed to open audio file");
       }
+
+      ma_uint64 totalSamples;
+      ma_decoder_get_length_in_pcm_frames(&_decoder, &totalSamples);
+
       _buffer.resize(size_t(channels) * size_t(nsamples));
       _initialized = true;
     }
@@ -1003,6 +1008,51 @@ struct WriteFile {
     return input;
   }
 };
+
+#if 0
+struct Device2 {
+  ma_engine _engine;
+  bool _initialized{false};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHVar *_deviceVar{nullptr};
+
+  void warmup(SHContext *context) {
+    ma_result res = ma_engine_init(NULL, &_engine);
+    if (res != MA_SUCCESS) {
+      throw ActivationError("Failed to init audio engine");
+    }
+
+    _deviceVar = referenceVariable(context, "Audio.Device");
+    _deviceVar->valueType = SHType::Object;
+    _deviceVar->payload.objectVendorId = CoreCC;
+    _deviceVar->payload.objectTypeId = Device::DeviceCC;
+    _deviceVar->payload.objectValue = &_engine;
+
+    _initialized = true;
+  }
+
+  void cleanup(SHContext *context) {
+    if (_initialized) {
+      ma_engine_uninit(&_engine);
+      _initialized = false;
+    }
+  }
+
+  SHExposedTypesInfo exposedVariables() {
+    static std::array<SHExposedTypeInfo, 1> exposing;
+    exposing[0].name = "Audio.Device";
+    exposing[0].help = SHCCSTR("The audio device.");
+    exposing[0].exposedType = Device::ObjType;
+    exposing[0].isProtected = true;
+    return {exposing.data(), 1, 0};
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return input; }
+};
+#endif
 
 } // namespace Audio
 } // namespace shards
