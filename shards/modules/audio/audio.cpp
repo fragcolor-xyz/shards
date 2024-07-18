@@ -1010,8 +1010,11 @@ struct WriteFile {
   }
 };
 
-#if 0
-struct Device2 {
+struct Engine {
+  static constexpr uint32_t EngineCC = 'snde';
+
+  static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = EngineCC}}}};
+
   ma_engine _engine;
   bool _initialized{false};
 
@@ -1026,10 +1029,10 @@ struct Device2 {
       throw ActivationError("Failed to init audio engine");
     }
 
-    _deviceVar = referenceVariable(context, "Audio.Device");
+    _deviceVar = referenceVariable(context, "Audio.Engine");
     _deviceVar->valueType = SHType::Object;
     _deviceVar->payload.objectVendorId = CoreCC;
-    _deviceVar->payload.objectTypeId = Device::DeviceCC;
+    _deviceVar->payload.objectTypeId = EngineCC;
     _deviceVar->payload.objectValue = &_engine;
 
     _initialized = true;
@@ -1044,16 +1047,48 @@ struct Device2 {
 
   SHExposedTypesInfo exposedVariables() {
     static std::array<SHExposedTypeInfo, 1> exposing;
-    exposing[0].name = "Audio.Device";
-    exposing[0].help = SHCCSTR("The audio device.");
-    exposing[0].exposedType = Device::ObjType;
+    exposing[0].name = "Audio.Engine";
+    exposing[0].help = SHCCSTR("The audio engine.");
+    exposing[0].exposedType = ObjType;
     exposing[0].isProtected = true;
     return {exposing.data(), 1, 0};
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
-#endif
+
+struct Play {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  ma_engine *_engine{nullptr};
+  SHVar *_engineVar{nullptr};
+
+  void warmup(SHContext *context) {
+    _engineVar = referenceVariable(context, "Audio.Engine");
+    if (_engineVar->valueType == SHType::Object) {
+      _engine = reinterpret_cast<ma_engine *>(_engineVar->payload.objectValue);
+    } else {
+      throw ActivationError("Audio.Engine not found");
+    }
+  }
+
+  void cleanup(SHContext *context) {
+    if (_engineVar) {
+      _engine = nullptr;
+      releaseVariable(_engineVar);
+      _engineVar = nullptr;
+    }
+  }
+
+  OwnedVar _fileName;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _fileName = input; // ensure null termination
+    ma_engine_play_sound_ex(_engine, _fileName.payload.stringValue, NULL, 0);
+    return input;
+  }
+};
 
 } // namespace Audio
 } // namespace shards
@@ -1066,4 +1101,7 @@ SHARDS_REGISTER_FN(audio) {
   REGISTER_SHARD("Audio.Oscillator", shards::Audio::Oscillator);
   REGISTER_SHARD("Audio.ReadFile", shards::Audio::ReadFile);
   REGISTER_SHARD("Audio.WriteFile", shards::Audio::WriteFile);
+
+  REGISTER_SHARD("Audio.Engine", shards::Audio::Engine);
+  REGISTER_SHARD("Audio.Play", shards::Audio::Play);
 }

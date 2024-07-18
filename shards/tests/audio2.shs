@@ -1,0 +1,18 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+@include("hello2.shs") ; if macro
+
+@mesh(main)
+
+@if(@test-device {
+  @wire(device-test-2 {
+    Audio.Engine
+    Once({
+      "./data/Ode_to_Joy.ogg" | Audio.Play
+    })
+  } Looped: true)
+
+  @schedule(main device-test-2)
+  @run(main FPS: 60) | Assert.Is(true)
+} none)
