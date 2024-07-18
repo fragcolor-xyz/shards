@@ -304,6 +304,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   entt::id_type id{entt::null};
   uint64_t debugId{0}; // used for debugging
   shards::OwnedVar astObject; // optional, used for debugging
+  SHWire *parent{nullptr}; // used in doppelganger pool, we keep track of the template wire
 
   // The wire's running coroutine
   shards::Coroutine coro;
