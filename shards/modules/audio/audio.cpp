@@ -857,6 +857,7 @@ struct ReadFile {
     if (d) {
       // if a device is connected override this value
       nsamples = d->actualBufferSize;
+      _buffer.resize(size_t(channels) * size_t(nsamples));
     }
 
     if (unlikely(_done)) {
