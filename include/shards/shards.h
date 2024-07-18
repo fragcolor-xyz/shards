@@ -696,7 +696,7 @@ struct SHInstanceData {
   // Info related to our activation
   struct SHTypeInfo inputType;
   SHExposedTypesInfo shared;
-  
+
   // if this activation might happen in a worker thread
   // for example cos this shard is within an Await shard
   // useful to fail during compose if we don't wish this
@@ -878,7 +878,7 @@ typedef struct SHExternalVariable {
   const struct SHTypeInfo *type;
 } SHExternalVariable;
 
-// This copies the SHExternalVariable, althought the var/type fields should be kept alive by the caller
+// This copies the SHExternalVariable, although the var/type fields should be kept alive by the caller
 typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, struct SHStringWithLen name, struct SHExternalVariable *pVar);
 typedef void(__cdecl *SHRemoveExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 

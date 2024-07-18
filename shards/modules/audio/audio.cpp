@@ -133,6 +133,15 @@ struct Device {
   std::atomic_bool hasErrors{false};
   std::string errorMessage;
 
+  SHExposedTypesInfo exposedVariables() {
+    static std::array<SHExposedTypeInfo, 1> exposing;
+    exposing[0].name = "Audio.Device";
+    exposing[0].help = SHCCSTR("The audio device.");
+    exposing[0].exposedType = ObjType;
+    exposing[0].isProtected = true;
+    return {exposing.data(), 1, 0};
+  }
+
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) {
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
 
@@ -172,6 +181,8 @@ struct Device {
 
     device->actualBufferSize = frameCount;
 
+    auto inChannels = device->_inChannels.payload.intValue;
+
     // clear all output buffers as from now we will += to them
     for (auto &[_, buffers] : device->outputBuffers) {
       for (auto &[_, buffer] : buffers) {
@@ -186,7 +197,8 @@ struct Device {
           continue;
 
         // build the buffer with whatever we need as input
-        const auto nChannels = channels[0]->inChannels.size();
+        auto nChannels = SHInt(channels[0]->inChannels.size());
+        nChannels = std::min(nChannels, inChannels);
 
         device->inputScratch.resize(frameCount * nChannels);
 
@@ -491,7 +503,12 @@ struct Channel {
 
   void warmup(SHContext *context) {
     _device = referenceVariable(context, "Audio.Device");
+    if (_device->valueType == SHType::None) {
+      throw ActivationError("Audio.Device not found");
+    }
+
     d = reinterpret_cast<const Device *>(_device->payload.objectValue);
+
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
@@ -505,6 +522,7 @@ struct Channel {
       }
       inHash = XXH3_64bits_digest(&hashState);
     }
+
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
