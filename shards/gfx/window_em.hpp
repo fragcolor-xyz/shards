@@ -7,6 +7,8 @@
 
 namespace gfx {
 struct Window {
+  static inline float4 viewInset{};
+
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
 

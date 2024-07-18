@@ -93,7 +93,7 @@ struct Device {
   PARAM_IMPL(PARAM_IMPL_FOR(_inChannels), PARAM_IMPL_FOR(_outChannels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bufferSize));
 
   void setup() {
-    _inChannels = Var(2);
+    _inChannels = Var(0);
     _outChannels = Var(2);
     _sampleRate = Var(44100);
     _bufferSize = Var(1024);

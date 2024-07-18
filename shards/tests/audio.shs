@@ -41,7 +41,7 @@
 
 @if(@test-device {
   @wire(device-test-1 {
-    Audio.Device
+    Audio.Device(InputChannels: 2)
     Audio.Channel(Shards: {Input})
   } Looped: true)
 

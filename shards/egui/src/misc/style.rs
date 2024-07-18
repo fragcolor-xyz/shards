@@ -8,7 +8,7 @@ use crate::widgets::{TextWrap, TEXTWRAP_TYPE};
 use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, TableVar};
+use shards::types::{common_type, ClonedVar, TableVar};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES};
 use shards::util::get_or_var;
 
@@ -120,6 +120,13 @@ struct StyleShard {
   contexts: ParamVar,
 
   #[shard_param(
+    "InheritDefault",
+    "Inherit default style instead of current style.",
+    [common_type::bool]
+  )]
+  inherit_default: ClonedVar,
+
+  #[shard_param(
     "OverrideTextStyle",
     "If set this will change the default TextStyle for all widgets.",
     TEXT_STYLE_TYPES
@@ -214,8 +221,17 @@ struct StyleShard {
   #[shard_param("ComboHeight", "Height of a combo-box before showing scroll bars.", [common_type::none, common_type::float, common_type::float_var])]
   combo_height: ParamVar,
 
+  #[shard_param("ScrollBarFloating", "Use floating scroll bar.", [common_type::none, common_type::bool, common_type::bool_var])]
+  scroll_bar_floating: ParamVar,
+
   #[shard_param("ScrollBarWidth", "Width of a scroll bar.", [common_type::none, common_type::float, common_type::float_var])]
   scroll_bar_width: ParamVar,
+
+  #[shard_param("ScrollBarFloatingWidth", "Width of a floating scroll bar (not hovering).", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_floating_width: ParamVar,
+
+  #[shard_param("ScrollBarFloatingAllocatedWidth", "Allocated width of a floating scroll bar (not hovering).", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_floating_allocated_width: ParamVar,
 
   #[shard_param("ScrollHandleMinLength", "Make sure the scroll handle is at least this big", [common_type::none, common_type::float, common_type::float_var])]
   scroll_handle_min_length: ParamVar,
@@ -225,6 +241,9 @@ struct StyleShard {
 
   #[shard_param("ScrollBarOuterMargin", "Margin between scroll bar and the outer container (e.g. right of a vertical scroll bar).", [common_type::none, common_type::float, common_type::float_var])]
   scroll_bar_outer_margin: ParamVar,
+
+  #[shard_param("ScrollBarDormantOpacity", "Opacity of the scroll bar when dormant.", [common_type::none, common_type::float, common_type::float_var])]
+  scroll_bar_dormant_opacity: ParamVar,
 
   // ------ Visuals members ------
   #[shard_param("DarkMode", "If true, the visuals are overall dark with light text. If false, the visuals are overall light with dark text.", [common_type::none, common_type::bool, common_type::bool_var])]
@@ -309,6 +328,7 @@ impl Default for StyleShard {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
+      inherit_default: false.into(),
       override_text_style: ParamVar::default(),
       font_id: ParamVar::default(),
       text_styles: ParamVar::default(),
@@ -337,10 +357,16 @@ impl Default for StyleShard {
       tooltip_width: ParamVar::default(),
       indent_ends_with_horizontal_line: ParamVar::default(),
       combo_height: ParamVar::default(),
+
+      // ------ Scroll bar ------
+      scroll_bar_floating: ParamVar::default(),
       scroll_bar_width: ParamVar::default(),
+      scroll_bar_floating_width: ParamVar::default(),
+      scroll_bar_floating_allocated_width: ParamVar::default(),
       scroll_handle_min_length: ParamVar::default(),
       scroll_bar_inner_margin: ParamVar::default(),
       scroll_bar_outer_margin: ParamVar::default(),
+      scroll_bar_dormant_opacity: ParamVar::default(),
 
       // ------ Visuals members ------
       dark_mode: ParamVar::default(),
@@ -403,6 +429,10 @@ impl Shard for StyleShard {
 
   fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
     let mut global_style = None;
+
+    let no_default: bool = (&self.inherit_default.0).try_into()?;
+    let dark_mode: bool = self.dark_mode.get().try_into().unwrap_or(true);
+
     let style = if let Ok(ui) = crate::util::get_parent_ui(self.parents.get()) {
       ui.style_mut()
     } else {
@@ -414,6 +444,16 @@ impl Shard for StyleShard {
       );
       global_style.as_mut().unwrap()
     };
+
+    if no_default {
+      *style = egui::Style::default();
+
+      style.visuals = if dark_mode {
+        egui::Visuals::dark()
+      } else {
+        egui::Visuals::light()
+      };
+    }
 
     when_set(&self.animation_time, |v| {
       Ok(style.animation_time = v.try_into()?)
@@ -538,8 +578,21 @@ impl Shard for StyleShard {
       Ok(spacing.combo_height = v.try_into()?)
     })?;
 
+    // Scroll bar
+    when_set(&self.scroll_bar_floating, |v| {
+      Ok(spacing.scroll.floating = v.try_into()?)
+    })?;
+
     when_set(&self.scroll_bar_width, |v| {
       Ok(spacing.scroll.bar_width = v.try_into()?)
+    })?;
+
+    when_set(&self.scroll_bar_floating_width, |v| {
+      Ok(spacing.scroll.floating_width = v.try_into()?)
+    })?;
+
+    when_set(&self.scroll_bar_floating_allocated_width, |v| {
+      Ok(spacing.scroll.floating_allocated_width = v.try_into()?)
     })?;
 
     when_set(&self.scroll_handle_min_length, |v| {
@@ -554,10 +607,16 @@ impl Shard for StyleShard {
       Ok(spacing.scroll.bar_outer_margin = v.try_into()?)
     })?;
 
+    when_set(&self.scroll_bar_dormant_opacity, |v| {
+      let v = v.try_into()?;
+      spacing.scroll.dormant_background_opacity = v;
+      Ok(spacing.scroll.dormant_handle_opacity = v)
+    })?;
+
     // Visuals stuff
     let visuals = &mut style.visuals;
 
-    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = v.try_into()?))?;
+    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = dark_mode))?;
 
     when_set(&self.override_text_color, |v| {
       Ok(visuals.override_text_color = Some(into_color(v)?))
@@ -639,7 +698,7 @@ impl Shard for StyleShard {
     when_set(&self.striped, |v| Ok(visuals.striped = v.try_into()?))?;
 
     when_set(&self.slider_trailing_fill, |v| {
-      Ok(visuals.slider_trailing_fill = v.try_into()?)
+      Ok(visuals.slider_trailing_fill = v.try_into()?) 
     })?;
 
     when_set(&self.selection, |v| {

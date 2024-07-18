@@ -1,22 +1,38 @@
 var LibraryGFXEvents = {
+  sleep: async function (ms) {
+    await new Promise(done => setTimeout(done, ms));
+  },
   gfxClipboardGet__proxy: 'async',
   gfxClipboardGet: function (dataPtrPtr, readyPtr) {
     console.log("Reading data from clipboard");
     (async () => {
-      let text = await navigator.clipboard.readText();
-      Atomics.store(HEAP32, dataPtrPtr >> 2, stringToNewUTF8(text));
-      Atomics.store(HEAP32, readyPtr >> 2, 0x01000000);
-      console.log('Read data from clipboard: ', text);
+      while (true) {
+        try {
+          let text = await navigator.clipboard.readText();
+          Atomics.store(HEAP32, dataPtrPtr >> 2, stringToNewUTF8(text));
+          Atomics.store(HEAP32, readyPtr >> 2, 0x01000000);
+          console.log('Read data from clipboard: ', text);
+          break;
+        } catch (e) {
+          console.warn("Failed to get clipboard", e);
+          // Might fail sometimes if document is not focused
+          await sleep(100);
+        }
+      }
     })();
   },
   gfxClipboardSet__proxy: 'async',
   gfxClipboardSet: function (dataCopy) {
     (async () => {
-      let text = UTF8ToString(dataCopy);
-      console.log('Copying data to clipboard: ', text);
-      await navigator.clipboard.writeText(text);
-      console.log('Data copied to clipboard');
-      _free(dataCopy);
+      try {
+        let text = UTF8ToString(dataCopy);
+        console.log('Copying data to clipboard: ', text);
+        await navigator.clipboard.writeText(text);
+        console.log('Data copied to clipboard');
+        _free(dataCopy);
+      } catch (e) {
+        console.warn("Failed to set clipboard", e);
+      }
     })();
   },
   $gfxSetup__deps: ["$Browser"],
@@ -27,11 +43,9 @@ var LibraryGFXEvents = {
     canvasContainer.onmousemove = (e) => {
       e.type_ = 0;
       this.eventHandlerPostMouseEvent(eh, e);
-      e.preventDefault();
     };
     const handleMouseEvent = (e) => {
       this.eventHandlerPostMouseEvent(eh, e);
-      e.preventDefault();
     };
     canvasContainer.onmousedown = (e) => {
       e.type_ = 1;
@@ -87,7 +101,6 @@ var LibraryGFXEvents = {
       deltaY = (deltaY == 0) ? 0 : (deltaY > 0 ? Math.max(deltaY, 1) : Math.min(deltaY, -1));
 
       this.eventHandlerPostWheelEvent(eh, { deltaY: deltaY });
-      event.preventDefault();
     });
 
     (async function resizeCanvasLoop() {

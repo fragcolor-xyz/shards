@@ -18,7 +18,27 @@
 #include <android/native_window.h>
 #endif
 
+#if SH_IOS
+struct UIEdgeInsets {
+  double top, left, bottom, right;
+};
+extern "C" {
+void shards_get_uiview_safe_area(UIEdgeInsets *outInsets, void *metalView);
+}
+#elif SH_ANDROID
+#include <jni.h>
+extern "C" {
+JNIEXPORT void JNICALL Java_com_fragcolor_formabble_FblView_nativeSetViewInsets(JNIEnv *env, jclass cls, jint left, jint top,
+                                                                                jint right, jint bottom) {
+  SPDLOG_INFO("Received android_set_view_insets: ({}, {}, {}, {})", left, top, right, bottom);
+  gfx::Window::viewInset = gfx::float4(left, top, right, bottom);
+}
+}
+#endif
+
 namespace gfx {
+
+float4 Window::viewInset{};
 
 void Window::init(const WindowCreationOptions &options) {
   if (window)
@@ -77,7 +97,7 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
   }
 
-  if (options.fullscreen) {
+  if (options.fullscreen || (flags & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN) {
     SDL_SetWindowFullscreen(window, true);
   }
 
@@ -104,6 +124,14 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
   while (pollEvent(event)) {
     events.push_back(event);
   }
+
+  // Update edge insets
+#if SH_IOS
+  SDL_MetalView uiView = metalView->view;
+  UIEdgeInsets insets{};
+  shards_get_uiview_safe_area(&insets, uiView);
+  viewInset = float4(insets.left, insets.top, insets.right, insets.bottom);
+#endif
 }
 
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }

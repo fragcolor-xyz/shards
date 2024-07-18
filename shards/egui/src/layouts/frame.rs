@@ -23,6 +23,7 @@ use shards::types::ANY_TYPES;
 use shards::types::FLOAT4_TYPES;
 use shards::types::FLOAT_TYPES_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::util::collect_required_variables;
 
 lazy_static! {
   static ref COLOR_VAR_OR_NONE_TYPES: Vec<Type> = vec![
@@ -167,11 +168,6 @@ impl LegacyShard for Frame {
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
     Some(&self.requiring)
   }
 
@@ -190,8 +186,17 @@ impl LegacyShard for Frame {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.requiring.clear();
+
     if !self.contents.is_empty() {
       self.contents.compose(data)?;
+    }
+
+    // Add UI.Parents to the list of required variables
+    util::require_parents(&mut self.requiring);
+
+    if self.fillColor.is_variable() {
+      collect_required_variables(&data.shared, &mut self.requiring, (&self.fillColor).into());
     }
 
     // Always passthrough the input
@@ -265,7 +270,7 @@ impl LegacyShard for Frame {
         let (nw, ne, sw, se) = rounding.try_into()?;
         egui::epaint::Rounding { nw, ne, sw, se }
       };
-      let fill = self.fillColor.get();
+      let fill: &shards::SHVar = self.fillColor.get();
       let fill = if fill.is_none() {
         ui.style().visuals.widgets.noninteractive.bg_fill
       } else {

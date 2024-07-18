@@ -44,6 +44,7 @@ struct SDL_Window;
 namespace gfx {
 struct Window {
   SDL_Window *window = nullptr;
+  static float4 viewInset;
 
 #if SH_APPLE
   std::optional<MetalViewContainer> metalView;

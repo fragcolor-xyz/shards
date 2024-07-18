@@ -262,16 +262,16 @@ pub fn apply_widget_visuals(
 ) -> Result<(), &'static str> {
   let tbl: TableVar = v.try_into()?;
   if let Some(v) = tbl.get_static("BGFill") {
-    visuals.bg_fill = into_color(v)?;
+    visuals.bg_fill = into_color(get_or_var(v, ctx))?;
   }
   if let Some(v) = tbl.get_static("WeakBGFill") {
-    visuals.weak_bg_fill = into_color(v)?;
+    visuals.weak_bg_fill = into_color(get_or_var(v, ctx))?;
   }
   if let Some(v) = tbl.get_static("BGStroke") {
     visuals.bg_stroke = into_stroke(v, ctx)?;
   }
   if let Some(v) = tbl.get_static("Rounding") {
-    visuals.rounding = into_rounding(v)?;
+    visuals.rounding = into_rounding(get_or_var(v, ctx))?;
   }
   if let Some(v) = tbl.get_static("FGStroke") {
     visuals.fg_stroke = into_stroke(v, ctx)?;
