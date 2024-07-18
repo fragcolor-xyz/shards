@@ -1042,6 +1042,7 @@ struct Engine {
     if (_initialized) {
       ma_engine_uninit(&_engine);
       memset(&_engine, 0, sizeof(ma_engine));
+      releaseVariable(_deviceVar);
       _initialized = false;
     }
   }

@@ -6,13 +6,20 @@
 @mesh(main)
 
 @if(@test-device {
-  @wire(device-test-2 {
+  @wire(main-audio {
     Audio.Engine
+
     Once({
-      "./data/Ode_to_Joy.ogg" | Audio.Play
+      "./data/Ode_to_Joy.ogg" | Audio.Sound = game-on
     })
+
+    game-on | Audio.Start
+    Pause(2.0)
+    game-on | Audio.Stop
+    Pause(2.0)
+    Stop
   } Looped: true)
 
-  @schedule(main device-test-2)
+  @schedule(main main-audio)
   @run(main FPS: 60) | Assert.Is(true)
 } none)
