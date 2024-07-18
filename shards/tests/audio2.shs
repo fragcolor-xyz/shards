@@ -13,10 +13,10 @@
       "./data/Ode_to_Joy.ogg" | Audio.Sound = game-on
     })
 
-    game-on | Audio.Start
-    Pause(2.0)
+    game-on | Audio.Start(Looped: true)
+    Pause(5.0)
     game-on | Audio.Stop
-    Pause(2.0)
+    Pause(1.0)
     Stop
   } Looped: true)
 

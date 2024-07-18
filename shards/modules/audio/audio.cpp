@@ -1122,12 +1122,36 @@ struct Sound : EngineUser {
   }
 };
 
-struct Start {
+struct Start : EngineUser {
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
+  void setup() { _looped = Var(false); }
+
+  // Looped parameter
+  PARAM_VAR(_looped, "Looped", "If the sound should be played in loop or should stop the wire when it ends.",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_looped));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    EngineUser::warmup(context);
+    PARAM_WARMUP(context);
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    EngineUser::cleanup(context);
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
+    ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
     ma_sound_start(&*_sound);
     return input;
   }
