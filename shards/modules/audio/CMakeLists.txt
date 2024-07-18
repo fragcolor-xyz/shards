@@ -18,7 +18,7 @@ else()
 endif()
 
 if(EMSCRIPTEN)
-  target_link_options(shards-module-audio PRIVATE
+  target_link_options(shards-module-audio PUBLIC
     "-sAUDIO_WORKLET=1"
     "-sWASM_WORKERS=1" # Required for miniaudio
   )
