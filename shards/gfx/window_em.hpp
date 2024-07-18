@@ -15,7 +15,7 @@ struct Window {
   bool isInitialized() const { return true; }
 
   // Only for platforms that automatically size the output window
-  void maybeAutoResize();
+  void update();
 
   void *getNativeWindowHandle();
 

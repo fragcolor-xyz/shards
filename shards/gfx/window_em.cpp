@@ -17,7 +17,7 @@ void Window::cleanup() {
   // noop
 }
 
-void Window::maybeAutoResize() {
+void Window::update() {
   // noop
 }
 

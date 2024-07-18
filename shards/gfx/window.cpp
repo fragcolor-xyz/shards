@@ -118,13 +118,7 @@ void Window::cleanup() {
   }
 }
 
-void Window::pollEvents(std::vector<SDL_Event> &events) {
-  events.clear();
-  SDL_Event event;
-  while (pollEvent(event)) {
-    events.push_back(event);
-  }
-
+void Window::update() {
   // Update edge insets
 #if SH_IOS
   SDL_MetalView uiView = metalView->view;
@@ -134,9 +128,15 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 #endif
 }
 
-bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
+void Window::pollEvents(std::vector<SDL_Event> &events) {
+  events.clear();
+  SDL_Event event;
+  while (pollEvent(event)) {
+    events.push_back(event);
+  }
+}
 
-void Window::maybeAutoResize() {}
+bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
 void *Window::getNativeWindowHandle() {
 #if SH_APPLE

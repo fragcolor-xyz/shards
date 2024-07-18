@@ -61,12 +61,11 @@ struct Window {
       callback(event);
     }
   }
+    
+  void update();
 
   void pollEvents(std::vector<SDL_Event> &events);
   bool pollEvent(SDL_Event &outEvent);
-
-  // Only for platforms that automatically size the output window
-  void maybeAutoResize();
 
   void *getNativeWindowHandle();
 

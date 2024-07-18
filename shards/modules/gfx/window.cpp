@@ -259,7 +259,7 @@ struct MainWindow final {
     if (shouldRun) {
       // Poll & distribute input events
       callOnMeshThread(shContext, [&]() {
-        window->maybeAutoResize();
+        window->update();
         _windowContext->inputMaster.update(*window.get());
       });
 
