@@ -1041,6 +1041,7 @@ struct Engine {
   void cleanup(SHContext *context) {
     if (_initialized) {
       ma_engine_uninit(&_engine);
+      memset(&_engine, 0, sizeof(ma_engine));
       _initialized = false;
     }
   }
@@ -1057,10 +1058,7 @@ struct Engine {
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
-struct Play {
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-
+struct EngineUser {
   ma_engine *_engine{nullptr};
   SHVar *_engineVar{nullptr};
 
@@ -1080,12 +1078,80 @@ struct Play {
       _engineVar = nullptr;
     }
   }
+};
 
+struct Sound : EngineUser {
+  static constexpr uint32_t SoundCC = 'snds';
+
+  static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = SoundCC}}}};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return ObjType; }
+
+  std::optional<ma_sound> _sound;
   OwnedVar _fileName;
+
+  void warmup(SHContext *context) { EngineUser::warmup(context); }
+
+  void cleanup(SHContext *context) {
+    EngineUser::cleanup(context);
+
+    if (_sound) {
+      ma_sound_uninit(&*_sound);
+      _sound.reset();
+    }
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _fileName = input; // ensure null termination
-    ma_engine_play_sound_ex(_engine, _fileName.payload.stringValue, NULL, 0);
+
+    if (_sound) {
+      ma_sound_uninit(&*_sound);
+      _sound.reset();
+    }
+
+    _sound.emplace();
+    auto result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC,
+                                          NULL, NULL, &*_sound);
+    if (result != MA_SUCCESS) {
+      throw ActivationError("Failed to init sound");
+    }
+
+    return Var::Object(&*_sound, CoreCC, SoundCC);
+  }
+};
+
+struct Start {
+  static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
+    ma_sound_start(&*_sound);
+    return input;
+  }
+};
+
+struct Pause {
+  static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
+    ma_sound_stop(&*_sound);
+    return input;
+  }
+};
+
+struct Stop {
+  static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
+    ma_sound_stop(&*_sound);
+    // and reset timeline to 0
+    ma_sound_seek_to_pcm_frame(&*_sound, 0);
     return input;
   }
 };
@@ -1103,5 +1169,8 @@ SHARDS_REGISTER_FN(audio) {
   REGISTER_SHARD("Audio.WriteFile", shards::Audio::WriteFile);
 
   REGISTER_SHARD("Audio.Engine", shards::Audio::Engine);
-  REGISTER_SHARD("Audio.Play", shards::Audio::Play);
+  REGISTER_SHARD("Audio.Sound", shards::Audio::Sound);
+  REGISTER_SHARD("Audio.Start", shards::Audio::Start);
+  REGISTER_SHARD("Audio.Pause", shards::Audio::Pause);
+  REGISTER_SHARD("Audio.Stop", shards::Audio::Stop);
 }

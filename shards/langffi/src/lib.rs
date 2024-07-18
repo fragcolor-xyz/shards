@@ -1,7 +1,7 @@
 use shards::core::{register_enum, register_legacy_shard, register_shard};
 use shards::util::from_raw_parts_allow_null;
 use shards::SHStringWithLen;
-use shards::{shlog_error, shlog_trace, types::*};
+use shards::{shlog_error, types::*};
 use shards_lang::cli::process_args;
 use shards_lang::custom_state::CustomStateContainer;
 use shards_lang::eval::{self, *};
@@ -394,7 +394,7 @@ pub extern "C" fn setup_panic_hook() {
     // Trigger a breakpoint.
     #[cfg(unix)]
     unsafe {
-    libc::raise(libc::SIGTRAP);
+      libc::raise(libc::SIGTRAP);
     }
     #[cfg(windows)]
     unsafe {
