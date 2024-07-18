@@ -32,6 +32,7 @@ var shards_core = {
       return -1;
     }
   },
+  emBrowsePage__proxy: 'async',
   emBrowsePage: function (curl) {
     const url = UTF8ToString(curl);
     window.open(url, '_self');
