@@ -2570,10 +2570,10 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("_Emscripten.EvalAsync", EmscriptenAsyncEval);
   using EmscriptenBrowseShard = LambdaShard<emscriptenBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", EmscriptenBrowseShard);
-#endif
-
+#else
   using WebBrowseShard = LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", WebBrowseShard);
+#endif
 
   REGISTER_SHARD("Return", Return);
   REGISTER_SHARD("Restart", Restart);
