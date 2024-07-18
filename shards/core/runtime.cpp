@@ -1653,16 +1653,20 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     delete set;
   } break;
   case SHType::Image:
+    shassert(var.payload.imageValue);
     imageDecRef(var.payload.imageValue);
     break;
   case SHType::ShardRef:
+    shassert(var.payload.shardValue);
     decRef(var.payload.shardValue);
     break;
   case SHType::Type:
+    shassert(var.payload.typeValue);
     freeDerivedInfo(*var.payload.typeValue);
     delete var.payload.typeValue;
     break;
   case SHType::Trait:
+    shassert(var.payload.traitValue);
     freeTrait(*var.payload.traitValue);
     delete var.payload.traitValue;
     break;
