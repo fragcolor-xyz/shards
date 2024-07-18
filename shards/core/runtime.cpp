@@ -683,7 +683,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
         auto wire = context->currentWire();
         auto mesh = context->currentWire()->mesh.lock();
         shards::OwnedVar errVar((Var(context->getErrorMessage())));
-        mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, nullptr, std::move(errVar)});
+        mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, blk, std::move(errVar)});
       }
       case SHWireState::Stop:
       case SHWireState::Restart:
