@@ -49,8 +49,8 @@ impl Default for super::Sized {
       contents: ShardsVar::default(),
       requiring: Vec::new(),
       exposing: Vec::new(),
-      width: (-1.0).into(),
-      height: (-1.0).into(),
+      width: (0.0).into(),
+      height: (0.0).into(),
       fill_width: (false).into(),
       fill_height: (false).into(),
     }
@@ -168,7 +168,14 @@ impl LegacyShard for super::Sized {
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let max_size = vec2((&self.width.0).try_into()?, (&self.height.0).try_into()?);
+      let mut max_size = vec2((&self.width.0).try_into()?, (&self.height.0).try_into()?);
+      let min_size = ui.min_size();
+      if max_size.x < min_size.x {
+        max_size.x = min_size.x;
+      }
+      if max_size.y < min_size.y {
+        max_size.y = min_size.y;
+      }
 
       let mut sized: Vec2 = max_size;
       let available_size = ui.available_size();
