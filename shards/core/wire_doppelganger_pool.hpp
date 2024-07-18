@@ -31,7 +31,7 @@ template <typename T> struct WireDoppelgangerPool {
     auto vwire = shards::Var(master);
     std::stringstream stream;
     Writer w(stream);
-    Serialization serializer;
+    Serialization serializer{true};
     serializer.serialize(vwire, w); // need to serialize the wire template pointers in this case!
     _wireStr = stream.str();
   }
@@ -58,7 +58,7 @@ template <typename T> struct WireDoppelgangerPool {
     if (_avail.size() == 0) {
       lock.unlock();
 
-      Serialization serializer;
+      Serialization serializer{true};
       std::stringstream stream(_wireStr);
       Reader r(stream);
       SHVar vwire{};

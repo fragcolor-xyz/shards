@@ -80,6 +80,11 @@ template <typename T, typename As, typename E> std::enable_if_t<std::is_enum_v<E
   v = E(a);
 }
 struct Serialization {
+  Serialization() = default;
+  Serialization(bool private_internal) : private_internal(private_internal) {}
+
+  bool private_internal{false}; // turn this flag on when you want to serialize private data (like wire pointers)
+
   std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
@@ -358,6 +363,7 @@ struct Serialization {
       if (!blk) {
         throw shards::SHException("Shard not found! name: " + std::string(&buf[0]));
       }
+
       // validate the hash of the shard
       uint32_t crc;
       read((uint8_t *)&crc, sizeof(uint32_t));
@@ -366,7 +372,9 @@ struct Serialization {
                                   "probably different: " +
                                   std::string(&buf[0]));
       }
+
       blk->setup(blk);
+
       auto params = blk->parameters(blk).len + 1;
       while (params--) {
         int32_t idx;
@@ -378,15 +386,22 @@ struct Serialization {
         blk->setParam(blk, idx, &tmp);
         destroyVar(tmp);
       }
+
       if (blk->setState) {
         SHVar state{};
         deserialize(read, state);
         blk->setState(blk, &state);
         destroyVar(state);
       }
-      // also get line and column
-      read((uint8_t *)&blk->line, sizeof(uint32_t));
-      read((uint8_t *)&blk->column, sizeof(uint32_t));
+
+      if (private_internal) {
+        // also get line and column
+        read((uint8_t *)&blk->line, sizeof(uint32_t));
+        read((uint8_t *)&blk->column, sizeof(uint32_t));
+        // read shard id
+        read((uint8_t *)&blk->id, sizeof(uint64_t));
+      }
+
       incRef(blk);
       output.payload.shardValue = blk;
       break;
@@ -438,6 +453,13 @@ struct Serialization {
         deserialize(read, trait);
         wire->addTrait(trait);
         freeTrait(trait);
+      }
+
+      if (private_internal) {
+        // read the pointer address of the parent wire
+        size_t parentAddress;
+        read((uint8_t *)&parentAddress, sizeof(size_t));
+        wire->parent = reinterpret_cast<SHWire *>(parentAddress);
       }
       break;
     }
@@ -692,10 +714,17 @@ struct Serialization {
         auto state = blk->getState(blk);
         total += serialize(state, write);
       }
-      write((const uint8_t *)&blk->line, sizeof(uint32_t));
-      total += sizeof(uint32_t);
-      write((const uint8_t *)&blk->column, sizeof(uint32_t));
-      total += sizeof(uint32_t);
+
+      if (private_internal) {
+        // line and column
+        write((const uint8_t *)&blk->line, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)&blk->column, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        // serialize shard id
+        write((const uint8_t *)&blk->id, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+      }
       break;
     }
     case SHType::Wire: {
@@ -753,6 +782,13 @@ struct Serialization {
       }
       for (auto &trait : wire->getTraits()) {
         total += serialize((SHTrait &)trait, write);
+      }
+
+      if (private_internal) {
+        // just serialize the address of the wire that will be parent when deserialized
+        size_t parentAddress = reinterpret_cast<size_t>(wire);
+        write((const uint8_t *)&parentAddress, sizeof(size_t));
+        total += sizeof(size_t);
       }
       break;
     }
