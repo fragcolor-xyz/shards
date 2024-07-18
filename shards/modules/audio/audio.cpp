@@ -60,6 +60,7 @@ struct ChannelData {
   std::vector<uint32_t> outChannels;
   ShardsVar shards;
   ParamVar volume{Var(0.7)};
+  std::unordered_map<OwnedVar, OwnedVar> initialVariables;
 };
 
 struct ChannelDesc {
@@ -136,7 +137,8 @@ struct Device {
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
 
     shassert(device->_inChannels.payload.intValue == 0 || pDevice->capture.format == ma_format_f32 && "Invalid capture format");
-    shassert(device->_outChannels.payload.intValue == 0 || pDevice->playback.format == ma_format_f32 && "Invalid playback format");
+    shassert(device->_outChannels.payload.intValue == 0 ||
+             pDevice->playback.format == ma_format_f32 && "Invalid playback format");
 
     if (device->stopped)
       return;
@@ -157,6 +159,14 @@ struct Device {
         buffer.resize(frameCount * c.outChannels);
         c.data->outputBuffer = buffer.data();
       }
+
+      // copy all needed variables
+      auto &externalVariables = device->dspWire->getExternalVariables();
+      for (auto &[name, var] : c.data->initialVariables) {
+        var.flags |= SHVAR_FLAGS_EXTERNAL;
+        externalVariables[name] = SHExternalVariable{&var};
+      }
+
       c.data->shards.warmup(&device->dspContext);
     }
 
@@ -451,17 +461,37 @@ struct Channel {
     }
   }
 
+  std::deque<ParamVar> _vars;
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    _data.shards.compose(data);
+    // Wire needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    dataCopy.requiredVariables = &data.wire->requirements; // this ensures we get the right requirements deep
+
+    _vars.clear();
+    auto res = _data.shards.compose(data);
+    for (SHExposedTypeInfo &req : res.requiredInfo) {
+      // Capture if not global as we need to copy it!
+      SHLOG_TRACE("Audio.Channel: adding variable to requirements: {}", req.name);
+      SHVar ctxVar{};
+      ctxVar.valueType = SHType::ContextVar;
+      ctxVar.payload.stringValue = req.name;
+      ctxVar.payload.stringLen = strlen(req.name);
+      auto &p = _vars.emplace_back();
+      p = ctxVar;
+    }
+
     return data.inputType;
   }
+
+  uint64_t inHash = 0;
+  uint64_t outHash = 0;
+  uint32_t outChannels = 0;
 
   void warmup(SHContext *context) {
     _device = referenceVariable(context, "Audio.Device");
     d = reinterpret_cast<const Device *>(_device->payload.objectValue);
-    uint64_t inHash = 0;
-    uint64_t outHash = 0;
-    uint32_t outChannels = 0;
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
@@ -490,14 +520,20 @@ struct Channel {
       outHash = XXH3_64bits_digest(&hashState);
     }
 
-    ChannelDesc cd{_inBusNumber, inHash, _outBusNumber, outHash, outChannels, &_data};
-    d->newChannels.push(cd);
-
     // shards warmup done in audio thread!
     _data.volume.warmup(context);
+
+    for (auto &v : _vars) {
+      SHLOG_TRACE("Audio.Channel: warming up variable: {}", v.variableName());
+      v.warmup(context);
+    }
   }
 
   void cleanup(SHContext *context) {
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
     if (d) {
       // every device user needs to try and stop it!
       // else we risk to mess with the audio thread
@@ -512,9 +548,32 @@ struct Channel {
 
     _data.shards.cleanup(context);
     _data.volume.cleanup(context);
+
+    _data.initialVariables.clear();
+
+    _started = false;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return input; }
+  bool _started{false};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (!_started) {
+      // setup captured variables as mesh externals
+      std::deque<shards::OwnedVar> capturedVars;
+      for (auto &v : _vars) {
+        auto &var = v.get();
+        OwnedVar name{Var(v.variableNameView())};
+        _data.initialVariables[name] = var;
+      }
+
+      ChannelDesc cd{_inBusNumber, inHash, _outBusNumber, outHash, outChannels, &_data};
+      d->newChannels.push(cd);
+
+      // _data.shards warmup is done in the audio thread
+      _started = true;
+    }
+    return input;
+  }
   // Must be able to handle device inputs, being an instrument, Aux, busses
   // re-route and send
 };
@@ -663,15 +722,15 @@ struct ReadFile {
   ma_decoder _decoder;
   bool _initialized{false};
 
-  ma_uint32 _channels{2};
-  ma_uint64 _nsamples{1024};
-  ma_uint32 _sampleRate{44100};
   ma_uint64 _progress{0};
+
+  // ma_uint32 _channels{2};
+  // ma_uint64 _nsamples{1024};
+  // ma_uint32 _sampleRate{44100};
   // what to do when not looped ends? throw?
-  bool _looped{false};
-  ParamVar _fromSample;
-  ParamVar _toSample;
-  ParamVar _filename;
+  // bool _looped{false};
+  // ParamVar _fromSample;
+  // ParamVar _toSample;
 
   std::vector<float> _buffer;
   bool _done{false};
@@ -684,117 +743,55 @@ struct ReadFile {
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
-  static inline Parameters params{
-      {"File", SHCCSTR("The audio file to read from (wav,ogg,mp3,flac)."), {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Channels", SHCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
-      {"SampleRate",
-       SHCCSTR("The desired output sampling rate. Ignored if inside an "
-               "Audio.Channel."),
-       {CoreInfo::IntType}},
-      {"Samples",
-       SHCCSTR("The desired number of samples in the output. Ignored if inside "
-               "an Audio.Channel."),
-       {CoreInfo::IntType}},
-      {"Looped",
-       SHCCSTR("If the file should be played in loop or should stop the wire "
-               "when it ends."),
-       {CoreInfo::BoolType}},
-      {"From", SHCCSTR("The starting time in seconds."), {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}},
-      {"To", SHCCSTR("The end time in seconds."), {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _filename = value;
-      break;
-    case 1:
-      _channels = ma_uint32(value.payload.intValue);
-      break;
-    case 2:
-      _sampleRate = ma_uint32(value.payload.intValue);
-      break;
-    case 3:
-      _nsamples = ma_uint64(value.payload.intValue);
-      break;
-    case 4:
-      _looped = value.payload.boolValue;
-      break;
-    case 5:
-      _fromSample = value;
-      break;
-    case 6:
-      _toSample = value;
-      break;
-    default:
-      throw InvalidParameterIndex();
-    }
+  void setup() {
+    _channels = Var(2);
+    _sampleRate = Var(44100);
+    _nsamples = Var(1024);
+    _looped = Var(false);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _filename;
-    case 1:
-      return Var(_channels);
-    case 2:
-      return Var(_sampleRate);
-    case 3:
-      return Var(int64_t(_nsamples));
-    case 4:
-      return Var(_looped);
-    case 5:
-      return _fromSample;
-    case 6:
-      return _toSample;
-    default:
-      throw InvalidParameterIndex();
-    }
-  }
+  PARAM_PARAMVAR(_source, "Source", "The audio file or bytes to read from (wav,ogg,mp3,flac).",
+                 {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::BytesType, CoreInfo::BytesVarType});
+  PARAM_VAR(_channels, "Channels", "The number of desired output audio channels.", {CoreInfo::IntType});
+  PARAM_VAR(_sampleRate, "SampleRate", "The desired output sampling rate.", {CoreInfo::IntType});
+  PARAM_VAR(_nsamples, "Samples", "The desired number of samples in the output.", {CoreInfo::IntType});
+  PARAM_VAR(_looped, "Looped", "If the file should be played in loop or should stop the wire when it ends.",
+            {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_fromSample, "From", "The starting time in seconds.",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType});
+  PARAM_PARAMVAR(_toSample, "To", "The end time in seconds.", {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType});
 
-  void initFile(const std::string_view &filename) {
-    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, _channels, _sampleRate);
-    ma_result res = ma_decoder_init_file(filename.data(), &config, &_decoder);
-    if (res != MA_SUCCESS) {
-      SHLOG_ERROR("Failed to open audio file {}", filename);
-      throw ActivationError("Failed to open audio file");
-    }
-  }
+  PARAM_IMPL(PARAM_IMPL_FOR(_source), PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_nsamples),
+             PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_fromSample), PARAM_IMPL_FOR(_toSample));
 
-  void deinitFile() { ma_decoder_uninit(&_decoder); }
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
     _device = referenceVariable(context, "Audio.Device");
     if (_device->valueType == SHType::Object) {
       d = reinterpret_cast<Device *>(_device->payload.objectValue);
       // we have a device! override SR and BS
-      _sampleRate = d->_sampleRate.payload.intValue;
-      _nsamples = d->_bufferSize.payload.intValue; // this might be less
-    }
-
-    _fromSample.warmup(context);
-    _toSample.warmup(context);
-    _filename.warmup(context);
-
-    if (!_filename.isVariable() && _filename->valueType == SHType::String) {
-      const auto fname = SHSTRVIEW(_filename.get());
-      initFile(fname);
-      _buffer.resize(size_t(_channels) * size_t(_nsamples));
-      _initialized = true;
+      _sampleRate = d->_sampleRate;
+      _nsamples = d->_bufferSize; // this might be less
     }
 
     _done = false;
     _progress = 0;
   }
 
+  SHVar *previousSource{nullptr};
+
   void cleanup(SHContext *context) {
-    _fromSample.cleanup();
-    _toSample.cleanup();
-    _filename.cleanup();
+    PARAM_CLEANUP(context);
 
     if (_initialized) {
-      deinitFile();
+      ma_decoder_uninit(&_decoder);
       _initialized = false;
     }
 
@@ -803,16 +800,44 @@ struct ReadFile {
       _device = nullptr;
       d = nullptr;
     }
+
+    previousSource = nullptr;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ma_uint32 channels = ma_uint32(_channels.payload.intValue);
+    ma_uint64 nsamples = ma_uint64(_nsamples.payload.intValue);
+    ma_uint32 sampleRate = ma_uint32(_sampleRate.payload.intValue);
+
+    auto &source = _source.get();
+    if (&source != previousSource) {
+      previousSource = &source;
+
+      ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, sampleRate);
+      ma_result res;
+      if (source.valueType == SHType::String) {
+        OwnedVar file = source; // ensure null termination
+        res = ma_decoder_init_file(file.payload.stringValue, &config, &_decoder);
+      } else if (source.valueType == SHType::Bytes) {
+        res = ma_decoder_init_memory(source.payload.bytesValue, source.payload.bytesSize, &config, &_decoder);
+      } else {
+        throw ActivationError("Invalid audio source type");
+      }
+      if (res != MA_SUCCESS) {
+        SHLOG_ERROR("Failed to open audio source {}", source);
+        throw ActivationError("Failed to open audio file");
+      }
+      _buffer.resize(size_t(channels) * size_t(nsamples));
+      _initialized = true;
+    }
+
     if (d) {
       // if a device is connected override this value
-      _nsamples = d->actualBufferSize;
+      nsamples = d->actualBufferSize;
     }
 
     if (unlikely(_done)) {
-      if (_looped) {
+      if (_looped.payload.boolValue) {
         ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, 0);
         if (res != MA_SUCCESS) {
           throw ActivationError("Failed to seek");
@@ -827,7 +852,7 @@ struct ReadFile {
 
     const auto from = _fromSample.get();
     if (unlikely(from.valueType == SHType::Float && _progress == 0)) {
-      const auto sfrom = ma_uint64(double(_sampleRate) * from.payload.floatValue);
+      const auto sfrom = ma_uint64(double(sampleRate) * from.payload.floatValue);
       ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, sfrom);
       _progress = sfrom;
       if (res != MA_SUCCESS) {
@@ -835,10 +860,10 @@ struct ReadFile {
       }
     }
 
-    auto reading = _nsamples;
+    auto reading = nsamples;
     const auto to = _toSample.get();
     if (unlikely(to.valueType == SHType::Float)) {
-      const auto sto = ma_uint64(double(_sampleRate) * to.payload.floatValue);
+      const auto sto = ma_uint64(double(sampleRate) * to.payload.floatValue);
       const auto until = _progress + reading;
       if (sto < until) {
         reading = reading - (until - sto);
@@ -853,20 +878,20 @@ struct ReadFile {
     }
     _progress += framesRead;
 
-    if (framesRead < _nsamples) {
+    if (framesRead < nsamples) {
       // Reached the end.
       _done = true;
       // zero anything that was not used
-      const auto remains = _nsamples - framesRead;
+      const auto remains = nsamples - framesRead;
       if (remains <= _buffer.size()) {
-        memset(_buffer.data() + framesRead * _channels, 0, sizeof(float) * remains * _channels);
+        memset(_buffer.data() + framesRead * channels, 0, sizeof(float) * remains * channels);
       } else {
         // Handle error: buffer is smaller than expected
         throw ActivationError("Buffer size mismatch");
       }
     }
 
-    return Var(SHAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});
+    return Var(SHAudio{sampleRate, uint16_t(nsamples), uint16_t(channels), _buffer.data()});
   }
 };
 

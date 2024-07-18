@@ -15,14 +15,14 @@
 @run(main) | Assert.Is(true)
 
 @wire(play-file-fft {
-  Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
+  Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0)
   DSP.FFT = freq-domain
-  DSP.IFFT(Audio: true) |
+  DSP.IFFT(Audio: true)
   Audio.WriteFile("example-fft.wav" Channels: 1)
   freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
-  freq-domain | DSP.IFFT(Complex: false) |
-  Math.Normalize(Positive: true) |
-  FloatsToImage(32 32 1) | WritePNG("example.wav.png") | ; again, just for coverage
+  freq-domain | DSP.IFFT(Complex: false)
+  Math.Normalize(Positive: true)
+  FloatsToImage(32 32 1) | WritePNG("example.wav.png") ; again, just for coverage
   Log
 } Looped: true)
 
@@ -41,7 +41,7 @@
 
 @if(@test-device {
   @wire(device-test-1 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {Input})
   } Looped: true)
 
@@ -49,7 +49,7 @@
   @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-2 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {
       Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 2 From: 4.0 To: 6.0)
     })
@@ -58,8 +58,22 @@
   @schedule(main device-test-2)
   @run(main) | Assert.Is(true)
 
+  @wire(device-test-2-bytes {
+    Audio.Device
+
+    Once({
+      "./data/Ode_to_Joy.ogg" | FS.Read(Bytes: true) = audio-bytes
+    })
+    Audio.Channel(Shards: {
+      Audio.ReadFile(Source: audio-bytes Channels: 2 From: 4.0 To: 6.0)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-2-bytes)
+  @run(main) | Assert.Is(true)
+
   @wire(device-test-3 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator
     })
@@ -69,7 +83,7 @@
   @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-4 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Triangle)
     })
@@ -79,7 +93,7 @@
   @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-5 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Square)
     })
@@ -89,7 +103,7 @@
   @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-6 {
-    Audio.Device |
+    Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Sawtooth)
     })
