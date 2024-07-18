@@ -18,8 +18,16 @@ else()
 endif()
 
 if(EMSCRIPTEN)
-  target_link_options(shards-module-audioPRIVATE
+  target_link_options(shards-module-audio PRIVATE
     "-sAUDIO_WORKLET=1"
     "-sWASM_WORKERS=1" # Required for miniaudio
   )
 endif()
+
+set_source_files_properties(
+  audio.cpp
+  dsp.cpp
+  PROPERTIES
+  COMPILE_FLAGS -O3
+  SKIP_PRECOMPILE_HEADERS ON
+)
