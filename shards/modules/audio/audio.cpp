@@ -82,13 +82,25 @@ struct Device {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_VAR(_inChannels, "InputChannels", "The number of input channels.", {CoreInfo::IntType});
-  PARAM_VAR(_outChannels, "OutputChannels", "The number of output channels.", {CoreInfo::IntType});
-  PARAM_VAR(_sampleRate, "SampleRate", "The sample rate of the device.", {CoreInfo::IntType});
-  // we don't want to use this inside our operation callback
-  // miniaudio does not follow the same value on certain platforms
-  // it's basically a max
-  PARAM_VAR(_bufferSize, "BufferSize", "The buffer size of the device.", {CoreInfo::IntType});
+  // Number of input channels for audio processing.
+  PARAM_VAR(_inChannels, "InputChannels", "Sets the number of audio input channels for the device.", {CoreInfo::IntType});
+
+  // Number of output channels for audio processing.
+  PARAM_VAR(_outChannels, "OutputChannels", "Sets the number of audio output channels for the device.", {CoreInfo::IntType});
+
+  // Sample rate of the audio device in Hertz (Hz). Defines how many samples per second the device processes. A value of 0 means
+  // the device's default sample rate will be used.
+  PARAM_VAR(_sampleRate, "SampleRate",
+            "Specifies the sample rate of the audio device, in Hertz (Hz). A value of 0 means the device's default sample rate "
+            "will be used.",
+            {CoreInfo::IntType});
+
+  // Size of the buffer used by the audio device. Note: Miniaudio may interpret this as a maximum value on certain platforms. A
+  // value of 0 means the device's default buffer size will be used.
+  PARAM_VAR(_bufferSize, "BufferSize",
+            "Specifies the size of the audio buffer used by the device. Note: This may be interpreted as a maximum value on some "
+            "platforms. A value of 0 means the device's default buffer size will be used.",
+            {CoreInfo::IntType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_inChannels), PARAM_IMPL_FOR(_outChannels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bufferSize));
 
