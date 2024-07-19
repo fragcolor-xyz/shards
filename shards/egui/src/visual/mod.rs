@@ -4,8 +4,8 @@
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
-use std::sync::mpsc;
 use std::cell::RefCell;
+use std::sync::mpsc;
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -48,14 +48,22 @@ fn pascal_to_spaced(pascal: &str, buffer: &mut String) {
   // Clear the buffer to reuse it for new formatted output
   buffer.clear();
   let mut first = true;
+  let chars: Vec<char> = pascal.chars().collect();
+  let length = chars.len();
 
-  for (i, c) in pascal.chars().enumerate() {
+  for i in 0..length {
+    let c = chars[i];
     if c.is_uppercase() {
-      if !first {
+      // Check if the current uppercase letter is part of an acronym
+      let is_acronym =
+        (i + 1 < length && chars[i + 1].is_uppercase()) || (i > 0 && chars[i - 1].is_uppercase());
+
+      if !first && !is_acronym {
         buffer.push(' '); // Insert a space before uppercase letters except the first
       }
-      if i == 0 {
-        buffer.push(c); // Keep the first letter capitalized
+
+      if i == 0 || is_acronym {
+        buffer.push(c); // Keep the first letter or acronym letters capitalized
       } else {
         buffer.push(c.to_ascii_lowercase()); // Convert subsequent uppercase letters to lowercase
       }
