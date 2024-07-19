@@ -635,7 +635,9 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.AxisAngleY", AxisAngleY);
   REGISTER_SHARD("Math.AxisAngleZ", AxisAngleZ);
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
+  REGISTER_SHARD_ALIAS("DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);
+  REGISTER_SHARD_ALIAS("RadiansToDegrees", Rad2Deg);
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
   REGISTER_SHARD("Math.Compose", Compose);
   REGISTER_SHARD("Math.Decompose", Decompose);
