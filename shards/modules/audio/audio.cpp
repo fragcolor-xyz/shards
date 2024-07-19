@@ -3,42 +3,15 @@
 
 #include <shards/core/shared.hpp>
 #include <shards/core/runtime.hpp>
-#include <boost/lockfree/queue.hpp>
-
 #include <shards/core/params.hpp>
+#include <shards/core/platform.hpp>
+#include <boost/lockfree/queue.hpp>
+#include <shards/log/log.hpp>
 
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
+#include <miniaudio.h>
 
-#define STB_VORBIS_HEADER_ONLY
-#include "extras/stb_vorbis.c" // Enables Vorbis decoding.
-
-#ifdef __clang__
-#pragma clang attribute pop
-#endif
-
-#ifdef __APPLE__
-#define MA_NO_RUNTIME_LINKING
-#endif
-
-// #ifndef NDEBUG
-// #define MA_LOG_LEVEL MA_LOG_LEVEL_WARNING
-// #define MA_DEBUG_OUTPUT 1
-// #endif
-#define MINIAUDIO_IMPLEMENTATION
-#include "miniaudio.h"
-
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
-
-// The stb_vorbis implementation must come after the implementation of miniaudio.
-#undef STB_VORBIS_HEADER_ONLY
-#include "extras/stb_vorbis.c"
-
-#ifdef __clang__
-#pragma clang attribute pop
+#if SH_EMSCRIPTEN
+#include <shards/core/em_proxy.hpp>
 #endif
 
 namespace shards {
@@ -71,6 +44,14 @@ struct ChannelDesc {
   uint32_t outChannels;
   ChannelData *data;
 };
+
+template <typename F> void proxyToMainThread(F &&cb) {
+#if SH_EMSCRIPTEN
+  EmMainProxy::getInstance().queue(std::forward<F>(cb)).wait();
+#else
+  cb();
+#endif
+}
 
 struct Device {
   static constexpr uint32_t DeviceCC = 'sndd';
@@ -1011,9 +992,12 @@ struct WriteFile {
 };
 
 struct Engine {
+  static inline shards::logging::Logger Logger = shards::logging::getOrCreate("audio");
   static constexpr uint32_t EngineCC = 'snde';
 
   static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = EngineCC}}}};
+
+  std::unique_ptr<ma_log> _log;
 
   ma_engine _engine;
   bool _initialized{false};
@@ -1023,8 +1007,39 @@ struct Engine {
 
   SHVar *_deviceVar{nullptr};
 
+  static void ma_log(void *pUserData, ma_uint32 level, const char *pMessage) {
+    std::string_view msg(pMessage);
+    // trim newline from string view
+    if (!msg.empty() && msg.back() == '\n') {
+      msg.remove_suffix(1);
+    }
+    switch (level) {
+    case MA_LOG_LEVEL_DEBUG:
+      SPDLOG_LOGGER_DEBUG(Engine::Logger, "{}", msg);
+      break;
+    case MA_LOG_LEVEL_INFO:
+      SPDLOG_LOGGER_DEBUG(Engine::Logger, "{}", msg);
+      break;
+    case MA_LOG_LEVEL_WARNING:
+      SPDLOG_LOGGER_WARN(Engine::Logger, "{}", msg);
+      break;
+    case MA_LOG_LEVEL_ERROR:
+      SPDLOG_LOGGER_ERROR(Engine::Logger, "{}", msg);
+      break;
+    }
+  }
+
   void warmup(SHContext *context) {
-    ma_result res = ma_engine_init(NULL, &_engine);
+    _log = std::make_unique<::ma_log>();
+    ma_log_init(nullptr, _log.get());
+    ma_log_register_callback(_log.get(), ma_log_callback_init(&ma_log, this));
+
+    ma_result res{};
+    proxyToMainThread([&]() {
+      ma_engine_config config = ma_engine_config_init();
+      config.pLog = _log.get();
+      res = ma_engine_init(&config, &_engine);
+    });
     if (res != MA_SUCCESS) {
       throw ActivationError("Failed to init audio engine");
     }
@@ -1039,8 +1054,12 @@ struct Engine {
   }
 
   void cleanup(SHContext *context) {
+    if (_log) {
+      ma_log_uninit(_log.get());
+      _log.reset();
+    }
     if (_initialized) {
-      ma_engine_uninit(&_engine);
+      proxyToMainThread([&]() { ma_engine_uninit(&_engine); });
       memset(&_engine, 0, sizeof(ma_engine));
       releaseVariable(_deviceVar);
       _initialized = false;
@@ -1112,8 +1131,11 @@ struct Sound : EngineUser {
     }
 
     _sound.emplace();
-    auto result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC,
-                                          NULL, NULL, &*_sound);
+    ma_result result{};
+    proxyToMainThread([&]() {
+      result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC, NULL,
+                                       NULL, &*_sound);
+    });
     if (result != MA_SUCCESS) {
       throw ActivationError("Failed to init sound");
     }
@@ -1151,8 +1173,11 @@ struct Start : EngineUser {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
-    ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
-    ma_sound_start(&*_sound);
+
+    proxyToMainThread([&]() {
+      ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
+      ma_sound_start(&*_sound);
+    });
     return input;
   }
 };
@@ -1163,7 +1188,8 @@ struct Pause {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
-    ma_sound_stop(&*_sound);
+
+    proxyToMainThread([&]() { ma_sound_stop(&*_sound); });
     return input;
   }
 };
@@ -1174,9 +1200,12 @@ struct Stop {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
-    ma_sound_stop(&*_sound);
-    // and reset timeline to 0
-    ma_sound_seek_to_pcm_frame(&*_sound, 0);
+
+    proxyToMainThread([&]() {
+      ma_sound_stop(&*_sound);
+      // and reset timeline to 0
+      ma_sound_seek_to_pcm_frame(&*_sound, 0);
+    });
     return input;
   }
 };

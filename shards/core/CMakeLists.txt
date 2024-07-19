@@ -11,6 +11,10 @@ set(core_SOURCES
   taskflow.cpp
 )
 
+if(EMSCRIPTEN)
+  list(APPEND core_SOURCES em_proxy.cpp)
+endif()
+
 add_library(shards-core STATIC ${core_SOURCES})
 
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/include)

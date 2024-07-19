@@ -166,8 +166,9 @@ target_include_directories(xxHash INTERFACE xxHash)
 add_library(linalg INTERFACE)
 target_include_directories(linalg INTERFACE linalg ${CMAKE_CURRENT_LIST_DIR})
 
-add_library(miniaudio INTERFACE)
-target_include_directories(miniaudio INTERFACE miniaudio)
+add_library(miniaudio miniaudio/extras/miniaudio_split/miniaudio.c)
+target_include_directories(miniaudio PUBLIC ${CMAKE_CURRENT_LIST_DIR} miniaudio/extras/miniaudio_split)
+target_include_directories(miniaudio PRIVATE miniaudio)
 
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE stb)
