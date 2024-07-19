@@ -5,6 +5,7 @@ use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
 use std::sync::mpsc;
+use std::cell::RefCell;
 
 use crate::{
   util::{get_current_parent_opt, require_parents},
@@ -34,6 +35,55 @@ use shards_lang::{
 };
 
 use num_traits::{Float, FromPrimitive, PrimInt, Zero};
+
+// ok here is the thing with names, we need to format them better, when defined they are in PascalCase
+// we convert them to use spaces between words instead
+thread_local! {
+  // Define a thread-local storage for the cache of formatted names
+  static NAME_CACHE: RefCell<String> = RefCell::new(String::new());
+}
+
+// Function to convert PascalCase to spaced format
+fn pascal_to_spaced(pascal: &str, buffer: &mut String) {
+  // Clear the buffer to reuse it for new formatted output
+  buffer.clear();
+  let mut first = true;
+
+  for (i, c) in pascal.chars().enumerate() {
+    if c.is_uppercase() {
+      if !first {
+        buffer.push(' '); // Insert a space before uppercase letters except the first
+      }
+      if i == 0 {
+        buffer.push(c); // Keep the first letter capitalized
+      } else {
+        buffer.push(c.to_ascii_lowercase()); // Convert subsequent uppercase letters to lowercase
+      }
+    } else {
+      buffer.push(c); // Append lowercase or other characters directly
+    }
+    first = false;
+  }
+}
+
+// Function to obtain a reference to the formatted name
+fn get_formatted_name_ref(name: &str) -> &'static str {
+  NAME_CACHE.with(|cache| {
+    // Access the thread-local cache and get a mutable reference to it
+    let mut cache = cache.borrow_mut();
+
+    // Format the name and update the cache with the new formatted string
+    pascal_to_spaced(name, &mut cache);
+
+    // Obtain a reference to the updated cache
+    let cache_ref: &str = &cache;
+
+    // Convert the reference to a `Box<str>` and then leak it to get a `'static` reference
+    // `Box::leak` creates a leakable `Box<str>` that lives for the entire lifetime of the program
+    // This is generally safe here because the storage is thread-local and won't be freed
+    Box::leak(cache_ref.to_string().into_boxed_str())
+  })
+}
 
 fn var_to_value(var: &Var) -> Result<Value, String> {
   match var.valueType {
@@ -495,6 +545,7 @@ impl<'a> VisualAst<'a> {
               .get_fast_static("name")
               .try_into()
               .expect("A shard's parameter name must be a string!");
+            let name = get_formatted_name_ref(name);
             let help_text: &str = param
               .get_fast_static("help")
               .try_into()
@@ -518,7 +569,7 @@ impl<'a> VisualAst<'a> {
                 &param.value == &default_value
               })
               .unwrap_or(false);
-            egui::CollapsingHeader::new(name)
+            egui::CollapsingHeader::new(name.as_str())
               .default_open(!is_at_default_value)
               .show(self.ui, |ui| {
                 ui.horizontal(|ui| {
@@ -1786,6 +1837,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             if let Some(enum_data) = enum_data {
               let labels = enum_data.get_fast_static("labels").as_seq().unwrap();
               // render the first part as a constant label, while the second as a single choice select
+              let x = get_formatted_name_ref(x);
               let response = ui.label(x.as_str());
 
               // render labels in a combo box
@@ -1795,6 +1847,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                 .unwrap_or(0);
               let previous_index = selected_index;
               let selected: &str = labels[selected_index].as_ref().try_into().unwrap();
+              let selected = get_formatted_name_ref(selected);
               egui::ComboBox::from_label("")
                 .selected_text(selected)
                 .show_ui(ui, |ui| {
