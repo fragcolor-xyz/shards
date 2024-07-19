@@ -1111,6 +1111,10 @@ struct Sound : EngineUser {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return ObjType; }
 
+  PARAM_VAR(_spatialized, "Spatialized", "If the sound should be spatialized.", {CoreInfo::BoolType});
+
+  void setup() { _spatialized = Var(false); }
+
   std::optional<ma_sound> _sound;
   OwnedVar _fileName;
 
@@ -1134,8 +1138,11 @@ struct Sound : EngineUser {
     }
 
     _sound.emplace();
-    auto result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC,
-                                          NULL, NULL, &*_sound);
+    ma_uint32 flags = MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC;
+    if (!_spatialized.payload.boolValue) {
+      flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
+    }
+    auto result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, flags, NULL, NULL, &*_sound);
     if (result != MA_SUCCESS) {
       throw ActivationError("Failed to init sound");
     }
@@ -1146,7 +1153,7 @@ struct Sound : EngineUser {
 
 struct Start : EngineUser {
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return Sound::ObjType; }
 
   void setup() { _looped = Var(false); }
 
@@ -1181,7 +1188,7 @@ struct Start : EngineUser {
 
 struct Pause {
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return Sound::ObjType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
@@ -1192,13 +1199,203 @@ struct Pause {
 
 struct Stop {
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return Sound::ObjType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
     ma_sound_stop(&*_sound);
     // and reset timeline to 0
     ma_sound_seek_to_pcm_frame(&*_sound, 0);
+    return input;
+  }
+};
+
+struct SetVolume {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the volume.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_volume(&*sound, input.payload.floatValue);
+    return input;
+  }
+};
+
+struct SetPan {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the pan.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_pan(&*sound, input.payload.floatValue);
+    return input;
+  }
+};
+
+struct SetPitch {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the pitch.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_pitch(&*sound, input.payload.floatValue);
+    return input;
+  }
+};
+
+struct SetPosition {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the position.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_position(&*sound, input.payload.float3Value[0], input.payload.float3Value[1], input.payload.float3Value[2]);
+    return input;
+  }
+};
+
+struct SetDirection {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the direction.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_direction(&*sound, input.payload.float3Value[0], input.payload.float3Value[1], input.payload.float3Value[2]);
+    return input;
+  }
+};
+
+struct SetCones {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the cones (innerAngleInRadians, outerAngleInRadians, outerGain).",
+                 {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_cone(&*sound, input.payload.float2Value[0], input.payload.float3Value[1], input.payload.float3Value[2]);
+    return input;
+  }
+};
+
+struct SetVelocity {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the velocity.", {Sound::ObjType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_sound));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_sound.isNone()) {
+      throw ActivationError("Sound is required");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sound = reinterpret_cast<ma_sound *>(_sound.get().payload.objectValue);
+    ma_sound_set_velocity(&*sound, input.payload.float3Value[0], input.payload.float3Value[1], input.payload.float3Value[2]);
     return input;
   }
 };
@@ -1216,8 +1413,16 @@ SHARDS_REGISTER_FN(audio) {
   REGISTER_SHARD("Audio.WriteFile", shards::Audio::WriteFile);
 
   REGISTER_SHARD("Audio.Engine", shards::Audio::Engine);
+
   REGISTER_SHARD("Audio.Sound", shards::Audio::Sound);
   REGISTER_SHARD("Audio.Start", shards::Audio::Start);
   REGISTER_SHARD("Audio.Pause", shards::Audio::Pause);
   REGISTER_SHARD("Audio.Stop", shards::Audio::Stop);
+  REGISTER_SHARD("Audio.Volume", shards::Audio::SetVolume);
+  REGISTER_SHARD("Audio.Pan", shards::Audio::SetPan);
+  REGISTER_SHARD("Audio.Pitch", shards::Audio::SetPitch);
+  REGISTER_SHARD("Audio.Position", shards::Audio::SetPosition);
+  REGISTER_SHARD("Audio.Direction", shards::Audio::SetDirection);
+  REGISTER_SHARD("Audio.Cones", shards::Audio::SetCones);
+  REGISTER_SHARD("Audio.Velocity", shards::Audio::SetVelocity);
 }
