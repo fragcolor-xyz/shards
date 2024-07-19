@@ -48,20 +48,20 @@ impl Shard for IPCTakeShard {
     &BYTES_SEQ_TYPES
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.warmup_helper(ctx)?;
 
     Ok(())
   }
 
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     self.cleanup_helper(ctx)?;
     self.listener = None;
 
     Ok(())
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
     self.compose_helper(data)?;
     if self.name.0.is_none() {
       return Err("Name is required");
@@ -69,7 +69,7 @@ impl Shard for IPCTakeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     self.output.0.clear();
 
     let mut close_after = false;
@@ -138,7 +138,7 @@ impl Shard for IPCTakeShard {
 }
 
 // impl BlockingShard for IPCTakeShard {
-//   fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+//   fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
 
 //     if let None = self.listener {
 //       let socket_name: &str = (&self.name.0).try_into()?;
@@ -209,19 +209,19 @@ impl Shard for IPCPostShard {
     &NONE_TYPES
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.warmup_helper(ctx)?;
 
     Ok(())
   }
 
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     self.cleanup_helper(ctx)?;
 
     Ok(())
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
     self.compose_helper(data)?;
     if self.name.0.is_none() {
       return Err("Name is required");
@@ -229,13 +229,13 @@ impl Shard for IPCPostShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     Ok(run_blocking(self, context, input))
   }
 }
 
 impl BlockingShard for IPCPostShard {
-  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
     let socket_name: &str = (&self.name.0).try_into()?;
     let name = socket_name
       .to_ns_name::<local_socket::GenericNamespaced>()

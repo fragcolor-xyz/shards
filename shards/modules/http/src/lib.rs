@@ -120,6 +120,12 @@ lazy_static! {
       INT_TYPES_SLICE
     )
       .into(),
+    (
+      cstr!("KeepAlive"),
+      shccstr!("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't be closed until this shard cleans up (including its worker thread)."),
+      BOOL_TYPES_SLICE
+    )
+      .into(),
   ];
 }
 
@@ -135,6 +141,7 @@ struct RequestBase {
   as_bytes: bool,
   full_response: bool,
   invalid_certs: bool,
+  keep_alive: bool,
   required: ExposedTypes,
 }
 
@@ -150,6 +157,7 @@ impl Default for RequestBase {
       as_bytes: false,
       full_response: false,
       invalid_certs: false,
+      keep_alive: false,
       required: Vec::new(),
     };
     let table = Table::new();
@@ -168,7 +176,7 @@ impl RequestBase {
     Some(&GET_PARAMETERS)
   }
 
-  fn _setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+  fn _setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
     match index {
       0 => self.url.set_param(value),
       1 => self.headers.set_param(value),
@@ -185,6 +193,7 @@ impl RequestBase {
           .map_err(|_x| "Failed to set invalid_certs")?,
       ),
       6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
+      7 => Ok(self.keep_alive = value.try_into().map_err(|_x| "Failed to set keep_alive")?),
       _ => unreachable!(),
     }
   }
@@ -198,6 +207,7 @@ impl RequestBase {
       4 => self.full_response.into(),
       5 => self.invalid_certs.into(),
       6 => self.retry.try_into().expect("A valid integer in range"),
+      7 => self.keep_alive.into(),
       _ => unreachable!(),
     }
   }
@@ -227,17 +237,31 @@ impl RequestBase {
     Some(&self.required)
   }
 
-  fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.client = Some(
-      reqwest::blocking::Client::builder()
-        .danger_accept_invalid_certs(self.invalid_certs)
-        .timeout(Duration::from_secs(self.timeout))
-        .build()
-        .map_err(|e| {
-          shlog!("Failure details: {}", e);
-          "Failed to create client"
-        })?,
-    );
+  fn _open_client(&mut self) -> Result<(), &'static str> {
+    if self.client.is_none() {
+      self.client = Some(
+        reqwest::blocking::Client::builder()
+          .danger_accept_invalid_certs(self.invalid_certs)
+          .timeout(Duration::from_secs(self.timeout))
+          .build()
+          .map_err(|e| {
+            shlog!("Failure details: {}", e);
+            "Failed to create client"
+          })?,
+      );
+    }
+    Ok(())
+  }
+
+  fn _close_client(&mut self) {
+    self.client = None;
+  }
+
+  fn _warmup(&mut self, context: &Context) -> Result<(), &'static str> {
+    if self.keep_alive {
+      // open client early in this case
+      self._open_client()?;
+    }
     self.url.warmup(context);
     self.headers.warmup(context);
     Ok(())
@@ -246,10 +270,10 @@ impl RequestBase {
   fn _cleanup(&mut self, ctx: Option<&Context>) {
     self.url.cleanup(ctx);
     self.headers.cleanup(ctx);
-    self.client = None;
+    self._close_client();
   }
 
-  fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+  fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &'static str> {
     let output_type = if self.as_bytes {
       if self.full_response {
         *BYTES_FULL_OUTPUT_TTYPE
@@ -264,7 +288,7 @@ impl RequestBase {
     Ok(output_type)
   }
 
-  fn _finalize(&mut self, response: Response) -> Result<Var, &str> {
+  fn _finalize(&mut self, response: Response) -> Result<Var, &'static str> {
     if self.full_response {
       self
         .output_table
@@ -349,7 +373,7 @@ macro_rules! get_like {
         self.rb._requiredVariables()
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
         self.rb._setParam(index, value)
       }
 
@@ -357,11 +381,11 @@ macro_rules! get_like {
         self.rb._getParam(index)
       }
 
-      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+      fn warmup(&mut self, context: &Context) -> Result<(), &'static str> {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
         self.rb._cleanup(ctx);
         Ok(())
       }
@@ -370,22 +394,33 @@ macro_rules! get_like {
         true
       }
 
-      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+      fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
         self.on_worker_thread = data.onWorkerThread;
         self.rb._compose(data)
       }
 
-      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        if self.on_worker_thread {
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+        if !self.rb.keep_alive {
+          self.rb._open_client()?;
+        }
+        let res = if self.on_worker_thread {
           self.activate_blocking(context, input)
         } else {
           Ok(run_blocking(self, context, input))
+        };
+        if !self.rb.keep_alive {
+          self.rb._close_client();
         }
+        res
       }
     }
 
     impl BlockingShard for $shard_name {
-      fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate_blocking(
+        &mut self,
+        _context: &Context,
+        input: &Var,
+      ) -> Result<Var, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
@@ -492,7 +527,7 @@ macro_rules! post_like {
         self.rb._requiredVariables()
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
         self.rb._setParam(index, value)
       }
 
@@ -500,11 +535,11 @@ macro_rules! post_like {
         self.rb._getParam(index)
       }
 
-      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+      fn warmup(&mut self, context: &Context) -> Result<(), &'static str> {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
         self.rb._cleanup(ctx);
         Ok(())
       }
@@ -513,22 +548,33 @@ macro_rules! post_like {
         true
       }
 
-      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+      fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
         self.on_worker_thread = data.onWorkerThread;
         self.rb._compose(data)
       }
 
-      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        if self.on_worker_thread {
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+        if !self.rb.keep_alive {
+          self.rb._open_client()?;
+        }
+        let res = if self.on_worker_thread {
           self.activate_blocking(context, input)
         } else {
           Ok(run_blocking(self, context, input))
+        };
+        if !self.rb.keep_alive {
+          self.rb._close_client();
         }
+        res
       }
     }
 
     impl BlockingShard for $shard_name {
-      fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate_blocking(
+        &mut self,
+        _context: &Context,
+        input: &Var,
+      ) -> Result<Var, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
@@ -543,7 +589,7 @@ macro_rules! post_like {
         };
         if !input.is_none() {
           // .form ( kv table )
-          let input_table: Result<Table, &str> = input.try_into();
+          let input_table: Result<Table, &'static str> = input.try_into();
           if let Ok(input_table) = input_table {
             // default to this in this case but users can edit under
             if !has_content_type {
@@ -559,7 +605,7 @@ macro_rules! post_like {
             request = request.form(&params);
           } else {
             // .body ( string )
-            let input_string: Result<&str, &str> = input.try_into();
+            let input_string: Result<&str, &'static str> = input.try_into();
             if let Ok(input_string) = input_string {
               // default to this in this case but users can edit under
               if !has_content_type {
@@ -569,7 +615,7 @@ macro_rules! post_like {
               request = request.body(input_string);
             } else {
               // .body ( bytes )
-              let input_bytes: Result<&[u8], &str> = input.try_into();
+              let input_bytes: Result<&[u8], &'static str> = input.try_into();
               if let Ok(input_bytes) = input_bytes {
                 // default to this in this case but users can edit under
                 if !has_content_type {

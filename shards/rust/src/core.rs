@@ -538,7 +538,7 @@ impl WireRef {
 //--------------------------------------------------------------------------------------------------
 
 pub trait BlockingShard {
-  fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+  fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str>;
   fn cancel_activation(&mut self, _context: &Context) {}
 }
 
@@ -791,4 +791,31 @@ impl Hash for Var {
 
 pub fn hash_var(v: &Var) -> Var {
   unsafe { (*Core).hashVar.unwrap()(v as *const _) }
+}
+
+/// A struct that will execute a closure when it goes out of scope.
+pub struct Defer<F: FnOnce()> {
+  cleanup: Option<F>,
+}
+
+impl<F: FnOnce()> Defer<F> {
+  /// Create a new Defer instance with the given closure.
+  pub fn new(cleanup: F) -> Self {
+    Defer {
+      cleanup: Some(cleanup),
+    }
+  }
+}
+
+impl<F: FnOnce()> Drop for Defer<F> {
+  fn drop(&mut self) {
+    if let Some(cleanup) = self.cleanup.take() {
+      cleanup();
+    }
+  }
+}
+
+/// Helper function to create a Defer instance.
+pub fn defer<F: FnOnce()>(cleanup: F) -> Defer<F> {
+  Defer::new(cleanup)
 }

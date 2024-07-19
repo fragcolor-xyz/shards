@@ -116,7 +116,7 @@ impl Shard for FileDialog {
     &STRING_OR_STRINGS_TYPES
   }
 
-  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &'static str> {
     self.compose_helper(_data)?;
 
     let multiple: bool = (&self.multiple.0).try_into().unwrap_or(false);
@@ -127,24 +127,24 @@ impl Shard for FileDialog {
     }
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.warmup_helper(ctx)?;
 
     Ok(())
   }
 
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     self.cleanup_helper(ctx)?;
     Ok(())
   }
 
   #[cfg(feature = "rfd-enabled")]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     Ok(run_blocking(self, context, input))
   }
 
   #[cfg(not(feature = "rfd-enabled"))]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     Err("FileDialog is not supported on this platform")
   }
 }
@@ -152,7 +152,7 @@ impl Shard for FileDialog {
 #[cfg(feature = "rfd-enabled")]
 impl BlockingShard for FileDialog {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &'static str> {
     let mut dialog = rfd::FileDialog::new();
     let folder: bool = self.folder.get().try_into().unwrap_or_default();
     let filters = self.filters.get();
@@ -170,7 +170,7 @@ impl BlockingShard for FileDialog {
           let filter = filter
             .iter()
             .map(|f| f.try_into())
-            .collect::<Result<Vec<&str>, _>>()?;
+            .collect::<Result<Vec<&'static str>, _>>()?;
           dialog = dialog.add_filter(filter_name, &filter);
         }
       } else {
@@ -179,7 +179,7 @@ impl BlockingShard for FileDialog {
           let filter = filter
             .iter()
             .map(|f| f.try_into())
-            .collect::<Result<Vec<&str>, _>>()?;
+            .collect::<Result<Vec<&'static str>, _>>()?;
           let filter_name = filter.join(", ");
           dialog = dialog.add_filter(&filter_name, &filter);
         }
@@ -204,7 +204,7 @@ impl BlockingShard for FileDialog {
 
 #[cfg(feature = "rfd-enabled")]
 impl FileDialog {
-  fn pick_single(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &str> {
+  fn pick_single(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &'static str> {
     let path = if folder {
       dialog.pick_folder()
     } else {
@@ -220,7 +220,7 @@ impl FileDialog {
     }
   }
 
-  fn pick_multiple(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &str> {
+  fn pick_multiple(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &'static str> {
     let paths = if folder {
       dialog.pick_folders()
     } else {
@@ -291,7 +291,7 @@ impl LegacyShard for SaveFileDialog {
     Some(&SAVEFILEDIALOG_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
     match index {
       0 => self.filters.set_param(value),
       1 => self.current_dir.set_param(value),
@@ -307,14 +307,14 @@ impl LegacyShard for SaveFileDialog {
     }
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.filters.warmup(ctx);
     self.current_dir.warmup(ctx);
 
     Ok(())
   }
 
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     self.current_dir.cleanup(ctx);
     self.filters.cleanup(ctx);
 
@@ -322,19 +322,19 @@ impl LegacyShard for SaveFileDialog {
   }
 
   #[cfg(feature = "rfd-enabled")]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     Ok(run_blocking(self, context, input))
   }
 
   #[cfg(not(feature = "rfd-enabled"))]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
     Err("SaveFileDialog is not supported on this platform")
   }
 }
 
 #[cfg(feature = "rfd-enabled")]
 impl BlockingShard for SaveFileDialog {
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &'static str> {
     let mut dialog = rfd::FileDialog::new();
     let filters = self.filters.get();
     if !filters.is_none() {
@@ -397,17 +397,17 @@ impl Shard for NotifyShard {
     &STRING_TYPES
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.warmup_helper(ctx)?;
     Ok(())
   }
 
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     self.cleanup_helper(ctx)?;
     Ok(())
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
     self.compose_helper(data)?;
     Ok(self.output_types()[0])
   }
