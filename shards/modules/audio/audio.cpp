@@ -8,7 +8,37 @@
 #include <boost/lockfree/queue.hpp>
 #include <shards/log/log.hpp>
 
+#ifdef __clang__
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
+#ifdef __clang__
+#pragma clang attribute pop
+#endif
+
+#ifdef __APPLE__
+#define MA_NO_RUNTIME_LINKING
+#endif
+
+// #ifndef NDEBUG
+// #define MA_LOG_LEVEL MA_LOG_LEVEL_WARNING
+// #define MA_DEBUG_OUTPUT 1
+// #endif
+
+#include <miniaudio/extras/stb_vorbis.c>
+#undef R
+#undef L
+#undef C
+#define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
+
+#ifdef __clang__
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#endif
+
+#ifdef __clang__
+#pragma clang attribute pop
+#endif
 
 #if SH_EMSCRIPTEN
 #include <shards/core/em_proxy.hpp>
@@ -1132,10 +1162,10 @@ struct Sound : EngineUser {
 
     _sound.emplace();
     ma_result result{};
-    proxyToMainThread([&]() {
-      result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC, NULL,
-                                       NULL, &*_sound);
-    });
+    // proxyToMainThread([&]() {
+    result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC, NULL,
+                                     NULL, &*_sound);
+    // });
     if (result != MA_SUCCESS) {
       throw ActivationError("Failed to init sound");
     }
@@ -1174,10 +1204,10 @@ struct Start : EngineUser {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    proxyToMainThread([&]() {
-      ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
-      ma_sound_start(&*_sound);
-    });
+    // proxyToMainThread([&]() {
+    ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
+    ma_sound_start(&*_sound);
+    // });
     return input;
   }
 };
@@ -1189,7 +1219,9 @@ struct Pause {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    proxyToMainThread([&]() { ma_sound_stop(&*_sound); });
+    // proxyToMainThread([&]() {
+    ma_sound_stop(&*_sound);
+    // });
     return input;
   }
 };
@@ -1201,11 +1233,11 @@ struct Stop {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    proxyToMainThread([&]() {
-      ma_sound_stop(&*_sound);
-      // and reset timeline to 0
-      ma_sound_seek_to_pcm_frame(&*_sound, 0);
-    });
+    // proxyToMainThread([&]() {
+    ma_sound_stop(&*_sound);
+    // and reset timeline to 0
+    ma_sound_seek_to_pcm_frame(&*_sound, 0);
+    // });
     return input;
   }
 };
