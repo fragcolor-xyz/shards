@@ -578,23 +578,25 @@ struct Loader {
       }
     }
 
-    result.targetNode = this->nodeMap[gltfChannel.target_node];
-    if (gltfChannel.target_path == "rotation") {
-      result.target = animation::BuiltinTarget::Rotation;
-      if (numComponents != 4)
-        throw formatException("Invalid animation {}: rotation requires 4 components", gltfAnimation.name);
-    } else if (gltfChannel.target_path == "translation") {
-      result.target = animation::BuiltinTarget::Translation;
-      if (numComponents != 3)
-        throw formatException("Invalid animation {}: translation requires 3 components", gltfAnimation.name);
-    } else if (gltfChannel.target_path == "scale") {
-      result.target = animation::BuiltinTarget::Scale;
-      if (numComponents != 3)
-        throw formatException("Invalid animation {}: scale requires 3 components", gltfAnimation.name);
-    } else if (gltfChannel.target_path == "weights") {
-      SPDLOG_WARN("morph target animations are not implemented");
-    } else {
-      throw formatException("Invalid animation target {}: {}", gltfAnimation.name, gltfChannel.target_path);
+    if (gltfChannel.target_node >= 0) {
+      result.targetNode = this->nodeMap[gltfChannel.target_node];
+      if (gltfChannel.target_path == "rotation") {
+        result.target = animation::BuiltinTarget::Rotation;
+        if (numComponents != 4)
+          throw formatException("Invalid animation {}: rotation requires 4 components", gltfAnimation.name);
+      } else if (gltfChannel.target_path == "translation") {
+        result.target = animation::BuiltinTarget::Translation;
+        if (numComponents != 3)
+          throw formatException("Invalid animation {}: translation requires 3 components", gltfAnimation.name);
+      } else if (gltfChannel.target_path == "scale") {
+        result.target = animation::BuiltinTarget::Scale;
+        if (numComponents != 3)
+          throw formatException("Invalid animation {}: scale requires 3 components", gltfAnimation.name);
+      } else if (gltfChannel.target_path == "weights") {
+        SPDLOG_WARN("morph target animations are not implemented");
+      } else {
+        throw formatException("Invalid animation target {}: {}", gltfAnimation.name, gltfChannel.target_path);
+      }
     }
 
     return result;
