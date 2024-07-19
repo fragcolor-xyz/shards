@@ -95,8 +95,8 @@ struct Device {
   void setup() {
     _inChannels = Var(0);
     _outChannels = Var(2);
-    _sampleRate = Var(44100);
-    _bufferSize = Var(1024);
+    _sampleRate = Var(0);
+    _bufferSize = Var(0);
   }
 
   PARAM_REQUIRED_VARIABLES()
@@ -152,6 +152,8 @@ struct Device {
     if (device->stopped)
       return;
 
+    device->actualBufferSize = frameCount;
+
     // add any new channels
     ChannelDesc c;
     while (device->newChannels.pop(c)) {
@@ -178,8 +180,6 @@ struct Device {
 
       c.data->shards.warmup(&device->dspContext);
     }
-
-    device->actualBufferSize = frameCount;
 
     auto inChannels = device->_inChannels.payload.intValue;
 
@@ -312,6 +312,9 @@ struct Device {
     if (ma_device_init(NULL, &deviceConfig, &_device) != MA_SUCCESS) {
       throw WarmupError("Failed to open default audio device");
     }
+
+    // fix up the actual sample rate
+    _sampleRate = Var(int64_t(_device.sampleRate));
 
     inputScratch.resize(deviceConfig.periodSizeInFrames * deviceConfig.capture.channels);
 
@@ -704,11 +707,9 @@ struct Oscillator {
       d = reinterpret_cast<Device *>(_device->payload.objectValue);
       // we have a device! override SR and BS
       _sampleRate = d->_sampleRate.payload.intValue;
-      _nsamples = d->_bufferSize.payload.intValue; // this might be less
     }
 
     initWave();
-    _buffer.resize(_channels * _nsamples);
   }
 
   void cleanup(SHContext *context) {
@@ -725,6 +726,7 @@ struct Oscillator {
     if (d) {
       // if a device is connected override this value
       _nsamples = d->actualBufferSize;
+      _buffer.resize(_channels * _nsamples);
     }
 
     ma_waveform_set_amplitude(&_wave, _amplitude.get().payload.floatValue);
@@ -831,6 +833,12 @@ struct ReadFile {
     if (&source != previousSource) {
       previousSource = &source;
 
+      if (_initialized) {
+        ma_decoder_uninit(&_decoder);
+        memset(&_decoder, 0, sizeof(ma_decoder));
+        _initialized = false;
+      }
+
       ma_decoder_config config = ma_decoder_config_init(ma_format_f32, channels, sampleRate);
       ma_result res;
       if (source.valueType == SHType::String) {
@@ -895,12 +903,14 @@ struct ReadFile {
     }
 
     // read pcm data every iteration
-    ma_uint64 framesRead;
-    ma_result res = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, &framesRead);
-    if (res != MA_SUCCESS) {
-      throw ActivationError("Failed to read");
+    ma_uint64 framesRead = 0;
+    if (reading > 0) {
+      ma_result res = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, &framesRead);
+      if (res != MA_SUCCESS) {
+        throw ActivationError("Failed to read");
+      }
+      _progress += framesRead;
     }
-    _progress += framesRead;
 
     if (framesRead < nsamples) {
       // Reached the end.
