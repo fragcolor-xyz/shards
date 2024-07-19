@@ -180,7 +180,7 @@ struct ApplyBroadcast {
     using PayloadTraits = PayloadTraits<ValueType>;
     typename PayloadTraits::Broadcast broadcast{};
     typename PayloadTraits::UnitType utt{};
-    broadcast.template apply(getPayloadContents<ValueType>(out), utt.getContents(const_cast<SHVarPayload &>(a)));
+    broadcast.template apply<>(getPayloadContents<ValueType>(out), utt.getContents(const_cast<SHVarPayload &>(a)));
   }
 };
 
