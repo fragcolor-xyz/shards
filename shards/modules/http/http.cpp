@@ -114,7 +114,7 @@ struct Base {
       {"KeepAlive",
        SHCCSTR("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't "
                "be closed until this shard cleans up (including its worker thread)."),
-       {CoreInfo::NoneType, CoreInfo::IntType}},
+       {CoreInfo::BoolType}},
   };
   static SHParametersInfo parameters() { return params; }
 
