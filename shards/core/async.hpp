@@ -262,7 +262,14 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 template <typename FUNC, typename CANCELLATION>
 inline SHVar maybeAwaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
   if (context->onWorkerThread) {
-    return func();
+    try {
+      return func();
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+    } catch (...) {
+      context->cancelFlow("foreign exception failure");
+    }
+    return SHVar(); // can be anything at this point since we are in an error state
   } else {
     return awaitne(context, std::move(func), std::move(cancel));
   }
@@ -320,8 +327,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #endif
 }
 
-template <typename FUNC, typename CANCELLATION>
-inline void maybeAwait(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
+template <typename FUNC, typename CANCELLATION> inline void maybeAwait(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
   if (context->onWorkerThread) {
     func();
   } else {
