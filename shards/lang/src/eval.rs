@@ -3009,7 +3009,6 @@ fn eval_pipeline(
                   };
 
                   let cvar = eval_eval_expr(&make_trait_shards, e)?;
-                  eprintln!("trait {:?}: {:?}", name, cvar.0);
                   e.traits.insert(name.clone(), cvar.0);
 
                   Ok(())
