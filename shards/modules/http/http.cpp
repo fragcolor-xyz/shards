@@ -111,6 +111,10 @@ struct Base {
        {CoreInfo::BoolType}},
       {"AcceptInvalidCerts", SHCCSTR("Not implemented."), {CoreInfo::NoneType, CoreInfo::BoolType}},
       {"Retry", SHCCSTR("How many times to retry the request if it fails."), {CoreInfo::NoneType, CoreInfo::IntType}},
+      {"KeepAlive",
+       SHCCSTR("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't "
+               "be closed until this shard cleans up (including its worker thread)."),
+       {CoreInfo::NoneType, CoreInfo::IntType}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -140,6 +144,8 @@ struct Base {
       break;
     case 6:
       numRetries = value.payload.intValue;
+    case 7:
+      break; // unused
     default:
       break;
     }
@@ -161,6 +167,8 @@ struct Base {
       return Var(false);
     case 6:
       return Var(numRetries);
+    case 7:
+      return Var(false);
     default:
       throw InvalidParameterIndex();
     }
