@@ -447,6 +447,9 @@ typedef void(__cdecl *SHObjectSerializerFree)(SHPointer customHandle);
 typedef SHPointer(__cdecl *SHObjectDeserializer)(uint8_t *data, uint64_t len);
 typedef void(__cdecl *SHObjectReference)(SHPointer);
 typedef void(__cdecl *SHObjectRelease)(SHPointer);
+typedef void(__cdecl *SHObjectWeakReference)(SHPointer);
+typedef void(__cdecl *SHObjectWeakRelease)(SHPointer);
+typedef SHPointer(__cdecl *SHObjectUpgradeWeak)(SHPointer);
 typedef uint64_t(__cdecl *SHObjectHash)(SHPointer);
 
 struct SHObjectInfo {
@@ -458,6 +461,9 @@ struct SHObjectInfo {
 
   SHObjectReference reference;
   SHObjectRelease release;
+  SHObjectWeakReference weakReference;
+  SHObjectWeakRelease weakRelease;
+  SHObjectUpgradeWeak upgradeWeak;
 
   SHObjectHash hash;
 
@@ -626,22 +632,34 @@ struct SHVarPayload {
 
 // SHVar flags
 #define SHVAR_FLAGS_NONE (0)
-#define SHVAR_FLAGS_USES_OBJINFO (1 << 0)
-#define SHVAR_FLAGS_REF_COUNTED (1 << 1)
+#define SHVAR_FLAGS_USES_OBJINFO (1 << 0) // 1
+#define SHVAR_FLAGS_REF_COUNTED (1 << 1) // 2
 // this marks a variable external and even if references are counted
 // it won't be destroyed automatically
-#define SHVAR_FLAGS_EXTERNAL (1 << 2)
+#define SHVAR_FLAGS_EXTERNAL (1 << 2) // 3
 // this marks the variable tracked, can be set inside a (Set) shard
-#define SHVAR_FLAGS_TRACKED (1 << 3)
+#define SHVAR_FLAGS_TRACKED (1 << 3) // 4
 // this marks the variable as a foreign variable, to prevent destruction
 // when used inside seq and table
-#define SHVAR_FLAGS_FOREIGN (1 << 4)
+#define SHVAR_FLAGS_FOREIGN (1 << 4) // 5
 // used internally to cancel and abort a wire flow, must be String type and receiver must abort and destroy the var
 // used only in async.hpp and rust side async activation so far
-#define SHVAR_FLAGS_ABORT (1 << 5)
+#define SHVAR_FLAGS_ABORT (1 << 5) // 6
+// this marks a weak object reference
+#define SHVAR_FLAGS_WEAK_OBJECT (1 << 6) // 7
+
+// Additional flags available
+// #define SHVAR_FLAGS_RESERVED_0 (1 << 7) // 8
+// #define SHVAR_FLAGS_RESERVED_1 (1 << 8) // 9
+// #define SHVAR_FLAGS_RESERVED_2 (1 << 9) // 10
+// #define SHVAR_FLAGS_RESERVED_3 (1 << 10) // 11
+// #define SHVAR_FLAGS_RESERVED_4 (1 << 11) // 12
+// #define SHVAR_FLAGS_RESERVED_5 (1 << 12) // 13
+// #define SHVAR_FLAGS_RESERVED_6 (1 << 13) // 14
+
 // 2 custom flags reserved for apps or anything building on top of shards
-#define SHVAR_FLAGS_CUSTOM_0 (1 << 6)
-#define SHVAR_FLAGS_CUSTOM_1 (1 << 7)
+#define SHVAR_FLAGS_CUSTOM_0 (1 << 14) // 15
+#define SHVAR_FLAGS_CUSTOM_1 (1 << 15) // 16
 
 struct SHVar {
   struct SHVarPayload payload;

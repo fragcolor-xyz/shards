@@ -1933,8 +1933,20 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       // in this case the custom object needs actual destruction
       dst.flags |= SHVAR_FLAGS_USES_OBJINFO;
       dst.objectInfo = src.objectInfo;
-      if (src.objectInfo->reference)
+      // remove weak flag if dst had it before
+      dst.flags &= ~SHVAR_FLAGS_WEAK_OBJECT;
+
+      // ok if we are a weak object, take a weak ref and upgrade it to a strong ref
+      if ((src.flags & SHVAR_FLAGS_WEAK_OBJECT) == SHVAR_FLAGS_WEAK_OBJECT) {
+        shassert(src.objectInfo->weakReference && "weak object must have weakReference");
+        dst.objectInfo->weakReference(dst.payload.objectValue);
+        auto strong = dst.objectInfo->upgradeWeak(dst.payload.objectValue);
+        if (!strong) {
+          throw std::runtime_error("Failed to upgrade weak object to strong object");
+        }
+      } else if (src.objectInfo->reference) {
         dst.objectInfo->reference(dst.payload.objectValue);
+      }
     }
     break;
   case SHType::Type:

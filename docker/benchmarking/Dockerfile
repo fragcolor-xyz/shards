@@ -3,7 +3,7 @@
 
   # Installing dependencies
   RUN apt-get update -y && \
-      apt-get install -y git cmake pkg-config libssl-dev build-essential clang libclang-dev curl protobuf-compiler wget ninja-build xorg-dev libdbus-1-dev lcov mesa-utils lld linux-perf && \
+      apt-get install -y git cmake pkg-config libssl-dev build-essential clang libclang-dev curl protobuf-compiler wget ninja-build xorg-dev libdbus-1-dev lcov mesa-utils lld linux-perf valgrind && \
       rm -rf /var/lib/apt/lists/*
 
   # Setting up Rust environment
@@ -16,7 +16,6 @@
       rustup default nightly && \
       rustup update nightly && \
       rustup update stable && \
-      rustup target add wasm32-unknown-unknown --toolchain nightly && \
       rustup toolchain install nightly && \
       rustup default nightly
 
@@ -28,13 +27,9 @@
 
   RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
 
-  # Arguments for controlling versions and build triggers
-  ARG SHARDS_VERSION=fbl-0.3.2-alpha+build.3
-
   # Updating shards with specified version
   RUN cd /shards && \
       git fetch --all && \
-      git checkout ${SHARDS_VERSION} && \
       git submodule update --init --recursive && \
       ./bootstrap && \
       cat rust.version | xargs rustup toolchain install
@@ -43,5 +38,5 @@
   RUN cd /shards && \
       mkdir -p build && \
       cd build && \
-      cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && \
+      cmake -G Ninja -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && \
       ninja shards
