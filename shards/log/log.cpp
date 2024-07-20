@@ -158,6 +158,9 @@ struct Sinks {
     if (Config::DefaultStdOutLogLevel) {
       stdErrSink->set_level(Config::DefaultStdOutLogLevel.value());
     }
+  }
+
+  void resetStdErrSink() {
     if (auto filter = getLogLevelFromEnvVar("LOG_STDERR_FILTER")) {
       stdErrSink->set_level(*filter);
       logLevelOverriden = true;
@@ -172,6 +175,7 @@ struct Sinks {
     if (stdErrSink)
       distSink->remove_sink(stdErrSink);
     stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+    resetStdErrSink();
     distSink->add_sink(stdErrSink);
 #endif
   }
