@@ -611,25 +611,36 @@ void releaseVariable(SHVar *variable) {
   }
 }
 
-SHWireState suspend(SHContext *context, double seconds) {
+SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
   if (unlikely(!context->shouldContinue())) {
     throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
   }
 
-  if (seconds <= 0) {
-    context->next = SHDuration(0);
+  if (unlikely(context->onWorkerThread) && sleepOnWorker) {
+    // ok in this case use thread sleep and exit
+    if (seconds <= 0.0) {
+      // yield to other threads
+      std::this_thread::yield();
+    } else {
+      std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
+    }
   } else {
-    context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
+    if (seconds <= 0) {
+      context->next = SHDuration(0);
+    } else {
+      context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
+    }
+
+    auto currentWire = context->currentWire();
+    SH_CORO_SUSPENDED(currentWire);
+    coroutineSuspend(*context->continuation);
+    shassert(context->currentWire() == currentWire);
+    SH_CORO_RESUMED(currentWire);
   }
 
-  auto currentWire = context->currentWire();
-  SH_CORO_SUSPENDED(currentWire);
-  coroutineSuspend(*context->continuation);
-  shassert(context->currentWire() == currentWire);
-  SH_CORO_RESUMED(currentWire);
-
+  // still advancing the step counter, to flag we are in another time step
   ++context->stepCounter;
 
   return context->getState();

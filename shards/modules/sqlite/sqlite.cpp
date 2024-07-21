@@ -263,6 +263,7 @@ struct Connection {
   ~Connection() {
     if (db) {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite close {}", (void *)db);
+      std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
       sqlite3_close(db);
     }
   }
@@ -381,14 +382,17 @@ struct Query : public Base {
   void setup() {
     _query = Var("SELECT * FROM test WHERE id = ?");
     _dbName = Var("shards.db");
+    _asRows = Var(false);
+    _retry = Var(false);
   }
 
   PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.",
                  {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows));
+  PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::BoolType});
+  PARAM_VAR(_retry, "Retry", "Retry the query if the database was locked.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows), PARAM_IMPL_FOR(_retry));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -435,7 +439,7 @@ struct Query : public Base {
     }
   }
 
-  SHVar getOutputRows(OutputType &output_) {
+  SHVar getOutputRows(SHContext *context, OutputType &output_) {
     RowOutput *ptr = std::get_if<RowOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<RowOutput>();
@@ -446,30 +450,41 @@ struct Query : public Base {
 
     bool empty = true;
     int rc;
-    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
-      auto numCols = sqlite3_column_count(prepared->get());
-      if (numCols == 0) {
-        continue;
-      }
+    bool retry = _retry.payload.boolValue;
+    do {
+      rc = sqlite3_step(prepared->get());
+      if (rc == SQLITE_ROW) {
+        auto numCols = sqlite3_column_count(prepared->get());
+        if (numCols == 0) {
+          continue;
+        }
 
-      empty = false;
+        empty = false;
 
-      // fill column cache on first row
-      if (output.keys.empty()) {
-        for (int i = 0; i < numCols; i++) {
-          auto colName = sqlite3_column_name(prepared->get(), i);
-          output.keys.push_back(Var(colName, 0)); // we need to strlen, so we pass 0 explicit, sqlite has no way to know ahead
+        // fill column cache on first row
+        if (output.keys.empty()) {
+          for (int i = 0; i < numCols; i++) {
+            auto colName = sqlite3_column_name(prepared->get(), i);
+            output.keys.push_back(Var(colName, 0)); // we need to strlen, so we pass 0 explicit, sqlite has no way to know ahead
+          }
+        }
+
+        auto &outTable = (TableVar &)output.output.emplace_back_fast();
+        if (outTable.valueType != SHType::Table) {
+          outTable = TableVar();
+        }
+        for (auto i = 0; i < numCols; i++) {
+          outTable.insert(output.keys[i], columnToVar(i));
+        }
+      } else if (rc == SQLITE_BUSY) {
+        if (retry) {
+          // Try again after yield or next frame
+          shards::suspend(context, 0.0, true);
+        } else {
+          throw ActivationError("SQLite database is busy and retry is disabled");
         }
       }
-
-      auto &outTable = (TableVar &)output.output.emplace_back_fast();
-      if (outTable.valueType != SHType::Table) {
-        outTable = TableVar();
-      }
-      for (auto i = 0; i < numCols; i++) {
-        outTable.insert(output.keys[i], columnToVar(i));
-      }
-    }
+    } while (rc == SQLITE_ROW || (rc == SQLITE_BUSY && retry));
 
     if (rc != SQLITE_DONE) {
       throw ActivationError(sqlite3_errmsg(_connection->get()));
@@ -478,7 +493,7 @@ struct Query : public Base {
     return empty ? emptySeqOutput : output.output;
   }
 
-  SHVar getOutputCols(OutputType &output_) {
+  SHVar getOutputCols(SHContext *context, OutputType &output_) {
     ColOutput *ptr = std::get_if<ColOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<ColOutput>();
@@ -487,37 +502,48 @@ struct Query : public Base {
     output.columns.clear();
     bool empty = true;
     int rc;
-    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
-      auto numCols = sqlite3_column_count(prepared->get());
-      if (numCols == 0) {
-        continue;
-      }
+    bool retry = _retry.payload.boolValue;
+    do {
+      rc = sqlite3_step(prepared->get());
+      if (rc == SQLITE_ROW) {
+        auto numCols = sqlite3_column_count(prepared->get());
+        if (numCols == 0) {
+          continue;
+        }
 
-      empty = false;
+        empty = false;
 
-      // fill column cache on first row
-      if (output.columns.empty()) {
-        for (int i = 0; i < numCols; i++) {
-          auto colName = sqlite3_column_name(prepared->get(), i);
-          auto colNameVar = Var(colName, 0); // pass 0 to call strlen as sqlite has no way to know ahead
-          auto &col = output.output[colNameVar];
-          if (col.valueType == SHType::None) {
-            SeqVar seq;
-            output.output.insert(colNameVar, std::move(seq));
-            output.columns.push_back(&asSeq(output.output[colNameVar]));
-          } else {
-            auto &seq = asSeq(col);
-            seq.clear();
-            output.columns.push_back(&seq);
+        // fill column cache on first row
+        if (output.columns.empty()) {
+          for (int i = 0; i < numCols; i++) {
+            auto colName = sqlite3_column_name(prepared->get(), i);
+            auto colNameVar = Var(colName, 0); // pass 0 to call strlen as sqlite has no way to know ahead
+            auto &col = output.output[colNameVar];
+            if (col.valueType == SHType::None) {
+              SeqVar seq;
+              output.output.insert(colNameVar, std::move(seq));
+              output.columns.push_back(&asSeq(output.output[colNameVar]));
+            } else {
+              auto &seq = asSeq(col);
+              seq.clear();
+              output.columns.push_back(&seq);
+            }
           }
         }
-      }
 
-      for (auto i = 0; i < numCols; i++) {
-        auto &col = *output.columns[i];
-        col.push_back(columnToVar(i));
+        for (auto i = 0; i < numCols; i++) {
+          auto &col = *output.columns[i];
+          col.push_back(columnToVar(i));
+        }
+      } else if (rc == SQLITE_BUSY) {
+        if (retry) {
+          // Try again after yield or next frame
+          shards::suspend(context, 0.0, true);
+        } else {
+          throw ActivationError("SQLite database is busy and retry is disabled");
+        }
       }
-    }
+    } while (rc == SQLITE_ROW || (rc == SQLITE_BUSY && retry));
 
     if (rc != SQLITE_DONE) {
       throw ActivationError(sqlite3_errmsg(_connection->get()));
@@ -620,7 +646,7 @@ struct Query : public Base {
             throw ActivationError("Not enough parameters for query");
 
           SH_SQLITE_DEBUG_LOG(logger, "sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
-          return _returnCols ? getOutputCols(output) : getOutputRows(output);
+          return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
         },
         [] {});
   }
