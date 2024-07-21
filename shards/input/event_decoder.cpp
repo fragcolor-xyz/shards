@@ -418,8 +418,13 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
           }
         } else if constexpr (std::is_same_v<T, gfx::em::MouseEvent>) {
           uint8_t buttonIndex = (arg.button + 1);
+          float2 newCursorPos(arg.x, arg.y);
           if (arg.type_ == 0) {
-            virtualInputEvents.push_back(PointerMoveEvent{.pos = float2(arg.x, arg.y)});
+            float2 delta =  newCursorPos - state.cursorPosition;
+            virtualInputEvents.push_back(PointerMoveEvent{
+              .pos = float2(arg.x, arg.y),
+              .delta = delta,
+            });
           } else {
             bool pressed = arg.type_ == 1;
             virtualInputEvents.push_back(PointerButtonEvent{
@@ -430,7 +435,7 @@ void NativeEventDecoder::apply(const NativeEventType &event) {
               newState.mouseButtonState &= ~SDL_BUTTON(buttonIndex);
             }
           }
-          newState.cursorPosition = float2(arg.x, arg.y);
+          newState.cursorPosition =  newCursorPos;
         } else if constexpr (std::is_same_v<T, gfx::em::MouseWheelEvent>) {
           buffer.scrollDelta += arg.deltaY;
         }
