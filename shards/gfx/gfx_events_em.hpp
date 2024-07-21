@@ -108,9 +108,9 @@ struct EventHandler {
           } else if constexpr (std::is_same_v<T, KeyEvent>) {
             SPDLOG_INFO("ClientPost KeyEvent type: {}, keyCode: {}, ctrl: {}, "
                         "alt: {}, shift: {}, repeat: {}",
-                        arg.type_, arg.keyCode, arg.ctrlKey, arg.altKey, arg.shiftKey, arg.repeat);
+                        arg.type_, arg.key_, arg.ctrlKey, arg.altKey, arg.shiftKey, arg.repeat);
           } else if constexpr (std::is_same_v<T, MouseWheelEvent>) {
-            SPDLOG_INFO("ClientPost MouseWheelEvent dx: {}, dy: {}, dz: {}", arg.deltaX, arg.deltaY, arg.deltaZ);
+            SPDLOG_INFO("ClientPost MouseWheelEvent dy: {}", arg.deltaY);
           }
         },
         v);
