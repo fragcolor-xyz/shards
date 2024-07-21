@@ -133,9 +133,9 @@ void imageIncRef(SHImage *ptr);
 void imageDecRef(SHImage *ptr);
 SHImage *imageNew(uint32_t dataLen);
 SHImage *imageClone(SHImage *ptr);
-uint32_t imageDeriveDataLength(SHImage* ptr);
-uint32_t imageGetPixelSize(SHImage* img);
-uint32_t imageGetRowStride(SHImage* img);
+uint32_t imageDeriveDataLength(SHImage *ptr);
+uint32_t imageGetPixelSize(SHImage *img);
+uint32_t imageGetRowStride(SHImage *img);
 
 struct RuntimeObserver {
   virtual void registerShard(const char *fullName, SHShardConstructor constructor) {}
@@ -302,9 +302,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::string name{"unnamed"};
   entt::id_type id{entt::null};
-  uint64_t debugId{0}; // used for debugging
+  uint64_t debugId{0};        // used for debugging
   shards::OwnedVar astObject; // optional, used for debugging
-  SHWire *parent{nullptr}; // used in doppelganger pool, we keep track of the template wire
+  SHWire *parent{nullptr};    // used in doppelganger pool, we keep track of the template wire
 
   // The wire's running coroutine
   shards::Coroutine coro;
@@ -984,9 +984,16 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
     arrayFree(var.payload.arrayValue);
     break;
   case SHType::Object:
-    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
-      // in this case the custom object needs actual destruction
-      var.objectInfo->release(var.payload.objectValue);
+    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
+      shassert(var.objectInfo && "ObjectInfo is null");
+      // check if weak ref
+      if ((var.flags & SHVAR_FLAGS_WEAK_OBJECT) == SHVAR_FLAGS_WEAK_OBJECT) {
+        shassert(var.objectInfo->weakRelease && "Weak release function is null");
+        var.objectInfo->weakRelease(var.payload.objectValue);
+      } else if (var.objectInfo->release) {
+        // in this case the custom object needs actual destruction
+        var.objectInfo->release(var.payload.objectValue);
+      }
     }
     break;
   case SHType::Wire:
@@ -1012,6 +1019,21 @@ ALWAYS_INLINE inline void cloneVar(SHVar &dst, const SHVar &src) {
   } else {
     _cloneVarSlow(dst, src);
   }
+}
+
+inline void weakObjectVar(SHVar &dst, const SHVar &src) {
+  shassert(src.valueType == SHType::Object);
+  shassert(src.objectInfo && "ObjectInfo is null");
+  shassert(src.objectInfo->weakReference && "Weak clone function is null");
+
+  destroyVar(dst);
+  dst.valueType = SHType::Object;
+  dst.payload.objectValue = src.payload.objectValue;
+  dst.payload.objectVendorId = src.payload.objectVendorId;
+  dst.payload.objectTypeId = src.payload.objectTypeId;
+  dst.flags |= SHVAR_FLAGS_USES_OBJINFO | SHVAR_FLAGS_WEAK_OBJECT;
+  dst.objectInfo = src.objectInfo;
+  dst.objectInfo->weakReference(dst.payload.objectValue);
 }
 
 struct InternalCore {
@@ -1158,7 +1180,7 @@ inline OwnedVar makeImage(uint32_t dataLen = 0) {
   SHVar var{};
   var.valueType = SHType::Image;
   var.payload.imageValue = imageNew(dataLen);
-  return std::move(reinterpret_cast<OwnedVar&>(var));
+  return std::move(reinterpret_cast<OwnedVar &>(var));
 }
 
 struct ParamsInfo {

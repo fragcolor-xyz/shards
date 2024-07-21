@@ -3,7 +3,7 @@
 
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
-use crate::fourCharacterCode;
+use crate::{fourCharacterCode, SHVAR_FLAGS_WEAK_OBJECT};
 
 // Shard Constants
 use crate::shardsc::{
@@ -34,6 +34,7 @@ use core::{
   ops::{Index, IndexMut},
   slice,
 };
+use std::ptr::NonNull;
 
 // Serde for Serialization/Deserialization
 use serde::{
@@ -2643,21 +2644,75 @@ pub trait RCObjectVar {
 
 pub struct RefCounted<T> {
   rc: AtomicU32,
-  value: T,
+  weak_rc: AtomicU32,
+  value: Option<T>,
 }
 
 impl<T> RefCounted<T> {
+  pub fn new(value: T) -> Self {
+    Self {
+      rc: AtomicU32::new(1),
+      weak_rc: AtomicU32::new(1), // 1 weak reference to keep the object alive until last weak ref is gone
+      value: Some(value),
+    }
+  }
+
   pub fn inc_ref(&self) {
     let prev_count = self.rc.fetch_add(1, Ordering::SeqCst);
-    // Assert that the reference count does not overflow
     assert!(prev_count < u32::MAX, "Reference count overflowed");
   }
 
-  pub fn dec_ref(&self) -> u32 {
+  pub fn dec_ref(&mut self) -> u32 {
     let prev_count = self.rc.fetch_sub(1, Ordering::SeqCst);
-    // Assert that the reference count does not underflow
     assert!(prev_count > 0, "Reference count underflowed");
+
+    if prev_count == 1 {
+      self.value = None; // Drop the value when the last strong reference is released
+      self.dec_weak_ref(); // Decrease the weak reference count when the strong count goes to 0
+    }
+
     prev_count - 1
+  }
+
+  pub fn inc_weak_ref(&self) {
+    let prev_count = self.weak_rc.fetch_add(1, Ordering::SeqCst);
+    assert!(prev_count < u32::MAX, "Weak reference count overflowed");
+  }
+
+  pub fn dec_weak_ref(&self) -> u32 {
+    let prev_count = self.weak_rc.fetch_sub(1, Ordering::SeqCst);
+    assert!(prev_count > 0, "Weak reference count underflowed");
+
+    if prev_count == 1 && self.rc.load(Ordering::SeqCst) == 0 {
+      // Free the object when the last weak reference is released and no strong references exist
+      unsafe {
+        drop(Box::from_raw(self as *const _ as *mut Self));
+      }
+    }
+
+    prev_count - 1
+  }
+
+  pub fn upgrade_weak(&self) -> Option<NonNull<Self>> {
+    loop {
+      let strong_count = self.rc.load(Ordering::SeqCst);
+      if strong_count == 0 {
+        return None;
+      }
+      if self
+        .rc
+        .compare_exchange(
+          strong_count,
+          strong_count + 1,
+          Ordering::SeqCst,
+          Ordering::SeqCst,
+        )
+        .is_ok()
+      {
+        self.dec_weak_ref();
+        return Some(NonNull::from(self));
+      }
+    }
   }
 }
 
@@ -2674,18 +2729,38 @@ macro_rules! ref_counted_object_type_impl {
 
         unsafe extern "C" fn release(arg1: *mut std::os::raw::c_void) {
           let rc = arg1 as *mut shards::types::RefCounted<$type>;
-          if (*rc).dec_ref() == 0 {
-            drop(Box::from_raw(rc));
-          }
+          (*rc).dec_ref();
+        }
+
+        unsafe extern "C" fn weak_reference(arg1: *mut std::os::raw::c_void) {
+          let rc = arg1 as *mut shards::types::RefCounted<$type>;
+          (*rc).inc_weak_ref();
+        }
+
+        unsafe extern "C" fn weak_release(arg1: *mut std::os::raw::c_void) {
+          let rc = arg1 as *mut shards::types::RefCounted<$type>;
+          (*rc).dec_weak_ref();
+        }
+
+        unsafe extern "C" fn upgrade_weak(
+          arg1: *mut std::os::raw::c_void,
+        ) -> *mut std::os::raw::c_void {
+          let rc = arg1 as *mut shards::types::RefCounted<$type>;
+          (*rc)
+            .upgrade_weak()
+            .map_or(std::ptr::null_mut(), |ptr| ptr.as_ptr() as *mut _)
         }
 
         shards::SHObjectInfo {
-          name: TYPE_OBJECT_NAME.as_ptr() as  *const ::core::ffi::c_char,
+          name: TYPE_OBJECT_NAME.as_ptr() as *const ::core::ffi::c_char,
           serialize: None,
           free: None,
           deserialize: None,
           reference: Some(reference),
           release: Some(release),
+          weakReference: Some(weak_reference),
+          weakRelease: Some(weak_release),
+          upgradeWeak: Some(upgrade_weak),
           hash: None,
           isThreadSafe: false,
         }
@@ -2807,10 +2882,12 @@ impl Var {
     }
   }
 
+  /// Caller must call cloneVar to increase strong reference count
   pub fn new_ref_counted<T: RCObjectVar>(obj: T, info: &Type) -> Var {
     let rc = Box::new(RefCounted::<T> {
       rc: AtomicU32::new(0),
-      value: obj,
+      weak_rc: AtomicU32::new(1),
+      value: Some(obj),
     });
     unsafe {
       Var {
@@ -2833,6 +2910,28 @@ impl Var {
     }
   }
 
+  pub unsafe fn weak_object_var(dst: &mut Var, src: &Var) {
+    assert_eq!(src.valueType, SHType_Object);
+    assert!(!src.__bindgen_anon_1.objectInfo.is_null());
+    assert!(!(*src.__bindgen_anon_1.objectInfo).weakReference.is_none());
+
+    destroyVar(dst);
+    dst.valueType = SHType_Object;
+    dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue =
+      src.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue;
+    dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId =
+      src.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId;
+    dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId =
+      src.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId;
+    dst.flags |= SHVAR_FLAGS_USES_OBJINFO as u16 | SHVAR_FLAGS_WEAK_OBJECT as u16;
+    dst.__bindgen_anon_1.objectInfo = src.__bindgen_anon_1.objectInfo;
+    unsafe {
+      (*dst.__bindgen_anon_1.objectInfo).weakReference.unwrap()(
+        dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue,
+      );
+    }
+  }
+
   pub unsafe fn from_ref_counted_object<T>(var: &Var, info: &Type) -> Result<*mut T, &'static str> {
     if var.valueType != SHType_Object
       || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -2842,7 +2941,11 @@ impl Var {
       Err("Failed to cast Var into custom ref counted object")
     } else {
       let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut RefCounted<T>;
-      Ok(&mut (*aptr).value)
+      if let Some(value) = &mut (*aptr).value {
+        Ok(value as *mut T)
+      } else {
+        Err("Failed to cast Var into custom ref counted object: value is None")
+      }
     }
   }
 

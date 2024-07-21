@@ -225,13 +225,9 @@ struct MemoryLockedVfs : sqlite3_vfs {
 
 struct Connection {
   sqlite3 *db{};
-  std::mutex mutex;
   std::mutex transactionMutex;
-  static inline std::shared_mutex globalMutex;
 
   Connection(const char *path, bool readOnly) {
-    std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
-
     if (readOnly) {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-only {}", path);
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, vfs) != SQLITE_OK) {
@@ -542,7 +538,6 @@ struct Query : public Base {
     PARAM_CLEANUP(context);
 
     if (_connection) {
-      std::scoped_lock<std::mutex> l(_connection->mutex);
       prepared.reset();
     } else {
       assert(!prepared && "prepared should be null if _connection is null");
@@ -571,8 +566,6 @@ struct Query : public Base {
             std::unique_lock<std::mutex> lock(_connection->transactionMutex);
             transactionLock = std::move(lock);
           }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           if (!prepared) {
             prepared.reset(
@@ -683,9 +676,6 @@ struct Transaction : public Base {
     maybeAwait(
         context,
         [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
-
           SH_SQLITE_DEBUG_LOG(logger, "Transaction begin, db: {}", (void *)_connection->db);
           auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
           if (rc != SQLITE_OK) {
@@ -700,9 +690,6 @@ struct Transaction : public Base {
     maybeAwait(
         context,
         [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
-
           if (state != SHWireState::Continue) {
             // likely something went wrong! lets rollback.
             SH_SQLITE_DEBUG_LOG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
@@ -762,8 +749,6 @@ struct LoadExtension : public Base {
             std::unique_lock<std::mutex> lock(_connection->transactionMutex);
             transactionLock = std::move(lock);
           }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
           _connection->loadExtension(extPath);
@@ -811,8 +796,6 @@ struct RawQuery : public Base {
             std::unique_lock<std::mutex> lock(_connection->transactionMutex);
             transactionLock = std::move(lock);
           }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
@@ -872,8 +855,6 @@ struct Backup : public Base {
             std::unique_lock<std::mutex> lock(_connection->transactionMutex);
             transactionLock = std::move(lock);
           }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::unique_lock<std::mutex> l2(_connection->mutex);
 
           auto destPath = SHSTRVIEW(_dest.get());
           sqlite3 *pDest;
@@ -900,12 +881,8 @@ struct Backup : public Base {
           do {
             rc = sqlite3_backup_step(pBackup, pages);
             if (!_fast.payload.boolValue && (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED)) {
-              // unlock
-              l2.unlock();
               // thread wait here 100 ms
               std::this_thread::sleep_for(std::chrono::milliseconds(100));
-              // lock again
-              l2.lock();
             }
             // check for errors!
             if (rc != SQLITE_OK && rc != SQLITE_DONE && rc != SQLITE_BUSY && rc != SQLITE_LOCKED) {
