@@ -60,10 +60,10 @@ use shards::util::from_raw_parts_allow_null;
 
 pub(crate) const EVAL_STACK_SIZE: usize = 2 * 1024 * 1024;
 
-#[cfg(debug_assertions)]
+#[cfg(profile = "dev")]
 const MIN_STACK_SIZE: i64 = 2 * 1024 * 1024; // 2 MB for debug builds
-#[cfg(not(debug_assertions))]
-const MIN_STACK_SIZE: i64 = 64 * 1024; // 64 KB for release builds
+#[cfg(not(profile = "dev"))]
+const MIN_STACK_SIZE: i64 = 128 * 1024; // 128 KB for release builds
 
 pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
