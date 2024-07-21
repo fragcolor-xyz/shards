@@ -7,7 +7,7 @@ add_shards_module(audio SOURCES ${SOURCES}
   EXPERIMENTAL)
 
 target_link_libraries(shards-module-audio
-  kissfft miniaudio
+  kissfft miniaudio shards-logging
 )
 
 # Need to compile specific files as objective-c
@@ -24,11 +24,3 @@ if(EMSCRIPTEN)
     "-sWASM_WORKERS=1" # Required for miniaudio
   )
 endif()
-
-set_source_files_properties(
-  audio.cpp
-  dsp.cpp
-  PROPERTIES
-  COMPILE_FLAGS -O3
-  SKIP_PRECOMPILE_HEADERS ON
-)

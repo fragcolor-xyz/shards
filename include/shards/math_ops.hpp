@@ -14,24 +14,24 @@ template <size_t Length> struct ApplyUnaryVector {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i], args...);
+      out[i] = op.template apply<>(a[i], args...);
   }
 };
 
 template <> struct ApplyUnaryVector<1> {
   template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out = op.template apply(a, args...);
+    out = op.template apply<>(a, args...);
   }
 };
 
 struct ApplyUnaryColor {
   template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r, args...);
-    out.g = op.template apply(a.g, args...);
-    out.b = op.template apply(a.b, args...);
-    out.a = op.template apply(a.a, args...);
+    out.r = op.template apply<>(a.r, args...);
+    out.g = op.template apply<>(a.g, args...);
+    out.b = op.template apply<>(a.b, args...);
+    out.a = op.template apply<>(a.a, args...);
   }
 };
 
@@ -40,24 +40,24 @@ template <size_t Length> struct ApplyBinaryVector {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i], b[i], args...);
+      out[i] = op.template apply<>(a[i], b[i], args...);
   }
 };
 
 template <> struct ApplyBinaryVector<1> {
   template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out = op.template apply(a, b, args...);
+    out = op.template apply<>(a, b, args...);
   }
 };
 
 struct ApplyBinaryColor {
   template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r, b.r, args...);
-    out.g = op.template apply(a.g, b.g, args...);
-    out.b = op.template apply(a.b, b.b, args...);
-    out.a = op.template apply(a.a, b.a, args...);
+    out.r = op.template apply<>(a.r, b.r, args...);
+    out.g = op.template apply<>(a.g, b.g, args...);
+    out.b = op.template apply<>(a.b, b.b, args...);
+    out.a = op.template apply<>(a.a, b.a, args...);
   }
 };
 
