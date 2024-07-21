@@ -388,19 +388,27 @@ pub extern "C" fn setup_panic_hook() {
   // Had to put this in this crate otherwise we would have duplicated symbols
   // Set a custom panic hook to break into the debugger.
   #[cfg(debug_assertions)]
-  std::panic::set_hook(Box::new(|info| {
-    // Print the panic info to standard error.
-    eprintln!("Panic occurred: {:?}", info);
-    // Trigger a breakpoint.
-    #[cfg(unix)]
-    unsafe {
-      libc::raise(libc::SIGTRAP);
-    }
-    #[cfg(windows)]
-    unsafe {
-      DebugBreak();
-    }
-  }));
+  {
+    // store current hook
+    let prev_hook = std::panic::take_hook();
+    // set new hook
+    std::panic::set_hook(Box::new(move |info| {
+      // Print the panic info to standard error.
+      eprintln!("Panic occurred: {:?}", info);
+      // Trigger a breakpoint.
+      #[cfg(unix)]
+      unsafe {
+        libc::raise(libc::SIGTRAP);
+      }
+      #[cfg(windows)]
+      unsafe {
+        DebugBreak();
+      }
+
+      // Call the previous panic hook, if any.
+      prev_hook(info);
+    }));
+  }
 }
 
 #[no_mangle]
