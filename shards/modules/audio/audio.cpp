@@ -1059,7 +1059,7 @@ struct Engine {
 
   SHVar *_deviceVar{nullptr};
 
-  static void ma_log(void *pUserData, ma_uint32 level, const char *pMessage) {
+  static void ma_log_cb(void *pUserData, ma_uint32 level, const char *pMessage) {
     std::string_view msg(pMessage);
     // trim newline from string view
     if (!msg.empty() && msg.back() == '\n') {
@@ -1084,7 +1084,7 @@ struct Engine {
   void warmup(SHContext *context) {
     _log = std::make_unique<::ma_log>();
     ma_log_init(nullptr, _log.get());
-    ma_log_register_callback(_log.get(), ma_log_callback_init(&ma_log, this));
+    ma_log_register_callback(_log.get(), ma_log_callback_init(&ma_log_cb, this));
 
     ma_result res{};
     proxyToMainThread([&]() {
@@ -1192,9 +1192,9 @@ struct Sound : EngineUser {
       flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
     }
     ma_result result{};
-    // proxyToMainThread([&]() {
-    result = result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, flags, NULL, NULL, &*_sound);
-    // });
+    proxyToMainThread([&]() {
+      result = result = ma_sound_init_from_file(_engine, _fileName.payload.stringValue, flags, NULL, NULL, &*_sound);
+    });
     if (result != MA_SUCCESS) {
       throw ActivationError("Failed to init sound");
     }
@@ -1233,10 +1233,10 @@ struct Start : EngineUser {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    // proxyToMainThread([&]() {
-    ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
-    ma_sound_start(&*_sound);
-    // });
+    proxyToMainThread([&]() {
+      ma_sound_set_looping(&*_sound, _looped.payload.boolValue);
+      ma_sound_start(&*_sound);
+    });
     return input;
   }
 };
@@ -1248,9 +1248,7 @@ struct Pause {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    // proxyToMainThread([&]() {
-    ma_sound_stop(&*_sound);
-    // });
+    proxyToMainThread([&]() { ma_sound_stop(&*_sound); });
     return input;
   }
 };
@@ -1262,11 +1260,11 @@ struct Stop {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
 
-    // proxyToMainThread([&]() {
-    ma_sound_stop(&*_sound);
-    // and reset timeline to 0
-    ma_sound_seek_to_pcm_frame(&*_sound, 0);
-    // });
+    proxyToMainThread([&]() {
+      ma_sound_stop(&*_sound);
+      // and reset timeline to 0
+      ma_sound_seek_to_pcm_frame(&*_sound, 0);
+    });
     return input;
   }
 };
