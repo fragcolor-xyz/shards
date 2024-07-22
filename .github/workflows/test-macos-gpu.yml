@@ -123,6 +123,9 @@ jobs:
 
           echo "Running onnx test"
           build/shards new shards/tests/onnx.shs
+
+          echo "Running Stack overflow test"
+          build/shards new ../shards/tests/fib.shs
       - name: Test Physics
         env:
           RUST_BACKTRACE: full
