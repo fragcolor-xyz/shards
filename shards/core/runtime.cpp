@@ -646,9 +646,38 @@ SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
   return context->getState();
 }
 
+ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, size_t hard_max, size_t recursion_buffer) {
+  if (stack_start_address == nullptr) {
+    return true;
+  }
+
+  // Create a local variable
+  volatile uint8_t local_var;
+  // Get the address of the local variable
+  uintptr_t local_var_address = reinterpret_cast<uintptr_t>(&local_var);
+  uintptr_t start_address = reinterpret_cast<uintptr_t>(stack_start_address);
+
+  // Calculate the approximate stack size
+  size_t stack_size =
+      (start_address > local_var_address) ? (start_address - local_var_address) : (local_var_address - start_address);
+
+  // Adjust hard max to accommodate recursion buffer
+  size_t adjusted_max = (hard_max > recursion_buffer) ? (hard_max - recursion_buffer) : 0;
+
+  return stack_size <= adjusted_max;
+}
+
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
+#if SH_CORO_NEED_STACK_MEM
+  if (!is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
+    SHLOG_ERROR("Stack overflow detected, aborting execution");
+    context->pushError("Stack overflow detected, aborting execution");
+    return SHWireState::Error;
+  }
+#endif
+
   // store initial input
   auto input = wireInput;
 
@@ -1418,6 +1447,9 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
 void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   SH_CORO_RESUMED(wire);
 
+  // store stack start address here
+  volatile void *stackStart = nullptr;
+
   SHLOG_TRACE("Wire {} rolling", wire->name);
   auto running = true;
 
@@ -1434,6 +1466,7 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   // Create a new context and copy the sink in
   SHFlow anonFlow{wire};
   SHContext context(coro, wire, flow ? flow : &anonFlow);
+  context.stackStart = &stackStart;
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
