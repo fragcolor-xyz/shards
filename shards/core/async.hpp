@@ -3,12 +3,10 @@
 
 #include <chrono>
 #include <thread>
-#include <future>
 #include <deque>
 
 #include <shards/shards.h>
 #include <shards/utility.hpp>
-#include "platform.hpp"
 #include "utils.hpp"
 #include "runtime.hpp"
 
