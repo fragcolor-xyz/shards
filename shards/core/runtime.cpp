@@ -667,13 +667,25 @@ ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, siz
   return stack_size <= adjusted_max;
 }
 
+NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
+  auto &err = context->getErrorMessage();
+  auto msg = fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), err, blk->line, blk->column);
+  SHLOG_ERROR(msg);
+  context->pushError(std::move(msg));
+  auto wire = context->currentWire();
+  auto mesh = context->currentWire()->mesh.lock();
+  shards::OwnedVar errVar((Var(context->getErrorMessage())));
+  mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, blk, std::move(errVar)});
+}
+
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
 #if SH_CORO_NEED_STACK_MEM
   if (!is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
-    SHLOG_ERROR("Stack overflow detected, aborting execution");
-    context->pushError("Stack overflow detected, aborting execution");
+    // we let the top level handle this
+    SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
+    context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
 #endif
@@ -716,21 +728,13 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
           context->continueFlow();
         return SHWireState::Return;
       case SHWireState::Error: {
-        auto &err = context->getErrorMessage();
-        auto msg = fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), err, blk->line, blk->column);
-        SHLOG_ERROR(msg);
-        context->pushError(std::move(msg));
-        auto wire = context->currentWire();
-        auto mesh = context->currentWire()->mesh.lock();
-        shards::OwnedVar errVar((Var(context->getErrorMessage())));
-        mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, blk, std::move(errVar)});
+        handleActivationError(context, blk);
       }
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
       case SHWireState::Rebase:
-        // reset input to wire one
-        // and reset state
+        // reset input to wire one and reset state
         input = wireInput;
         context->continueFlow();
         continue;

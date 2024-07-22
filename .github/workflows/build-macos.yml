@@ -173,6 +173,7 @@ jobs:
           ./shards new ../shards/tests/crdts.shs
           ./shards new ../shards/tests/failures.shs
           ./shards new ../shards/tests/traits.shs
+          ./shards new ../shards/tests/fib.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

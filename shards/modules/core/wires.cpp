@@ -1076,9 +1076,7 @@ struct Recur : public WireBase {
     // Run within the root flow
     auto runRes = runSubWire(_wire, context, input);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
-      // meaning there was an exception while
-      // running the sub wire, stop the parent too
-      context->stopFlow(runRes.output);
+      return Var::Empty;
     }
 
     // restore _vars
@@ -1530,7 +1528,6 @@ struct ParallelBase : public CapturingSpawners {
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
   }
-
 
   struct Composer {
     ParallelBase &server;
@@ -2192,7 +2189,7 @@ struct DoMany : public TryMany {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _composer.onWorkerThread = false;
-    
+
     WireBase::resolveWire();
 
     if (data.inputType.seqTypes.len == 1) {

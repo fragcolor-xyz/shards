@@ -32,7 +32,7 @@
 })
 
 @wire(fib3 {
-  Push |
+  Push
   If(
     Predicate: {IsLess(2)}
     Then: {Pass}
@@ -55,10 +55,11 @@
   b
 })
 
+; we use this to test stack overflow protection
 @wire(run {
-  Profile({34 | Do(fib4)}) 
+  Profile({350000 | Do(fib1)})
   Log("result")
 })
 
 @schedule(root run)
-@run(root) | Assert.Is(true)
+@run(root) | Assert.Is(false)
