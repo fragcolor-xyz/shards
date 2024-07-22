@@ -115,9 +115,9 @@ struct SHSet {
 };
 
 #if !defined(NDEBUG) && !defined(SH_RELWITHDEBINFO)
-const size_t SH_MIN_STACK_SIZE = 2 * 1024 * 1024; // 2 MB for dev builds
+const uint32_t SH_MIN_STACK_SIZE = 2 * 1024 * 1024; // 2 MB for dev builds
 #else
-const size_t SH_MIN_STACK_SIZE = 128 * 1024; // 128 KB for non-dev builds
+const uint32_t SH_MIN_STACK_SIZE = 128 * 1024; // 128 KB for non-dev builds
 #endif
 
 struct SHWire;

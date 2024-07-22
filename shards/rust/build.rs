@@ -13,8 +13,7 @@ fn generate_shardsc() {
   // Tell cargo to regenerate the bindings whenever the headers change
   println!("cargo:rerun-if-changed={}", main_header_path);
 
-  let builder = bindgen::Builder::default();
-  let bindings = builder
+  let mut builder = bindgen::Builder::default()
     .header(main_header_path)
     .clang_arg("-DSH_NO_ANON")
     .clang_arg("-DSH_USE_ENUMS")
@@ -30,9 +29,15 @@ fn generate_shardsc() {
     .clang_arg(format!("-I{}/shards/core", shards_dir))
     .derive_default(true)
     .layout_tests(false)
-    .use_core()
-    .generate()
-    .expect("Unable to generate bindings");
+    .use_core();
+
+  // Check if the profile is not debug and add the SH_RELWITHDEBINFO define to set stack max size
+  // cannot use rel-with-deb-info because it's not supported by cargo, PROFILE is buggy...
+  if env::var("PROFILE").unwrap() != "debug" {
+    builder = builder.clang_arg("-DSH_RELWITHDEBINFO");
+  }
+
+  let bindings = builder.generate().expect("Unable to generate bindings");
 
   let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
   bindings
