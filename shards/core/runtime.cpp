@@ -681,13 +681,16 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
+#if !defined(NDEBUG) || defined(SH_RELWITHDEBINFO)
+  // check for stack overflow
 #if SH_CORO_NEED_STACK_MEM
-  if (!is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
+  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
     // we let the top level handle this
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
+#endif
 #endif
 
   // store initial input
