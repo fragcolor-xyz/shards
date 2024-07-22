@@ -20,11 +20,22 @@ use shards::util::get_or_var;
 use shards::SHType_Object;
 
 // Ugly but reasonable for now to fix crashes in users code
+use std::panic;
+
 pub fn with_possible_panic<F, R>(inner: F) -> Result<R, &'static str>
 where
   F: FnOnce() -> R,
 {
-  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| inner()));
+  // Store the original panic hook (e.g. Sentry)
+  let original_hook = panic::take_hook();
+
+  // Call the inner function with catch_unwind
+  let result = panic::catch_unwind(panic::AssertUnwindSafe(inner));
+
+  // Restore the original panic hook
+  panic::set_hook(original_hook);
+
+  // Handle the result
   match result {
     Ok(result) => Ok(result),
     Err(err) => {
