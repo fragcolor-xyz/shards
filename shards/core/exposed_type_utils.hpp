@@ -15,7 +15,7 @@ template <> struct RequiredFlags<false> {
 } // namespace detail
 
 // Defines a reference to a required variable
-// Warmup references the variable, cleanup releases the refence
+// Warmup references the variable, cleanup releases the reference
 // use  getRequiredVariable to get the type
 template <typename T, const SHTypeInfo &VariableType, const char *VariableName, bool Required = true>
 struct RequiredContextVariable {
