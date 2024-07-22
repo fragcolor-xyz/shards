@@ -32,6 +32,7 @@ ctrlc = "3.4.0"
 [features]
 default = ["exported"]
 exported = []
+large-min-stack = []
 
 [build-dependencies]
 cbindgen = "0.24.0"

@@ -19,3 +19,6 @@ cbindgen = "0.24.0"
 
 [profile.dev]
 opt-level = 3
+
+[features]
+large-min-stack = ["shards-lang/large-min-stack"]
