@@ -58,12 +58,8 @@ use std::ffi::CStr;
 
 use shards::util::from_raw_parts_allow_null;
 
+const MIN_STACK_SIZE: i64 = shards::core::MIN_STACK_SIZE as i64;
 pub(crate) const EVAL_STACK_SIZE: usize = 2 * 1024 * 1024;
-
-#[cfg(profile = "dev")]
-const MIN_STACK_SIZE: i64 = 2 * 1024 * 1024; // 2 MB for debug builds
-#[cfg(not(profile = "dev"))]
-const MIN_STACK_SIZE: i64 = 128 * 1024; // 128 KB for release builds
 
 pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
