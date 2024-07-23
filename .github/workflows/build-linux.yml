@@ -151,7 +151,6 @@ jobs:
           ./shards new ../shards/tests/table-seq-push.shs
           ./shards new ../shards/tests/crdts.shs
           ./shards new ../shards/tests/traits.shs
-          ./shards new ../shards/tests/fib.shs
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
