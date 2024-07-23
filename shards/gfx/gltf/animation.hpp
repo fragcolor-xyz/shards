@@ -57,19 +57,29 @@ struct Frame {
   Frame &operator=(const Frame &) = default;
 };
 
-inline Value unpack(BuiltinTarget target, const float *data) {
+inline Value unpack(animation::BuiltinTarget target, const float *data, size_t dataSize) {
   switch (target) {
   case animation::BuiltinTarget::Rotation:
+    if (dataSize < 4) {
+      throw std::out_of_range("Insufficient data for float4 (Rotation)");
+    }
     return float4(data);
   case animation::BuiltinTarget::Translation:
   case animation::BuiltinTarget::Scale:
+    if (dataSize < 3) {
+      throw std::out_of_range("Insufficient data for float3 (Translation or Scale)");
+    }
     return float3(data);
   default:
     throw std::logic_error("Invalid animation target to unpack");
   }
 }
 
-inline Value Track::getValue(size_t keyframeIndex) const { return unpack(target, data.data() + keyframeIndex * elementSize); }
+inline Value Track::getValue(size_t keyframeIndex) const {
+  auto offset = keyframeIndex * elementSize;
+  assert(offset + elementSize <= data.size() && "Keyframe index out of range or element size too large");
+  return unpack(target, data.data() + offset, elementSize);
+}
 
 }; // namespace animation
 
