@@ -459,7 +459,10 @@ struct Serialization {
         // read the pointer address of the parent wire
         size_t parentAddress;
         read((uint8_t *)&parentAddress, sizeof(size_t));
-        wire->parent = reinterpret_cast<SHWire *>(parentAddress);
+        auto parentWire = reinterpret_cast<SHWire *>(parentAddress);
+        if (parentWire) {
+          wire->parent = parentWire->shared_from_this();
+        }
       }
       break;
     }

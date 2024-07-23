@@ -71,6 +71,7 @@ template <typename T> struct WireDoppelgangerPool {
       auto index = _pool.size();
       lock.unlock();
 
+      wire->parent = _master; // keep a reference to the master wire
       fresh->wire = wire;
       fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
       if constexpr (WireDataDeps<T>) {
