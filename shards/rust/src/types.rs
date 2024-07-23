@@ -1507,7 +1507,7 @@ impl Serialize for Var {
         s.serialize_element(&table)?;
         s.end()
       }
-      _ => unimplemented!("Unsupported type: {:?}", self.valueType),
+      _ => Err(serde::ser::Error::custom("Unsupported Var type")),
     }
   }
 }
@@ -1711,7 +1711,7 @@ impl<'de> Deserialize<'de> for ClonedVar {
             // just reinterpret the sequence as a ClonedVar! (this is safe)
             return Ok(unsafe { std::mem::transmute(table) });
           }
-          _ => unimplemented!("Unsupported type: {:?}", type_),
+          _ => return Err(serde::de::Error::custom("Unsupported Var type")),
         }
         Ok(v.into())
       }
