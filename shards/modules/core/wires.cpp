@@ -2227,6 +2227,12 @@ struct DoMany : public TryMany {
   }
 
   void cleanup(SHContext *context) {
+    for (auto &cref : _wires) {
+      if (cref) {
+        // ensure calling cleanup explicitly as stop might not be called fully
+        cref->wire->cleanup(context);
+      }
+    }
     TryMany::cleanup(context);
     _meshes.clear();
   }
@@ -2256,7 +2262,7 @@ struct DoMany : public TryMany {
           [] {});
     }
 
-    for (int i = oldWiresSize; i < _wires.size(); i++) {
+    for (size_t i = oldWiresSize; i < _wires.size(); i++) {
       auto &cref = _wires[i];
       cref->wire->warmup(context); // have to run this outside or:
       // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.
