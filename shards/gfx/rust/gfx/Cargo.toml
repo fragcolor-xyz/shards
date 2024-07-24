@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["rlib", "staticlib"]
 
 [features]
 default = []
@@ -27,7 +27,7 @@ naga = { path = "../wgpu/naga" }
 profiling = { path = "../profiling" }
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 
-[patch."https://github.com/gfx-rs/naga"]
+[patch."https://github.com/gfx-rs/naga"] 
 naga = { path = "../wgpu/naga" }
 
 [patch."https://github.com/gfx-rs/wgpu"]

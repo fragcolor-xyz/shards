@@ -2146,6 +2146,8 @@ struct DoMany : public TryMany {
     _meshes.clear();
   }
 
+  std::vector<ManyWire *> _toWarmup;
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
     // Compute required size

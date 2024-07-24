@@ -51,9 +51,9 @@ else()
   list(APPEND GFX_SOURCES window.cpp)
 endif()
 
-add_library(gfx ${GFX_SOURCES})
+add_library(gfx-core-obj OBJECT ${GFX_SOURCES})
 
-target_bundle_files(gfx 
+target_bundle_files(gfx-core-obj 
   PREFIX bundled
   NAMESPACE bundled
   FILES 
@@ -70,16 +70,16 @@ set_source_files_properties(
   COMPILE_FLAGS -O3
   SKIP_PRECOMPILE_HEADERS ON)
 
-target_compile_features(gfx PUBLIC cxx_std_20)
+target_compile_features(gfx-core-obj PUBLIC cxx_std_20)
 
-target_include_directories(gfx
+target_include_directories(gfx-core-obj
   PUBLIC
   ${SHARDS_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(gfx
+target_link_libraries(gfx-core-obj
   tinygltf draco-wrapper
   magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container Boost::tti
@@ -87,8 +87,8 @@ target_link_libraries(gfx
   shards-logging
   shards-fast-string
 )
-target_precompile_headers(gfx PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
-target_link_libraries(gfx Tracy::TracyClient)
+target_precompile_headers(gfx-core-obj PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+target_link_libraries(gfx-core-obj Tracy::TracyClient)
 
 if(HAVE_THREADS)
   set(GFX_THREADING_DEFAULT ON)
@@ -97,17 +97,25 @@ endif()
 option(GFX_THREADING "Support multithreaded rendering" ${GFX_THREADING_DEFAULT})
 
 if(GFX_THREADING)
-  target_compile_definitions(gfx PUBLIC GFX_THREADING_SUPPORT=1)
+  target_compile_definitions(gfx-core-obj PUBLIC GFX_THREADING_SUPPORT=1)
 endif()
 
-target_link_libraries(gfx Taskflow)
+target_link_libraries(gfx-core-obj Taskflow)
 
-add_library(gfx-texture-file texture_file/texture_file.cpp)
-target_link_libraries(gfx-texture-file gfx)
+add_library(gfx-texture-file-obj OBJECT texture_file/texture_file.cpp)
+target_link_libraries(gfx-texture-file-obj gfx-core-obj)
 
-add_library(gfx-gltf gltf/gltf.cpp)
-target_link_libraries(gfx-gltf gfx tinygltf)
-target_link_libraries(gfx-gltf Tracy::TracyClient)
+add_library(gfx-texture-file INTERFACE)
+target_sources(gfx-texture-file PUBLIC $<TARGET_OBJECTS:gfx-texture-file-obj>)
+target_link_libraries(gfx-texture-file INTERFACE gfx-texture-file-obj)
+
+add_library(gfx-gltf-obj OBJECT gltf/gltf.cpp)
+target_link_libraries(gfx-gltf-obj gfx-core-obj tinygltf)
+target_link_libraries(gfx-gltf-obj Tracy::TracyClient)
+
+add_library(gfx-gltf INTERFACE)
+target_sources(gfx-gltf PUBLIC $<TARGET_OBJECTS:gfx-gltf-obj>)
+target_link_libraries(gfx-gltf INTERFACE gfx-gltf-obj)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 
@@ -116,31 +124,48 @@ if(NOT EMSCRIPTEN AND(CMAKE_BUILD_TYPE MATCHES Debug))
 endif()
 
 if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
-  target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${SHARDS_DIR}\")
+  target_compile_definitions(gfx-core-obj PUBLIC GFX_DATA_PATH=\"${SHARDS_DIR}\")
 endif()
 
 if(EMSCRIPTEN)
-  target_link_options(gfx PUBLIC "-sUSE_WEBGPU=1")
+  target_link_options(gfx-core-obj PUBLIC "-sUSE_WEBGPU=1")
 
-  em_link_js_library(gfx gfx_wgpu.js)
-  em_link_js_library(gfx gfx_events.js)
+  em_link_js_library(gfx-core-obj gfx_wgpu.js)
+  em_link_js_library(gfx-core-obj gfx_events.js)
 
-  target_include_directories(gfx PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
+  target_include_directories(gfx-core-obj PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
 else()
-  target_link_libraries(gfx SDL3-static)
+  target_link_libraries(gfx-core-obj SDL3-static)
 
+  set(HAS_WGPU_NATIVE ON PARENT_SCOPE)
   set(HAS_WGPU_NATIVE ON)
-  target_compile_definitions(gfx PUBLIC SHARDS_GFX_SDL=1)
+  target_compile_definitions(gfx-core-obj PUBLIC SHARDS_GFX_SDL=1)
 endif()
 
 if(ANDROID)
-  target_link_libraries(gfx android OpenSLES)
+  target_link_libraries(gfx-core-obj android OpenSLES)
 endif()
+
+add_library(gfx-core INTERFACE)
+target_sources(gfx-core PUBLIC $<TARGET_OBJECTS:gfx-core-obj>)
+target_link_libraries(gfx-core INTERFACE gfx-core-obj)
+
+# Define the gfx library target that combines core and the rust side
+add_library(gfx INTERFACE)
 
 if(HAS_WGPU_NATIVE)
   add_subdirectory(rust)
-  target_link_libraries(gfx gfx-rust)
-  target_sources(gfx PRIVATE ${GFX_BINDINGS_FILE})
+
+  # Loose dependency for bindings header
+  add_dependencies(gfx-core-obj cargo-gfx-rust)
+
+  # Get include paths from gfx-rust and append them to the core library
+  get_target_property(GFX_RUST_INCLUDES gfx-rust INTERFACE_INCLUDE_DIRECTORIES)
+  message(STATUS "gfx-rust includes: ${GFX_RUST_INCLUDES}")
+  target_include_directories(gfx-core-obj PUBLIC ${GFX_RUST_INCLUDES})
+  target_compile_definitions(gfx-core-obj PUBLIC WEBGPU_NATIVE=1)
+else()
+  target_link_libraries(gfx INTERFACE gfx-core)
 endif()
 
 add_subdirectory(tests)

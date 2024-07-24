@@ -19,11 +19,11 @@ public:
     currentTestName = testInfo.name;
     currentTestTags = testInfo.tagsAsString();
   }
-};
+}; 
 
 CATCH_REGISTER_LISTENER(TestRunListener);
 
-namespace gfx {
+namespace gfx { 
 
 bool isTestDebuggingEnabled() {
   static bool enabled = []() { return getEnvFlag("GFX_TESTS_DEBUG"); }();

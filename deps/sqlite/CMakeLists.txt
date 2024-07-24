@@ -58,16 +58,21 @@ if(WITH_SQLITE_VEC)
   endif()
 endif()
 
-# Create CR-SQLite extension library
-add_library(crsqlite-extension STATIC
+# Create CR-SQLite extension object library
+add_library(crsqlite-extension-obj OBJECT
   cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/changes-vtab.c
   cr-sqlite/core/src/ext-data.c
 )
-target_link_libraries(crsqlite-extension PUBLIC sqlite-static crsql_bundle-rust)
+target_link_libraries(crsqlite-extension-obj PUBLIC sqlite-static)
 if(WITH_SQLITE_VEC)
-  target_link_libraries(crsqlite-extension PUBLIC sqlite-vec)
-  target_compile_definitions(crsqlite-extension PUBLIC WITH_SQLITE_VEC)
+  target_link_libraries(crsqlite-extension-obj PUBLIC sqlite-vec)
+  target_compile_definitions(crsqlite-extension-obj PUBLIC WITH_SQLITE_VEC)
 endif()
-target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
-target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+target_compile_definitions(crsqlite-extension-obj PUBLIC ${SQLITE_DEFINES})
+target_include_directories(crsqlite-extension-obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+
+# Create interface library for CR-SQLite extension
+add_library(crsqlite-extension INTERFACE)
+target_sources(crsqlite-extension INTERFACE $<TARGET_OBJECTS:crsqlite-extension-obj>)
+target_link_libraries(crsqlite-extension INTERFACE crsqlite-extension-obj)
