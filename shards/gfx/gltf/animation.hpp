@@ -3,6 +3,7 @@
 
 #include "linalg.h"
 #include <functional>
+#include <shards/core/assert.hpp>
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <optional>
 #include <unordered_map>
@@ -17,13 +18,14 @@ enum class BuiltinTarget {
   Translation,
   Rotation,
   Scale,
+  None,
 };
 
 using Value = std::variant<float3, float4>;
 
 struct Track {
   MeshTreeDrawable::Ptr::weak_type targetNode;
-  BuiltinTarget target;
+  BuiltinTarget target = BuiltinTarget::None;
 
   std::vector<float> times;
   std::vector<float> data;
@@ -58,17 +60,12 @@ struct Frame {
 };
 
 inline Value unpack(animation::BuiltinTarget target, const float *data, size_t dataSize) {
+  // The data format is checked in the glTF loader when assigning target, so no need to check data size here
   switch (target) {
   case animation::BuiltinTarget::Rotation:
-    if (dataSize < 4) {
-      throw std::out_of_range("Insufficient data for float4 (Rotation)");
-    }
     return float4(data);
   case animation::BuiltinTarget::Translation:
   case animation::BuiltinTarget::Scale:
-    if (dataSize < 3) {
-      throw std::out_of_range("Insufficient data for float3 (Translation or Scale)");
-    }
     return float3(data);
   default:
     throw std::logic_error("Invalid animation target to unpack");
@@ -77,7 +74,7 @@ inline Value unpack(animation::BuiltinTarget target, const float *data, size_t d
 
 inline Value Track::getValue(size_t keyframeIndex) const {
   auto offset = keyframeIndex * elementSize;
-  assert(offset + elementSize <= data.size() && "Keyframe index out of range or element size too large");
+  shassert(offset + elementSize <= data.size() && "Keyframe index out of range or element size too large");
   return unpack(target, data.data() + offset, elementSize);
 }
 

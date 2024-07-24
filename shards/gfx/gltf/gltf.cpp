@@ -609,7 +609,9 @@ struct Loader {
       auto &animation = animations.emplace(gltfAnimation.name, Animation()).first->second;
 
       for (auto &gltfChannel : gltfAnimation.channels) {
-        animation.tracks.emplace_back(loadAnimationTrack(gltfAnimation, gltfChannel));
+        auto track = loadAnimationTrack(gltfAnimation, gltfChannel);
+        if(track.target != animation::BuiltinTarget::None)
+          animation.tracks.emplace_back(std::move(track));
       }
     }
   }
