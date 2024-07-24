@@ -2231,8 +2231,6 @@ struct DoMany : public TryMany {
     _meshes.clear();
   }
 
-  std::vector<ManyWire *> _toWarmup;
-
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
     // Compute required size
@@ -2245,25 +2243,21 @@ struct DoMany : public TryMany {
     _outputs.resize(capacity);
     _wires.resize(capacity);
 
-    if (oldWiresSize != _wires.size()) {
-      _toWarmup.clear();
+    if (_wires.size() > oldWiresSize) {
       maybeAwait(
           context,
           [&, this]() {
-            for (uint32_t i = 0; i < capacity; i++) {
+            for (uint32_t i = oldWiresSize; i < _wires.size(); i++) {
               auto &cref = _wires[i];
-              if (!cref) {
-                // compose on a worker thread!
-                auto &cref = _wires[i];
-                cref = _pool->acquire(_composer, _meshes[0].get());
-                _toWarmup.push_back(cref);
-              }
+              // compose on a worker thread!
+              cref = _pool->acquire(_composer, _meshes[0].get());
             }
           },
           [] {});
     }
 
-    for (auto cref : _toWarmup) {
+    for (int i = oldWiresSize; i < _wires.size(); i++) {
+      auto &cref = _wires[i];
       cref->wire->warmup(context); // have to run this outside or:
       // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.
     }
