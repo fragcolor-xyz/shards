@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use shards::shard::Shard;
 use shards::shlog_error;
 use shards::types::ClonedVar;

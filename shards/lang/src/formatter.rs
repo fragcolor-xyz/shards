@@ -1,7 +1,7 @@
 use std::{
   fs::{self, File},
   io::Read,
-  path::Path, str::CharIndices,
+  path::Path,
 };
 
 use crate::rule_visitor::RuleVisitor;
@@ -163,7 +163,7 @@ impl<'a> FormatterVisitor<'a> {
 
   fn interpolate(&mut self, new_pair: &Pair<Rule>) {
     self.interpolate_at_pos(new_pair.as_span().start());
-  } 
+  }
 
   // Will interpolate any user-defined comments and newline styling
   // up until the given position

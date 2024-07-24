@@ -1,4 +1,3 @@
-use crate::ast::Sequence;
 use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};

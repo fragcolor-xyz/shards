@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::hash_var;
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
@@ -18,11 +17,9 @@ use shards::types::Var;
 use sha2::{Digest as Sha2Digest, Sha256, Sha512};
 
 use std::convert::TryInto;
-use std::ffi::c_void;
 use std::mem::transmute;
 
 use byteorder::{ByteOrder, LittleEndian};
-use std::hash::Hasher;
 use tiny_keccak::{Hasher as KeccakHasher, Keccak, Sha3};
 
 #[inline(always)]

@@ -10,7 +10,6 @@ use core::convert::TryInto;
 
 use nanoid::nanoid;
 use shards::cstr;
-use shards::shlog_debug;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -24,7 +23,6 @@ use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use shards::SHWireRef;
 use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
