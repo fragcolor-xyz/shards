@@ -1,9 +1,10 @@
-#ifndef D091EB18_DFAE_45E4_B017_6040A9F8C103
-#define D091EB18_DFAE_45E4_B017_6040A9F8C103
+#ifndef F526B4B0_47CF_4C94_8389_2012F9C56257
+#define F526B4B0_47CF_4C94_8389_2012F9C56257
 
 #include <shards/core/pmr/wrapper.hpp>
-#include "moving_average.hpp"
-#include "math.hpp"
+#include <tracy/Wrapper.hpp>
+#include "../../gfx/moving_average.hpp"
+#include "../../gfx/math.hpp"
 
 #include <thread>
 #include <optional>
@@ -16,16 +17,19 @@
 #define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 0
 #endif
 
-namespace gfx::detail {
+namespace shards::pmr {
 
 // An implementation of memory_resource
 // This behaves like monotonic_buffer_resource
 //  with the addition that it updates the preallocated memory block based on previous peak usage
-struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
+struct TempAllocator : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
-  static constexpr size_t MinPreallocatedSize = Megabyte * 8;
+  static constexpr size_t Kilobyte = 1 << 10;
+  static constexpr size_t MinPreallocatedSize = Kilobyte * 8;
+  static constexpr size_t Headroom = Kilobyte * 4;
+  static constexpr size_t Alignment = MinPreallocatedSize;
 
-  MovingAverage<size_t> maxUsage{32};
+  gfx::MovingAverage<size_t> maxUsage{32};
   size_t totalRequestedBytes{};
   std::vector<uint8_t> preallocatedBlock;
 
@@ -37,19 +41,23 @@ struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
   bool autoBindToThread = false;
 #endif
 
-  MonotonicGrowableAllocator() { reset(); }
-  MonotonicGrowableAllocator(MonotonicGrowableAllocator &&) {}
+  TempAllocator(size_t minSize = MinPreallocatedSize) {
+    preallocatedBlock.resize(minSize);
+    reset();
+  }
+  TempAllocator(TempAllocator &&) {}
 
   void reset() {
+    ZoneScoped;
+
     maxUsage.add(totalRequestedBytes);
     totalRequestedBytes = 0;
     updatePreallocatedMemoryBlock();
   }
 
   void updatePreallocatedMemoryBlock() {
-    size_t peakUsage = std::max(MinPreallocatedSize, maxUsage.getMax());
-    // Add +1MB headroom and align
-    size_t targetSize = alignTo<Megabyte>(peakUsage + Megabyte * 1);
+    size_t peakUsage = maxUsage.getMax();
+    size_t targetSize = gfx::alignTo<Alignment>(peakUsage + Headroom);
     if (targetSize > preallocatedBlock.size()) {
       preallocatedBlock.resize(targetSize);
     }
@@ -88,38 +96,6 @@ struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
 
   __attribute__((always_inline)) bool do_is_equal(const memory_resource &_That) const noexcept override { return &_That == this; }
 };
+} // namespace shards::pmr
 
-// Thread-local data for graphics workers
-struct WorkerMemory {
-  using Allocator = shards::pmr::PolymorphicAllocator<>;
-
-private:
-  MonotonicGrowableAllocator memoryResource;
-  Allocator allocator;
-
-public:
-  WorkerMemory() : allocator(&memoryResource) { initCommon(); }
-  WorkerMemory(WorkerMemory &&) : allocator(&memoryResource) { initCommon(); }
-
-  void reset() { memoryResource.reset(); }
-
-  template <typename T> operator shards::pmr::PolymorphicAllocator<T> &() {
-    return reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
-  }
-  template <typename T> operator const shards::pmr::PolymorphicAllocator<T> &() {
-    return reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
-  }
-  Allocator *operator->() { return &allocator; }
-
-  const MonotonicGrowableAllocator &getMemoryResource() const { return memoryResource; }
-
-private:
-  void initCommon() {
-#if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
-    memoryResource.autoBindToThread = true;
-#endif
-  }
-};
-} // namespace gfx::detail
-
-#endif /* D091EB18_DFAE_45E4_B017_6040A9F8C103 */
+#endif /* F526B4B0_47CF_4C94_8389_2012F9C56257 */

@@ -1556,6 +1556,8 @@ struct ParallelBase : public CapturingSpawners {
 
     std::atomic_bool anySuccess = false;
 
+    auto poolBatch = _pool->acquireBatch(len);
+
     // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
     tf::Semaphore semaphore(std::max<size_t>(1, _threads));
     flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
@@ -1575,7 +1577,7 @@ struct ParallelBase : public CapturingSpawners {
 
       ManyWire *cref;
       try {
-        cref = _pool->acquire(_composer, mesh.get());
+        cref = _pool->acquireFromBatch(poolBatch, idx, _composer, mesh.get());
       } catch (std::exception &e) {
         SHLOG_ERROR("Failed to acquire wire: {}", e.what());
         return;
@@ -2107,13 +2109,33 @@ struct StepMany : public TryMany {
 };
 
 struct DoMany : public TryMany {
+  bool _composeSync{};
+
   void setup() { _threads = 0; } // we don't use threads
 
+  static inline Types BoolTypes{CoreInfo::BoolType};
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to run many times sequentially."), IntoWire::RunnableTypes},
+      {"ComposeSync", SHCCSTR("Compose new wires synchronously."), BoolTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &value) {
+    if (index == 1) {
+      _composeSync = value.payload.boolValue;
+    } else {
+      TryMany::setParam(index, value);
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index == 1) {
+      return Var(_composeSync);
+    } else {
+      return TryMany::getParam(index);
+    }
+  }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _composer.onWorkerThread = false;
@@ -2178,16 +2200,26 @@ struct DoMany : public TryMany {
     _wires.resize(capacity);
 
     if (_wires.size() > oldWiresSize) {
-      maybeAwait(
-          context,
-          [&, this]() {
-            for (uint32_t i = oldWiresSize; i < _wires.size(); i++) {
-              auto &cref = _wires[i];
-              // compose on a worker thread!
-              cref = _pool->acquire(_composer, _meshes[0].get());
-            }
-          },
-          [] {});
+      int numToAcquire = _wires.size() - oldWiresSize;
+      auto batch = _pool->acquireBatch(numToAcquire);
+      if (_composeSync) {
+        for (uint32_t i = 0; i < numToAcquire; i++) {
+          auto &cref = _wires[i + oldWiresSize];
+          // compose on a worker thread!
+          cref = _pool->acquireFromBatch(batch, i, _composer, _meshes[0].get());
+        }
+      } else {
+        maybeAwait(
+            context,
+            [&, this]() {
+              for (uint32_t i = 0; i < numToAcquire; i++) {
+                auto &cref = _wires[i + oldWiresSize];
+                // compose on a worker thread!
+                cref = _pool->acquireFromBatch(batch, i, _composer, _meshes[0].get());
+              }
+            },
+            [] {});
+      }
     }
 
     for (size_t i = oldWiresSize; i < _wires.size(); i++) {

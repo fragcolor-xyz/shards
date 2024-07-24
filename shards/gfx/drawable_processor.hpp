@@ -6,8 +6,8 @@
 #include "renderer_types.hpp"
 #include "transient_ptr.hpp"
 #include <taskflow/taskflow.hpp>
-#include "pmr/wrapper.hpp"
-#include "pmr/vector.hpp"
+#include <shards/core/pmr/wrapper.hpp>
+#include <shards/core/pmr/vector.hpp>
 #include <memory>
 
 namespace gfx::detail {

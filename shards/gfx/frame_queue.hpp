@@ -5,7 +5,7 @@
 #include "enums.hpp"
 #include "fwd.hpp"
 #include "pipeline_step.hpp"
-#include "pmr/vector.hpp"
+#include <shards/core/pmr/vector.hpp>
 #include "renderer.hpp"
 #include "render_graph.hpp"
 #include "render_graph_builder.hpp"

@@ -1,7 +1,7 @@
 #ifndef DB3B2F03_117E_49DC_93AA_28A94118C09D
 #define DB3B2F03_117E_49DC_93AA_28A94118C09D
 
-#include "pmr/vector.hpp"
+#include <shards/core/pmr/vector.hpp>
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "sampler_cache.hpp"

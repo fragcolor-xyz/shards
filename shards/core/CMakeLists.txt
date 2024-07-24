@@ -9,6 +9,7 @@ set(core_SOURCES
   type_info.cpp
   hash.cpp
   taskflow.cpp
+  pmr/shared_temp_allocator.cpp
 )
 
 if(EMSCRIPTEN)

@@ -3,6 +3,9 @@
 
 #include "runtime.hpp"
 #include "serialization.hpp"
+#include "pmr/shared_temp_allocator.hpp"
+#include <tracy/Wrapper.hpp>
+#include <tracy/TracyC.h>
 #include <type_traits>
 #include <concepts>
 #include <deque>
@@ -24,6 +27,20 @@ concept WireDataDeps = requires(TData data) {
 };
 
 template <typename T> struct WireDoppelgangerPool {
+  struct BatchOperation {
+    pmr::SharedTempAllocator temp;
+    struct Item {
+      T *poolItemPtr;
+      int newItemIndex;
+      Item(T *poolItemPtr, int newItemIndex) : poolItemPtr(poolItemPtr), newItemIndex(newItemIndex) {}
+    };
+    pmr::vector<Item> items;
+
+    BatchOperation() : items(temp.getAllocator()) {};
+    BatchOperation(BatchOperation &&) = default;
+    BatchOperation &operator=(BatchOperation &&) = default;
+  };
+
   WireDoppelgangerPool(SHWireRef master) {
     _master = SHWire::sharedFromRef(master);
 
@@ -31,7 +48,8 @@ template <typename T> struct WireDoppelgangerPool {
     auto vwire = shards::Var(master);
     std::stringstream stream;
     Writer w(stream);
-    Serialization serializer{true};
+    pmr::SharedTempAllocator tempAlloc;
+    Serialization serializer{tempAlloc.getAllocator(), true};
     serializer.serialize(vwire, w); // need to serialize the wire template pointers in this case!
     _wireStr = stream.str();
   }
@@ -41,11 +59,69 @@ template <typename T> struct WireDoppelgangerPool {
   void stopAll()
     requires WireData<T>
   {
-    std::unique_lock<std::mutex> _l(_poolMutex);
+    std::unique_lock<LockableBase(std::mutex)> _l(_poolMutex);
     for (auto &item : _pool) {
       stop(item->wire.get());
       _avail.emplace(item.get());
     }
+  }
+
+  BatchOperation acquireBatch(size_t numWires) {
+    ZoneScoped;
+
+    BatchOperation operation;
+    std::unique_lock<LockableBase(std::mutex)> lock(_poolMutex);
+    operation.items.reserve(numWires);
+    for (size_t i = 0; i < numWires; ++i) {
+      if (_avail.size() == 0) {
+        int newIdx = (int)_pool.size();
+        auto &itemPtr = _pool.emplace_back(std::make_shared<T>());
+        operation.items.emplace_back(itemPtr.get(), newIdx);
+      } else {
+        auto res = _avail.extract(_avail.begin()).value();
+        operation.items.emplace_back(res, -1);
+      }
+    }
+
+    return operation;
+  }
+
+  template <class Composer, typename Anything = void>
+  T *acquireFromBatch(BatchOperation &batch, size_t index, Composer &composer, Anything *anything = nullptr)
+    requires WireData<T>
+  {
+    shassert(index < batch.items.size() && "Index out of bounds");
+    auto &item = batch.items[index];
+    auto &poolItem = *item.poolItemPtr;
+
+    pmr::SharedTempAllocator tempAlloc;
+    if (!poolItem.wire) {
+      Serialization serializer{tempAlloc.getAllocator(), true};
+      std::shared_ptr<SHWire> wire;
+      {
+        ZoneScopedN("Deserialize");
+        std::stringstream stream(_wireStr);
+        Reader r(stream);
+        SHVar vwire{};
+        serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+        destroyVar(vwire);
+      }
+
+      wire->parent = _master; // keep a reference to the master wire
+      poolItem.wire = wire;
+      poolItem.wire->name = fmt::format("{}-{}", wire->name, item.newItemIndex);
+      if constexpr (WireDataDeps<T>) {
+        poolItem.wires.clear();
+        for (auto &w : serializer.wires) {
+          poolItem.wires.push_back(SHWire::sharedFromRef(w.second));
+        }
+      }
+    }
+
+    ZoneScopedN("Compose");
+    composer.compose(poolItem.wire.get(), anything, false);
+    return &poolItem;
   }
 
   template <class Composer, typename Anything = void>
@@ -54,50 +130,60 @@ template <typename T> struct WireDoppelgangerPool {
   {
     ZoneScoped;
 
-    std::unique_lock<std::mutex> lock(_poolMutex);
-    if (_avail.size() == 0) {
-      lock.unlock();
+    auto batch = acquireBatch(1);
+    return acquireFromBatch(batch, 0, composer, anything);
 
-      Serialization serializer{true};
-      std::stringstream stream(_wireStr);
-      Reader r(stream);
-      SHVar vwire{};
-      serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
-      auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      destroyVar(vwire);
+    // pmr::SharedTempAllocator tempAlloc;
+    // std::unique_lock<LockableBase(std::mutex)> lock(_poolMutex);
+    // LockMark(_poolMutex);
+    // if (_avail.size() == 0) {
+    //   lock.unlock();
 
-      lock.lock();
-      auto &fresh = _pool.emplace_back(std::make_shared<T>());
-      auto index = _pool.size();
-      lock.unlock();
+    //   Serialization serializer{tempAlloc.getAllocator(), true};
+    //   std::shared_ptr<SHWire> wire;
+    //   {
+    //     ZoneScopedN("Deserialize");
+    //     std::stringstream stream(_wireStr);
+    //     Reader r(stream);
+    //     SHVar vwire{};
+    //     serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
+    //     wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+    //     destroyVar(vwire);
+    //   }
 
-      wire->parent = _master; // keep a reference to the master wire
-      fresh->wire = wire;
-      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
-      if constexpr (WireDataDeps<T>) {
-        fresh->wires.clear();
-        for (auto &w : serializer.wires) {
-          fresh->wires.push_back(SHWire::sharedFromRef(w.second));
-        }
-      }
-      composer.compose(wire.get(), anything, false);
+    //   lock.lock();
+    //   auto &fresh = _pool.emplace_back(std::make_shared<T>());
+    //   auto index = _pool.size();
+    //   lock.unlock();
 
-      return fresh.get();
-    } else {
-      auto res = _avail.extract(_avail.begin());
-      lock.unlock();
+    //   wire->parent = _master; // keep a reference to the master wire
+    //   fresh->wire = wire;
+    //   fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
+    //   if constexpr (WireDataDeps<T>) {
+    //     fresh->wires.clear();
+    //     for (auto &w : serializer.wires) {
+    //       fresh->wires.push_back(SHWire::sharedFromRef(w.second));
+    //     }
+    //   }
+    //   composer.compose(wire.get(), anything, false);
 
-      auto &value = res.value();
-      composer.compose(value->wire.get(), anything, true);
+    //   return fresh.get();
+    // } else {
+    //   ZoneScopedN("ComposeRecycle");
+    //   auto res = _avail.extract(_avail.begin());
+    //   lock.unlock();
 
-      return value;
-    }
+    //   auto &value = res.value();
+    //   composer.compose(value->wire.get(), anything, true);
+
+    //   return value;
+    // }
   }
 
   void release(T *wire) {
     shassert(wire != nullptr && "Releasing a null wire?");
 
-    std::unique_lock<std::mutex> _l(_poolMutex);
+    std::unique_lock<LockableBase(std::mutex)> _l(_poolMutex);
 
     _avail.emplace(wire);
   }
@@ -122,7 +208,7 @@ private:
   // keep our pool in a deque in order to keep them alive
   // so users don't have to worry about lifetime
   // just release when possible
-  std::mutex _poolMutex;
+  TracyLockable(std::mutex, _poolMutex);
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<T *> _avail;
   std::string _wireStr;

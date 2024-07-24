@@ -9,8 +9,8 @@
 #include "geom.hpp"
 #include "mesh_utils.hpp"
 #include "transient_ptr.hpp"
-#include "pmr/unordered_map.hpp"
-#include "pmr/vector.hpp"
+#include <shards/core/pmr/unordered_map.hpp>
+#include <shards/core/pmr/vector.hpp>
 #include "renderer_storage.hpp"
 #include "queue_data.hpp"
 #include "debug_visualize.hpp"

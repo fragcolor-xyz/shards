@@ -933,8 +933,11 @@ struct ClientShard : public NetworkBase {
     NetworkBase::compose(data);
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), Types::Peer);
-    shards::arrayPush(data.shared, endpointInfo);
-    _blks.compose(data);
+    ExposedInfo shared{data.shared};
+    shared.push_back(endpointInfo);
+    SHInstanceData innerData{data};
+    innerData.shared = (SHExposedTypesInfo)shared;
+    _blks.compose(innerData);
     return PeerType;
   }
 
