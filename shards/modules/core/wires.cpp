@@ -2237,27 +2237,38 @@ struct DoMany : public TryMany {
     // Compute required size
     size_t capacity = std::max(MinWiresAdded, len);
 
+    int oldWiresSize = _wires.size();
+
     // Only ever grow
     capacity = std::max(_wires.size(), capacity);
 
     _outputs.resize(capacity);
     _wires.resize(capacity);
 
+    if (oldWiresSize != _wires.size()) {
+      maybeAwait(
+          context,
+          [&, this]() {
+            for (uint32_t i = 0; i < len; i++) {
+              auto &cref = _wires[i];
+              if (!cref) {
+                // compose on a worker thread!
+                auto &cref = _wires[i];
+                cref = _pool->acquire(_composer, _meshes[0].get());
+              }
+            }
+          },
+          [] {});
+    }
+
+    for (int i = oldWiresSize; i < _wires.size(); i++) {
+      auto &cref = _wires[i];
+      cref->wire->warmup(context); // have to run this outside or:
+      // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.
+    }
+
     for (uint32_t i = 0; i < len; i++) {
       auto &cref = _wires[i];
-      if (!cref) {
-        // compose on a worker thread!
-        maybeAwait(
-            context,
-            [this, i]() {
-              auto &cref = _wires[i];
-              cref = _pool->acquire(_composer, _meshes[0].get());
-            },
-            [] {});
-        cref->wire->warmup(context); // have to run this outside or:
-        // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.
-      }
-
       const SHVar &inputElement = input.payload.seqValue.elements[i];
 
       // Run within the root flow
