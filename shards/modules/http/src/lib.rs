@@ -82,7 +82,7 @@ lazy_static! {
     (cstr!("URL"), shccstr!("The url to request to."), URL_TYPES).into(),
     (
       cstr!("Headers"),
-      shccstr!("The headers to use for the request."),
+      shccstr!("If a table of headers is provided, it will be used as is; if no headers are provided, a Content-Type header will be derived based on the input type."),
       HEADERS_TYPES
     )
       .into(),
@@ -424,6 +424,7 @@ macro_rules! get_like {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
+
         let headers = self.rb.headers.get();
         if !headers.is_none() {
           let headers_table: Table = headers.try_into()?;
@@ -577,22 +578,17 @@ macro_rules! post_like {
       ) -> Result<Var, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
+
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
+
         let headers = self.rb.headers.get();
-        let has_content_type = if !headers.is_none() {
-          let headers_table = headers.as_table()?;
-          let content_type_str = Var::ephemeral_string("content-type");
-          let content_type = headers_table.get(content_type_str);
-          content_type.is_some()
-        } else {
-          false
-        };
+
         if !input.is_none() {
           // .form ( kv table )
           let input_table: Result<Table, &'static str> = input.try_into();
           if let Ok(input_table) = input_table {
             // default to this in this case but users can edit under
-            if !has_content_type {
+            if headers.is_none() {
               request = request.header("content-type", "application/x-www-form-urlencoded");
             }
 
@@ -608,7 +604,7 @@ macro_rules! post_like {
             let input_string: Result<&str, &'static str> = input.try_into();
             if let Ok(input_string) = input_string {
               // default to this in this case but users can edit under
-              if !has_content_type {
+              if headers.is_none() {
                 request = request.header("content-type", "application/json");
               }
 
@@ -618,7 +614,7 @@ macro_rules! post_like {
               let input_bytes: Result<&[u8], &'static str> = input.try_into();
               if let Ok(input_bytes) = input_bytes {
                 // default to this in this case but users can edit under
-                if !has_content_type {
+                if headers.is_none() {
                   request = request.header("content-type", "application/octet-stream");
                 }
 
