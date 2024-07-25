@@ -16,6 +16,7 @@
 
 #include "pmr/wrapper.hpp"
 #include "pmr/unordered_map.hpp"
+#include "pmr/shared_temp_allocator.hpp"
 #include "shards_macros.hpp"
 #include "foundation.hpp"
 #include "inline.hpp"
@@ -486,16 +487,11 @@ struct RuntimeCallbacks {
 };
 
 struct CompositionContext {
-  shards::pmr::memory_resource *tempAllocator;
+  pmr::SharedTempAllocator tempAllocator;
   shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
   std::vector<std::string> errorStack;
 
-  ~CompositionContext();
-  static CompositionContext *newPooled();
-  void destroy();
-
-private:
-  CompositionContext(shards::pmr::memory_resource *allocator);
+  CompositionContext();
 };
 }; // namespace shards
 
@@ -511,9 +507,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   ~SHMesh() { terminate(); }
 
   void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-    shards::CompositionContext *privateContext = shards::CompositionContext::newPooled();
-    DEFER({ privateContext->destroy(); });
-    data.privateContext = privateContext;
+    shards::CompositionContext privateContext;
+    data.privateContext = &privateContext;
     try {
       auto validation = shards::composeWire(wire.get(), data);
       shards::arrayFree(validation.exposedInfo);
@@ -521,9 +516,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     } catch (const std::exception &e) {
       // build a reverse stack error log from privateContext.errorStack
       std::string errors;
-      for (auto it = privateContext->errorStack.rbegin(); it != privateContext->errorStack.rend(); ++it) {
+      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
         errors += *it;
-        if (++it == privateContext->errorStack.rend())
+        if (++it == privateContext.errorStack.rend())
           break;
         errors += "\n";
       }

@@ -800,7 +800,7 @@ struct InternalCompositionContext {
 };
 
 // Uncomment for more detailed profiling
-// #define SH_EXTENDED_COMPOSE_PROFILING 1
+#define SH_EXTENDED_COMPOSE_PROFILING 1
 
 void validateConnection(InternalCompositionContext &ctx) {
 #if SH_EXTENDED_COMPOSE_PROFILING
@@ -842,7 +842,7 @@ void validateConnection(InternalCompositionContext &ctx) {
 #if SH_EXTENDED_COMPOSE_PROFILING
       ZoneScopedN("PrepareCompose");
 #endif
-      pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator};
+      pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
       sharedStorage.reserve(ctx.exposed.size() + ctx.inherited.size());
 
       data.shard = ctx.bottom;
@@ -949,7 +949,7 @@ void validateConnection(InternalCompositionContext &ctx) {
   // Finally do checks on what we consume
   auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 
-  pmr::unordered_map<std::string, SHExposedTypeInfo> requiredVars{ctx.sharedContext->tempAllocator};
+  pmr::unordered_map<std::string, SHExposedTypeInfo> requiredVars{ctx.sharedContext->tempAllocator.getAllocator()};
   for (uint32_t i = 0; requiredVar.len > i; i++) {
     auto &required_param = requiredVar.elements[i];
     std::string name(required_param.name);
@@ -1020,8 +1020,6 @@ struct ComposeMemory {
 
   static thread_local std::optional<ComposeMemory> allocator;
   static ComposeMemory &instance() {
-    // static ComposeMemory instance;
-    // return instance;
     if (!allocator) {
       return allocator.emplace();
     }
@@ -1041,25 +1039,8 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
-CompositionContext::CompositionContext(shards::pmr::memory_resource *allocator) {
-  auto &tempMem = ComposeMemory::instance();
-  tempMem.incRef();
-  tempAllocator = allocator;
+CompositionContext::CompositionContext() : visitedWires(tempAllocator.getAllocator()) {
 }
-CompositionContext::~CompositionContext() {
-  auto &tempMem = ComposeMemory::instance();
-  tempMem.decRef();
-}
-CompositionContext *CompositionContext::newPooled() {
-  auto &tempMem = ComposeMemory::instance();
-  tempMem.incRef();
-  auto allocator = tempMem.instance().tempAllocator.baseAllocatorPtr;
-  void *mem = allocator->allocate(sizeof(CompositionContext), alignof(CompositionContext));
-  auto result = new (mem) CompositionContext{allocator};
-  tempMem.decRef();
-  return result;
-}
-void CompositionContext::destroy() { std::destroy_at(this); }
 
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   ZoneScoped;
@@ -1067,17 +1048,12 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
-  CompositionContext *ownedContext{};
+  std::optional<CompositionContext> ownedContext{};
   if (!data.privateContext) {
     ZoneScopedN("new CompositionContext");
-    ownedContext = CompositionContext::newPooled();
-    data.privateContext = ownedContext;
+    ownedContext.emplace();
+    data.privateContext = &ownedContext.value();
   }
-  DEFER({
-    if (ownedContext) {
-      ownedContext->destroy();
-    }
-  });
 
   CompositionContext *context{reinterpret_cast<CompositionContext *>(data.privateContext)};
   InternalCompositionContext ctx{context->tempAllocator};

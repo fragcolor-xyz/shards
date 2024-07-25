@@ -22,7 +22,7 @@ namespace shards::pmr {
 // An implementation of memory_resource
 // This behaves like monotonic_buffer_resource
 //  with the addition that it updates the preallocated memory block based on previous peak usage
-struct TempAllocator : public shards::pmr::memory_resource {
+struct TempAllocator final : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
   static constexpr size_t Kilobyte = 1 << 10;
   static constexpr size_t MinPreallocatedSize = Kilobyte * 8;
@@ -33,14 +33,15 @@ struct TempAllocator : public shards::pmr::memory_resource {
   size_t totalRequestedBytes{};
   std::vector<uint8_t> preallocatedBlock;
 
+private:
   std::optional<shards::pmr::monotonic_buffer_resource> baseAllocator;
-  shards::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
 
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
   std::optional<std::thread::id> boundThread;
   bool autoBindToThread = false;
 #endif
 
+public:
   TempAllocator(size_t minSize = MinPreallocatedSize) {
     preallocatedBlock.resize(minSize);
     reset();
@@ -63,7 +64,6 @@ struct TempAllocator : public shards::pmr::memory_resource {
     }
 
     baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), shards::pmr::new_delete_resource());
-    baseAllocatorPtr = &baseAllocator.value();
   }
 
   void bindToCurrentThread() {
@@ -72,7 +72,8 @@ struct TempAllocator : public shards::pmr::memory_resource {
 #endif
   }
 
-  __attribute__((always_inline)) void *do_allocate(size_t _Bytes, size_t _Align) override {
+  // __attribute__((always_inline)) 
+  void *do_allocate(size_t _Bytes, size_t _Align) override {
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
     // Check for allocations from threads other than the owner of this memory pool
     // since these allocators are not thread safe and meant to be used from a single thread
@@ -86,8 +87,14 @@ struct TempAllocator : public shards::pmr::memory_resource {
     }
 #endif
 
-    totalRequestedBytes += _Bytes;
-    return baseAllocatorPtr->allocate(_Bytes, _Align);
+    if (_Align > boost::container::pmr::memory_resource::max_align) {
+      totalRequestedBytes += _Bytes + _Align;
+      size_t blk = (size_t)baseAllocator->allocate(_Bytes, boost::container::pmr::memory_resource::max_align);
+      return (void*)gfx::alignTo((size_t)blk, _Align);
+    } else {
+      totalRequestedBytes += _Bytes;
+      return baseAllocator->allocate(_Bytes, _Align);
+    }
   }
 
   __attribute__((always_inline)) void do_deallocate(void *_Ptr, size_t _Bytes, size_t _Align) override {

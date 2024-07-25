@@ -5,11 +5,14 @@
 
 namespace shards::pmr {
 struct SharedTempAllocatorImpl;
+
+// An automatically scoped temporary allocator that is local to the current thread.
+// The memory will be pooled and reused next time this allocator is created.
+// It is ref counted so nested usage is allowed
+// The memory pool is reset upon instantiation if there were no previous reference
 struct SharedTempAllocator {
 private:
   SharedTempAllocatorImpl *impl;
-  // shards::pmr::memory_resource *tempAllocator;
-  // int refCount{};
 
 public:
   shards::pmr::memory_resource *getAllocator() const;

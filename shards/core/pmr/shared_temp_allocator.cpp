@@ -9,7 +9,7 @@ static shards::logging::Logger getLogger() {
 
 #define SHARDS_TEMP_ALLOCATOR_TRACE 1
 #if SHARDS_TEMP_ALLOCATOR_TRACE
-#define STA_TRACE(...) SPDLOG_LOGGER_INFO(getLogger(), __VA_ARGS__)
+#define STA_TRACE(...) SPDLOG_LOGGER_TRACE(getLogger(), __VA_ARGS__)
 #else
 #define STA_TRACE(...)
 #endif
@@ -22,13 +22,13 @@ struct SharedTempAllocatorImpl {
   char debugName[64];
 
   SharedTempAllocatorImpl() {
-    STA_TRACE("[{}] Created new", std::this_thread::get_id());
+    STA_TRACE("[{}] Temp allocator created", std::this_thread::get_id());
     fmt::format_to_n((char*)debugName, std::size(debugName), "STA_{}", std::this_thread::get_id());
   }
 
   void incRef() {
     if (refCount == 0) {
-      STA_TRACE("[{}] Reset ({} bytes)", std::this_thread::get_id(), allocator.preallocatedBlock.size());
+      STA_TRACE("[{}] Temp allocator reset ({} bytes)", std::this_thread::get_id(), allocator.preallocatedBlock.size());
       TracyPlot(debugName, (int64_t)allocator.preallocatedBlock.size());
       allocator.reset();
     }
@@ -46,7 +46,7 @@ static std::optional<SharedTempAllocatorImpl> &getLocalInstance() {
   return pool;
 }
 
-shards::pmr::memory_resource *SharedTempAllocator::getAllocator() const { return impl->allocator.baseAllocatorPtr; }
+shards::pmr::memory_resource *SharedTempAllocator::getAllocator() const { return &impl->allocator; }
 SharedTempAllocator::SharedTempAllocator() {
   if (!getLocalInstance()) {
     getLocalInstance().emplace();
