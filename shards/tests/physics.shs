@@ -2,11 +2,13 @@
 @define(ground-thickness 0.5)
 @define(ground-y -4.0)
 @define(trigger-y -10.0)
-@define(obj-count 512)
+@define(obj-count 4)
 
 @define(flags-ground 0x1)
 @define(flags-obj-1 0x2)
 @define(flags-obj-2 0x4)
+
+@define(debug-draw false)
 
 @define(group-ground @i2(@flags-ground #(@flags-obj-1 | Math.Or(@flags-obj-2))))
 @define(group-obj-1 @i2(@flags-obj-1 #(@flags-obj-1 | Math.Or(@flags-ground))))
@@ -19,157 +21,281 @@
   Math.Multiply(scale)
 })
 
-@wire(test-main {
-  Physics.Context = pctx
-  
+@define(ground-common {
   Once({
-    #(
-      Sequence(ids Type: @type([Type::Int]))
-      ForRange(0 @obj-count {
-        >> ids
-      })
-      ids
-    ) >= obj-ids
-    
-    
-    ; define shapes
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Plane) = plane
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = sphere
-    
-    ; ground
+    (
+      @ground-extent | Math.Divide(2.0) = temp
+      @f3(temp @ground-thickness temp)
+    ) | Physics.BoxShape = ground-pshape
     @ground-extent | Math.Negate = ground-extent-neg
     [
       (@f4(@ground-extent 0.0 0.0 0.0))
       (@f4(0.0 0.0 ground-extent-neg 0.0))
       @f4(0.0 1.0 0.0 0.0)
-      (@f4(0.0 @ground-y 0.0 1.0))] | Log("Ground") | GFX.Drawable(Mesh: plane Params: {baseColor: @f4(0.8 0.55 0.95 1.0)}) = ground-drawable
-    
-    ; define some physics shapes
-    @f3(0.5) | Physics.BoxShape = cube-pshape
-    0.5 | Physics.SphereShape = sphere-pshape
-    (
-      @ground-extent | Math.Divide(2.0) = temp
-      @f3(temp @ground-thickness temp)
-    ) | Physics.BoxShape = ground-pshape
-    @f3(1000 @ground-thickness 1000) | Physics.BoxShape = trigger-pshape
-    
-    GFX.DrawQueue >= queue
-    
+      (@f4(0.0 @ground-y 0.0 1.0))] | Log("Ground")
+    GFX.Drawable(Mesh: cube Params: {baseColor: @f4(0.8 0.55 0.95 1.0)}) = ground-drawable
+    @f3(0.0 @ground-y 0.0) >= ground-p
+    @f4(0 0 0 1) >= ground-r
+    Physics.Body(ground-p ground-r
+      Static: true
+      Shape: ground-pshape
+      MotionType: PhysicsMotion::Static
+      Tag: "ground"
+      CollisionGroup: @i2(0x4 0xffffffff)
+    ) = ground-body
+  })
+  ground-drawable | GFX.Draw(queue)
+})
+
+@mesh(root)
+@template(run-base-test [test-code] {
+  @wire(run-test {
+    Physics.Context = pctx
+
+    Once({
+      #(
+        Sequence(ids Type: @type([Type::Int]))
+        ForRange(0 @obj-count {
+          >> ids
+        })
+        ids
+      ) >= obj-ids
+
+      ; define shapes
+      GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
+      GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = sphere
+
+      ; define a view
+      {Position: @f3(50 40 50) Target: @f3(0 0 0)} | Math.LookAt = view-transform
+      GFX.View(View: view-transform) = view
+
+      GFX.DrawQueue(AutoClear: false) >= queue
+    })
+
     ; define rendering features
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-    
-    ; define a view
-    {Position: @f3(50 40 50) Target: @f3(0 0 0)} | Math.LookAt = view-transform
-    GFX.View(View: view-transform) = view
-  })
-  
-  GFX.MainWindow(
-    Title: "Physics" Width: 1280 Height: 720
-    Contents: {
-      Physics.WithContext({
-        ; Physics.KinematicBody(
-        ;   Shapes: ground-pshape
-        ;   Position: (@f3(0.0 @ground-y 0.0))
-        ;   Collision: {
-        ;     Log("Collision with ground")
-        ;   }
-        ;   SolverGroup: @group-ground
-        ; )
-        @f3(0.0 @ground-y 0.0) = ground-p
-        @f4(0 0 0 1) = ground-r
-        Physics.Body(ground-p ground-r
-          Shape: ground-pshape
-          MotionType: PhysicsMotion::Static
-        ) = ground-body
-        
-        ; @f3(0.0 @trigger-y 0.0) = trigger-p
-        ; @f4(0 0 0 1) = trigger-r
-        ; Physics.Body(trigger-p trigger-r (@f3(0.0 @trigger-y 0.0)) PhysicsMotion::Static) = trigger-body
-        
-        Once({
-          ForRange(1 64 {
-            Count(obj-ids) >> obj-ids
-          })
-        } Every: 0.5)
-        
-        ; initialize transforms and associate a physics body to each shape
-        obj-ids | DoMany({
-          = index
-          
-          
-          Once({
-            @f3((@randf(0.3)) (index | ToFloat) (@randf(0.3))) = position
-            position >= body-p
-            @obj-count | ToFloat = f
-            index | ToFloat | Math.Divide(f) = r
-            1.0 | Math.Subtract((index | ToFloat | Math.Divide(f))) | Math.Multiply(2.0) = g
-            @f4(r g 0.0 1.0) = base-color
-            index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
-            index | Math.Mod(2) | If(Is(0) {@group-obj-1} {@group-obj-2}) = solver-group
-            index | Math.Mod(2) | If(Is(0) {@group-none} {@group-obj-2}) = collision-group
-            
-            @f4(0 0 0 1) >= body-r
-          })
-          
-          
-          ; Physics.DynamicBody(
-          ;   Position: position
-          ;   Shapes: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
-          ;   Name: body
-          ;   Tag: index
-          ;   CollisionGroup: solver-group
-          ;   AllowTranslation: allow-tsl
-          ;   AllowRotation: allow-rot
-          ; )
-          ; {= transform [index transform] | Assoc(obj-transforms)}
-          
-          Physics.Body(body-p body-r
-            Shape: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
-            MotionType: PhysicsMotion::Dynamic
-            ; SolverGroup: solver-group
-            ; CollisionGroup: collision-group
-            ; Name: body
-            ; Tag: index
-          ) = body
-          
-          body-p | Math.Translation | Math.MatMul((body-r | Math.Rotation))
-          GFX.Drawable(
-            Mesh: mesh
-            Params: {baseColor: base-color}
-          ) = drawable
-          
-          ; Once({
-          ;   Log("Generating hull")
-          ;   Physics.Hull
-          ;   Log("Generated hull")
-          ; })
-          
-          ; drawable | GFX.Draw(queue)
-          
-          {
-            location: @f3(0 0 0)
-            rotation: @f4(0 0 0 1)
-          }
-          
-          ; body
-        } ComposeSync: true) ;= bodies
-        
-      } pctx)
-      
-      ; Simulation step
-      Physics.End(pctx)
-      Physics.DebugDraw(pctx queue)
-      
-      ; ground-drawable | GFX.Draw(queue)
-      
-      GFX.Render(Steps: render-steps View: view)
-    }
-  )
-} Looped: true)
 
-@mesh(root)
-@schedule(root test-main)
-@run(root FPS: 60 Iterations: 1000) | Assert.Is(true)
+    GFX.MainWindow(
+      Title: "Physics" Width: 1280 Height: 720
+      Contents: {
+        @define(time-step #(1.0 | Div(40.0)))
+        Once({
+          Physics.WithContext({
+            queue | GFX.ClearQueue
+            test-code
+          } pctx)
+
+          ; Simulation step
+          Physics.End(pctx TimeStep: @time-step MaxIterations: 4)
+
+          When({@debug-draw} {
+            Gizmos.Context(Queue: queue Contents: {
+              Physics.DebugDraw(pctx)
+            } View: view Scaling: 1.0)
+          })
+        } Every: @time-step)
+
+        GFX.Render(Steps: render-steps View: view)
+      }
+    )
+  } Looped: true)
+
+  @schedule(root run-test)
+  @run(root FPS: 120 Iterations: 350) | Assert.Is(true)
+})
+
+; ====== Test A lot of basics ======
+@define(test-basic {
+  @run-base-test({
+    Once({
+      ; define some physics shapes
+      @f3(0.5) | Physics.BoxShape = cube-pshape
+      0.5 | Physics.SphereShape = sphere-pshape
+      @f3(40 @ground-thickness 40) | Physics.BoxShape = trigger-pshape
+    })
+
+    @ground-common
+    ground-body | Physics.Collisions(;
+    Enter: {Log("Floor collision enter")}
+    ; Leave: {Log("Floor collision leave")}
+    ) ; Output gives you all the active contact points seq
+
+    @f3(0.0 @trigger-y 0.0) = trigger-p
+    @f4(0 0 0 1) = trigger-r
+    Physics.Body(trigger-p trigger-r
+      Shape: trigger-pshape
+      MotionType: PhysicsMotion::Static
+      Sensor: true
+    )
+    Physics.Collisions(Enter: {
+      Log("Trigger collision enter")
+    })
+
+    Once({
+      ForRange(1 @obj-count {
+        Count(obj-ids) >> obj-ids
+      })
+    } Every: 1.0)
+
+    ; initialize transforms and associate a physics body to each shape
+    obj-ids | DoMany({
+      = index
+      Math.Mod(@obj-count) = mod-idx
+
+      Once({
+        @f3((@randf(0.3)) (mod-idx | ToFloat) (@randf(0.3))) = position
+        position >= body-p
+        @obj-count | ToFloat = obj-count-f
+        mod-idx | ToFloat | Math.Divide(obj-count-f) = r
+        1.0 | Math.Subtract((mod-idx | ToFloat | Math.Divide(obj-count-f))) | Math.Multiply(2.0) = g
+        @f4(r g 0.0 1.0) = base-color
+        index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
+        @f4(0 0 0 1) >= body-r
+      })
+
+      Physics.Body(body-p body-r
+        Shape: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
+        MotionType: PhysicsMotion::Dynamic
+        Tag: index
+        Restitution: (index | Math.Mod(3) | If(Is(0) {0.3} {0.95}))
+        Friction: (index | Math.Mod(5) | If(Is(0) {0.001} {0.5}))
+      ) = body
+
+      body-p | Math.Translation | Math.MatMul((body-r | Math.Rotation))
+      GFX.Drawable(
+        Mesh: mesh
+        Params: {baseColor: base-color}
+      ) = drawable
+
+      WhenNot({@debug-draw} {
+        drawable | GFX.Draw(queue)
+      })
+    } ComposeSync: true) ;= bodies
+  })
+})
+
+; ====== Test axis Constraints ======
+@template(test-dof [dofs] {
+  @run-base-test({
+    Once({
+      ; define some physics shapes
+      @f3(0.5) | Physics.BoxShape = cube-pshape
+      0.5 | Physics.SphereShape = sphere-pshape
+    })
+
+    @ground-common
+
+    Once({
+      ForRange(1 @obj-count {
+        Count(obj-ids) >> obj-ids
+      })
+    } Every: 1.0)
+
+
+    ; initialize transforms and associate a physics body to each shape
+    obj-ids | DoMany({
+      = index
+      Math.Mod(@obj-count) = mod-idx
+
+      Once({
+        @f3((@randf(0.3)) (mod-idx | ToFloat) (@randf(0.3))) = position
+        position >= body-p
+        @obj-count | ToFloat = obj-count-f
+        mod-idx | ToFloat | Math.Divide(obj-count-f) = r
+        1.0 | Math.Subtract((mod-idx | ToFloat | Math.Divide(obj-count-f))) | Math.Multiply(2.0) = g
+        @f4(r g 0.0 1.0) = base-color
+        index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
+        @f4(0 0 0 1) >= body-r
+      })
+
+      Physics.Body(body-p body-r
+        Shape: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
+        MotionType: PhysicsMotion::Dynamic
+        Tag: index
+        Restitution: 0.6
+        AllowedDOFs: dofs
+      ) = body
+
+      body-p | Math.Translation | Math.MatMul((body-r | Math.Rotation))
+      GFX.Drawable(
+        Mesh: mesh
+        Params: {baseColor: base-color}
+      ) = drawable
+
+      WhenNot({@debug-draw} {
+        drawable | GFX.Draw(queue)
+      })
+    } ComposeSync: true) ;= bodies
+  })
+})
+
+@define(test-filters {
+  @run-base-test({
+    @ground-common
+
+    Once({
+      @f3(0.5) | Physics.BoxShape = cube-pshape
+      0.5 | Physics.SphereShape = sphere-pshape
+    })
+    Once({
+      ForRange(1 @obj-count {
+        Count(obj-ids) >> obj-ids
+      })
+    } Every: 1.5)
+
+    ; initialize transforms and associate a physics body to each shape
+    obj-ids | DoMany({
+      = index
+      {Math.Mod(@obj-count) = mod-idx}
+      {Math.Mod(2) = group-idx}
+
+      Once({
+        @f3((@randf(0.3)) (mod-idx | ToFloat) (@randf(0.3))) = position
+        position >= body-p
+        2.0 = color-mod-f
+        group-idx | ToFloat | Math.Divide(color-mod-f) = r
+        1.0 | Math.Subtract((group-idx | ToFloat | Math.Divide(color-mod-f))) | Math.Multiply(2.0) = g
+        @f4(r g 0.0 1.0) = base-color
+        index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
+        @f4(0 0 0 1) >= body-r
+      })
+
+      group-idx | Match([
+        0 {
+          @i2(0x02 0x06) ; Collide with self & floor
+        }
+        1 {
+          @i2(0x01 0x05) ; Collide with self & floor
+        }
+      ] Passthrough: false) = collision-group
+
+      Physics.Body(body-p body-r
+        Shape: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
+        MotionType: PhysicsMotion::Dynamic
+        Tag: index
+        Restitution: 0.6
+        CollisionGroup: collision-group
+      ) = body
+
+      body-p | Math.Translation | Math.MatMul((body-r | Math.Rotation))
+      GFX.Drawable(
+        Mesh: mesh
+        Params: {baseColor: base-color}
+      ) = drawable
+      GFX.Draw(queue)
+    } ComposeSync: true) ;= bodies
+  })
+})
+
+; @test-basic
+; @test-dof([
+;   PhysicsDOF::TranslationX PhysicsDOF::TranslationY
+;   PhysicsDOF::RotationZ
+; ])
+; @test-dof([
+;   PhysicsDOF::TranslationY PhysicsDOF::TranslationZ
+; ])
+@test-filters
+

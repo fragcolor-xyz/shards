@@ -2,6 +2,7 @@
 #define F526B4B0_47CF_4C94_8389_2012F9C56257
 
 #include <shards/core/pmr/wrapper.hpp>
+#include <shards/core/assert.hpp>
 #include <tracy/Wrapper.hpp>
 #include "../../gfx/moving_average.hpp"
 #include "../../gfx/math.hpp"
@@ -46,7 +47,12 @@ public:
     preallocatedBlock.resize(minSize);
     reset();
   }
-  TempAllocator(TempAllocator &&) {}
+
+  TempAllocator(TempAllocator &&other) {
+    shassert(other.totalRequestedBytes == 0 && "Cannot move TempAllocator with pending allocations");
+    preallocatedBlock = std::move(other.preallocatedBlock);
+    reset();
+  }
 
   void reset() {
     ZoneScoped;
@@ -72,8 +78,7 @@ public:
 #endif
   }
 
-  // __attribute__((always_inline)) 
-  void *do_allocate(size_t _Bytes, size_t _Align) override {
+  __attribute__((always_inline)) void *do_allocate(size_t _Bytes, size_t _Align) override {
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
     // Check for allocations from threads other than the owner of this memory pool
     // since these allocators are not thread safe and meant to be used from a single thread
@@ -90,7 +95,7 @@ public:
     if (_Align > boost::container::pmr::memory_resource::max_align) {
       totalRequestedBytes += _Bytes + _Align;
       size_t blk = (size_t)baseAllocator->allocate(_Bytes, boost::container::pmr::memory_resource::max_align);
-      return (void*)gfx::alignTo((size_t)blk, _Align);
+      return (void *)gfx::alignTo((size_t)blk, _Align);
     } else {
       totalRequestedBytes += _Bytes;
       return baseAllocator->allocate(_Bytes, _Align);

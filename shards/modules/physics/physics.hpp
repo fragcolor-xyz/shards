@@ -19,20 +19,9 @@
 #include <tracy/Wrapper.hpp>
 #include <linalg.h>
 #include <memory>
-#include <vector>
 #include <atomic>
 
-namespace shards::Physics {
-using namespace linalg::aliases;
-
-inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate("physics"); }
-
-inline JPH::Float3 toFloat3(const SHFloat3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
-inline JPH::Float4 toFloat4(const SHFloat4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
-inline JPH::Vec3 toVec3(const SHFloat3 &f3) { return JPH::Vec3{f3[0], f3[1], f3[2]}; }
-inline JPH::Vec4 toVec4(const SHFloat4 &f4) { return JPH::Vec4{f4[0], f4[1], f4[2], f4[3]}; }
-inline JPH::Quat toQuat(const SHFloat4 &f4) { return JPH::Quat(f4[0], f4[1], f4[2], f4[3]); }
-
+namespace shards {
 inline SHVar toVar(const JPH::Float3 &f3) {
   SHVar v{};
   v.valueType = SHType::Float3;
@@ -50,6 +39,14 @@ inline SHVar toVar(const JPH::Float4 &f4) {
   v.payload.float4Value[3] = f4.w;
   return v;
 }
+inline SHVar toVar(const JPH::Vec3 &f3) {
+  SHVar v{};
+  v.valueType = SHType::Float3;
+  v.payload.float3Value[0] = f3.GetX();
+  v.payload.float3Value[1] = f3.GetY();
+  v.payload.float3Value[2] = f3.GetZ();
+  return v;
+}
 inline SHVar toVar(const JPH::Quat &f4) {
   SHVar v{};
   v.valueType = SHType::Float4;
@@ -59,6 +56,18 @@ inline SHVar toVar(const JPH::Quat &f4) {
   v.payload.float4Value[3] = f4.GetW();
   return v;
 }
+} // namespace shards
+
+namespace shards::Physics {
+using namespace linalg::aliases;
+
+inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate("physics"); }
+
+inline JPH::Float3 toJPHFloat3(const SHFloat3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
+inline JPH::Float4 toJPHFloat4(const SHFloat4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
+inline JPH::Vec3 toJPHVec3(const SHFloat3 &f3) { return JPH::Vec3{f3[0], f3[1], f3[2]}; }
+inline JPH::Vec4 toJPHVec4(const SHFloat4 &f4) { return JPH::Vec4{f4[0], f4[1], f4[2], f4[3]}; }
+inline JPH::Quat toJPHQuat(const SHFloat4 &f4) { return JPH::Quat(f4[0], f4[1], f4[2], f4[3]); }
 
 inline float3 toLinalg(const JPH::Float3 &f3) { return float3{f3.x, f3.y, f3.z}; }
 inline float3 toLinalg(const JPH::Vec3 &f3) { return float3{f3.GetX(), f3.GetY(), f3.GetZ()}; }
@@ -75,9 +84,15 @@ struct Node {
   // Can be used to toggle this node even if it has persistence
   bool enabled : 1 = true;
 
+  // Counter that when > 0 indicates collision events need to be collected for this node
+  uint16_t neededCollisionEvents{};
+
   // Transform parameters
-  JPH::Float3 location;
+  JPH::Vec3 location;
   JPH::Quat rotation;
+  struct AssociatedData *data;
+
+  OwnedVar tag;
 
   struct BodyParams {
     float friction;
@@ -89,6 +104,9 @@ struct Node {
     float gravityFactor;
     JPH::EAllowedDOFs allowedDofs;
     JPH::EMotionType motionType;
+    bool sensor;
+    uint32_t groupMembership;
+    uint32_t collisionMask;
   } params;
 
   JPH::Ref<JPH::Shape> shape;
@@ -96,9 +114,6 @@ struct Node {
 
   uint64_t paramHash0;
   uint64_t paramHash1;
-
-  // About the size of MeshDrawable, placeholder
-  uint8_t someData[336];
 
   void updateParamHash0();
   void updateParamHash1();
@@ -123,28 +138,29 @@ inline void Node::updateParamHash1() {
   paramHash1 = hasher.getDigest();
 }
 
-struct ShardsNode {
+struct Core;
+struct SHBody {
   static inline int32_t ObjectId = 'phNo';
-  static inline const char VariableName[] = "Physics.Node";
+  static inline const char VariableName[] = "Physics.Body";
   static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
   static inline shards::Type VarType = Type::VariableOf(Type);
 
-  static inline shards::ObjectVar<ShardsNode, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
-                                                                                         RawType.object.typeId};
-
+  static inline shards::ObjectVar<SHBody, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
+                                                                                     RawType.object.typeId};
+  std::shared_ptr<Core> core;
   std::shared_ptr<Node> node;
 };
 
-struct ShardsShape {
+struct SHShape {
   static inline int32_t ObjectId = 'phSh';
   static inline const char VariableName[] = "Physics.Shape";
   static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
   static inline shards::Type VarType = Type::VariableOf(Type);
 
-  static inline shards::ObjectVar<ShardsShape, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
-                                                                                          RawType.object.typeId};
+  static inline shards::ObjectVar<SHShape, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
+                                                                                      RawType.object.typeId};
 
   static std::atomic_uint64_t UidCounter;
   uint64_t uid = UidCounter++;

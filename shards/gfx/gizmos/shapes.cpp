@@ -1,5 +1,6 @@
 #include "shapes.hpp"
 #include "linalg.h"
+#include "text.hpp"
 #include <gfx/geom.hpp>
 #include <gfx/mesh_utils.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
@@ -24,6 +25,17 @@ const std::vector<MeshVertexAttribute> &ShapeRenderer::SolidVertex::getAttribute
     std::vector<MeshVertexAttribute> attribs;
     attribs.emplace_back("position", 3, StorageType::Float32);
     attribs.emplace_back("color", 4, StorageType::Float32);
+    return attribs;
+  }();
+  return attribs;
+}
+
+const std::vector<MeshVertexAttribute> &ShapeRenderer::TextVertex::getAttributes() {
+  static std::vector<MeshVertexAttribute> attribs = []() {
+    std::vector<MeshVertexAttribute> attribs;
+    attribs.emplace_back("position", 3, StorageType::Float32);
+    attribs.emplace_back("color", 4, StorageType::Float32);
+    attribs.emplace_back("texCoord0", 2, StorageType::Float32);
     return attribs;
   }();
   return attribs;
@@ -113,10 +125,9 @@ FeaturePtr GizmoLightingFeature::create() {
   return result;
 }
 
-#define UNPACK3(_x) \
-  { (_x).x, (_x).y, (_x).z }
-#define UNPACK4(_x) \
-  { (_x).x, (_x).y, (_x).z, (_x).w }
+#define UNPACK2(_x) {(_x).x, (_x).y}
+#define UNPACK3(_x) {(_x).x, (_x).y, (_x).z}
+#define UNPACK4(_x) {(_x).x, (_x).y, (_x).z, (_x).w}
 
 void ShapeRenderer::addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness) {
   float length = linalg::length(b - a);
@@ -314,6 +325,34 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
   }
 }
 
+void ShapeRenderer::addText(float3 origin, float3 xBase, float3 yBase, float size, std::string_view text, float4 color,
+                            bool center) {
+  gizmos::TextPlacer placer;
+  float actualTextScale = size / 14.0f;
+  placer.appendString(gizmos::FontMap::getDefault(), text, actualTextScale);
+
+  if (center) {
+    float2 alignOffset = placer.getSize() * 0.5f;
+    origin += alignOffset.x * xBase + alignOffset.y * -yBase;
+  }
+  for (auto &quad : placer.textQuads) {
+    float3 a = origin + quad.quad.x * xBase + quad.quad.y * -yBase;
+    float3 b = origin + quad.quad.z * xBase + quad.quad.y * -yBase; // +X
+    float3 c = origin + quad.quad.z * xBase + quad.quad.w * -yBase; // +XY
+    float3 d = origin + quad.quad.x * xBase + quad.quad.w * -yBase; // + Y
+    float2 ta = {quad.uv.x, quad.uv.y};
+    float2 tb = {quad.uv.z, quad.uv.y};
+    float2 tc = {quad.uv.z, quad.uv.w};
+    float2 td = {quad.uv.x, quad.uv.w};
+
+    textVertices.push_back(TextVertex{.position = UNPACK3(a), .color = UNPACK4(color), .uv = UNPACK2(ta)});
+    textVertices.push_back(TextVertex{.position = UNPACK3(b), .color = UNPACK4(color), .uv = UNPACK2(tb)});
+    textVertices.push_back(TextVertex{.position = UNPACK3(c), .color = UNPACK4(color), .uv = UNPACK2(tc)});
+    textVertices.push_back(TextVertex{.position = UNPACK3(d), .color = UNPACK4(color), .uv = UNPACK2(td)});
+    textVertices.push_back(TextVertex{.position = UNPACK3(a), .color = UNPACK4(color), .uv = UNPACK2(ta)});
+    textVertices.push_back(TextVertex{.position = UNPACK3(c), .color = UNPACK4(color), .uv = UNPACK2(tc)});
+  }
+}
 
 void ShapeRenderer::addSolidTriangle(float3 a, float3 b, float3 c, float4 color, bool culling) {
   // Render to different vector buffer based on whether culling is enabled
@@ -327,12 +366,14 @@ void ShapeRenderer::begin() {
   lineVertices.clear();
   solidVertices.clear();
   unculledSolidVertices.clear();
+  textVertices.clear();
 }
 
 void ShapeRenderer::end(DrawQueuePtr queue) {
   lineMeshPool.recycle();
   unculledSolidMeshPool.recycle();
   solidMeshPool.recycle();
+  textMeshPool.recycle();
 
   if (lineVertices.size() > 0) {
     auto lineMesh = lineMeshPool.newValue();
@@ -377,6 +418,33 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
     drawable->features.push_back(noCullingFeature);
     queue->add(drawable);
   }
+
+  if (textVertices.size() > 0) {
+    auto textMesh = textMeshPool.newValue();
+    static auto blendFeature = []() {
+      auto r = std::make_shared<Feature>();
+      r->state.set_blend(BlendState{.color = BlendComponent::Alpha, .alpha = BlendComponent::Opaque});
+      return r;
+    }();
+
+    MeshFormat fmt = {
+        .primitiveType = PrimitiveType::TriangleList,
+        .windingOrder = WindingOrder::CW,
+        .vertexAttributes = TextVertex::getAttributes(),
+    };
+    textMesh->update(fmt, textVertices.data(), textVertices.size() * sizeof(TextVertex), nullptr, 0);
+    auto drawable = std::make_shared<MeshDrawable>(textMesh);
+    drawable->features.push_back(blendFeature);
+    drawable->parameters.set("baseColorTexture", gizmos::FontMap::getDefault()->image);
+    queue->add(drawable);
+  }
+
+  if (custom.size() > 0) {
+    for (auto &drawable : custom) {
+      queue->add(drawable);
+    }
+    custom.clear();
+  }
 }
 
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
@@ -395,6 +463,19 @@ float GizmoRenderer::getConstantScreenSize(float3 position, float size) const {
   // Adjust for desired size
   float yRatio = (size * this->scalingFactor) / viewportSize.y;
   return scalingFactor1 * yRatio * 2.0f;
+}
+
+GizmoRenderer::BillboardParams GizmoRenderer::getBillboard(float3 position) const {
+  float4x4 viewInv = linalg::inverse(view->view);
+  float3 xAxis = linalg::normalize(linalg::mul(viewInv, float4(1, 0, 0, 0)).xyz());
+  float3 yAxis = linalg::normalize(linalg::mul(viewInv, float4(0, 1, 0, 0)).xyz());
+
+  return {.x = xAxis, .y = yAxis};
+}
+
+void GizmoRenderer::addTextBillboard(float3 origin, std::string_view text, float4 color, float size, bool center) {
+  auto params = getBillboard(origin);
+  shapeRenderer.addText(origin, params.x, params.y, size, text, color, center);
 }
 
 void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType,

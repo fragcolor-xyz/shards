@@ -85,7 +85,13 @@ public:
     return *variable;
   }
 
-  operator bool() const { return variable; }
+  operator bool() const {
+    if constexpr (!Required) {
+      return requiredFlags.found;
+    } else {
+      return variable != nullptr;
+    }
+  }
   T *operator->() const { return get(); }
   operator T &() const { return *get(); }
 

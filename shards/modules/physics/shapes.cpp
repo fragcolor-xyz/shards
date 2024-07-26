@@ -13,14 +13,13 @@
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
+#include <shards/core/pmr/shared_temp_allocator.hpp>
+
 namespace shards::Physics {
 
 static auto logger = getLogger();
 
 struct PointsBuilder {
-  static inline thread_local std::shared_ptr<gfx::detail::WorkerMemory> TempAllocator =
-      std::make_shared<gfx::detail::WorkerMemory>();
-
   JPH::Array<JPH::Vec3> points;
   void addPoint(const JPH::Vec3 &point) { points.push_back(point); }
 
@@ -40,8 +39,8 @@ struct PointsBuilder {
   }
 
   void addDrawable(const gfx::MeshTreeDrawable::Ptr &drawable) {
-    TempAllocator->reset();
-    gfx::TransformUpdaterCollector collector(*TempAllocator.get());
+    pmr::SharedTempAllocator tempAllocator;
+    gfx::TransformUpdaterCollector collector(tempAllocator.getAllocator());
     collector.ignoreRootTransform = true;
     collector.collector = [&](const gfx::DrawablePtr &drawable, const float4x4 &worldTransform) {
       if (gfx::MeshDrawable::Ptr ptr = std::dynamic_pointer_cast<gfx::MeshDrawable>(drawable)) {
@@ -101,7 +100,7 @@ struct PointsBuilder {
 
 struct MeshHullShapeShard {
   static SHTypesInfo inputTypes() { return gfx::ShardsTypes::Drawable; }
-  static SHTypesInfo outputTypes() { return ShardsShape::Type; }
+  static SHTypesInfo outputTypes() { return SHShape::Type; }
   static SHOptionalString help() { return SHCCSTR(""); }
 
   PARAM_PARAMVAR(_maxConvexRadius, "MaxConvexRadius", "AddDescriptionHere",
@@ -128,7 +127,7 @@ struct MeshHullShapeShard {
     _builder.points.clear();
     _builder.addDrawable(drawable);
 
-    auto [shape, var] = ShardsShape::ObjectVar.NewOwnedVar();
+    auto [shape, var] = SHShape::ObjectVar.NewOwnedVar();
 
     JPH::Shape::ShapeResult result;
     JPH::ConvexHullShapeSettings settings(_builder.points, _maxConvexRadius.get().payload.floatValue);
@@ -145,7 +144,7 @@ struct MeshHullShapeShard {
 
 struct BoxShapeShard {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHTypesInfo outputTypes() { return ShardsShape::Type; }
+  static SHTypesInfo outputTypes() { return SHShape::Type; }
   static SHOptionalString help() { return SHCCSTR("Create a box collision shape, given half it's extent"); }
 
   PARAM_IMPL();
@@ -162,10 +161,10 @@ struct BoxShapeShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto [shape, var] = ShardsShape::ObjectVar.NewOwnedVar();
+    auto [shape, var] = SHShape::ObjectVar.NewOwnedVar();
 
     JPH::Shape::ShapeResult result;
-    JPH::Vec3 v3 = toVec3(input.payload.float3Value);
+    JPH::Vec3 v3 = toJPHVec3(input.payload.float3Value);
     JPH::BoxShapeSettings settings(v3);
     JPH::Ref<JPH::BoxShape> hullShape = new JPH::BoxShape(settings, result);
 
@@ -181,7 +180,7 @@ struct BoxShapeShard {
 // Sphere shape
 struct SphereShapeShard {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return ShardsShape::Type; }
+  static SHTypesInfo outputTypes() { return SHShape::Type; }
   static SHOptionalString help() { return SHCCSTR("Create a sphere collision shape, given it's radius"); }
 
   PARAM_IMPL();
@@ -198,7 +197,7 @@ struct SphereShapeShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto [shape, var] = ShardsShape::ObjectVar.NewOwnedVar();
+    auto [shape, var] = SHShape::ObjectVar.NewOwnedVar();
 
     JPH::Shape::ShapeResult result;
     JPH::SphereShapeSettings settings(input.payload.floatValue);

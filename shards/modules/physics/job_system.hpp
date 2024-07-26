@@ -8,8 +8,8 @@
 
 namespace shards::Physics {
 
-struct TidePoolJobSystem : public JPH::JobSystemWithBarrier {
-  struct TidePoolJob : public Job, public TidePool::Work {
+struct TidePoolJobSystem final : public JPH::JobSystemWithBarrier {
+  struct TidePoolJob final : public Job, public TidePool::Work {
     TidePoolJob(const char *inJobName, JPH::ColorArg inColor, JobSystem *inJobSystem, const JobFunction &inJobFunction,
                 uint32_t inNumDependencies)
         : Job(inJobName, inColor, inJobSystem, inJobFunction, inNumDependencies) {}

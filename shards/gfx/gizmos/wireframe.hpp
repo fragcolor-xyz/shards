@@ -45,6 +45,7 @@ public:
   WireframeRenderer(bool showBackfaces = false);
   void reset(size_t frameCounter);
   void overlayWireframe(DrawQueue &queue, IDrawable &drawable, float4 color);
+  std::shared_ptr<MeshDrawable> getWireframeDrawable(const MeshPtr &mesh, float4 color);
 };
 } // namespace gfx
 

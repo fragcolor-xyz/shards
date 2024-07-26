@@ -49,6 +49,18 @@ public:
     static const std::vector<MeshVertexAttribute> &getAttributes();
   };
 
+  struct TextVertex {
+    float position[3];
+    float color[4] = {1, 1, 1, 1};
+    float uv[2] = {};
+
+    void setPosition(const float3 &position) { memcpy(this->position, &position.x, sizeof(float) * 3); }
+    void setColor(const float4 &color) { memcpy(this->color, &color.x, sizeof(float) * 4); }
+    void setUV(const float2 &uv) { memcpy(this->uv, &uv.x, sizeof(float) * 2); }
+
+    static const std::vector<MeshVertexAttribute> &getAttributes();
+  };
+
 private:
   FeaturePtr screenSpaceSizeFeature = ScreenSpaceSizeFeature::create();
   FeaturePtr noCullingFeature = NoCullingFeature::create();
@@ -56,9 +68,12 @@ private:
   std::vector<LineVertex> lineVertices;
   std::vector<SolidVertex> solidVertices;
   std::vector<SolidVertex> unculledSolidVertices;
+  std::vector<TextVertex> textVertices;
   shards::Pool<MeshPtr> lineMeshPool;
   shards::Pool<MeshPtr> solidMeshPool;
   shards::Pool<MeshPtr> unculledSolidMeshPool;
+  shards::Pool<MeshPtr> textMeshPool;
+  std::vector<DrawablePtr> custom;
 
 public:
   void addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness);
@@ -74,7 +89,11 @@ public:
   void addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color, bool culling = true,
                uint32_t resolution = 64);
 
+  void addText(float3 origin, float3 xBase, float3 yBase, float size, std::string_view text, float4 color, bool center);
+
   void addSolidTriangle(float3 a, float3 b, float3 c, float4 color, bool culling = true);
+
+  void addCustom(DrawablePtr drawable) { custom.push_back(drawable); }
 
   void begin();
   void end(DrawQueuePtr queue);
@@ -109,10 +128,17 @@ public:
   // float getSize(float3 position) const;
   float getConstantScreenSize(float3 position, float size) const;
 
+  struct BillboardParams {
+    float3 x, y;
+  };
+  BillboardParams getBillboard(float3 position) const;
+
   enum class CapType { Cube, Arrow, Sphere };
 
   void addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType, float4 capColor);
   void addCubeHandle(float3 center, float size, float4 color);
+
+  void addTextBillboard(float3 origin, std::string_view text, float4 color, float size, bool center);
 
   void begin(ViewPtr view, float2 viewportSize);
   void end(DrawQueuePtr queue);
