@@ -17,11 +17,14 @@
 #include <builtins.h>
 #define DEBUG_BREAK() __trap(0)
 #elif defined(__clang__) // Clang
-#define DEBUG_BREAK() __builtin_trap()
+#include <signal.h>
+#define DEBUG_BREAK() raise(SIGTRAP)
 #elif defined(__GNUC__) // GCC
-#define DEBUG_BREAK() __builtin_trap()
+#include <signal.h>
+#define DEBUG_BREAK() raise(SIGTRAP)
 #elif defined(__HP_aCC) // HP C/aC++ Compiler
-#define DEBUG_BREAK() _break()
+#include <signal.h>
+#define DEBUG_BREAK() raise(SIGTRAP)
 #elif defined(__SUNPRO_CC) // Oracle Developer Studio C++
 #include <signal.h>
 #define DEBUG_BREAK() raise(SIGTRAP)
