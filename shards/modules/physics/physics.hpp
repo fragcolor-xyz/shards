@@ -12,6 +12,7 @@
 #include <Jolt/Core/Reference.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/Math/MathTypes.h>
 #include <Jolt/Math/Quat.h>
 #include <boost/container/flat_map.hpp>
@@ -65,9 +66,14 @@ inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate
 
 inline JPH::Float3 toJPHFloat3(const SHFloat3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
 inline JPH::Float4 toJPHFloat4(const SHFloat4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
+inline JPH::Float3 toJPHFloat3(const float3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
+inline JPH::Float4 toJPHFloat4(const float4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
 inline JPH::Vec3 toJPHVec3(const SHFloat3 &f3) { return JPH::Vec3{f3[0], f3[1], f3[2]}; }
 inline JPH::Vec4 toJPHVec4(const SHFloat4 &f4) { return JPH::Vec4{f4[0], f4[1], f4[2], f4[3]}; }
 inline JPH::Quat toJPHQuat(const SHFloat4 &f4) { return JPH::Quat(f4[0], f4[1], f4[2], f4[3]); }
+inline JPH::Vec3 toJPHVec3(const float3 &f3) { return JPH::Vec3{f3.x, f3.y, f3.z}; }
+inline JPH::Vec4 toJPHVec4(const float4 &f4) { return JPH::Vec4{f4.x, f4.y, f4.z, f4.w}; }
+inline JPH::Quat toJPHQuat(const float4 &f4) { return JPH::Quat(f4.x, f4.y, f4.z, f4.w); }
 
 inline float3 toLinalg(const JPH::Float3 &f3) { return float3{f3.x, f3.y, f3.z}; }
 inline float3 toLinalg(const JPH::Vec3 &f3) { return float3{f3.GetX(), f3.GetY(), f3.GetZ()}; }
@@ -75,9 +81,14 @@ inline float4 toLinalg(const JPH::Float4 &f4) { return float4{f4.x, f4.y, f4.z, 
 inline float4 toLinalg(const JPH::Vec4 &f4) { return float4{f4.GetX(), f4.GetY(), f4.GetZ(), f4.GetW()}; }
 inline float4 toLinalgLinearColor(const JPH::Color &f4) { return toLinalg(f4.ToVec4()); }
 
-struct Node {
+DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF, 'phDf');
+DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion, 'phMo');
+
+struct BodyNode {
   static std::atomic_uint64_t UidCounter;
   uint64_t uid = UidCounter++;
+
+  OwnedVar selfVar;
 
   // Persist this node even if not touched during a frame
   bool persistence : 1 = false;
@@ -90,26 +101,38 @@ struct Node {
   // Transform parameters
   JPH::Vec3 location;
   JPH::Quat rotation;
-  struct AssociatedData *data;
+  struct BodyAssociatedData *data;
 
   OwnedVar tag;
 
-  struct BodyParams {
-    float friction;
-    float resitution;
-    float linearDamping;
-    float angularDamping;
-    float maxLinearVelocity;
-    float maxAngularVelocity;
-    float gravityFactor;
-    JPH::EAllowedDOFs allowedDofs;
-    JPH::EMotionType motionType;
-    bool sensor;
-    uint32_t groupMembership;
-    uint32_t collisionMask;
+  union BodyParams {
+    struct {
+      float friction;
+      float restitution;
+      float linearDamping;
+      float angularDamping;
+      float maxLinearVelocity;
+      float maxAngularVelocity;
+      float gravityFactor;
+      JPH::EAllowedDOFs allowedDofs;
+      JPH::EMotionType motionType;
+      bool sensor;
+      uint32_t groupMembership;
+      uint32_t collisionMask;
+    } regular;
+    struct {
+      float friction;
+      float restitution;
+      float linearDamping;
+      float maxLinearVelocity;
+      float gravityFactor;
+      float pressure;
+      uint32_t groupMembership;
+      uint32_t collisionMask;
+    } soft;
   } params;
 
-  JPH::Ref<JPH::Shape> shape;
+  std::variant<JPH::Ref<JPH::Shape>, JPH::Ref<JPH::SoftBodySharedSettings>> shape;
   uint64_t shapeUid;
 
   uint64_t paramHash0;
@@ -119,23 +142,31 @@ struct Node {
   void updateParamHash1();
 };
 
-inline void Node::updateParamHash0() {
-  shards::HasherXXH3<HasherDefaultVisitor, XXH64_hash_t> hasher;
-  hasher(params.friction);
-  hasher(params.resitution);
-  hasher(params.linearDamping);
-  hasher(params.angularDamping);
-  paramHash0 = hasher.getDigest();
+inline void BodyNode::updateParamHash0() {
+  if (shape.index() == 0) {
+    shards::HasherXXH3<HasherDefaultVisitor, XXH64_hash_t> hasher;
+    hasher(params.regular.friction);
+    hasher(params.regular.restitution);
+    hasher(params.regular.linearDamping);
+    hasher(params.regular.angularDamping);
+    paramHash0 = hasher.getDigest();
+  } else {
+    paramHash0 = 0;
+  }
 }
 
-inline void Node::updateParamHash1() {
-  shards::HasherXXH3<HasherDefaultVisitor, XXH64_hash_t> hasher;
-  hasher(params.maxLinearVelocity);
-  hasher(params.maxAngularVelocity);
-  hasher(params.gravityFactor);
-  hasher((uint8_t &)params.allowedDofs);
-  hasher((uint8_t &)params.motionType);
-  paramHash1 = hasher.getDigest();
+inline void BodyNode::updateParamHash1() {
+  if (shape.index() == 0) {
+    shards::HasherXXH3<HasherDefaultVisitor, XXH64_hash_t> hasher;
+    hasher(params.regular.maxLinearVelocity);
+    hasher(params.regular.maxAngularVelocity);
+    hasher(params.regular.gravityFactor);
+    hasher((uint8_t &)params.regular.allowedDofs);
+    hasher((uint8_t &)params.regular.motionType);
+    paramHash1 = hasher.getDigest();
+  } else {
+    paramHash1 = 0;
+  }
 }
 
 struct Core;
@@ -149,7 +180,7 @@ struct SHBody {
   static inline shards::ObjectVar<SHBody, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
                                                                                      RawType.object.typeId};
   std::shared_ptr<Core> core;
-  std::shared_ptr<Node> node;
+  std::shared_ptr<BodyNode> node;
 };
 
 struct SHShape {
@@ -167,6 +198,20 @@ struct SHShape {
   JPH::Ref<JPH::Shape> shape;
 };
 
+struct SHSoftBodyShape {
+  static inline int32_t ObjectId = 'phSB';
+  static inline const char VariableName[] = "Physics.SoftBodyShape";
+  static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
+  static inline SHTypeInfo RawType = Type;
+  static inline shards::Type VarType = Type::VariableOf(Type);
+
+  static inline shards::ObjectVar<SHSoftBodyShape, nullptr, nullptr, nullptr, true> ObjectVar{
+      VariableName, RawType.object.vendorId, RawType.object.typeId};
+
+  static std::atomic_uint64_t UidCounter;
+  uint64_t uid = UidCounter++;
+  JPH::Ref<JPH::SoftBodySharedSettings> settings;
+};
 } // namespace shards::Physics
 
 #endif /* ACE82164_D020_40B6_A9E1_A13621726A27 */

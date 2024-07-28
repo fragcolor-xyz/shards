@@ -5,6 +5,7 @@
 #include "foundation.hpp"
 #include "self_macro.h"
 #include "exposed_type_utils.hpp"
+#include <vector>
 #include <type_traits>
 #include <shards/shardwrapper.hpp>
 
@@ -93,6 +94,39 @@ struct IterableParam {
     static shards::IterableParam result[] = {__VA_ARGS__};                      \
     outNumParams = std::extent<decltype(result)>::value;                        \
     return result;                                                              \
+  }                                                                             \
+  PARAM_PARAMS()                                                                \
+  PARAM_GET_SET()
+
+// Usage:
+//  PARAM_IMPL_DERIVED(BaseClass,
+//    PARAM_IMPL_FOR(Param0),
+//    PARAM_IMPL_FOR(Param1),
+//    PARAM_IMPL_FOR(Param2))
+// Side effects:
+//  - same as PARAM_IMPL
+// NOTE: Make sure you DO NOT call base PARAM_WARMUP, PARAM_COMPOSE_REQUIRED_VARIABLES, etc. in the base class
+//   and only use PARAM_REQUIRED_VARIABLES once in the hierarchy to save storage.
+//   so only call PARAM_WARMUP/CLEANUP/COMPOSE in the final class!!
+#define PARAM_IMPL_DERIVED(BaseClass, ...)                                      \
+  SELF_MACRO_DEFINE_SELF(Self, public)                                          \
+  static const shards::IterableParam *getIterableParams(size_t &outNumParams) { \
+    static std::vector<shards::IterableParam> combined = []() {                 \
+      static shards::IterableParam addParams[] = {__VA_ARGS__};                 \
+      size_t numAddParams = std::extent<decltype(addParams)>::value;            \
+                                                                                \
+      size_t numBaseParams{};                                                   \
+      auto *baseParams = BaseClass::getIterableParams(numBaseParams);           \
+      std::vector<shards::IterableParam> result;                                \
+      result.resize(numBaseParams + numAddParams);                              \
+      for (size_t i = 0; i < numBaseParams; ++i)                                \
+        result[i] = baseParams[i];                                              \
+      for (size_t i = 0; i < numAddParams; ++i)                                 \
+        result[numBaseParams + i] = addParams[i];                               \
+      return result;                                                            \
+    }();                                                                        \
+    outNumParams = combined.size();                                             \
+    return combined.data();                                                     \
   }                                                                             \
   PARAM_PARAMS()                                                                \
   PARAM_GET_SET()

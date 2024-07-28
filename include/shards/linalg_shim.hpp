@@ -50,7 +50,7 @@ template <typename T> struct generic {
 
   generic() = default;
   generic(const Base &other) { *this = other; }
-  generic(const Self& other) { *this = other; }
+  generic(const Self &other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
@@ -81,7 +81,7 @@ template <typename T, int M> struct vec {
 
   vec() = default;
   vec(const TVec &other) { *this = other; }
-  vec(const Self& other) { *this = other; }
+  vec(const Self &other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
@@ -254,6 +254,8 @@ struct alignas(16) Mat4 {
     res.payload.seqValue.cap = 0;
     return res;
   }
+
+  static Mat4 &fromVar(const SHVar &var) { return *reinterpret_cast<Mat4 *>(var.payload.seqValue.elements); }
 };
 
 using Vec2 = padded::Float2;
