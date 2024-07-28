@@ -17,11 +17,21 @@
 #include <builtins.h>
 #define DEBUG_BREAK() __trap(0)
 #elif defined(__clang__) // Clang
+#if defined(_WIN32) || defined(_WIN64)
+#include <intrin.h>
+#define DEBUG_BREAK() __debugbreak()
+#else
 #include <signal.h>
 #define DEBUG_BREAK() raise(SIGTRAP)
+#endif
 #elif defined(__GNUC__) // GCC
+#if defined(_WIN32) || defined(_WIN64)
+#include <intrin.h>
+#define DEBUG_BREAK() __debugbreak()
+#else
 #include <signal.h>
 #define DEBUG_BREAK() raise(SIGTRAP)
+#endif
 #elif defined(__HP_aCC) // HP C/aC++ Compiler
 #include <signal.h>
 #define DEBUG_BREAK() raise(SIGTRAP)
