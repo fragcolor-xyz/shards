@@ -32,6 +32,7 @@ struct WSServer final : public Server {
   pollnet_ctx *ctx{};
   sockethandle_t socket{};
   std::unordered_map<sockethandle_t, struct WSHandler *> handle2Peer;
+  std::unordered_set<sockethandle_t> _blacklist;
 
   WSServer() { ctx = pollnet_init(); }
   ~WSServer() { pollnet_shutdown(ctx); }
@@ -47,7 +48,7 @@ struct WSServer final : public Server {
     socket = pollnet_invalid_handle();
   }
 
-  void broadcast(boost::span<const uint8_t> data) override;
+  void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) override;
 };
 
 struct WSPeer : public Peer {
@@ -80,9 +81,24 @@ struct WSHandler : public WSPeer {
   OwnedVar recvBuffer;
 };
 
-void WSServer::broadcast(boost::span<const uint8_t> data) {
-  for (auto &[handle, peer] : handle2Peer) {
-    peer->send(data);
+void WSServer::broadcast(boost::span<const uint8_t> data, const SHVar &exclude) {
+  if (exclude.valueType == SHType::Seq) {
+    _blacklist.clear();
+
+    for (auto &excluded : exclude) {
+      WSHandler &peer = varAsObjectChecked<WSHandler>(excluded, Types::Peer);
+      _blacklist.insert(peer.socket);
+    }
+
+    for (auto &[handle, peer] : handle2Peer) {
+      if (_blacklist.find(handle) == _blacklist.end()) {
+        peer->send(data);
+      }
+    }
+  } else {
+    for (auto &[handle, peer] : handle2Peer) {
+      peer->send(data);
+    }
   }
 }
 

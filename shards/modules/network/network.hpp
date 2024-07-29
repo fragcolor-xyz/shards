@@ -21,6 +21,8 @@ struct Types {
   static inline Type ServerVar = Type::VariableOf(Server);
   static inline Type Peer{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
   static inline Type PeerVar = Type::VariableOf(Peer);
+  static inline Type PeerSeq = Type::SeqOf(Peer);
+  static inline Type PeerSeqVar = Type::VariableOf(PeerSeq);
   static inline ParameterInfo PeerParameterInfo{"Peer", SHCCSTR("The optional explicit peer to send packets to."), {PeerVar}};
 };
 
@@ -90,8 +92,8 @@ struct Peer {
 };
 
 struct Server {
-  virtual void broadcast(boost::span<const uint8_t> data) = 0;
-  void broadcastVar(const SHVar &input) { broadcast(getSendWriter().varToSendBuffer(input)); }
+  virtual void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) = 0;
+  void broadcastVar(const SHVar &input, const SHVar &exclude) { broadcast(getSendWriter().varToSendBuffer(input), exclude); }
 };
 
 struct OnPeerConnected {
@@ -106,7 +108,7 @@ Peer &getConnectedPeer(ParamVar &peerParam);
 static inline void setDefaultPeerParam(ParamVar &peerParam);
 
 Peer &getServer(ParamVar &serverParam);
-void setDefaultSetverParam(ParamVar &peerParam);
+void setDefaultServerParam(ParamVar &peerParam);
 
 } // namespace Network
 } // namespace shards

@@ -301,9 +301,29 @@ struct KCPServer : public Server {
   std::unordered_map<udp::endpoint, KCPPeer *> _end2Peer;
   std::unordered_map<const SHWire *, KCPPeer *> _wire2Peer;
 
-  void broadcast(boost::span<const uint8_t> data) {
-    for (auto &[end, peer] : _end2Peer) {
-      peer->send(data);
+  std::unordered_set<udp::endpoint> _blacklist;
+
+  void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) {
+    if (exclude.valueType == SHType::Seq) {
+      _blacklist.clear();
+
+      for (auto &excluded : exclude) {
+        KCPPeer &peer = varAsObjectChecked<KCPPeer>(excluded, Types::Peer);
+        if (peer.endpoint.has_value()) {
+          _blacklist.insert(peer.endpoint.value());
+        }
+      }
+
+      for (auto &[end, peer] : _end2Peer) {
+        if (_blacklist.find(end) == _blacklist.end()) {
+          peer->send(data);
+        }
+      }
+    } else {
+      // fast path
+      for (auto &[end, peer] : _end2Peer) {
+        peer->send(data);
+      }
     }
   }
 };
