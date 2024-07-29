@@ -71,7 +71,7 @@ struct Broadcast {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_PARAMVAR(_server, "Server", "The server", {Types::Server});
+  PARAM_PARAMVAR(_server, "Server", "The server", {Types::ServerVar});
   PARAM_PARAMVAR(_exclude, "Exclude", "Peer IDs to exclude", {CoreInfo::IntVarSeqType, CoreInfo::IntSeqType, CoreInfo::NoneType});
   PARAM_IMPL(PARAM_IMPL_FOR(_server), PARAM_IMPL_FOR(_exclude));
 
