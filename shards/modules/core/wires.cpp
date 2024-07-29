@@ -2365,7 +2365,7 @@ public:
     case 2:
       return Var(_brancher.captureAll);
     case 3:
-      assert(_brancher.mesh); // there always should be a mesh
+      shassert(_brancher.mesh && "Branch: mesh is null");
       return Var::Object(&_brancher.mesh, CoreCC, SHMesh::TypeId);
     default:
       return Var::Empty;

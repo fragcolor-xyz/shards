@@ -493,6 +493,9 @@ struct Serialization {
         } else {
           throw shards::SHException("Failed to find object type in registry.");
         }
+      } else {
+        // set this var to None
+        output.valueType = SHType::None;
       }
       break;
     }
