@@ -301,21 +301,18 @@ struct KCPServer : public Server {
   std::unordered_map<udp::endpoint, KCPPeer *> _end2Peer;
   std::unordered_map<const SHWire *, KCPPeer *> _wire2Peer;
 
-  std::unordered_set<udp::endpoint> _blacklist;
+  std::unordered_set<int64_t> _blacklist;
 
   void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) {
     if (exclude.valueType == SHType::Seq) {
       _blacklist.clear();
 
       for (auto &excluded : exclude) {
-        KCPPeer &peer = varAsObjectChecked<KCPPeer>(excluded, Types::Peer);
-        if (peer.endpoint.has_value()) {
-          _blacklist.insert(peer.endpoint.value());
-        }
+        _blacklist.insert(excluded.payload.intValue);
       }
 
       for (auto &[end, peer] : _end2Peer) {
-        if (_blacklist.find(end) == _blacklist.end()) {
+        if (_blacklist.find(peer->getId()) == _blacklist.end()) {
           peer->send(data);
         }
       }
@@ -329,6 +326,9 @@ struct KCPServer : public Server {
 };
 
 struct ServerShard : public NetworkBase {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Server; }
+
   struct Composer {
     ServerShard &server;
 
@@ -803,7 +803,7 @@ struct ServerShard : public NetworkBase {
       }
     }
 
-    return input;
+    return *_serverVar;
   }
 };
 

@@ -32,7 +32,7 @@ struct WSServer final : public Server {
   pollnet_ctx *ctx{};
   sockethandle_t socket{};
   std::unordered_map<sockethandle_t, struct WSHandler *> handle2Peer;
-  std::unordered_set<sockethandle_t> _blacklist;
+  std::unordered_set<int64_t> _blacklist;
 
   WSServer() { ctx = pollnet_init(); }
   ~WSServer() { pollnet_shutdown(ctx); }
@@ -86,12 +86,11 @@ void WSServer::broadcast(boost::span<const uint8_t> data, const SHVar &exclude) 
     _blacklist.clear();
 
     for (auto &excluded : exclude) {
-      WSHandler &peer = varAsObjectChecked<WSHandler>(excluded, Types::Peer);
-      _blacklist.insert(peer.socket);
+      _blacklist.insert(excluded.payload.intValue);
     }
 
     for (auto &[handle, peer] : handle2Peer) {
-      if (_blacklist.find(handle) == _blacklist.end()) {
+      if (_blacklist.find(peer->getId()) == _blacklist.end()) {
         peer->send(data);
       }
     }
@@ -131,7 +130,7 @@ inline void pollnetLog(pollnet_ctx *ctx, socketstatus_t status, sockethandle_t h
 struct WSServerShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Server; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("A WebSocket server."); }
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
   PARAM_PARAMVAR(_port, "Port", ("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar});
