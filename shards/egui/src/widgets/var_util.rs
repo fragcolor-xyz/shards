@@ -9,6 +9,7 @@ use shards::shardsc::*;
 use shards::types::Table;
 use shards::types::Type;
 use shards::types::Var;
+use shards_lang::directory::get_global_map;
 
 use super::drag_value::CustomDragValue;
 
@@ -29,17 +30,67 @@ fn get_default_value(value_type: SHType) -> Var {
   }
 }
 
+unsafe fn render_enum(
+  id: egui::Id,
+  var: &mut Var,
+  ui: &mut Ui,
+) -> Result<Response, Box<dyn std::error::Error>> {
+  let enums_from_ids = get_global_map()
+    .0
+    .get_fast_static("enums-from-ids")
+    .as_table()
+    .unwrap();
+  let enum_type_id = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId };
+  let enum_vendor_id = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId };
+  let enum_value = unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+  // ok so the composite value in c++ is made like this:
+  // int64_t id = (int64_t)vendorId << 32 | typeId;
+  let id = (enum_vendor_id as i64) << 32 | enum_type_id as i64;
+  let enum_info = enums_from_ids
+    .get(Var::from(id))
+    .map(|x| x.as_table().unwrap());
+
+  let enum_info = enum_info.ok_or("Failed to get enum info")?;
+  let labels = enum_info.get_fast_static("labels").as_seq().unwrap();
+  let values = enum_info.get_fast_static("values").as_seq().unwrap();
+  let mut index: usize = values.iter().position(|x| x == enum_value.into()).unwrap();
+  let name: &str = enum_info
+    .get_fast_static("name")
+    .as_ref()
+    .try_into()
+    .unwrap();
+  let label: &str = labels[index].as_ref().try_into().unwrap();
+
+  let r = ComboBox::new(id, "").show_index(ui, &mut index, values.len(), |i| {
+    let r: &str = (&labels[i]).try_into().unwrap();
+    r
+  });
+
+  var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = values[index]
+    .payload
+    .__bindgen_anon_1
+    .__bindgen_anon_3
+    .enumValue;
+  Ok(r)
+}
+
 impl UIRenderer for Var {
-  fn render(&mut self, read_only: bool, inner_type: Option<&Type>, ui: &mut Ui) -> Response {
+  fn render(
+    &mut self,
+    id: egui::Id,
+    read_only: bool,
+    inner_type: Option<&Type>,
+    ui: &mut Ui,
+  ) -> Response {
     if read_only && !matches!(self.valueType, SHType_Seq | SHType_Table) {
       ui.set_enabled(false);
     }
     unsafe {
       match self.valueType {
         SHType_None => ui.label(""),
-        SHType_Enum => ui.add(CustomDragValue::new(
-          &mut self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
-        )),
+        SHType_Enum => {
+          render_enum(id, self, ui).unwrap_or_else(|_| ui.label("<failed to render enum>"))
+        }
         SHType_Bool => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
         SHType_Int => ui.add(CustomDragValue::new(
           &mut self.payload.__bindgen_anon_1.intValue,
@@ -196,19 +247,18 @@ impl UIRenderer for Var {
             let mut ir = ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
               let mut i = 0usize;
               while i < seq.len() {
-                ui.push_id(i, |ui| {
-                  changed |= ui
-                    .horizontal(|ui| {
-                      // for now let's not support sub seqs... we can add that after GDC
-                      let response = seq[i].render(read_only, None, ui);
-                      if ui.button("-").clicked() {
-                        seq.remove(i);
-                      }
-                      response
-                    })
-                    .inner
-                    .changed();
-                });
+                let new_id = id.with(i);
+                changed |= ui
+                  .horizontal(|ui| {
+                    // for now let's not support sub seqs... we can add that after GDC
+                    let response = seq[i].render(new_id, read_only, None, ui);
+                    if ui.button("-").clicked() {
+                      seq.remove(i);
+                    }
+                    response
+                  })
+                  .inner
+                  .changed();
                 i += 1;
               }
             });
@@ -233,22 +283,21 @@ impl UIRenderer for Var {
             let mut changed = false;
             let mut ir = ui.collapsing(format!("Table: {} items", table.len()), |ui| {
               for (mut k, mut _v) in table.iter() {
-                ui.push_id(k, |ui| {
-                  changed |= ui
-                    .horizontal(|ui| {
-                      if k.is_string() {
-                        let k: &str = k.as_ref().try_into().unwrap();
-                        ui.label(k);
-                      } else {
-                        k.render(read_only, None, ui);
-                      }
+                let new_id = id.with(k);
+                changed |= ui
+                  .horizontal(|ui| {
+                    if k.is_string() {
+                      let k: &str = k.as_ref().try_into().unwrap();
+                      ui.label(k);
+                    } else {
+                      k.render(new_id, read_only, None, ui);
+                    }
 
-                      // no inner type for now
-                      table.get_mut_fast(k).render(read_only, None, ui)
-                    })
-                    .inner
-                    .changed()
-                });
+                    // no inner type for now
+                    table.get_mut_fast(k).render(new_id, read_only, None, ui)
+                  })
+                  .inner
+                  .changed()
               }
             });
             ir.header_response.changed = changed;

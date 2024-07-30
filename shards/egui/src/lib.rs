@@ -151,6 +151,7 @@ mod egui_host;
 pub(crate) trait UIRenderer {
   fn render(
     &mut self,
+    id: egui::Id,
     read_only: bool,
     inner_type: Option<&Type>,
     ui: &mut egui::Ui,

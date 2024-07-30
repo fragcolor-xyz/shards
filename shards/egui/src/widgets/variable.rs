@@ -1,6 +1,7 @@
 use super::Variable;
 use super::WireVariable;
 use crate::util;
+use crate::EguiId;
 use crate::UIRenderer;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
@@ -198,6 +199,7 @@ impl LegacyShard for Variable {
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
+      let inner_id = ui.id().with(EguiId::new(self, 0));
       let label: &str = self.name.as_ref().try_into()?;
       ui.horizontal(|ui| {
         if self.labeled {
@@ -205,7 +207,7 @@ impl LegacyShard for Variable {
         }
         let var_ref = self.variable.get_mut();
         if var_ref
-          .render(!self.mutable, self.inner_type.as_ref(), ui)
+          .render(inner_id, !self.mutable, self.inner_type.as_ref(), ui)
           .changed()
         {
           unsafe {
@@ -303,9 +305,10 @@ impl LegacyShard for WireVariable {
     let var_ref = unsafe { &mut *var_ptr };
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
+      let var_id = ui.id().with(EguiId::new(self, 0));
       ui.horizontal(|ui| {
         ui.label(name);
-        if var_ref.render(false, None, ui).changed() {
+        if var_ref.render(var_id, false, None, ui).changed() {
           unsafe {
             triggerVarValueChange(
               getWireContext(wire),
