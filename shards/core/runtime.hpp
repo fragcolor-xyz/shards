@@ -500,6 +500,27 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
+  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
+    CompositionContext privateContext{};
+    data.privateContext = &privateContext;
+    try {
+      auto validation = shards::composeWire(wire.get(), data);
+      shards::arrayFree(validation.exposedInfo);
+      shards::arrayFree(validation.requiredInfo);
+    } catch (const std::exception &e) {
+      // build a reverse stack error log from privateContext.errorStack
+      std::string errors;
+      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
+        errors += *it;
+        if (++it == privateContext.errorStack.rend())
+          break;
+        errors += "\n";
+      }
+      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
+      throw;
+    }
+  }
+
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     ZoneScoped;
 
@@ -521,24 +542,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
     DEFER({ shards::freeDerivedInfo(data.inputType); });
-    CompositionContext privateContext{};
-    data.privateContext = &privateContext;
-    try {
-      auto validation = shards::composeWire(wire.get(), data);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
-    } catch (const std::exception &e) {
-      // build a reverse stack error log from privateContext.errorStack
-      std::string errors;
-      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
-        errors += *it;
-        if (++it == privateContext.errorStack.rend())
-          break;
-        errors += "\n";
-      }
-      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
-      throw;
-    }
+    prettyCompose(wire, data);
 
     SHLOG_TRACE("Wire {} composed", wire->name);
   }
@@ -578,9 +582,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       data.wire = wire.get();
       data.inputType = shards::deriveTypeInfo(input, data);
       DEFER({ shards::freeDerivedInfo(data.inputType); });
-      auto validation = shards::composeWire(wire.get(), data);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
+      prettyCompose(wire, data);
 
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {
