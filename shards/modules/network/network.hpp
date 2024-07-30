@@ -82,13 +82,17 @@ struct Writer {
 Writer &getSendWriter();
 
 struct Peer {
+  Peer() { id = nextId.fetch_add(1, std::memory_order_relaxed); }
   virtual ~Peer() = default;
 
   virtual void send(boost::span<const uint8_t> data) = 0;
   virtual bool disconnected() const = 0;
-  virtual int64_t getId() const = 0;
-  virtual std::string_view getDebugName() const = 0;
+  int64_t getId() { return id; }
   void sendVar(const SHVar &input) { send(getSendWriter().varToSendBuffer(input)); }
+
+private:
+  static inline std::atomic_int64_t nextId{1};
+  int64_t id;
 };
 
 struct Server {

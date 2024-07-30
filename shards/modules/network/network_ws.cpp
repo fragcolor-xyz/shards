@@ -72,8 +72,6 @@ struct WSPeer : public Peer {
 
   void send(boost::span<const uint8_t> data) override { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
   bool disconnected() const override { return disconnected_; }
-  int64_t getId() const override { return int64_t(socket); }
-  std::string_view getDebugName() const override { return debugName; }
 };
 struct WSHandler : public WSPeer {
   entt::connection onStopConnection;
@@ -101,7 +99,7 @@ void WSServer::broadcast(boost::span<const uint8_t> data, const SHVar &exclude) 
   }
 }
 
-inline void pollnetLog(pollnet_ctx *ctx, socketstatus_t status, sockethandle_t handle, std::string_view head) {
+template <typename T> inline void pollnetLog(pollnet_ctx *ctx, socketstatus_t status, sockethandle_t handle, T head) {
   switch (status) {
   case POLLNET_INVALID:
     SPDLOG_LOGGER_ERROR(getLogger(), "{}> POLLNET_INVALID", head);
@@ -261,7 +259,7 @@ struct WSServerShard {
 
     // set wire ID, in order for Events to be properly routed
     // for now we just use ptr as ID, until it causes problems
-    peer->wire->id = reinterpret_cast<entt::id_type>(peer->socket);
+    peer->wire->id = static_cast<entt::id_type>(peer->getId());
 
     OnPeerConnected event{
         // .endpoint = *peer->endpoint,
@@ -319,7 +317,7 @@ struct WSServerShard {
           shards::stop(handler.wire.get());
         }
       } catch (std::exception &e) {
-        SPDLOG_LOGGER_ERROR(getLogger(), "Error while processing data from peer {}: {}", handler.getDebugName(), e.what());
+        SPDLOG_LOGGER_ERROR(getLogger(), "Error while processing data from peer {}: {}", handler.getId(), e.what());
         shards::stop(handler.wire.get());
       }
 
@@ -361,7 +359,7 @@ struct WSServerShard {
       auto peer = it->second;
 
       socketstatus_t status = pollnet_update(_server->ctx, handle);
-      pollnetLog(_server->ctx, status, handle, peer->getDebugName());
+      pollnetLog(_server->ctx, status, handle, peer->getId());
       switch (status) {
       case POLLNET_ERROR:
       case POLLNET_INVALID:
