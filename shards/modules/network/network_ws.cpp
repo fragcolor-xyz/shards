@@ -611,8 +611,6 @@ struct WSPeer : public Peer {
     }
   }
   bool disconnected() const override { return disconnected_; }
-  int64_t getId() const override { return int64_t(socket); }
-  std::string_view getDebugName() const override { return debugName; }
 };
 
 struct WSClient {
