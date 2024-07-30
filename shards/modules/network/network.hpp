@@ -21,6 +21,8 @@ struct Types {
   static inline Type ServerVar = Type::VariableOf(Server);
   static inline Type Peer{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
   static inline Type PeerVar = Type::VariableOf(Peer);
+  static inline Type PeerSeq = Type::SeqOf(Peer);
+  static inline Type PeerSeqVar = Type::VariableOf(PeerSeq);
   static inline ParameterInfo PeerParameterInfo{"Peer", SHCCSTR("The optional explicit peer to send packets to."), {PeerVar}};
 };
 
@@ -80,18 +82,22 @@ struct Writer {
 Writer &getSendWriter();
 
 struct Peer {
+  Peer() { id = nextId.fetch_add(1, std::memory_order_relaxed); }
   virtual ~Peer() = default;
 
   virtual void send(boost::span<const uint8_t> data) = 0;
   virtual bool disconnected() const = 0;
-  virtual int64_t getId() const = 0;
-  virtual std::string_view getDebugName() const = 0;
+  int64_t getId() { return id; }
   void sendVar(const SHVar &input) { send(getSendWriter().varToSendBuffer(input)); }
+
+private:
+  static inline std::atomic_int64_t nextId{1};
+  int64_t id;
 };
 
 struct Server {
-  virtual void broadcast(boost::span<const uint8_t> data) = 0;
-  void broadcastVar(const SHVar &input) { broadcast(getSendWriter().varToSendBuffer(input)); }
+  virtual void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) = 0;
+  void broadcastVar(const SHVar &input, const SHVar &exclude) { broadcast(getSendWriter().varToSendBuffer(input), exclude); }
 };
 
 struct OnPeerConnected {
@@ -106,7 +112,7 @@ Peer &getConnectedPeer(ParamVar &peerParam);
 static inline void setDefaultPeerParam(ParamVar &peerParam);
 
 Peer &getServer(ParamVar &serverParam);
-void setDefaultSetverParam(ParamVar &peerParam);
+void setDefaultServerParam(ParamVar &peerParam);
 
 } // namespace Network
 } // namespace shards

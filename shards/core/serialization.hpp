@@ -475,6 +475,9 @@ struct Serialization {
         auto it = GetGlobals().ObjectTypesRegister.find(id);
         if (it != GetGlobals().ObjectTypesRegister.end()) {
           auto &info = it->second;
+          if (!info.deserialize) {
+            throw shards::SHException("Object variable deserializer missing");
+          }
           auto size = size_t(len);
           std::vector<uint8_t> data;
           data.resize(size);
@@ -493,6 +496,9 @@ struct Serialization {
         } else {
           throw shards::SHException("Failed to find object type in registry.");
         }
+      } else {
+        // set this var to None
+        output.valueType = SHType::None;
       }
       break;
     }

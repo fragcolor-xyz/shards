@@ -218,10 +218,7 @@ struct KCPPeer final : public Peer {
   }
 
   bool disconnected() const override { return disconnected_; }
-  int64_t getId() const override { return reinterpret_cast<int64_t>(this); }
-  std::string_view getDebugName() const override {
-    return ""; // TODO
-  }
+
   void send(boost::span<const uint8_t> data) override {
     std::scoped_lock lock(mutex); // prevent concurrent sends
     auto size = data.size();
@@ -301,14 +298,34 @@ struct KCPServer : public Server {
   std::unordered_map<udp::endpoint, KCPPeer *> _end2Peer;
   std::unordered_map<const SHWire *, KCPPeer *> _wire2Peer;
 
-  void broadcast(boost::span<const uint8_t> data) {
-    for (auto &[end, peer] : _end2Peer) {
-      peer->send(data);
+  std::unordered_set<int64_t> _blacklist;
+
+  void broadcast(boost::span<const uint8_t> data, const SHVar &exclude) {
+    if (exclude.valueType == SHType::Seq) {
+      _blacklist.clear();
+
+      for (auto &excluded : exclude) {
+        _blacklist.insert(excluded.payload.intValue);
+      }
+
+      for (auto &[end, peer] : _end2Peer) {
+        if (_blacklist.find(peer->getId()) == _blacklist.end()) {
+          peer->send(data);
+        }
+      }
+    } else {
+      // fast path
+      for (auto &[end, peer] : _end2Peer) {
+        peer->send(data);
+      }
     }
   }
 };
 
 struct ServerShard : public NetworkBase {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Server; }
+
   struct Composer {
     ServerShard &server;
 
@@ -595,7 +612,7 @@ struct ServerShard : public NetworkBase {
 
                                         // set wire ID, in order for Events to be properly routed
                                         // for now we just use ptr as ID, until it causes problems
-                                        peer->wire->id = reinterpret_cast<entt::id_type>(peer);
+                                        peer->wire->id = static_cast<entt::id_type>(peer->getId());
 
                                         currentPeer = peer;
                                       } catch (std::exception &e) {
@@ -783,7 +800,7 @@ struct ServerShard : public NetworkBase {
       }
     }
 
-    return input;
+    return *_serverVar;
   }
 };
 

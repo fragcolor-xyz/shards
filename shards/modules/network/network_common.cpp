@@ -62,7 +62,7 @@ Peer &getServer(ParamVar &serverParam) {
   return peer;
 }
 
-void setDefaultSetverParam(ParamVar &peerParam) {
+void setDefaultServerParam(ParamVar &peerParam) {
   peerParam = Var("Network.Server");
   peerParam->valueType = SHType::ContextVar;
 }
@@ -71,8 +71,9 @@ struct Broadcast {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_PARAMVAR(_server, "Server", "The server", {Types::Server});
-  PARAM_IMPL(PARAM_IMPL_FOR(_server));
+  PARAM_PARAMVAR(_server, "Server", "The server", {Types::ServerVar});
+  PARAM_PARAMVAR(_exclude, "Exclude", "Peer IDs to exclude", {CoreInfo::IntVarSeqType, CoreInfo::IntSeqType, CoreInfo::NoneType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_server), PARAM_IMPL_FOR(_exclude));
 
   Broadcast() {
     _server = Var("Network.Server");
@@ -92,7 +93,7 @@ struct Broadcast {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &server = getServer();
-    server.broadcastVar(input);
+    server.broadcastVar(input, _exclude.get());
     return input;
   }
 };

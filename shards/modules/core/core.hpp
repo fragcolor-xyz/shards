@@ -739,7 +739,7 @@ struct VariableBase {
       {"Key",
        SHCCSTR("The key of the value to read from the table (parameter applicable only if "
                "the target variable is a table)."),
-       {CoreInfo::StringStringVarOrNone}},
+       {CoreInfo::AnyType}},
       {"Global", SHCCSTR("If the variable is available to all of the wires in the same mesh."), {CoreInfo::BoolType}}};
 
   static inline Parameters setterParams{
@@ -747,7 +747,7 @@ struct VariableBase {
       {"Key",
        SHCCSTR("The key of the value to write in the table (parameter applicable only if "
                "the target variable is a table)."),
-       {CoreInfo::StringStringVarOrNone}},
+       {CoreInfo::AnyType}},
       {"Global", SHCCSTR("If the variable is available to all of the wires in the same mesh."), {CoreInfo::BoolType}}};
 
   static constexpr int variableParamsInfoLen = 3;
@@ -1532,15 +1532,10 @@ struct Get : public VariableBase {
                              "[variable]): Could not infer an output type, key not found "
                              "and no Default value provided.");
         } else {
-          if (_key->valueType == SHType::String) {
-            throw ComposeError("Get (" + _name + ":" + std::string(SHSTRVIEW((*_key))) +
-                               "): Could not infer an output type, key not found "
-                               "and no Default value provided.");
-          } else {
-            throw ComposeError("Get (" + _name + ":(complex type)" + // TODO improve
-                               "): Could not infer an output type, key not found "
-                               "and no Default value provided.");
-          }
+          // refactored
+          auto msg = fmt::format("Get ({}:{}): Could not infer an output type, key not found and no Default value provided.",
+                                 _name, *_key);
+          throw ComposeError(msg);
         }
       }
     } else {
@@ -2039,13 +2034,8 @@ struct Sequence : public SeqBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
-              if (_key->valueType == SHType::String) {
-                throw ComposeError("Sequence - Variable " + std::string(SHSTRVIEW((*_key))) + " in table " + _name +
-                                   " already exists.");
-              } else {
-                throw ComposeError("Sequence - Variable (complex type) in table " + _name + // TODO improve
-                                   " already exists.");
-              }
+              auto msg = fmt::format("Sequence - Variable {} in table {} already exists.", *_key, _name);
+              throw ComposeError(msg);
             }
           }
         }
@@ -2225,13 +2215,8 @@ struct TableDecl : public VariableBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
-              if (_key->valueType == SHType::String) {
-                throw ComposeError("Table - Variable " + std::string(SHSTRVIEW((*_key))) + " in table " + _name +
-                                   " already exists.");
-              } else {
-                throw ComposeError("Table - Variable (complex type) in table " + _name + // TODO
-                                   " already exists.");
-              }
+              auto msg = fmt::format("Table - Variable {} in table {} already exists.", *_key, _name);
+              throw ComposeError(msg);
             }
           }
         }
