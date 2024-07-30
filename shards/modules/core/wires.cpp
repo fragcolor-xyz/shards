@@ -304,19 +304,7 @@ struct Wait : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        wire = nullptr;
-      }
-    }
+    ensureWire();
 
     if (unlikely(!wire)) {
       SHLOG_WARNING("Wait's wire is void");
@@ -421,19 +409,7 @@ struct IsRunning : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        wire = nullptr;
-      }
-    }
+    ensureWire();
 
     if (unlikely(!wire)) {
       return Var::False;
@@ -503,19 +479,7 @@ struct Peek : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        wire = nullptr;
-      }
-    }
+    ensureWire();
 
     if (unlikely(!wire)) {
       return Var::Empty;
@@ -609,19 +573,7 @@ struct StopWire : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Stop: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        wire = nullptr;
-      }
-    }
+    ensureWire();
 
     if (unlikely(!wire || context == wire->context)) {
       // in this case we stop the current wire
@@ -685,19 +637,7 @@ struct SuspendWire : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Suspend: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        wire = nullptr;
-      }
-    }
+    ensureWire();
 
     if (unlikely(!wire)) {
       // in this case we pause the current flow
@@ -757,19 +697,7 @@ struct ResumeWire : public WireBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(!wire && wireref.isVariable())) {
-      auto vwire = wireref.get();
-      if (vwire.valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Suspend: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
-      } else {
-        throw ActivationError("Resume: no wire found.");
-      }
-    }
+    ensureWire();
 
     wire->context->flow->paused = false;
 

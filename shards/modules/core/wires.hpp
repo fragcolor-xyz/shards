@@ -90,6 +90,22 @@ struct WireBase {
       wire = SHWire::sharedFromRef(state.payload.wireValue);
     }
   }
+
+  void ensureWire() {
+    if (unlikely(!wire && wireref.isVariable())) {
+      auto vwire = wireref.get();
+      if (vwire.valueType == SHType::Wire) {
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      } else if (vwire.valueType == SHType::String) {
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
+      } else {
+        wire = nullptr;
+      }
+    }
+  }
 };
 
 struct BaseRunner : public WireBase {
