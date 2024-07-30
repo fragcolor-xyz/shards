@@ -110,7 +110,7 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
               passthrough = true;
               break;
             }
-            if (!passthrough)
+            if (!passthrough && (inputState.lookInteraction || inputState.panInteraction))
               ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
             if ((!canReceiveInput || ce.isConsumed()) && event.pressed)

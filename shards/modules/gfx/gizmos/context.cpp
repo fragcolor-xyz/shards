@@ -88,7 +88,7 @@ struct GizmosContextShard {
     if (!_view.isVariable())
       throw std::runtime_error("View must be a variable");
 
-    if (_viewSize.isNone() && (!_gfxContext || !_inputContext)) {
+    if (_viewSize.isNone() && (!_gfxContext && !_inputContext)) {
       throw std::runtime_error("ViewSize must be set if running outside of graphics/input context");
     }
 
