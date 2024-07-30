@@ -116,6 +116,9 @@ struct DebugRenderer : public JPH::DebugRenderer {
   }
 };
 
+DECL_ENUM_INFO(JPH::BodyManager::EShapeColor, PhysicsDebugShapeColor, 'phDc');
+DECL_ENUM_INFO(JPH::ESoftBodyConstraintColor, PhysicsDebugSoftBodyConstraintColor, 'phSd');
+
 struct DebugDrawShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
@@ -124,25 +127,101 @@ struct DebugDrawShard {
   static inline Type QueueVarType = Type::VariableOf(gfx::ShardsTypes::DrawQueue);
 
   PARAM_PARAMVAR(_context, "Context", "The context", {ShardsContext::VarType});
-  PARAM_PARAMVAR(_drawBodies, "DrawBodies", "Draw bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_drawConstraints, "DrawConstraints", "Draw constraints", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_drawConstraintLimits, "DrawConstraintLimits", "Draw constraint limits",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_drawConstraintReferenceFrames, "DrawConstraintReferenceFrames", "Draw constraint reference frames",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_context),
-             // PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_viewSize),
-             PARAM_IMPL_FOR(_drawBodies), PARAM_IMPL_FOR(_drawConstraints), PARAM_IMPL_FOR(_drawConstraintLimits),
-             PARAM_IMPL_FOR(_drawConstraintReferenceFrames));
+
+  PARAM_PARAMVAR(_drawBodies, "DrawBodies", "Draw bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_getSupportFunction, "DrawGetSupportFunction",
+                 "Draw the GetSupport() function, used for convex collision detection",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_supportDirection, "DrawSupportDirection",
+                 "When drawing the support function, also draw which direction mapped to a specific support point",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_getSupportingFace, "DrawGetSupportingFace",
+                 "Draw the faces that were found colliding during collision detection",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_shape, "DrawShape", "Draw the shapes of all bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_shapeWireframe, "DrawShapeWireframe",
+                 "When mDrawShape is true and this is true, the shapes will be drawn in wireframe instead of solid.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_shapeColor, "DrawShapeColor", "Coloring scheme to use for shapes",
+                 {PhysicsDebugShapeColorEnumInfo::Type, Type::VariableOf(PhysicsDebugShapeColorEnumInfo::Type)});
+  PARAM_PARAMVAR(_ds_boundingBox, "DrawBoundingBox", "Draw a bounding box per body", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_centerOfMassTransform, "DrawCenterOfMassTransform", "Draw the center of mass for each body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_worldTransform, "DrawWorldTransform",
+                 "Draw the world transform (which can be different than the center of mass) for each body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_velocity, "DrawVelocity", "Draw the velocity vector for each body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_massAndInertia, "DrawMassAndInertia", "Draw the mass and inertia (as the box equivalent) for each body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_sleepStats, "DrawSleepStats", "Draw stats regarding the sleeping algorithm of each body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyVertices, "DrawSoftBodyVertices", "Draw the vertices of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyVertexVelocities, "DrawSoftBodyVertexVelocities",
+                 "Draw the velocities of the vertices of soft bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyEdgeConstraints, "DrawSoftBodyEdgeConstraints", "Draw the edge constraints of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyBendConstraints, "DrawSoftBodyBendConstraints", "Draw the bend constraints of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyVolumeConstraints, "DrawSoftBodyVolumeConstraints", "Draw the volume constraints of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodySkinConstraints, "DrawSoftBodySkinConstraints", "Draw the skin constraints of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyLRAConstraints, "DrawSoftBodyLRAConstraints", "Draw the LRA constraints of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyPredictedBounds, "DrawSoftBodyPredictedBounds", "Draw the predicted bounds of soft bodies",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_softBodyConstraintColor, "DrawSoftBodyConstraintColor", "Coloring scheme to use for soft body constraints",
+                 {PhysicsDebugSoftBodyConstraintColorEnumInfo::Type,
+                  Type::VariableOf(PhysicsDebugSoftBodyConstraintColorEnumInfo::Type)});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_drawConstraints), PARAM_IMPL_FOR(_drawConstraintLimits),
+             PARAM_IMPL_FOR(_drawConstraintReferenceFrames), PARAM_IMPL_FOR(_drawBodies), PARAM_IMPL_FOR(_ds_getSupportFunction),
+             PARAM_IMPL_FOR(_ds_supportDirection), PARAM_IMPL_FOR(_ds_getSupportingFace), PARAM_IMPL_FOR(_ds_shape),
+             PARAM_IMPL_FOR(_ds_shapeWireframe), PARAM_IMPL_FOR(_ds_shapeColor), PARAM_IMPL_FOR(_ds_boundingBox),
+             PARAM_IMPL_FOR(_ds_centerOfMassTransform), PARAM_IMPL_FOR(_ds_worldTransform), PARAM_IMPL_FOR(_ds_velocity),
+             PARAM_IMPL_FOR(_ds_massAndInertia), PARAM_IMPL_FOR(_ds_sleepStats), PARAM_IMPL_FOR(_ds_softBodyVertices),
+             PARAM_IMPL_FOR(_ds_softBodyVertexVelocities), PARAM_IMPL_FOR(_ds_softBodyEdgeConstraints),
+             PARAM_IMPL_FOR(_ds_softBodyBendConstraints), PARAM_IMPL_FOR(_ds_softBodyVolumeConstraints),
+             PARAM_IMPL_FOR(_ds_softBodySkinConstraints), PARAM_IMPL_FOR(_ds_softBodyLRAConstraints),
+             PARAM_IMPL_FOR(_ds_softBodyPredictedBounds), PARAM_IMPL_FOR(_ds_softBodyConstraintColor));
 
   shards::Gizmos::RequiredGizmoContext _gizmoContext;
   std::shared_ptr<DebugRenderer> _renderer;
 
   DebugDrawShard() {
-    _drawBodies = Var(true);
     _drawConstraints = Var(true);
     _drawConstraintLimits = Var(false);
     _drawConstraintReferenceFrames = Var(false);
+    _drawBodies = Var(true);
+    _ds_getSupportFunction = Var(false);
+    _ds_supportDirection = Var(false);
+    _ds_getSupportingFace = Var(false);
+    _ds_shape = Var(true);
+    _ds_shapeWireframe = Var(false);
+    _ds_shapeColor = Var::Enum(JPH::BodyManager::EShapeColor::MotionTypeColor, PhysicsDebugShapeColorEnumInfo::Type);
+    _ds_boundingBox = Var(false);
+    _ds_centerOfMassTransform = Var(false);
+    _ds_worldTransform = Var(false);
+    _ds_velocity = Var(false);
+    _ds_massAndInertia = Var(false);
+    _ds_sleepStats = Var(false);
+    _ds_softBodyVertices = Var(false);
+    _ds_softBodyVertexVelocities = Var(false);
+    _ds_softBodyEdgeConstraints = Var(false);
+    _ds_softBodyBendConstraints = Var(false);
+    _ds_softBodyVolumeConstraints = Var(false);
+    _ds_softBodySkinConstraints = Var(false);
+    _ds_softBodyLRAConstraints = Var(false);
+    _ds_softBodyPredictedBounds = Var(false);
+    _ds_softBodyConstraintColor =
+        Var::Enum(JPH::ESoftBodyConstraintColor::ConstraintType, PhysicsDebugSoftBodyConstraintColorEnumInfo::Type);
   }
 
   void warmup(SHContext *context) {
@@ -173,12 +252,28 @@ struct DebugDrawShard {
     auto &sys = context.core->getPhysicsSystem();
     if (_drawBodies.get().payload.boolValue) {
       JPH::BodyManager::DrawSettings drawSettings;
-      drawSettings.mDrawShapeColor = JPH::BodyManager::EShapeColor::IslandColor;
-      drawSettings.mDrawShapeWireframe = true;
-      drawSettings.mDrawShape = true;
-      drawSettings.mDrawSleepStats = true;
-      drawSettings.mDrawBoundingBox = true;
-      drawSettings.mDrawVelocity = true;
+      drawSettings.mDrawGetSupportFunction = _ds_getSupportFunction.get().payload.boolValue;
+      drawSettings.mDrawSupportDirection = _ds_supportDirection.get().payload.boolValue;
+      drawSettings.mDrawGetSupportingFace = _ds_getSupportingFace.get().payload.boolValue;
+      drawSettings.mDrawShape = _ds_shape.get().payload.boolValue;
+      drawSettings.mDrawShapeWireframe = _ds_shapeWireframe.get().payload.boolValue;
+      drawSettings.mDrawShapeColor = JPH::BodyManager::EShapeColor(_ds_shapeColor.get().payload.enumValue);
+      drawSettings.mDrawBoundingBox = _ds_boundingBox.get().payload.boolValue;
+      drawSettings.mDrawCenterOfMassTransform = _ds_centerOfMassTransform.get().payload.boolValue;
+      drawSettings.mDrawWorldTransform = _ds_worldTransform.get().payload.boolValue;
+      drawSettings.mDrawVelocity = _ds_velocity.get().payload.boolValue;
+      drawSettings.mDrawMassAndInertia = _ds_massAndInertia.get().payload.boolValue;
+      drawSettings.mDrawSleepStats = _ds_sleepStats.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyVertices = _ds_softBodyVertices.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyVertexVelocities = _ds_softBodyVertexVelocities.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyEdgeConstraints = _ds_softBodyEdgeConstraints.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyBendConstraints = _ds_softBodyBendConstraints.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyVolumeConstraints = _ds_softBodyVolumeConstraints.get().payload.boolValue;
+      drawSettings.mDrawSoftBodySkinConstraints = _ds_softBodySkinConstraints.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyLRAConstraints = _ds_softBodyLRAConstraints.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyPredictedBounds = _ds_softBodyPredictedBounds.get().payload.boolValue;
+      drawSettings.mDrawSoftBodyConstraintColor =
+          JPH::ESoftBodyConstraintColor(_ds_softBodyConstraintColor.get().payload.enumValue);
       sys.DrawBodies(drawSettings, _renderer.get());
     }
     if (_drawConstraints.get().payload.boolValue) {
@@ -204,5 +299,7 @@ struct DebugDrawShard {
 
 SHARDS_REGISTER_FN(debug) {
   using namespace shards::Physics;
+  REGISTER_ENUM(PhysicsDebugShapeColorEnumInfo);
+  REGISTER_ENUM(PhysicsDebugSoftBodyConstraintColorEnumInfo);
   REGISTER_SHARD("Physics.DebugDraw", DebugDrawShard);
 }
