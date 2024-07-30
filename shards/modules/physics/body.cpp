@@ -126,7 +126,7 @@ struct BodyShard {
   }
 
   void cleanup(SHContext *context) {
-    if (_instance.node) {
+    if (_instance.node && _instance.node->node) {
       auto &bodyNode = _instance->node;
       bodyNode->enabled = false;
       bodyNode->persistence = false;

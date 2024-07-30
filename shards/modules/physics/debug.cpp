@@ -134,32 +134,32 @@ struct DebugDrawShard {
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
 
   PARAM_PARAMVAR(_drawBodies, "DrawBodies", "Draw bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_getSupportFunction, "DrawGetSupportFunction",
+  PARAM_PARAMVAR(_ds_getSupportFunction, "DrawBodyGetSupportFunction",
                  "Draw the GetSupport() function, used for convex collision detection",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_supportDirection, "DrawSupportDirection",
+  PARAM_PARAMVAR(_ds_supportDirection, "DrawBodySupportDirection",
                  "When drawing the support function, also draw which direction mapped to a specific support point",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_getSupportingFace, "DrawGetSupportingFace",
+  PARAM_PARAMVAR(_ds_getSupportingFace, "DrawBodyGetSupportingFace",
                  "Draw the faces that were found colliding during collision detection",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_shape, "DrawShape", "Draw the shapes of all bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_shapeWireframe, "DrawShapeWireframe",
+  PARAM_PARAMVAR(_ds_shape, "DrawBodyShape", "Draw the shapes of all bodies", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_shapeWireframe, "DrawBodyShapeWireframe",
                  "When mDrawShape is true and this is true, the shapes will be drawn in wireframe instead of solid.",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_shapeColor, "DrawShapeColor", "Coloring scheme to use for shapes",
+  PARAM_PARAMVAR(_ds_shapeColor, "DrawBodyShapeColor", "Coloring scheme to use for shapes",
                  {PhysicsDebugShapeColorEnumInfo::Type, Type::VariableOf(PhysicsDebugShapeColorEnumInfo::Type)});
-  PARAM_PARAMVAR(_ds_boundingBox, "DrawBoundingBox", "Draw a bounding box per body", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_centerOfMassTransform, "DrawCenterOfMassTransform", "Draw the center of mass for each body",
+  PARAM_PARAMVAR(_ds_boundingBox, "DrawBodyBoundingBox", "Draw a bounding box per body", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_centerOfMassTransform, "DrawBodyCenterOfMassTransform", "Draw the center of mass for each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_worldTransform, "DrawWorldTransform",
+  PARAM_PARAMVAR(_ds_worldTransform, "DrawBodyWorldTransform",
                  "Draw the world transform (which can be different than the center of mass) for each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_velocity, "DrawVelocity", "Draw the velocity vector for each body",
+  PARAM_PARAMVAR(_ds_velocity, "DrawBodyVelocity", "Draw the velocity vector for each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_massAndInertia, "DrawMassAndInertia", "Draw the mass and inertia (as the box equivalent) for each body",
+  PARAM_PARAMVAR(_ds_massAndInertia, "DrawBodyMassAndInertia", "Draw the mass and inertia (as the box equivalent) for each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_ds_sleepStats, "DrawSleepStats", "Draw stats regarding the sleeping algorithm of each body",
+  PARAM_PARAMVAR(_ds_sleepStats, "DrawBodySleepStats", "Draw stats regarding the sleeping algorithm of each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_ds_softBodyVertices, "DrawSoftBodyVertices", "Draw the vertices of soft bodies",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
