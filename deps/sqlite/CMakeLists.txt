@@ -22,14 +22,13 @@ add_rust_library(NAME crsql_bundle
   ENVIRONMENT ${RUST_ENV} CRSQLITE_COMMIT_SHA=shards-dev
   FEATURES static)
 
-add_library(crsqlite-extension STATIC
+add_library(crsqlite-extension-core STATIC
   cr-sqlite/core/src/sqlite/sqlite3.c
   cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/changes-vtab.c
   cr-sqlite/core/src/ext-data.c
 )
-target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
-target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
-target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+target_compile_definitions(crsqlite-extension-core PUBLIC ${SQLITE_DEFINES})
+target_include_directories(crsqlite-extension-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 # target_link_libraries(crsql_bundle-rust crsqlite-extension)
