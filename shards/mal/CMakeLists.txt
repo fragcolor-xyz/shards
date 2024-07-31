@@ -38,10 +38,6 @@ add_executable(shards ${shards_SOURCES})
 setup_shards_target(shards)
 
 target_link_libraries(shards shards-cpp-union)
-# link_circular(shards 
-#   LINK_TYPE PUBLIC
-#   TARGETS shards-rust-union shards-cpp-union
-# )
 
 # library
 add_library(shards-lib)
