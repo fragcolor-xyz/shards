@@ -59,7 +59,7 @@ function(link_circular TARGET)
   )
   cmake_parse_arguments(LINK "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     string(JOIN "," LINK_LIBS "${LINK_TARGETS}")
     target_link_libraries(${TARGET} ${LINK_LINK_TYPE} "$<LINK_GROUP:RESCAN,${LINK_LIBS}>")
   else()
