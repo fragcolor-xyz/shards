@@ -170,6 +170,11 @@ function(shards_generate_rust_union TARGET_NAME)
 
     # Add all the rust targets to the Cargo.toml
     foreach(RUST_TARGET ${RUST_TARGETS})
+      if(NOT TARGET "${RUST_TARGET}")
+        message(FATAL_ERROR "Rust target ${RUST_TARGET} does not exist")
+        continue()
+      endif()
+
       get_property(RUST_PROJECT_PATH TARGET ${RUST_TARGET} PROPERTY RUST_PROJECT_PATH)
       get_property(RUST_NAME TARGET ${RUST_TARGET} PROPERTY RUST_NAME)
 
@@ -197,6 +202,11 @@ function(shards_generate_rust_union TARGET_NAME)
       string(APPEND LIB_PUB_USE_STATEMENTS "pub use ${RUST_NAME_ID};\n")
 
       get_property(TARGET_INTERFACE_LINK_LIBRARIES TARGET ${RUST_TARGET} PROPERTY INTERFACE_LINK_LIBRARIES)
+
+      if(TARGET_INTERFACE_LINK_LIBRARIES)
+        message(DEBUG "${RUST_TARGET}: Linking against ${TARGET_INTERFACE_LINK_LIBRARIES}")
+      endif()
+
       list(APPEND COMBINED_INTERFACE_LINK_LIBRARIES ${TARGET_INTERFACE_LINK_LIBRARIES})
 
       get_property(RUST_DEPENDS TARGET ${RUST_TARGET} PROPERTY RUST_DEPENDS)
@@ -240,7 +250,7 @@ function(shards_generate_rust_union TARGET_NAME)
 
     if(COMBINED_INTERFACE_LINK_LIBRARIES)
       set_property(TARGET ${TARGET_NAME}-rust APPEND PROPERTY INTERFACE_LINK_LIBRARIES ${COMBINED_INTERFACE_LINK_LIBRARIES})
-      message(VERBOSE "${TARGET_NAME}: Linking against ${COMBINED_INTERFACE_LINK_LIBRARIES}")
+      message(DEBUG "${TARGET_NAME}: Linking against ${COMBINED_INTERFACE_LINK_LIBRARIES}")
     endif()
   endif()
 endfunction()

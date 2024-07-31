@@ -66,9 +66,9 @@ target_compile_features(gfx-core PUBLIC cxx_std_20)
 
 target_include_directories(gfx-core
   PUBLIC
-    ${SHARDS_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+  ${SHARDS_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(gfx-core
@@ -120,6 +120,7 @@ if(EMSCRIPTEN)
 else()
   target_link_libraries(gfx-core SDL3-static)
 
+  set(HAS_WGPU_NATIVE ON PARENT_SCOPE)
   set(HAS_WGPU_NATIVE ON)
   target_compile_definitions(gfx-core PUBLIC SHARDS_GFX_SDL=1)
 endif()
@@ -129,8 +130,7 @@ if(ANDROID)
 endif()
 
 # Define the gfx library target that combines core and the rust side
-# add_library(gfx INTERFACE)
-# target_link_libraries(gfx INTERFACE gfx-core)
+add_library(gfx INTERFACE)
 
 if(HAS_WGPU_NATIVE)
   add_subdirectory(rust)
@@ -144,8 +144,11 @@ if(HAS_WGPU_NATIVE)
   target_include_directories(gfx-core PUBLIC ${GFX_RUST_INCLUDES})
   target_compile_definitions(gfx-core PUBLIC WEBGPU_NATIVE=1)
 
-  # Link into gfx target
-  # target_link_libraries(gfx INTERFACE gfx-rust)
+  link_circular(gfx
+    LINK_TYPE INTERFACE
+    TARGETS gfx-core gfx-rust)
+else()
+  target_link_libraries(gfx INTERFACE gfx-core)
 endif()
 
-# add_subdirectory(tests)
+add_subdirectory(tests)

@@ -127,15 +127,7 @@ sh_add_external_project(
             GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
 
 
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-  set(CATCH2_LIB_SUFFIX "d")
-endif()
-sh_add_external_project(
-  NAME catch2_a
-  INSTALL
-  TARGETS Catch2 Catch2Main
-  LIB_SUFFIX ${CATCH2_LIB_SUFFIX}
-  REPO_ARGS URL ${SHARDS_DIR}/deps/Catch2)
+add_subdirectory(Catch2)
 
 sh_add_external_project(
   NAME kissfft_a

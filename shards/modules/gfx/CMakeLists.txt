@@ -26,9 +26,16 @@ set(SOURCES
   gizmos/shapes.cpp
 )
 
+if(HAS_WGPU_NATIVE)
+  message(STATUS "Building gfx crate with wgpu-native enabled")
+  set(RUST_TARGETS gfx-rust)
+else()
+  unset(RUST_TARGETS)
+endif()
+
 add_shards_module(gfx SOURCES ${SOURCES}
   REGISTER_SHARDS gfx gizmos buffer
-  RUST_TARGETS gfx-rust
+  RUST_TARGETS ${RUST_TARGETS}
 )
 
 target_link_libraries(shards-module-gfx

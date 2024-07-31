@@ -4,9 +4,9 @@ if(SHARDS_BUILD_TESTS)
     ${TESTS_SRC}/test_runtime.cpp)
 
   if(APPLE)
-    target_link_libraries(test-runtime shards-union shards_core_swift Catch2 Catch2Main)
+    target_link_libraries(test-runtime shards-union shards_core_swift Catch2::Catch2WithMain)
   else()
-    target_link_libraries(test-runtime shards-union Catch2 Catch2Main)
+    target_link_libraries(test-runtime shards-union Catch2::Catch2WithMain)
   endif()
   set_target_properties(test-runtime PROPERTIES LINKER_LANGUAGE CXX)
 

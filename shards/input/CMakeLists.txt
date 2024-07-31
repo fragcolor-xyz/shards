@@ -14,7 +14,7 @@ target_link_libraries(input gfx-core) # For window mapping
 target_compile_features(input PUBLIC cxx_std_20)
 
 add_executable(test-input tests/tests.cpp)
-target_link_libraries(test-input input Catch2Main Catch2 linalg spdlog)
+target_link_libraries(test-input gfx input Catch2::Catch2WithMain linalg spdlog)
 target_compile_features(test-input PUBLIC cxx_std_20)
 
 add_rust_library(
