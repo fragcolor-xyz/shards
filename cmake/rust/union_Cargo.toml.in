@@ -23,6 +23,10 @@ socket2 = { git = "https://github.com/shards-lang/socket2.git", version = "=0.5.
 security-framework = { git = "https://github.com/shards-lang/rust-security-framework.git", version = "=2.11.0", rev = "ea683f291bb8dff51d3239e556c3236e09274c16" }
 tract-onnx = { git = "https://github.com/shards-lang/tract.git", version = "=0.21.6-pre", rev = "bc2f149555dc8f9e1f673314a7389dc79543e4d2" }
 
+# Graphics patches
+objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
+metal = { git = "https://github.com/shards-lang/metal-rs.git", branch = "shards-0.28.0" }
+
 [profile.dev.package]
 tiny-skia = { opt-level = 3 }
 resvg = { opt-level = 3 }
