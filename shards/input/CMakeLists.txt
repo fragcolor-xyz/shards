@@ -10,7 +10,7 @@ if(NOT EMSCRIPTEN)
 else()
   target_include_directories(input PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
 endif()
-target_link_libraries(input gfx) # For window mapping
+target_link_libraries(input gfx-core) # For window mapping
 target_compile_features(input PUBLIC cxx_std_20)
 
 add_executable(test-input tests/tests.cpp)

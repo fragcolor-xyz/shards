@@ -2247,7 +2247,7 @@ struct DoMany : public TryMany {
       maybeAwait(
           context,
           [&, this]() {
-            for (uint32_t i = oldWiresSize; i < _wires.size(); i++) {
+            for (size_t i = oldWiresSize; i < _wires.size(); i++) {
               auto &cref = _wires[i];
               // compose on a worker thread!
               cref = _pool->acquire(_composer, _meshes[0].get());
@@ -2256,7 +2256,7 @@ struct DoMany : public TryMany {
           [] {});
     }
 
-    for (int i = oldWiresSize; i < _wires.size(); i++) {
+    for (size_t i = oldWiresSize; i < _wires.size(); i++) {
       auto &cref = _wires[i];
       cref->wire->warmup(context); // have to run this outside or:
       // Assertion failed: (context->currentWire() == currentWire), function suspend, file runtime.cpp, line 560.

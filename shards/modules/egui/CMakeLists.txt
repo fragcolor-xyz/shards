@@ -6,7 +6,7 @@ set(SOURCES
   pass.cpp)
 
 add_library(egui-gfx-integration ${SOURCES})
-target_link_libraries(egui-gfx-integration gfx shards-core)
+target_link_libraries(egui-gfx-integration gfx-core shards-core)
 target_include_directories(egui-gfx-integration PUBLIC ../../egui)
 target_compile_definitions(egui-gfx-integration PRIVATE SHARDS_THIS_MODULE_ID=egui) # Fake module id
 

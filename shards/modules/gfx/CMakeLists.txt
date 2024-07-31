@@ -27,9 +27,11 @@ set(SOURCES
 )
 
 add_shards_module(gfx SOURCES ${SOURCES}
-  REGISTER_SHARDS gfx gizmos buffer)
+  REGISTER_SHARDS gfx gizmos buffer
+  RUST_TARGETS gfx-rust
+)
 
 target_link_libraries(shards-module-gfx
-  stb gfx gfx-gltf)
+  stb gfx-core gfx-gltf)
 
 target_precompile_headers(shards-module-gfx PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")

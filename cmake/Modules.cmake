@@ -32,9 +32,11 @@ function(add_shards_module MODULE_NAME)
 
   if(NOT MODULE_SOURCES)
     set(DUMMY_SOURCE_PATH ${CMAKE_CURRENT_BINARY_DIR}/dummy.cpp)
+
     if(NOT EXISTS ${DUMMY_SOURCE_PATH})
       file(WRITE ${DUMMY_SOURCE_PATH} "// Intentionally empty\n")
     endif()
+
     set(MODULE_SOURCES ${DUMMY_SOURCE_PATH})
   endif()
 
@@ -112,6 +114,7 @@ function(shards_generate_rust_union TARGET_NAME)
   set(ARGS)
   set(MULTI_ARGS
     RUST_TARGETS # Extra dependencies to add
+    ENABLED_MODULES # When set, can use to specify which modules to include
   )
   cmake_parse_arguments(UNION_EXTRA "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -119,23 +122,36 @@ function(shards_generate_rust_union TARGET_NAME)
 
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
     get_property(MODULE_ID TARGET ${TARGET_NAME} PROPERTY SHARDS_MODULE_ID)
-    is_module_enabled(MODULE_ENABLED ${MODULE_ID})
 
-    if(${MODULE_ENABLED})
-      get_property(MODULE_RUST_TARGETS TARGET ${TARGET_NAME} PROPERTY SHARDS_RUST_TARGETS)
-
-      if(MODULE_RUST_TARGETS)
-        # message(STATUS "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
-        list(APPEND RUST_TARGETS ${MODULE_RUST_TARGETS})
+    if(UNION_EXTRA_ENABLED_MODULES)
+      if(NOT "${MODULE_ID}" IN_LIST UNION_EXTRA_ENABLED_MODULES)
+        message(DEBUG "Skipping module ${MODULE_ID}")
+        continue()
+      else()
+        message(DEBUG "Including module ${MODULE_ID}")
       endif()
+    else()
+      is_module_enabled(MODULE_ENABLED ${MODULE_ID})
+
+      if(NOT ${MODULE_ENABLED})
+        continue()
+      endif()
+    endif()
+
+    get_property(MODULE_RUST_TARGETS TARGET ${TARGET_NAME} PROPERTY SHARDS_RUST_TARGETS)
+
+    if(MODULE_RUST_TARGETS)
+      message(DEBUG "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
+      list(APPEND RUST_TARGETS ${MODULE_RUST_TARGETS})
     endif()
   endforeach()
 
   list(APPEND RUST_TARGETS ${UNION_EXTRA_RUST_TARGETS})
 
   # Disable union
-  if(SHARDS_NO_RUST_UNION) 
+  if(SHARDS_NO_RUST_UNION)
     add_library(${TARGET_NAME} INTERFACE)
+
     foreach(RUST_TARGET ${RUST_TARGETS})
       message(STATUS "RUST TARGET: ${RUST_TARGET}")
       target_link_libraries(${TARGET_NAME} INTERFACE ${RUST_TARGET})
@@ -158,11 +174,14 @@ function(shards_generate_rust_union TARGET_NAME)
       get_property(RUST_FEATURES TARGET ${RUST_TARGET} PROPERTY RUST_FEATURES)
       unset(RUST_FEATURES_STRING)
       unset(RUST_FEATURES_STRING1)
-      if(RUST_FEATURES) 
+
+      if(RUST_FEATURES)
         unset(RUST_FEATURES_QUOTED)
+
         foreach(FEATURE ${RUST_FEATURES})
           list(APPEND RUST_FEATURES_QUOTED \"${FEATURE}\")
         endforeach()
+
         list(JOIN RUST_FEATURES_QUOTED "," RUST_FEATURES_STRING)
         set(RUST_FEATURES_STRING1 ", features = [${RUST_FEATURES_STRING}]")
       endif()
@@ -210,11 +229,19 @@ endfunction()
 # The union libary is responsible for combining all required shards modules
 # into a single library alongside the registration and indexing boilerplate
 function(shards_generate_union UNION_TARGET_NAME)
-  message(STATUS "Generating union target ${UNION_TARGET_NAME}")
+  message(STATUS "Generating C++ union target ${UNION_TARGET_NAME}")
+
+  set(OPTS)
+  set(ARGS)
+  set(MULTI_ARGS
+    ENABLED_MODULES # When set, can use to specify which modules to include
+  )
+  cmake_parse_arguments(UNION_EXTRA "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
   set(GENERATED_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
   set(DUMMY_FILE_PATH "${GENERATED_ROOT_DIR}/dummy.cpp")
   file(MAKE_DIRECTORY ${GENERATED_ROOT_DIR})
+
   if(NOT EXISTS ${DUMMY_FILE_PATH})
     file(WRITE ${DUMMY_FILE_PATH} "// Empty\n")
   endif()
@@ -236,14 +263,26 @@ function(shards_generate_union UNION_TARGET_NAME)
 
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
     get_property(MODULE_ID TARGET ${TARGET_NAME} PROPERTY SHARDS_MODULE_ID)
-    is_module_enabled(MODULE_ENABLED ${MODULE_ID})
 
-    if(${MODULE_ENABLED})
-      # message(STATUS "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
-      target_link_libraries(${UNION_TARGET_NAME} ${TARGET_NAME})
-      list(APPEND ENABLED_MODULE_IDS ${MODULE_ID})
-      list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
+    if(UNION_EXTRA_ENABLED_MODULES)
+      if(NOT "${MODULE_ID}" IN_LIST UNION_EXTRA_ENABLED_MODULES)
+        message(DEBUG "Skipping module ${MODULE_ID}")
+        continue()
+      else()
+        message(DEBUG "Including module ${MODULE_ID}")
+      endif()
+    else()
+      is_module_enabled(MODULE_ENABLED ${MODULE_ID})
+
+      if(NOT ${MODULE_ENABLED})
+        continue()
+      endif()
     endif()
+
+    message(DEBUG "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
+    target_link_libraries(${UNION_TARGET_NAME} ${TARGET_NAME})
+    list(APPEND ENABLED_MODULE_IDS ${MODULE_ID})
+    list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
   endforeach()
 
   # message(STATUS "ENABLED_MODULE_IDS ${ENABLED_MODULE_IDS}")
