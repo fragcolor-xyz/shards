@@ -14,6 +14,9 @@
 
 #include <string.h> // memset
 
+#include "pmr/wrapper.hpp"
+#include "pmr/unordered_map.hpp"
+#include "pmr/shared_temp_allocator.hpp"
 #include "shards_macros.hpp"
 #include "foundation.hpp"
 #include "inline.hpp"
@@ -482,12 +485,15 @@ struct RuntimeCallbacks {
   virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) = 0;
   virtual void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) = 0;
 };
-}; // namespace shards
 
 struct CompositionContext {
-  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
+  pmr::SharedTempAllocator tempAllocator;
+  shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
   std::vector<std::string> errorStack;
+
+  CompositionContext();
 };
+}; // namespace shards
 
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static constexpr uint32_t TypeId = 'brcM';
@@ -501,7 +507,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   ~SHMesh() { terminate(); }
 
   void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-    CompositionContext privateContext{};
+    shards::CompositionContext privateContext;
     data.privateContext = &privateContext;
     try {
       auto validation = shards::composeWire(wire.get(), data);

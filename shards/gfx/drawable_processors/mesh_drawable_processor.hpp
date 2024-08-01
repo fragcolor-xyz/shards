@@ -10,14 +10,14 @@
 #include "../shader/types.hpp"
 #include "../texture_placeholder.hpp"
 #include "../sampler_cache.hpp"
-#include "../pmr/list.hpp"
-#include "../pmr/unordered_map.hpp"
-#include "../pmr/vector.hpp"
 #include "../mesh_utils.hpp"
 #include "../drawable_processor_helpers.hpp"
 #include "../pipeline_builder.hpp"
 #include "../renderer_types.hpp"
 #include "../shader/struct_layout.hpp"
+#include <shards/core/pmr/unordered_map.hpp>
+#include <shards/core/pmr/vector.hpp>
+#include <shards/core/pmr/list.hpp>
 #include <shards/defer.hpp>
 #include <boost/container/flat_map.hpp>
 #include <spdlog/spdlog.h>

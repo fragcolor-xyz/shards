@@ -12,7 +12,7 @@ extern "C" void gfxTracyInit();
 int main(int argc, char *argv[]) {
 #ifdef TRACY_ENABLE
   gfxTracyInit();
-#endif
+#endif 
   shards::logging::setupDefaultLoggerConditional("test-gfx.log");
 
   Catch::Session session;

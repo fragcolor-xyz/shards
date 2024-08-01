@@ -13,6 +13,10 @@
 #include "shared.hpp"
 #include <shards/utility.hpp>
 #include <shards/inlined.hpp>
+#include "pmr/temp_allocator.hpp"
+#include "pmr/unordered_map.hpp"
+#include "pmr/unordered_set.hpp"
+#include "pmr/vector.hpp"
 #include "inline.hpp"
 #include "async.hpp"
 #include <boost/asio/thread_pool.hpp>
@@ -775,9 +779,9 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 }
 
 struct InternalCompositionContext {
-  std::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
-  std::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
-  std::unordered_set<SHExposedTypeInfo> required;
+  pmr::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
+  pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
+  pmr::unordered_set<SHExposedTypeInfo> required;
   CompositionContext *sharedContext{};
 
   SHTypeInfo previousOutputType{};
@@ -790,9 +794,20 @@ struct InternalCompositionContext {
   bool onWorkerThread{false};
 
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
+
+  InternalCompositionContext() = default;
+  InternalCompositionContext(pmr::memory_resource *allocator) : inherited(allocator), exposed(allocator), required(allocator) {}
 };
 
+// Uncomment for more detailed profiling
+#define SH_EXTENDED_COMPOSE_PROFILING 1
+
 void validateConnection(InternalCompositionContext &ctx) {
+#if SH_EXTENDED_COMPOSE_PROFILING
+  ZoneScopedN("validateConnection");
+  ZoneName(ctx.bottom->name(ctx.bottom), ctx.bottom->nameLength);
+#endif
+
   auto previousOutput = ctx.previousOutputType;
 
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
@@ -824,7 +839,12 @@ void validateConnection(InternalCompositionContext &ctx) {
     SHInstanceData data{};
 
     {
+#if SH_EXTENDED_COMPOSE_PROFILING
       ZoneScopedN("PrepareCompose");
+#endif
+      pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
+      sharedStorage.reserve(ctx.exposed.size() + ctx.inherited.size());
+
       data.shard = ctx.bottom;
       data.wire = ctx.wire;
       data.inputType = previousOutput;
@@ -838,18 +858,23 @@ void validateConnection(InternalCompositionContext &ctx) {
       // Pass all we got in the context!
       // notice that shards might add new records to this array
       for (auto &pair : ctx.exposed) {
-        shards::arrayPush(data.shared, pair.second);
+        sharedStorage.push_back(pair.second);
       }
       // and inherited
       for (auto &pair : ctx.inherited) {
         if (ctx.exposed.find(pair.first) != ctx.exposed.end())
           continue; // Let exposed override inherited
-        shards::arrayPush(data.shared, pair.second);
+        sharedStorage.push_back(pair.second);
       }
+
+      data.shared.elements = sharedStorage.data();
+      data.shared.len = sharedStorage.size();
     }
-    DEFER(shards::arrayFree(data.shared));
+
+// Uncomment for more detailed profiling
+#if SH_EXTENDED_COMPOSE_PROFILING
     ZoneScopedN("Compose");
-    ZoneName(ctx.bottom->name(ctx.bottom), ctx.bottom->nameLength);
+#endif
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -924,7 +949,7 @@ void validateConnection(InternalCompositionContext &ctx) {
   // Finally do checks on what we consume
   auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 
-  std::unordered_map<std::string, SHExposedTypeInfo> requiredVars;
+  pmr::unordered_map<std::string, SHExposedTypeInfo> requiredVars{ctx.sharedContext->tempAllocator.getAllocator()};
   for (uint32_t i = 0; requiredVar.len > i; i++) {
     auto &required_param = requiredVar.elements[i];
     std::string name(required_param.name);
@@ -989,23 +1014,50 @@ void validateConnection(InternalCompositionContext &ctx) {
   }
 }
 
+struct ComposeMemory {
+  pmr::TempAllocator tempAllocator;
+  int usageCount{};
+
+  static thread_local std::optional<ComposeMemory> allocator;
+  static ComposeMemory &instance() {
+    if (!allocator) {
+      return allocator.emplace();
+    }
+    return allocator.value();
+  }
+
+  void incRef() {
+    if (usageCount == 0) {
+      tempAllocator.reset();
+    }
+    ++usageCount;
+  }
+  void decRef() {
+    shassert(usageCount >= 0);
+    --usageCount;
+  }
+};
+thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
+
+CompositionContext::CompositionContext() : visitedWires(tempAllocator.getAllocator()) {
+}
+
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   ZoneScoped;
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
-  CompositionContext *context{};
+  std::optional<CompositionContext> ownedContext{};
   if (!data.privateContext) {
-    data.privateContext = context = new CompositionContext{};
+    ZoneScopedN("new CompositionContext");
+    ownedContext.emplace();
+    data.privateContext = &ownedContext.value();
   }
-  DEFER({
-    if (context)
-      delete context;
-  });
 
-  InternalCompositionContext ctx{};
-  ctx.sharedContext = reinterpret_cast<CompositionContext *>(data.privateContext);
+  CompositionContext *context{reinterpret_cast<CompositionContext *>(data.privateContext)};
+  InternalCompositionContext ctx{context->tempAllocator};
+  ctx.sharedContext = context;
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.wire = data.wire;
@@ -1048,6 +1100,9 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   }
 
   if (data.shared.elements) {
+#if SH_EXTENDED_COMPOSE_PROFILING
+    ZoneScopedN("Setup Inherited");
+#endif
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &info = data.shared.elements[i];
       ctx.inherited[info.name] = info;

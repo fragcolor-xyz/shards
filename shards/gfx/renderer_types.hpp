@@ -19,9 +19,9 @@
 #include "hasherxxh128.hpp"
 #include "../core/pool.hpp"
 #include "worker_memory.hpp"
-#include "pmr/wrapper.hpp"
-#include "pmr/unordered_map.hpp"
-#include "pmr/string.hpp"
+#include <shards/core/pmr/wrapper.hpp>
+#include <shards/core/pmr/unordered_map.hpp>
+#include <shards/core/pmr/string.hpp>
 #include <cassert>
 #include <functional>
 #include <memory>

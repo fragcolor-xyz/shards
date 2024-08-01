@@ -19,8 +19,8 @@
 #include "texture_view_cache.hpp"
 #include "fmt.hpp"
 #include "worker_memory.hpp"
-#include "pmr/unordered_set.hpp"
-#include "pmr/vector.hpp"
+#include <shards/core/pmr/unordered_set.hpp>
+#include <shards/core/pmr/vector.hpp>
 #include "gfx_wgpu.hpp"
 #include "drawable_processor.hpp"
 #include "../core/function.hpp"

@@ -9,6 +9,7 @@ set(core_SOURCES
   type_info.cpp
   hash.cpp
   taskflow.cpp
+  pmr/shared_temp_allocator.cpp
 )
 
 if(EMSCRIPTEN)
@@ -55,10 +56,8 @@ if(SHARDS_THREAD_FIBER)
 endif()
 
 ## Uncomment to enable consistent resumer debugging, this might be useful to debug some specific issues when coroutines cannot be resumed on different threads
-if(DEBUG_CONSISTENT_RESUME)
-  if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER AND NOT EMSCRIPTEN)
-    target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)
-  endif()
+if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER AND NOT EMSCRIPTEN)
+  target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)
 endif()
 
 if(WIN32)

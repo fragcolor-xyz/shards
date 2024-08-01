@@ -42,8 +42,8 @@
 #include "geom.hpp"
 #include "view_stack.hpp"
 #include "worker_memory.hpp"
-#include "pmr/vector.hpp"
-#include "pmr/unordered_map.hpp"
+#include <shards/core/pmr/vector.hpp>
+#include <shards/core/pmr/unordered_map.hpp>
 #include "frame_queue.hpp"
 #include "gfx_wgpu.hpp"
 #include <functional>

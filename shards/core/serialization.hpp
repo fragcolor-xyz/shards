@@ -3,12 +3,17 @@
 
 #include "runtime.hpp"
 #include "trait.hpp"
-#include <unordered_map>
 #include <linalg.h>
-#include <vector>
 #include <stdexcept>
 #include <cassert>
 #include <string_view>
+#include <unordered_map>
+#include <tracy/Wrapper.hpp>
+#include "pmr/vector.hpp"
+#include "pmr/unordered_map.hpp"
+
+// Enable for more detailed breakdown of what types are being (de)serialized in tracy
+#define SH_SERIALIZATION_TRACY_DETAILED 0
 
 namespace shards {
 
@@ -82,11 +87,14 @@ template <typename T, typename As, typename E> std::enable_if_t<std::is_enum_v<E
 struct Serialization {
   Serialization() = default;
   Serialization(bool private_internal) : private_internal(private_internal) {}
+  Serialization(pmr::PolymorphicAllocator<> tempAllocator, bool private_internal = false)
+      : tempAllocator(tempAllocator), private_internal(private_internal), wires(tempAllocator), defaultShards(tempAllocator) {}
 
+  pmr::PolymorphicAllocator<> tempAllocator;
   bool private_internal{false}; // turn this flag on when you want to serialize private data (like wire pointers)
 
-  std::unordered_map<SHVar, SHWireRef> wires;
-  std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
+  pmr::unordered_map<SHVar, SHWireRef> wires;
+  pmr::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
   void reset() {
     for (auto &ref : wires) {
@@ -150,6 +158,12 @@ struct Serialization {
     }
 
     output.valueType = nextType;
+
+#if SH_SERIALIZATION_TRACY_DETAILED
+    ZoneScopedN("deserialize");
+    const char *c = type2Name_raw(nextType);
+    ZoneText(c, strlen(c));
+#endif
 
     switch (output.valueType) {
     case SHType::None:
@@ -355,7 +369,7 @@ struct Serialization {
       Shard *blk;
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
-      std::vector<char> buf;
+      pmr::vector<char> buf(tempAllocator);
       buf.resize(len + 1);
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
@@ -409,7 +423,7 @@ struct Serialization {
     case SHType::Wire: {
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
-      std::vector<char> buf;
+      pmr::vector<char> buf(tempAllocator);
       buf.resize(len + 1);
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
@@ -479,7 +493,7 @@ struct Serialization {
             throw shards::SHException("Object variable deserializer missing");
           }
           auto size = size_t(len);
-          std::vector<uint8_t> data;
+          pmr::vector<uint8_t> data(tempAllocator);
           data.resize(size);
           read((uint8_t *)&data[0], size);
           output.payload.objectValue = info.deserialize(&data[0], size);
@@ -527,6 +541,13 @@ struct Serialization {
     size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
     total += sizeof(input.valueType);
+
+#if SH_SERIALIZATION_TRACY_DETAILED
+    ZoneScopedN("serialize");
+    const char *c = type2Name_raw(input.valueType);
+    ZoneText(c, strlen(c));
+#endif
+
     switch (input.valueType) {
     case SHType::None:
       break;
