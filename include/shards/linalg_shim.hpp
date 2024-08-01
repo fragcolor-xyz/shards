@@ -313,13 +313,34 @@ template <typename TVec> inline auto toVec(const SHVar &value) {
   return Conv::convert(value);
 }
 
-inline auto toFloat2(const SHVar &value) { return *reinterpret_cast<const padded::Float2 &>(value); }
-inline auto toFloat3(const SHVar &value) { return *reinterpret_cast<const padded::Float3 &>(value); }
-inline auto toFloat4(const SHVar &value) { return *reinterpret_cast<const padded::Float4 &>(value); }
-inline auto toInt2(const SHVar &value) { return *reinterpret_cast<const padded::Int2 &>(value); }
-inline auto toUInt2(const SHVar &value) { return *reinterpret_cast<const padded::UInt2 &>(value); }
-inline auto toInt3(const SHVar &value) { return *reinterpret_cast<const padded::Int3 &>(value); }
-inline auto toInt4(const SHVar &value) { return *reinterpret_cast<const padded::Int4 &>(value); }
+inline auto toFloat2(const SHVar &value) {
+  shassert(value.valueType == SHType::Float2);
+  return *reinterpret_cast<const padded::Float2 &>(value);
+}
+inline auto toFloat3(const SHVar &value) {
+  shassert(value.valueType == SHType::Float3);
+  return *reinterpret_cast<const padded::Float3 &>(value);
+}
+inline auto toFloat4(const SHVar &value) {
+  shassert(value.valueType == SHType::Float4);
+  return *reinterpret_cast<const padded::Float4 &>(value);
+}
+inline auto toInt2(const SHVar &value) {
+  shassert(value.valueType == SHType::Int2);
+  return *reinterpret_cast<const padded::Int2 &>(value);
+}
+inline auto toUInt2(const SHVar &value) {
+  shassert(value.valueType == SHType::Int2);
+  return *reinterpret_cast<const padded::UInt2 &>(value);
+}
+inline auto toInt3(const SHVar &value) {
+  shassert(value.valueType == SHType::Int3);
+  return *reinterpret_cast<const padded::Int3 &>(value);
+}
+inline auto toInt4(const SHVar &value) {
+  shassert(value.valueType == SHType::Int4);
+  return *reinterpret_cast<const padded::Int4 &>(value);
+}
 
 template <typename TVec> inline SHVar genericToVar(const TVec &value) {
   using Conv = VectorConversion<TVec>;

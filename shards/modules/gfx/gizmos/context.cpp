@@ -135,7 +135,7 @@ struct GizmosContextShard {
     }
 
     if (!_viewSize.isNone()) {
-      gizmoInput.viewportSize = (float2)toFloat2(_viewSize.get());
+      gizmoInput.viewportSize = (float2)toInt2(_viewSize.get());
     } else if (_gfxContext) {
       auto &vs = _gfxContext->renderer->getViewStack();
       gizmoInput.viewportSize = float2(vs.getOutput().referenceSize);
