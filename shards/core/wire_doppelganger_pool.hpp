@@ -66,7 +66,7 @@ template <typename T> struct WireDoppelgangerPool {
     }
   }
 
-  // Starts a batch aquire operation (which NEEDS to be completed with acquireFromBatch for each index in the batch)
+  // Starts a batch acquire operation (which NEEDS to be completed with acquireFromBatch for each index in the batch)
   // Large batch operations are faster since synchronization only happens during acquireBatch and acquireFromBatch can run in parallel without locks
   BatchOperation acquireBatch(size_t numWires) {
     ZoneScoped;
