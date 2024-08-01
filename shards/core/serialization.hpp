@@ -88,20 +88,18 @@ struct Serialization {
   Serialization() = default;
   Serialization(bool private_internal) : private_internal(private_internal) {}
   Serialization(pmr::PolymorphicAllocator<> tempAllocator, bool private_internal = false)
-      : tempAllocator(tempAllocator), private_internal(private_internal), wires(tempAllocator), defaultShards(tempAllocator) {}
+      : tempAllocator(tempAllocator), private_internal(private_internal), wires(tempAllocator) {}
 
   pmr::PolymorphicAllocator<> tempAllocator;
   bool private_internal{false}; // turn this flag on when you want to serialize private data (like wire pointers)
 
   pmr::unordered_map<SHVar, SHWireRef> wires;
-  pmr::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
   void reset() {
     for (auto &ref : wires) {
       SHWire::deleteRef(ref.second);
     }
     wires.clear();
-    defaultShards.clear();
   }
 
   ~Serialization() { reset(); }
@@ -283,10 +281,9 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
-        SHVar keyBuf{};
+        shards::OwnedVar keyBuf{};
         deserialize(read, keyBuf);
-        auto &dst = (*map)[keyBuf];
-        destroyVar(keyBuf); // we don't need the key anymore
+        auto &dst = (*map)[std::move(keyBuf)];
         deserialize(read, dst);
       }
       break;
@@ -313,11 +310,9 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
-        // TODO improve this, avoid allocations
-        SHVar dst{};
+        shards::OwnedVar dst{};
         deserialize(read, dst);
-        (*set).emplace(dst);
-        destroyVar(dst);
+        (*set).emplace(std::move(dst));
       }
       break;
     }
@@ -389,15 +384,11 @@ struct Serialization {
 
       blk->setup(blk);
 
-      auto params = blk->parameters(blk).len + 1;
-      while (params--) {
-        int32_t idx;
-        read((uint8_t *)&idx, sizeof(int32_t));
-        if (idx == -1)
-          break;
+      auto params = blk->parameters(blk).len;
+      for (uint32_t i = 0; i < params; i++) {
         SHVar tmp{};
         deserialize(read, tmp);
-        blk->setParam(blk, idx, &tmp);
+        blk->setParam(blk, i, &tmp);
         destroyVar(tmp);
       }
 
@@ -713,32 +704,20 @@ struct Serialization {
       total += sizeof(uint32_t);
       write((const uint8_t *)name, len);
       total += len;
+
       // serialize the hash of the shard as well
       auto crc = blk->hash(blk);
       write((const uint8_t *)&crc, sizeof(uint32_t));
       total += sizeof(uint32_t);
+
       // params
-      // well, this is bad and should be fixed somehow at some point
-      // we are creating a shard just to compare to figure default values
-      auto model =
-          defaultShards.emplace(name, std::shared_ptr<Shard>(createShard(name), [](Shard *shard) { shard->destroy(shard); }))
-              .first->second.get();
-      if (!model) {
-        throw shards::SHException(fmt::format("Could not create shard: {}.", name));
-      }
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
         auto idx = int32_t(i);
-        auto dval = model->getParam(model, idx);
         auto pval = blk->getParam(blk, idx);
-        if (pval != dval) {
-          write((const uint8_t *)&idx, sizeof(int32_t));
-          total += serialize(pval, write) + sizeof(int32_t);
-        }
+        total += serialize(pval, write);
       }
-      int32_t idx = -1; // end of params
-      write((const uint8_t *)&idx, sizeof(int32_t));
-      total += sizeof(int32_t);
+
       // optional state
       if (blk->getState) {
         auto state = blk->getState(blk);
