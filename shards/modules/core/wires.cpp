@@ -528,7 +528,10 @@ struct StopWire : public WireBase {
       }
     }
 
-    return data.inputType;
+    if (passthrough)
+      return data.inputType;
+    else
+      return CoreInfo::AnyType;
   }
 
   void cleanup(SHContext *context) {
