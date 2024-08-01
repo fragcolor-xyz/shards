@@ -66,6 +66,8 @@ template <typename T> struct WireDoppelgangerPool {
     }
   }
 
+  // Starts a batch aquire operation (which NEEDS to be completed with acquireFromBatch for each index in the batch)
+  // Large batch operations are faster since synchronization only happens during acquireBatch and acquireFromBatch can run in parallel without locks
   BatchOperation acquireBatch(size_t numWires) {
     ZoneScoped;
 
@@ -86,6 +88,7 @@ template <typename T> struct WireDoppelgangerPool {
     return operation;
   }
 
+  // Used to get a composed wire from a batch operation, this can run on a worker thread without any locks
   template <class Composer, typename Anything = void>
   T *acquireFromBatch(BatchOperation &batch, size_t index, Composer &composer, Anything *anything = nullptr)
     requires WireData<T>
@@ -132,52 +135,6 @@ template <typename T> struct WireDoppelgangerPool {
 
     auto batch = acquireBatch(1);
     return acquireFromBatch(batch, 0, composer, anything);
-
-    // pmr::SharedTempAllocator tempAlloc;
-    // std::unique_lock<LockableBase(std::mutex)> lock(_poolMutex);
-    // LockMark(_poolMutex);
-    // if (_avail.size() == 0) {
-    //   lock.unlock();
-
-    //   Serialization serializer{tempAlloc.getAllocator(), true};
-    //   std::shared_ptr<SHWire> wire;
-    //   {
-    //     ZoneScopedN("Deserialize");
-    //     std::stringstream stream(_wireStr);
-    //     Reader r(stream);
-    //     SHVar vwire{};
-    //     serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
-    //     wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-    //     destroyVar(vwire);
-    //   }
-
-    //   lock.lock();
-    //   auto &fresh = _pool.emplace_back(std::make_shared<T>());
-    //   auto index = _pool.size();
-    //   lock.unlock();
-
-    //   wire->parent = _master; // keep a reference to the master wire
-    //   fresh->wire = wire;
-    //   fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
-    //   if constexpr (WireDataDeps<T>) {
-    //     fresh->wires.clear();
-    //     for (auto &w : serializer.wires) {
-    //       fresh->wires.push_back(SHWire::sharedFromRef(w.second));
-    //     }
-    //   }
-    //   composer.compose(wire.get(), anything, false);
-
-    //   return fresh.get();
-    // } else {
-    //   ZoneScopedN("ComposeRecycle");
-    //   auto res = _avail.extract(_avail.begin());
-    //   lock.unlock();
-
-    //   auto &value = res.value();
-    //   composer.compose(value->wire.get(), anything, true);
-
-    //   return value;
-    // }
   }
 
   void release(T *wire) {

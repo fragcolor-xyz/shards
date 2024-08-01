@@ -12,6 +12,9 @@
 #include "pmr/vector.hpp"
 #include "pmr/unordered_map.hpp"
 
+// Enable for more detailed breakdown of what types are being (de)serialized in tracy
+#define SH_SERIALIZATION_TRACY_DETAILED 0
+
 namespace shards {
 
 struct BufferRefWriter {
@@ -156,10 +159,11 @@ struct Serialization {
 
     output.valueType = nextType;
 
-    // Uncomment for more detailed breakdown
-    // ZoneScopedN("deserialize");
-    // const char *c = type2Name_raw(nextType);
-    // ZoneText(c, strlen(c));
+#if SH_SERIALIZATION_TRACY_DETAILED
+    ZoneScopedN("deserialize");
+    const char *c = type2Name_raw(nextType);
+    ZoneText(c, strlen(c));
+#endif
 
     switch (output.valueType) {
     case SHType::None:
@@ -537,6 +541,13 @@ struct Serialization {
     size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
     total += sizeof(input.valueType);
+
+#if SH_SERIALIZATION_TRACY_DETAILED
+    ZoneScopedN("serialize");
+    const char *c = type2Name_raw(input.valueType);
+    ZoneText(c, strlen(c));
+#endif
+
     switch (input.valueType) {
     case SHType::None:
       break;
