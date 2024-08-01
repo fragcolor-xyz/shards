@@ -314,6 +314,8 @@ struct IBodyMirror {
       settings.mCollisionGroup.SetGroupFilter(GroupFilter::instance());
       settings.mCollisionGroup.SetGroupID(inParams.groupMembership);
       settings.mCollisionGroup.SetSubGroupID(inParams.collisionMask);
+      settings.mAllowSleeping = false; // TODO: Param
+      settings.mCollideKinematicVsNonDynamic = true; // TODO: Param
       data.body = bodyInterface.CreateBody(settings);
       data.paramHash0 = node->paramHash0;
       data.paramHash1 = node->paramHash1;
@@ -323,8 +325,6 @@ struct IBodyMirror {
       auto &inParams = node->params.soft;
       JPH::SoftBodyCreationSettings settings(std::get<1>(node->shape).GetPtr(), JPH::RVec3Arg(node->location),
                                              JPH::QuatArg(node->rotation), BroadPhaseLayers::MOVING.GetValue());
-      // settings.mPressure = 2000.0f;
-      // settings.mRestitution = 0.2f;
       settings.mFriction = inParams.friction;
       settings.mRestitution = inParams.restitution;
       settings.mLinearDamping = inParams.linearDamping;

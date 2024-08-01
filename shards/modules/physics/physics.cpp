@@ -419,6 +419,78 @@ struct CenterOfMassShard {
   }
 };
 
+struct SetPoses {
+  static SHTypesInfo inputTypes() { return SHBody::Type; }
+  static SHTypesInfo outputTypes() { return SHBody::Type; }
+  static SHOptionalString help() { return SHCCSTR("Override poses of the physics body"); }
+
+  PARAM_PARAMVAR(_position, "Linear", "The position to set",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_rotation, "Angular", "The rotation to set",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_position), PARAM_IMPL_FOR(_rotation));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
+    auto &associatedData = shBody.node->data;
+    if (associatedData && associatedData->bodyAdded) {
+      auto &body = associatedData->body;
+      auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
+
+      if (_position.get().valueType == SHType::Float3) {
+        bodyInterface.SetPosition(body->GetID(), toJPHVec3(_position.get().payload.float3Value), JPH::EActivation::Activate);
+      }
+      if (_rotation.get().valueType == SHType::Float4) {
+        bodyInterface.SetRotation(body->GetID(), toJPHQuat(_rotation.get().payload.float4Value), JPH::EActivation::Activate);
+      }
+    }
+    return input;
+  }
+};
+
+struct SetVelocities {
+  static SHTypesInfo inputTypes() { return SHBody::Type; }
+  static SHTypesInfo outputTypes() { return SHBody::Type; }
+  static SHOptionalString help() { return SHCCSTR("Override velocity of the physics body"); }
+
+  PARAM_PARAMVAR(_linearVel, "Linear", "The linear velocity to set",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_angularVel, "Angular", "The angular velocity to set",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_linearVel), PARAM_IMPL_FOR(_angularVel));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
+    auto &associatedData = shBody.node->data;
+    if (associatedData && associatedData->bodyAdded) {
+      auto &body = associatedData->body;
+      auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
+
+      if (_linearVel.get().valueType == SHType::Float3) {
+        bodyInterface.SetLinearVelocity(body->GetID(), toJPHVec3(_linearVel.get().payload.float3Value));
+      }
+      if (_angularVel.get().valueType == SHType::Float3) {
+        bodyInterface.SetAngularVelocity(body->GetID(), toJPHVec3(_angularVel.get().payload.float3Value));
+      }
+    }
+    return input;
+  }
+};
+
 template <int Mode> struct ApplyVelocity {
   static_assert(Mode == 0 || Mode == 1, "Invalid mode");
 
@@ -445,7 +517,7 @@ template <int Mode> struct ApplyVelocity {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
     auto &associatedData = shBody.node->data;
-    if (associatedData && associatedData->body) {
+    if (associatedData && associatedData->bodyAdded) {
       auto &body = associatedData->body;
       auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
 
@@ -487,7 +559,7 @@ struct ApplyForceAt {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
     auto &associatedData = shBody.node->data;
-    if (associatedData && associatedData->body) {
+    if (associatedData && associatedData->bodyAdded) {
       auto &body = associatedData->body;
       auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
 
@@ -551,6 +623,9 @@ SHARDS_REGISTER_FN(physics) {
   REGISTER_SHARD("Physics.AngularVelocity", AngularVelocityShard);
   REGISTER_SHARD("Physics.InverseMass", InverseMassShard);
   REGISTER_SHARD("Physics.CenterOfMass", CenterOfMassShard);
+
+  REGISTER_SHARD("Physics.SetPose", SetPoses);
+  REGISTER_SHARD("Physics.SetVelocity", SetVelocities);
 
   using ApplyImpulse = ApplyVelocity<0>;
   using ApplyForce = ApplyVelocity<1>;
