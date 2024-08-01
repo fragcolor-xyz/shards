@@ -120,10 +120,11 @@ template <typename T> struct WireDoppelgangerPool {
           poolItem.wires.push_back(SHWire::sharedFromRef(w.second));
         }
       }
+
+      ZoneScopedN("Compose");
+      composer.compose(poolItem.wire.get(), anything, false);
     }
 
-    ZoneScopedN("Compose");
-    composer.compose(poolItem.wire.get(), anything, false);
     return &poolItem;
   }
 
