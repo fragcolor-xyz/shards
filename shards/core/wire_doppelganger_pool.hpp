@@ -123,6 +123,8 @@ template <typename T> struct WireDoppelgangerPool {
 
       ZoneScopedN("Compose");
       composer.compose(poolItem.wire.get(), anything, false);
+    } else {
+      composer.compose(poolItem.wire.get(), anything, true);
     }
 
     return &poolItem;
