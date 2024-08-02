@@ -35,6 +35,8 @@ else()
   set(ENABLE_EXTENSIONS ON)
 endif()
 
+# This triggers warnings+errors on valgrind build
+option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
 option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS_BASE})
 option(USE_SSE4_2 "Enable SSE4.2" ${ENABLE_EXTENSIONS})
 option(USE_AVX "Enable AVX" ${ENABLE_EXTENSIONS})
