@@ -6,7 +6,7 @@ use clap::{arg, Parser};
 use shards::core::{sleep, Core};
 use shards::types::Mesh;
 use shards::util::from_raw_parts_allow_null;
-use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};
+use shards::{fourCharacterCode, shlog, shlog_error, SHCore, GIT_VERSION, SHARDS_CURRENT_ABI};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::fs;
@@ -136,6 +136,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     _ => unsafe {
       shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
       shards_install_signal_handlers();
+      shlog!("Shards git version: {}", GIT_VERSION);
     },
   };
 

@@ -21,6 +21,9 @@ extern crate lazy_static;
 extern crate compile_time_crc32;
 pub use compile_time_crc32::crc32;
 
+use git_version::git_version;
+pub const GIT_VERSION: &str = git_version!(fallback = "unknown");
+
 #[macro_use]
 pub mod core;
 
