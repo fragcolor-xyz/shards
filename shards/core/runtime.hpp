@@ -232,6 +232,18 @@ bool isDebuggerPresent();
 void decompressStrings();
 #endif
 
+struct DefaultHelpText {
+  static inline const SHOptionalString InputHelpIgnoredOrPass =
+      SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");
+
+  static inline const SHOptionalString InputHelpIgnored = SHCCSTR("The input of this shard is ignored.");
+
+  static inline const SHOptionalString InputHelpPass =
+      SHCCSTR("Any input type is accepted. The input value will pass through unchanged.");
+
+  static inline const SHOptionalString OutputHelpPass = SHCCSTR("Outputs the input value, passed through unchanged.");
+};
+
 template <typename T> struct AnyStorage {
 private:
   std::shared_ptr<entt::any> _anyStorage;
