@@ -40,6 +40,16 @@ enum class BasicTypes {
 struct CoreInfo {
   static inline Type NoneType{{SHType::None}};
 
+  static inline const SHOptionalString InputHelpIgnoredOrPass =
+      SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");
+
+  static inline const SHOptionalString InputHelpIgnored = SHCCSTR("The input of this shard is ignored.");
+
+  static inline const SHOptionalString InputHelpPass =
+      SHCCSTR("Any input type is accepted. The input value will pass through unchanged.");
+
+  static inline const SHOptionalString OutputHelpPass = SHCCSTR("Outputs the input value, passed through unchanged.");
+
 #define SH_CORE_TYPE_DEF(_shtype_)                                                                       \
   static inline Type _shtype_##Type{{SHType::_shtype_}};                                                 \
   static inline Type _shtype_##SeqType{{SHType::Seq, {.seqTypes = _shtype_##Type}}};                     \

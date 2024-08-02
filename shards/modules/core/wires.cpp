@@ -245,7 +245,7 @@ struct Wait : public WireBase {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");
+    return CoreInfo::InputHelpIgnoredOrPass;
   }
 
   static SHOptionalString outputHelp() {
@@ -366,7 +366,7 @@ struct IsRunning : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input of this shard is ignored."); }
+  static SHOptionalString inputHelp() {return CoreInfo::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard will either return true if the specified Wire is still running, or false if it has ended.");
@@ -448,7 +448,7 @@ struct Peek : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input of this shard is ignored."); }
+  static SHOptionalString inputHelp() { return CoreInfo::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR(
@@ -535,7 +535,7 @@ struct StopWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Either stops the execution of a specified Wire or the current Wire."); }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");
+    return CoreInfo::InputHelpIgnoredOrPass;
   }
 
   static SHOptionalString outputHelp() {
@@ -640,10 +640,10 @@ struct SuspendWire : public WireBase {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input value will pass through unchanged.");
+    return CoreInfo::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input value, passed through unchanged."); }
+  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
 
   void setup() { passthrough = true; }
 
@@ -706,10 +706,10 @@ struct ResumeWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Resumes another Wire (previously paused using Suspend)."); }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input value will pass through unchanged.");
+    return CoreInfo::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input value, passed through unchanged."); }
+  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
 
   void setup() { passthrough = true; }
 
@@ -769,7 +769,7 @@ struct SwitchTo : public WireBase {
 
   static SHOptionalString help() { return SHCCSTR("Suspends the current Wire and switches execution to the specified Wire."); }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input of this shard is provided as input for the Wire specified"); }
+  static SHOptionalString inputHelp() { return InputBaseWire; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard is the output of the Wire that execution was switched to, upon switching back to "
@@ -1779,9 +1779,7 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard takes a sequence as input. Each value from the sequence is provided as input to its corresponding "
-                   "copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, will be the same as "
-                   "the number of elements in the sequence provided.");
+    return InputManyWire;
   }
 
   static SHOptionalString outputHelp() {
@@ -1936,7 +1934,7 @@ struct Spawn : public CapturingSpawners {
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input of this shard will be given as input for the specified Wire.");
+    return InputBaseWire;
   }
 
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the specific copy of the Wire that was scheduled."); }
@@ -2172,9 +2170,7 @@ struct WhenDone : Spawn {
 struct StepMany : public TryMany {
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard takes a sequence of values as input. Each value from the sequence is provided as input to its "
-                   "corresponding copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, "
-                   "will be the same as the number of elements in the sequence provided.");
+    return InputManyWire;
   }
 
   static SHOptionalString outputHelp() {
@@ -2283,9 +2279,7 @@ struct DoMany : public TryMany {
   void setup() { _threads = 0; } // we don't use threads
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard takes a sequence of values as input. Each value from the sequence is provided as input to its "
-                   "corresponding copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, "
-                   "will be the same as the number of elements in the sequence provided.");
+    return InputManyWire;
   }
 
   static SHOptionalString outputHelp() {
@@ -2448,10 +2442,10 @@ struct Branch {
   static inline Type VarSeqType = Type::SeqOf(VarSeqTypes);
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input value will pass through unchanged.");
+    return CoreInfo::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the input value, passed through unchanged."); }
+  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
 
   SHOptionalString help() {
     return SHCCSTR("Creates a branch from the specified Behavior and schedules all the Wires specified. Every time this shard is "

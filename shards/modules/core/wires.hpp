@@ -35,6 +35,14 @@ struct WireBase {
 
   static inline Parameters runWireParamsInfo{{"Wire", SHCCSTR("The Wire to execute inline."), {WireTypes}}};
 
+  static inline const SHOptionalString InputBaseWire =
+      SHCCSTR("Any input type is accepted. The input of this shard will be given as input for the specified Wire");
+
+  static inline const SHOptionalString InputManyWire =
+      SHCCSTR("This shard takes a sequence of values as input. Each value from the sequence is provided as input to its corresponding "
+              "copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, will be the same as "
+              "the number of elements in the sequence provided.");
+
   ParamVar wireref{};
   std::shared_ptr<SHWire> wire;
 
@@ -325,15 +333,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     detached = WIRE_MODE == RunWireMode::Async;  // in RunWire we always detach
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type is accepted. The input of this shard will be given as input for the specified Wire");
-  }
+  static SHOptionalString inputHelp() { return InputBaseWire; }
 
   static SHOptionalString outputHelp() {
     if constexpr (WIRE_MODE == RunWireMode::Inline) {
       return SHCCSTR("The output of this shard will be the output of the Wire that is executed.");
     } else if constexpr (WIRE_MODE == RunWireMode::Async) {
-      return SHCCSTR("This shard outputs the input value, passed through unchanged.");
+      return CoreInfo::OutputHelpPass;
     } else {
       return SHCCSTR("The output of this shard will be the output of the Wire that is executed. Note that because the Wire's "
                      "output might change as the Wire's state is progressed, the output of this Shard will be of Type::Any. "
@@ -342,14 +348,15 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   }
 
   static inline const SHOptionalString InlineHelpText = SHCCSTR(
-      "Schedules and executes the specified Wire inline of the current Wire. The specified Wire needs to complete its execution before the "
+      "Schedules and executes the specified Wire inline of the current Wire. The specified Wire needs to complete its execution "
+      "before the "
       "current "
       "Wire continues its execution. This means that a pause in execution of the child Wire will also pause the parent Wire.");
-  static inline const SHOptionalString AsyncHelpText =
-      SHCCSTR("Schedules and executes the specified Wire asynchronously. The current Wire will "
-              "continue its execution independently of the specified Wire. Unlike Spawn, only one unique copy of the specified Wire can "
-              "be scheduled using Detach. Future calls of Detach that schedules the same Wire will be ignored unless the "
-              "specified Wire is Stopped or ends naturally.");
+  static inline const SHOptionalString AsyncHelpText = SHCCSTR(
+      "Schedules and executes the specified Wire asynchronously. The current Wire will "
+      "continue its execution independently of the specified Wire. Unlike Spawn, only one unique copy of the specified Wire can "
+      "be scheduled using Detach. Future calls of Detach that schedules the same Wire will be ignored unless the "
+      "specified Wire is Stopped or ends naturally.");
   static inline const SHOptionalString SteppedHelpText =
       SHCCSTR("The first time Step is called, the specified wire is scheduled. On subsequent calls, the specified Wire's state "
               "is progressed before the current Wire continues its execution. This means that a pause "
