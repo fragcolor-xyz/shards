@@ -28,12 +28,14 @@ option(USE_AVX2 "Enable AVX2" OFF)
 option(USE_AVX512 "Enable AVX512" OFF)
 
 if(EMSCRIPTEN)
-  set(ENABLE_EXTENSIONS ON) # Can use web assembly SIMD
+  set(ENABLE_EXTENSIONS_BASE ON) # Can use web assembly SIMD 
+  set(ENABLE_EXTENSIONS OFF) # Non of the other once because they add -mpopcnt, -mbmi, etc.
 else()
+  set(ENABLE_EXTENSIONS_BASE ON)
   set(ENABLE_EXTENSIONS ON)
 endif()
 
-option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS})
+option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS_BASE})
 option(USE_SSE4_2 "Enable SSE4.2" ${ENABLE_EXTENSIONS})
 option(USE_AVX "Enable AVX" ${ENABLE_EXTENSIONS})
 option(USE_LZCNT "Enable LZCNT" ${ENABLE_EXTENSIONS})
