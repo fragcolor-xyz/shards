@@ -23,12 +23,11 @@ add_rust_library(NAME crsql_bundle
   FEATURES static)
 
 add_library(crsqlite-extension STATIC
-  cr-sqlite/core/src/sqlite/sqlite3.c
   cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/changes-vtab.c
   cr-sqlite/core/src/ext-data.c
 )
-target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
+target_link_libraries(crsqlite-extension PUBLIC sqlite-static crsql_bundle-rust)
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
