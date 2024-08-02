@@ -173,9 +173,9 @@ struct Core;
 struct SHBody {
   static inline int32_t ObjectId = 'phNo';
   static inline const char VariableName[] = "Physics.Body";
-  static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
+  static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
-  static inline shards::Type VarType = Type::VariableOf(Type);
+  static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
 
   static inline shards::ObjectVar<SHBody, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
                                                                                      RawType.object.typeId};
@@ -186,9 +186,9 @@ struct SHBody {
 struct SHShape {
   static inline int32_t ObjectId = 'phSh';
   static inline const char VariableName[] = "Physics.Shape";
-  static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
+  static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
-  static inline shards::Type VarType = Type::VariableOf(Type);
+  static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
 
   static inline shards::ObjectVar<SHShape, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
                                                                                       RawType.object.typeId};
@@ -201,9 +201,9 @@ struct SHShape {
 struct SHSoftBodyShape {
   static inline int32_t ObjectId = 'phSB';
   static inline const char VariableName[] = "Physics.SoftBodyShape";
-  static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
+  static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
-  static inline shards::Type VarType = Type::VariableOf(Type);
+  static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
 
   static inline shards::ObjectVar<SHSoftBodyShape, nullptr, nullptr, nullptr, true> ObjectVar{
       VariableName, RawType.object.vendorId, RawType.object.typeId};

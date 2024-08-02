@@ -569,9 +569,9 @@ public:
 struct ShardsContext {
   static inline int32_t ObjectId = 'phCx';
   static inline const char VariableName[] = "Physics.Context";
-  static inline shards::Type Type = Type::Object(CoreCC, ObjectId);
+  static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
-  static inline shards::Type VarType = Type::VariableOf(Type);
+  static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
 
   static inline shards::ObjectVar<ShardsContext, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
                                                                                             RawType.object.typeId};
