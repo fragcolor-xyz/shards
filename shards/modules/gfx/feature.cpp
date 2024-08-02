@@ -235,6 +235,11 @@ private:
 
     bool haveDrawableGenerators() const { return !drawableGeneratorBranch.brancher.wires.empty(); }
     bool haveViewGenerators() const { return !viewGeneratorBranch.brancher.wires.empty(); }
+
+    void cleanup() {
+      viewGeneratorBranch.cleanup();
+      drawableGeneratorBranch.cleanup();
+    }
   };
   std::shared_ptr<SharedData> _sharedData;
   ExposedInfo _instanceDataCopy;
@@ -247,6 +252,9 @@ private:
 
 public:
   void cleanup(SHContext *context) {
+    // This makes sure all branchers are cleaned up on the correct thread
+    if(_sharedData)
+      _sharedData->cleanup();
     _sharedData.reset();
     _drawableGeneratorRefs.clear();
     _viewGeneratorRefs.clear();
