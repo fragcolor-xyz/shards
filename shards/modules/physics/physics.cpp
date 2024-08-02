@@ -419,6 +419,31 @@ struct CenterOfMassShard {
   }
 };
 
+struct MotionTypeShard {
+  static SHTypesInfo inputTypes() { return SHBody::Type; }
+  static SHTypesInfo outputTypes() { return PhysicsMotionEnumInfo::Type; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the motion type of the physics body"); }
+
+  PARAM_IMPL();
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
+    auto &associatedData = shBody.node->data;
+    if (associatedData && associatedData->body) {
+      auto &body = associatedData->body;
+      return Var::Enum(body->GetMotionType(), PhysicsMotionEnumInfo::Type);
+    } else {
+      return Var::Enum(JPH::EMotionType::Static, PhysicsMotionEnumInfo::Type);
+    }
+  }
+};
+
 struct SetPoses {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
@@ -623,6 +648,7 @@ SHARDS_REGISTER_FN(physics) {
   REGISTER_SHARD("Physics.AngularVelocity", AngularVelocityShard);
   REGISTER_SHARD("Physics.InverseMass", InverseMassShard);
   REGISTER_SHARD("Physics.CenterOfMass", CenterOfMassShard);
+  REGISTER_SHARD("Physics.MotionType", MotionTypeShard);
 
   REGISTER_SHARD("Physics.SetPose", SetPoses);
   REGISTER_SHARD("Physics.SetVelocity", SetVelocities);
