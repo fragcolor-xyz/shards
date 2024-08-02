@@ -111,6 +111,9 @@ endif()
 if(EMSCRIPTEN)
   add_compile_options(-fdeclspec)
 
+  # Enable web simd
+  add_compile_options(-msimd128)
+
   # if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # add_compile_options(-g1 -Os)
   # endif()
