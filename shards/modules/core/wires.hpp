@@ -339,7 +339,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     if constexpr (WIRE_MODE == RunWireMode::Inline) {
       return SHCCSTR("The output of this shard will be the output of the Wire that is executed.");
     } else if constexpr (WIRE_MODE == RunWireMode::Async) {
-      return CoreInfo::OutputHelpPass;
+      return DefaultHelpText::OutputHelpPass;
     } else {
       return SHCCSTR("The output of this shard will be the output of the Wire that is executed. Note that because the Wire's "
                      "output might change as the Wire's state is progressed, the output of this Shard will be of Type::Any. "

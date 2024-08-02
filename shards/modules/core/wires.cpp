@@ -245,7 +245,7 @@ struct Wait : public WireBase {
   }
 
   static SHOptionalString inputHelp() {
-    return CoreInfo::InputHelpIgnoredOrPass;
+    return DefaultHelpText::InputHelpIgnoredOrPass;
   }
 
   static SHOptionalString outputHelp() {
@@ -366,7 +366,7 @@ struct IsRunning : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() {return CoreInfo::InputHelpIgnored; }
+  static SHOptionalString inputHelp() {return DefaultHelpText::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard will either return true if the specified Wire is still running, or false if it has ended.");
@@ -448,7 +448,7 @@ struct Peek : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() { return CoreInfo::InputHelpIgnored; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR(
@@ -535,7 +535,7 @@ struct StopWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Either stops the execution of a specified Wire or the current Wire."); }
 
   static SHOptionalString inputHelp() {
-    return CoreInfo::InputHelpIgnoredOrPass;
+    return DefaultHelpText::InputHelpIgnoredOrPass;
   }
 
   static SHOptionalString outputHelp() {
@@ -640,10 +640,10 @@ struct SuspendWire : public WireBase {
   }
 
   static SHOptionalString inputHelp() {
-    return CoreInfo::InputHelpPass;
+    return DefaultHelpText::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   void setup() { passthrough = true; }
 
@@ -706,10 +706,10 @@ struct ResumeWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Resumes another Wire (previously paused using Suspend)."); }
 
   static SHOptionalString inputHelp() {
-    return CoreInfo::InputHelpPass;
+    return DefaultHelpText::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   void setup() { passthrough = true; }
 
@@ -2442,10 +2442,10 @@ struct Branch {
   static inline Type VarSeqType = Type::SeqOf(VarSeqTypes);
 
   static SHOptionalString inputHelp() {
-    return CoreInfo::InputHelpPass;
+    return DefaultHelpText::InputHelpPass;
   }
 
-  static SHOptionalString outputHelp() { return CoreInfo::OutputHelpPass; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   SHOptionalString help() {
     return SHCCSTR("Creates a branch from the specified Behavior and schedules all the Wires specified. Every time this shard is "
