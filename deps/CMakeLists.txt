@@ -22,7 +22,7 @@ add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
 set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
-add_subdirectory(JoltPhysics/build)
+add_subdirectory(JoltPhysics/Build)
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "" FORCE)
@@ -40,7 +40,7 @@ if(NOT EMSCRIPTEN)
 
     find_package(OpenSSL REQUIRED)
     add_library(OpenSSL INTERFACE)
-    target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
+  target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
     target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})
 
     message(STATUS "Using system OpenSSL: ${OPENSSL_SSL_LIBRARY}, ${OPENSSL_INCLUDE_DIR}")
