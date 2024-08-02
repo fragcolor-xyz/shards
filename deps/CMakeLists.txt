@@ -22,6 +22,25 @@ add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
 set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
+
+# Don't enable these ones
+option(USE_AVX2 "Enable AVX2" OFF)
+option(USE_AVX512 "Enable AVX512" OFF)
+
+if(NOT EMSCRIPTEN)
+  set(ENABLE_EXTENSIONS ON)
+else()
+  set(ENABLE_EXTENSIONS OFF)
+endif()
+
+option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS})
+option(USE_SSE4_2 "Enable SSE4.2" ${ENABLE_EXTENSIONS})
+option(USE_AVX "Enable AVX" ${ENABLE_EXTENSIONS})
+option(USE_LZCNT "Enable LZCNT" ${ENABLE_EXTENSIONS})
+option(USE_TZCNT "Enable TZCNT" ${ENABLE_EXTENSIONS})
+option(USE_F16C "Enable F16C" ${ENABLE_EXTENSIONS})
+option(USE_FMADD "Enable FMADD" ${ENABLE_EXTENSIONS})
+
 add_subdirectory(JoltPhysics/Build)
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
@@ -40,7 +59,7 @@ if(NOT EMSCRIPTEN)
 
     find_package(OpenSSL REQUIRED)
     add_library(OpenSSL INTERFACE)
-  target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
+    target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
     target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})
 
     message(STATUS "Using system OpenSSL: ${OPENSSL_SSL_LIBRARY}, ${OPENSSL_INCLUDE_DIR}")
