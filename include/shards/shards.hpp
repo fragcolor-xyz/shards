@@ -57,6 +57,21 @@
 namespace shards {
 constexpr uint32_t CoreCC = 'frag'; // FourCC = 1718772071 = 0x66726167
 
+// Define a helper class to wrap string literals
+// Useful in templates such as
+// constexpr ConstexprString IsIntHelp("Checks if the value is of type Int");
+// using IsInt = IsX<SHType::Int, IsIntHelp>;
+// template <SHType ET, ConstexprString HELP> struct IsX{...}
+template <size_t N> struct ConstexprString {
+  char value[N];
+
+  constexpr ConstexprString(const char (&str)[N]) {
+    for (size_t i = 0; i < N; ++i) {
+      value[i] = str[i];
+    }
+  }
+};
+
 class SHException : public std::exception {
 public:
   explicit SHException(std::string_view msg) : errorMessage(msg) {}
@@ -915,7 +930,7 @@ struct Var : public SHVar {
     payload.shardValue = shard;
   }
 
-  explicit Var(SHImage* img) : SHVar() {
+  explicit Var(SHImage *img) : SHVar() {
     valueType = SHType::Image;
     payload.imageValue = img;
   }
