@@ -6,6 +6,7 @@ use crate::shard::LegacyShard;
 use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::Shard as SHShard;
 use crate::shardsc::*;
+use crate::shlog_debug;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
@@ -147,126 +148,6 @@ pub fn init() {
       init_done = true;
     }
   }
-}
-
-#[inline(always)]
-pub fn log(s: &str) {
-  unsafe {
-    let msg = SHStringWithLen {
-      string: s.as_ptr() as *const c_char,
-      len: s.len() as u64,
-    };
-    (*Core).log.unwrap()(msg);
-  }
-}
-
-#[inline(always)]
-pub fn logLevel(level: i32, s: &str) {
-  unsafe {
-    let msg = SHStringWithLen {
-      string: s.as_ptr() as *const c_char,
-      len: s.len() as u64,
-    };
-    (*Core).logLevel.unwrap()(level, msg);
-  }
-}
-
-#[macro_export]
-#[cfg(debug_assertions)]
-macro_rules! shlog_trace {
-  ($text:expr, $($arg:expr),*) => {
-    {
-      use std::io::Write as __stdWrite;
-      let mut buf = vec![];
-      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
-      $crate::core::logLevel(0, ::std::str::from_utf8(&buf).unwrap());
-    }
-  };
-
-  ($text:expr) => {
-    $crate::core::logLevel(0, $text);
-  };
-}
-
-#[macro_export]
-#[cfg(not(debug_assertions))]
-macro_rules! shlog_trace {
-  ($text:expr, $($arg:expr),*) => {};
-
-  ($text:expr) => {};
-}
-
-#[macro_export]
-#[cfg(debug_assertions)]
-macro_rules! shlog_debug {
-  ($text:expr, $($arg:expr),*) => {
-    {
-      use std::io::Write as __stdWrite;
-      let mut buf = vec![];
-      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
-      $crate::core::logLevel(1, ::std::str::from_utf8(&buf).unwrap());
-    }
-  };
-
-  ($text:expr) => {
-    $crate::core::logLevel(1, $text);
-  };
-}
-
-#[macro_export]
-#[cfg(not(debug_assertions))]
-macro_rules! shlog_debug {
-  ($text:expr, $($arg:expr),*) => {};
-
-  ($text:expr) => {};
-}
-
-#[macro_export]
-macro_rules! shlog {
-    ($text:expr, $($arg:expr),*) => {
-      {
-        use std::io::Write as __stdWrite;
-        let mut buf = vec![];
-        ::std::write!(&mut buf, $text, $($arg),*).unwrap();
-        $crate::core::log(::std::str::from_utf8(&buf).unwrap());
-      }
-    };
-
-    ($text:expr) => {
-      $crate::core::log($text);
-    };
-}
-
-#[macro_export]
-macro_rules! shlog_error {
-  ($text:expr, $($arg:expr),*) => {
-    {
-      use std::io::Write as __stdWrite;
-      let mut buf = vec![];
-      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
-      $crate::core::logLevel(4, ::std::str::from_utf8(&buf).unwrap());
-    }
-  };
-
-  ($text:expr) => {
-    $crate::core::logLevel(4, $text);
-  };
-}
-
-#[macro_export]
-macro_rules! shlog_warn {
-  ($text:expr, $($arg:expr),*) => {
-    {
-      use std::io::Write as __stdWrite;
-      let mut buf = vec![];
-      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
-      $crate::core::logLevel(3, ::std::str::from_utf8(&buf).unwrap());
-    }
-  };
-
-  ($text:expr) => {
-    $crate::core::logLevel(3, $text);
-  };
 }
 
 #[inline(always)]

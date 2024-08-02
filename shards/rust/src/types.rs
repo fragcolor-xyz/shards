@@ -3,7 +3,7 @@
 
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
-use crate::{fourCharacterCode, SHVAR_FLAGS_WEAK_OBJECT};
+use crate::{fourCharacterCode, shlog, shlog_error, shlog_warn, SHVAR_FLAGS_WEAK_OBJECT};
 
 // Shard Constants
 use crate::shardsc::{

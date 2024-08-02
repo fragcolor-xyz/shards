@@ -1039,8 +1039,7 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
-CompositionContext::CompositionContext() : visitedWires(tempAllocator.getAllocator()) {
-}
+CompositionContext::CompositionContext() : visitedWires(tempAllocator.getAllocator()) {}
 
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   ZoneScoped;
@@ -3094,6 +3093,11 @@ void shards_decompress_strings() {
   shards::decompressStrings();
 #endif
 }
+
+void shards_log(int level, SHStringWithLen msg, const char *file, const char *function, int line) {
+  std::string_view sv(msg.string, size_t(msg.len));
+  spdlog::default_logger_raw()->log(spdlog::source_loc{file, line, function}, (spdlog::level::level_enum)level, sv);
+};
 }
 
 namespace shards {

@@ -35,12 +35,14 @@ pub mod types;
 
 pub mod util;
 
+#[macro_use]
+pub mod logging;
+
 pub use shards_macro::param_set;
 pub use shards_macro::shard;
 pub use shards_macro::shard_impl;
 pub use shards_macro::shards_enum;
 
-use crate::core::log;
 use crate::core::Core;
 pub use crate::shardsc::*;
 use crate::types::Types;
