@@ -106,8 +106,8 @@
   } Looped: true)
   
   @schedule(root run-test)
-  ; @run(root FPS: 120 Iterations: 350) | Assert.Is(true)
-  @run(root FPS: 120) | Assert.Is(true)
+  @run(root FPS: 120 Iterations: 350) | Assert.Is(true)
+  ; @run(root FPS: 120) | Assert.Is(true)
 })
 
 ; ====== Test A lot of basics ======
@@ -409,14 +409,14 @@
 })
 
 @test-basic
-; @test-dof([
-;   PhysicsDOF::TranslationX PhysicsDOF::TranslationY
-;   PhysicsDOF::RotationZ
-; ])
-; @test-dof([
-;   PhysicsDOF::TranslationY PhysicsDOF::TranslationZ
-; ])
-; @test-filters
-; @test-constraints-0
-; @test-constraints-1
-; @test-soft-body
+@test-dof([
+  PhysicsDOF::TranslationX PhysicsDOF::TranslationY
+  PhysicsDOF::RotationZ
+])
+@test-dof([
+  PhysicsDOF::TranslationY PhysicsDOF::TranslationZ
+])
+@test-filters
+@test-constraints-0
+@test-constraints-1
+@test-soft-body
