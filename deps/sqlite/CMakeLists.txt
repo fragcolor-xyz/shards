@@ -44,6 +44,7 @@ add_rust_library(
 add_library(sqlite-vec STATIC ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec/sqlite-vec.c)
 target_compile_definitions(sqlite-vec PRIVATE ${SQLITE_DEFINES})
 target_include_directories(sqlite-vec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec-static)
+target_include_directories(sqlite-vec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 # Add architecture-specific compile definitions for SQLite vector extension
 if(ARM_NEON)
