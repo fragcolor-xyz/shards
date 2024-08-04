@@ -40,17 +40,22 @@ add_rust_library(
   FEATURES static
 )
 
-# Create SQLite vector extension library
-add_library(sqlite-vec STATIC ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec/sqlite-vec.c)
-target_compile_definitions(sqlite-vec PRIVATE ${SQLITE_DEFINES})
-target_include_directories(sqlite-vec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec-static)
-target_include_directories(sqlite-vec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+# Option to include SQLite vector extension
+option(WITH_SQLITE_VEC "Include SQLite vector extension" OFF)
 
-# Add architecture-specific compile definitions for SQLite vector extension
-if(ARM_NEON)
-  target_compile_definitions(sqlite-vec PRIVATE SQLITE_VEC_ENABLE_NEON)
-elseif(X86 AND CPUBITS64)
-  target_compile_definitions(sqlite-vec PRIVATE SQLITE_VEC_ENABLE_AVX)
+if(WITH_SQLITE_VEC)
+  # Create SQLite vector extension library
+  add_library(sqlite-vec STATIC ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec/sqlite-vec.c)
+  target_compile_definitions(sqlite-vec PRIVATE ${SQLITE_DEFINES})
+  target_include_directories(sqlite-vec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec-static)
+  target_include_directories(sqlite-vec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
+
+  # Add architecture-specific compile definitions for SQLite vector extension
+  if(ARM_NEON)
+    target_compile_definitions(sqlite-vec PRIVATE SQLITE_VEC_ENABLE_NEON)
+  elseif(X86 AND CPUBITS64)
+    target_compile_definitions(sqlite-vec PRIVATE SQLITE_VEC_ENABLE_AVX)
+  endif()
 endif()
 
 # Create CR-SQLite extension library
@@ -59,6 +64,10 @@ add_library(crsqlite-extension STATIC
   cr-sqlite/core/src/changes-vtab.c
   cr-sqlite/core/src/ext-data.c
 )
-target_link_libraries(crsqlite-extension PUBLIC sqlite-static crsql_bundle-rust sqlite-vec)
+target_link_libraries(crsqlite-extension PUBLIC sqlite-static crsql_bundle-rust)
+if(WITH_SQLITE_VEC)
+  target_link_libraries(crsqlite-extension PUBLIC sqlite-vec)
+  target_compile_definitions(crsqlite-extension PUBLIC WITH_SQLITE_VEC)
+endif()
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
