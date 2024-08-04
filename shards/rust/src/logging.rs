@@ -19,7 +19,7 @@ pub fn log(s: &str, file: &str, function: &str, line: u32) {
       len: s.len() as u64,
     };
     shards_log(
-      1,
+      2,
       msg,
       file.as_ptr() as *const c_char,
       function.as_ptr() as *const c_char,
