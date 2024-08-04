@@ -4,13 +4,25 @@
 @mesh(root)
 
 @wire(n {
-  "" | Process.Run("echo" ["Hello world"]) | Log |
+  "" | Process.Run("echo" ["Hello world"]) | Log
   Assert.Is("Hello world\n" true)
-  "" | Process.Run("echo" ["Hello world"]) | Log |
+  "" | Process.Run("echo" ["Hello world"]) | Log
   Assert.Is("Hello world\n" true)
 
   ["10"] = args
   Maybe({"" | Process.Run("sleep" args Timeout: 1) | Log})
+
+  ; New test for stdin
+  "Hello from stdin" | Process.Run("cat" []) | Log
+  Assert.Is("Hello from stdin\n" true)
+
+  ; Test with multiple lines of input
+  "Line 1\nLine 2\nLine 3" | Process.Run("cat" []) | Log
+  Assert.Is("Line 1\nLine 2\nLine 3\n" true)
+
+  ; Test with a command that processes input
+  "hello world" | Process.Run("tr" ["a-z" "A-Z"]) | Log
+  Assert.Is("HELLO WORLD\n" true)
 })
 
 @schedule(root n)
