@@ -29,6 +29,9 @@ using namespace std::chrono_literals;
 
 extern "C" {
 int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+#ifdef WITH_SQLITE_VEC
+int sqlite3_vec_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+#endif
 }
 
 static const char *vfs = //
@@ -275,6 +278,12 @@ struct Connection {
       loadCRSQlite();
       return;
     }
+#ifdef WITH_SQLITE_VEC
+    else if (path_ == "sqlite-vec") {
+      loadSqliteVec();
+      return;
+    }
+#endif
 
     char *errorMsg = nullptr;
     DEFER({
@@ -304,6 +313,19 @@ struct Connection {
       throw ActivationError(errorMsg);
     }
   }
+
+#ifdef WITH_SQLITE_VEC
+  void loadSqliteVec() {
+    char *errorMsg = nullptr;
+    DEFER({
+      if (errorMsg)
+        sqlite3_free(errorMsg);
+    });
+    if (sqlite3_vec_init(db, &errorMsg, nullptr) != SQLITE_OK) {
+      throw ActivationError(errorMsg);
+    }
+  }
+#endif
 };
 
 struct Statement {

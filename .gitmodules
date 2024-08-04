@@ -93,3 +93,6 @@
 [submodule "deps/oneTBB"]
 	path = deps/oneTBB
 	url = https://github.com/shards-lang/oneTBB.git
+[submodule "deps/sqlite/sqlite-vec"]
+	path = deps/sqlite/sqlite-vec
+	url = https://github.com/shards-lang/sqlite-vec.git

@@ -34,8 +34,23 @@ endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" AND NOT EMSCRIPTEN)
   set(X86 TRUE)
+  set(ARM FALSE)
 else()
   set(X86 FALSE)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm)|(ARM)|(aarch64)|(AARCH64)")
+    set(ARM TRUE)
+    # Check for NEON support
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-mfpu=neon" COMPILER_SUPPORTS_NEON)
+    if(COMPILER_SUPPORTS_NEON)
+      set(ARM_NEON TRUE)
+    else()
+      set(ARM_NEON FALSE)
+    endif()
+  else()
+    set(ARM FALSE)
+    set(ARM_NEON FALSE)
+  endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -250,21 +265,21 @@ option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
   add_compile_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-g> 
+    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-g>
     $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_link_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer> 
-    $<$<COMPILE_LANGUAGE:CXX,C>:-g> 
+    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-g>
     $<$<COMPILE_LANGUAGE:CXX,C>:-O1> # O1
   )
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_ASAN>)
