@@ -270,7 +270,7 @@ struct Connection {
 
   sqlite3 *get() { return db; }
 
-  void loadExtension(const std::string &path_) {
+  void loadExtension(const std::string &path_, const std::optional<std::string> &entryPoint) {
     if (path_ == "crsqlite") {
       loadCRSQlite();
       return;
@@ -281,11 +281,14 @@ struct Connection {
       if (errorMsg)
         sqlite3_free(errorMsg);
     });
-    if (sqlite3_load_extension(db, path_.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+
+    const char *entryPointStr = entryPoint.has_value() ? entryPoint.value().c_str() : nullptr;
+
+    if (sqlite3_load_extension(db, path_.c_str(), entryPointStr, &errorMsg) != SQLITE_OK) {
       auto exeDirPath = path(GetGlobals().ExePath.c_str()).parent_path();
       auto relPath = exeDirPath / path_;
       auto str = relPath.string();
-      if (sqlite3_load_extension(db, str.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+      if (sqlite3_load_extension(db, str.c_str(), entryPointStr, &errorMsg) != SQLITE_OK) {
         throw ActivationError(errorMsg);
       }
     }
@@ -755,7 +758,7 @@ struct LoadExtension : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void setup() {
+  LoadExtension() {
     _extPath = Var("my-extension");
     _dbName = Var("shards.db");
   }
@@ -763,7 +766,9 @@ struct LoadExtension : public Base {
   PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
+  PARAM_PARAMVAR(_entryPoint, "EntryPoint", "The entry point of the extension.",
+                 {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::NoneType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_entryPoint));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -792,7 +797,15 @@ struct LoadExtension : public Base {
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
-          _connection->loadExtension(extPath);
+
+          auto &entryPoint = _entryPoint.get();
+          if (entryPoint.valueType == SHType::None) {
+            _connection->loadExtension(extPath, std::nullopt);
+          } else {
+            auto entryPointStr = SHSTRING_PREFER_SHSTRVIEW(entryPoint);
+            _connection->loadExtension(extPath, entryPointStr);
+          }
+
           return input;
         },
         [] {});
