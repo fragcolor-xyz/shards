@@ -92,7 +92,7 @@ jobs:
           cd build
 
           if [ "${{ steps.setup.outputs.build-type }}" == "Debug" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DUSE_UBSAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DWITH_SQLITE_VEC=ON -DUSE_UBSAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           else
             cmake -G Ninja -DGNU_STATIC_BUILD=ON -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} -DCMAKE_BUILD_TYPE=Release ..
           fi
@@ -143,7 +143,7 @@ jobs:
           ./shards new ../shards/tests/tablecase.shs
           ./shards new ../shards/tests/types.shs
           ./shards new ../shards/tests/complex-deserialize.shs
-          ./shards new ../shards/tests/db.shs
+          ./shards new ../shards/tests/db.shs with-sqlite-vec:true
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
           ./shards new ../shards/tests/whendone.shs

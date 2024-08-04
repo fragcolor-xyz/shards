@@ -86,7 +86,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DSHARDS_THREAD_FIBER=ON -DUSE_ASAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
+          cmake -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DWITH_SQLITE_VEC=ON -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DSHARDS_THREAD_FIBER=ON -DUSE_ASAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           ninja shards
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
@@ -164,7 +164,7 @@ jobs:
           ./shards new ../shards/tests/time.shs
           ./shards new ../shards/tests/events.shs
           ./shards new ../shards/tests/complex-deserialize.shs
-          ./shards new ../shards/tests/db.shs
+          ./shards new ../shards/tests/db.shs with-sqlite-vec:true
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
           ./shards new ../shards/tests/whendone.shs
