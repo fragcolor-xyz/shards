@@ -64,6 +64,115 @@ macro_rules! cstr {
   };
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SHType {
+  None,
+  Any,
+  Enum,
+  Bool,
+  Int,
+  Int2,
+  Int3,
+  Int4,
+  Int8,
+  Int16,
+  Float,
+  Float2,
+  Float3,
+  Float4,
+  Color,
+  Bytes,
+  String,
+  Path,
+  ContextVar,
+  Image,
+  Seq,
+  Table,
+  Wire,
+  ShardRef,
+  Object,
+  Array,
+  Set,
+  Audio,
+  Type,
+  Trait,
+}
+
+impl From<crate::shardsc::SHType> for SHType {
+  fn from(t: crate::shardsc::SHType) -> Self {
+    match t {
+      crate::shardsc::SHType_None => SHType::None,
+      crate::shardsc::SHType_Any => SHType::Any,
+      crate::shardsc::SHType_Enum => SHType::Enum,
+      crate::shardsc::SHType_Bool => SHType::Bool,
+      crate::shardsc::SHType_Int => SHType::Int,
+      crate::shardsc::SHType_Int2 => SHType::Int2,
+      crate::shardsc::SHType_Int3 => SHType::Int3,
+      crate::shardsc::SHType_Int4 => SHType::Int4,
+      crate::shardsc::SHType_Int8 => SHType::Int8,
+      crate::shardsc::SHType_Int16 => SHType::Int16,
+      crate::shardsc::SHType_Float => SHType::Float,
+      crate::shardsc::SHType_Float2 => SHType::Float2,
+      crate::shardsc::SHType_Float3 => SHType::Float3,
+      crate::shardsc::SHType_Float4 => SHType::Float4,
+      crate::shardsc::SHType_Color => SHType::Color,
+      crate::shardsc::SHType_Bytes => SHType::Bytes,
+      crate::shardsc::SHType_String => SHType::String,
+      crate::shardsc::SHType_Path => SHType::Path,
+      crate::shardsc::SHType_ContextVar => SHType::ContextVar,
+      crate::shardsc::SHType_Image => SHType::Image,
+      crate::shardsc::SHType_Seq => SHType::Seq,
+      crate::shardsc::SHType_Table => SHType::Table,
+      crate::shardsc::SHType_Wire => SHType::Wire,
+      crate::shardsc::SHType_ShardRef => SHType::ShardRef,
+      crate::shardsc::SHType_Object => SHType::Object,
+      crate::shardsc::SHType_Array => SHType::Array,
+      crate::shardsc::SHType_Set => SHType::Set,
+      crate::shardsc::SHType_Audio => SHType::Audio,
+      crate::shardsc::SHType_Type => SHType::Type,
+      crate::shardsc::SHType_Trait => SHType::Trait,
+      _ => panic!("Unknown SHType: {:?}", t),
+    }
+  }
+}
+
+impl From<SHType> for crate::shardsc::SHType {
+  fn from(t: SHType) -> Self {
+    match t {
+      SHType::None => crate::shardsc::SHType_None,
+      SHType::Any => crate::shardsc::SHType_Any,
+      SHType::Enum => crate::shardsc::SHType_Enum,
+      SHType::Bool => crate::shardsc::SHType_Bool,
+      SHType::Int => crate::shardsc::SHType_Int,
+      SHType::Int2 => crate::shardsc::SHType_Int2,
+      SHType::Int3 => crate::shardsc::SHType_Int3,
+      SHType::Int4 => crate::shardsc::SHType_Int4,
+      SHType::Int8 => crate::shardsc::SHType_Int8,
+      SHType::Int16 => crate::shardsc::SHType_Int16,
+      SHType::Float => crate::shardsc::SHType_Float,
+      SHType::Float2 => crate::shardsc::SHType_Float2,
+      SHType::Float3 => crate::shardsc::SHType_Float3,
+      SHType::Float4 => crate::shardsc::SHType_Float4,
+      SHType::Color => crate::shardsc::SHType_Color,
+      SHType::Bytes => crate::shardsc::SHType_Bytes,
+      SHType::String => crate::shardsc::SHType_String,
+      SHType::Path => crate::shardsc::SHType_Path,
+      SHType::ContextVar => crate::shardsc::SHType_ContextVar,
+      SHType::Image => crate::shardsc::SHType_Image,
+      SHType::Seq => crate::shardsc::SHType_Seq,
+      SHType::Table => crate::shardsc::SHType_Table,
+      SHType::Wire => crate::shardsc::SHType_Wire,
+      SHType::ShardRef => crate::shardsc::SHType_ShardRef,
+      SHType::Object => crate::shardsc::SHType_Object,
+      SHType::Array => crate::shardsc::SHType_Array,
+      SHType::Set => crate::shardsc::SHType_Set,
+      SHType::Audio => crate::shardsc::SHType_Audio,
+      SHType::Type => crate::shardsc::SHType_Type,
+      SHType::Trait => crate::shardsc::SHType_Trait,
+    }
+  }
+}
+
 pub type Context = SHContext;
 pub type Var = SHVar;
 pub type Type = SHTypeInfo;
@@ -585,7 +694,7 @@ impl ExposedInfo {
     let chelp = core::ptr::null();
     SHExposedTypeInfo {
       exposedType: ctype,
-      name: name,
+      name,
       help: SHOptionalString {
         string: chelp, // TODO: Pull from parameter into
         crc: 0,
@@ -2776,6 +2885,10 @@ macro_rules! ref_counted_object_type_impl {
 }
 
 impl Var {
+  pub fn get_type(&self) -> SHType {
+    self.valueType.into()
+  }
+
   pub fn color_u8s(r: u8, g: u8, b: u8, a: u8) -> Var {
     SHVar {
       valueType: SHType_Color,
@@ -3106,8 +3219,20 @@ impl Var {
     self.valueType == SHType_Bool
   }
 
+  pub fn is_int(&self) -> bool {
+    self.valueType == SHType_Int
+  }
+
+  pub fn is_float(&self) -> bool {
+    self.valueType == SHType_Float
+  }
+
   pub fn is_string(&self) -> bool {
     self.valueType == SHType_String
+  }
+
+  pub fn is_bytes(&self) -> bool {
+    self.valueType == SHType_Bytes
   }
 
   pub fn is_path(&self) -> bool {
