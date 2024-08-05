@@ -236,6 +236,8 @@ struct DefaultHelpText {
   static inline const SHOptionalString InputHelpIgnoredOrPass =
       SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");
 
+  static inline const SHOptionalString InputHelpAnyType = SHCCSTR("Input of any type is accepted.");
+
   static inline const SHOptionalString InputHelpIgnored = SHCCSTR("The input of this shard is ignored.");
 
   static inline const SHOptionalString InputHelpPass =
