@@ -1166,7 +1166,7 @@ struct Set : public SetUpdateBase {
 
     assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, *_target, _global, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _global, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
@@ -1409,7 +1409,7 @@ struct Update : public SetUpdateBase {
 
     shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, *_target, _isGlobal, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;

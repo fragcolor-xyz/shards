@@ -8,7 +8,6 @@ use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::Parameters;
@@ -20,6 +19,7 @@ use shards::types::Var;
 use shards::types::WireRef;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
+use shards::types::{ExposedInfo, ExposedTypes};
 use shards::util::from_raw_parts_allow_null;
 use shards::SHType_Seq;
 use std::cmp::Ordering;
@@ -61,6 +61,7 @@ extern "C" {
   fn triggerVarValueChange(
     context: *mut Context,
     name: *const Var,
+    key: *const Var,
     is_global: bool,
     var: *const Var,
   );
@@ -75,6 +76,7 @@ impl Default for Variable {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      key: ParamVar::default(),
       labeled: false,
       name: ClonedVar::default(),
       mutable: true,
@@ -118,7 +120,8 @@ impl LegacyShard for Variable {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.variable.set_param(value),
-      1 => Ok(self.labeled = value.try_into()?),
+      1 => self.key.set_param(value),
+      2 => Ok(self.labeled = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -126,7 +129,8 @@ impl LegacyShard for Variable {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
-      1 => self.labeled.into(),
+      1 => self.key.get_param(),
+      2 => self.labeled.into(),
       _ => Var::default(),
     }
   }
@@ -173,12 +177,33 @@ impl LegacyShard for Variable {
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
 
+    // if variable and key are variables add them
+    if self.variable.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: ANY_TYPES[0],
+        name: self.variable.get_name(),
+        help: shccstr!("The variable that holds the value."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
+    if self.key.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: ANY_TYPES[0],
+        name: self.key.get_name(),
+        help: shccstr!("The key to use for the variable."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
+
     Some(&self.requiring)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
+    self.key.warmup(ctx);
 
     self.name = if self.variable.is_variable() {
       let name = unsafe { CStr::from_ptr(self.variable.get_name()) };
@@ -193,6 +218,7 @@ impl LegacyShard for Variable {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.variable.cleanup(ctx);
     self.parents.cleanup(ctx);
+    self.key.cleanup(ctx);
 
     Ok(())
   }
@@ -214,6 +240,7 @@ impl LegacyShard for Variable {
             triggerVarValueChange(
               context as *const Context as *mut Context,
               self.name.as_ref() as *const Var,
+              self.key.get().as_ref() as *const Var,
               self.global,
               var_ref as *const Var,
             );
@@ -223,105 +250,6 @@ impl LegacyShard for Variable {
       });
 
       Ok(*input)
-    } else {
-      Err("No UI parent")
-    }
-  }
-}
-
-impl Default for WireVariable {
-  fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
-    Self {
-      parents,
-      requiring: Vec::new(),
-    }
-  }
-}
-
-impl LegacyShard for WireVariable {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.WireVariable")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.WireVariable-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.WireVariable"
-  }
-
-  fn inputTypes(&mut self) -> &Types {
-    &WIRE_VAR_INPUT
-  }
-
-  fn outputTypes(&mut self) -> &Types {
-    &ANY_TYPES
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
-    Some(&self.requiring)
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-    Ok(())
-  }
-
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.parents.cleanup(ctx);
-    Ok(())
-  }
-
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let input: Table = input.try_into()?;
-
-    let name_var = input.get_fast_static("Name");
-    let name: &str = name_var.try_into()?;
-    let wire_var = input.get_fast_static("Wire");
-    let wire: WireRef = wire_var.try_into()?;
-
-    let var_ptr = unsafe {
-      getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
-    };
-
-    if var_ptr == std::ptr::null_mut() {
-      return Err("Variable not found");
-    }
-
-    let var_ref = unsafe { &mut *var_ptr };
-
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let var_id = ui.id().with(EguiId::new(self, 0));
-      ui.horizontal(|ui| {
-        ui.label(name);
-        if var_ref.render(var_id, false, None, ui).changed() {
-          unsafe {
-            triggerVarValueChange(
-              getWireContext(wire),
-              name_var as *const Var,
-              false,
-              var_ref as *const Var,
-            );
-            var_ref.__bindgen_anon_1.version += 1
-          };
-        }
-      });
-
-      Ok(*var_ref)
     } else {
       Err("No UI parent")
     }

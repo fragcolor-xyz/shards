@@ -171,6 +171,7 @@ struct Variable {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  key: ParamVar,
   labeled: bool,
   name: ClonedVar,
   mutable: bool,
@@ -312,7 +313,6 @@ pub fn register_shards() {
   register_shard::<text_field::TextField>();
   register_legacy_shard::<Tooltip>();
   register_legacy_shard::<Variable>();
-  register_legacy_shard::<WireVariable>();
   register_legacy_shard::<CodeEditor>();
   register_legacy_shard::<HexViewer>();
   register_enum::<TextWrap>();

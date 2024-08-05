@@ -2280,22 +2280,22 @@ void setString(uint32_t crc, SHString str) {
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
-void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var) {
+void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
   if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
     return;
 
   auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
-  OnTrackedVarSet ev{w->id, nameStr, *var, isGlobal, context->currentWire()};
+  OnTrackedVarSet ev{w->id, nameStr, *key, *var, isGlobal, context->currentWire()};
   w->mesh.lock()->dispatcher.trigger(ev);
 }
 
-void triggerVarValueChange(SHWire *w, const SHVar *name, bool isGlobal, const SHVar *var) {
+void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
   if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
     return;
 
   auto nameStr = SHSTRVIEW((*name));
-  OnTrackedVarSet ev{w->id, nameStr, *var, isGlobal, w};
+  OnTrackedVarSet ev{w->id, nameStr, *key, *var, isGlobal, w};
   w->mesh.lock()->dispatcher.trigger(ev);
 }
 
@@ -2552,8 +2552,8 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
-void triggerVarValueChange(SHContext *ctx, const SHVar *name, bool isGlobal, const SHVar *var) {
-  shards::triggerVarValueChange(ctx, name, isGlobal, var);
+void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
+  shards::triggerVarValueChange(ctx, name, key, isGlobal, var);
 }
 
 SHContext *getWireContext(SHWireRef wireRef) {

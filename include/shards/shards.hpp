@@ -1137,6 +1137,7 @@ struct OnTrackedVarWarmup {
 struct OnTrackedVarSet {
   entt::id_type id;
   std::string_view name;
+  SHVar key;
   SHVar newValue;
   bool isGlobal{};
   const SHWire *wire;

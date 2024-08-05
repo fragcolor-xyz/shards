@@ -3,7 +3,9 @@
 
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
-use crate::{fourCharacterCode, shlog, shlog_error, shlog_warn, SHVAR_FLAGS_WEAK_OBJECT};
+use crate::{
+  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT
+};
 
 // Shard Constants
 use crate::shardsc::{
@@ -210,6 +212,68 @@ impl PartialOrd for Var {
 }
 
 impl ClonedVar {
+  pub fn new_string(s: &str) -> Self {
+    let string = Var::ephemeral_string(s);
+    string.into()
+  }
+
+  pub fn new_path(s: &str) -> Self {
+    let mut path = Var::ephemeral_string(s);
+    path.valueType = SHType_Path;
+    path.into()
+  }
+
+  pub fn new_context_var(s: &str) -> Self {
+    let mut context_var = Var::ephemeral_string(s);
+    context_var.valueType = SHType_ContextVar;
+    context_var.into()
+  }
+
+  pub fn new_bytes(bytes: &[u8]) -> Self {
+    let bytes = Var::ephemeral_slice(bytes);
+    bytes.into()
+  }
+
+  pub fn new_image(
+    width: u16,
+    height: u16,
+    channels: u8,
+    flags: u8,
+    data: &[u8],
+  ) -> Result<Self, &'static str> {
+    let dataLen = unsafe {
+      let mut dummyImg = SHImage {
+        width,
+        height,
+        channels,
+        flags,
+        ..Default::default()
+      };
+      (*Core).imageDeriveDataLength.unwrap_unchecked()(&mut dummyImg)
+    };
+
+    if data.len() != dataLen as usize {
+      return Err("Invalid image data length");
+    }
+
+    return Ok(unsafe {
+      let image = (*Core).imageNew.unwrap_unchecked()(dataLen);
+      (*image).width = width;
+      (*image).height = height;
+      (*image).channels = channels;
+      (*image).flags = flags;
+      std::ptr::copy_nonoverlapping(data.as_ptr(), (*image).data, dataLen as usize);
+
+      ClonedVar(Var {
+        valueType: SHType_Image,
+        payload: SHVarPayload {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { imageValue: image },
+        },
+        ..Default::default()
+      })
+    });
+  }
+
   pub fn assign(&mut self, other: &Var) {
     cloneVar(&mut self.0, other);
   }
@@ -1769,46 +1833,14 @@ impl<'de> Deserialize<'de> for ClonedVar {
             v = value.into();
           }
           SHType_Image => {
-            let width: u16 = seq.next_element()?.unwrap();
-            let height: u16 = seq.next_element()?.unwrap();
-            let channels: u8 = seq.next_element()?.unwrap();
-            let flags: u8 = seq.next_element()?.unwrap();
-            let value: &[u8] = seq.next_element()?.unwrap();
-
-            let dataLen = unsafe {
-              let mut dummyImg = SHImage {
-                width,
-                height,
-                channels,
-                flags,
-                ..Default::default()
-              };
-              (*Core).imageDeriveDataLength.unwrap_unchecked()(&mut dummyImg)
-            };
-            if value.len() != dataLen as usize {
-              return Err(serde::de::Error::custom(format!(
-                "Invalid image data length: expected {}, got {}",
-                dataLen,
-                value.len()
-              )));
-            }
-
-            return Ok(unsafe {
-              let image = (*Core).imageNew.unwrap_unchecked()(dataLen);
-              (*image).width = width;
-              (*image).height = height;
-              (*image).channels = channels;
-              (*image).flags = flags;
-              std::ptr::copy_nonoverlapping(value.as_ptr(), (*image).data, dataLen as usize);
-
-              ClonedVar(Var {
-                valueType: SHType_Image,
-                payload: SHVarPayload {
-                  __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { imageValue: image },
-                },
-                ..Default::default()
-              })
-            });
+            return ClonedVar::new_image(
+              seq.next_element()?.unwrap(),
+              seq.next_element()?.unwrap(),
+              seq.next_element()?.unwrap(),
+              seq.next_element()?.unwrap(),
+              seq.next_element()?.unwrap(),
+            )
+            .map_err(|s| serde::de::Error::custom(s));
           }
           SHType_Seq => {
             let seq: AutoSeqVar = seq.next_element()?.unwrap();
@@ -2885,6 +2917,170 @@ macro_rules! ref_counted_object_type_impl {
 }
 
 impl Var {
+  pub fn new_none() -> Self {
+    Var {
+      valueType: SHType_None,
+      ..Default::default()
+    }
+  }
+
+  pub fn new_any() -> Self {
+    Var {
+      valueType: SHType_Any,
+      ..Default::default()
+    }
+  }
+
+  pub fn new_bool(b: bool) -> Self {
+    Var {
+      valueType: SHType_Bool,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { boolValue: b },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_float(f: f64) -> Self {
+    Var {
+      valueType: SHType_Float,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { floatValue: f },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int(i: i64) -> Self {
+    Var {
+      valueType: SHType_Int,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { intValue: i },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int2(i0: i64, i1: i64) -> Self {
+    Var {
+      valueType: SHType_Int2,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          int2Value: [i0, i1],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int3(i0: i32, i1: i32, i2: i32) -> Self {
+    Var {
+      valueType: SHType_Int3,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          int3Value: [i0, i1, i2, 0],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int4(i0: i32, i1: i32, i2: i32, i3: i32) -> Self {
+    Var {
+      valueType: SHType_Int4,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          int4Value: [i0, i1, i2, i3],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int8(values: [i16; 8]) -> Self {
+    Var {
+      valueType: SHType_Int8,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int8Value: values },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_int16(values: [i8; 16]) -> Self {
+    Var {
+      valueType: SHType_Int16,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int16Value: values },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_color(r: u8, g: u8, b: u8, a: u8) -> Self {
+    Var {
+      valueType: SHType_Color,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          colorValue: SHColor { r, g, b, a },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_float2(f0: f64, f1: f64) -> Self {
+    Var {
+      valueType: SHType_Float2,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          float2Value: [f0, f1],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_float3(f0: f32, f1: f32, f2: f32) -> Self {
+    Var {
+      valueType: SHType_Float3,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          float3Value: [f0, f1, f2, 0.0],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_float4(f0: f32, f1: f32, f2: f32, f3: f32) -> Self {
+    Var {
+      valueType: SHType_Float4,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          float4Value: [f0, f1, f2, f3],
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn new_enum(value: i32, vendor_id: i32, type_id: i32) -> Self {
+    Var {
+      valueType: SHType_Enum,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_3: SHVarPayload__bindgen_ty_1__bindgen_ty_3 {
+            enumValue: value,
+            enumVendorId: vendor_id,
+            enumTypeId: type_id,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
   pub fn get_type(&self) -> SHType {
     self.valueType.into()
   }
@@ -5799,6 +5995,16 @@ impl TableVar {
         cloneVar(&mut *p, &v);
         None
       }
+    }
+  }
+
+  #[inline(always)]
+  pub fn emplace(&mut self, k: Var, v: ClonedVar) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let p = (*t.api).tableAt.unwrap()(t, k);
+      *p = v.0;
+      std::mem::forget(v);
     }
   }
 
