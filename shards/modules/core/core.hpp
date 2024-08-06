@@ -1101,7 +1101,7 @@ struct Set : public SetUpdateBase {
       _startHandler = OnStartHandler{this, context->currentWire()};
       _onStartConnection = _dispatcherPtr->sink<SHWire::OnStartEvent>().connect<&OnStartHandler::handle>(_startHandler);
 
-      OnTrackedVarWarmup ev{context->main->id, _name, _exposedInfo._innerInfo.elements[0], context->currentWire()};
+      OnTrackedVarWarmup ev{context->main->id, _name, _key, _exposedInfo._innerInfo.elements[0], context->currentWire()};
       _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {

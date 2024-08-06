@@ -1130,6 +1130,7 @@ void abortWire(struct SHContext *context, std::string_view errorText);
 struct OnTrackedVarWarmup {
   entt::id_type id;
   std::string_view name;
+  SHVar key;
   SHExposedTypeInfo info;
   const SHWire *wire;
 };
