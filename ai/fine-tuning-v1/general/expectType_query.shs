@@ -1,0 +1,58 @@
+{
+  prompt: """How do I ensure that the output of a Shard is a specific type?"""
+
+  solution: """
+   output-to-check ;; use any of the Shards below to check the required type
+   Expect(@type (Type::None))
+   Expect(@type(Type::Any))
+   Expect(@type(Type::Bool))
+   Expect(@type(Type::Int))
+   Expect(@type(Type::Int2))
+   Expect(@type(Type::Int3))
+   Expect(@type(Type::Int4))
+   Expect(@type(Type::Int8))
+   Expect(@type(Type::Int16))
+   Expect(@type(Type::Float))
+   Expect(@type(Type::Float2))
+   Expect(@type(Type::Float3))
+   Expect(@type(Type::Float4))
+   Expect(@type(Type::Color))
+   Expect(@type(Type::Wire))
+   Expect(@type(Type::Shard))
+   Expect(@type(Type::Bytes))
+   Expect(@type(Type::String))
+   Expect(@type(Type::Image))
+   Expect(@type(Type::Audio))
+  """
+
+  explicit: """
+   output-to-check ;; use any of the Shards below to check the required type
+   Expect(Type:@type(Type::None))
+   Expect(Type:@type(Type::Any))
+   Expect(Type:@type(Type::Bool))
+   Expect(Type:@type(Type::Int))
+   Expect(Type:@type(Type::Int2))
+   Expect(Type:@type(Type::Int3))
+   Expect(Type:@type(Type::Int4))
+   Expect(Type:@type(Type::Int8))
+   Expect(Type:@type(Type::Int16))
+   Expect(Type:@type(Type::Float))
+   Expect(Type:@type(Type::Float2))
+   Expect(Type:@type(Type::Float3))
+   Expect(Type:@type(Type::Float4))
+   Expect(Type:@type(Type::Color))
+   Expect(Type:@type(Type::Wire))
+   Expect(Type:@type(Type::Shard))
+   Expect(Type:@type(Type::Bytes))
+   Expect(Type:@type(Type::String))
+   Expect(Type:@type(Type::Image))
+   Expect(Type:@type(Type::Audio))
+  """
+
+  explanation: """
+    The expect Shard will take an input and check if it is the stipulated type in the Type  parameter.If it is, it will return the input as the stipulated type.
+    Otherwise, the program will fail.
+  """
+
+  tag: "  #General"
+}
