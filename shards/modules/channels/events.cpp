@@ -35,7 +35,7 @@ struct Base {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 };
 
 struct Send : Base {
@@ -82,7 +82,9 @@ struct Send : Base {
 
 struct Emit : Send {
   SHTypeInfo compose(const SHInstanceData &data) {
-    Base::compose(data);
+    auto dataCopy = data;
+    dataCopy.inputType = CoreInfo::BoolType;
+    Send::compose(dataCopy);
     return data.inputType;
   }
 
@@ -122,7 +124,7 @@ struct Receive : Base {
 
   void warmup(SHContext *context) { Base::warmup(context); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     Base::cleanup(context);
 
     if (_connection)
