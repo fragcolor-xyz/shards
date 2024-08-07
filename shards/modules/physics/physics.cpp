@@ -68,6 +68,9 @@ struct EndContextShard {
                  {CoreInfo::IntType, CoreInfo::IntVarSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_timeStep), PARAM_IMPL_FOR(_maxIterations));
 
+  // Upper limit for the MaxIterations parameter
+  static inline const int MaxIterationsUpperBound = 128;
+
   EndContextShard() {
     _timeStep = Var(1.0f / 60.0f);
     _maxIterations = Var(1);
@@ -86,8 +89,8 @@ struct EndContextShard {
     double timeStep = _timeStep.get().payload.floatValue;
     auto numIterations = _maxIterations.get().payload.intValue;
 
-    if (numIterations < 1 || numIterations > 128)
-      throw std::runtime_error("MaxIterations must be at least 1 and at most 128");
+    if (numIterations < 1 || numIterations > MaxIterationsUpperBound)
+      throw std::runtime_error(fmt::format("MaxIterations must be at least 1 and at most {}", MaxIterationsUpperBound));
     if (timeStep <= 0.0)
       return input; // NOOP
 

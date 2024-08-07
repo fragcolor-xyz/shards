@@ -230,9 +230,10 @@ struct PointsBuilder {
 struct MeshHullShapeShard {
   static SHTypesInfo inputTypes() { return MeshSrcTypes::Types; }
   static SHTypesInfo outputTypes() { return SHShape::Type; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("Creates a physics shape from a GFX mesh or drawable"); }
 
-  PARAM_PARAMVAR(_maxConvexRadius, "MaxConvexRadius", "AddDescriptionHere",
+  // See "Convex Radius" in https://jrouwe.github.io/JoltPhysics/index.html
+  PARAM_PARAMVAR(_maxConvexRadius, "MaxConvexRadius", "The convex radius given to the collision shape. A larger convex radius results in better performance but a less accurate simulation. A convex radius of 0 is allowed",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_maxConvexRadius));
 

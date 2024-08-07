@@ -23,7 +23,7 @@
 #include <atomic>
 
 namespace shards {
-inline SHVar toVar(const JPH::Float3 &f3) {
+[[nodiscard]] inline SHVar toVar(const JPH::Float3 &f3) noexcept {
   SHVar v{};
   v.valueType = SHType::Float3;
   v.payload.float3Value[0] = f3.x;
@@ -31,7 +31,7 @@ inline SHVar toVar(const JPH::Float3 &f3) {
   v.payload.float3Value[2] = f3.z;
   return v;
 }
-inline SHVar toVar(const JPH::Float4 &f4) {
+[[nodiscard]] inline SHVar toVar(const JPH::Float4 &f4) noexcept {
   SHVar v{};
   v.valueType = SHType::Float4;
   v.payload.float4Value[0] = f4.x;
@@ -40,7 +40,7 @@ inline SHVar toVar(const JPH::Float4 &f4) {
   v.payload.float4Value[3] = f4.w;
   return v;
 }
-inline SHVar toVar(const JPH::Vec3 &f3) {
+[[nodiscard]] inline SHVar toVar(const JPH::Vec3 &f3) noexcept {
   SHVar v{};
   v.valueType = SHType::Float3;
   v.payload.float3Value[0] = f3.GetX();
@@ -48,7 +48,7 @@ inline SHVar toVar(const JPH::Vec3 &f3) {
   v.payload.float3Value[2] = f3.GetZ();
   return v;
 }
-inline SHVar toVar(const JPH::Quat &f4) {
+[[nodiscard]] inline SHVar toVar(const JPH::Quat &f4) noexcept {
   SHVar v{};
   v.valueType = SHType::Float4;
   v.payload.float4Value[0] = f4.GetX();
@@ -64,22 +64,21 @@ using namespace linalg::aliases;
 
 inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate("physics"); }
 
-inline JPH::Float3 toJPHFloat3(const SHFloat3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
-inline JPH::Float4 toJPHFloat4(const SHFloat4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
-inline JPH::Float3 toJPHFloat3(const float3 &f3) { return JPH::Float3{f3[0], f3[1], f3[2]}; }
-inline JPH::Float4 toJPHFloat4(const float4 &f4) { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
-inline JPH::Vec3 toJPHVec3(const SHFloat3 &f3) { return JPH::Vec3{f3[0], f3[1], f3[2]}; }
-inline JPH::Vec4 toJPHVec4(const SHFloat4 &f4) { return JPH::Vec4{f4[0], f4[1], f4[2], f4[3]}; }
-inline JPH::Quat toJPHQuat(const SHFloat4 &f4) { return JPH::Quat(f4[0], f4[1], f4[2], f4[3]); }
-inline JPH::Vec3 toJPHVec3(const float3 &f3) { return JPH::Vec3{f3.x, f3.y, f3.z}; }
-inline JPH::Vec4 toJPHVec4(const float4 &f4) { return JPH::Vec4{f4.x, f4.y, f4.z, f4.w}; }
-inline JPH::Quat toJPHQuat(const float4 &f4) { return JPH::Quat(f4.x, f4.y, f4.z, f4.w); }
-
-inline float3 toLinalg(const JPH::Float3 &f3) { return float3{f3.x, f3.y, f3.z}; }
-inline float3 toLinalg(const JPH::Vec3 &f3) { return float3{f3.GetX(), f3.GetY(), f3.GetZ()}; }
-inline float4 toLinalg(const JPH::Float4 &f4) { return float4{f4.x, f4.y, f4.z, f4.w}; }
-inline float4 toLinalg(const JPH::Vec4 &f4) { return float4{f4.GetX(), f4.GetY(), f4.GetZ(), f4.GetW()}; }
-inline float4 toLinalgLinearColor(const JPH::Color &f4) { return toLinalg(f4.ToVec4()); }
+[[nodiscard]] inline JPH::Float3 toJPHFloat3(const SHFloat3 &f3) noexcept { return JPH::Float3{f3[0], f3[1], f3[2]}; }
+[[nodiscard]] inline JPH::Float4 toJPHFloat4(const SHFloat4 &f4) noexcept { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
+[[nodiscard]] inline JPH::Float3 toJPHFloat3(const float3 &f3) noexcept { return JPH::Float3{f3[0], f3[1], f3[2]}; }
+[[nodiscard]] inline JPH::Float4 toJPHFloat4(const float4 &f4) noexcept { return JPH::Float4{f4[0], f4[1], f4[2], f4[3]}; }
+[[nodiscard]] inline JPH::Vec3 toJPHVec3(const SHFloat3 &f3) noexcept { return JPH::Vec3{f3[0], f3[1], f3[2]}; }
+[[nodiscard]] inline JPH::Vec4 toJPHVec4(const SHFloat4 &f4) noexcept { return JPH::Vec4{f4[0], f4[1], f4[2], f4[3]}; }
+[[nodiscard]] inline JPH::Quat toJPHQuat(const SHFloat4 &f4) noexcept { return JPH::Quat(f4[0], f4[1], f4[2], f4[3]); }
+[[nodiscard]] inline JPH::Vec3 toJPHVec3(const float3 &f3) noexcept { return JPH::Vec3{f3.x, f3.y, f3.z}; }
+[[nodiscard]] inline JPH::Vec4 toJPHVec4(const float4 &f4) noexcept { return JPH::Vec4{f4.x, f4.y, f4.z, f4.w}; }
+[[nodiscard]] inline JPH::Quat toJPHQuat(const float4 &f4) noexcept { return JPH::Quat(f4.x, f4.y, f4.z, f4.w); }
+[[nodiscard]] inline float3 toLinalg(const JPH::Float3 &f3) noexcept { return float3{f3.x, f3.y, f3.z}; }
+[[nodiscard]] inline float3 toLinalg(const JPH::Vec3 &f3) noexcept { return float3{f3.GetX(), f3.GetY(), f3.GetZ()}; }
+[[nodiscard]] inline float4 toLinalg(const JPH::Float4 &f4) noexcept { return float4{f4.x, f4.y, f4.z, f4.w}; }
+[[nodiscard]] inline float4 toLinalg(const JPH::Vec4 &f4) noexcept { return float4{f4.GetX(), f4.GetY(), f4.GetZ(), f4.GetW()}; }
+[[nodiscard]] inline float4 toLinalgLinearColor(const JPH::Color &f4) noexcept { return toLinalg(f4.ToVec4()); }
 
 DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF, 'phDf');
 DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion, 'phMo');

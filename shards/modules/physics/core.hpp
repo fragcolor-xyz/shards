@@ -314,8 +314,8 @@ struct IBodyMirror {
       settings.mCollisionGroup.SetGroupFilter(GroupFilter::instance());
       settings.mCollisionGroup.SetGroupID(inParams.groupMembership);
       settings.mCollisionGroup.SetSubGroupID(inParams.collisionMask);
-      settings.mAllowSleeping = false; // TODO: Param
-      settings.mCollideKinematicVsNonDynamic = true; // TODO: Param
+      settings.mAllowSleeping = false; // TODO: Add a parameter to control this
+      settings.mCollideKinematicVsNonDynamic = true; // TODO: Add a parameter to control this
       data.body = bodyInterface.CreateBody(settings);
       data.paramHash0 = node->paramHash0;
       data.paramHash1 = node->paramHash1;
