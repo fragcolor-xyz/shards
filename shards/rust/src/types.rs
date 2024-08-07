@@ -212,6 +212,10 @@ impl PartialOrd for Var {
 }
 
 impl ClonedVar {
+  pub fn new_deserializing(bytes_buffer_var: &Var) -> Self {
+    ClonedVar(unsafe { shards_deserialize_var(bytes_buffer_var) })
+  }
+
   pub fn new_string(s: &str) -> Self {
     let string = Var::ephemeral_string(s);
     string.into()
@@ -438,6 +442,8 @@ impl Drop for Wire {
 
 extern "C" {
   fn shards_set_wire_debug_id(wire: SHWireRef, id: u64);
+  fn shards_deserialize_var(bytes_buffer_var: *const SHVar) -> SHVar;
+  fn shards_serialize_var(var: *const SHVar) -> SHVar;
 }
 
 impl Wire {
@@ -3513,6 +3519,10 @@ impl Var {
 
   pub fn as_str(&self) -> Result<&str, &'static str> {
     self.try_into()
+  }
+
+  pub fn serialize(&self) -> ClonedVar {
+    ClonedVar(unsafe { shards_serialize_var(self) })
   }
 }
 

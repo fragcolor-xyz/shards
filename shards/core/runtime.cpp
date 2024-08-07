@@ -40,6 +40,7 @@
 #include "trait.hpp"
 #include "type_cache.hpp"
 #include "platform.hpp"
+#include "serialization.hpp"
 
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
@@ -3098,6 +3099,31 @@ void shards_log(int level, SHStringWithLen msg, const char *file, const char *fu
   std::string_view sv(msg.string, size_t(msg.len));
   spdlog::default_logger_raw()->log(spdlog::source_loc{file, line, function}, (spdlog::level::level_enum)level, sv);
 };
+
+SHVar shards_serialize_var(const SHVar *var) {
+  static thread_local shards::Serialization serialization;
+  static thread_local std::vector<uint8_t> buffer;
+
+  serialization.reset();
+  shards::BufferRefWriter writer(buffer); // will clear the buffer
+
+  serialization.serialize(*var, writer);
+
+  SHVar leaking_tmp{}; // to be destroyed by the caller
+  shards::Var container(buffer);
+  shards::cloneVar(leaking_tmp, container);
+  return leaking_tmp;
+}
+
+SHVar shards_deserialize_var(const SHVar *bytes_buffer_var) {
+  static thread_local shards::Serialization serialization;
+
+  serialization.reset();
+  shards::VarReader reader(*bytes_buffer_var);
+  SHVar leaking_tmp{}; // to be destroyed by the caller
+  serialization.deserialize(reader, leaking_tmp);
+  return leaking_tmp;
+}
 }
 
 namespace shards {
