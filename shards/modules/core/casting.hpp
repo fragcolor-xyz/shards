@@ -184,7 +184,8 @@ template <SHType ToType> struct ToNumber {
     output.valueType = _outputVectorType->shType;
 
     uint8_t *dstPtr = (uint8_t *)&output.payload;
-    for (size_t i = 0; i < sequence.len; i++) {
+    size_t numToConvert = std::min(_outputVectorType->dimension, static_cast<size_t>(sequence.len));
+    for (size_t i = 0; i < numToConvert; i++) {
       const SHVar &elem = sequence.elements[i];
 
       _numberConversion->convertOne(&elem.payload, dstPtr);
