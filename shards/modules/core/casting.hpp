@@ -74,12 +74,16 @@ template <SHType ToType> struct ToNumber {
     if (_inputVectorType) {
       _numberConversion =
           NumberTypeLookup::getInstance().getConversion(_inputVectorType->numberType, _outputVectorType->numberType);
-      shassert(_numberConversion);
+      if (!_numberConversion) {
+        throw ComposeError("Conversion not implemented for this type");
+      }
     } else if (data.inputType.basicType == SHType::Seq) {
       const NumberTypeTraits *fixedNumberType = determineFixedSeqNumberType(data.inputType);
       if (fixedNumberType) {
         _numberConversion = fixedNumberType->conversionTable.get(_outputNumberType->type);
-        shassert(_numberConversion);
+        if (!_numberConversion) {
+          throw ComposeError("Conversion not implemented for this type");
+        }
 
         OVERRIDE_ACTIVATE(data, activateSeqElementsFixed);
       }
@@ -99,7 +103,9 @@ template <SHType ToType> struct ToNumber {
         _numberConversion
             ? _numberConversion
             : NumberTypeLookup::getInstance().getConversion(inputVectorType->numberType, _outputVectorType->numberType);
-    shassert(conversion);
+    if (!conversion) {
+      throw ActivationError("Conversion not implemented for this type");
+    }
 
     // Can reduce call overhead by adding a single ConvertMultiple function with
     // in/out lengths
@@ -124,7 +130,9 @@ template <SHType ToType> struct ToNumber {
       }
 
       const NumberConversion *conversion = elemNumberType->conversionTable.get(_outputVectorType->numberType);
-      shassert(conversion);
+      if (!conversion) {
+        throw ActivationError("Conversion not implemented for this type");
+      }
 
       conversion->convertOne(&elem.payload, dstPtr);
       dstPtr += conversion->outStride;
@@ -170,7 +178,9 @@ template <SHType ToType> struct ToNumber {
 
   void parseEnumValue(SHVar &output, SHEnum value) {
     _numberConversion = getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
-    shassert(_numberConversion);
+    if (!_numberConversion) {
+      throw ActivationError("Conversion not implemented for this type");
+    }
 
     _numberConversion->convertOne(&value, &output.payload);
   }
