@@ -9,7 +9,7 @@ struct TaskFlowDebugInterface : tf::WorkerInterface {
   TaskFlowDebugInterface(std::string debugName) : debugName(debugName) {}
   void scheduler_prologue(tf::Worker &worker) {
     pushThreadName(fmt::format("<idle> tf::Executor ({}, {})", debugName, worker.id()));
-    SPDLOG_INFO("TaskFlow: \"{}\" Worker {} starting", debugName, worker.id());
+    SHLOG_TRACE("TaskFlow: \"{}\" Worker {} starting", debugName, worker.id());
   }
   virtual void scheduler_epilogue(tf::Worker &worker, std::exception_ptr ptr) {
     if (ptr) {
@@ -19,7 +19,7 @@ struct TaskFlowDebugInterface : tf::WorkerInterface {
         SPDLOG_ERROR("TaskFlow: \"{}\" Worker {} exiting with exception: {}", debugName, worker.id(), e.what());
       }
     } else {
-      SPDLOG_INFO("TaskFlow: \"{}\" Worker {} exiting", debugName, worker.id());
+      SHLOG_TRACE("TaskFlow: \"{}\" Worker {} exiting", debugName, worker.id());
     }
   }
 };
