@@ -85,7 +85,7 @@ impl CachedUIImage {
     let shimage: &SHImage = input.try_into()?;
     let ptr = shimage.data;
     Ok(if ptr != self.prev_ptr {
-      let image: egui::ColorImage = into_egui_image(shimage);
+      let image: egui::ColorImage = into_egui_image(shimage)?;
       self.prev_ptr = ptr;
       self.texture_handle.insert(ui.ctx().load_texture(
         format!("UI.Image: {:p}", shimage.data),
@@ -142,8 +142,10 @@ pub fn get_egui_texture_from_gfx(
   ))
 }
 
-fn into_egui_image(image: &SHImage) -> egui::ColorImage {
-  assert_eq!(image.channels, 4);
+fn into_egui_image(image: &SHImage) -> Result<egui::ColorImage, &'static str> {
+  if image.channels != 4 {
+    return Err("Image channels must be 4");
+  }
 
   let size = [image.width as _, image.height as _];
   let rgba = unsafe {
@@ -160,8 +162,8 @@ fn into_egui_image(image: &SHImage) -> egui::ColorImage {
       .chunks_exact(4)
       .map(|p| egui::Color32::from_rgba_premultiplied(p[0], p[1], p[2], p[3]))
       .collect();
-    egui::ColorImage { size, pixels }
+    Ok(egui::ColorImage { size, pixels })
   } else {
-    egui::ColorImage::from_rgba_unmultiplied(size, rgba)
+    Ok(egui::ColorImage::from_rgba_unmultiplied(size, rgba))
   }
 }
