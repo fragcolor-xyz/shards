@@ -1066,15 +1066,12 @@ struct Erase : SeqUser {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &indices = _indices.get();
-    if (unlikely(_cell->valueType == SHType::Table)) {
-      if (indices.valueType == SHType::String) {
+    if (_cell->valueType == SHType::Table) {
+      if (indices.valueType != SHType::Seq) {
         // single key
         const auto key = indices;
         _cell->payload.tableValue.api->tableRemove(_cell->payload.tableValue, key);
       } else {
-        if (indices.valueType != SHType::Seq)
-          throw ActivationError("Erase: Expected a sequence of keys to remove from table.");
-
         // multiple keys
         const uint32_t nkeys = indices.payload.seqValue.len;
         for (uint32_t i = 0; nkeys > i; i++) {
@@ -1083,6 +1080,7 @@ struct Erase : SeqUser {
         }
       }
     } else {
+      shassert(_cell->valueType == SHType::Seq && "Erase: Expected a sequence variable.");
       if (indices.valueType == SHType::Int) {
         const auto index = indices.payload.intValue;
         arrayDel(_cell->payload.seqValue, index);
@@ -1106,10 +1104,7 @@ private:
   static inline Parameters _params = {
       {"Indices", SHCCSTR("One or multiple indices to filter from a sequence."), CoreInfo::TakeTypes},
       {"Name", SHCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar},
-      {"Key",
-       SHCCSTR("The key of the value to erase from the table (this "
-               "variable will become a table)."),
-       {CoreInfo::AnyType}},
+      {"Key", SHCCSTR("The key of the value to erase from the table (nested table)."), {CoreInfo::AnyType}},
       {"Global",
        SHCCSTR("If the variable is or should be available to all of the wires "
                "in the same mesh."),
