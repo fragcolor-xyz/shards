@@ -1,6 +1,25 @@
 @mesh(root)
 
+@template(compose-failure [name1 name2 var test] {
+  @wire(name1 {
+    var = variable
+    test
+  })
+
+  @wire(name2 {
+    ; wrapper to catch the failure of wire composition
+    Const(name1) | ToBytes | FromBytes | ExpectWire = wire
+    WireRunner(wire)
+    Wait(wire)
+  })
+})
+
+@wire(spawn {
+  Msg("Wire spawned")
+} Looped: false)
+
 @wire(test {
+
   @f3(1 2 3) >= vec3
   2.0 >= flt
 
@@ -64,14 +83,688 @@
   @i4(i2) | Assert.Is(@i4(2 2 2 2)) | Log("MakeInt4 (variable/broadcast)")
 
   ; @color(255 255 255) | Assert.Is(@color(255 255 255 255)) | Log("MakeColor (extended)")
-  ; @color(0) | Assert.Is(@color(0 0 0 0)) | Log("MakeColor (broadcast)")
+  @color(0) | Assert.Is(@color(0 0 0 0)) | Log("MakeColor (broadcast)")
   ; @color(i2 255 100) | Assert.Is(@color(2 255 100 255)) | Log("MakeColor (variable/mixed/extended)")
   ; @color(i2) | Assert.Is(@color(2 2 2 2)) | Log("MakeColor (variable/broadcast)")
+
+  ; [6.0 7.0 8.0 9.0 10.0] | ToFloat2 | Log | Assert.Is(@f2(6.0 7.0))
+  ; [6.0 7.0 8.0 9.0 10.0 11.0] | ToInt16 | Log | Assert.Is(@i16(6 7 8 9 10 11 0 0 0 0 0 0 0 0 0 0))
 
   ; Enum conversion
   Type::None | ToInt | Assert.Is(0)
   Type::Any | ToInt | Assert.Is(1)
   Type::Float | ToInt | Assert.Is(9)
+
+  ;; TryMany Tests -- ToX
+  Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 2.0) = audio
+  LoadImage("../../assets/ShardsLogo.png") = image
+  image | ToString = img-string
+  [1] | IntsToBytes = bytes
+
+  [5 @i2(5) @i3(5) @i4(5) @i8(5) @i16(5) 5.0 @f2(5.0) @f3(5.0) @f4(5.0) @color(255) spawn {table:1} [1 2 3 4 5] [1.0 2.0 3.0 4.0 5.0] audio true image bytes "Hello" none] = input-seq
+
+
+  ;ToInt test
+  input-seq
+  TryMany(
+    Wire: {ToInt}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([5 5 5 5 5 5 5 5 5 5 255 none none 1 1 none none none none 0 none])
+  Log("To Int TryMany Result")
+
+
+  ;; ToInt2 test
+  input-seq
+  TryMany(
+    Wire: {ToInt2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@i2(5 0) @i2(5 5) @i2(5 5) @i2(5 5) @i2(5 5) @i2(5 5) @i2(5 0) @i2(5 5) @i2(5 5) @i2(5 5) @i2(255 255) none none @i2(1 2) @i2(1 2) none none none none @i2(0 0) none])
+  Log("Int2 TryMany Result")
+
+  ; ToInt3 test
+  input-seq
+  TryMany(
+    Wire: {ToInt3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@i3(5 0 0) @i3(5 5 0) @i3(5 5 5) @i3(5 5 5) @i3(5 5 5) @i3(5 5 5) @i3(5 0 0) @i3(5 5 0) @i3(5 5 5) @i3(5 5 5) @i3(255 255 255) none none @i3(1 2 3) @i3(1 2 3) none none none none @i3(0 0 0) none])
+  Log("Int3 TryMany Result")
+
+  ; ToInt4 test
+  input-seq
+  TryMany(
+    Wire: {ToInt4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@i4(5 0 0 0) @i4(5 5 0 0) @i4(5 5 5 0) @i4(5 5 5 5) @i4(5 5 5 5) @i4(5 5 5 5) @i4(5 0 0 0) @i4(5 5 0 0) @i4(5 5 5 0) @i4(5 5 5 5) @i4(255 255 255 255) none none @i4(1 2 3 4) @i4(1 2 3 4) none none none none @i4(0 0 0 0) none])
+  Log("Int4 TryMany Result")
+
+  ;; ToInt8 test
+  input-seq
+  TryMany(
+    Wire: {ToInt8}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@i8(5 0 0 0 0 0 0 0) @i8(5 5 0 0 0 0 0 0) @i8(5 5 5 0 0 0 0 0) @i8(5 5 5 5 0 0 0 0) @i8(5 5 5 5 5 5 5 5) @i8(5 5 5 5 5 5 5 5) @i8(5 0 0 0 0 0 0 0) @i8(5 5 0 0 0 0 0 0) @i8(5 5 5 0 0 0 0 0) @i8(5 5 5 5 0 0 0 0) @i8(255 255 255 255 0 0 0 0) none none @i8(1 2 3 4 5 0 0 0) @i8(1 2 3 4 5 0 0 0) none none none none @i8(0 0 0 0 0 0 0 0) none])
+  Log("Int8 TryMany Result")
+
+  ;; ToInt16 test
+  input-seq
+  TryMany(
+    Wire: {ToInt16}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@i16(5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 5 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 5 5 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 5 5 5 5 5 5 0 0 0 0 0 0 0 0) @i16(5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5) @i16(5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 5 0 0 0 0 0 0 0 0 0 0 0 0 0) @i16(5 5 5 5 0 0 0 0 0 0 0 0 0 0 0 0) @i16(-1 -1 -1 -1 0 0 0 0 0 0 0 0 0 0 0 0) none none @i16(1 2 3 4 5 0 0 0 0 0 0 0 0 0 0 0) @i16(1 2 3 4 5 0 0 0 0 0 0 0 0 0 0 0) none none none none @i16(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) none])
+  Log("Int16 TryMany Result")
+
+  ;; ToFloat test
+  input-seq
+  TryMany(
+    Wire: {ToFloat}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 255.0 none none 1.0 1.0 none none none none 0.0 none])
+  Log("Float TryMany Result")
+
+  ; ToFloat2 test
+  input-seq
+  TryMany(
+    Wire: {ToFloat2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  ;Assert.Is([@f2(5.0 0.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(5.0 0.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(5.0 5.0) @f2(255.0 255.0) none none @f2(1.0 2.0) @f2(1.0 2.0) none none none none @f2(0.0 0.0) none])
+  Log("Float2 TryMany Result")
+
+  ;; ToFloat3 test
+  input-seq
+  TryMany(
+    Wire: {ToFloat3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@f3(5.0 0.0 0.0) @f3(5.0 5.0 0.0) @f3(5.0 5.0 5.0) @f3(5.0 5.0 5.0) @f3(5.0 5.0 5.0) @f3(5.0 5.0 5.0) @f3(5.0 0.0 0.0) @f3(5.0 5.0 0.0) @f3(5.0 5.0 5.0) @f3(5.0 5.0 5.0) @f3(255.0 255.0 255.0) none none @f3(1.0 2.0 3.0) @f3(1.0 2.0 3.0) none none none none @f3(0.0 0.0 0.0) none])
+  Log("Float3 TryMany Result")
+
+  ;; ToFloat4 test
+  input-seq
+  TryMany(
+    Wire: {ToFloat4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([@f4(5.0 0.0 0.0 0.0) @f4(5.0 5.0 0.0 0.0) @f4(5.0 5.0 5.0 0.0) @f4(5.0 5.0 5.0 5.0) @f4(5.0 5.0 5.0 5.0) @f4(5.0 5.0 5.0 5.0) @f4(5.0 0.0 0.0 0.0) @f4(5.0 5.0 0.0 0.0) @f4(5.0 5.0 5.0 0.0) @f4(5.0 5.0 5.0 5.0) @f4(255.0 255.0 255.0 255.0) none none @f4(1.0 2.0 3.0 4.0) @f4(1.0 2.0 3.0 4.0) none none none none @f4(0.0 0.0 0.0 0.0) none])
+  Log("Float4 TryMany Result")
+
+  ; ToString test
+  input-seq
+  TryMany(
+    Wire: {ToString}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is((["5" "@i2(5 5)" "@i3(5 5 5)" "@i4(5 5 5 5)" "@i8(5 5 5 5 5 5 5 5)" "@i16(5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5)" "5" "@f2(5 5)" "@f3(5 5 5)" "@f4(5 5 5 5)" "@color(255 255 255 255)" "<Wire: spawn>" "{table: 1}" "[1 2 3 4 5]" "[1 2 3 4 5]" "Audio SampleRate: 44100 Samples: 1024 Channels: 2" "true" img-string "<1 SHType::Bytes>" "Hello" "None"]))
+  Log("String TryMany Result")
+
+  1 | ToHex | Assert.Is("0x01") | Log("Int ToHex")
+  "Hello" | ToHex | Assert.Is("0x48656c6c6f") | Log("String ToHex")
+  bytes | ToHex | Assert.Is("0x01") | Log("Bytes ToHex")
+
+  10 | BitSwap32 | Assert.Is(167772160) | Log("Int BitSwap32")
+  10 | BitSwap64 | Assert.Is(720575940379279360) | Log("Int BitSwap64")
+
+  ; ; ExpectX tests
+
+  ;;Expect Int
+  input-seq
+  TryMany(
+    Wire: {ExpectInt}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([5 none none none none none none none none none none none none none none none none none none none none])
+  Log("Expect Int TryMany Result")
+
+  ;;Expect Int2
+  input-seq
+  TryMany(
+    Wire: {ExpectInt2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none @i2(5 5) none none none none none none none none none none none none none none none none none none none])
+  Log("Expect Int2 TryMany Result")
+
+  ;;Expect Int3
+  input-seq
+  TryMany(
+    Wire: {ExpectInt3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none @i3(5 5 5) none none none none none none none none none none none none none none none none none none])
+  Log("Expect Int3 TryMany Result")
+
+  ;;Expect Int4
+  input-seq
+  TryMany(
+    Wire: {ExpectInt4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none @i4(5 5 5 5) none none none none none none none none none none none none none none none none none])
+  Log("Expect Int4 TryMany Result")
+
+  ;;Expect Int8
+  input-seq
+  TryMany(
+    Wire: {ExpectInt8}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none @i8(5 5 5 5 5 5 5 5) none none none none none none none none none none none none none none none none])
+  Log("Expect Int8 TryMany Result")
+
+  ;;Expect Int16
+  input-seq
+  TryMany(
+    Wire: {ExpectInt16}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none @i16(5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5) none none none none none none none none none none none none none none none])
+  Log("Expect Int16 TryMany Result")
+
+  ;;Expect Float
+  input-seq
+  TryMany(
+    Wire: {ExpectFloat}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none 5.0 none none none none none none none none none none none none none none])
+  Log("Expect Float TryMany Result")
+
+  ;;Expect Float2
+  input-seq
+  TryMany(
+    Wire: {ExpectFloat2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none @f2(5.0 5.0) none none none none none none none none none none none none none])
+  Log("Expect Float2 TryMany Result")
+
+  ;;Expect Float3
+  input-seq
+  TryMany(
+    Wire: {ExpectFloat3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none @f3(5.0 5.0 5.0) none none none none none none none none none none none none])
+  Log("Expect Float3 TryMany Result")
+
+  ;;Expect Float4
+  input-seq
+  TryMany(
+    Wire: {ExpectFloat4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none @f4(5.0 5.0 5.0 5.0) none none none none none none none none none none none])
+  Log("Expect Float4 TryMany Result")
+
+  ;;Expect Wire
+  input-seq
+  TryMany(
+    Wire: {ExpectWire}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none spawn none none none none none none none none none])
+  Log("Expect Wire TryMany Result")
+
+  ;;Expect Table
+  input-seq
+  TryMany(
+    Wire: {ExpectTable}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none {table: 1} none none none none none none none none]))
+  Log("Expect Table TryMany Result")
+
+  ;;Expect Sequence
+  input-seq
+  TryMany(
+    Wire: {ExpectSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none none none [1 2 3 4 5] [1.0 2.0 3.0 4.0 5.0] none none none none none none])
+  Log("Expect Sequence TryMany Result")
+
+  ;;Expect Audio
+  input-seq
+  TryMany(
+    Wire: {ExpectAudio}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none none audio none none none none none]))
+  Log("Expect Audio TryMany Result")
+
+  ;;Expect Boolean
+  input-seq
+  TryMany(
+    Wire: {ExpectBool}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none none none none none none true none none none none])
+  Log("Expect Boolean TryMany Result")
+
+  ;;Expect Image
+  input-seq
+  TryMany(
+    Wire: {ExpectImage}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none none none none image none none none]))
+  Log("Expect Image TryMany Result")
+
+  ;;Expect Bytes
+  input-seq
+  TryMany(
+    Wire: {ExpectBytes}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none none none none none bytes none none]))
+  Log("Expect Bytes TryMany Result")
+
+  ;;Expect String
+  input-seq
+  TryMany(
+    Wire: {ExpectString}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none none none none none none none none none "Hello" none])
+  Log("Expect String TryMany Result")
+
+  ;;Expect None
+  input-seq
+  TryMany(
+    Wire: {ExpectNone}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none none none none none none none none none none none])
+  Log("Expect None TryMany Result")
+
+  image >> img-seq
+  audio >> audio-seq
+  5 >> int-seq | int-seq
+  @i2(1) >> int2-seq
+  @i3(1) >> int3-seq
+  @i4(1) >> int4-seq
+  @i8(1) >> int8-seq
+  @i16(1) >> int16-seq
+  0.5 >> float-seq
+  @f2(0.5) >> float2-seq
+  @f3(0.5) >> float3-seq
+  @f4(0.5) >> float4-seq
+  bytes >> bytes-seq
+  @color(1) >> color-seq
+  "String" >> string-seq
+  true >> bool-seq
+  spawn >> wire-seq
+  [1 2 3 4 5] >> seq-of-seq
+
+  [img-seq audio-seq int-seq int2-seq int3-seq int4-seq int8-seq int16-seq float-seq float2-seq float3-seq float4-seq bytes-seq color-seq string-seq bool-seq wire-seq seq-of-seq] = sequences-input-seq
+
+
+  ;;Expect ImageSeq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectImageSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([img-seq none none none none none none none none none none none none none none none none none]))
+  Log("Expect Image seq TryMany Result")
+
+  ;;Expect Audioseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectAudioSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none audio-seq none none none none none none none none none none none none none none none none]))
+  Log("Expect Audio seq TryMany Result")
+
+  ;;Expect Intseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectIntSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none [5] none none none none none none none none none none none none none none none])
+  Log("Expect Int seq TryMany Result")
+
+  ;;Expect Int2seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectInt2Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none [@i2(1 1)] none none none none none none none none none none none none none none])
+  Log("Expect Int2 Seq TryMany Result")
+
+  ;;Expect Int3seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectInt3Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none [@i3(1 1 1)] none none none none none none none none none none none none none])
+  Log("Expect Int3 Seq TryMany Result")
+
+  ;;Expect Int4seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectInt4Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none [@i4(1 1 1 1)] none none none none none none none none none none none none])
+  Log("Expect Int4 Seq TryMany Result")
+
+  ;;Expect Int8seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectInt8Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none [@i8(1 1 1 1 1 1 1 1)] none none none none none none none none none none none])
+  Log("Expect Int8 Seq TryMany Result")
+
+  ;;Expect Int16seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectInt16Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none [@i16(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)] none none none none none none none none none none])
+  Log("Expect Int16 Seq TryMany Result")
+
+  ;;Expect Floatseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectFloatSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none [0.5] none none none none none none none none none])
+  Log("Expect Float Seq TryMany Result")
+
+  ;;Expect Float2seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectFloat2Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none [@f2(0.5 0.5)] none none none none none none none none])
+  Log("Expect Float2 Seq TryMany Result")
+
+  ;;Expect Float3 seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectFloat3Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none [@f3(0.5 0.5 0.5)] none none none none none none none])
+  Log("Expect Float3 Seq TryMany Result")
+
+  ;;Expect Float4seq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectFloat4Seq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([none none none none none none none none none none none [@f4(0.5 0.5 0.5 0.5)] none none none none none none])
+  Log("Expect Float4 Seq TryMany Result")
+
+  ;;Expect Bytesseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectBytesSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none bytes-seq none none none none none]))
+  Log("Expect Bytes Seq TryMany Result")
+
+  ;;Expect Colorseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectColorSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none [@color(1 1 1 1)] none none none none]))
+  Log("Expect Color Seq TryMany Result")
+
+  ;;Expect Stringseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectStringSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none string-seq none none none]))
+  Log("Expect String Seq TryMany Result")
+
+  ;;Expect Boolseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectBoolSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none none [true] none none]))
+  Log("Expect Bool Seq TryMany Result")
+
+  ;;Expect Wireseq
+  sequences-input-seq
+  TryMany(
+    Wire: {ExpectWireSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is(([none none none none none none none none none none none none none none none none [spawn] none]))
+  Log("Expect Wire Seq TryMany Result")
+
+  ;;Is X tests
+
+  ;;Is Int
+  input-seq
+  TryMany(
+    Wire: {IsInt}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([true false false false false false false false false false false false false false false false false false false false false])
+  Log("Is Int TryMany Result")
+
+  ;;Is Int2
+  input-seq
+  TryMany(
+    Wire: {IsInt2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false true false false false false false false false false false false false false false false false false false false false])
+  Log("Is Int2 TryMany Result")
+
+  ;;Is Int3
+  input-seq
+  TryMany(
+    Wire: {IsInt3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false true false false false false false false false false false false false false false false false false false false])
+  Log("Is Int3 TryMany Result")
+
+  ;;Is Int4
+  input-seq
+  TryMany(
+    Wire: {IsInt4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false true false false false false false false false false false false false false false false false false false])
+  Log("Is Int4 TryMany Result")
+
+  ;;Is Int8
+  input-seq
+  TryMany(
+    Wire: {IsInt8}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false true false false false false false false false false false false false false false false false false])
+  Log("Is Int8 TryMany Result")
+
+  ;;Is Int16
+  input-seq
+  TryMany(
+    Wire: {IsInt16}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false true false false false false false false false false false false false false false false false])
+  Log("Is Int16 TryMany Result")
+
+  ;;Is Float
+  input-seq
+  TryMany(
+    Wire: {IsFloat}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false true false false false false false false false false false false false false false false])
+  Log("Is Float TryMany Result")
+
+  ;;Is Float2
+  input-seq
+  TryMany(
+    Wire: {IsFloat2}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false true false false false false false false false false false false false false false])
+  Log("Is Float2 TryMany Result")
+
+  ;;Is Float3
+  input-seq
+  TryMany(
+    Wire: {IsFloat3}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false true false false false false false false false false false false false false])
+  Log("Is Float3 TryMany Result")
+
+  ;;Is Float4
+  input-seq
+  TryMany(
+    Wire: {IsFloat4}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false true false false false false false false false false false false false])
+  Log("Is Float4 TryMany Result")
+
+  ;;Is Color
+  input-seq
+  TryMany(
+    Wire: {IsColor}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false true false false false false false false false false false false])
+  Log("Is Color TryMany Result")
+
+  ;;Is Wire
+  input-seq
+  TryMany(
+    Wire: {IsWire}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false true false false false false false false false false false])
+  Log("Is Wire TryMany Result")
+
+  ;;Is Table
+  input-seq
+  TryMany(
+    Wire: {IsTable}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false true false false false false false false false false])
+  Log("Is Table TryMany Result")
+
+  ;;Is Seq
+  input-seq
+  TryMany(
+    Wire: {IsSeq}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false true true false false false false false false])
+  Log("Is Seq TryMany Result")
+
+  ;;Is Audio
+  input-seq
+  TryMany(
+    Wire: {IsAudio}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false false false true false false false false false])
+  Log("Is audio TryMany Result")
+
+  ;;Is Image
+  input-seq
+  TryMany(
+    Wire: {IsImage}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false false false false false true false false false])
+  Log("Is Image TryMany Result")
+
+  ;;Is Bytes
+  input-seq
+  TryMany(
+    Wire: {IsBytes}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false false false false false false true false false])
+  Log("Is Bytes TryMany Result")
+
+  ;;Is String
+  input-seq
+  TryMany(
+    Wire: {IsString}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false false false false false false false true false])
+  Log("Is String TryMany Result")
+
+  ;;Is None
+  input-seq
+  TryMany(
+    Wire: {IsNone}
+    Policy: WaitUntil::SomeSuccess
+  )
+  Assert.Is([false false false false false false false false false false false false false false false false false false false false true])
+  Log("Is None TryMany Result")
+
+  bytes | BytesToInts
+  Assert.Is([1])
+  Log("Bytes To Ints Result")
+
+  "Hello" | StringToBytes = bytes-string
+
+  bytes-string | BytesToString
+  Assert.Is("Hello")
+  Log("Bytes To String Result")
+
+  bytes | ToBase64
+  Assert.Is("AQ==")
+  Log("Bytes To Base64 Result")
+
+  "AQ==" | FromBase64
+  Assert.Is(bytes)
+  Log("Base64 To Bytes Result")
+
+  "Hello" | ToBase64
+  Assert.Is("SGVsbG8=")
+  Log("String To Base64 Result")
+
+  "SGVsbG8=" | FromBase64
+  Assert.Is(bytes-string)
+  Log("Base64 To String Result")
+
+  "0x48656c6c6f" | HexToBytes
+  Assert.Is(bytes-string)
+  Log("Hex To Bytes Result String")
+
+  "0x01" | HexToBytes
+  Assert.Is(bytes)
+  Log("Hex To Bytes Result Ints")
 })
 
 @schedule(root test)

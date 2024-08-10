@@ -18,16 +18,80 @@ template <SHType ToType> struct ToNumber {
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Any input type that can be converted to the specified output type. This includes sequences, strings, enums, "
-                   "and vector types.");
+    return SHCCSTR("Takes input values of type `Int`, `Float`, `String`, or a collection  of `Int`s and `Float`s. Note that the "
+                   "shard can only convert strings that represent numerical values, such as \"5\", and not words like \"Five\".");
   }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The converted value in the specified output type."); }
+  static SHOptionalString outputHelp() {
+    if constexpr (ToType == SHType::Int) {
+      return SHCCSTR("Returns a numerical whole number without any fractional or decimal component.");
+    } else if constexpr (ToType == SHType::Int2) {
+      return SHCCSTR("Returns a vector of two Int elements.");
+    } else if constexpr (ToType == SHType::Int3) {
+      return SHCCSTR("Returns a vector of three Int elements.");
+    } else if constexpr (ToType == SHType::Int4) {
+      return SHCCSTR("Returns a vector of four Int elements.");
+    } else if constexpr (ToType == SHType::Int8) {
+      return SHCCSTR("Returns a vector of eight Int elements.");
+    } else if constexpr (ToType == SHType::Int16) {
+      return SHCCSTR("Returns a vector of sixteen Int elements.");
+    } else if constexpr (ToType == SHType::Color) {
+      return SHCCSTR("Returns a vector of four color channels (RGBA).");
+    } else if constexpr (ToType == SHType::Float) {
+      return SHCCSTR("Returns a numerical value that can include a fractional or decimal component.");
+    } else if constexpr (ToType == SHType::Float2) {
+      return SHCCSTR("Returns a vector of two Float elements.");
+    } else if constexpr (ToType == SHType::Float3) {
+      return SHCCSTR("Returns a vector of three Float elements.");
+    } else if constexpr (ToType == SHType::Float4) {
+      return SHCCSTR("Returns a vector of Four Float elements.");
+    } else {
+      return SHCCSTR("Converts various input types into the specified type");
+    }
+  }
 
   static SHOptionalString help() {
-    return SHCCSTR("Converts various input types (sequences, strings, enums, vectors) to the specified output type (e.g., "
-                   "integers, floats, colors). The conversion ensures type compatibility and handles different input formats.");
+    if constexpr (ToType == SHType::Int) {
+      return SHCCSTR("Converts various input types to type Int.");
+    } else if constexpr (ToType == SHType::Int2) {
+      return SHCCSTR("Converts various input types to a vector of two Int elements. If a single value or a collection with only "
+                     "one element is provided, the second element in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Int3) {
+      return SHCCSTR(
+          "Converts various input types to a vector of three Int elements. If a single value or a collection with less than 3 "
+          "elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Int4) {
+      return SHCCSTR("Converts various input types to a vector of four Int elements. If a single value or a collection with less "
+                     "than 4 elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Int8) {
+      return SHCCSTR(
+          "Converts various input types to a vector of eight Int elements. If a single value or a collection with less than 8 "
+          "elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Int16) {
+      return SHCCSTR(
+          "Converts various input types to a vector of sixteen Int elements. If a single value or a collection with less than 16 "
+          "elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Color) {
+      return SHCCSTR(
+          "Converts various input types to a vector of four color channels (RGBA). If a single value or a collection with less "
+          "than 4 elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Float) {
+      return SHCCSTR("Converts various input types to type Float.");
+    } else if constexpr (ToType == SHType::Float2) {
+      return SHCCSTR("Converts various input types to a vector of two Float elements. If a single value or a collection with "
+                     "only one element is provided, the second element in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Float3) {
+      return SHCCSTR(
+          "Converts various input types to a vector of three Float elements. If a single value or a collection with less than 3 "
+          "elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else if constexpr (ToType == SHType::Float4) {
+      return SHCCSTR(
+          "Converts various input types to a vector of Four Float elements. If a single value or a collection with less than 4 "
+          "elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.");
+    } else {
+      return SHCCSTR("Converts various input types into the specified type");
+    }
   }
 
   static const NumberTypeTraits *getEnumNumberType() {
@@ -256,20 +320,65 @@ template <SHType ToType> struct MakeVector {
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("No input is required. This shard uses parameters to construct a vector of the specified type.");
+    return SHCCSTR("No input is required. This shard uses the values provided in the parameters to construct the vector.");
   }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The constructed vector with the specified components. If not all components are provided, default values "
-                   "will be used for the remaining components.");
+    if constexpr (ToType == SHType::Int2) {
+      return SHCCSTR("Returns a vector of two Int elements.");
+    } else if constexpr (ToType == SHType::Int3) {
+      return SHCCSTR("Returns a vector of three Int elements.");
+    } else if constexpr (ToType == SHType::Int4) {
+      return SHCCSTR("Returns a vector of four Int elements.");
+    } else if constexpr (ToType == SHType::Int8) {
+      return SHCCSTR("Returns a vector of eight Int elements.");
+    } else if constexpr (ToType == SHType::Int16) {
+      return SHCCSTR("Returns a vector of sixteen Int elements.");
+    } else if constexpr (ToType == SHType::Color) {
+      return SHCCSTR("Returns a vector of four color channels (RGBA).");
+    } else if constexpr (ToType == SHType::Float2) {
+      return SHCCSTR("Returns a vector of two Float elements.");
+    } else if constexpr (ToType == SHType::Float3) {
+      return SHCCSTR("Returns a vector of three Float elements.");
+    } else if constexpr (ToType == SHType::Float4) {
+      return SHCCSTR("Returns a vector of Four Float elements.");
+    } else {
+      return SHCCSTR("Returns a vector");
+    }
   }
 
   static SHOptionalString help() {
-    return SHCCSTR(
-        "Constructs a vector of the specified type (e.g., integers, floats, colors) using the given component values. If only "
-        "one component is provided, it will be broadcasted to all components. For MakeColor, missing components will be filled "
-        "with default values. Use @i2, @i3, @i4, @i8, @i16, @f2, @f3, @f4 built-ins for convenience.");
+    if constexpr (ToType == SHType::Int2) {
+      return SHCCSTR("Creates a vector of two Int elements from the values provided in the parameters. If fewer than two values "
+                     "are provided, the remaining elements will be set to 0. The alias for this shard is @i2.");
+    } else if constexpr (ToType == SHType::Int3) {
+      return SHCCSTR("Creates a vector of three Int elements from the values provided in the parameters. If fewer than three "
+                     "values are provided, the remaining elements will be set to 0.The alias for this shard is @i3.");
+    } else if constexpr (ToType == SHType::Int4) {
+      return SHCCSTR("Creates a vector of four Int elements from the values provided in the parameters. If fewer than four "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @i4.");
+    } else if constexpr (ToType == SHType::Int8) {
+      return SHCCSTR("Creates a vector of eight Int elements from the values provided in the parameters. If fewer than eight "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @i8");
+    } else if constexpr (ToType == SHType::Int16) {
+      return SHCCSTR("Creates a vector of sixteen Int elements from the values provided in the parameters. If fewer than sixteen "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @i16.");
+    } else if constexpr (ToType == SHType::Color) {
+      return SHCCSTR("Creates a vector of four color channels (RGBA). If fewer than four values are provided, the remaining "
+                     "elements will be set to 0. The alias for this shard is @color.");
+    } else if constexpr (ToType == SHType::Float2) {
+      return SHCCSTR("Creates a vector of two Float elements from the values provided in the parameters. If fewer than two "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @f2.");
+    } else if constexpr (ToType == SHType::Float3) {
+      return SHCCSTR("Creates a vector of three Float elements from the values provided in the parameters. If fewer than three "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @f3.");
+    } else if constexpr (ToType == SHType::Float4) {
+      return SHCCSTR("Creates a vector of four Float elements from the values provided in the parameters. If fewer than four "
+                     "values are provided, the remaining elements will be set to 0. The alias for this shard is @f4.");
+    } else {
+      return SHCCSTR("Creates a vector");
+    }
   }
 
   void setParam(int index, const SHVar &value) {
@@ -299,7 +408,7 @@ template <SHType ToType> struct MakeVector {
       const Type &paramType = getCompatibleUnitType(vectorType->numberType);
 
       for (size_t i = 0; i < vectorType->dimension; i++) {
-        params._infos.emplace_back(componentNames[i].c_str(), "Vector component"_optional,
+        params._infos.emplace_back(componentNames[i].c_str(), "Vector element"_optional,
                                    Types({Type::VariableOf(paramType), paramType}));
       }
 
