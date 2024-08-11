@@ -211,8 +211,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
 endif()
 
 if(USE_LTO)
-  add_compile_options(-flto)
-  add_link_options(-flto)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX,C>:-flto>)
+  add_link_options($<$<COMPILE_LANGUAGE:CXX,C>:-flto>)
+if(APPLE AND CMAKE_SWIFT_COMPILER)
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:Swift>:-O>
+    $<$<COMPILE_LANGUAGE:Swift>:-wmo>
+  )
+  add_link_options(
+    $<$<COMPILE_LANGUAGE:Swift>:-O>
+    $<$<COMPILE_LANGUAGE:Swift>:-wmo>
+  )
+endif()
 endif()
 
 add_compile_options(

@@ -470,11 +470,11 @@ unsafe extern "C" fn activate_future_c_call<
   let res = futures::executor::block_on(f.read());
   match res {
     Ok(value) => {
-      let mut output = Var::default();
-      // swap the points to avoid drop etc
+      // SAFETY: We are unsafely managing memory here on purpose because run_future returns a ClonedVar
       let mut cloned = value.into();
-      std::mem::swap(&mut output, &mut cloned.0);
-      output
+      let value = std::mem::take(&mut cloned.0);
+      std::mem::forget(cloned);
+      value
     }
     Err(error) => {
       shlog_debug!("activate_future failure detected"); // in case error leads to crash
@@ -500,6 +500,7 @@ pub fn run_future<
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &f as *const F as *mut F as *mut c_void;
+    // see note in activate_future_c_call
     ClonedVar((*Core).asyncActivate.unwrap()(
       ctx,
       data_ptr,
