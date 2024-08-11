@@ -48,3 +48,24 @@
   ) >> pipelines
   [pipelines] | ToJson
 })
+
+@macro(for [from to code] {
+  Sequence(pipelines)
+  ForRange(from to {
+    = idx
+    {
+      "const": {
+        "num": {
+          "int": idx
+        }
+      }
+    } >> pipelines
+    {
+      sh: {
+        name: "SubFlow"
+        params: [(@ast(code) | FromJson)]
+      }
+    } >> pipelines
+  })
+  [pipelines] | ToJson
+})

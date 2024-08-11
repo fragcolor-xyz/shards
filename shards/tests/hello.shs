@@ -216,5 +216,9 @@ false = is-false | IsFalse | Assert.Is(true) | Log
 
 @if(true none none)
 
+@for(0 9 {
+  Log("@for n")
+})
+
 none
 1
