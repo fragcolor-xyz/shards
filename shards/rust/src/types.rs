@@ -192,7 +192,7 @@ impl Ord for Var {
   fn cmp(&self, other: &Self) -> std::cmp::Ordering {
     unsafe {
       // Use partialOrder to determine the full ordering directly
-      match (*Core).compareVar.unwrap()(
+      match (*Core).compareVar.unwrap_unchecked()(
         self as *const SHVar as *mut SHVar,
         other as *const SHVar as *mut SHVar,
       ) {
@@ -308,7 +308,7 @@ impl Drop for ClonedVar {
   fn drop(&mut self) {
     unsafe {
       let rv = &self.0 as *const SHVar as *mut SHVar;
-      (*Core).destroyVar.unwrap()(rv);
+      (*Core).destroyVar.unwrap_unchecked()(rv);
     }
   }
 }
@@ -348,35 +348,35 @@ impl Drop for AutoShardRef {
 
 impl Default for Mesh {
   fn default() -> Self {
-    Mesh(unsafe { (*Core).createMesh.unwrap()() })
+    Mesh(unsafe { (*Core).createMesh.unwrap_unchecked()() })
   }
 }
 
 impl Drop for Mesh {
   fn drop(&mut self) {
-    unsafe { (*Core).destroyMesh.unwrap()(self.0) }
+    unsafe { (*Core).destroyMesh.unwrap_unchecked()(self.0) }
   }
 }
 
 impl Mesh {
   pub fn compose(&self, wire: WireRef) -> bool {
-    unsafe { (*Core).compose.unwrap()(self.0, wire.0) }
+    unsafe { (*Core).compose.unwrap_unchecked()(self.0, wire.0) }
   }
 
   pub fn schedule(&mut self, wire: WireRef, compose: bool) {
-    unsafe { (*Core).schedule.unwrap()(self.0, wire.0, compose) }
+    unsafe { (*Core).schedule.unwrap_unchecked()(self.0, wire.0, compose) }
   }
 
   pub fn tick(&mut self) -> bool {
-    unsafe { (*Core).tick.unwrap()(self.0) }
+    unsafe { (*Core).tick.unwrap_unchecked()(self.0) }
   }
 
   pub fn is_empty(&mut self) -> bool {
-    unsafe { (*Core).isEmpty.unwrap()(self.0) }
+    unsafe { (*Core).isEmpty.unwrap_unchecked()(self.0) }
   }
 
   pub fn terminate(&mut self) {
-    unsafe { (*Core).terminate.unwrap()(self.0) }
+    unsafe { (*Core).terminate.unwrap_unchecked()(self.0) }
   }
 }
 
@@ -385,7 +385,7 @@ pub struct MeshVar(pub ClonedVar);
 
 impl MeshVar {
   pub fn new() -> Self {
-    MeshVar(ClonedVar(unsafe { (*Core).createMeshVar.unwrap()() }))
+    MeshVar(ClonedVar(unsafe { (*Core).createMeshVar.unwrap_unchecked()() }))
   }
 
   pub fn mesh_ref(&self) -> SHMeshRef {
@@ -401,24 +401,24 @@ impl MeshVar {
   }
 
   pub fn compose(&self, wire: WireRef) -> bool {
-    unsafe { (*Core).compose.unwrap()(self.mesh_ref(), wire.0) }
+    unsafe { (*Core).compose.unwrap_unchecked()(self.mesh_ref(), wire.0) }
   }
 
   pub fn schedule(&mut self, wire: WireRef, compose: bool) {
-    unsafe { (*Core).schedule.unwrap()(self.mesh_ref(), wire.0, compose) }
+    unsafe { (*Core).schedule.unwrap_unchecked()(self.mesh_ref(), wire.0, compose) }
   }
 
   /// Returns false if we had any wire failure
   pub fn tick(&mut self) -> bool {
-    unsafe { (*Core).tick.unwrap()(self.mesh_ref()) }
+    unsafe { (*Core).tick.unwrap_unchecked()(self.mesh_ref()) }
   }
 
   pub fn is_empty(&mut self) -> bool {
-    unsafe { (*Core).isEmpty.unwrap()(self.mesh_ref()) }
+    unsafe { (*Core).isEmpty.unwrap_unchecked()(self.mesh_ref()) }
   }
 
   pub fn terminate(&mut self) {
-    unsafe { (*Core).terminate.unwrap()(self.mesh_ref()) }
+    unsafe { (*Core).terminate.unwrap_unchecked()(self.mesh_ref()) }
   }
 
   pub fn set_label(&mut self, str: &str) {
@@ -427,7 +427,7 @@ impl MeshVar {
         string: str.as_ptr() as *const c_char,
         len: str.len() as u64,
       };
-      (*Core).setMeshLabel.unwrap()(self.mesh_ref(), name)
+      (*Core).setMeshLabel.unwrap_unchecked()(self.mesh_ref(), name)
     }
   }
 }
@@ -436,7 +436,7 @@ pub struct Wire(pub WireRef);
 
 impl Drop for Wire {
   fn drop(&mut self) {
-    unsafe { (*Core).destroyWire.unwrap()(self.0 .0) }
+    unsafe { (*Core).destroyWire.unwrap_unchecked()(self.0 .0) }
   }
 }
 
@@ -452,7 +452,7 @@ impl Wire {
       string: name.as_ptr() as *const c_char,
       len: name.len() as u64,
     };
-    Wire(WireRef(unsafe { (*Core).createWire.unwrap()(name) }))
+    Wire(WireRef(unsafe { (*Core).createWire.unwrap_unchecked()(name) }))
   }
 
   pub fn set_debug_id(self, id: u64) -> Self {
@@ -461,35 +461,35 @@ impl Wire {
   }
 
   pub fn add_shard(&self, shard: ShardRef) {
-    unsafe { (*Core).addShard.unwrap()(self.0 .0, shard.0) }
+    unsafe { (*Core).addShard.unwrap_unchecked()(self.0 .0, shard.0) }
   }
 
   pub fn set_looped(&self, looped: bool) {
-    unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
+    unsafe { (*Core).setWireLooped.unwrap_unchecked()(self.0 .0, looped) }
   }
 
   pub fn set_traits(&self, traits: SHSeq) {
-    unsafe { (*Core).setWireTraits.unwrap()(self.0 .0, traits) }
+    unsafe { (*Core).setWireTraits.unwrap_unchecked()(self.0 .0, traits) }
   }
 
   pub fn set_unsafe(&self, unsafe_: bool) {
-    unsafe { (*Core).setWireUnsafe.unwrap()(self.0 .0, unsafe_) }
+    unsafe { (*Core).setWireUnsafe.unwrap_unchecked()(self.0 .0, unsafe_) }
   }
 
   pub fn set_pure(&self, pure: bool) {
-    unsafe { (*Core).setWirePure.unwrap()(self.0 .0, pure) }
+    unsafe { (*Core).setWirePure.unwrap_unchecked()(self.0 .0, pure) }
   }
 
   pub fn set_stack_size(&self, stack_size: usize) {
-    unsafe { (*Core).setWireStackSize.unwrap()(self.0 .0, stack_size as u64) }
+    unsafe { (*Core).setWireStackSize.unwrap_unchecked()(self.0 .0, stack_size as u64) }
   }
 
   pub fn stop(&self) -> ClonedVar {
-    unsafe { ClonedVar((*Core).stopWire.unwrap()(self.0 .0)) }
+    unsafe { ClonedVar((*Core).stopWire.unwrap_unchecked()(self.0 .0)) }
   }
 
   pub fn get_info(&self) -> SHWireInfo {
-    unsafe { (*Core).getWireInfo.unwrap()(self.0 .0) }
+    unsafe { (*Core).getWireInfo.unwrap_unchecked()(self.0 .0) }
   }
 }
 
@@ -524,7 +524,7 @@ unsafe extern "C" fn error_cb(
 impl ShardRef {
   pub fn output_types(&self) -> &[Type] {
     unsafe {
-      let info = (*self.0).outputTypes.unwrap()(self.0);
+      let info = (*self.0).outputTypes.unwrap_unchecked()(self.0);
       if info.len == 0 {
         return &[];
       }
@@ -534,7 +534,7 @@ impl ShardRef {
 
   pub fn input_types(&self) -> &[Type] {
     unsafe {
-      let info = (*self.0).inputTypes.unwrap()(self.0);
+      let info = (*self.0).inputTypes.unwrap_unchecked()(self.0);
       if info.len == 0 {
         return &[];
       }
@@ -544,7 +544,7 @@ impl ShardRef {
 
   pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
     unsafe {
-      let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
+      let ptr = (*Core).createShard.unwrap_unchecked()(SHStringWithLen {
         string: name.as_ptr() as *const c_char,
         len: name.len() as u64,
       });
@@ -555,7 +555,7 @@ impl ShardRef {
           (*ptr).line = debug_info.0;
           (*ptr).column = debug_info.1;
         }
-        (*ptr).setup.unwrap()(ptr);
+        (*ptr).setup.unwrap_unchecked()(ptr);
         Some(ShardRef(ptr))
       }
     }
@@ -563,20 +563,20 @@ impl ShardRef {
 
   pub fn name(&self) -> &str {
     unsafe {
-      let c_name = (*self.0).name.unwrap()(self.0);
+      let c_name = (*self.0).name.unwrap_unchecked()(self.0);
       CStr::from_ptr(c_name).to_str().unwrap()
     }
   }
 
   pub fn destroy(&self) {
     unsafe {
-      (*Core).releaseShard.unwrap()(self.0);
+      (*Core).releaseShard.unwrap_unchecked()(self.0);
     }
   }
 
   pub fn cleanup(&self, context: Option<&Context>) -> Result<(), &'static str> {
     unsafe {
-      let result = (*self.0).cleanup.unwrap()(
+      let result = (*self.0).cleanup.unwrap_unchecked()(
         self.0,
         if let Some(_ref) = context {
           &_ref as *const _ as *mut _
@@ -602,7 +602,7 @@ impl ShardRef {
   pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     unsafe {
       if (*self.0).warmup.is_some() {
-        let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
+        let result = (*self.0).warmup.unwrap_unchecked()(self.0, context as *const _ as *mut _);
         if result.code == 0 {
           Ok(())
         } else {
@@ -623,7 +623,7 @@ impl ShardRef {
 
   pub fn parameters(&self) -> &[ParameterInfo] {
     unsafe {
-      let params = (*self.0).parameters.unwrap()(self.0);
+      let params = (*self.0).parameters.unwrap_unchecked()(self.0);
       if params.len == 0 {
         return &[];
       } else {
@@ -634,18 +634,18 @@ impl ShardRef {
 
   pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &'static str> {
     unsafe {
-      let success = (*Core).validateSetParam.unwrap()(self.0, index, &value);
+      let success = (*Core).validateSetParam.unwrap_unchecked()(self.0, index, &value);
       if !success {
         Err("Set parameter validation failed")
       } else {
-        (*self.0).setParam.unwrap()(self.0, index, &value);
+        (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
         Ok(())
       }
     }
   }
 
   pub fn get_parameter(&self, index: i32) -> Var {
-    unsafe { (*self.0).getParam.unwrap()(self.0, index) }
+    unsafe { (*self.0).getParam.unwrap_unchecked()(self.0, index) }
   }
 
   pub fn get_line_info(&self) -> (u32, u32) {
@@ -671,7 +671,7 @@ impl Drop for DerivedType {
   fn drop(&mut self) {
     let ti = &mut self.0;
     unsafe {
-      (*Core).freeDerivedTypeInfo.unwrap()(ti as *mut _);
+      (*Core).freeDerivedTypeInfo.unwrap_unchecked()(ti as *mut _);
     }
   }
 }
@@ -1059,7 +1059,7 @@ pub mod common_type {
 
   pub fn type2name(value_type: SHType) -> &'static str {
     unsafe {
-      let ptr = (*crate::core::Core).type2Name.unwrap()(value_type);
+      let ptr = (*crate::core::Core).type2Name.unwrap_unchecked()(value_type);
       let s = CStr::from_ptr(ptr);
       s.to_str().unwrap()
     }
@@ -1879,7 +1879,7 @@ where
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = &vt as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     res
   }
@@ -1896,7 +1896,7 @@ where
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = &vt as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     // ensure this flag is set
     res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
@@ -1910,7 +1910,7 @@ impl From<&Var> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = v as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     res
   }
@@ -1922,7 +1922,7 @@ impl From<&Var> for ExternalVar {
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = v as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     // ensure this flag is set
     res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
@@ -1937,7 +1937,7 @@ impl From<Vec<Var>> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = &tmp as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     res
   }
@@ -1951,7 +1951,7 @@ impl From<std::string::String> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = &tmp as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     res
   }
@@ -1965,7 +1965,7 @@ impl From<&[ClonedVar]> for ClonedVar {
       let vsrc: Var = src.into();
       let rv = &res.0 as *const SHVar as *mut SHVar;
       let sv = &vsrc as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     res
   }
@@ -1990,7 +1990,7 @@ impl ExternalVar {
     unsafe {
       let rv = &self.0 as *const SHVar as *mut SHVar;
       let sv = &vt as *const SHVar;
-      (*Core).cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
     }
     // ensure this flag is set
     self.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
@@ -2002,7 +2002,7 @@ impl Drop for ExternalVar {
   fn drop(&mut self) {
     unsafe {
       let rv = &self.0 as *const SHVar as *mut SHVar;
-      (*Core).destroyVar.unwrap()(rv);
+      (*Core).destroyVar.unwrap_unchecked()(rv);
     }
   }
 }
@@ -3241,7 +3241,7 @@ impl Var {
     dst.flags |= SHVAR_FLAGS_USES_OBJINFO as u16 | SHVAR_FLAGS_WEAK_OBJECT as u16;
     dst.__bindgen_anon_1.objectInfo = src.__bindgen_anon_1.objectInfo;
     unsafe {
-      (*dst.__bindgen_anon_1.objectInfo).weakReference.unwrap()(
+      (*dst.__bindgen_anon_1.objectInfo).weakReference.unwrap_unchecked()(
         dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue,
       );
     }
@@ -4634,7 +4634,7 @@ impl ParamVar {
   pub fn cleanup(&mut self, _ctx: Option<&Context>) {
     unsafe {
       if self.parameter.0.valueType == SHType_ContextVar {
-        (*Core).releaseVariable.unwrap()(self.pointee);
+        (*Core).releaseVariable.unwrap_unchecked()(self.pointee);
       }
       self.pointee = std::ptr::null_mut();
     }
@@ -4645,7 +4645,7 @@ impl ParamVar {
       assert_eq!(self.pointee, std::ptr::null_mut());
       unsafe {
         let ctx = context as *const SHContext as *mut SHContext;
-        self.pointee = (*Core).referenceVariable.unwrap()(
+        self.pointee = (*Core).referenceVariable.unwrap_unchecked()(
           ctx,
           SHStringWithLen {
             string: self
@@ -4687,7 +4687,7 @@ impl ParamVar {
   }
 
   pub fn set_cloning(&mut self, value: &Var) {
-    unsafe { (*Core).cloneVar.unwrap()(self.pointee, value) };
+    unsafe { (*Core).cloneVar.unwrap_unchecked()(self.pointee, value) };
     // notice we don't need to fix up ref-counting because cloning does not touch that
   }
 
@@ -4817,13 +4817,14 @@ impl ShardsVar {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
-        (*Core).expTypesFree.unwrap()(&compose_result.exposedInfo as *const _ as *mut _);
-        (*Core).expTypesFree.unwrap()(&compose_result.requiredInfo as *const _ as *mut _);
+        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.exposedInfo as *const _ as *mut _);
+        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.requiredInfo as *const _ as *mut _);
       }
       self.compose_result = None;
     }
   }
 
+  #[inline(always)]
   pub fn cleanup(&mut self, ctx: Option<&Context>) {
     for shard in self.shards.iter().rev() {
       if let Err(e) = shard.cleanup(ctx) {
@@ -4832,6 +4833,7 @@ impl ShardsVar {
     }
   }
 
+  #[inline(always)]
   pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     for shard in self.shards.iter() {
       if let Err(e) = shard.warmup(context) {
@@ -4869,16 +4871,18 @@ impl ShardsVar {
     Ok(())
   }
 
+  #[inline(always)]
   pub fn get_param(&self) -> Var {
     self.param.0
   }
 
+  #[inline(always)]
   pub fn compose(&mut self, data: &InstanceData) -> Result<&ComposeResult, &'static str> {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
-        (*Core).expTypesFree.unwrap()(&compose_result.exposedInfo as *const _ as *mut _);
-        (*Core).expTypesFree.unwrap()(&compose_result.requiredInfo as *const _ as *mut _);
+        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.exposedInfo as *const _ as *mut _);
+        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.requiredInfo as *const _ as *mut _);
       }
       self.compose_result = None;
     }
@@ -4890,7 +4894,7 @@ impl ShardsVar {
 
     let failed = false;
 
-    let mut result = unsafe { (*Core).composeShards.unwrap()(self.native_shards, *data) };
+    let mut result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
       let msg: &str = (&result.failureMessage).try_into().unwrap();
@@ -4905,13 +4909,14 @@ impl ShardsVar {
     }
   }
 
+  #[inline(always)]
   pub fn activate(&self, context: &Context, input: &Var, output: &mut Var) -> WireState {
     if self.param.0.is_none() {
       return WireState::Continue;
     }
 
     unsafe {
-      (*Core).runShards.unwrap()(
+      (*Core).runShards.unwrap_unchecked()(
         self.native_shards,
         context as *const _ as *mut _,
         input,
@@ -4921,6 +4926,7 @@ impl ShardsVar {
     }
   }
 
+  #[inline(always)]
   pub fn activate_handling_return(
     &self,
     context: &Context,
@@ -4932,7 +4938,7 @@ impl ShardsVar {
     }
 
     unsafe {
-      (*Core).runShards2.unwrap()(
+      (*Core).runShards2.unwrap_unchecked()(
         self.native_shards,
         context as *const _ as *mut _,
         input,
@@ -4942,10 +4948,12 @@ impl ShardsVar {
     }
   }
 
+  #[inline(always)]
   pub fn is_empty(&self) -> bool {
     self.param.0.is_none()
   }
 
+  #[inline(always)]
   pub fn get_exposing(&self) -> Option<&[ExposedInfo]> {
     self.compose_result.map(|compose_result| unsafe {
       let elems = compose_result.exposedInfo.elements;
@@ -4958,6 +4966,7 @@ impl ShardsVar {
     })
   }
 
+  #[inline(always)]
   pub fn get_requiring(&self) -> Option<&[ExposedInfo]> {
     self.compose_result.map(|compose_result| unsafe {
       let elems = compose_result.requiredInfo.elements;
@@ -5025,7 +5034,7 @@ impl IntoIterator for TableVar {
         table: self.0.payload.__bindgen_anon_1.tableValue,
         citer: [0; 64],
       };
-      (*it.table.api).tableGetIterator.unwrap()(it.table, &it.citer as *const _ as *mut _);
+      (*it.table.api).tableGetIterator.unwrap_unchecked()(it.table, &it.citer as *const _ as *mut _);
       it
     }
   }
@@ -5308,7 +5317,7 @@ impl Drop for Strings {
   fn drop(&mut self) {
     if self.owned {
       unsafe {
-        (*Core).stringsFree.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+        (*Core).stringsFree.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings);
       }
     }
   }
@@ -5328,7 +5337,7 @@ impl Strings {
 
   pub fn set_len(&mut self, len: usize) {
     unsafe {
-      (*Core).stringsResize.unwrap()(
+      (*Core).stringsResize.unwrap_unchecked()(
         &self.s as *const SHStrings as *mut SHStrings,
         len.try_into().unwrap(),
       );
@@ -5338,14 +5347,14 @@ impl Strings {
   pub fn push(&mut self, value: &str) {
     let str = value.as_ptr() as *const std::os::raw::c_char;
     unsafe {
-      (*Core).stringsPush.unwrap()(&self.s as *const SHStrings as *mut SHStrings, &str);
+      (*Core).stringsPush.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings, &str);
     }
   }
 
   pub fn insert(&mut self, index: usize, value: &str) {
     let str = value.as_ptr() as *const std::os::raw::c_char;
     unsafe {
-      (*Core).stringsInsert.unwrap()(
+      (*Core).stringsInsert.unwrap_unchecked()(
         &self.s as *const SHStrings as *mut SHStrings,
         index.try_into().unwrap(),
         &str,
@@ -5364,7 +5373,7 @@ impl Strings {
   pub fn pop(&mut self) -> Option<&str> {
     unsafe {
       if !self.is_empty() {
-        let v = (*Core).stringsPop.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+        let v = (*Core).stringsPop.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings);
         Some(CStr::from_ptr(v).to_str().unwrap())
       } else {
         None
@@ -5374,7 +5383,7 @@ impl Strings {
 
   pub fn clear(&mut self) {
     unsafe {
-      (*Core).stringsResize.unwrap()(&self.s as *const SHStrings as *mut SHStrings, 0);
+      (*Core).stringsResize.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings, 0);
     }
   }
 }
@@ -5591,7 +5600,7 @@ impl SeqVar {
   #[inline(always)]
   pub fn set_len(&mut self, len: usize) {
     unsafe {
-      (*Core).seqResize.unwrap()(
+      (*Core).seqResize.unwrap_unchecked()(
         &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         len.try_into().unwrap(),
       );
@@ -5623,7 +5632,7 @@ impl SeqVar {
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
-      (*Core).seqInsert.unwrap()(
+      (*Core).seqInsert.unwrap_unchecked()(
         &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
         &tmp,
@@ -5654,7 +5663,7 @@ impl SeqVar {
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
       if !self.is_empty() {
-        let v = (*Core).seqPop.unwrap()(
+        let v = (*Core).seqPop.unwrap_unchecked()(
           &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         );
         Some(transmute(v))
@@ -5667,7 +5676,7 @@ impl SeqVar {
   #[inline(always)]
   pub fn remove(&mut self, index: usize) {
     unsafe {
-      (*Core).seqSlowDelete.unwrap()(
+      (*Core).seqSlowDelete.unwrap_unchecked()(
         &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
       );
@@ -5677,7 +5686,7 @@ impl SeqVar {
   #[inline(always)]
   pub fn remove_fast(&mut self, index: usize) {
     unsafe {
-      (*Core).seqFastDelete.unwrap()(
+      (*Core).seqFastDelete.unwrap_unchecked()(
         &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
       );
@@ -5687,7 +5696,7 @@ impl SeqVar {
   #[inline(always)]
   pub fn clear(&mut self) {
     unsafe {
-      (*Core).seqResize.unwrap()(
+      (*Core).seqResize.unwrap_unchecked()(
         &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
         0,
       );
@@ -5721,7 +5730,7 @@ impl Drop for Seq {
   fn drop(&mut self) {
     if self.owned {
       unsafe {
-        (*Core).seqFree.unwrap()(&self.s as *const SHSeq as *mut SHSeq);
+        (*Core).seqFree.unwrap_unchecked()(&self.s as *const SHSeq as *mut SHSeq);
       }
     }
   }
@@ -5819,7 +5828,7 @@ impl Seq {
 
   pub fn set_len(&mut self, len: usize) {
     unsafe {
-      (*Core).seqResize.unwrap()(
+      (*Core).seqResize.unwrap_unchecked()(
         &self.s as *const SHSeq as *mut SHSeq,
         len.try_into().unwrap(),
       );
@@ -5838,7 +5847,7 @@ impl Seq {
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
-      (*Core).seqInsert.unwrap()(
+      (*Core).seqInsert.unwrap_unchecked()(
         &self.s as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
         &tmp,
@@ -5857,7 +5866,7 @@ impl Seq {
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
       if !self.is_empty() {
-        let v = (*Core).seqPop.unwrap()(&self.s as *const SHSeq as *mut SHSeq);
+        let v = (*Core).seqPop.unwrap_unchecked()(&self.s as *const SHSeq as *mut SHSeq);
         Some(transmute(v))
       } else {
         None
@@ -5867,7 +5876,7 @@ impl Seq {
 
   pub fn remove(&mut self, index: usize) {
     unsafe {
-      (*Core).seqSlowDelete.unwrap()(
+      (*Core).seqSlowDelete.unwrap_unchecked()(
         &self.s as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
       );
@@ -5876,7 +5885,7 @@ impl Seq {
 
   pub fn remove_fast(&mut self, index: usize) {
     unsafe {
-      (*Core).seqFastDelete.unwrap()(
+      (*Core).seqFastDelete.unwrap_unchecked()(
         &self.s as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
       );
@@ -5885,7 +5894,7 @@ impl Seq {
 
   pub fn clear(&mut self) {
     unsafe {
-      (*Core).seqResize.unwrap()(&self.s as *const SHSeq as *mut SHSeq, 0);
+      (*Core).seqResize.unwrap_unchecked()(&self.s as *const SHSeq as *mut SHSeq, 0);
     }
   }
 
@@ -5977,7 +5986,7 @@ impl TableVar {
       valueType: SHType_Table,
       payload: SHVarPayload {
         __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-          tableValue: unsafe { (*Core).tableNew.unwrap()() },
+          tableValue: unsafe { (*Core).tableNew.unwrap_unchecked()() },
         },
       },
       ..Default::default()
@@ -5995,13 +6004,13 @@ impl TableVar {
   pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      if (*t.api).tableContains.unwrap()(t, k) {
-        let p = (*t.api).tableAt.unwrap()(t, k);
+      if (*t.api).tableContains.unwrap_unchecked()(t, k) {
+        let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
         let old = *p;
         cloneVar(&mut *p, &v);
         Some(old)
       } else {
-        let p = (*t.api).tableAt.unwrap()(t, k);
+        let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
         cloneVar(&mut *p, &v);
         None
       }
@@ -6012,7 +6021,7 @@ impl TableVar {
   pub fn emplace(&mut self, k: Var, v: ClonedVar) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let p = (*t.api).tableAt.unwrap()(t, k);
+      let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
       *p = v.0;
       std::mem::forget(v);
     }
@@ -6022,7 +6031,7 @@ impl TableVar {
   pub fn insert_fast(&mut self, k: Var, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let p = (*t.api).tableAt.unwrap()(t, k);
+      let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
       cloneVar(&mut *p, &v);
     }
   }
@@ -6032,7 +6041,7 @@ impl TableVar {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let str_key = Var::ephemeral_string(k);
-      let p = (*t.api).tableAt.unwrap()(t, str_key);
+      let p = (*t.api).tableAt.unwrap_unchecked()(t, str_key);
       cloneVar(&mut *p, &v);
     }
   }
@@ -6041,8 +6050,8 @@ impl TableVar {
   pub fn get_mut(&self, k: Var) -> Option<&mut Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      if (*t.api).tableContains.unwrap()(t, k) {
-        let p = (*t.api).tableAt.unwrap()(t, k);
+      if (*t.api).tableContains.unwrap_unchecked()(t, k) {
+        let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
         Some(&mut *p)
       } else {
         None
@@ -6054,7 +6063,7 @@ impl TableVar {
   pub fn get_mut_fast(&mut self, k: Var) -> &mut Var {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      &mut *(*t.api).tableAt.unwrap()(t, k)
+      &mut *(*t.api).tableAt.unwrap_unchecked()(t, k)
     }
   }
 
@@ -6063,7 +6072,7 @@ impl TableVar {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let str_key = Var::ephemeral_string(k);
-      &mut *(*t.api).tableAt.unwrap()(t, str_key)
+      &mut *(*t.api).tableAt.unwrap_unchecked()(t, str_key)
     }
   }
 
@@ -6071,8 +6080,8 @@ impl TableVar {
   pub fn get(&self, k: Var) -> Option<&Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      if (*t.api).tableContains.unwrap()(t, k) {
-        let p = (*t.api).tableAt.unwrap()(t, k);
+      if (*t.api).tableContains.unwrap_unchecked()(t, k) {
+        let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
         Some(&*p)
       } else {
         None
@@ -6085,8 +6094,8 @@ impl TableVar {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let key_str = Var::ephemeral_string(k);
-      if (*t.api).tableContains.unwrap()(t, key_str) {
-        let p = (*t.api).tableAt.unwrap()(t, key_str);
+      if (*t.api).tableContains.unwrap_unchecked()(t, key_str) {
+        let p = (*t.api).tableAt.unwrap_unchecked()(t, key_str);
         Some(&*p)
       } else {
         None
@@ -6099,7 +6108,7 @@ impl TableVar {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let key_str = Var::ephemeral_string(k);
-      &*(*t.api).tableAt.unwrap()(t, key_str)
+      &*(*t.api).tableAt.unwrap_unchecked()(t, key_str)
     }
   }
 
@@ -6107,7 +6116,7 @@ impl TableVar {
   pub fn len(&self) -> usize {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      (*t.api).tableSize.unwrap()(t) as usize
+      (*t.api).tableSize.unwrap_unchecked()(t) as usize
     }
   }
 
@@ -6119,7 +6128,7 @@ impl TableVar {
         table: t,
         citer: [0; 64],
       };
-      (*t.api).tableGetIterator.unwrap()(t, &it.citer as *const _ as *mut _);
+      (*t.api).tableGetIterator.unwrap_unchecked()(t, &it.citer as *const _ as *mut _);
       it
     }
   }
@@ -6134,14 +6143,14 @@ impl TableVar {
   pub fn clear(&mut self) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      (*t.api).tableClear.unwrap()(t);
+      (*t.api).tableClear.unwrap_unchecked()(t);
     }
   }
 
   pub fn remove(&mut self, k: Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      (*t.api).tableRemove.unwrap()(t, k);
+      (*t.api).tableRemove.unwrap_unchecked()(t, k);
     }
   }
 
@@ -6149,7 +6158,7 @@ impl TableVar {
     let k = Var::ephemeral_string(k);
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      (*t.api).tableRemove.unwrap()(t, k);
+      (*t.api).tableRemove.unwrap_unchecked()(t, k);
     }
   }
 }
@@ -6165,7 +6174,7 @@ impl Drop for Table {
   fn drop(&mut self) {
     if self.owned {
       unsafe {
-        (*self.t.api).tableFree.unwrap()(self.t);
+        (*self.t.api).tableFree.unwrap_unchecked()(self.t);
       }
     }
   }
@@ -6199,7 +6208,7 @@ impl Table {
   pub fn new() -> Table {
     unsafe {
       Table {
-        t: (*Core).tableNew.unwrap()(),
+        t: (*Core).tableNew.unwrap_unchecked()(),
         owned: true,
       }
     }
@@ -6207,13 +6216,13 @@ impl Table {
 
   pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
-      if (*self.t.api).tableContains.unwrap()(self.t, k) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      if (*self.t.api).tableContains.unwrap_unchecked()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
         let old = *p;
         cloneVar(&mut *p, &v);
         Some(old)
       } else {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+        let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
         cloneVar(&mut *p, &v);
         None
       }
@@ -6222,7 +6231,7 @@ impl Table {
 
   pub fn insert_fast(&mut self, k: Var, v: &Var) {
     unsafe {
-      let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
       cloneVar(&mut *p, &v);
     }
   }
@@ -6230,15 +6239,15 @@ impl Table {
   pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
       let k = Var::ephemeral_string(k);
-      let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
       cloneVar(&mut *p, &v);
     }
   }
 
   pub fn get_mut(&self, k: Var) -> Option<&mut Var> {
     unsafe {
-      if (*self.t.api).tableContains.unwrap()(self.t, k) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      if (*self.t.api).tableContains.unwrap_unchecked()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
         Some(&mut *p)
       } else {
         None
@@ -6247,20 +6256,20 @@ impl Table {
   }
 
   pub fn get_mut_fast(&mut self, k: Var) -> &mut Var {
-    unsafe { &mut *(*self.t.api).tableAt.unwrap()(self.t, k) }
+    unsafe { &mut *(*self.t.api).tableAt.unwrap_unchecked()(self.t, k) }
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
     unsafe {
       let k = Var::ephemeral_string(k);
-      &mut *(*self.t.api).tableAt.unwrap()(self.t, k)
+      &mut *(*self.t.api).tableAt.unwrap_unchecked()(self.t, k)
     }
   }
 
   pub fn get(&self, k: Var) -> Option<&Var> {
     unsafe {
-      if (*self.t.api).tableContains.unwrap()(self.t, k) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      if (*self.t.api).tableContains.unwrap_unchecked()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
         Some(&*p)
       } else {
         None
@@ -6271,8 +6280,8 @@ impl Table {
   pub fn get_static(&self, k: &'static str) -> Option<&Var> {
     let k = Var::ephemeral_string(k);
     unsafe {
-      if (*self.t.api).tableContains.unwrap()(self.t, k) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
+      if (*self.t.api).tableContains.unwrap_unchecked()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap_unchecked()(self.t, k);
         Some(&*p)
       } else {
         None
@@ -6282,11 +6291,11 @@ impl Table {
 
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
     let k = Var::ephemeral_string(k);
-    unsafe { &*(*self.t.api).tableAt.unwrap()(self.t, k) }
+    unsafe { &*(*self.t.api).tableAt.unwrap_unchecked()(self.t, k) }
   }
 
   pub fn len(&self) -> usize {
-    unsafe { (*self.t.api).tableSize.unwrap()(self.t) as usize }
+    unsafe { (*self.t.api).tableSize.unwrap_unchecked()(self.t) as usize }
   }
 
   pub fn iter(&self) -> TableIterator {
@@ -6295,21 +6304,21 @@ impl Table {
         table: self.t,
         citer: [0; 64],
       };
-      (*self.t.api).tableGetIterator.unwrap()(self.t, &it.citer as *const _ as *mut _);
+      (*self.t.api).tableGetIterator.unwrap_unchecked()(self.t, &it.citer as *const _ as *mut _);
       it
     }
   }
 
   pub fn remove(&mut self, k: Var) {
     unsafe {
-      (*self.t.api).tableRemove.unwrap()(self.t, k);
+      (*self.t.api).tableRemove.unwrap_unchecked()(self.t, k);
     }
   }
 
   pub fn remove_static(&mut self, k: &'static str) {
     let k = Var::ephemeral_string(k);
     unsafe {
-      (*self.t.api).tableRemove.unwrap()(self.t, k);
+      (*self.t.api).tableRemove.unwrap_unchecked()(self.t, k);
     }
   }
 }
@@ -6325,7 +6334,7 @@ impl Iterator for TableIterator {
     unsafe {
       let k: Var = Var::default();
       let v: Var = Var::default();
-      let hasValue = (*(self.table.api)).tableNext.unwrap()(
+      let hasValue = (*(self.table.api)).tableNext.unwrap_unchecked()(
         self.table,
         &self.citer as *const _ as *mut _,
         &k as *const _ as *mut _,
@@ -6394,7 +6403,7 @@ impl PartialEq for Var {
     if self.valueType != other.valueType {
       false
     } else {
-      unsafe { (*Core).isEqualVar.unwrap()(self as *const _, other as *const _) }
+      unsafe { (*Core).isEqualVar.unwrap_unchecked()(self as *const _, other as *const _) }
     }
   }
 }
@@ -6406,7 +6415,7 @@ impl PartialEq for Type {
     if self.basicType != other.basicType {
       false
     } else {
-      unsafe { (*Core).isEqualType.unwrap()(self as *const _, other as *const _) }
+      unsafe { (*Core).isEqualType.unwrap_unchecked()(self as *const _, other as *const _) }
     }
   }
 }

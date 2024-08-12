@@ -153,7 +153,7 @@ pub fn init() {
 #[inline(always)]
 pub fn sleep(seconds: f64) {
   unsafe {
-    (*Core).sleep.unwrap()(seconds);
+    (*Core).sleep.unwrap_unchecked()(seconds);
   }
 }
 
@@ -161,7 +161,7 @@ pub fn sleep(seconds: f64) {
 pub fn step_count(context: &SHContext) -> u64 {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    (*Core).getStepCount.unwrap()(ctx)
+    (*Core).getStepCount.unwrap_unchecked()(ctx)
   }
 }
 
@@ -169,7 +169,7 @@ pub fn step_count(context: &SHContext) -> u64 {
 pub fn suspend(context: &SHContext, seconds: f64) -> WireState {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    (*Core).suspend.unwrap()(ctx, seconds).into()
+    (*Core).suspend.unwrap_unchecked()(ctx, seconds).into()
   }
 }
 
@@ -177,7 +177,7 @@ pub fn suspend(context: &SHContext, seconds: f64) -> WireState {
 pub fn getState(context: &SHContext) -> WireState {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    (*Core).getState.unwrap()(ctx).into()
+    (*Core).getState.unwrap_unchecked()(ctx).into()
   }
 }
 
@@ -189,14 +189,14 @@ pub fn abortWire(context: &SHContext, message: &str) {
   };
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    (*Core).abortWire.unwrap()(ctx, msg);
+    (*Core).abortWire.unwrap_unchecked()(ctx, msg);
   }
 }
 
 #[inline(always)]
 pub fn register_legacy_shard<T: Default + LegacyShard>() {
   unsafe {
-    (*Core).registerShard.unwrap()(
+    (*Core).registerShard.unwrap_unchecked()(
       T::registerName().as_ptr() as *const c_char,
       Some(legacy_shard_construct::<T>),
     );
@@ -206,7 +206,7 @@ pub fn register_legacy_shard<T: Default + LegacyShard>() {
 #[inline(always)]
 pub fn register_shard<T: Default + ShardGenerated + Shard + ShardGeneratedOverloads>() {
   unsafe {
-    (*Core).registerShard.unwrap()(
+    (*Core).registerShard.unwrap_unchecked()(
       T::register_name().as_ptr() as *const c_char,
       Some(shard_construct::<T>),
     );
@@ -223,14 +223,14 @@ pub fn register_enum<T: EnumRegister>() {
 
 pub fn getShards() -> Vec<&'static CStr> {
   unsafe {
-    let shard_names = (*Core).getShards.unwrap()();
+    let shard_names = (*Core).getShards.unwrap_unchecked()();
     let mut res = Vec::new();
     let len = shard_names.len;
     let slice = from_raw_parts_allow_null(shard_names.elements, len.try_into().unwrap());
     for name in slice.iter() {
       res.push(CStr::from_ptr(*name));
     }
-    (*Core).stringsFree.unwrap()(&shard_names as *const SHStrings as *mut SHStrings);
+    (*Core).stringsFree.unwrap_unchecked()(&shard_names as *const SHStrings as *mut SHStrings);
     res
   }
 }
@@ -238,7 +238,7 @@ pub fn getShards() -> Vec<&'static CStr> {
 #[inline(always)]
 pub fn getRootPath() -> &'static str {
   unsafe {
-    CStr::from_ptr((*Core).getRootPath.unwrap()())
+    CStr::from_ptr((*Core).getRootPath.unwrap_unchecked()())
       .to_str()
       .unwrap()
   }
@@ -250,47 +250,47 @@ pub fn createShardPtr(name: &str) -> ShardPtr {
     string: name.as_ptr() as *const c_char,
     len: name.len() as u64,
   };
-  unsafe { (*Core).createShard.unwrap()(name) }
+  unsafe { (*Core).createShard.unwrap_unchecked()(name) }
 }
 
 #[inline(always)]
 pub fn cloneVar(dst: &mut Var, src: &Var) {
   unsafe {
-    (*Core).cloneVar.unwrap()(dst, src);
+    (*Core).cloneVar.unwrap_unchecked()(dst, src);
   }
 }
 
 #[inline(always)]
 pub fn destroyVar(v: &mut Var) {
   unsafe {
-    (*Core).destroyVar.unwrap()(v);
+    (*Core).destroyVar.unwrap_unchecked()(v);
   }
 }
 
 pub fn readCachedString(id: u32) -> &'static str {
   unsafe {
-    let s = (*Core).readCachedString.unwrap()(id);
+    let s = (*Core).readCachedString.unwrap_unchecked()(id);
     CStr::from_ptr(s.string).to_str().unwrap()
   }
 }
 
 pub fn writeCachedString(id: u32, string: &'static str) -> &'static str {
   unsafe {
-    let s = (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const std::os::raw::c_char);
+    let s = (*Core).writeCachedString.unwrap_unchecked()(id, string.as_ptr() as *const std::os::raw::c_char);
     CStr::from_ptr(s.string).to_str().unwrap()
   }
 }
 
 pub fn readCachedString1(id: u32) -> SHOptionalString {
-  unsafe { (*Core).readCachedString.unwrap()(id) }
+  unsafe { (*Core).readCachedString.unwrap_unchecked()(id) }
 }
 
 pub fn writeCachedString1(id: u32, string: &'static str) -> SHOptionalString {
-  unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const std::os::raw::c_char) }
+  unsafe { (*Core).writeCachedString.unwrap_unchecked()(id, string.as_ptr() as *const std::os::raw::c_char) }
 }
 
 pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {
-  let t = unsafe { (*Core).deriveTypeInfo.unwrap()(var as *const _, data as *const _) };
+  let t = unsafe { (*Core).deriveTypeInfo.unwrap_unchecked()(var as *const _, data as *const _) };
   DerivedType(t)
 }
 
@@ -308,7 +308,7 @@ macro_rules! shccstr {
 pub fn referenceMutVariable(context: &SHContext, name: SHStringWithLen) -> &mut SHVar {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
+    let shptr = (*Core).referenceVariable.unwrap_unchecked()(ctx, name);
     shptr.as_mut().unwrap()
   }
 }
@@ -316,7 +316,7 @@ pub fn referenceMutVariable(context: &SHContext, name: SHStringWithLen) -> &mut 
 pub fn referenceVariable(context: &SHContext, name: SHStringWithLen) -> &SHVar {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
+    let shptr = (*Core).referenceVariable.unwrap_unchecked()(ctx, name);
     shptr.as_mut().unwrap()
   }
 }
@@ -324,25 +324,25 @@ pub fn referenceVariable(context: &SHContext, name: SHStringWithLen) -> &SHVar {
 pub fn releaseMutVariable(var: &mut SHVar) {
   unsafe {
     let v = var as *mut SHVar;
-    (*Core).releaseVariable.unwrap()(v);
+    (*Core).releaseVariable.unwrap_unchecked()(v);
   }
 }
 
 pub fn releaseVariable(var: &SHVar) {
   unsafe {
     let v = var as *const SHVar as *mut SHVar;
-    (*Core).releaseVariable.unwrap()(v);
+    (*Core).releaseVariable.unwrap_unchecked()(v);
   }
 }
 
 pub fn register_legacy_enum(vendorId: i32, typeId: i32, info: SHEnumInfo) {
   unsafe {
-    (*Core).registerEnumType.unwrap()(vendorId, typeId, info);
+    (*Core).registerEnumType.unwrap_unchecked()(vendorId, typeId, info);
   }
 }
 
 pub fn findEnumInfo(vendorId: i32, typeId: i32) -> Option<SHEnumInfo> {
-  let info = unsafe { (*Core).findEnumInfo.unwrap()(vendorId, typeId) };
+  let info = unsafe { (*Core).findEnumInfo.unwrap_unchecked()(vendorId, typeId) };
   if info == std::ptr::null() {
     None
   } else {
@@ -355,7 +355,7 @@ pub fn findEnumId(name: &str) -> Option<i64> {
     string: name.as_ptr() as *const c_char,
     len: name.len() as u64,
   };
-  let info = unsafe { (*Core).findEnumId.unwrap()(s) };
+  let info = unsafe { (*Core).findEnumId.unwrap_unchecked()(s) };
   if info == 0 {
     None
   } else {
@@ -364,11 +364,11 @@ pub fn findEnumId(name: &str) -> Option<i64> {
 }
 
 pub fn findObjectInfo(vendorId: i32, typeId: i32) -> *const SHObjectInfo {
-  unsafe { (*Core).findObjectInfo.unwrap()(vendorId, typeId) }
+  unsafe { (*Core).findObjectInfo.unwrap_unchecked()(vendorId, typeId) }
 }
 
 pub fn type2Name(t: SHType) -> *const c_char {
-  unsafe { (*Core).type2Name.unwrap()(t) }
+  unsafe { (*Core).type2Name.unwrap_unchecked()(t) }
 }
 
 impl WireRef {
@@ -382,7 +382,7 @@ impl WireRef {
         var: &var.0 as *const _ as *mut _,
         type_: std::ptr::null(),
       };
-      (*Core).setExternalVariable.unwrap()(self.0, name, &ev as *const _ as *mut _);
+      (*Core).setExternalVariable.unwrap_unchecked()(self.0, name, &ev as *const _ as *mut _);
     }
   }
 
@@ -392,12 +392,12 @@ impl WireRef {
       len: name.len() as u64,
     };
     unsafe {
-      (*Core).removeExternalVariable.unwrap()(self.0, name);
+      (*Core).removeExternalVariable.unwrap_unchecked()(self.0, name);
     }
   }
 
   pub fn get_result(&self) -> Result<Option<ClonedVar>, &str> {
-    let info = unsafe { (*Core).getWireInfo.unwrap()(self.0) };
+    let info = unsafe { (*Core).getWireInfo.unwrap_unchecked()(self.0) };
 
     if !info.isRunning {
       if info.failed {
@@ -501,7 +501,7 @@ pub fn run_future<
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &f as *const F as *mut F as *mut c_void;
     // see note in activate_future_c_call
-    ClonedVar((*Core).asyncActivate.unwrap()(
+    ClonedVar((*Core).asyncActivate.unwrap_unchecked()(
       ctx,
       data_ptr,
       Some(activate_future_c_call::<F, R>),
@@ -521,7 +521,7 @@ where
     };
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
-    (*Core).asyncActivate.unwrap()(
+    (*Core).asyncActivate.unwrap_unchecked()(
       ctx,
       data_ptr,
       Some(activate_blocking_c_call::<T>),
@@ -665,7 +665,7 @@ use std::hash::{Hash, Hasher};
 
 impl Hash for Var {
   fn hash<H: Hasher>(&self, state: &mut H) {
-    let hash = unsafe { (*Core).hashVar.unwrap()(self as *const _) };
+    let hash = unsafe { (*Core).hashVar.unwrap_unchecked()(self as *const _) };
     unsafe {
       state.write_u64(hash.payload.__bindgen_anon_1.int2Value[0] as u64);
       state.write_u64(hash.payload.__bindgen_anon_1.int2Value[1] as u64);
@@ -674,7 +674,7 @@ impl Hash for Var {
 }
 
 pub fn hash_var(v: &Var) -> Var {
-  unsafe { (*Core).hashVar.unwrap()(v as *const _) }
+  unsafe { (*Core).hashVar.unwrap_unchecked()(v as *const _) }
 }
 
 /// A struct that will execute a closure when it goes out of scope.
