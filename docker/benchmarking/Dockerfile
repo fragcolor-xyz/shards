@@ -1,9 +1,9 @@
 # --- BASE STAGE ---
-FROM ubuntu:latest
+FROM debian:latest as base
 
-# Update and install dependencies
+# Installing dependencies
 RUN apt-get update -y && \
-    apt-get install -y gnupg git cmake pkg-config libssl-dev build-essential clang libclang-dev curl protobuf-compiler wget ninja-build xorg-dev libdbus-1-dev lcov mesa-utils lld linux-tools-generic valgrind ca-certificates && \
+    apt-get install -y git cmake pkg-config libssl-dev build-essential clang libclang-dev curl protobuf-compiler wget ninja-build xorg-dev libdbus-1-dev lcov mesa-utils lld linux-perf valgrind && \
     rm -rf /var/lib/apt/lists/*
 
 # Setting up Rust environment
@@ -25,8 +25,7 @@ RUN rustup --version && cargo --version && rustc --version
 # Cloning shards repository with submodules
 RUN git clone --recursive https://github.com/fragcolor-xyz/shards.git /shards
 
-# Update CA certificates
-RUN update-ca-certificates
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
 
 # Updating shards with specified version
 RUN cd /shards && \

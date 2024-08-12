@@ -1776,6 +1776,28 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     freeTrait(*var.payload.traitValue);
     delete var.payload.traitValue;
     break;
+  case SHType::Audio:
+    delete[] var.payload.audioValue.samples;
+    break;
+  case SHType::Array:
+    arrayFree(var.payload.arrayValue);
+    break;
+  case SHType::Object:
+    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
+      shassert(var.objectInfo && "ObjectInfo is null");
+      // check if weak ref
+      if ((var.flags & SHVAR_FLAGS_WEAK_OBJECT) == SHVAR_FLAGS_WEAK_OBJECT) {
+        shassert(var.objectInfo->weakRelease && "Weak release function is null");
+        var.objectInfo->weakRelease(var.payload.objectValue);
+      } else if (var.objectInfo->release) {
+        // in this case the custom object needs actual destruction
+        var.objectInfo->release(var.payload.objectValue);
+      }
+    }
+    break;
+  case SHType::Wire:
+    SHWire::deleteRef(var.payload.wireValue);
+    break;
   default:
     break;
   };

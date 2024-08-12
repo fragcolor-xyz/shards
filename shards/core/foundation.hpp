@@ -302,8 +302,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::string name{"unnamed"};
   entt::id_type id{entt::null};
-  uint64_t debugId{0};        // used for debugging
-  shards::OwnedVar astObject; // optional, used for debugging
+  uint64_t debugId{0};            // used for debugging
+  shards::OwnedVar astObject;     // optional, used for debugging
   std::shared_ptr<SHWire> parent; // used in doppelganger pool, we keep track of the template wire
 
   // The wire's running coroutine
@@ -961,49 +961,11 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
     return;
   }
 
-  switch (var.valueType) {
-  case SHType::None:
-    return;
-  case SHType::Trait:
-  case SHType::Type:
-  case SHType::Table:
-  case SHType::Set:
-  case SHType::Seq:
-  case SHType::ShardRef:
-  case SHType::Image:
-  case SHType::Bytes:
-  case SHType::String:
-  case SHType::Path:
-  case SHType::ContextVar:
+  if (var.valueType >= SHType::EndOfBlittableTypes) {
     _destroyVarSlow(var);
-    break;
-  case SHType::Audio:
-    delete[] var.payload.audioValue.samples;
-    break;
-  case SHType::Array:
-    arrayFree(var.payload.arrayValue);
-    break;
-  case SHType::Object:
-    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
-      shassert(var.objectInfo && "ObjectInfo is null");
-      // check if weak ref
-      if ((var.flags & SHVAR_FLAGS_WEAK_OBJECT) == SHVAR_FLAGS_WEAK_OBJECT) {
-        shassert(var.objectInfo->weakRelease && "Weak release function is null");
-        var.objectInfo->weakRelease(var.payload.objectValue);
-      } else if (var.objectInfo->release) {
-        // in this case the custom object needs actual destruction
-        var.objectInfo->release(var.payload.objectValue);
-      }
-    }
-    break;
-  case SHType::Wire:
-    SHWire::deleteRef(var.payload.wireValue);
-    break;
-  default:
-    shassert(var.valueType < SHType::EndOfBlittableTypes && "Non blittable type in destroyVar unhandled");
-    break;
-  };
+  }
 
+  // For blittable types, just zero out the payload and set type to None
   memset(&var.payload, 0x0, sizeof(SHVarPayload));
   var.valueType = SHType::None;
 }
