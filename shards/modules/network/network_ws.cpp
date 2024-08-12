@@ -73,7 +73,6 @@ struct WSPeer : public Peer {
   void send(boost::span<const uint8_t> data) override { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
   bool disconnected() const override { return disconnected_; }
 };
-
 struct WSHandler : public WSPeer {
   entt::connection onStopConnection;
   std::shared_ptr<SHWire> wire;
@@ -178,14 +177,10 @@ struct WSServerShard {
   WSServerShard() : _composer(*this) {}
 
   std::string _serverDebugName;
-
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _mesh = context->main->mesh.lock();
-
     _serverVarRef = referenceVariable(context, "Network.Server");
-    assignVariableValue(*_serverVarRef, Var::Object(_server.get(), CoreCC, ServerCC));
-
     _peerVarRef = referenceVariable(context, "Network.Peer");
   }
 
