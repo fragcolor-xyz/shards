@@ -43,6 +43,11 @@
 #endif
 #endif
 
+#ifdef BOOST_USE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/callgrind.h>
+#endif
+
 namespace shards {
 namespace Assert {
 struct Base {
@@ -283,6 +288,37 @@ struct Break {
     return input;
   }
 };
+
+struct CallgrindStart {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+#ifdef BOOST_USE_VALGRIND
+    CALLGRIND_START_INSTRUMENTATION;
+#endif
+    return input;
+  }
+};
+
+struct CallgrindStop {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+#ifdef BOOST_USE_VALGRIND
+    CALLGRIND_STOP_INSTRUMENTATION;
+    CALLGRIND_DUMP_STATS;
+#endif
+    return input;
+  }
+};
 } // namespace Assert
 } // namespace shards
 
@@ -294,4 +330,6 @@ SHARDS_REGISTER_FN(assert) {
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
   REGISTER_SHARD("Debug.Break", Break);
+  REGISTER_SHARD("_Callgrind.Start", CallgrindStart);
+  REGISTER_SHARD("_Callgrind.Stop", CallgrindStop);
 }
