@@ -93,6 +93,13 @@ struct Const {
 static shards::ParamsInfo compareParamsInfo =
     shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to check against."), CoreInfo::AnyType));
 
+static shards::ParamsInfo compareParamsInfo2 = shards::ParamsInfo(
+    shards::ParamsInfo::Param("Value",
+                              SHCCSTR("The value to check against. Note: This shard will not evaluate variables nested within "
+                                      "sequences and tables. If you need to compare them against such variables, wrap them in "
+                                      "parentheses, so that they are evaluated first. Example: Value:([your-variable]) instead of Value:your-variable."),
+                              CoreInfo::AnyType));
+
 struct BaseOpsBin {
   ParamVar _operand{shards::Var(0)};
   ExposedInfo _requiredVariables;
@@ -105,7 +112,7 @@ struct BaseOpsBin {
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The result of the comparison."); }
 
-  SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
+  static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
 
   SHExposedTypesInfo requiredVariables() {
     _requiredVariables.clear();
@@ -203,8 +210,9 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
       return shards::Var::False;                                                          \
     }                                                                                     \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
-    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }     \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }  \
     static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
+    static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo2); } \
   };                                                                                      \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
@@ -246,8 +254,9 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
       return shards::Var::False;                                                             \
     }                                                                                        \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                            \
-    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType;}        \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }     \
     static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }               \
+    static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo2); }    \
   };                                                                                         \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
@@ -317,6 +326,7 @@ LOGIC_ALL_SEQ_OP(
   RUNTIME_SHARD_help(NAME);              \
   RUNTIME_SHARD_inputHelp(NAME);         \
   RUNTIME_SHARD_outputHelp(NAME);        \
+  RUNTIME_SHARD_parameters(NAME);        \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {

@@ -238,7 +238,7 @@ struct DefaultHelpText {
 
   static inline const SHOptionalString InputHelpAnyType = SHCCSTR("Input of any type is accepted.");
 
-  static inline const SHOptionalString InputHelpAnyButType = SHCCSTR("Input of any type is accepted. However, when comparing different types(e.g., boolean with integer), the shard will not throw an error, but will sometimes return unexpected results.");
+  static inline const SHOptionalString InputHelpAnyButType = SHCCSTR("Input of any type is accepted. For types without inherent value (e.g., None, Bool), a lexicographical comparison is used.");
 
   static inline const SHOptionalString InputHelpIgnored = SHCCSTR("The input of this shard is ignored.");
 
