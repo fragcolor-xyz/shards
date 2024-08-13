@@ -2,10 +2,10 @@
 prompt: """How to use templates in Shards?"""
 
 solution: """@template(push-to-x [] {
-5 | Push(x-seq)
+5 >> x-seq
 })
 @wire(main-wire{
-[1 2 3 4] | Set[x-seq]
+[1 2 3 4] >= x-seq
 @push-to-x
 x-seq
 Log("x-seq")
@@ -16,7 +16,7 @@ explicit: """@template(push-to-x [x-seq] {
 5 | Push(Name: x-seq)
 })
 @wire(main-wire{
-[1 2 3 4] | Set[Name: x-seq]
+[1 2 3 4] | Set(Name: x-seq)
 @push-to-x
 x-seq
 Log("x-seq")

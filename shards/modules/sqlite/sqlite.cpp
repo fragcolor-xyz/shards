@@ -409,6 +409,7 @@ struct Query : public Base {
     _dbName = Var("shards.db");
     _asRows = Var(false);
     _retry = Var(false);
+    _readOnly = Var(false);
   }
 
   PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.",
@@ -417,7 +418,10 @@ struct Query : public Base {
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::BoolType});
   PARAM_VAR(_retry, "Retry", "Retry the query if the database was locked.", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows), PARAM_IMPL_FOR(_retry));
+  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_asRows), PARAM_IMPL_FOR(_retry),
+             PARAM_IMPL_FOR(_readOnly));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -608,7 +612,7 @@ struct Query : public Base {
       ready = false;
       prepared.reset();
     }
-    _ensureDb(context, false);
+    _ensureDb(context, _readOnly.get().payload.boolValue);
 
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
@@ -783,6 +787,7 @@ struct LoadExtension : public Base {
   LoadExtension() {
     _extPath = Var("my-extension");
     _dbName = Var("shards.db");
+    _readOnly = Var(false);
   }
 
   PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType, CoreInfo::StringVarType});
@@ -790,7 +795,9 @@ struct LoadExtension : public Base {
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_entryPoint, "EntryPoint", "The entry point of the extension.",
                  {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::NoneType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_entryPoint));
+  PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_entryPoint), PARAM_IMPL_FOR(_readOnly));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -805,7 +812,7 @@ struct LoadExtension : public Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ENSURE_DB(context, false);
+    ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
     return awaitne(
         context,

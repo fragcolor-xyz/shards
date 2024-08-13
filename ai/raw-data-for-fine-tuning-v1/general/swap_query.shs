@@ -1,5 +1,5 @@
 {
-prompt: """How do I swap the values of two variables?""" 
+prompt: """How do I swap the values of two variables?"""
 
 solution: """2 >= variableA
 4 >= variableB
@@ -17,7 +17,7 @@ Second: variableB
 )
 """
 
-explanation: """The Swap Shard swaps the values of the two variables passed to it via :First and :Second parameters. This Shard can only swap the values
+explanation: """The Swap Shard swaps the values of the two variables passed to it via Firstand Secondparameters. This Shard can only swap the values
 of two variables with the same type.
 """
 

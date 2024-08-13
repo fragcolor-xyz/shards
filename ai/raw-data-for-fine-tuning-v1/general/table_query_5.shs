@@ -1,10 +1,10 @@
 {
-prompt: """How do I create a table in Shards?""" 
+prompt: """How do I create a table in Shards?"""
 
 solution: """{A: [1, 2]} = tableA
 """
 
-explicit: """Table(:Name tableA)
+explicit: """Table(Name: tableA)
 1 | Push(tableA "A")
 tableA | Log
 2 | Push(tableA "A")

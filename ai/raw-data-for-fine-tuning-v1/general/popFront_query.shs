@@ -1,5 +1,5 @@
 {
-prompt: """How to remove the first element in the sequence and get the element that was removed?""" 
+prompt: """How to remove the first element in the sequence and get the element that was removed?"""
 
 solution: """PopFront(sequence-to-pop)
 Log("Popped First Element")
@@ -9,7 +9,7 @@ explicit: """PopFront(Name: sequence-to-pop)
 Log(Prefix: "Popped First Element" Level: LogLevel::Info)
 """
 
-explanation: """PopFront removes the first element of the sequence variable that has been passed to in the :Name parameter. Unlike the Drop Shard, Pop will return the popped element
+explanation: """PopFront removes the first element of the sequence variable that has been passed to in the Nameparameter. Unlike the Drop Shard, Pop will return the popped element
 as output.
 """
 
