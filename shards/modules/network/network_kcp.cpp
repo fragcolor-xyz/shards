@@ -436,7 +436,9 @@ struct ServerShard : public NetworkBase {
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), Types::Peer);
     _sharedCopy.push_back(endpointInfo);
 
-    return NetworkBase::compose(data);
+    NetworkBase::compose(data);
+
+    return Types::Server;
   }
 
   void gcWires(SHContext *context) {

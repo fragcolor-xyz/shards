@@ -208,6 +208,11 @@ template <> struct enum_range<shards::Math::DispatchType> {
 namespace shards::Math {
 constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t(a) & uint8_t(b)) != 0; }
 
+[[noreturn]] inline __attribute__((noinline)) void throwDispatchError(SHType type, int dispatchType) {
+  throw std::out_of_range(fmt::format(
+      "dispatchType<{}>({})", magic_enum::enum_flags_name(static_cast<DispatchType>(dispatchType)), magic_enum::enum_name(type)));
+}
+
 template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
   switch (type) {
   case SHType::Int:
@@ -261,8 +266,7 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
   default:
     break;
   }
-  throw std::out_of_range(
-      fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
+  throwDispatchError(type, static_cast<int>(DispatchType));
 }
 
 struct ModOp final {

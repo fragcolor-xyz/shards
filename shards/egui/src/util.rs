@@ -129,6 +129,7 @@ where
   with_object_var(stack_var, object, object_type, inner)
 }
 
+#[inline(always)]
 pub fn activate_ui_contents(
   context: &Context,
   input: &Var,

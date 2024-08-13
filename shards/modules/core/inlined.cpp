@@ -77,8 +77,6 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_
     shard->inlineShardId = InlineShard::MathLShift;
   } else if (name == "Math.RShift") {
     shard->inlineShardId = InlineShard::MathRShift;
-  } else if (name == "Memoize") {
-    shard->inlineShardId = InlineShard::CoreMemoize;
   }
   return shard->inlineShardId != 0;
 }
@@ -216,10 +214,6 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *
     auto shard = reinterpret_cast<Math::RShiftRuntime *>(blk);
     output = shard->core.activate(context, input);
   } break;
-  case InlineShard::CoreMemoize: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Memoize> *>(blk);
-    output = shard->shard.activate(context, input);
-  }
   default:
     return false;
   }
