@@ -37,6 +37,18 @@ enum ModifierKey {
 };
 DECL_ENUM_INFO(ModifierKey, ModifierKey, 'mdIf');
 
+struct InputsDefaultHelpText {
+  static inline const SHOptionalString InputsMouseKey =
+      SHCCSTR("Input of any type is accepted. The input is passed as input to the code specified in the Action parameter.");
+
+  static inline constexpr const char *InputConsume =
+      "If set to true, this event will be consumed. Meaning, if there was a previous shard with \"Consume\" set to true, all "
+      "subsequent calls of the same shard with the same key specified will not activate.";
+
+  static inline constexpr const char *InputConsumeIgnored = "If true, skips events already consumed by previous shards. If "
+                                                            "false, processes all events regardless of their consumed state.";
+};
+
 struct Types {
   static inline Type ModifierKeys = Type::SeqOf(ModifierKeyEnumInfo::Type);
 };
@@ -177,7 +189,18 @@ struct Base {
 
 struct MousePixelPos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the pixel position of the cursor represented as a vector with 2 int elements.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the current pixel position of the cursor within the input region, represented as an int2 "
+                   "vector. The first element represents the x position of the cursor, and the second element represents the y "
+                   "position of the cursor. The coordinates are in pixel space, with (0,0) being the top-left corner of the "
+                   "input region and (input-region-pixel-width, input-region-pixel-height) being the bottom-right corner.");
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -196,7 +219,17 @@ struct MousePixelPos : public Base {
 
 struct MouseDelta : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns how much the mouse has moved since the last frame, represented as a vector with 2 float elements.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns how much the mouse has moved since the last frame as a float2 vector. The first "
+                   "element represents the horizontal movement (a positive value indicates movement to the right), and the "
+                   "second element represents the vertical movement (a positive value indicates movement downwards).");
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -221,6 +254,18 @@ struct MousePos : public Base {
   int _height;
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the position of the cursor represented as a vector with 2 float elements.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the current logical position of the cursor within the input region, represented as a "
+                   "float2 vector. The first element represents the x position of the cursor, and the second element represents "
+                   "the y position of the cursor. The coordinates are in the same space as the input region's size, with (0,0) "
+                   "being the top-left corner and (input-region-width,input-region-height) being the bottom-right corner.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   PARAM_REQUIRED_VARIABLES();
@@ -238,7 +283,16 @@ struct MousePos : public Base {
 
 struct InputRegionSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the size of the input region represented as a vector with two float elements.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the size of the input region represented as a float2 vector. The first element represents "
+                   "the width of the region, and the second element represents the height of the region.");
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -255,7 +309,16 @@ struct InputRegionSize : public Base {
 
 struct InputRegionPixelSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the pixel size of the input region represented as a vector with two int elements.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the pixel size of the input region represented as an int2 vector. The first element "
+                   "represents the width of the region, and the second element represents the height of the region.");
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -375,7 +438,26 @@ struct Mouse : public Base {
 template <bool Pressed> struct MouseUpDown : public Base {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+
+  static SHOptionalString inputHelp() { return InputsDefaultHelpText::InputsMouseKey; }
+
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  static SHOptionalString help() {
+    if constexpr (Pressed == true) {
+      return SHCCSTR(
+          "Checks if the appropriate mouse button is pressed down. If it is pressed down, the shard executes the code "
+          "specified in the respective parameter on the frame the button is pressed down. (If the Right Mouse button was "
+          "pressed down, the code specified in the Right parameter will be executed.)");
+    } else if constexpr (Pressed == false) {
+      return SHCCSTR("Checks if the appropriate mouse button is released. If it is released, the shard executes the code "
+                     "specified in the respective parameter on the frame the button is released.(If the Right Mouse button was "
+                     "released, the code specified in the Right parameter will be executed.)");
+
+    } else {
+      return SHCCSTR("Checks if the appropriate mouse button event happened.");
+    }
+  }
 
   PARAM(ShardsVar, _leftButton, "Left", "The action to perform when the left mouse button is pressed down.",
         {CoreInfo::ShardsOrNone});
@@ -383,19 +465,26 @@ template <bool Pressed> struct MouseUpDown : public Base {
         {CoreInfo::ShardsOrNone});
   PARAM(ShardsVar, _middleButton, "Middle", "The action to perform when the middle mouse button is pressed down.",
         {CoreInfo::ShardsOrNone});
-  PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_VAR(_ignoreConsumed, "IgnoreConsumed", "Ignore consumed events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_VAR(_consume, "Consume", InputsDefaultHelpText::InputConsume, {CoreInfo::BoolType});
+  PARAM_VAR(_skipConsumed, "SkipConsumed", InputsDefaultHelpText::InputConsumeIgnored, {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume),
-             PARAM_IMPL_FOR(_ignoreConsumed));
+             PARAM_IMPL_FOR(_skipConsumed));
 
-  bool ignoreConsumed{};
-  bool consume{};
+  bool ignoreConsumed{true};
+  bool consume{true};
+
+public:
+  MouseUpDown() {
+    // Set default values for _consume and _skipConsumed
+    *_consume = Var(true);
+    *_skipConsumed = Var(true);
+  }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     baseWarmup(context);
-    ignoreConsumed = _ignoreConsumed->isNone() ? true : (bool)*_ignoreConsumed;
-    consume = _consume->isNone() ? true : (bool)*_consume;
+    ignoreConsumed = (bool)*_skipConsumed;
+    consume = (bool)*_consume;
   }
 
   void cleanup(SHContext *context) {
@@ -462,22 +551,55 @@ template <bool Pressed> struct MouseUpDown : public Base {
 
 template <bool Pressed> struct KeyUpDown : public Base {
 
+  SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return InputsDefaultHelpText::InputsMouseKey; }
+  SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  static SHOptionalString help() {
+    if constexpr (Pressed == true) {
+      return SHCCSTR("This shard checks if the key specified is pressed down. If the key is pressed down, the shard executes the "
+                     "code specified in the Action parameter on the "
+                     "frame the key is pressed down. If the Repeat parameter is set to true, the code specified in the Action "
+                     "parameter will be repeated every frame the key is held down instead.");
+    } else if constexpr (Pressed == false) {
+      return SHCCSTR("This shard checks if the key specified is released. If the key is released, the shard executes the code "
+                     "specified in the Action parameter on the "
+                     "frame the key is released.");
+    } else {
+      return SHCCSTR("Checks if a key event happened.");
+    }
+  }
+
+  static inline constexpr const char *RepeatHelp =
+      Pressed ? "If set to true, the event specified in the Action parameter will be repeated if the key is held down. "
+                "Otherwise, the event will be executed only on the frame the key is pressed down."
+              : "This parameter is ignored for Inputs.KeyUp.";
+
   PARAM_VAR(_key, "Key", "The key to check.", {{CoreInfo::StringType}});
-  PARAM(ShardsVar, _shards, "Action", "The Shards to run if a key event happened.", {CoreInfo::ShardsOrNone});
-  PARAM_VAR(_repeat, "Repeat", "If the key event should be repeated.", {{CoreInfo::NoneType, CoreInfo::BoolType}});
-  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, Types::ModifierKeys});
-  PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_VAR(_ignoreConsumed, "IgnoreConsumed", "Ignore consumed events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM(ShardsVar, _shards, "Action", "The code to run if the key event happened.", {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_repeat, "Repeat", RepeatHelp, {CoreInfo::BoolType});
+  PARAM_VAR(_modifiers, "Modifiers",
+            "Modifier keys to check for such as \"leftctrl\", \"leftshift\", \"leftalt\", \"rightctrl\", \"rightshift\", "
+            "\"rightalt\", etc.",
+            {CoreInfo::NoneType, Types::ModifierKeys});
+  PARAM_VAR(_consume, "Consume", InputsDefaultHelpText::InputConsume, {CoreInfo::BoolType});
+  PARAM_VAR(_skipConsumed, "SkipConsumed", InputsDefaultHelpText::InputConsumeIgnored, {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_key), PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_repeat), PARAM_IMPL_FOR(_modifiers),
-             PARAM_IMPL_FOR(_consume), PARAM_IMPL_FOR(_ignoreConsumed));
+             PARAM_IMPL_FOR(_consume), PARAM_IMPL_FOR(_skipConsumed));
 
   SDL_Keymod _modifierMask;
   SDL_Keycode _keyCode;
-  bool ignoreConsumed{};
-  bool consume{};
+  bool ignoreConsumed{true};
+  bool consume{true};
 
 public:
-  KeyUpDown() { _repeat = Var(false); }
+  KeyUpDown() {
+    _repeat = Var(false);
+    // Set default values for _consume and _skipConsumed
+    *_consume = Var(true);
+    *_skipConsumed = Var(true);
+  }
 
   void cleanup(SHContext *context) {
     _shards.cleanup(context);
@@ -489,8 +611,8 @@ public:
     baseWarmup(context);
     _modifierMask = convertModifierKeys(*_modifiers);
     _keyCode = keyStringToKeyCode(std::string(SHSTRVIEW(_key)));
-    ignoreConsumed = _ignoreConsumed->isNone() ? true : (bool)*_ignoreConsumed;
-    consume = _consume->isNone() ? true : (bool)*_consume;
+    ignoreConsumed = (bool)*_skipConsumed;
+    consume = (bool)*_consume;
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -532,9 +654,21 @@ public:
 
 struct MatchModifier : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Returns a boolean value: true if any of the specified modifier keys are currently pressed down and false otherwise.");
+  }
 
-  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, Types::ModifierKeys});
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns true if any of the modifier keys in the sequence provided in the Modifier parameter are "
+                   "currently pressed down, and false otherwise.");
+  }
+
+  PARAM_VAR(_modifiers, "Modifiers",
+            "Sequence of Modifier keys to check for such as Modifier::Shift, Modifier::Alt, Modifier::Primary and "
+            "Modifier::Secondary.", {CoreInfo::NoneType, Types::ModifierKeys});
   PARAM_IMPL(PARAM_IMPL_FOR(_modifiers));
 
   SDL_Keymod _modifierMask;
@@ -565,13 +699,21 @@ struct MatchModifier : public Base {
 
 struct IsKeyDown : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a boolean value indicating whether the specified key is currently pressed down.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns true if the key specified is currently pressed down, and false otherwise.");
+  }
 
   SDL_Keycode _keyCode;
   std::string _keyName;
 
   static inline Parameters _params = {
-      {"Key", SHCCSTR("The name of the key to check."), {{CoreInfo::StringType}}},
+      {"Key", SHCCSTR("The key to check."), {{CoreInfo::StringType}}},
   };
 
   static SHParametersInfo parameters() { return _params; }
@@ -616,7 +758,22 @@ struct IsKeyDown : public Base {
 struct HandleURL : public Base {
   std::string _url;
 
-  PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+
+  SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard listens to file drop events and URL events. When files are dropped onto the application or URLs "
+                   "events are received, "
+                   "this shard executes the specified Action for each file dropped or URL event received. The file path or URL "
+                   "is then passed as a string to "
+                   "the Action.");
+  }
+
+  PARAM(ShardsVar, _action, "Action", "Code to execute when a file drop event or URL event is received.",
+        {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_action));
 
   void cleanup(SHContext *context) {
@@ -747,7 +904,7 @@ SHARDS_REGISTER_FN(inputs) {
   REGISTER_SHARD("Inputs.Mouse", Mouse);
   REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
   REGISTER_SHARD("Inputs.HandleURL", HandleURL);
-  REGISTER_SHARD("Inputs.DiscardTempFiles", DiscardTempFiles);
+  REGISTER_SHARD("_Inputs.DiscardTempFiles", DiscardTempFiles); // Ignored for docs
 
   using MouseDown = MouseUpDown<true>;
   using MouseUp = MouseUpDown<false>;

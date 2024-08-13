@@ -91,7 +91,14 @@ struct Const {
 };
 
 static shards::ParamsInfo compareParamsInfo =
-    shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType));
+    shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to check against."), CoreInfo::AnyType));
+
+static shards::ParamsInfo compareParamsInfo2 = shards::ParamsInfo(
+    shards::ParamsInfo::Param("Value",
+                              SHCCSTR("The value to check against. Note: This shard will not evaluate variables nested within "
+                                      "sequences and tables. If you need to compare them against such variables, wrap them in "
+                                      "parentheses, so that they are evaluated first. Example: Value:([your-variable]) instead of Value:your-variable."),
+                              CoreInfo::AnyType));
 
 struct BaseOpsBin {
   ParamVar _operand{shards::Var(0)};
@@ -105,7 +112,7 @@ struct BaseOpsBin {
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The result of the comparison."); }
 
-  SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
+  static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
 
   SHExposedTypesInfo requiredVariables() {
     _requiredVariables.clear();
@@ -136,26 +143,36 @@ struct BaseOpsBin {
   void cleanup(SHContext *context) { _operand.cleanup(); }
 };
 
-#define LOGIC_OP(NAME, OP)                                                         \
-  struct NAME : public BaseOpsBin {                                                \
-    FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { \
-      const auto &value = _operand.get();                                          \
-      if (input OP value) {                                                        \
-        return shards::Var::True;                                                  \
-      }                                                                            \
-      return shards::Var::False;                                                   \
-    }                                                                              \
-  };                                                                               \
+#define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                               \
+  struct NAME : public BaseOpsBin {                                                   \
+    FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {    \
+      const auto &value = _operand.get();                                             \
+      if (input OP value) {                                                           \
+        return shards::Var::True;                                                     \
+      }                                                                               \
+      return shards::Var::False;                                                      \
+    }                                                                                 \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                     \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; } \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }        \
+  };                                                                                  \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
-LOGIC_OP(Is, ==);
-LOGIC_OP(IsNot, !=);
-LOGIC_OP(IsMore, >);
-LOGIC_OP(IsLess, <);
-LOGIC_OP(IsMoreEqual, >=);
-LOGIC_OP(IsLessEqual, <=);
+// Now use the updated macro with help text for each operation
+LOGIC_OP(Is, ==, "Checks if the input is equal to the operand.",
+         "Returns true if the input is equal to the operand and false otherwise.");
+LOGIC_OP(IsNot, !=, "Checks if the input is not equal to the operand.",
+         "Returns true if the input is not equal to the operand and false otherwise.");
+LOGIC_OP(IsMore, >, "Checks if the input is greater than the operand.",
+         "Returns true if the input is greater than the operand and false otherwise.");
+LOGIC_OP(IsLess, <, "Checks if the input is less than the operand.",
+         "Returns true if the input is less than the operand and false otherwise.");
+LOGIC_OP(IsMoreEqual, >=, "Checks if the input is greater than or equal to the operand.",
+         "Returns true if the input is greater than or equal to the operand and false otherwise.");
+LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the operand.",
+         "Returns true if the input is less than or equal to the operand and false otherwise.");
 
-#define LOGIC_ANY_SEQ_OP(NAME, OP)                                                        \
+#define LOGIC_ANY_SEQ_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                           \
   struct NAME : public BaseOpsBin {                                                       \
     SHVar activate(SHContext *context, const SHVar &input) {                              \
       const auto &value = _operand.get();                                                 \
@@ -192,10 +209,14 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                                   \
       return shards::Var::False;                                                          \
     }                                                                                     \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }  \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
+    static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo2); } \
   };                                                                                      \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
-#define LOGIC_ALL_SEQ_OP(NAME, OP)                                                           \
+#define LOGIC_ALL_SEQ_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                              \
   struct NAME : public BaseOpsBin {                                                          \
     SHVar activate(SHContext *context, const SHVar &input) {                                 \
       const auto &value = _operand.get();                                                    \
@@ -232,21 +253,64 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                                      \
       return shards::Var::False;                                                             \
     }                                                                                        \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                            \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }     \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }               \
+    static SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo2); }    \
   };                                                                                         \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
-LOGIC_ANY_SEQ_OP(IsAny, ==);
-LOGIC_ALL_SEQ_OP(IsAll, ==);
-LOGIC_ANY_SEQ_OP(IsAnyNot, !=);
-LOGIC_ALL_SEQ_OP(IsAllNot, !=);
-LOGIC_ANY_SEQ_OP(IsAnyMore, >);
-LOGIC_ALL_SEQ_OP(IsAllMore, >);
-LOGIC_ANY_SEQ_OP(IsAnyLess, <);
-LOGIC_ALL_SEQ_OP(IsAllLess, <);
-LOGIC_ANY_SEQ_OP(IsAnyMoreEqual, >=);
-LOGIC_ALL_SEQ_OP(IsAllMoreEqual, >=);
-LOGIC_ANY_SEQ_OP(IsAnyLessEqual, <=);
-LOGIC_ALL_SEQ_OP(IsAllLessEqual, <=);
+LOGIC_ANY_SEQ_OP(IsAny, ==,
+                 "Checks if any element in the input is equal to the given value. It returns true if any element is equal and "
+                 "false otherwise.",
+                 "Returns true if any element in the input is equal to the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(IsAll, ==,
+                 "Checks if all elements in the input are equal to the given value. It returns true if all elements are equal "
+                 "and false otherwise.",
+                 "Returns true if all elements in the input are equal to the specified value and false otherwise.");
+LOGIC_ANY_SEQ_OP(IsAnyNot, !=,
+                 "Checks if any element in the input is not equal to the given value. It returns true if any element is not "
+                 "equal and false otherwise.",
+                 "Returns true if any element in the input is not equal to the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(IsAllNot, !=,
+                 "Checks if all elements in the input are not equal to the given value. It returns true if all elements are "
+                 "not equal and false otherwise.",
+                 "Returns true if all elements in the input are not equal to the specified value and false otherwise.");
+LOGIC_ANY_SEQ_OP(IsAnyMore, >,
+                 "Checks if any element in the input is greater than the given value. It returns true if any element is "
+                 "greater and false otherwise.",
+                 "Returns true if any element in the input is greater than the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(IsAllMore, >,
+                 "Checks if all elements in the input are greater than the given value. It returns true if all elements are "
+                 "greater and false otherwise.",
+                 "Returns true if all elements in the input are greater than the specified value and false otherwise.");
+LOGIC_ANY_SEQ_OP(IsAnyLess, <,
+                 "Checks if any element in the input is less than the given value. It returns true if any element is less and "
+                 "false otherwise.",
+                 "Returns true if any element in the input is less than the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(IsAllLess, <,
+                 "Checks if all elements in the input are less than the given value. It returns true if all elements are less "
+                 "and false otherwise.",
+                 "Returns true if all elements in the input are less than the specified value and false otherwise.");
+LOGIC_ANY_SEQ_OP(
+    IsAnyMoreEqual, >=,
+    "Checks if any element in the input is greater than or equal to the given value. It returns true if any element is "
+    "greater or equal and false otherwise.",
+    "Returns true if any element in the input is greater than or equal to the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(
+    IsAllMoreEqual, >=,
+    "Checks if all elements in the input are greater than or equal to the given value. It returns true if all elements are "
+    "greater or equal and false otherwise.",
+    "Returns true if all elements in the input are greater than or equal to the specified value and false otherwise.");
+LOGIC_ANY_SEQ_OP(IsAnyLessEqual, <=,
+                 "Checks if any element in the input is less than or equal to the given value. It returns true if any element "
+                 "is less or equal and false otherwise.",
+                 "Returns true if any element in the input is less than or equal to the specified value and false otherwise.");
+LOGIC_ALL_SEQ_OP(
+    IsAllLessEqual, <=,
+    "Checks if all elements in the input are less than or equal to the given value. It returns true if all elements are less "
+    "or equal and false otherwise.",
+    "Returns true if all elements in the input are less than or equal to the specified value and false otherwise.");
 
 #define LOGIC_OP_DESC(NAME)              \
   RUNTIME_CORE_SHARD_FACTORY(NAME);      \
@@ -259,6 +323,10 @@ LOGIC_ALL_SEQ_OP(IsAllLessEqual, <=);
   RUNTIME_SHARD_getParam(NAME);          \
   RUNTIME_SHARD_activate(NAME);          \
   RUNTIME_SHARD_requiredVariables(NAME); \
+  RUNTIME_SHARD_help(NAME);              \
+  RUNTIME_SHARD_inputHelp(NAME);         \
+  RUNTIME_SHARD_outputHelp(NAME);        \
+  RUNTIME_SHARD_parameters(NAME);        \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {
