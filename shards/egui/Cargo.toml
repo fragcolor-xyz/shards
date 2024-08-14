@@ -12,7 +12,7 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 lazy_static = "1.4.0"
 egui = { version = "0.28.1", features = ["persistence"] }
-egui_commonmark = { version = "0.17.0" }
+egui_commonmark = { version = "0.17.0", features = ["better_syntax_highlighting"]}
 egui_dock = { version = "0.13.0" }
 egui_extras = { version = "0.28.1", features = ["serde"]}
 egui_memory_editor = { version = "0.2.9", git = "https://github.com/shards-lang/egui_memory_editor.git", rev = "5e43457129fd415b827c23370b791ad0c96fab96" }
