@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 # See http://www.sublimetext.com/docs/3/syntax.html
-name: Shards
+name: shards
 file_extensions: ["shs"]
 scope: source.shards
 contexts:

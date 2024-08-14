@@ -19,7 +19,7 @@ impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Hig
 
 impl egui::util::cache::ComputerMut<(&CodeTheme, &str), LayoutJob> for Highlighter<false> {
   fn compute(&mut self, (theme, code): (&CodeTheme, &str)) -> LayoutJob {
-    self.highlight(theme, code, "Shards")
+    self.highlight(theme, code, "shards")
   }
 }
 
