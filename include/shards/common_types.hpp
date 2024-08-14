@@ -95,6 +95,8 @@ struct CoreInfo {
   static inline Type Float2x2SeqType = Type::SeqOf(Float2x2Type);
   static inline Types Float2x2Types{{Float2x2Type, Float2x2SeqType}};
 
+  static inline Types DifferentMatrixes{{Float4x4Type, Float3x3Type, Float2x2Type}};
+
   static inline Types IntOrFloat{{IntType, FloatType}};
 
   static inline Types FloatOrFloatSeq{{FloatType, FloatSeqType}};
@@ -113,6 +115,8 @@ struct CoreInfo {
       {FloatSeqType, Float2Type, Float2SeqType, Float3Type, Float3SeqType, Float4Type, Float4SeqType}};
   static inline Types FloatVectorsOrVar{
       FloatVectors, {Float2VarType, Float2VarSeqType, Float3VarType, Float3VarSeqType, Float4VarType, Float4VarSeqType}};
+
+  static inline Types MatrixOrVector{{Float4x4Type, Float4Type}};
 
   static inline Types IntOrNone{{IntType, NoneType}};
 

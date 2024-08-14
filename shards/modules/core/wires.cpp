@@ -1857,8 +1857,7 @@ struct Expand : public ParallelBase {
   void setup() { _threads = 1; }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard takes a sequence as input. Each value from the sequence is provided as input to its corresponding "
-                   "copy of the scheduled Wire.");
+    return SHCCSTR("This shard takes a value of any type as input. This value is provided as input to every scheduled copy of the specified Wire.");
   }
 
   static SHOptionalString outputHelp() {

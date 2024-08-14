@@ -368,9 +368,25 @@ struct Decompose {
   TableVar output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a 4x4 transformation matrix as input. This matrix should be a sequence of four float4 vectors "
+                   "representing the combined translation, rotation, and scale transformations.");
+  }
   static SHTypesInfo outputTypes() { return Types::TRS; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a table containing the Translation, Rotation, and Scale components. Eg. {translation: @f3(1 2 3), "
+                   "rotation: @f4(0 0 0 1), scale: @f3(1 1 1)}");
+  }
 
-  static SHOptionalString help() { return SHCCSTR("Decompose a matrix(4x4) into a TRS description"); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts a 4x4 transformation matrix (a sequence of four float 4 vectors) into a table containing "
+                   "its constituent Translation, Rotation, and Scale components. "
+                   "The table has a Translation key with a float3 vector value representing positions on the x, y, z axes, a "
+                   "Rotation key with a float4 vector value representing the quaternion rotation, and a Scale key with a float3 "
+                   "vector value, representing the size on the x, y, z axes. Eg. {translation: @f3(1 2 3), rotation: @f4(0 0 0 "
+                   "1), scale: @f3(1 1 1)} "
+                   "A float3 vector is a vector with 3 float elements while a float4 vector is a vector with 4 float elements. ");
+  }
 
   static inline Var v_scale{"scale"};
   static inline Var v_translation{"translation"};
@@ -393,9 +409,27 @@ struct Decompose {
 
 struct Compose {
   static SHTypesInfo inputTypes() { return Types::TRS; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a table as input. The table should have a Translation key with a float3 vector value, a Rotation key "
+                   "with a float4 vector value and a Scale key with a float3 vector value. Eg. {translation: @f3(1 2 3), "
+                   "rotation: @f4(0 0 0 1), scale: @f3(1 1 1)}");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a 4x4 transformation matrix (sequence of four float4 vectors) "
+                   "that combines the input translation, rotation, and scale.");
+  }
 
-  static SHOptionalString help() { return SHCCSTR("Compose a matrix(4x4) from a TRS description"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Creates a 4x4 transformation matrix (sequence of four float4 vectors) from a table containing the appropriate "
+        "Translation, Rotation and Scale values. "
+        "values. The translation value should be a float3 vector representing positions on the x y z axis. The "
+        "rotation value should be a float4 vector representing the quaternion rotation. Lastly, the scale should be a "
+        "float3 vector representing the size on the x y and z axis. Eg. {translation: @f3(1 2 3), rotation: @f4(0 0 0 1), scale: "
+        "@f3(1 1 1)} "
+        "A float3 vector is a vector with 3 float elements while a float4 vector is a vector with 4 float elements.");
+  }
 
   Mat4 _output;
 
@@ -415,14 +449,30 @@ struct Compose {
 
 struct Project {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float3 vector representing the 3D point in world space where x, y, and z are the coordinates in world space.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a float3 vector representing the projected 2D point (x, y) in screen space, "
+                   "with the z component representing the depth.");
+  }
 
-  PARAM_PARAMVAR(_mtx, "Matrix", "The combined view-projection matrix to use",
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts the input 3D world coordinates to 2D screen coordinates "
+                   "using a view-projection matrix. Both 3D and 2D coordinates are represented as float3 vectors (vectors with 3 "
+                   "float elements)."
+                   "It performs the full projection pipeline including matrix multiplication, "
+                   "perspective division, and viewport transformation using the 4x4 view-projection matrix specified in the "
+                   "Matrix parameter and the screen size in the ScreenSize parameter.");
+  }
+
+  PARAM_PARAMVAR(_mtx, "Matrix", "The combined 4x4 view-projection matrix (sequence of four float4 vectors) to use.",
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
-  PARAM_PARAMVAR(_screenSize, "ScreenSize", "The combined view-projection matrix to use",
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "The size of the screen or viewport in pixels.",
                  {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
-  PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
-                 {CoreInfo::NoneType, CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
+  PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default).",
+                 {CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
   PARAM_IMPL(PARAM_IMPL_FOR(_mtx), PARAM_IMPL_FOR(_screenSize), PARAM_IMPL_FOR(_flipY));
 
   PARAM_REQUIRED_VARIABLES();
@@ -431,7 +481,17 @@ struct Project {
     return outputTypes().elements[0];
   }
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  bool flipY{true};
+
+  public:
+  Project() {
+    *_flipY = Var(true);
+  }
+
+  void warmup(SHContext *context) { 
+    PARAM_WARMUP(context);
+    flipY = _flipY.get().payload.boolValue;
+  }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -443,8 +503,7 @@ struct Project {
     float2 screenSize = toVec<float2>(_screenSize.get());
     float3 projected = (transformed.xyz() / transformed.w);
 
-    auto &flipY = (Var &)_flipY.get();
-    if (flipY.isNone() || (bool)flipY) {
+    if (flipY) {
       projected.y = -projected.y;
     }
 
@@ -457,13 +516,28 @@ struct Project {
 
 struct Unproject {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float3 vector representing the 3D vector where x and y are screen coordinates, and z is the depth value in screen space.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a float3 vector representing the unprojected 3D point in world space.");
+  }
 
-  PARAM_PARAMVAR(_mtx, "Matrix", "The combined view-projection matrix to use",
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard converts 2D screen coordinates back to 3D world coordinates using the inverse of a view-projection matrix. "
+        "Both 3D and 2D coordinates are represented as float3 vectors (vectors with 3 float elements)."
+        "It performs the reverse operation of the projection pipeline, including inverse matrix multiplication, "
+        "and coordinate space transformations using the 4x4 view-projection matrix specified in the Matrix parameter and the "
+        "screen size in the ScreenSize parameter.");
+  }
+
+  PARAM_PARAMVAR(_mtx, "Matrix", "The combined 4x4 view-projection matrix (sequence of four float4 vectors) to use.",
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
-  PARAM_PARAMVAR(_screenSize, "ScreenSize", "The combined view-projection matrix to use",
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "The float2 vector representing the size of the screen or viewport in pixels.",
                  {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
-  PARAM_PARAMVAR(_depthRange, "DepthRange", "The combined view-projection matrix to use",
+  PARAM_PARAMVAR(_depthRange, "DepthRange", "The float2 vector representing the range of depth values (near and far planes). Default is [0, 1].",
                  {CoreInfo::NoneType, CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
   PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
                  {CoreInfo::NoneType, CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
@@ -475,7 +549,17 @@ struct Unproject {
     return outputTypes().elements[0];
   }
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  bool flipY{true};
+
+  public:
+  Unproject() {
+    *_flipY = Var(true);
+  }
+
+  void warmup(SHContext *context) { 
+    PARAM_WARMUP(context);
+    flipY = _flipY.get().payload.boolValue;
+  }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -497,8 +581,7 @@ struct Unproject {
     float4 ndc =
         float4((screenSpace.x / screenSize.x) * 2.0f - 1.0f, (screenSpace.y / screenSize.y) * 2.0f - 1.0f, ndcDepth, 1.0f);
 
-    auto &flipY = (Var &)_flipY.get();
-    if (flipY.isNone() || (bool)flipY) {
+    if (flipY) {
       ndc.y = -ndc.y;
     }
 
@@ -515,10 +598,21 @@ struct QuaternionMultiply {
   Vec4 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float4 vector representing the quaternion to be multiplied.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString help() { return SHCCSTR("Rotate a quaternion by another quaternion"); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a float4 vector representing the resulting quaternion after multiplication.");
+  }
 
-  PARAM_PARAMVAR(_operand, "Operand", "", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  static SHOptionalString help() {
+    return SHCCSTR("This shard multiplies two quaternions (represented as float4 vectors) together. It combines the two rotations by multiplying "
+                   "the input quaternion with the operand quaternion. A float4 vector is a vector with 4 float elements.");
+  }
+
+  PARAM_PARAMVAR(_operand, "Operand", "The float4 vector representing the second quaternion to multiply the input quaternion with.",
+                 {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_operand));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -546,11 +640,20 @@ struct QuaternionSlerp {
   Vec4 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float value between 0 and 1 representing the interpolation factor.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString help() { return SHCCSTR("Rotate a quaternion by another quaternion"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float4 vector representing the interpolated quaternion."); }
 
-  PARAM_PARAMVAR(_a, "First", "The first value", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
-  PARAM_PARAMVAR(_b, "Second", "The second value", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs Spherical Linear Interpolation (SLERP) between two quaternions (represented as float4 vectors). "
+                   "It smoothly interpolates between the quaternions specified in the 'First' parameter and 'Second' parameter "
+                   "based on the input interpolation factor. A float4 vector is a vector with 4 float elements.");
+  }
+
+  PARAM_PARAMVAR(_a, "First", "The float4 vector representing the first quaternion to interpolate from.", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_b, "Second", "The float4 vector representing the second quaternion to interpolate to.", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -574,8 +677,8 @@ struct QuaternionSlerp {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     float factor = input.payload.floatValue;
-    auto& a = *reinterpret_cast<Vec4 *>(&_a.get());
-    auto& b = *reinterpret_cast<Vec4 *>(&_b.get());
+    auto &a = *reinterpret_cast<Vec4 *>(&_a.get());
+    auto &b = *reinterpret_cast<Vec4 *>(&_b.get());
     _output = linalg::qslerp(*a, *b, factor);
     return _output;
   }
@@ -585,10 +688,18 @@ struct QuaternionRotate {
   Vec3 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a float3 vector representing the 3D vector to be rotated."); }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
-  static SHOptionalString help() { return SHCCSTR("Rotate a vector by a quaternion"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float3 vector representing the rotated 3D vector."); }
 
-  PARAM_PARAMVAR(_operand, "Operand", "", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  static SHOptionalString help() {
+    return SHCCSTR("This shard rotates the input 3D vector (represented as a float3) by the quaternion (represented as a float4) specified in the Operand parameter and "
+                   "returns the resulting rotated 3D vector. A float4 vector is a vector with 4 float elements while a float3 "
+                   "vector is a vector with 3 float elements.");
+  }
+
+  PARAM_PARAMVAR(_operand, "Operand", "The float4 vector representing the quaternion to rotate the input 3D vector by.",
+                 {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_operand));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
