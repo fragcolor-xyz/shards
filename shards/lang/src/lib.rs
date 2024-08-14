@@ -212,7 +212,7 @@ impl<'a> ParamHelper<'a> {
   }
 
   pub fn get_param_by_name_or_index(&self, param_name: &str, index: usize) -> Option<&'a Param> {
-    let named_param_encountered = self.params.iter().take(index).any(|p| p.name.is_some());
+    let named_param_encountered = self.params.iter().take(index + 1).any(|p| p.name.is_some());
 
     if named_param_encountered {
       // If we've encountered a named parameter up to this index, we only look for the parameter by name
@@ -247,7 +247,7 @@ impl<'a> ParamHelperMut<'a> {
     param_name: &str,
     index: usize,
   ) -> Option<&mut Param> {
-    let named_param_encountered = self.params.iter().take(index).any(|p| p.name.is_some());
+    let named_param_encountered = self.params.iter().take(index + 1).any(|p| p.name.is_some());
 
     if named_param_encountered {
       // If we've encountered a named parameter up to this index, we only look for the parameter by name
