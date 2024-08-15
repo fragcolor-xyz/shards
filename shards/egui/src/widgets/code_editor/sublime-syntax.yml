@@ -2,7 +2,7 @@
 ---
 # See http://www.sublimetext.com/docs/3/syntax.html
 name: shards
-file_extensions: ["shs"]
+file_extensions: ["shs", "shards", "Shards"]
 scope: source.shards
 contexts:
   main:
