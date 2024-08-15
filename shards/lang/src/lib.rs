@@ -7,14 +7,14 @@ extern crate clap;
 pub mod ast;
 pub mod ast_visitor;
 pub mod cli;
+pub mod custom_state;
+pub mod directory;
 mod error;
 pub mod eval;
 mod formatter;
 pub mod print;
 pub mod read;
 pub mod rule_visitor;
-pub mod directory;
-pub mod custom_state;
 
 use crate::ast::*;
 
@@ -212,22 +212,19 @@ impl<'a> ParamHelper<'a> {
   }
 
   pub fn get_param_by_name_or_index(&self, param_name: &str, index: usize) -> Option<&'a Param> {
-    if index < self.params.len() {
-      if self.params[index].name.is_none() && index > 0 && self.params[index - 1].name.is_some() {
-        // Previous parameter is named, we forbid indexed parameters after named parameters
-        None
-      } else if self.params[index].name.is_none() {
-        // Parameter is unnamed and its index is the one we want
-        Some(&self.params[index])
-      } else {
-        // Parameter is named, we look for a parameter with the given name
-        self
-          .params
-          .iter()
-          .find(|param| param.name.as_deref() == Some(param_name))
-      }
+    let named_param_encountered = self.params.iter().take(index + 1).any(|p| p.name.is_some());
+
+    if named_param_encountered {
+      // If we've encountered a named parameter up to this index, we only look for the parameter by name
+      self
+        .params
+        .iter()
+        .find(|param| param.name.as_deref() == Some(param_name))
+    } else if index < self.params.len() {
+      // If no named parameters encountered and index is valid, return the parameter at that index
+      Some(&self.params[index])
     } else {
-      // Index is out of bounds, we look for a parameter with the given name
+      // If index is out of bounds, we look for a parameter with the given name
       self
         .params
         .iter()
@@ -250,22 +247,19 @@ impl<'a> ParamHelperMut<'a> {
     param_name: &str,
     index: usize,
   ) -> Option<&mut Param> {
-    if index < self.params.len() {
-      if self.params[index].name.is_none() && index > 0 && self.params[index - 1].name.is_some() {
-        // Previous parameter is named, we forbid indexed parameters after named parameters
-        None
-      } else if self.params[index].name.is_none() {
-        // Parameter is unnamed and its index is the one we want
-        Some(&mut self.params[index])
-      } else {
-        // Parameter is named, we look for a parameter with the given name
-        self
-          .params
-          .iter_mut()
-          .find(|param| param.name.as_deref() == Some(param_name))
-      }
+    let named_param_encountered = self.params.iter().take(index + 1).any(|p| p.name.is_some());
+
+    if named_param_encountered {
+      // If we've encountered a named parameter up to this index, we only look for the parameter by name
+      self
+        .params
+        .iter_mut()
+        .find(|param| param.name.as_deref() == Some(param_name))
+    } else if index < self.params.len() {
+      // If no named parameters encountered and index is valid, return the parameter at that index
+      Some(&mut self.params[index])
     } else {
-      // Index is out of bounds, we look for a parameter with the given name
+      // If index is out of bounds, we look for a parameter with the given name
       self
         .params
         .iter_mut()

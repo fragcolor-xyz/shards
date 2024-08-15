@@ -1,11 +1,11 @@
 @wire(editor-wire {
   GFX.MainWindow(Contents: {
     GFX.DrawQueue = ui-draw-queue
-    GFX.UIPass(ui-draw-queue) >> render-steps    
+    GFX.UIPass(ui-draw-queue) >> render-steps
     Once({"" >= code})
     UI(
       ui-draw-queue
-      { UI.CentralPanel(Contents: UI.CodeEditor(code "Shards")) })
+      { UI.CentralPanel(Contents: UI.CodeEditor(code "shards")) })
     GFX.Render(Steps: render-steps)
   })
 } Looped: true)

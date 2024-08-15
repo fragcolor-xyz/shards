@@ -102,7 +102,7 @@
         Do(settings-menu-ui)
 
         UI.Window(Title: "Code" Contents: {
-          UI.CodeEditor(code "Shards")
+          UI.CodeEditor(code "shards")
         })
 
         UI.TopPanel(Contents: {

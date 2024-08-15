@@ -16,7 +16,7 @@
       })
 
       UI.Window(Title: "Code" Contents: {
-        UI.CodeEditor(text-code "Shards")
+        UI.CodeEditor(text-code "shards")
       })
 
       UI.Window(Title: "Debug" Contents: {

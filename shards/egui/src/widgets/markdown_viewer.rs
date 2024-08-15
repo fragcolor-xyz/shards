@@ -19,10 +19,15 @@ impl Default for MarkdownViewer {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
+    let mut cache = egui_commonmark::CommonMarkCache::default();
+    cache.add_syntax_from_str(
+      include_str!("code_editor/sublime-syntax.yml"),
+      Some("shards"),
+    );
     Self {
       parents,
       requiring: Vec::new(),
-      cache: egui_commonmark::CommonMarkCache::default(),
+      cache,
     }
   }
 }
