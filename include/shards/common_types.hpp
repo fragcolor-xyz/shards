@@ -100,6 +100,7 @@ struct CoreInfo {
   static inline Types IntOrFloat{{IntType, FloatType}};
 
   static inline Types FloatOrFloatSeq{{FloatType, FloatSeqType}};
+  static inline Types Float3OrFloat3Seq{{Float3Type, Float3SeqType}};
 
   static inline Types NoneIntOrFloat{{NoneType, IntType, FloatType}};
 

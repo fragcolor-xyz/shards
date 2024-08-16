@@ -105,16 +105,16 @@ struct CrossOp {
 
 struct Cross : public BinaryOperation<VectorBinaryOperation<CrossOp>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard computes the cross product of the float3 vector provided as input and the float3 vector "
-                   "provided in the Operand parameter and returns the result as a float3 vector. A float3 vector is a vector "
+    return SHCCSTR("This shard computes the cross product of the float3 vector (or sequence of float3 vectors) provided as input and the float3 vector "
+                   "provided in the Operand parameter and returns the result as a float3 vector (or sequence of float3 vectors). A float3 vector is a vector "
                    "with 3 float elements.");
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3OrFloat3Seq; }
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts float3 vector (a vector with 3 float elements) as input."); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the result of the cross product as a float3 vector."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3OrFloat3Seq; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the result of the cross product as a float3 vector or a sequence of float3 vectors if the input was a sequence of float3 vectors."); }
 
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", SHCCSTR("The float3 vector to compute the cross product with."), CoreInfo::FloatVectorsOrVar));
