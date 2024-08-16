@@ -152,6 +152,8 @@ private:
 using ParamVar = TParamVar<Core>;
 using ShardsVar = TShardsVar<Core>;
 using OwnedVar = TOwnedVar<Core>;
+using SeqVar = TSeqVar<Core>;
+using TableVar = TTableVar<Core>;
 
 template <typename T> class PtrIterator {
 public:
