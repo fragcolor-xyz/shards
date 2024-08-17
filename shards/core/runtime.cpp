@@ -3146,6 +3146,11 @@ SHVar shards_deserialize_var(const SHVar *bytes_buffer_var) {
   serialization.deserialize(reader, leaking_tmp);
   return leaking_tmp;
 }
+
+void shards_cancel_abort(SHContext *context) {
+  context->resetErrorStack();
+  context->continueFlow();
+}
 }
 
 namespace shards {

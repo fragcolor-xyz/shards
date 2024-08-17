@@ -5471,6 +5471,10 @@ impl AutoTableVar {
   pub fn leak(&mut self) -> Var {
     std::mem::replace(&mut self.0 .0, Var::default())
   }
+
+  pub fn to_cloned(self) -> ClonedVar {
+    unsafe { std::mem::transmute(self) }
+  }
 }
 
 pub struct SeqVarIterator {

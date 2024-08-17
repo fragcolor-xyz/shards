@@ -193,6 +193,19 @@ pub fn abortWire(context: &SHContext, message: &str) {
   }
 }
 
+// void shards_cancel_abort(SHContext *context)
+// Not exposed in the C API, but used internally
+extern "C" {
+  fn shards_cancel_abort(context: *mut SHContext);
+}
+
+#[inline(always)]
+pub fn cancel_abort(context: &SHContext) {
+  unsafe {
+    shards_cancel_abort(context as *const SHContext as *mut SHContext);
+  }
+}
+
 #[inline(always)]
 pub fn register_legacy_shard<T: Default + LegacyShard>() {
   unsafe {
@@ -276,7 +289,10 @@ pub fn readCachedString(id: u32) -> &'static str {
 
 pub fn writeCachedString(id: u32, string: &'static str) -> &'static str {
   unsafe {
-    let s = (*Core).writeCachedString.unwrap_unchecked()(id, string.as_ptr() as *const std::os::raw::c_char);
+    let s = (*Core).writeCachedString.unwrap_unchecked()(
+      id,
+      string.as_ptr() as *const std::os::raw::c_char,
+    );
     CStr::from_ptr(s.string).to_str().unwrap()
   }
 }
@@ -286,7 +302,9 @@ pub fn readCachedString1(id: u32) -> SHOptionalString {
 }
 
 pub fn writeCachedString1(id: u32, string: &'static str) -> SHOptionalString {
-  unsafe { (*Core).writeCachedString.unwrap_unchecked()(id, string.as_ptr() as *const std::os::raw::c_char) }
+  unsafe {
+    (*Core).writeCachedString.unwrap_unchecked()(id, string.as_ptr() as *const std::os::raw::c_char)
+  }
 }
 
 pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {
@@ -467,7 +485,7 @@ unsafe extern "C" fn activate_future_c_call<
   arg2: *mut c_void,
 ) -> SHVar {
   let f = arg2 as *mut F;
-  let res = futures::executor::block_on(f.read());
+  let res = futures::executor::block_on(f.read()); // this will consume f
   match res {
     Ok(value) => {
       // SAFETY: We are unsafely managing memory here on purpose because run_future returns a ClonedVar
@@ -501,12 +519,17 @@ pub fn run_future<
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &f as *const F as *mut F as *mut c_void;
     // see note in activate_future_c_call
-    ClonedVar((*Core).asyncActivate.unwrap_unchecked()(
+    let result = ClonedVar((*Core).asyncActivate.unwrap_unchecked()(
       ctx,
       data_ptr,
       Some(activate_future_c_call::<F, R>),
       None,
-    ))
+    ));
+
+    // before exiting, we need to forget f, otherwise we double free
+    std::mem::forget(f);
+
+    result
   }
 }
 

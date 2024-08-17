@@ -11,12 +11,14 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
+use reqwest::RequestBuilder;
 use shards::core::register_legacy_shard;
-use shards::core::run_blocking;
-use shards::core::BlockingShard;
+use shards::core::run_future;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 
+use shards::types::AutoTableVar;
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -33,20 +35,21 @@ use shards::types::INT_TYPES_SLICE;
 use core::time::Duration;
 use shards::types::Var;
 
-use reqwest::blocking::Response;
 use reqwest::header::{HeaderName, HeaderValue};
 use std::convert::TryInto;
 
 use std::collections::HashMap;
 
-static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
-static HEADERS_TYPES: &[Type] = &[
-  common_type::none,
-  common_type::string_table,
-  common_type::string_table_var,
-];
+use std::sync::{Arc, Mutex};
 
 lazy_static! {
+  static ref TOKIO_RUNTIME: Arc<Mutex<tokio::runtime::Runtime>> = Arc::new(Mutex::new(
+    tokio::runtime::Builder::new_multi_thread()
+      .worker_threads(4)
+      .enable_all()
+      .build()
+      .expect("Failed to create Tokio runtime")
+  ));
   static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
   static ref POST_INPUT_TYPES: Vec<Type> = vec![
     common_type::none,
@@ -129,13 +132,20 @@ lazy_static! {
   ];
 }
 
-type Client = reqwest::blocking::Client;
+static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
+static HEADERS_TYPES: &[Type] = &[
+  common_type::none,
+  common_type::string_table,
+  common_type::string_table_var,
+];
+
+type Client = reqwest::Client;
 
 struct RequestBase {
   client: Option<Client>,
   url: ParamVar,
   headers: ParamVar,
-  output_table: Table,
+  output: ClonedVar,
   timeout: u64,
   retry: u64,
   as_bytes: bool,
@@ -147,11 +157,11 @@ struct RequestBase {
 
 impl Default for RequestBase {
   fn default() -> Self {
-    let mut s = Self {
+    Self {
       client: None,
       url: ParamVar::new(Var::ephemeral_string("")),
       headers: ParamVar::new(().into()),
-      output_table: Table::new(),
+      output: ClonedVar::default(),
       timeout: 10,
       retry: 0,
       as_bytes: false,
@@ -159,11 +169,7 @@ impl Default for RequestBase {
       invalid_certs: false,
       keep_alive: false,
       required: Vec::new(),
-    };
-    let table = Table::new();
-    s.output_table
-      .insert_fast_static("headers", &table.as_ref().into());
-    s
+    }
   }
 }
 
@@ -240,7 +246,7 @@ impl RequestBase {
   fn _open_client(&mut self) -> Result<(), &'static str> {
     if self.client.is_none() {
       self.client = Some(
-        reqwest::blocking::Client::builder()
+        reqwest::Client::builder()
           .danger_accept_invalid_certs(self.invalid_certs)
           .timeout(Duration::from_secs(self.timeout))
           .build()
@@ -288,50 +294,107 @@ impl RequestBase {
     Ok(output_type)
   }
 
-  fn _finalize(&mut self, response: Response) -> Result<Var, &'static str> {
-    if self.full_response {
-      self
-        .output_table
-        .insert_fast_static("status", &response.status().as_u16().try_into()?);
+  fn _finalize(&mut self, context: &Context, request: RequestBuilder) -> Option<()> {
+    let as_bytes = self.as_bytes;
+    let full_response = self.full_response;
 
-      let headers = self
-        .output_table
-        .get_mut_fast_static("headers")
-        .as_mut_table()
-        .unwrap(); // we know it's a table because we inserted at construction time
-      for (key, value) in response.headers() {
-        let key = Var::ephemeral_string(key.as_str());
-        let value = Var::ephemeral_string(value.to_str().map_err(|e| {
-          shlog!("Failure details: {}", e);
-          "Failed to decode the response"
-        })?);
-        headers.insert_fast(key, &value);
-      }
-    }
+    let result = run_future(context, async move {
+      let runtime = TOKIO_RUNTIME.clone();
+      let request = request; // Capture request in the async block
 
-    if self.as_bytes {
-      let bytes = response.bytes().map_err(|e| {
-        shlog!("Failure details: {}", e);
-        "Failed to decode the response"
-      })?;
-      self
-        .output_table
-        .insert_fast_static("body", &bytes.as_ref().into());
+      // Lock the runtime briefly to spawn the task
+      let task = {
+        let runtime = runtime.lock().unwrap();
+        runtime.spawn(async move {
+          let response = request.send().await.map_err(|e| {
+            shlog_error!("Failure details: {}", e);
+            "Failed to send the request"
+          })?;
+
+          if !full_response && !response.status().is_success() {
+            shlog_error!("Request failed with status {}", response.status());
+            shlog_error!(
+              "Request failed with body {}",
+              response.text().await.map_err(|e| {
+                shlog!("Failure details: {}", e);
+                "Failed to decode the failure response"
+              })?
+            );
+            return Err("Request failed");
+          }
+
+          let mut output_table = AutoTableVar::new();
+
+          if full_response {
+            output_table
+              .0
+              .insert_fast_static("status", &response.status().as_u16().try_into()?);
+
+            let headers = output_table
+              .0
+              .get_mut_fast_static("headers")
+              .as_mut_table_creating()
+              .unwrap();
+            for (key, value) in response.headers() {
+              let key = Var::ephemeral_string(key.as_str());
+              let value = Var::ephemeral_string(value.to_str().map_err(|e| {
+                shlog!("Failure details: {}", e);
+                "Failed to decode the response"
+              })?);
+              headers.insert_fast(key, &value);
+            }
+          }
+
+          if as_bytes {
+            let bytes = response.bytes().await.map_err(|e| {
+              shlog!("Failure details: {}", e);
+              "Failed to decode the response"
+            })?;
+
+            output_table
+              .0
+              .insert_fast_static("body", &bytes.as_ref().into());
+          } else {
+            let str = response.text().await.map_err(|e| {
+              shlog!("Failure details: {}", e);
+              "Failed to decode the response"
+            })?;
+
+            output_table
+              .0
+              .insert_fast_static("body", &Var::ephemeral_string(str.as_str()));
+          }
+
+          let result: ClonedVar = if full_response {
+            output_table.to_cloned()
+          } else {
+            // ok here we do something a bit unsafe, but should be fine cos we know how shards manages memory
+            let body = output_table.0.get_mut_fast_static("body");
+            let mut tmp = Var::default();
+            std::mem::swap(&mut tmp, body);
+            ClonedVar(tmp)
+          };
+
+          Ok(result)
+        })
+      };
+
+      // Await the spawned task outside the lock
+      task.await.map_err(|e| {
+        shlog_error!("Task join error: {}", e);
+        "Failed to join task"
+      })?
+    });
+
+    self.output = result;
+
+    // now check self.output.flags if has SHVAR_FLAGS_ABORT
+    // if so return None
+    // else return Some(())
+    if (self.output.0.flags as u32) & shards::SHVAR_FLAGS_ABORT != 0 {
+      None
     } else {
-      let str = response.text().map_err(|e| {
-        shlog!("Failure details: {}", e);
-        "Failed to decode the response"
-      })?;
-      self
-        .output_table
-        .insert_fast_static("body", &Var::ephemeral_string(str.as_str()));
-      // will clone
-    }
-
-    if self.full_response {
-      Ok(self.output_table.as_ref().into())
-    } else {
-      Ok(*self.output_table.get_fast_static("body"))
+      Some(())
     }
   }
 }
@@ -403,24 +466,7 @@ macro_rules! get_like {
         if !self.rb.keep_alive {
           self.rb._open_client()?;
         }
-        let res = if self.on_worker_thread {
-          self.activate_blocking(context, input)
-        } else {
-          Ok(run_blocking(self, context, input))
-        };
-        if !self.rb.keep_alive {
-          self.rb._close_client();
-        }
-        res
-      }
-    }
 
-    impl BlockingShard for $shard_name {
-      fn activate_blocking(
-        &mut self,
-        _context: &Context,
-        input: &Var,
-      ) -> Result<Var, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
@@ -448,44 +494,33 @@ macro_rules! get_like {
           }
         }
 
-        // already issue is if we want to retry we need to clone the request
-        // if not we can just directly run it
         if self.rb.retry == 0 {
-          let response = request.send().map_err(|e| {
-            shlog_error!("Failure details: {}", e);
-            "Failed to send the request"
-          })?;
-
-          if self.rb.full_response || response.status().is_success() {
-            return self.rb._finalize(response);
-          }
-
-          shlog_error!("Request failed with status {}", response.status());
-          shlog_error!("Request failed with body {}", response.text().unwrap());
-          return Err("Request failed");
+          let _ = self.rb._finalize(context, request);
+          return Ok(self.rb.output.0);
         } else {
-          for tries in (0..self.rb.retry).rev() {
-            let response = request.try_clone().unwrap().send();
+          let mut retries = self.rb.retry;
+          loop {
+            let request = request.try_clone().ok_or_else(|| {
+              shlog_error!("Failed to clone the request");
+              "Failed to clone the request"
+            })?;
 
-            if let Ok(response) = response {
-              if self.rb.full_response || response.status().is_success() {
-                return self.rb._finalize(response);
-              }
+            let result = self.rb._finalize(context, request);
 
-              shlog_error!("Request failed with status {}", response.status());
-              shlog_error!("Request failed with body {}", response.text().unwrap());
-              return Err("Request failed");
+            if let Some(()) = result {
+              return Ok(self.rb.output.0);
             }
 
-            if tries == 0 {
-              shlog_error!("Request failed with error: {:?}", response.err());
+            // Check if retries are exhausted
+            if retries == 0 {
               return Err("Request failed");
             } else {
-              shlog_debug!("Retrying request");
+              shards::core::cancel_abort(context);
+              shlog_debug!("Retrying request, {} tries left", retries);
+              retries -= 1;
             }
           }
         }
-        unreachable!()
       }
     }
   };
@@ -558,24 +593,7 @@ macro_rules! post_like {
         if !self.rb.keep_alive {
           self.rb._open_client()?;
         }
-        let res = if self.on_worker_thread {
-          self.activate_blocking(context, input)
-        } else {
-          Ok(run_blocking(self, context, input))
-        };
-        if !self.rb.keep_alive {
-          self.rb._close_client();
-        }
-        res
-      }
-    }
 
-    impl BlockingShard for $shard_name {
-      fn activate_blocking(
-        &mut self,
-        _context: &Context,
-        input: &Var,
-      ) -> Result<Var, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
 
@@ -640,41 +658,32 @@ macro_rules! post_like {
         }
 
         if self.rb.retry == 0 {
-          let response = request.send().map_err(|e| {
-            shlog_error!("Failure details: {}", e);
-            "Failed to send the request"
-          })?;
-
-          if self.rb.full_response || response.status().is_success() {
-            return self.rb._finalize(response);
-          }
-
-          shlog_error!("Request failed with status {}", response.status());
-          shlog_error!("Request failed with body {}", response.text().unwrap());
-          return Err("Request failed");
+          let _ = self.rb._finalize(context, request);
+          return Ok(self.rb.output.0);
         } else {
-          for tries in (0..self.rb.retry).rev() {
-            let response = request.try_clone().unwrap().send();
+          let mut retries = self.rb.retry;
+          loop {
+            let request = request.try_clone().ok_or_else(|| {
+              shlog_error!("Failed to clone the request");
+              "Failed to clone the request"
+            })?;
 
-            if let Ok(response) = response {
-              if self.rb.full_response || response.status().is_success() {
-                return self.rb._finalize(response);
-              }
+            let result = self.rb._finalize(context, request);
 
-              shlog_error!("Request failed with status {}", response.status());
-              shlog_error!("Request failed with body {}", response.text().unwrap());
-              return Err("Request failed");
+            if let Some(()) = result {
+              return Ok(self.rb.output.0);
             }
 
-            if tries == 0 {
-              shlog_error!("Request failed with error: {:?}", response.err());
+            // Check if retries are exhausted
+            if retries == 0 {
               return Err("Request failed");
             } else {
-              shlog_debug!("Retrying request");
+              shards::core::cancel_abort(context);
+              shlog_debug!("Retrying request, {} tries left", retries);
+              retries -= 1;
             }
           }
         }
-        unreachable!()
       }
     }
   };
