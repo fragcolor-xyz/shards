@@ -70,3 +70,31 @@
 
 @schedule(root download)
 @run(root FPS: 10) | Assert.Is(true)
+
+; ; wire, to keep same state
+; @wire(send-chunk {Http.Chunk})
+
+; @wire(server-handler {
+;   Msg("handled")
+;   Http.Read | Take("target")
+;   When(Is("/") {
+;     Log
+;     "Message\n" | Log("Responding")
+;     Do(send-chunk) | Log("Responded")
+;     "Message\n" | Log("Responding")
+;     Do(send-chunk) | Log("Responded")
+;     "Message\n" | Log("Responding")
+;     Do(send-chunk) | Log("Responded")
+;     "" | Log("Responding")
+;     Do(send-chunk) | Log("Responded")
+;   })
+; } Looped: true)
+
+; @wire(test-server {
+;   Http.Server(Handler: server-handler)
+; } Looped: true)
+
+; @schedule(root test-server)
+; @run(root FPS: 10) | Assert.Is(true)
+
+Comment("formatter will delete above if we don't do this, oops")

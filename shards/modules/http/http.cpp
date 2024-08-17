@@ -728,25 +728,37 @@ struct Response {
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
 
-  static inline Parameters params{{"Status", SHCCSTR("The HTTP status code to return."), {CoreInfo::IntType}},
-                                  {"Headers",
-                                   SHCCSTR("The headers to attach to this response."),
-                                   {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}}};
+  static inline Parameters params{
+      {"Status", SHCCSTR("The HTTP status code to return."), {CoreInfo::IntType}},
+      {"Headers",
+       SHCCSTR("The headers to attach to this response."),
+       {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}},
+  };
 
   static SHParametersInfo parameters() { return params; }
 
   void setParam(int index, const SHVar &value) {
-    if (index == 0)
+    switch (index) {
+    case 0:
       _status = http::status(value.payload.intValue);
-    else
+      break;
+    case 1:
       _headers = value;
+      break;
+    default:
+      break;
+    }
   }
 
   SHVar getParam(int index) {
-    if (index == 0)
+    switch (index) {
+    case 0:
       return Var(int64_t(_status));
-    else
+    case 1:
       return _headers;
+    default:
+      return Var::Empty;
+    }
   }
 
   // compose to fixup output type purely based on input type
@@ -814,6 +826,139 @@ struct Response {
   SHVar *_peerVar{nullptr};
   ParamVar _headers{};
   http::response<http::string_body> _response;
+};
+
+struct Chunk {
+  static inline Types PostInTypes{CoreInfo::StringType, CoreInfo::BytesType};
+
+  static SHTypesInfo inputTypes() { return PostInTypes; }
+  static SHTypesInfo outputTypes() { return PostInTypes; }
+
+  static inline Parameters params{
+      {"Status", SHCCSTR("The HTTP status code to return."), {CoreInfo::IntType}},
+      {"Headers",
+       SHCCSTR("The headers to attach to this response."),
+       {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}},
+  };
+
+  static SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _status = http::status(value.payload.intValue);
+      break;
+    case 1:
+      _headers = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(int64_t(_status));
+    case 1:
+      return _headers;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  // compose to fixup output type purely based on input type
+  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
+
+  void warmup(SHContext *context) {
+    _headers.warmup(context);
+    _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == SHType::None) {
+      throw WarmupError("Socket variable not found in wire");
+    }
+  }
+
+  void cleanup(SHContext *context) {
+    _headers.cleanup();
+    releaseVariable(_peerVar);
+    _peerVar = nullptr;
+    _firstChunk = true;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_peerVar->valueType == SHType::Object);
+    assert(_peerVar->payload.objectValue);
+    auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
+
+    bool done;
+
+    if (_firstChunk) {
+      _firstChunk = false;
+      _response.clear();
+      _response.result(_status);
+      _response.set(http::field::version, "1.1");
+      _response.set(http::field::content_type, "text/plain");
+      // add custom headers (or replace current ones!)
+      if (_headers.get().valueType == SHType::Table) {
+        auto htab = _headers.get().payload.tableValue;
+        ForEach(htab, [&](auto &key, auto &value) {
+          if (key.valueType != SHType::String || value.valueType != SHType::String)
+            throw ActivationError("Headers must be a table of strings.");
+          boost::core::string_view s(key.payload.stringValue, key.payload.stringLen);
+          boost::core::string_view v(value.payload.stringValue, value.payload.stringLen);
+          _response.set(s, v);
+          return true;
+        });
+      }
+      _response.chunked(true);
+
+      done = false;
+      http::response_serializer<http::empty_body> _serializer{_response};
+      http::async_write_header(*peer->socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
+        if (ec) {
+          throw PeerError{"Chunk", ec, peer};
+        } else {
+          SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
+          done = true;
+        }
+      });
+
+      // we suspend here, that's why we captured & above!!
+      while (!done) {
+        SH_SUSPEND(context, 0.0);
+      }
+    }
+
+    auto input_view = SHSTRVIEW(input); // this also supports bytes cos POD layout
+    if (input_view.empty()) {
+      // meaning we are done with the response after this chunk!
+      _firstChunk = true;
+    }
+
+    done = false;
+    auto chunkStr = fmt::format("{:X}\r\n{}\r\n", input_view.size(), input_view);
+    net::async_write(*peer->socket, net::buffer(chunkStr), [&, peer](beast::error_code ec, std::size_t nbytes) {
+      if (ec) {
+        throw PeerError{"Chunk", ec, peer};
+      } else {
+        SHLOG_TRACE("Chunk: async_write (sent) bytes (chunk): {}", nbytes);
+        done = true;
+      }
+    });
+
+    // we suspend here, that's why we captured & above!!
+    while (!done) {
+      SH_SUSPEND(context, 0.0);
+    }
+
+    return input;
+  }
+
+  http::status _status{200};
+  SHVar *_peerVar{nullptr};
+  ParamVar _headers{};
+  http::response<http::empty_body> _response{http::status::ok, 11};
+  bool _firstChunk{true};
 };
 
 struct SendFile {
@@ -1009,6 +1154,7 @@ SHARDS_REGISTER_FN(http) {
   REGISTER_SHARD("Http.Server", Server);
   REGISTER_SHARD("Http.Read", Read);
   REGISTER_SHARD("Http.Response", Response);
+  REGISTER_SHARD("Http.Chunk", Chunk);
   REGISTER_SHARD("Http.SendFile", SendFile);
 #endif
   REGISTER_SHARD("String.EncodeURI", EncodeURI);
