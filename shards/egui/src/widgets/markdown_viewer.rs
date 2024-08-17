@@ -15,6 +15,9 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::STRING_TYPES;
 
+const THEME_LIGHT: &str = "Solarized (light)";
+const THEME_DARK: &str = "Solarized (dark)";
+
 impl Default for MarkdownViewer {
   fn default() -> Self {
     let mut parents = ParamVar::default();
@@ -95,8 +98,10 @@ impl LegacyShard for MarkdownViewer {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
-      egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0)).show(ui, &mut self.cache, text);
-
+      egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
+        .syntax_theme_dark(THEME_DARK)
+        .syntax_theme_light(THEME_LIGHT)
+        .show(ui, &mut self.cache, text);
       Ok(*input)
     } else {
       Err("No UI parent")
