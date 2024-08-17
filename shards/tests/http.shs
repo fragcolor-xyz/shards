@@ -4,40 +4,40 @@
 @mesh(root)
 
 @wire(test {
-  "Hello world, this is an escaping test ////" |
-  String.EncodeURI | Log |
-  Assert.Is("Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true) |
-  String.DecodeURI | Log |
+  "Hello world, this is an escaping test ////"
+  String.EncodeURI | Log
+  Assert.Is("Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true)
+  String.DecodeURI | Log
   Assert.Is("Hello world, this is an escaping test ////" true)
 
-  1 | ToString |
+  1 | ToString
   Set(params "postId")
 
-  params |
-  Http.Get("https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json") = json |
-  FromJson |
-  ExpectTable |
-  Take("author") |
-  ExpectString |
-  Assert.Is("Fragcolor and contributors" true) |
+  params
+  Http.Get("https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json") = json
+  FromJson
+  ExpectTable
+  Take("author")
+  ExpectString
+  Assert.Is("Fragcolor and contributors" true)
   Log
 
   Maybe({
-    none |
-    Http.Get("https://httpstat.us/200?sleep=5000" Timeout: 1) |
+    none
+    Http.Get("https://httpstat.us/200?sleep=5000" Timeout: 1)
     Log
   })
 
-  json |
-  Http.Post("https://postman-echo.com/post") |
+  json
+  Http.Post("https://postman-echo.com/post")
   Log
 
-  json |
-  Http.Post("https://postman-echo.com/post" FullResponse: true) |
-  Log |
-  Take("headers") |
-  Take("content-type") |
-  Log |
+  json
+  Http.Post("https://postman-echo.com/post" FullResponse: true)
+  Log
+  Take("headers")
+  Take("content-type")
+  Log
   Assert.Is("application/json; charset=utf-8" true)
 } Looped: true)
 
@@ -49,27 +49,24 @@
 @run(root FPS: 10 Iterations: 50) | Assert.Is(true)
 
 @wire(download {
-  none |
-  Http.Get("https://github.com/fragcolor-xyz/shards/blob/devel/assets/ShardsLogo.png" Bytes: true Timeout: 60) = shards
+  none
+  Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Bytes: true Timeout: 60) = shards
+  Log
   "shards.png" | FS.Write(shards Overwrite: true)
+
+  none
+  Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Streaming: true Timeout: 60) = picture-stream
+
+  Sequence(chunks Type: @type([Type::Bytes]))
+  Repeat({
+    Http.Stream(picture-stream) = chunk | Log
+    Count(chunk) | When(Is(0) Return)
+    chunk >> chunks
+  })
+
+  chunks | Bytes.Join = shards2
+  shards2 | Assert.Is(shards)
 })
 
 @schedule(root download)
 @run(root FPS: 10) | Assert.Is(true)
-
-; @wire(server-handler {
-;   Msg("handled") |
-;   Http.Read |
-;   Log |
-;   1 >> r
-;   2 >> r
-;   3 >> r
-;   r | ToJson | Http.Response
-; } Looped: true)
-
-; @wire(test-server {
-;   Http.Server(Handler: server-handler)
-; } Looped: true)
-
-; @schedule(root test-server)
-; @run(root FPS: 10) | Assert.Is(true)

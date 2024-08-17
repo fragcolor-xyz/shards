@@ -115,7 +115,7 @@ struct Base {
        SHCCSTR("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't "
                "be closed until this shard cleans up (including its worker thread)."),
        {CoreInfo::BoolType}},
-  };
+      {"Streaming", SHCCSTR("If the output should be a stream of bytes."), {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return params; }
 
   SHTypesInfo outputTypes() { return AllOutputTypes; }
@@ -146,6 +146,8 @@ struct Base {
       numRetries = value.payload.intValue;
     case 7:
       break; // unused
+    case 8:
+      break; // unused
     default:
       break;
     }
@@ -168,6 +170,8 @@ struct Base {
     case 6:
       return Var(numRetries);
     case 7:
+      return Var(false);
+    case 8:
       return Var(false);
     default:
       throw InvalidParameterIndex();

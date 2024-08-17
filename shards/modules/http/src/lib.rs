@@ -12,9 +12,13 @@ extern crate shards;
 extern crate lazy_static;
 
 use reqwest::RequestBuilder;
+use reqwest::Response;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::core::run_future;
+use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::types::common_type;
 
 use shards::types::AutoTableVar;
@@ -23,6 +27,7 @@ use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
+use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::RawString;
@@ -30,7 +35,10 @@ use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::BOOL_TYPES_SLICE;
+use shards::types::BYTES_TYPES;
+use shards::types::FRAG_CC;
 use shards::types::INT_TYPES_SLICE;
+use shards::types::NONE_TYPES;
 
 use core::time::Duration;
 use shards::types::Var;
@@ -75,11 +83,15 @@ lazy_static! {
   static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(&FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
     Type::table(&FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
+  static ref STREAM_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htst"));
+  static ref STREAM_TYPE_VEC: Vec<Type> = vec![*STREAM_TYPE];
+  static ref STREAM_TYPE_VAR: Type = Type::context_variable(&STREAM_TYPE_VEC);
   static ref ALL_OUTPUT_TYPES: Vec<Type> = vec![
     *BYTES_FULL_OUTPUT_TTYPE,
     common_type::bytes,
     *STR_FULL_OUTPUT_TTYPE,
-    common_type::string
+    common_type::string,
+    *STREAM_TYPE
   ];
   static ref GET_PARAMETERS: Parameters = vec![
     (cstr!("URL"), shccstr!("The url to request to."), URL_TYPES).into(),
@@ -129,8 +141,17 @@ lazy_static! {
       BOOL_TYPES_SLICE
     )
       .into(),
+    (
+      cstr!("Streaming"),
+      shccstr!("If the response should be streamed, in which case the output will be an object to use with the Http.Stream shard."),
+      BOOL_TYPES_SLICE
+    )
+      .into(),
   ];
 }
+
+struct OurResponse(Response);
+ref_counted_object_type_impl!(OurResponse);
 
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
@@ -153,6 +174,7 @@ struct RequestBase {
   invalid_certs: bool,
   keep_alive: bool,
   required: ExposedTypes,
+  streaming: bool,
 }
 
 impl Default for RequestBase {
@@ -169,6 +191,7 @@ impl Default for RequestBase {
       invalid_certs: false,
       keep_alive: false,
       required: Vec::new(),
+      streaming: false,
     }
   }
 }
@@ -200,6 +223,7 @@ impl RequestBase {
       ),
       6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
       7 => Ok(self.keep_alive = value.try_into().map_err(|_x| "Failed to set keep_alive")?),
+      8 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
       _ => unreachable!(),
     }
   }
@@ -214,6 +238,7 @@ impl RequestBase {
       5 => self.invalid_certs.into(),
       6 => self.retry.try_into().expect("A valid integer in range"),
       7 => self.keep_alive.into(),
+      8 => self.streaming.into(),
       _ => unreachable!(),
     }
   }
@@ -280,7 +305,13 @@ impl RequestBase {
   }
 
   fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &'static str> {
-    let output_type = if self.as_bytes {
+    let output_type = if self.streaming {
+      // for now don't support full response for streaming
+      if self.full_response {
+        return Err("Full response not supported when streaming");
+      }
+      *STREAM_TYPE_VAR
+    } else if self.as_bytes {
       if self.full_response {
         *BYTES_FULL_OUTPUT_TTYPE
       } else {
@@ -297,6 +328,7 @@ impl RequestBase {
   fn _finalize(&mut self, context: &Context, request: RequestBuilder) -> Option<()> {
     let as_bytes = self.as_bytes;
     let full_response = self.full_response;
+    let streaming = self.streaming;
 
     let result = run_future(context, async move {
       let runtime = TOKIO_RUNTIME.clone();
@@ -321,6 +353,12 @@ impl RequestBase {
               })?
             );
             return Err("Request failed");
+          }
+
+          if streaming {
+            // When streaming, we return a ref counted object with the response it self
+            let response_object = Var::new_ref_counted(OurResponse(response), &*STREAM_TYPE);
+            return Ok(response_object.into());
           }
 
           let mut output_table = AutoTableVar::new();
@@ -696,6 +734,88 @@ post_like!(Put, put, "Http.Put", "Http.Put-rust-0x20200101");
 post_like!(Patch, patch, "Http.Patch", "Http.Patch-rust-0x20200101");
 post_like!(Delete, delete, "Http.Delete", "Http.Delete-rust-0x20200101");
 
+#[derive(shards::shard)]
+#[shard_info("Http.Stream", "Reads data from a previously opened stream.")]
+struct HttpStreamShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Stream", "The stream to read from.", [*STREAM_TYPE_VAR])]
+  stream: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for HttpStreamShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      stream: ParamVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for HttpStreamShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn output_help(&mut self) -> OptionalString {
+    shccstr!("Bytes read from the stream. When the stream is exhausted, this will return an empty byte array.").into()
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Var, &'static str> {
+    let stream = *self.stream.get();
+    let result = run_future(context, async move {
+      let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
+      let response = unsafe { &mut (*stream?).0 };
+      let runtime = TOKIO_RUNTIME.clone();
+      let task = {
+        let runtime = runtime.lock().unwrap();
+        runtime.spawn(async move {
+          let bytes = response
+            .chunk()
+            .await
+            .map_err(|_| "Failed to read from stream")?;
+          if let Some(bytes) = bytes {
+            Ok(ClonedVar::new_bytes(&bytes))
+          } else {
+            Ok(ClonedVar::new_bytes(&[]))
+          }
+        })
+      };
+      // Await the spawned task outside the lock
+      task.await.map_err(|e| {
+        shlog_error!("Task join error: {}", e);
+        "Failed to join task"
+      })?
+    });
+    self.output = result;
+    Ok(self.output.0)
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -708,4 +828,6 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
   register_legacy_shard::<Put>();
   register_legacy_shard::<Patch>();
   register_legacy_shard::<Delete>();
+
+  register_shard::<HttpStreamShard>();
 }

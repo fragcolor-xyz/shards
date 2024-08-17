@@ -358,7 +358,7 @@ struct Join {
     auto &seq = input.payload.seqValue;
     for (uint32_t i = 0; i < seq.len; i++) {
       auto &v = seq.elements[i];
-      auto len = SHSTRLEN(v);
+      auto len = v.valueType == SHType::String ? SHSTRLEN(v) : v.payload.bytesSize;
       auto &s = v.payload;
       // string and bytes share same layout!
       _buffer.insert(_buffer.end(), s.stringValue, s.stringValue + len);
