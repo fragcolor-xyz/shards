@@ -2,33 +2,34 @@
 @mesh(root)
 
 @wire(get-view-transform {
-  {@f4(0.0 1.0 -5.0 1.0) >= arm-pos} |
+  {@f4(0.0 1.0 -5.0 1.0) >= arm-pos}
   Math.AxisAngleY | Math.Rotation | Math.MatMul(arm-pos) | ToFloat3 >= arm-pos-3
   {Position: arm-pos-3 Target: @f3(0 0.025 0)} | Math.LookAt
 } Pure: true)
 
 @wire(character {
-  Take("Position") = position
-  position | Math.Translation |
+  position | Math.Translation
   GFX.glTF(Copy: gltf-template
-           AnimationController: {
-            = input
-            Once({
-              ForEach({Take(0) >> animation-names})
-              animation-names | 
-              RandomFloat(5.0) = animation-offset
-            })
-            animation-names | Take(animation-index) >= animation-name
-            Get(input animation-name) = animation
+    AnimationController: {
+      = input
+      Once({
+        ForEach({Take(0) >> animation-names})
+        animation-names
+        RandomFloat(5.0) = animation-offset
+      })
+      animation-names | Take(animation-index) >= animation-name
+      Get(input animation-name) = animation
 
-            Animation.Timer(animation Rate: 1.3 Offset: animation-offset
-                            Action: {
-                             Count(animation-names) >= num-animations
-                             Math.Inc(animation-index)
-                             animation-index | Math.Mod(num-animations) > animation-index
-                            }) |
-            Animation.Play(animation)
-           }) | GFX.Draw(queue)
+      Animation.Timer(animation Rate: 1.3 Offset: animation-offset
+        Action: {
+          Count(animation-names) >= num-animations
+          Math.Inc(animation-index)
+          animation-index | Math.Mod(num-animations) > animation-index
+        }
+      )
+      Animation.Play(animation)
+    }
+  ) | GFX.Draw(queue)
 } Looped: true)
 
 @wire(spawn-benchmark {
@@ -41,7 +42,7 @@
     ForRange(1 num-x {
       ToFloat | Math.Subtract(sub-x) >= x
       @f3(x 0.0 y) >= position
-      {Position: position} | Spawn(character)
+      Spawn(character)
     })
   })
 })
@@ -52,22 +53,25 @@
   GFX.Feature(Shaders: [{Name: "lighting"
                          Stage: ProgrammableGraphicsStage::Fragment
                          EntryPoint: {
-                           Shader.ReadInput(Name: "worldNormal") >= normal
-                           Shader.ReadBuffer(Name: "lightDirection") >= light-dir
-                           @f3(0 0 0) | Math.Subtract(light-dir) >= inv-light-dir
-                           normal | Math.Normalize | Math.Dot(inv-light-dir) | Max(0.0) >= n-dot-l
-                           Shader.ReadBuffer(Name: "lightColor") | Math.Multiply(n-dot-l) |
-                           Shader.WriteGlobal("lighting")}}
-                        {Name: "mainColor"
-                         Stage: ProgrammableGraphicsStage::Fragment
-                         EntryPoint: {
-                           Shader.ReadGlobal("lighting") | ToFloat4 >= lighting-4
-                           Shader.ReadGlobal("color") | Math.Add(lighting-4) |
-                           Shader.WriteGlobal("color")}
-                         After: ["readColor"]
-                         Before: ["writeColor"]}]
-              Params: {lightDirection: {Default: light-direction}
-                       lightColor: {Default: light-color}})
+          Shader.ReadInput(Name: "worldNormal") >= normal
+          Shader.ReadBuffer(Name: "lightDirection") >= light-dir
+          @f3(0 0 0) | Math.Subtract(light-dir) >= inv-light-dir
+          normal | Math.Normalize | Math.Dot(inv-light-dir) | Max(0.0) >= n-dot-l
+          Shader.ReadBuffer(Name: "lightColor") | Math.Multiply(n-dot-l)
+          Shader.WriteGlobal("lighting")
+        }}
+      {Name: "mainColor"
+       Stage: ProgrammableGraphicsStage::Fragment
+       EntryPoint: {
+          Shader.ReadGlobal("lighting") | ToFloat4 >= lighting-4
+          Shader.ReadGlobal("color") | Math.Add(lighting-4)
+          Shader.WriteGlobal("color")
+        }
+       After: ["readColor"]
+       Before: ["writeColor"]}]
+    Params: {lightDirection: {Default: light-direction}
+             lightColor: {Default: light-color}}
+  )
 })
 
 @wire(test-basic-anim {

@@ -93,12 +93,12 @@ struct Const {
 static shards::ParamsInfo compareParamsInfo =
     shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to check against."), CoreInfo::AnyType));
 
-static shards::ParamsInfo compareParamsInfo2 = shards::ParamsInfo(
-    shards::ParamsInfo::Param("Value",
-                              SHCCSTR("The value to check against. Note: This shard will not evaluate variables nested within "
-                                      "sequences and tables. If you need to compare them against such variables, wrap them in "
-                                      "parentheses, so that they are evaluated first. Example: Value:([your-variable]) instead of Value:your-variable."),
-                              CoreInfo::AnyType));
+static shards::ParamsInfo compareParamsInfo2 = shards::ParamsInfo(shards::ParamsInfo::Param(
+    "Value",
+    SHCCSTR("The value to check against. Note: This shard will not evaluate variables nested within "
+            "sequences and tables. If you need to compare them against such variables, wrap them in "
+            "parentheses, so that they are evaluated first. Example: Value:([your-variable]) instead of Value:your-variable."),
+    CoreInfo::AnyType));
 
 struct BaseOpsBin {
   ParamVar _operand{shards::Var(0)};
@@ -960,7 +960,7 @@ struct SetBase : public VariableBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input value is passed through as the output."); }
 
   // Runs sanity checks on the target variable, returns the existing exposed type if any
-  const SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
+  const SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool failIfExists, bool overwrite) {
     const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(data.shared, _name);
     if (existingExposedType) {
       auto &reference = *existingExposedType;
@@ -984,7 +984,9 @@ struct SetBase : public VariableBase {
           SHLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
         }
-        if (warnIfExists) {
+        if (failIfExists && !overwrite) {
+          throw ComposeError(fmt::format("Ref, variable \"{}\" already exists", _name));
+        } else if (warnIfExists && !overwrite) {
           SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
         }
       }
@@ -1096,7 +1098,7 @@ struct Set : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    const SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false);
+    const SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false, false);
 
     // bake exposed types
     if (_isTable) {
@@ -1271,7 +1273,7 @@ struct Ref : public SetBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    setBaseCompose(data, true, _overwrite);
+    setBaseCompose(data, false, true, _overwrite);
 
     // bake exposed types
     if (_isTable) {
@@ -1366,7 +1368,7 @@ struct Update : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    setBaseCompose(data, false, false);
+    setBaseCompose(data, false, false, false);
 
     SHTypeInfo *originalTableType{};
 
