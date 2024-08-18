@@ -984,9 +984,9 @@ struct SetBase : public VariableBase {
           SHLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
         }
-        if (failIfExists) {
+        if (failIfExists && !overwrite) {
           throw ComposeError(fmt::format("Ref, variable \"{}\" already exists", _name));
-        } else if (warnIfExists) {
+        } else if (warnIfExists && !overwrite) {
           SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
         }
       }
