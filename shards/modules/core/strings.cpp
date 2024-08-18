@@ -461,13 +461,14 @@ struct Split {
   std::string _inputStr;
   SeqVar _lines;
   std::string _separator;
+  bool _keepSeparator{false};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
-  static inline Parameters params{{{"Separator",
-                                    SHCCSTR("The separator character to split the string on."),
-                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+  static inline Parameters params{
+      {{"Separator", SHCCSTR("The separator character to split the string on."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+       {"KeepSeparator", SHCCSTR("Whether to keep the separator in the output."), {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -475,7 +476,10 @@ struct Split {
     switch (index) {
     case 0:
       _separator.clear();
-      _separator.append(SHSTRVIEW(value)); // Accept a string of separators
+      _separator.append(SHSTRVIEW(value));
+      break;
+    case 1:
+      _keepSeparator = value.payload.boolValue;
       break;
     default:
       throw InvalidParameterIndex();
@@ -486,6 +490,8 @@ struct Split {
     switch (index) {
     case 0:
       return Var(_separator);
+    case 1:
+      return Var(_keepSeparator);
     default:
       throw InvalidParameterIndex();
     }
@@ -495,23 +501,29 @@ struct Split {
     auto input_string = SHSTRVIEW(input);
     _inputStr.clear();
     _inputStr.append(input_string);
-    std::vector<std::string> components;
+    _lines.clear();
+
     size_t start = 0;
     size_t end = 0;
 
-    _lines.clear();
     while ((end = _inputStr.find(_separator, start)) != std::string::npos) {
-      if (end != start) { // Ignore empty tokens
-        components.push_back(_inputStr.substr(start, end - start));
+      if (_keepSeparator) {
+        // Include the separator with the preceding string
+        _lines.push_back(Var(_inputStr.substr(start, end - start + _separator.length())));
+      } else {
+        // Push the substring before the separator
+        _lines.push_back(Var(_inputStr.substr(start, end - start)));
       }
+
       start = end + _separator.length();
     }
-    if (start < _inputStr.length()) {
-      components.push_back(_inputStr.substr(start));
-    }
 
-    for (const auto &component : components) {
-      _lines.push_back(Var(component));
+    // Handle the last part of the string
+    if (start < _inputStr.length()) {
+      _lines.push_back(Var(_inputStr.substr(start)));
+    } else if (start == _inputStr.length()) {
+      // Handle case where string ends with separator
+      _lines.push_back(Var(""));
     }
 
     return _lines;
