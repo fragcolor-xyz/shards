@@ -718,7 +718,7 @@ struct Read {
 
   SHVar *_peerVar{nullptr};
   TableVar _output;
-  beast::flat_buffer buffer{8192};
+  beast::multi_buffer buffer{8192};
   http::request<http::string_body> request;
 };
 
