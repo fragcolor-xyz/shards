@@ -40,16 +40,11 @@
       TracyFiberEnter(getCoroWireStack().back()->name.c_str()); \
     }                                                           \
   }
-#else
+#else // TRACY_FIBERS
 #define TracyCoroEnter(wire)
 #define TracyCoroExit(wire)
-#endif
-#else
-#define ZoneScoped
-#define ZoneScopedN(X)
-#define ZoneNamed(X, Y)
-#define ZoneName(X, Y)
-#define FrameMarkNamed(X)
+#endif // TRACY_FIBERS
+#else // TRACY_ENABLE
 #define TracyCoroEnter(wire)
 #define TracyCoroExit(wire)
 #endif
