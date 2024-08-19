@@ -12,7 +12,7 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 lazy_static = "1.4.0"
 egui = { version = "0.28.1", features = ["persistence"] }
-egui_commonmark = { git = "https://github.com/shards-lang/egui_commonmark.git", rev = "b9ed28249068a6c82036c107979d4cb319356957", version = "0.17.0", features = ["better_syntax_highlighting"]}
+egui_commonmark = { git = "https://github.com/shards-lang/egui_commonmark.git", rev = "b48acd4586dc9134f179116398ef922e1d1825ea", version = "0.17.0", features = ["better_syntax_highlighting"]}
 # egui_commonmark = { path = "../../../egui_commonmark/egui_commonmark", version = "0.17.0", features = ["better_syntax_highlighting"]}
 egui_dock = { version = "0.13.0" }
 egui_extras = { version = "0.28.1", features = ["serde"]}
