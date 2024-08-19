@@ -355,7 +355,7 @@ struct ServerShard : public NetworkBase {
   std::unique_ptr<WireDoppelgangerPool<KCPPeer>> _pool;
   OwnedVar _handlerMaster{};
 
-  bool _running = false;
+  std::atomic<bool> _running{false};
 
   float _timeoutSecs = 30.0f;
 
@@ -507,11 +507,11 @@ struct ServerShard : public NetworkBase {
 
     setServer(context, &_server);
 
-    _running = true;
+    _running.store(true, std::memory_order_release);
   }
 
   void cleanup(SHContext *context) {
-    _running = false;
+    _running.store(false, std::memory_order_release);
 
     // Stop handlers
     if (_pool) {
@@ -621,7 +621,7 @@ struct ServerShard : public NetworkBase {
                                         SPDLOG_LOGGER_ERROR(logger, "Error acquiring peer: {}", e.what());
 
                                         // keep receiving
-                                        if (_socket && _running)
+                                        if (_socket && _running.load(std::memory_order_acquire))
                                           return do_receive();
                                       }
                                     } else {
@@ -651,7 +651,7 @@ struct ServerShard : public NetworkBase {
                                     }
 
                                     // keep receiving
-                                    if (_socket && _running) {
+                                    if (_socket && _running.load(std::memory_order_acquire)) {
                                       return do_receive();
                                     } else {
                                       SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
@@ -679,7 +679,7 @@ struct ServerShard : public NetworkBase {
                                     }
 
                                     // keep receiving
-                                    if (_socket && _running) {
+                                    if (_socket && _running.load(std::memory_order_acquire)) {
                                       return do_receive();
                                     } else {
                                       SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
