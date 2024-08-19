@@ -194,7 +194,16 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
                 "func must return SHVar or Var");
   ZoneScopedN("awaitne");
 
-  shassert(!context->onWorkerThread && "awaitne called recursively");
+  if (context->onWorkerThread) {
+    try {
+      return func();
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+    } catch (...) {
+      context->cancelFlow("foreign exception failure");
+    }
+    return SHVar(); // Return a default SHVar in case of an error
+  }
 
 #if !HAS_ASYNC_SUPPORT
   return func();
@@ -276,7 +285,11 @@ inline SHVar maybeAwaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
   ZoneScopedN("await");
 
-  shassert(!context->onWorkerThread && "await called recursively");
+  if (context->onWorkerThread) {
+    // When already on a worker thread, just call the function directly
+    func();
+    return;
+  }
 
 #if !HAS_ASYNC_SUPPORT
   func();
