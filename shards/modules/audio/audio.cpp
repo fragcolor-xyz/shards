@@ -57,6 +57,10 @@ another iteration
 
 */
 
+struct AudioDefaultHelpText {
+  static inline constexpr const char *SoundObjectParam = "The sound object to manipulate";
+};
+
 struct ChannelData {
   float *outputBuffer;
   std::vector<uint32_t> inChannels;
@@ -89,9 +93,18 @@ struct Device {
   static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = DeviceCC}}}};
 
   // TODO add shards used as insert for the final mix
+  static SHOptionalString help() {
+    return SHCCSTR("This shard initializes an audio device in the mesh. This device sets up the audio context, manages input and "
+                   "output channels, and handles the audio processing loop which is necessary for processing and playing audio "
+                   "in the shards system. In essence, the Audio.Device provides the underlying audio system, and can be used "
+                   "with other shards "
+                   "like Audio.ReadFile and Audio.Channel to process and play audio.");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   // Number of input channels for audio processing.
   PARAM_VAR(_inChannels, "InputChannels", "Sets the number of audio input channels for the device.", {CoreInfo::IntType});
@@ -424,8 +437,19 @@ struct Device {
 };
 
 struct Channel {
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard represents an audio channel in the mesh. It manages the routing and processing of audio data "
+                   "between input and output buses, applies volume control, and executes custom audio processing shards. "
+                   "Audio.Channel works in conjunction with Audio.Device to handle audio processing within the shards system.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any input type is accepted. The input will be passed to the code specified in the Shards parameter.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the output of the code specified in the Shards parameter."); }
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
@@ -446,12 +470,25 @@ struct Channel {
   }
 
   static inline Parameters Params{
-      {"InputBus", SHCCSTR("The input bus number, 0 is the audio device ADC."), {CoreInfo::IntType}},
-      {"InputChannels", SHCCSTR("The list of input channels to pass as input to Shards."), {CoreInfo::IntSeqType}},
-      {"OutputBus", SHCCSTR("The output bus number, 0 is the audio device DAC."), {CoreInfo::IntType}},
-      {"OutputChannels", SHCCSTR("The list of output channels to write from Shards's output."), {CoreInfo::IntSeqType}},
-      {"Volume", SHCCSTR("The volume of this channel."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
-      {"Shards", SHCCSTR("The shards that will process audio data."), {CoreInfo::ShardsOrNone}}};
+      {"InputBus",
+       SHCCSTR("The an integer representing the input bus number. 0 represents the audio device's Analog-to-Digital Converter "
+               "(ADC)."),
+       {CoreInfo::IntType}},
+      {"InputChannels",
+       SHCCSTR("A list of input channel indices to be used as input for the code specified in the Shards parameter."),
+       {CoreInfo::IntSeqType}},
+      {"OutputBus",
+       SHCCSTR("The output bus number. 0 represents the audio device's Digital-to-Analog Converter (DAC)."),
+       {CoreInfo::IntType}},
+      {"OutputChannels",
+       SHCCSTR("The list of output channel indices where the processed audio output from the code in the Shards parameter will "
+               "be written."),
+       {CoreInfo::IntSeqType}},
+      {"Volume",
+       SHCCSTR("A float value representing the volume level of this channel. Accepts values between 0.0 (mute) and 1.0 (full "
+               "volume)."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Shards", SHCCSTR("The code that will process the audio data."), {CoreInfo::ShardsOrNone}}};
 
   SHParametersInfo parameters() { return Params; }
 
@@ -640,21 +677,33 @@ struct Oscillator {
   ParamVar _amplitude{Var(0.4)};
   Waveform _type{Waveform::Sine};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard generates audio waveforms. It can produce various types of waveforms such as sine, square, "
+                   "triangle, and sawtooth. The Oscillator is typically used within an Audio.Channel and can be controlled "
+                   "by other shards to create dynamic audio effects or synthesize sounds.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a float value representing the frequency of the waveform in Hertz (Hz).");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs audio data as an Audio chunk, containing the generated waveform samples.");
+  }
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
-      {"Type", SHCCSTR("The waveform type to oscillate."), {WaveformEnumInfo::Type}},
-      {"Amplitude", SHCCSTR("The waveform amplitude."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
-      {"Channels", SHCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
+      {"Type", SHCCSTR("The waveform type to oscillate (Sine, Square, Triangle or Sawtooth)."), {WaveformEnumInfo::Type}},
+      {"Amplitude", SHCCSTR("A float representing the waveform amplitude."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Channels", SHCCSTR("An int representing the number of desired output audio channels."), {CoreInfo::IntType}},
       {"SampleRate",
-       SHCCSTR("The desired output sampling rate. Ignored if inside an "
+       SHCCSTR("An int representing desired output sampling rate. Ignored if this shard is inside an "
                "Audio.Channel."),
        {CoreInfo::IntType}},
       {"Samples",
-       SHCCSTR("The desired number of samples in the output. Ignored if inside "
+       SHCCSTR("An int representing desired number of samples in the output. Ignored if this shard is inside "
                "an Audio.Channel."),
        {CoreInfo::IntType}}};
 
@@ -781,8 +830,20 @@ struct ReadFile {
   SHVar *_device{nullptr};
   Device *d{nullptr};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard reads audio data from a file or memory buffer. It supports various audio formats "
+                   "including wav, ogg, mp3, and flac. Audio.ReadFile is designed to be used in conjunction with "
+                   "Audio.Device and Audio.Channel to process and play audio in the shards system. It provides "
+                   "the audio data that can be further processed or played through the audio device.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs audio data as an Audio chunk, containing the sample rate, number of samples, "
+                   "number of channels, and the audio samples.");
+  }
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
@@ -795,14 +856,16 @@ struct ReadFile {
 
   PARAM_PARAMVAR(_source, "Source", "The audio file or bytes to read from (wav,ogg,mp3,flac).",
                  {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::BytesType, CoreInfo::BytesVarType});
-  PARAM_VAR(_channels, "Channels", "The number of desired output audio channels.", {CoreInfo::IntType});
-  PARAM_VAR(_sampleRate, "SampleRate", "The desired output sampling rate.", {CoreInfo::IntType});
-  PARAM_VAR(_nsamples, "Samples", "The desired number of samples in the output.", {CoreInfo::IntType});
-  PARAM_VAR(_looped, "Looped", "If the file should be played in loop or should stop the wire when it ends.",
+  PARAM_VAR(_channels, "Channels", "An int representing the number of desired output audio channels.", {CoreInfo::IntType});
+  PARAM_VAR(_sampleRate, "SampleRate", "An int representing the desired output sampling rate.", {CoreInfo::IntType});
+  PARAM_VAR(_nsamples, "Samples", "An int representing the desired number of samples in the output.", {CoreInfo::IntType});
+  PARAM_VAR(_looped, "Looped",
+            "A boolean value indicating whether the audio file should be played in loop or should stop the wire when it ends.",
             {CoreInfo::BoolType});
-  PARAM_PARAMVAR(_fromSample, "From", "The starting time in seconds.",
+  PARAM_PARAMVAR(_fromSample, "From", "A float value representing the starting time in seconds.",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType});
-  PARAM_PARAMVAR(_toSample, "To", "The end time in seconds.", {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType});
+  PARAM_PARAMVAR(_toSample, "To", "A float value representing the end time in seconds.",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_source), PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_nsamples),
              PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_fromSample), PARAM_IMPL_FOR(_toSample));
@@ -961,15 +1024,24 @@ struct WriteFile {
   ma_uint64 _progress{0};
   ParamVar _filename;
 
+  static SHOptionalString help() { return SHCCSTR("This shard writes audio data to WAV format file."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts audio data as an Audio chunk, containing the sample rate, number of samples, "
+                   "number of channels, and the audio samples.");
+  }
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the same audio data as the input, allowing for further processing in the audio chain.");
+  }
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
       {"File", SHCCSTR("The audio file to read from (wav,ogg,mp3,flac)."), {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Channels", SHCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
-      {"SampleRate", SHCCSTR("The desired output sampling rate."), {CoreInfo::IntType}}};
+      {"Channels", SHCCSTR("An int representing the number of desired output audio channels."), {CoreInfo::IntType}},
+      {"SampleRate", SHCCSTR("An int representing the desired number of samples in the output."), {CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -1054,8 +1126,17 @@ struct Engine {
   ma_engine _engine;
   bool _initialized{false};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard initializes an audio engine in the mesh, and this enables audio playback and processing capabilites. "
+                   "It manages resources, handles audio mixing, and provides spatial audio "
+                   "functionality. The Audio.Engine is used in conjunction with other audio shards like Audio.Sound, Audio.Play "
+                   "and Audio.Pause to create a complete audio system to process and play audio.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   SHVar *_deviceVar{nullptr};
 
@@ -1156,11 +1237,27 @@ struct Sound : EngineUser {
   static constexpr uint32_t SoundCC = 'snds';
 
   static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = SoundCC}}}};
+  static inline Type SoundVarType = Type::VariableOf(ObjType);
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Sound shard initializes a sound object in the mesh. It loads an audio file and prepares it for playback. "
+        "This shard is used in conjunction with other audio shards like Audio.Start, Audio.Pause, and "
+        "Audio.Stop to control audio playback. It supports spatialization for 3D audio positioning and can be used "
+        "with various audio effect shards for further processing. Do note that the Spatialized parameter on Audio.Sound should "
+        "be set to true when initializing a sound object meant for 3D audio (if it is to be manipulated by Audio.Direction, "
+        "Audio.Position, Audio.Velocity or Audio.Cones).");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a string representing the path to the audio file or asset to be loaded.");
+  }
   static SHTypesInfo outputTypes() { return ObjType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a Sound object that can be used with other audio shards."); }
 
-  PARAM_VAR(_spatialized, "Spatialized", "If the sound should be spatialized.", {CoreInfo::BoolType});
+  PARAM_VAR(_spatialized, "Spatialized", "If the sound should have 3D audio capabilities.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_spatialized));
 
   void setup() { _spatialized = Var(false); }
 
@@ -1204,13 +1301,25 @@ struct Sound : EngineUser {
 };
 
 struct Start : EngineUser {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Start shard begins playback of a sound object in the mesh. It takes a Sound object "
+        "created by Audio.Sound and starts playing it and also allows control over whether the sound "
+        "should loop or play once. It's typically used in conjunction with Audio.Engine, Audio.Sound, Audio.Pause, and "
+        "Audio.Stop to manage audio playback.");
+  }
+
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+  }
 
   void setup() { _looped = Var(false); }
 
   // Looped parameter
-  PARAM_VAR(_looped, "Looped", "If the sound should be played in loop or should stop the wire when it ends.",
+  PARAM_VAR(_looped, "Looped", "If the sound should be played in loop or should stop the wire when it ends and play only once.",
             {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_looped));
 
@@ -1242,8 +1351,18 @@ struct Start : EngineUser {
 };
 
 struct Pause {
+  static SHOptionalString help() {
+    return SHCCSTR("The Audio.Pause shard pauses playback of a sound object in the mesh. It takes a Sound object "
+                   "which was created by Audio.Sound and played by Audio.Start and pauses its playback. This shard is typically "
+                   "used in conjunction with "
+                   "Audio.Engine, Audio.Sound, Audio.Start, and Audio.Stop to manage audio playback and control.");
+  }
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
@@ -1254,8 +1373,20 @@ struct Pause {
 };
 
 struct Stop {
+  static SHOptionalString help() {
+    return SHCCSTR("The Audio.Stop shard stops playback of a sound object in the mesh. It takes a Sound object "
+                   "which was created by Audio.Sound and played with Audio.Start and stops its playback, resetting the playback "
+                   "position to the beginning. "
+                   "This shard is typically used in conjunction with Audio.Engine, Audio.Sound, Audio.Start, and "
+                   "Audio.Pause to manage audio playback and control.");
+  }
+
   static SHTypesInfo inputTypes() { return Sound::ObjType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto _sound = reinterpret_cast<ma_sound *>(input.payload.objectValue);
@@ -1270,10 +1401,25 @@ struct Stop {
 };
 
 struct SetVolume {
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Volume shard adjusts the volume of a sound object in the mesh, thus allowing for the dynamic control over the "
+        "volume of individual sound objects during playback. It takes the Sound object, created by Audio.Sound "
+        "specified in the Sound parameter, and sets the volume to the float value provided as input. "
+        "It's typically used "
+        "in conjunction with Audio.Engine, Audio.Sound, Audio.Start, and other audio shards to manage "
+        "audio playback and control.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the volume.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float value representing the new volume level. 0.0 is silence, 1.0 is full volume, "
+                   "and values above 1.0 can be used for amplification.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1297,10 +1443,25 @@ struct SetVolume {
 };
 
 struct SetPan {
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Pan shard adjusts the stereo panning of a sound object in the mesh, allowing for dynamic control over "
+        "the spatial positioning of individual sound objects during playback. It takes the Sound object, created by Audio.Sound "
+        "that is specified in the Sound parameter, and sets the pan position to the float value provided as input (-1.0 being "
+        "full left and 1.0 being full right). "
+        "It's typically used in conjunction with Audio.Engine, Audio.Sound, Audio.Start, and other audio shards to manage "
+        "audio playback and create spatial audio effects.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the pan.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float value representing the new pan position. -1.0 is full left, 0.0 is center, and 1.0 is full right. "
+                   "Values outside of this range will be clamped to the nearest extreme.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1324,10 +1485,28 @@ struct SetPan {
 };
 
 struct SetPitch {
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Pitch shard adjusts the pitch of a sound object in the mesh, thus allowing for dynamic control over the pitch "
+        "of individual sound objects during playback. It takes the Sound object, created by Audio.Sound "
+        "that is specified in the Sound parameter, and sets the pitch to the float value provided as input. 1.0 being the "
+        "original pitch, "
+        "values greater than 1.0 will increase the pitch, while values between 0 and 1.0 will decrease the pitch. 0.5, for "
+        "example, will lower the pitch by one octave, "
+        "while 2.0 will raise it by one octave. "
+        "It's typically used in conjunction with "
+        "Audio.Engine, Audio.Sound, Audio.Start, and other audio shards to manage audio playback and create pitch-based "
+        "effects.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the pitch.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float value representing the new pitch. 1.0 being the original pitch.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1351,10 +1530,26 @@ struct SetPitch {
 };
 
 struct SetPosition {
-  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Position shard sets the 3D position of a sound object in the audio space. It takes the Sound object, "
+        "created by Audio.Sound, that is specified in the Sound parameter, and sets its position to the 3D coordinates "
+        "represented as a float3 vector(a vector with 3 float elements) provided as input. This shard is particularly useful for "
+        "creating spatial audio effects and is typically used "
+        "in conjunction with Audio.Engine, Audio.Sound, and Audio.Direction to manage 3D audio positioning and orientation. Do "
+        "note that the Spatialized parameter on Audio.Sound should be set to true when initializing a sound object meant for 3D "
+        "audio.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the position.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float3 vector representing the new 3D position (x, y, z coordinates) of the sound.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
+
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1378,10 +1573,28 @@ struct SetPosition {
 };
 
 struct SetDirection {
-  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR("The Audio.Direction shard sets the direction of a sound object in 3D audio space. It takes the Sound object, "
+                   "created by Audio.Sound that is specified in the Sound parameter, and sets its direction to the 3D vector "
+                   "with x y z coordinates, represented as a float3 vector(a vector with 3 float elements), "
+                   "that is provided as input. The x coordinate represents its direction along the x-axis, the y coordinate "
+                   "represents its direction along the y-axis, and the z coordinate represents its direction along the z-axis. "
+                   "The float3 vector input should also be normalized so that it has a magnitude of 1. This shard is "
+                   "particularly useful for creating directional audio effects in 3D environments "
+                   "and is typically used in conjunction with Audio.Engine, Audio.Sound, and Audio.Position to manage 3D audio "
+                   "positioning and orientation. Do note that the Spatialized parameter on Audio.Sound should be set to true "
+                   "when initializing a sound object meant for 3D audio.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the direction.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float3 vector representing the new direction (x, y, z components) of the sound. "
+                   "This vector should be normalized (have a magnitude of 1). ");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1405,11 +1618,33 @@ struct SetDirection {
 };
 
 struct SetCones {
-  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Cones shard sets the sound cone properties for a 3D sound object. Sound cones are used to create directional "
+        "audio effects, where the volume of the sound changes based on the angle between the sound's direction and the "
+        "listener's position. "
+        "It takes the Sound object, created by Audio.Sound that is specified in the Sound parameter, and sets its cone "
+        "properties using "
+        "the float3 vector(a vector with 3 float elements) provided as input. The first float value in the float3 vector "
+        "represents the inner angle in radians, the second float value represents the outer angle in radians, and the third "
+        "float value represents the outer gain. "
+        "This shard is particularly useful for creating directional audio effects in 3D environments and is typically used in "
+        "conjunction with Audio.Engine, Audio.Sound, Audio.Position, and Audio.Direction. Do note that the Spatialized parameter "
+        "on Audio.Sound should be set to true when initializing a sound object meant for 3D audio.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the cones (innerAngleInRadians, outerAngleInRadians, outerGain).",
-                 {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float3 vector with each element representing the respective cone properties: "
+                   "innerAngleInRadians (the angle within which the sound is at full volume), "
+                   "outerAngleInRadians (the angle at which the sound starts to attenuate), "
+                   "and outerGain (the volume multiplier for sounds outside the outer angle).");
+  }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()
@@ -1433,10 +1668,29 @@ struct SetCones {
 };
 
 struct SetVelocity {
-  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "The Audio.Velocity shard sets the velocity of a 3D sound object in the audio space. It takes the Sound object, "
+        "created by Audio.Sound that is specified in the Sound parameter, and sets its velocity to the 3D vector, represented as "
+        "a float3 vector(a vector with 3 float elements), "
+        "provided as input. The first element in the float3 vector represents the velocity along the x-axis, the second element "
+        "represents the velocity along the y-axis, and the third element represents the velocity along the z-axis. "
+        "This shard is particularly useful for creating doppler effects and is typically used "
+        "in conjunction with Audio.Engine, Audio.Sound, Audio.Position, and Audio.Direction to manage 3D audio positioning and "
+        "movement. Do note that the Spatialized parameter on Audio.Sound should be set to true when initializing a sound object "
+        "meant for 3D audio.");
+  }
 
-  PARAM_PARAMVAR(_sound, "Sound", "The sound to set the velocity.", {Sound::ObjType});
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A float3 vector representing the new velocity (each float element representing the velocity along the x, y, "
+                   "and z axes respectively) of the sound in units per second.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_sound, "Sound", AudioDefaultHelpText::SoundObjectParam, {Sound::ObjType, Sound::SoundVarType});
+
   PARAM_IMPL(PARAM_IMPL_FOR(_sound));
 
   PARAM_REQUIRED_VARIABLES()

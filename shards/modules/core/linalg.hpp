@@ -102,7 +102,30 @@ template <typename TOp> struct VectorUnaryOperation {
 struct CrossOp {
   void apply(SHVar &output, const SHVar &input, const SHVar &operand);
 };
-using Cross = BinaryOperation<VectorBinaryOperation<CrossOp>>;
+
+struct Cross : public BinaryOperation<VectorBinaryOperation<CrossOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard computes the cross product of the float3 vector (or sequence of float3 vectors) provided as input "
+                   "and the float3 vector "
+                   "provided in the Operand parameter and returns the result as a float3 vector (or sequence of float3 vectors). "
+                   "A float3 vector is a vector "
+                   "with 3 float elements.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3OrFloat3Seq; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Accepts float3 vector (a vector with 3 float elements) as input."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3OrFloat3Seq; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the cross product as a float3 vector or a sequence of float3 vectors if the input was "
+                   "a sequence of float3 vectors.");
+  }
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Operand", SHCCSTR("The float3 vector to compute the cross product with."), CoreInfo::FloatVectorsOrVar));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
+};
 
 inline OpType validateTypesVectorToFloat(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
   if (lhs.basicType != SHType::Seq && rhs != SHType::Seq) {
@@ -124,7 +147,18 @@ struct DotOp {
   void apply(SHVar &output, const SHVar &input, const SHVar &operand);
 };
 struct Dot : public BinaryOperation<VectorBinaryOperation<DotOp>> {
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Computes the dot product of two float vectors with an equal number of elements, and returns the resulting float value. "
+        "The first float vector is passed as input and the second float vector is specified in the Operand parameter.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes in a float vector of any dimension (e.g., float2, float3, float4).");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the resulting dot product as a float value."); }
 };
 
 struct LengthSquaredOp {
@@ -135,7 +169,17 @@ struct LengthSquaredOp {
   void apply(SHVar &output, const SHVar &input) { dotOp.apply(output, input, input); }
 };
 struct LengthSquared : UnaryOperation<VectorUnaryOperation<LengthSquaredOp>> {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a float vector of any dimension (e.g., float2, float3, float4).");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the squared magnitude of the input vector as a float."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Computes the squared magnitude of a float vector of any dimension and returns the result as a float.");
+  }
 };
 
 struct LengthOp {
@@ -149,7 +193,17 @@ struct LengthOp {
   }
 };
 struct Length : public UnaryOperation<VectorUnaryOperation<LengthOp>> {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a float vector of any dimension (e.g., float2, float3, float4).");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the magnitude of the input vector as a float."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Computes the magnitude of a float vector of any dimension and returns the result as a float.");
+  }
 };
 
 struct NormalizeOp {
@@ -161,10 +215,29 @@ struct NormalizeOp {
 struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
   // Normalize also supports SHType::Float seqs
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a float vector of any dimension (e.g., float2, float3, float4) or a float sequence of any length.");
+  }
 
-  static inline Parameters Params{
-      {"Positive", SHCCSTR("If the output should be in the range 0.0~1.0 instead of -1.0~1.0."), {CoreInfo::BoolType}}};
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a float vector of the same dimension or a float sequence of the same length as what was passed as "
+                   "input but with its values normalized to a magnitude of 1.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard normalizes a float vector of any dimension or a sequence of floats, scaling it to have a "
+                   "magnitude of 1 while preserving "
+                   "its direction. "
+                   "By default, output values can range from -1.0 to 1.0. If the 'Positive' parameter is set to true, the output "
+                   "will be scaled to the range 0.0 to 1.0. "
+                   "For example, normalizing [4.0 -5.0 6.0 -7.0] will result in [0.3563, -0.4454, 0.5345, -0.6236], which has a "
+                   "length of 1. ");
+  }
+
+  static inline Parameters Params{{"Positive",
+                                   SHCCSTR("If set to true, the output will be in the range 0.0~1.0 instead of -1.0~1.0."),
+                                   {CoreInfo::BoolType}}};
   SHParametersInfo parameters() { return Params; }
 
   void setParam(int index, const SHVar &value) { op.op.positiveOnly = value.payload.boolValue; }
@@ -188,6 +261,22 @@ struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
 // Mat @ Vec = Vec
 // If ever becomes a bottle neck, valgrind and optimize
 struct MatMul : public BinaryBase {
+  static SHOptionalString help() {
+    return SHCCSTR("Performs matrix multiplication on either two matrices or a matrix and a vector and returns "
+                   "either a matrix or a vector accordingly. The two matrixes must be of similar dimensions (2x2, 3x3, or 4x4). "
+                   "And if multiplied with a vector, the vector too must have similar dimensions (2x2 with float2, 3x3 with "
+                   "float3, 4x4 with float4).");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::DifferentMatrixes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a matrix as input. (2x2, 3x3 or 4x4)"); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::MatrixOrVector; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Returns the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
+        "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a matrix with the same dimensions as the input matrix.");
+  }
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq && rhs == SHType::Seq) {
       resultType = lhs;
@@ -209,6 +298,22 @@ struct MatMul : public BinaryBase {
 };
 
 struct Transpose : public UnaryBase {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Performs matrix transposition on the input matrix. Transposition flips the matrix over its main diagonal, "
+        "switching its rows and columns. This shard supports 2x2, 3x3, and 4x4 as input matrices. A 4x4 matrix is a sequence "
+        "with exactly 4 float4 vectors, a 3x3 matrix is a sequence with exactly 3 float3 vectors, and a 2x2 matrix "
+        "is a sequence with exactly 2 float2 vectors.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::DifferentMatrixes; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a matrix (sequence of float2, float3, or float4 vectors) as input.");
+  }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::DifferentMatrixes; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the transposed the matrix."); }
+
   OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq) {
       resultType = lhs;
@@ -232,9 +337,16 @@ struct Transpose : public UnaryBase {
 };
 
 struct Inverse : public UnaryBase {
-  static inline shards::Types MatrixTypes{{CoreInfo::Float4x4Type}};
-  static SHTypesInfo inputTypes() { return MatrixTypes; }
-  static SHTypesInfo outputTypes() { return MatrixTypes; }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes a 4x4 matrices as input and computes its inverse. A 4x4 matrix is a sequence with exactly 4 "
+                   "float4 vectors while a float4 vector is a vector with 4 float elements.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a 4x4 matrix (a sequence of four float4 vectors) as input."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the inverse of the input 4x4 matrix."); }
 
   OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq) {
@@ -266,8 +378,20 @@ struct Orthographic {
 
   Mat4 _output{};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a 4x4 orthographic projection matrix based on the width size, height size, near, "
+                   "and far planes specified in the appropriate parameters. A 4x4 matrix is a sequence with exactly 4 float4 "
+                   "vectors while a float4 vector is a vector with 4 "
+                   "float elements.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a 4x4 orthographic projection matrix (a sequence of four float4 vectors).");
+  }
 
   // left, right, bottom, top, near, far
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Width", SHCCSTR("Width size."), CoreInfo::IntOrFloat),
@@ -333,8 +457,22 @@ struct Orthographic {
 struct Translation {
   Mat4 _output{};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a 4x4 translation matrix (a sequence of four float4 vectors) from a float3 vector input "
+                   "representing the translation in x, y, and z directions. A float4 vector is a vector with 4 float elements "
+                   "while a float3 vector is a vector with 3 float elements.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float3 vector (a vector with 3 float elements) that represents the translation in x, y, and z "
+                   "directions. The first element in the vector being x, the second y and the third z.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a 4x4 translation matrix (a sequence of four float4 vectors).");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto v3 = reinterpret_cast<const Vec3 *>(&input);
@@ -346,8 +484,21 @@ struct Translation {
 struct Scaling {
   Mat4 _output{};
 
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard creates a 4x4 scaling matrix (a sequence of four float4 vectors) from a float3 vector input that represents "
+        "the scaling factors in x, y, and z directions. A float4 vector is a vector with 4 float elements while a float3 vector "
+        "is a vector with 3 float elements.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float3 vector (a vector with 3 float elements) that represents the scaling factors in x, y, and z "
+                   "directions. The first element in the vector being x, the second y and the third z.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a 4x4 scaling matrix (a sequence of four float4 vectors)."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto v3 = reinterpret_cast<const Vec3 *>(&input);
@@ -359,8 +510,18 @@ struct Scaling {
 struct Rotation {
   Mat4 _output{};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a 4x4 rotation matrix (a sequence of four float4 vectors) from a float4 vector input "
+                   "representing a rotation quaternion. A float4 vector is a vector with 4 float elements.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float4 vector (a vector with 4 float elements) representing a rotation quaternion.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a 4x4 rotation matrix (a sequence of four float4 vectors)."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     // quaternion
@@ -375,8 +536,22 @@ struct LookAt {
   static inline std::array<SHVar, 2> InputTableKeys{Var("Position"), Var("Target")};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard creates a 4x4 view matrix (a sequence of four float4 vectors) for a camera based on the camera's "
+        "position and a target point which is "
+        "represented as a table with two float3 vectors: 'Position' and 'Target', that is passed as input. A float4 vector "
+        "is a vector with 4 float elements while a float3 vector is a vector with 3 float elements.");
+  }
+
   static SHTypesInfo inputTypes() { return InputTable; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a table with two float3 values: 'Position' (the camera's position) and 'Target' (the point the camera "
+                   "is looking at). Eg. { Position: @f3(1 2 3) Target: @f3(4 5 6) }");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a 4x4 view matrix (a sequence of four float4 vectors)."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     // this is the most efficient way to find items in table
@@ -424,7 +599,54 @@ template <const linalg::aliases::float3 &AXIS> struct AxisAngle {
   Vec4 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() {
+    if constexpr (AXIS == AxisX) {
+      return SHCCSTR("Takes a float value representing the X rotation in radians.");
+    } else if constexpr (AXIS == AxisY) {
+      return SHCCSTR("Takes a float value representing the Y rotation in radians.");
+    } else if constexpr (AXIS == AxisZ) {
+      return SHCCSTR("Takes a float value representing the Z rotation in radians.");
+    } else {
+      return SHCCSTR("Takes a float value representing an angle in radians.");
+    }
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString outputHelp() {
+    if constexpr (AXIS == AxisX) {
+      return SHCCSTR(
+          "Returns a float4 vector (a vector with 4 float elements) representing a rotation quaternion around the X-axis.");
+    } else if constexpr (AXIS == AxisY) {
+      return SHCCSTR(
+          "Returns a float4 vector (a vector with 4 float elements) representing a rotation quaternion around the Y-axis.");
+    } else if constexpr (AXIS == AxisZ) {
+      return SHCCSTR(
+          "Returns a float4 vector (a vector with 4 float elements) representing a rotation quaternion around the Z-axis.");
+    } else {
+      return SHCCSTR("Returns a float4 vector (a vector with 4 float elements) representing a rotation quaternion around the "
+                     "specified axis.");
+    }
+  }
+
+  static SHOptionalString help() {
+    if constexpr (AXIS == AxisX) {
+      return SHCCSTR("This shard creates a rotation quaternion for rotation around the X-axis. It takes a float "
+                     "input representing the angle in radians and returns the rotation quaternion as a float4 vector. "
+                     "A float4 vector is a vector with 4 float elements.");
+    } else if constexpr (AXIS == AxisY) {
+      return SHCCSTR("This shard creates a rotation quaternion for rotation around the Y-axis. It takes a float "
+                     "input representing the angle in radians and returns the rotation quaternion as a float4 vector. "
+                     "A float4 vector is a vector with 4 float elements.");
+    } else if constexpr (AXIS == AxisZ) {
+      return SHCCSTR("This shard creates a rotation quaternion for rotation around the Z-axis. It takes a float "
+                     "input representing the angle in radians and returns the rotation quaternion as a float4 vector. "
+                     "A float4 vector is a vector with 4 float elements.");
+    } else {
+      return SHCCSTR("This shard creates a rotation quaternion for rotation around the specified axis. It takes a float "
+                     "input representing the angle in radians and returns the rotation quaternion as a float4 vector. "
+                     "A float4 vector is a vector with 4 float elements.");
+    }
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output = linalg::rotation_quat(AXIS, float(input.payload.floatValue));
@@ -439,8 +661,15 @@ using AxisAngleZ = AxisAngle<AxisZ>;
 struct Deg2Rad {
   const double PI = 3.141592653589793238463;
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts the input angle from degrees to radians. The conversion is done using the formula: "
+                   "radians = degrees * (π / 180).");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a float value representing an angle in degrees."); }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float value representing the input angle in radians."); }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(input.payload.floatValue * (PI / 180.0)); }
 };
@@ -448,8 +677,15 @@ struct Deg2Rad {
 struct Rad2Deg {
   const double PI = 3.141592653589793238463;
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts the input angle from radians to degrees. The conversion is done using the formula: "
+                   "degrees = radians * (180 / π).");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a float value representing an angle in radians."); }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float value representing the input angle in degrees."); }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(input.payload.floatValue * (180.0 / PI)); }
 };
@@ -458,9 +694,21 @@ struct MatIdentity {
   PARAM_VAR(_type, "Type", "The matrix row type of the corresponding matrix", {CoreInfo2::TypeEnumInfo::Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_type));
 
-  static SHOptionalString help() { return SHCCSTR("Gives identity values for square matrix types"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard creates a standard 4x4 identity matrix. The standard identity matrix is a square matrix with 1s on the main "
+        "diagonal and 0s for the other elements. A 4x4 matrix is a sequence with exactly 4 float4 vector and a float4 vector is "
+        "a vector with "
+        "4 float elements.");
+  }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Returns a 4x4 identity matrix (a sequence of four float4 vectors). The matrix will have 1s on the main diagonal "
+        "and 0s for the other elements.");
+  }
 
   static inline Mat4 Float4x4Identity = linalg::identity;
   static inline SHVar Float4x4IdentityVar = SHVar(Float4x4Identity);

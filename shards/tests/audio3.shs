@@ -1,0 +1,249 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+@mesh(main)
+
+@wire(main-audio {
+  Audio.Engine
+
+  Once({
+    "./data/Ode_to_Joy.ogg" | Audio.Sound(Spatialized: true) = game-on
+    game-on | Audio.Start(Looped: true)
+    Pause(2.0)
+    game-on | Audio.Pause
+    Pause(1.0)
+    game-on | Audio.Start(Looped: true)
+  })
+
+  ;; Volume Test
+
+  ;;Sets the volume of the sound to 0.2
+  0.2
+  Audio.Volume(game-on)
+  Pause(1.0)
+
+  ;;Sets the volume of the sound to 2.5
+  2.5
+  Audio.Volume(game-on)
+  Pause(1.0)
+
+  ;;Sets the volume of the sound to 1.0 which is back to original volume
+  1.0
+  Audio.Volume(game-on)
+  Pause(1.0)
+
+  ;;Sets the pan of the sound to -1.0 - far left
+  -1.0
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  -0.8
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  -0.5
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  -0.2
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  -0.1
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  ;;Sets the pan of the sound to 0.0 - center
+  0.0
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  0.1
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  0.2
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  0.5
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  0.8
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+
+  ;;Sets the pan of the sound to 1.0 - far right
+  1.0
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  ;;Sets the pan of the sound to 0.0 - back to center
+  0.0
+  Audio.Pan(game-on)
+  Pause(1.0)
+
+  ;; lower the pitch by one octave
+  0.5
+  Audio.Pitch(game-on)
+  Pause(3.0)
+
+  ;; raise the pitch by one octave
+  2.0
+  Audio.Pitch(game-on)
+  Pause(3.0)
+
+  ;; Resets pitch to original
+  1.0
+  Audio.Pitch(game-on)
+  Pause(3.0)
+
+  ; Positioning sound to the right
+  @f3(1.0 0.0 0.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  ;; Positioning sound to the left
+  @f3(-1.0 0.0 0.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  ;; Positioning sound to the top
+  @f3(0.0 1.0 0.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  ;; Positioning sound to the bottom
+  @f3(0.0 -5.0 0.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  ;; Positioning sound to the front
+  @f3(0.0 0.0 1.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  ; Positioning sound to the back
+  @f3(0.0 0.0 -5.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+  @f3(0.0 0.0 0.0)
+  Audio.Position(game-on)
+  Pause(2.0)
+
+
+  ; Direction Test
+
+  ;; Set direction to straight ahead (positive Z-axis)
+  @f3(0.0 0.0 1.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction to behind (negative Z-axis)
+  @f3(0.0 0.0 -1.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction to the right (positive X-axis)
+  @f3(1.0 0.0 0.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction to the left (negative X-axis)
+  @f3(-1.0 0.0 0.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction upwards (positive Y-axis)
+  @f3(0.0 1.0 0.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction downwards (negative Y-axis)
+  @f3(0.0 -1.0 0.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set direction to a diagonal (normalized)
+  @f3(1.0 1.0 1.0)
+  Math.Normalize
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Reset direction to default (usually facing forward)
+  @f3(0.0 0.0 1.0)
+  Audio.Direction(game-on)
+  Pause(1.0)
+
+  ;; Set inner angle to 0.5 radians, outer angle to 1.2 radians, and outer gain to 0.5
+  @f3(0.5 1.2 0.5)
+  Audio.Cones(game-on)
+  Pause(1.0)
+
+  ;; Set a wider inner angle, narrower outer angle, and lower outer gain
+  @f3(1.0 1.5 0.3)
+  Audio.Cones(game-on)
+  Pause(1.0)
+
+  ;; Set a very narrow cone with high attenuation outside
+  @f3(0.2 0.4 0.1)
+  Audio.Cones(game-on)
+  Pause(1.0)
+
+  ;; Reset to default values (you may need to adjust these based on your specific requirements)
+  @f3(3.14159 3.14159 1.0)
+  Audio.Cones(game-on)
+  Pause(1.0)
+
+  ;; Velocity Test
+
+  ;; Set velocity moving forward (positive Z-axis)
+  @f3(0.0 0.0 5.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Set velocity moving backward (negative Z-axis)
+  @f3(0.0 0.0 -5.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ; Set velocity moving right (positive X-axis)
+  @f3(10.0 0.0 0.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Set velocity moving left (negative X-axis)
+  @f3(-5.0 0.0 0.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Set velocity moving up (positive Y-axis)
+  @f3(0.0 5.0 0.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Set velocity moving down (negative Y-axis)
+  @f3(0.0 -5.0 0.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Set velocity in a diagonal direction
+  @f3(3.0 2.0 4.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  ;; Reset velocity to stationary
+  @f3(0.0 0.0 0.0)
+  Audio.Velocity(game-on)
+  Pause(1.0)
+
+  game-on | Audio.Stop
+  Pause(1.0)
+  Stop
+} Looped: true)
+
+@schedule(main main-audio)
+@run(main FPS: 60) | Assert.Is(true)
