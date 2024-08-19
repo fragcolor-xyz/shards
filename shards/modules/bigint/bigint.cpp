@@ -15,6 +15,11 @@
 
 using namespace boost::multiprecision;
 
+struct BigIntDefaultHelpText {
+  static inline const SHOptionalString BigIntInputOutput =
+      SHCCSTR("Big integer represented as bytes.");
+};
+
 namespace shards {
 namespace BigInt {
 inline Var to_var(const cpp_int &bi, std::vector<uint8_t> &buffer) {
@@ -35,13 +40,22 @@ inline cpp_int from_var_payload(const SHVarPayload &payload) {
 
 inline cpp_int from_var(const SHVar &op) { return from_var_payload(op.payload); }
 
+
+
 struct ToBigInt {
   std::vector<uint8_t> _buffer;
 
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Converts various input types to a big integer represented as bytes. Big integers are signed and can be of arbitrary "
+        "size. This allows for users to work with numbers that are too large to be represented by standard integer types.");
+  }
+
   static inline Types InputTypes{CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::StringType, CoreInfo::BytesType};
   static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value to convert to a big integer."); }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     cpp_int bi;
@@ -132,6 +146,9 @@ template <typename TOp> struct BinaryOperation : public ::shards::Math::BinaryOp
                    "this operation.");
   }
   static SHTypesInfo outputTypes() { return BigIntInputTypes; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the operation as a big integer or sequence of big integers represented as bytes.");
+  }
 
   SHParametersInfo parameters() {
     static Parameters params{
@@ -149,12 +166,13 @@ struct BigOperandBase {
   std::vector<uint8_t> _buffer;
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
 
   SHParametersInfo parameters() {
-    static Parameters params{{"Operand", SHCCSTR("The bytes variable representing the operand"), {CoreInfo::BytesVarType}}};
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to compare against represented as bytes."), {CoreInfo::BytesVarType}}};
     return params;
   }
 
@@ -181,9 +199,9 @@ struct RegOperandBase {
   std::vector<uint8_t> _buffer;
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the BigInt result of the operation as bytes."); }
 
   SHParametersInfo parameters() {
     static Parameters params{
@@ -210,35 +228,167 @@ struct RegOperandBase {
   }
 };
 
-using Add = BigInt::BinaryOperation<BigIntBinaryOperation<Math::AddOp>>;
-using Subtract = BigInt::BinaryOperation<BigIntBinaryOperation<Math::SubtractOp>>;
-using Multiply = BigInt::BinaryOperation<BigIntBinaryOperation<Math::MultiplyOp>>;
-using Divide = BigInt::BinaryOperation<BigIntBinaryOperation<Math::DivideOp>>;
-using Xor = BigInt::BinaryOperation<BigIntBinaryOperation<Math::XorOp>>;
-using And = BigInt::BinaryOperation<BigIntBinaryOperation<Math::AndOp>>;
-using Or = BigInt::BinaryOperation<BigIntBinaryOperation<Math::OrOp>>;
-using Mod = BigInt::BinaryOperation<BigIntBinaryOperation<Math::ModOp>>;
-
-#define BIGINT_LOGIC_OP(__NAME__, __OP__)                                                                                      \
-  struct __NAME__ : public BigOperandBase {                                                                                    \
-    static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }                                                            \
-    static SHOptionalString outputHelp() { return SHCCSTR("A boolean value repesenting the result of the logic operation."); } \
-                                                                                                                               \
-    SHVar activate(SHContext *context, const SHVar &input) {                                                                   \
-      cpp_int bia = from_var(input);                                                                                           \
-      auto op = getOperand();                                                                                                  \
-      cpp_int bib = from_var(op);                                                                                              \
-      bool res = bia __OP__ bib;                                                                                               \
-      return Var(res);                                                                                                         \
-    }                                                                                                                          \
+struct AddOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::AddOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard adds the input big integer to the big integer specified in the Operand parameter and returns the result.");
   }
 
-BIGINT_LOGIC_OP(Is, ==);
-BIGINT_LOGIC_OP(IsNot, !=);
-BIGINT_LOGIC_OP(IsMore, >);
-BIGINT_LOGIC_OP(IsLess, <);
-BIGINT_LOGIC_OP(IsMoreEqual, >=);
-BIGINT_LOGIC_OP(IsLessEqual, <=);
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to add to the input as bytes."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct SubtractOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::SubtractOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard subtracts the input big integer from the big integer specified in the Operand parameter and "
+                   "returns the result.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to subtract from the input as bytes."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct MultiplyOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::MultiplyOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard multiplies the input big integer with the big integer specified in the Operand parameter and "
+                   "returns the result.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to multiply the big integer input with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct DivideOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::DivideOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard divides the input big integer by the big integer specified in the Operand parameter and returns the result.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to divide the big integer input with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct XorOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::XorOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise XOR operation on the input big integer with the big integer specified in the "
+                   "Operand parameter and returns the result. A bitwise XOR operation is a binary operation that compares each "
+                   "bit of the binary representations of two numbers and returns 1 if the bits are different and 0 if they are "
+                   "the same. The resulting number "
+                   "is a big integer representation of the 1s and 0s concatenated.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the XOR operation as a big integer represented as bytes.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The second big integer to perform the XOR operation with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct AndOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::AndOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise AND operation on the input big integer with the big integer specified in the "
+                   "Operand parameter and returns the result. A bitwise AND operation is a binary operation that compares each "
+                   "bit of the binary representations of two numbers and returns 1 if the bits are 1 and 0 otherwise. The "
+                   "resulting number is a big integer "
+                   "representation of the 1s and 0s concatenated.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the AND operation as a big integer represented as bytes.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The second big integer to perform the AND operation with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct OrOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::OrOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise OR operation on the input big integer with the big integer specified in the "
+                   "Operand parameter and returns the result. A bitwise OR operation is a binary operation that compares each "
+                   "bit of the binary representations of two numbers and returns 1 if the either or both bits are 1 and 0 if "
+                   "both bits are 0. The resulting number is a big integer "
+                   "representation of the 1s and 0s concatenated.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the OR operation as a big integer represented as bytes.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The second big integer to perform the OR operation with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct ModOp : public BigInt::BinaryOperation<BigIntBinaryOperation<Math::ModOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard computes the modulus of the input big integer with respect to the big integer specified in the "
+                   "Operand parameter and returns the result.");
+  }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to compute the modulus with respect to."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+using Add = AddOp;
+using Subtract = SubtractOp;
+using Multiply = MultiplyOp;
+using Divide = DivideOp;
+using Xor = XorOp;
+using And = AndOp;
+using Or = OrOp;
+using Mod = ModOp;
+
+#define BIGINT_LOGIC_OP(__NAME__, __OP__, HELP_TEXT, OUTPUT_HELP_TEXT)         \
+  struct __NAME__ : public BigOperandBase {                                    \
+    static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }            \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); } \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }              \
+                                                                               \
+    SHVar activate(SHContext *context, const SHVar &input) {                   \
+      cpp_int bia = from_var(input);                                           \
+      auto op = getOperand();                                                  \
+      cpp_int bib = from_var(op);                                              \
+      bool res = bia __OP__ bib;                                               \
+      return Var(res);                                                         \
+    }                                                                          \
+  }
+
+BIGINT_LOGIC_OP(Is, ==, "This shard checks if the input big integer is equal to the operand.",
+                "Returns true if the input big integer is equal to the big integer specified in the Operand parameter and false otherwise.");
+BIGINT_LOGIC_OP(IsNot, !=, "This shard checks if the input big integer is not equal to the operand.",
+                "Returns true if the input big integer is not equal to the big integer specified in the Operand parameter and false otherwise.");
+BIGINT_LOGIC_OP(IsMore, >, "This shard checks if the input big integer is greater than the operand.",
+                "Returns true if the input big integer is greater than the big integer specified in the Operand parameter and false otherwise.");
+BIGINT_LOGIC_OP(IsLess, <, "This shard checks if the input big integer is less than the operand.",
+                "Returns true if the input big integer is less than the big integer specified in the Operand parameter and false otherwise.");
+BIGINT_LOGIC_OP(IsMoreEqual, >=, "This shard checks if the input big integer is greater than or equal to the operand.",
+                "Returns true if the input big integer is greater than or equal to the big integer specified in the Operand parameter and false otherwise.");
+BIGINT_LOGIC_OP(IsLessEqual, <=, "This shard checks if the input big integer is less than or equal to the operand.",
+                "Returns true if the input big integer is less than or equal to the big integer specified in the Operand parameter and false otherwise.");
 
 struct MinOp final {
   template <typename T> T apply(const T &a, const T &b) { return std::min(a, b); }
@@ -248,31 +398,73 @@ struct MaxOp final {
   template <typename T> T apply(const T &a, const T &b) { return std::max(a, b); }
 };
 
-using Min = BigInt::BinaryOperation<BigIntBinaryOperation<MinOp>>;
-using Max = BigInt::BinaryOperation<BigIntBinaryOperation<MaxOp>>;
+struct Min : public BigInt::BinaryOperation<BigIntBinaryOperation<MinOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard compares the input big integer with the big integer specified in the Operand parameter and "
+                   "returns the smaller of the two.");
+  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the smaller of the two input big integers."); }
 
-#define BIGINT_REG_BINARY_OP(__NAME__, __OP__)                 \
-  struct __NAME__ : public RegOperandBase {                    \
-    SHVar activate(SHContext *context, const SHVar &input) {   \
-      cpp_int bia = from_var(input);                           \
-      auto op = getOperand();                                  \
-      if (op.valueType != SHType::Int)                         \
-        throw ActivationError("Pow operand should be an Int"); \
-      cpp_int bres = __OP__(bia, op.payload.intValue);         \
-      return to_var(bres, _buffer);                            \
-    }                                                          \
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to compare the input with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+struct Max : public BigInt::BinaryOperation<BigIntBinaryOperation<MaxOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard compares the input big integer with the big integer specified in the Operand parameter and "
+                   "returns the larger of the two.");
+  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the larger of the two input big integers."); }
+
+  SHParametersInfo parameters() {
+    static Parameters params{
+        {"Operand", SHCCSTR("The big integer to compare the input with."), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+};
+
+#define BIGINT_REG_BINARY_OP(__NAME__, __OP__)                                                                                 \
+  struct __NAME__ : public RegOperandBase {                                                                                    \
+    static SHOptionalString help() {                                                                                           \
+      return SHCCSTR("This shard raises the input big integer to the power of the exponent specified in " \
+                     "the  Operand parameter.");                                                                               \
+    }                                                                                                                          \
+    SHParametersInfo parameters() {                                                                                            \
+      static Parameters params{                                                                                                \
+          {"Operand",                                                                                                          \
+           SHCCSTR("The power to which the input big integer will be raised. This must be a non-negative integer."),           \
+           {CoreInfo::IntType, CoreInfo::IntVarType}}};                                                                        \
+      return params;                                                                                                           \
+    }                                                                                                                          \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                                   \
+      cpp_int bia = from_var(input);                                                                                           \
+      auto op = getOperand();                                                                                                  \
+      if (op.valueType != SHType::Int)                                                                                         \
+        throw ActivationError("Pow operand should be an Int");                                                                 \
+      cpp_int bres = __OP__(bia, op.payload.intValue);                                                                         \
+      return to_var(bres, _buffer);                                                                                            \
+    }                                                                                                                          \
   }
 
 BIGINT_REG_BINARY_OP(Pow, pow);
 
-#define BIGINT_UNARY_OP(__NAME__, __OP__)                    \
-  struct __NAME__ : public RegOperandBase {                  \
-    SHParametersInfo parameters() { return {}; }             \
-    SHVar activate(SHContext *context, const SHVar &input) { \
-      cpp_int bia = from_var(input);                         \
-      cpp_int bres = __OP__(bia);                            \
-      return to_var(bres, _buffer);                          \
-    }                                                        \
+#define BIGINT_UNARY_OP(__NAME__, __OP__)                                                                   \
+  struct __NAME__ : public RegOperandBase {                                                                 \
+    static SHOptionalString help() {                                                                        \
+      return SHCCSTR("This shard computes the square root of the input big integer represented as bytes."); \
+    }                                                                                                       \
+    static SHOptionalString outputHelp() {                                                                  \
+      return SHCCSTR("Returns the square root of the input big integer represented as bytes.");             \
+    }                                                                                                       \
+    SHParametersInfo parameters() { return {}; }                                                            \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                \
+      cpp_int bia = from_var(input);                                                                        \
+      cpp_int bres = __OP__(bia);                                                                           \
+      return to_var(bres, _buffer);                                                                         \
+    }                                                                                                       \
   }
 
 BIGINT_UNARY_OP(Sqrt, sqrt);
@@ -293,14 +485,20 @@ struct Shift : public ShiftBase {
   std::vector<uint8_t> _buffer;
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the big integer with its decimal point shifted represented as bytes.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard shifts the decimal point of the input big integer by the amount specified in the By parameter.");
+  }
 
   SHParametersInfo parameters() {
     static Parameters params{{"By",
-                              SHCCSTR("The shift is of the decimal point, i.e. of powers of ten, and is "
-                                      "to the left if n is negative or to the right if n is positive."),
+                              SHCCSTR("The number of decimal places to shift the input big integer by. A positive number shifts "
+                                      "the decimal point to the right, while a negative number shifts it to the left."),
                               {CoreInfo::IntType, CoreInfo::IntVarType}}};
     return params;
   }
@@ -319,18 +517,20 @@ struct Shift : public ShiftBase {
 };
 
 struct ToFloat : public ShiftBase {
-  static SHOptionalString help() { return SHCCSTR("Converts a big integer value to a floating point number."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts the input big integer value to a floating point number.");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The big integer to convert, represented as bytes."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Floating point number representation of the big integer value."); }
 
   SHParametersInfo parameters() {
     static Parameters params{{"ShiftedBy",
-                              SHCCSTR("The shift is of the decimal point, i.e. of powers of ten, and is "
-                                      "to the left if n is negative or to the right if n is positive."),
+                              SHCCSTR("The number of decimal places to shift the input big integer by. A positive number shifts "
+                                      "the decimal point to the right, while a negative number shifts it to the left."),
                               {CoreInfo::IntType}}};
     return params;
   }
@@ -349,10 +549,10 @@ struct ToFloat : public ShiftBase {
 };
 
 struct ToInt {
-  static SHOptionalString help() { return SHCCSTR("Converts a big integer value to an integer."); }
+  static SHOptionalString help() { return SHCCSTR("This shard converts the input big integer value to an integer."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The big integer to convert, represented as bytes."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Integer representation of the big integer value."); }
@@ -364,13 +564,13 @@ struct ToInt {
 };
 
 struct FromFloat : public ShiftBase {
-  static SHOptionalString help() { return SHCCSTR("Converts a floating point number to a big integer."); }
+  static SHOptionalString help() { return SHCCSTR("This shard converts a floating point number to a big integer."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Floating point number."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
 
   SHParametersInfo parameters() {
     static Parameters params{{"ShiftedBy",
@@ -400,7 +600,7 @@ struct ToString {
   static SHOptionalString help() { return SHCCSTR("Converts the value to a string representation."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("String representation of the big integer value."); }
 
@@ -417,14 +617,21 @@ private:
 struct ToBytes {
   std::vector<uint8_t> _buffer;
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts a big integer value into a bytes representaion with the specified bit length set in the "
+                   "Bits parameter. If set to 0, the output will be the minimum number of bytes required to represent the big "
+                   "integer. If set to a positive number, the output will be padded with leading zeros to match the specified "
+                   "bit length. An error is thrown if the number requires more bits than specified.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Big integer to convert, represented as bytes."); }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   SHParametersInfo parameters() {
     static Parameters params{{"Bits",
-                              SHCCSTR("The desired amount of bits for the "
-                                      "output or 0 for automatic packing."),
+                              SHCCSTR("The desired bit length for the output to take. If set to 0, the output will be the "
+                                      "minimum number of bytes required to represent the big integer."),
                               {CoreInfo::IntType}}};
     return params;
   }
@@ -462,13 +669,18 @@ struct ToBytes {
 };
 
 struct ToHex {
-  static SHOptionalString help() { return SHCCSTR("Converts the value to a hexadecimal representation."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts the input big integer value to its hexadecimal representation.");
+  }
 
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
   static SHTypesInfo inputTypes() { return toHexTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Big integer to convert, represented as bytes."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Hexadecimal representation of the integer value."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the hexadecimal representation of the input big integer value.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar fixedInput = input;
@@ -483,13 +695,13 @@ private:
 };
 
 struct Abs {
-  static SHOptionalString help() { return SHCCSTR("Computes the absolute value of a big integer."); }
+  static SHOptionalString help() { return SHCCSTR("This shard computes the absolute value of a big integer."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString inputHelp() { return BigIntDefaultHelpText::BigIntInputOutput; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Big integer represented as bytes."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resulting big integer with an absolute value, represented as bytes."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     cpp_int bi = from_var(input);
