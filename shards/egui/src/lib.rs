@@ -103,13 +103,13 @@ lazy_static! {
 }
 
 #[derive(Hash)]
-struct EguiId {
+pub struct EguiId {
   p: usize,
   idx: u8,
 }
 
 impl EguiId {
-  fn new<T>(shard: &T, idx: u8) -> EguiId {
+  pub fn new<T>(shard: &T, idx: u8) -> EguiId {
     EguiId {
       p: shard as *const T as *mut c_void as usize,
       idx,

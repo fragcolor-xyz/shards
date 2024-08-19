@@ -16,6 +16,8 @@ use shards::types::Type;
 use shards::types::Var;
 use std::ops::Range;
 
+use egui_commonmark::ButtonDrawFn;
+
 pub mod image_util;
 
 #[derive(shards::shards_enum)]
@@ -125,12 +127,6 @@ struct ListBox {
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: i64,
-}
-
-struct MarkdownViewer {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  cache: egui_commonmark::CommonMarkCache,
 }
 
 struct ProgressBar {
@@ -306,7 +302,7 @@ pub fn register_shards() {
   plots::register_shards();
   image::register_shards();
   image_button::register_shards();
-  register_legacy_shard::<MarkdownViewer>();
+  register_shard::<markdown_viewer::MarkdownViewerShard>();
   register_legacy_shard::<ProgressBar>();
   register_legacy_shard::<RadioButton>();
   register_legacy_shard::<Spinner>();

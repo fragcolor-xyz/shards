@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::MarkdownViewer;
 use crate::util;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -14,11 +13,25 @@ use shards::types::ParamVar;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::STRING_TYPES;
+use shards::types::InstanceData;
+use shards::shard::Shard;
+use shards::types::Type;
 
 const THEME_LIGHT: &str = "Solarized (light)";
 const THEME_DARK: &str = "Solarized (dark)";
 
-impl Default for MarkdownViewer {
+#[derive(shards::shard)]
+#[shard_info("UI.MarkdownViewer", "A markdown viewer.")]
+pub struct MarkdownViewerShard {
+  #[shard_required]
+  requiring: ExposedTypes,
+  #[shard_warmup]
+  parents: ParamVar,
+
+  cache: egui_commonmark::CommonMarkCache,
+}
+
+impl Default for MarkdownViewerShard {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
@@ -35,70 +48,36 @@ impl Default for MarkdownViewer {
   }
 }
 
-impl LegacyShard for MarkdownViewer {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.MarkdownViewer")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.MarkdownViewer-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.MarkdownViewer"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Renders a markdown text."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shards::shard_impl]
+impl Shard for MarkdownViewerShard {
+  fn input_types(&mut self) -> &Types {
     &STRING_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The markdown text to render."))
-  }
-
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &STRING_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
-    *HELP_OUTPUT_EQUAL_INPUT
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
-    Some(&self.requiring)
-  }
-
-  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.parents.warmup(context);
-
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.parents.cleanup(ctx);
-
+    self.cleanup_helper(ctx)?;
     Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
       egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
+        .indentation_spaces(2)
         .syntax_theme_dark(THEME_DARK)
         .syntax_theme_light(THEME_LIGHT)
         .show(ui, &mut self.cache, text);
