@@ -16,8 +16,6 @@ use shards::types::Type;
 use shards::types::Var;
 use std::ops::Range;
 
-use egui_commonmark::ButtonDrawFn;
-
 pub mod image_util;
 
 #[derive(shards::shards_enum)]
