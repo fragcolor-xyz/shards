@@ -105,8 +105,10 @@ struct CrossOp {
 
 struct Cross : public BinaryOperation<VectorBinaryOperation<CrossOp>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard computes the cross product of the float3 vector (or sequence of float3 vectors) provided as input and the float3 vector "
-                   "provided in the Operand parameter and returns the result as a float3 vector (or sequence of float3 vectors). A float3 vector is a vector "
+    return SHCCSTR("This shard computes the cross product of the float3 vector (or sequence of float3 vectors) provided as input "
+                   "and the float3 vector "
+                   "provided in the Operand parameter and returns the result as a float3 vector (or sequence of float3 vectors). "
+                   "A float3 vector is a vector "
                    "with 3 float elements.");
   }
 
@@ -114,10 +116,13 @@ struct Cross : public BinaryOperation<VectorBinaryOperation<CrossOp>> {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts float3 vector (a vector with 3 float elements) as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::Float3OrFloat3Seq; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the result of the cross product as a float3 vector or a sequence of float3 vectors if the input was a sequence of float3 vectors."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the result of the cross product as a float3 vector or a sequence of float3 vectors if the input was "
+                   "a sequence of float3 vectors.");
+  }
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("Operand", SHCCSTR("The float3 vector to compute the cross product with."), CoreInfo::FloatVectorsOrVar));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Operand", SHCCSTR("The float3 vector to compute the cross product with."), CoreInfo::FloatVectorsOrVar));
 
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 };
@@ -257,20 +262,20 @@ struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
 // If ever becomes a bottle neck, valgrind and optimize
 struct MatMul : public BinaryBase {
   static SHOptionalString help() {
-    return SHCCSTR("Performs matrix multiplication on either two 4x4 matrices or a 4x4 matrix and a float4 vector and returns "
-                   "either a 4x4 matrix or a float4 vector accordingly. A 4x4 matrix is a sequence with exactly 4 float4 vectors "
-                   "while a float4 vector is a vector with 4 float elements.");
+    return SHCCSTR("Performs matrix multiplication on either two matrices or a matrix and a vector and returns "
+                   "either a matrix or a vector accordingly. The two matrixes must be of similar dimensions (2x2, 3x3, or 4x4). "
+                   "And if multiplied with a vector, the vector too must have similar dimensions (2x2 with float2, 3x3 with "
+                   "float3, 4x4 with float4).");
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Takes a 4x4 matrix as input. (a sequence of four float4 vectors)"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::DifferentMatrixes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a matrix as input. (2x2, 3x3 or 4x4)"); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::MatrixOrVector; }
   static SHOptionalString outputHelp() {
     return SHCCSTR(
-        "Returns the result of the matrix multiplication. If a 4x4 matrix is multiplied by a float4 vector, the result is a "
-        "float4 vector (a vector with 4 float elements). If two 4x4 matrices are multiplied, the result is a 4x4 matrix (a "
-        "sequence of four float4 vectors).");
+        "Returns the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
+        "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a matrix with the same dimensions as the input matrix.");
   }
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq && rhs == SHType::Seq) {
@@ -341,9 +346,7 @@ struct Inverse : public UnaryBase {
   static SHOptionalString inputHelp() { return SHCCSTR("Takes a 4x4 matrix (a sequence of four float4 vectors) as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the inverse of the input 4x4 matrix.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the inverse of the input 4x4 matrix."); }
 
   OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq) {
@@ -376,10 +379,10 @@ struct Orthographic {
   Mat4 _output{};
 
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard creates a 4x4 orthographic projection matrix based on the width size, height size, near, "
-        "and far planes specified in the appropriate parameters. A 4x4 matrix is a sequence with exactly 4 float4 vectors while a float4 vector is a vector with 4 "
-        "float elements.");
+    return SHCCSTR("This shard creates a 4x4 orthographic projection matrix based on the width size, height size, near, "
+                   "and far planes specified in the appropriate parameters. A 4x4 matrix is a sequence with exactly 4 float4 "
+                   "vectors while a float4 vector is a vector with 4 "
+                   "float elements.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }

@@ -97,6 +97,8 @@ struct CoreInfo {
 
   static inline Types DifferentMatrixes{{Float4x4Type, Float3x3Type, Float2x2Type}};
 
+  static inline Types DifferentMatrixesAndMatrixSeq{{Float4x4Type, Float3x3Type, Float2x2Type, Float4x4SeqType, Float3x3SeqType, Float2x2SeqType}};
+
   static inline Types IntOrFloat{{IntType, FloatType}};
 
   static inline Types FloatOrFloatSeq{{FloatType, FloatSeqType}};
@@ -117,7 +119,7 @@ struct CoreInfo {
   static inline Types FloatVectorsOrVar{
       FloatVectors, {Float2VarType, Float2VarSeqType, Float3VarType, Float3VarSeqType, Float4VarType, Float4VarSeqType}};
 
-  static inline Types MatrixOrVector{{Float4x4Type, Float4Type}};
+  static inline Types MatrixOrVector{{Float4x4Type, Float4Type, Float3x3Type, Float3Type, Float2x2Type, Float2Type}};
 
   static inline Types IntOrNone{{IntType, NoneType}};
 
