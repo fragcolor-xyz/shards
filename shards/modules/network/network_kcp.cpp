@@ -768,7 +768,7 @@ struct ServerShard : public NetworkBase {
           try {
             if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
               // do this async as it's a big buffer
-              maybeAwait(
+              await(
                   context,
                   [peer_]() {
                     // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
@@ -992,7 +992,7 @@ struct ClientShard : public NetworkBase {
 
       if (_peer.recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
         // do this async as it's a big buffer
-        maybeAwait(
+        await(
             context,
             [&]() {
               // deserialize from buffer on top of the vector of payloads, wires might consume them out of band

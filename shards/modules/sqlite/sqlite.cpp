@@ -617,7 +617,7 @@ struct Query : public Base {
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
 
-    return maybeAwaitne(
+    return awaitne(
         context,
         [&]() -> SHVar {
           // ok if we are not within a transaction, we need to check if transaction lock is locked!
@@ -735,7 +735,7 @@ struct Transaction : public Base {
       SH_SUSPEND(context, 0);
     }
 
-    maybeAwait(
+    await(
         context,
         [&] {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -752,7 +752,7 @@ struct Transaction : public Base {
     SHVar output{};
     auto state = _queries.activate(context, input, output);
 
-    maybeAwait(
+    await(
         context,
         [&] {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -871,7 +871,7 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
-    return maybeAwaitne(
+    return awaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
@@ -932,7 +932,7 @@ struct Backup : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, true);
 
-    return maybeAwaitne(
+    return awaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;

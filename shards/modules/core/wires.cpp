@@ -244,9 +244,7 @@ struct Wait : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpIgnoredOrPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnoredOrPass; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("If Passthrough is true, this shard outputs the input value, passed through unchanged. Otherwise, it "
@@ -366,7 +364,7 @@ struct IsRunning : public WireBase {
     passthrough = false; // also need this to have proper compose output type
   }
 
-  static SHOptionalString inputHelp() {return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard will either return true if the specified Wire is still running, or false if it has ended.");
@@ -534,9 +532,7 @@ struct Peek : public WireBase {
 struct StopWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Either stops the execution of a specified Wire or the current Wire."); }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpIgnoredOrPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnoredOrPass; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("Depending on what is specified in the Passthrough parameter, this shard either returns the input value, "
@@ -639,9 +635,7 @@ struct SuspendWire : public WireBase {
     return SHCCSTR("Pauses a specified Wire's execution. If no Wire is specified, pauses the current wire.");
   }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
@@ -705,9 +699,7 @@ struct SuspendWire : public WireBase {
 struct ResumeWire : public WireBase {
   SHOptionalString help() { return SHCCSTR("Resumes another Wire (previously paused using Suspend)."); }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
@@ -1391,7 +1383,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
-      maybeAwait(
+      await(
           context,
           [this, context, wireVar]() {
             deferredCompose(context);
@@ -1478,7 +1470,10 @@ struct ParallelBase : public CapturingSpawners {
 
   static inline Parameters _params{
       {"Wire", SHCCSTR("The Wire to copy and schedule."), IntoWire::RunnableTypes},
-      {"Policy", SHCCSTR("The execution policy for the shard to abide by. A copied Wire is only deemed successful if it did not have an internal failure (eg.through Assert)"), {WaitUntilEnumInfo::Type}},
+      {"Policy",
+       SHCCSTR("The execution policy for the shard to abide by. A copied Wire is only deemed successful if it did not have an "
+               "internal failure (eg.through Assert)"),
+       {WaitUntilEnumInfo::Type}},
       {"Threads", SHCCSTR("The number of cpu threads to use. Number specified can not be lower than 1."), {CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return _params; }
@@ -1778,9 +1773,7 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  static SHOptionalString inputHelp() {
-    return InputManyWire;
-  }
+  static SHOptionalString inputHelp() { return InputManyWire; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("Depending on the Policy specified the shard will return a different output. WaitUntil::FirstSuccess will "
@@ -1857,7 +1850,8 @@ struct Expand : public ParallelBase {
   void setup() { _threads = 1; }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard takes a value of any type as input. This value is provided as input to every scheduled copy of the specified Wire.");
+    return SHCCSTR("This shard takes a value of any type as input. This value is provided as input to every scheduled copy of "
+                   "the specified Wire.");
   }
 
   static SHOptionalString outputHelp() {
@@ -1932,9 +1926,7 @@ struct Spawn : public CapturingSpawners {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
 
-  static SHOptionalString inputHelp() {
-    return InputBaseWire;
-  }
+  static SHOptionalString inputHelp() { return InputBaseWire; }
 
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the specific copy of the Wire that was scheduled."); }
 
@@ -2168,9 +2160,7 @@ struct WhenDone : Spawn {
 
 struct StepMany : public TryMany {
 
-  static SHOptionalString inputHelp() {
-    return InputManyWire;
-  }
+  static SHOptionalString inputHelp() { return InputManyWire; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard returns the output of all the scheduled copies in a sequence. (Note that the output of the copies "
@@ -2277,9 +2267,7 @@ struct DoMany : public TryMany {
 
   void setup() { _threads = 0; } // we don't use threads
 
-  static SHOptionalString inputHelp() {
-    return InputManyWire;
-  }
+  static SHOptionalString inputHelp() { return InputManyWire; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard returns the output of all the scheduled copies in a sequence.");
@@ -2388,7 +2376,7 @@ struct DoMany : public TryMany {
           cref = _pool->acquireFromBatch(batch, i, _composer, _meshes[0].get());
         }
       } else {
-        maybeAwait(
+        await(
             context,
             [&, this]() {
               for (uint32_t i = 0; i < numToAcquire; i++) {
@@ -2440,9 +2428,7 @@ struct Branch {
   static inline Types VarSeqTypes{CoreInfo::AnyVarType, CoreInfo::StringType};
   static inline Type VarSeqType = Type::SeqOf(VarSeqTypes);
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
