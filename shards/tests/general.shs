@@ -915,7 +915,7 @@
 
   "baz.dat"
   Regex.Match("""([a-z]+)\.([a-z]+)""")
-  Log
+  Log("Regex Match-1")
   Assert.Is(["baz.dat" "baz" "dat"] true)
 
   "[$&]" = replacementVar
@@ -945,6 +945,14 @@
   "A" | ParseInt(Base: 16) | Assert.Is(10 true)
   "12345678901" | ParseInt | Assert.Is(12345678901 true)
   "2.1" | ParseFloat | Assert.Is(2.1 true)
+  "123" | ParseFloat | Assert.Is(123.0 true)
+  "1.23e-4" | ParseFloat | Assert.Is(0.000123 true)
+  "6.022e23" | ParseFloat
+  "   42.0" | ParseFloat | Assert.Is(42.0 true)
+  "+3.14" | ParseFloat | Assert.Is(3.14 true)
+  "-2.718" | ParseFloat | Assert.Is(-2.718 true)
+  "  -1.23e-5" | ParseFloat | Assert.Is(-0.0000123 true)
+
 
   "  3.14 "
   {String.Contains("3.14") | Assert.Is(true true)}
