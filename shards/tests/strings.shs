@@ -1,7 +1,43 @@
 @wire(main-wire {
+  "Lorem ipsum odor amet blah, consectetuer adipiscing elit. Proin egestas mattis magnis 
+  molestie platea vivamus aenean. Efficitur sagittis finibus metus efficitur quis dis 
+  feugiat mauris facilisi. Maximus morbi erat class non, faucibus phasellus at convallis 
+  montes. Condimentum bibendum amet semper sed aliquam in. Suscipit euismod purus hac 
+  nisi primis nullam diam. Mauris aliquam ac gravida mus sollicitudin curabitur maximus 
+  ultrices. Fringilla dictumst metus natoque rutrum tempor. Gravida pharetra malesuada 
+  dapibus blandit ultrices est nostra eget faucibus.
+
+  Tincidunt cubilia leo blah pharetra facilisis, auctor taciti ut parturient. Varius sodales 
+  tempus duis ultrices dolor. Dictum ad cursus potenti malesuada blandit egestas fames 
+  montes. Vel hac efficitur et leo eleifend class congue. Elementum aptent netus cubilia 
+  elit; eu lacinia netus blah. Faucibus vestibulum curae tempor hendrerit leo natoque curae. 
+  Anullam blahblahblah accumsan vitae ut eget ac feugiat netus. Nisi nec odio magnis blahblah elit class quam 
+  duis mattis cursus." = dummy-text
+
   ["Hello" "world!" "How" "are" "we" "today?"]
   String.Join(Separator: " ") | Log
   Assert.Is("Hello world! How are we today?" true)
+
+  "HelloWorld" | String.Ends("World") | Log("EndsWith-1") | Assert.Is(true)
+  "Hello World" | String.Ends("World") | Log("EndsWith-2") | Assert.Is(true)
+  "Hello World2" | String.Ends("World") | Log("EndsWith-3") | Assert.Is(false)
+
+  "HelloWorld" | String.Starts("Hello") | Log("StartsWith-1") | Assert.Is(true)
+  "Hello World" | String.Starts("Hello") | Log("StartsWith-2") | Assert.Is(true)
+  "Hello2 World" | String.Starts("Hello") | Log("StartsWith-3") | Assert.Is(true)
+  "2Hello World" | String.Starts("Hello") | Log("StartsWith-3") | Assert.Is(false)
+
+  "Hello world, my name is John" | String.Split(Separator: " ") | Log("String Split-1") | Assert.Is(["Hello" "world," "my" "name" "is" "John"])
+
+  "Hello world, my name is John" | Regex.Replace("John", "Sarah") | Log("String Replace-1") | Assert.Is("Hello world, my name is Sarah")
+
+  dummy-text | Regex.Search("blah") | Log("Regex Search-1") | Assert.Is(["blah" "blah" "blah" "blah" "blah" "blah" "blah" "blah"])
+  dummy-text | Regex.Search("Blah") | Log("Regex Search-2") | Assert.Is([])
+  dummy-text | Regex.Search("Monster") | Log("Regex Search-3") | Assert.Is([])
+
+  "This is a test string" | Regex.Match("(\\w+\\s*)+") | Log("Full String Match") | Assert.Is(["This is a test string" "string"])
+
+  "A" | ParseInt(Base: 36) | Log("ParseInt-1")
 
   "0x7777" | HexToBytes | Log | BigInt | BigInt.ToString | Assert.Is("30583") | Log
 
@@ -29,9 +65,9 @@ Something else"""
     """And Again!"""
   ])
 
-  ; test keeping separator with preceding string
-  "hello,world,foo,bar" | String.Split("," KeepSeparator: true) | Assert.Is(["hello," "world," "foo," "bar"])
-  "a,,b,c" | String.Split("," KeepSeparator: true) | Assert.Is(["a," "," "b," "c"])
+  ; ; test keeping separator with preceding string
+  ; "hello,world,foo,bar" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["hello," "world," "foo," "bar"])
+  ; "a,,b,c" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["a," "," "b," "c"])
 
   [hello " " world] | String.Format | Log("fmt 1") | Assert.Is("hello world")
   [hello " " 4 "!"] | String.Format | Log("fmt 2") | Assert.Is("hello 4!")

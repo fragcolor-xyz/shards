@@ -9,7 +9,7 @@
 namespace shards {
 namespace Regex {
 struct Common {
-  static inline Parameters params{{"Regex", SHCCSTR("The regular expression."), {CoreInfo::StringType}}};
+  static inline Parameters params{{"Regex", SHCCSTR("The regular expression as a string."), {CoreInfo::StringType}}};
 
   std::regex _re;
   std::string _re_str;
@@ -44,6 +44,17 @@ struct Match : public Common {
   IterableSeq _output;
   std::vector<std::string> _pool;
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard matches the entire input string against the regex pattern specified in the Regex parameter and "
+                   "outputs a sequence of strings, containing the fully matched string and any capture groups. It will return an "
+                   "empty sequence if there are no matches.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to match."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns either a sequence of strings, containing the fully matched string and any capture groups or an empty "
+                   "sequence if there are no matches.");
+  }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -68,6 +79,16 @@ struct Match : public Common {
 struct Search : public Common {
   IterableSeq _output;
   std::vector<std::string> _pool;
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard searches the input string for the regex pattern specified in the Regex parameter and outputs a sequence of "
+        "strings, containing every occurrence of the pattern. An empty sequence is returned if there are no matches");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to search."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A sequence of strings, each containing one occurrence of the regex pattern.");
+  }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
@@ -96,9 +117,19 @@ struct Replace : public Common {
   std::string _output;
 
   static inline Parameters params{
-      Common::params, {{"Replacement", SHCCSTR("The replacement expression."), {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+      Common::params,
+      {{"Replacement", SHCCSTR("The regex replacement expression."), {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static SHParametersInfo parameters() { return params; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard modifies the input string by replacing all occurrences of the regex pattern, specified in the "
+                   "Regex parameter, with the replacement string specified in the Replacement parameter.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to modify."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The input string with all occurrences of the regex pattern replaced with the replacement string.");
+  }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -153,7 +184,7 @@ struct Format {
 
   static SHTypesInfo inputTypes() { return InputType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("A sequence of values that will be converted to string and joined together.");
+    return SHCCSTR("A sequence of values that will be converted to string and concatenated together.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -187,7 +218,7 @@ struct Join {
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("A string consisting of all the elements of the sequence delimited by the separator.");
+    return SHCCSTR("A string consisting of all the elements of the sequence separated by the specified separator.");
   }
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -237,13 +268,13 @@ private:
 };
 
 struct ToUpper {
-  static SHOptionalString help() { return SHCCSTR("Converts a string to uppercase"); }
+  static SHOptionalString help() { return SHCCSTR("This shard converts all characters in the input string to uppercase."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("A string."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to convert to uppercase."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("A string in uppercase."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input string converted to uppercase."); }
 
   OwnedVar nullTermBuffer;
 
@@ -255,13 +286,13 @@ struct ToUpper {
 };
 
 struct ToLower {
-  static SHOptionalString help() { return SHCCSTR("Converts a string to lowercase"); }
+  static SHOptionalString help() { return SHCCSTR("This shard converts all characters in the input string to lowercase."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("A string."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to convert to lowercase."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("A string in lowercase."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input string converted to lowercase."); }
 
   OwnedVar nullTermBuffer;
 
@@ -273,8 +304,16 @@ struct ToLower {
 };
 
 struct Trim {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard removes all leading and trailing whitespace characters from the input string and outputs the "
+                   "trimmed string.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to trim."); }
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The input string with all leading and trailing whitespace characters removed.");
+  }
 
   static std::string_view trim(std::string_view s) {
     s.remove_prefix(std::min(s.find_first_not_of(" \t\r\v\n"), s.size()));
@@ -291,13 +330,20 @@ struct Trim {
 };
 
 struct Contains {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard checks if the input string contains the string specified in the String parameter. If the input "
+                   "string does contain the string specified, the shard will output true. Otherwise, it will output false.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to check."); }
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
-
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("True if the input string contains the string specified, false otherwise.");
+  }
   ParamVar _check{Var("")};
 
   static inline Parameters params{{{"String",
-                                    SHCCSTR("The string that needs to be contained by the input string to output true."),
+                                    SHCCSTR("The string that the input needs to contain to output true."),
                                     {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -349,10 +395,19 @@ struct Contains {
 };
 
 struct StartsWith : Contains {
-  static inline Parameters params{
-      {{"With",
-        SHCCSTR("The string that needs to start at the beginning of the input string to output true."),
-        {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+  static SHOptionalString help() {
+    return SHCCSTR("This shard checks if the input string starts with the string specified in the With parameter. If the input "
+                   "string does contain the string specified, the shard will output true. Otherwise, it will output false.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to check."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("True if the input string starts with the string specified, false otherwise.");
+  }
+  static inline Parameters params{{{"With",
+                                    SHCCSTR("The string that the input needs to start with to output true."),
+                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -370,8 +425,18 @@ struct StartsWith : Contains {
 };
 
 struct EndsWith : Contains {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard checks if the input string ends with the string specified in the With parameter. If the input "
+                   "string does contain the string specified, the shard will output true. Otherwise, it will output false.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to check."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("True if the input string ends with the string specified, false otherwise.");
+  }
   static inline Parameters params{{{"With",
-                                    SHCCSTR("The string that needs to match the ending of the input string to output true."),
+                                    SHCCSTR("The string that the input needs to end with to output true."),
                                     {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -395,11 +460,11 @@ struct Parser {
 
 struct ParseInt : public Parser {
   static SHOptionalString help() {
-    return SHCCSTR("Converts the string representation of a number to a signed integer equivalent.");
+    return SHCCSTR("Converts the string representation of a number to its signed integer equivalent.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("A string representing a number."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A number represented as a string."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   static SHOptionalString outputHelp() {
@@ -433,7 +498,7 @@ struct ParseInt : public Parser {
 
 struct ParseFloat : public Parser {
   static SHOptionalString help() {
-    return SHCCSTR("Converts the string representation of a number to a floating-point number equivalent.");
+    return SHCCSTR("Converts the string representation of a number to its floating-point number equivalent.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -463,11 +528,23 @@ struct Split {
   std::string _separator;
   bool _keepSeparator{false};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard splits the input string into a sequence of its costituent strings, using the string specified "
+                   "in the Separator parameter to segment the input. If the KeepSeparator parameter is true, the separator will "
+                   "be included in the output.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to split."); }
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A sequence of strings, containing the seperated parts of the input string.");
+  }
 
   static inline Parameters params{
-      {{"Separator", SHCCSTR("The separator character to split the string on."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {{"Separator",
+        SHCCSTR(
+            "The separator string to segment the string with. The input is split at each point where this string occurs."),
+        {CoreInfo::StringType, CoreInfo::StringVarType}},
        {"KeepSeparator", SHCCSTR("Whether to keep the separator in the output."), {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }

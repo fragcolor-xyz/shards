@@ -17,6 +17,49 @@
   Assert.Is(1500.0 true)
   t1000x1e18 | BigInt.Subtract(t500x1e18) | BigInt.ToFloat(ShiftedBy: -18) |
   Assert.Is(500.0 true)
+  t500x1e18 | BigInt.Divide(t2) | BigInt.ToFloat(ShiftedBy: -18) |
+  Assert.Is(250.0 true)
+
+  1536 | BigInt = t1536
+  512 | BigInt = t512
+  1792 | BigInt = t1792
+  1024 | BigInt = t1024
+  3072 | BigInt = t3072
+
+  1536 | Math.Or(512) | Log("Math.Or")
+  t1536 | BigInt.Or(t512) | BigInt.ToInt | Log("t1536.Or(t512)") | Assert.Is(1536 true)
+
+  1536 | Math.And(1792) | Log("Math.And")
+  t1536 | BigInt.And(t1792) | BigInt.ToInt | Log("t1536.And(t1792)") | Assert.Is(1536 true)
+
+  1024 | Math.Xor(3072) | Log("Math.Xor")
+  t1024 | BigInt.Xor(t3072) | BigInt.ToInt | Log("t1024.Xor(t3072)") | Assert.Is(2048 true)
+
+  1000 | BigInt | BigInt.Shift(By: 18) > t1000x1e18
+  7 | BigInt = t7
+
+  t1000x1e18 | BigInt.Mod(t7) | BigInt.ToInt = mod_result
+  Assert.Is(6 true)
+  Log("Mod result (BigInt)")
+
+  t1536 | BigInt.Shift(By: 18) = t1536x1e18
+  t512 | BigInt.Shift(By: 18) = t512x1e18
+
+  t512x1e18 | BigInt.Max(t1536x1e18) | BigInt.Shift(By: -18) | BigInt.ToInt | Log("Max") | Assert.Is(1536 true)
+  t512x1e18 | BigInt.Min(t1536x1e18) | BigInt.Shift(By: -18) | BigInt.ToInt | Log("Min") | Assert.Is(512 true)
+
+  -512 | BigInt | BigInt.Shift(By: 18) = t512x1e18-neg
+
+  t512x1e18-neg | BigInt.Abs | BigInt.Is(t512x1e18) | Assert.Is(true) | Log("Abs")
+
+
+
+
+
+
+
+
+
 
   t1000x1e18 >> bigseq
   t1000x1e18 >> bigseq

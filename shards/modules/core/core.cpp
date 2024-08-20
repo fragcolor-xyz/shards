@@ -1242,13 +1242,22 @@ struct Replace {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
   static inline Parameters params{
       {"Patterns",
-       SHCCSTR("The patterns to find."),
+       SHCCSTR("The patterns to find represented as a sequence."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType, CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
       {"Replacements",
-       SHCCSTR("The replacements to apply to the input, if a single value is "
+       SHCCSTR("The corresponding replacements to apply to the input, if a single value is "
                "provided every match will be replaced with that single value."),
        {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType, CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
+  static SHOptionalString help() {
+    return SHCCSTR("Replaces all occurrences of the pattern(specified in the Patterns parameter) found in the input sequence or string, with replacements (specified in the Replacements parameter).");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input sequence or string to be modified.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("returns the resulting sequence or string with the replacements applied.");
+  }
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
   static SHParametersInfo parameters() { return params; }
@@ -1413,6 +1422,16 @@ struct Replace {
 
 struct Reverse {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
+
+  static SHOptionalString help() {
+    return SHCCSTR("Reverses the order of the elements in the input sequence or string.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input sequence or string to be reversed.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the reversed sequence or string.");
+  }
 
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
