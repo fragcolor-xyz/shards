@@ -5,8 +5,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, AutoSeqVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type,
-  Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
+  Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -1128,8 +1128,13 @@ impl ShardsErrorsShard {
       }
     }
     seq.custom_state.with::<ShardsError, _, _>(|e| {
-      let s = Var::ephemeral_string(e.message.as_str());
-      self.output.0.push(&s);
+      let mut table = AutoTableVar::new();
+      table
+        .0
+        .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
+      table.0.insert_fast_static("line", &e.loc.line.into());
+      table.0.insert_fast_static("column", &e.loc.column.into());
+      self.output.0.emplace(table.to_cloned());
     });
   }
 
@@ -1142,9 +1147,14 @@ impl ShardsErrorsShard {
               self.process_value(&param.value);
             }
           }
-          f.custom_state.with::<ShardsError, _, _>(|x| {
-            let s = Var::ephemeral_string(x.message.as_str());
-            self.output.0.push(&s);
+          f.custom_state.with::<ShardsError, _, _>(|e| {
+            let mut table = AutoTableVar::new();
+            table
+              .0
+              .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
+            table.0.insert_fast_static("line", &e.loc.line.into());
+            table.0.insert_fast_static("column", &e.loc.column.into());
+            self.output.0.emplace(table.to_cloned());
           });
         }
         BlockContent::Shards(s) | BlockContent::EvalExpr(s) | BlockContent::Expr(s) => {
@@ -1160,10 +1170,17 @@ impl ShardsErrorsShard {
     match value {
       Value::None(_) => {}
       Value::Identifier(identifier) => {
-        identifier.custom_state.with::<ShardsError, _, _>(|x| {
-          let s = Var::ephemeral_string(x.message.as_str());
-          self.output.0.push(&s);
-        });
+        identifier
+          .custom_state
+          .with::<ShardsError, _, _>(|e: &ShardsError| {
+            let mut table = AutoTableVar::new();
+            table
+              .0
+              .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
+            table.0.insert_fast_static("line", &e.loc.line.into());
+            table.0.insert_fast_static("column", &e.loc.column.into());
+            self.output.0.emplace(table.to_cloned());
+          });
       }
       Value::Boolean(_) => {}
       Value::Enum(_, _) => {}
@@ -1184,18 +1201,28 @@ impl ShardsErrorsShard {
         }
       }
       Value::Shard(function) | Value::Func(function) => {
-        function.custom_state.with::<ShardsError, _, _>(|x| {
-          let s = Var::ephemeral_string(x.message.as_str());
-          self.output.0.push(&s);
+        function.custom_state.with::<ShardsError, _, _>(|e| {
+          let mut table = AutoTableVar::new();
+          table
+            .0
+            .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
+          table.0.insert_fast_static("line", &e.loc.line.into());
+          table.0.insert_fast_static("column", &e.loc.column.into());
+          self.output.0.emplace(table.to_cloned());
         });
       }
       Value::Shards(sequence) | Value::EvalExpr(sequence) | Value::Expr(sequence) => {
         self.process_sequence(sequence);
       }
       Value::TakeTable(identifier, _) | Value::TakeSeq(identifier, _) => {
-        identifier.custom_state.with::<ShardsError, _, _>(|x| {
-          let s = Var::ephemeral_string(x.message.as_str());
-          self.output.0.push(&s);
+        identifier.custom_state.with::<ShardsError, _, _>(|e| {
+          let mut table = AutoTableVar::new();
+          table
+            .0
+            .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
+          table.0.insert_fast_static("line", &e.loc.line.into());
+          table.0.insert_fast_static("column", &e.loc.column.into());
+          self.output.0.emplace(table.to_cloned());
         });
       }
     }

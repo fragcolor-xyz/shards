@@ -366,7 +366,7 @@ impl RequestBase {
           if full_response {
             output_table
               .0
-              .insert_fast_static("status", &response.status().as_u16().try_into()?);
+              .insert_fast_static("status", &response.status().as_u16().into());
 
             let headers = output_table
               .0

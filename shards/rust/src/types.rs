@@ -4,7 +4,8 @@
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
 use crate::{
-  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT
+  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHType_Audio,
+  SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT,
 };
 
 // Shard Constants
@@ -385,7 +386,9 @@ pub struct MeshVar(pub ClonedVar);
 
 impl MeshVar {
   pub fn new() -> Self {
-    MeshVar(ClonedVar(unsafe { (*Core).createMeshVar.unwrap_unchecked()() }))
+    MeshVar(ClonedVar(unsafe {
+      (*Core).createMeshVar.unwrap_unchecked()()
+    }))
   }
 
   pub fn mesh_ref(&self) -> SHMeshRef {
@@ -452,7 +455,9 @@ impl Wire {
       string: name.as_ptr() as *const c_char,
       len: name.len() as u64,
     };
-    Wire(WireRef(unsafe { (*Core).createWire.unwrap_unchecked()(name) }))
+    Wire(WireRef(unsafe {
+      (*Core).createWire.unwrap_unchecked()(name)
+    }))
   }
 
   pub fn set_debug_id(self, id: u64) -> Self {
@@ -2024,7 +2029,7 @@ macro_rules! var_from {
   };
 }
 
-macro_rules! var_from_into {
+macro_rules! var_from_as_i64 {
   ($type:ident, $varfield:ident, $shtype:expr) => {
     impl From<$type> for Var {
       #[inline(always)]
@@ -2033,7 +2038,26 @@ macro_rules! var_from_into {
           valueType: $shtype,
           payload: SHVarPayload {
             __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-              $varfield: v.into(),
+              $varfield: v as i64,
+            },
+          },
+          ..Default::default()
+        }
+      }
+    }
+  };
+}
+
+macro_rules! var_from_as_f64 {
+  ($type:ident, $varfield:ident, $shtype:expr) => {
+    impl From<$type> for Var {
+      #[inline(always)]
+      fn from(v: $type) -> Self {
+        SHVar {
+          valueType: $shtype,
+          payload: SHVarPayload {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+              $varfield: v as f64,
             },
           },
           ..Default::default()
@@ -2069,16 +2093,16 @@ macro_rules! var_try_from {
 var_from!(bool, boolValue, SHType_Bool);
 var_from!(i64, intValue, SHType_Int);
 var_from!(SHColor, colorValue, SHType_Color);
-var_try_from!(u8, intValue, SHType_Int);
-var_try_from!(u16, intValue, SHType_Int);
-var_try_from!(u32, intValue, SHType_Int);
+var_from_as_i64!(u8, intValue, SHType_Int);
+var_from_as_i64!(u16, intValue, SHType_Int);
+var_from_as_i64!(u32, intValue, SHType_Int);
+var_from_as_i64!(i32, intValue, SHType_Int);
 var_try_from!(u128, intValue, SHType_Int);
 var_try_from!(i128, intValue, SHType_Int);
-var_from_into!(i32, intValue, SHType_Int);
 var_try_from!(usize, intValue, SHType_Int);
 // var_try_from!(u64, intValue, SHType_Int); // Don't panic!
 var_from!(f64, floatValue, SHType_Float);
-var_from_into!(f32, floatValue, SHType_Float);
+var_from_as_f64!(f32, floatValue, SHType_Float);
 
 impl From<ShardPtr> for Var {
   #[inline(always)]
@@ -3241,9 +3265,9 @@ impl Var {
     dst.flags |= SHVAR_FLAGS_USES_OBJINFO as u16 | SHVAR_FLAGS_WEAK_OBJECT as u16;
     dst.__bindgen_anon_1.objectInfo = src.__bindgen_anon_1.objectInfo;
     unsafe {
-      (*dst.__bindgen_anon_1.objectInfo).weakReference.unwrap_unchecked()(
-        dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue,
-      );
+      (*dst.__bindgen_anon_1.objectInfo)
+        .weakReference
+        .unwrap_unchecked()(dst.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue);
     }
   }
 
@@ -5034,7 +5058,10 @@ impl IntoIterator for TableVar {
         table: self.0.payload.__bindgen_anon_1.tableValue,
         citer: [0; 64],
       };
-      (*it.table.api).tableGetIterator.unwrap_unchecked()(it.table, &it.citer as *const _ as *mut _);
+      (*it.table.api).tableGetIterator.unwrap_unchecked()(
+        it.table,
+        &it.citer as *const _ as *mut _,
+      );
       it
     }
   }
@@ -5373,7 +5400,8 @@ impl Strings {
   pub fn pop(&mut self) -> Option<&str> {
     unsafe {
       if !self.is_empty() {
-        let v = (*Core).stringsPop.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings);
+        let v =
+          (*Core).stringsPop.unwrap_unchecked()(&self.s as *const SHStrings as *mut SHStrings);
         Some(CStr::from_ptr(v).to_str().unwrap())
       } else {
         None
