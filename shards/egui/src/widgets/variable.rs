@@ -5,6 +5,9 @@ use crate::EguiId;
 use crate::UIRenderer;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
+use crate::HELP_VALUE_IGNORED;
+use crate::OUTPUT_PASSED;
+use shards::types::OptionalString;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -103,6 +106,18 @@ impl LegacyShard for Variable {
 
   fn name(&mut self) -> &str {
     "UI.Variable"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard creates a UI element that displays and allows interaction with the variable specified in the Variable parameter."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    *HELP_VALUE_IGNORED
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *OUTPUT_PASSED
   }
 
   fn inputTypes(&mut self) -> &Types {

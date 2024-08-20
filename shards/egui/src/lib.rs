@@ -93,6 +93,7 @@ lazy_static! {
   static ref HELP_OUTPUT_EQUAL_INPUT: OptionalString =
     OptionalString(shccstr!("The output of this shard will be its input."));
   static ref HELP_VALUE_IGNORED: OptionalString = OptionalString(shccstr!("The value is ignored."));
+  static ref OUTPUT_PASSED: OptionalString = OptionalString(shccstr!("The output of this shard will be its input passed through unchanged."));
 }
 
 pub const CONTEXTS_NAME: &str = "UI.Contexts";

@@ -1250,7 +1250,7 @@ struct Replace {
        {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType, CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Replaces all occurrences of the pattern(specified in the Patterns parameter) found in the input sequence or string, with replacements (specified in the Replacements parameter).");
+    return SHCCSTR("This shard replaces all occurrences of the pattern(specified in the Patterns parameter) found in the input sequence or string, with replacements (specified in the Replacements parameter).");
   }
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input sequence or string to be modified.");
@@ -1424,7 +1424,7 @@ struct Reverse {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Reverses the order of the elements in the input sequence or string.");
+    return SHCCSTR("This shard reverses the order of the elements in the input sequence or string.");
   }
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input sequence or string to be reversed.");
