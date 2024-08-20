@@ -1,0 +1,10 @@
+"""
+"Hello World!" | Log
+@x-defined | Log
+""" | Shards.Read(OutputType: AstType::Object) = ast
+
+Maybe({
+  ast | Shards.Distill ; will fail but will populate errors
+})
+
+ast | Shards.Errors | Log

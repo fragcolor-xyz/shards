@@ -5,8 +5,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, FRAG_CC,
-  STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, AutoSeqVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type,
+  Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -1055,6 +1055,150 @@ impl Shard for ReadShard {
     }
 
     Ok(self.output.0)
+  }
+}
+
+// Shards.Errors
+// A shard to fetch all errors from a live AstType::Object input
+
+#[derive(shards::shard)]
+#[shard_info("Shards.Errors", "Fetches all errors from a live AST Object input")]
+pub struct ShardsErrorsShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for ShardsErrorsShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for ShardsErrorsShard {
+  fn input_types(&mut self) -> &Types {
+    &AST_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRINGS_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let object = unsafe { &*Var::from_ref_counted_object::<Program>(input, &AST_TYPE)? };
+    self.output.0.clear();
+    self.process_sequence(&object.sequence);
+    Ok(self.output.0 .0)
+  }
+}
+
+impl ShardsErrorsShard {
+  fn process_sequence(&mut self, seq: &Sequence) {
+    for child in seq.statements.iter() {
+      match child {
+        Statement::Assignment(x) => match x {
+          Assignment::AssignRef(p, _)
+          | Assignment::AssignSet(p, _)
+          | Assignment::AssignUpd(p, _)
+          | Assignment::AssignPush(p, _) => self.process_pipeline(p),
+        },
+        Statement::Pipeline(p) => {
+          self.process_pipeline(p);
+        }
+      }
+    }
+    seq.custom_state.with::<ShardsError, _, _>(|e| {
+      let s = Var::ephemeral_string(e.message.as_str());
+      self.output.0.push(&s);
+    });
+  }
+
+  fn process_pipeline(&mut self, pipeline: &Pipeline) {
+    for block in pipeline.blocks.iter() {
+      match &block.content {
+        BlockContent::Shard(f) | BlockContent::Func(f) => {
+          if let Some(params) = &f.params {
+            for param in params {
+              self.process_value(&param.value);
+            }
+          }
+          f.custom_state.with::<ShardsError, _, _>(|x| {
+            let s = Var::ephemeral_string(x.message.as_str());
+            self.output.0.push(&s);
+          });
+        }
+        BlockContent::Shards(s) | BlockContent::EvalExpr(s) | BlockContent::Expr(s) => {
+          self.process_sequence(s)
+        }
+        BlockContent::Const(v) => self.process_value(v),
+        _ => (),
+      }
+    }
+  }
+
+  fn process_value(&mut self, value: &Value) {
+    match value {
+      Value::None(_) => {}
+      Value::Identifier(identifier) => {
+        identifier.custom_state.with::<ShardsError, _, _>(|x| {
+          let s = Var::ephemeral_string(x.message.as_str());
+          self.output.0.push(&s);
+        });
+      }
+      Value::Boolean(_) => {}
+      Value::Enum(_, _) => {}
+      Value::Number(_) => {}
+      Value::String(_) => {}
+      Value::Bytes(_) => {}
+      Value::Int2(_) | Value::Int3(_) | Value::Int4(_) | Value::Int8(_) | Value::Int16(_) => {}
+      Value::Float2(_) | Value::Float3(_) | Value::Float4(_) => {}
+      Value::Seq(seq) => {
+        for item in seq {
+          self.process_value(item);
+        }
+      }
+      Value::Table(table) => {
+        for (key, value) in table {
+          self.process_value(key);
+          self.process_value(value);
+        }
+      }
+      Value::Shard(function) | Value::Func(function) => {
+        function.custom_state.with::<ShardsError, _, _>(|x| {
+          let s = Var::ephemeral_string(x.message.as_str());
+          self.output.0.push(&s);
+        });
+      }
+      Value::Shards(sequence) | Value::EvalExpr(sequence) | Value::Expr(sequence) => {
+        self.process_sequence(sequence);
+      }
+      Value::TakeTable(identifier, _) | Value::TakeSeq(identifier, _) => {
+        identifier.custom_state.with::<ShardsError, _, _>(|x| {
+          let s = Var::ephemeral_string(x.message.as_str());
+          self.output.0.push(&s);
+        });
+      }
+    }
   }
 }
 

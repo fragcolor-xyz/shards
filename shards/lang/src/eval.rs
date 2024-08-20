@@ -1056,7 +1056,14 @@ pub(crate) fn eval_sequence(
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv), None);
-  eval_sequence_inline(seq, &mut sub_env, cancellation_token)?;
+  // remove previous error state
+  seq.custom_state.remove::<ShardsError>();
+  eval_sequence_inline(seq, &mut sub_env, cancellation_token).map_err(|e| {
+    // set error state if there was an error
+    seq.custom_state.set(e.clone());
+    // and pass it through
+    e
+  })?;
   Ok(sub_env)
 }
 
@@ -1712,7 +1719,7 @@ fn resolve_var(
           } else {
             Err(
               (
-                format!("Undefined function or definition {:?}", func.name),
+                format!("Undefined function or definition {}", func.name),
                 line_info,
               )
                 .into(),
@@ -2928,7 +2935,7 @@ fn eval_pipeline(
         if is_forbidden_func(&func.name, e) {
           return Err(
             (
-              format!("Forbidden function {:?}", func.name),
+              format!("Forbidden function {}", func.name),
               block.line_info.unwrap_or_default(),
             )
               .into(),
@@ -3783,7 +3790,7 @@ fn eval_pipeline(
               }
               _ => Err(
                 (
-                  format!("unknown built-in function or definition: {:?}", func.name),
+                  format!("unknown built-in function or definition: {}", func.name),
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),

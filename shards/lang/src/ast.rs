@@ -113,6 +113,26 @@ pub struct Identifier {
   pub custom_state: CustomStateContainer,
 }
 
+impl fmt::Display for Identifier {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    if self.namespaces.is_empty() {
+      write!(f, "{}", self.name)
+    } else {
+      write!(
+        f,
+        "{}::{}",
+        self
+          .namespaces
+          .iter()
+          .map(|s| s.as_ref())
+          .collect::<Vec<&str>>()
+          .join("/"),
+        self.name
+      )
+    }
+  }
+}
+
 impl Eq for Identifier {}
 
 impl Hash for Identifier {
