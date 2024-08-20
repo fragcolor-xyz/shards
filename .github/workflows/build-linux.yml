@@ -134,7 +134,6 @@ jobs:
           ./shards new ../shards/tests/wire-macro.shs
           ./shards new ../shards/tests/const-vars.shs
           ./shards new ../shards/tests/branch.shs
-          ./shards new ../shards/tests/time.shs
           ./shards new ../shards/tests/take.shs
           ./shards new ../shards/tests/casting-numbers.shs
           ./shards new ../shards/tests/pure.shs
