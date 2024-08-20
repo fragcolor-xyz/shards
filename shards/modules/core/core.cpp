@@ -1290,6 +1290,45 @@ struct Replace {
     }
 
     if (data.inputType.basicType == SHType::String) {
+      // we need to make sure that the parameters are all strings
+      if (_patterns.isVariable()) {
+        auto expInfo = findExposedVariable(data.shared, _patterns);
+        if (expInfo.has_value()) {
+          if (expInfo->exposedType.basicType != SHType::String &&             // must be a string
+              !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true) // or a sequence of strings
+          ) {
+            throw ComposeError("Replace: Patterns variable must be a string or a sequence of strings.");
+          }
+        } else {
+          throw ComposeError("Replace: Patterns variable not found.");
+        }
+      } else {
+        // not a variable derive type and check input type
+        auto derived = deriveTypeInfo(_patterns, data);
+        if (derived.basicType != SHType::String &&             // must be a string
+            !isSequenceOf(CoreInfo::StringType, derived, true) // or a sequence of strings
+        ) {
+          throw ComposeError("Replace: Patterns must be a string or a sequence of strings.");
+        }
+      }
+
+      if (_replacements.isVariable()) {
+        auto expInfo = findExposedVariable(data.shared, _replacements);
+        if (expInfo.has_value()) {
+          if (expInfo->exposedType.basicType != SHType::String &&
+              !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true)) {
+            throw ComposeError("Replace: Replacements must be a string or a sequence of strings.");
+          }
+        } else {
+          throw ComposeError("Replace: Replacements variable not found.");
+        }
+      } else {
+        auto derived = deriveTypeInfo(_replacements, data);
+        if (derived.basicType != SHType::String && !isSequenceOf(CoreInfo::StringType, derived, true)) {
+          throw ComposeError("Replace: Replacements must be a string or a sequence of strings.");
+        }
+      }
+
       OVERRIDE_ACTIVATE(data, activateString);
       return CoreInfo::StringType;
     } else {

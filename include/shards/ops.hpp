@@ -239,7 +239,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
            a.payload.imageValue->height == b.payload.imageValue->height &&
            (a.payload.imageValue->data == b.payload.imageValue->data ||
             (memcmp(a.payload.imageValue->data, b.payload.imageValue->data,
-                    a.payload.imageValue->channels * a.payload.imageValue->width * a.payload.imageValue->height * apixsize) == 0));
+                    a.payload.imageValue->channels * a.payload.imageValue->width * a.payload.imageValue->height * apixsize) ==
+             0));
   }
   case SHType::Audio: {
     return a.payload.audioValue.nsamples == b.payload.audioValue.nsamples &&
@@ -539,6 +540,23 @@ bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e);
 
 namespace shards {
 SHVar hash(const SHVar &var);
+inline bool isSequenceOf(const SHTypeInfo &baseType, const SHTypeInfo &seqType, bool exclusive) {
+  if (seqType.basicType != SHType::Seq) {
+    return false;
+  }
+
+  if (exclusive) {
+    return seqType.seqTypes.len == 1 && seqType.seqTypes.elements[0] == baseType;
+  }
+
+  bool match = false;
+  for (uint32_t i = 0; i < seqType.seqTypes.len; i++) {
+    if (seqType.seqTypes.elements[i] == baseType) {
+      match = true;
+    }
+  }
+  return match;
+}
 } // namespace shards
 
 namespace std {
