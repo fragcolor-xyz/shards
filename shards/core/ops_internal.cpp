@@ -298,13 +298,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
       os << "}";
     }
   } else if (t.basicType == SHType::ContextVar) {
-    bool braced = false;
-    if (t.contextVarTypes.len > 1)
-      braced = true;
-
-    os << "&";
-    if (braced)
-      os << "(";
+    os << "Var(";
 
     if (t.contextVarTypes.len == 0) {
       os << "Any";
@@ -322,8 +316,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
       }
     }
 
-    if (braced)
-      os << ")";
+    os << ")";
   } else if (t.basicType == SHType::Object) {
     const SHObjectInfo *objectInfo = findObjectInfo(t.object.vendorId, t.object.typeId);
     if (objectInfo) {

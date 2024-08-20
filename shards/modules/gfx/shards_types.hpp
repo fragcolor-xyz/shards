@@ -336,8 +336,6 @@ struct Container {
                                            CoreInfo::Int4Type,
                                        }};
 
-  // NOTE: Currently accept AnyVarType since mixing types will result in a table of type  {:Default &Any}
-  // static inline Types ShaderParamOrVarTypes{ShaderParamTypes, {CoreInfo::AnyVarType}};
   static inline Types ShaderParamOrVarTypes{ShaderParamTypes, {Type::VariableOf(ShaderParamTypes)}};
 
   // Shared drawable parameters
