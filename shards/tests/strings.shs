@@ -66,8 +66,8 @@ Something else"""
   ])
 
   ; ; test keeping separator with preceding string
-  ; "hello,world,foo,bar" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["hello," "world," "foo," "bar"])
-  ; "a,,b,c" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["a," "," "b," "c"])
+  "hello,world,foo,bar" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["hello," "world," "foo," "bar"])
+  "a,,b,c" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["a," "," "b," "c"])
 
   [hello " " world] | String.Format | Log("fmt 1") | Assert.Is("hello world")
   [hello " " 4 "!"] | String.Format | Log("fmt 2") | Assert.Is("hello 4!")
