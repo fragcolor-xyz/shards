@@ -20,6 +20,18 @@ struct Flatten {
     }
   }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard will take a sequence with nested values (eg. a sequence of sequences or a sequence of tables) and create a single sequence with all of values, nested values and keys as elements.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("This shard will take a sequence or a table with nested values.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("This shard will return a single sequence with all of values, nested values and keys of the input as elements.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -220,6 +232,18 @@ struct IndexOf {
     _item.warmup(context);
   }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard will search the input sequence for the index of an item or a pattern of items (specified in the Item parameter) and return its index(or a sequence of indices).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The sequence to search through.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The index of the item or a sequence of indeces.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   SHTypesInfo outputTypes() { return OutputTypes; }
 
@@ -233,7 +257,7 @@ struct IndexOf {
                                    SHCCSTR("If true will return a sequence with all the indices of "
                                            "Item, empty sequence if not found."),
                                    CoreInfo::BoolType),
-                 ParamsInfo::Param("Predicate", SHCCSTR("The shards to use as predicate."), CoreInfo::Shards));
+                 ParamsInfo::Param("Predicate", SHCCSTR("Optional shards to use for more complex matching."), CoreInfo::Shards));
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -349,6 +373,18 @@ struct Join {
   std::string _buffer;
 
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard will concatenate a sequence of strings or bytes into a single string or bytes represented as a single byte sequence.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The sequence of strings or bytes sequence to concatenate.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The concatenated string or bytes represented as a byte sequence.");
+  }
 
   static SHTypesInfo inputTypes() { return InputType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }

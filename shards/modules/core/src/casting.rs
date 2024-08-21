@@ -6,6 +6,7 @@ use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::OptionalString;
 
 use shards::types::Parameters;
 
@@ -44,6 +45,18 @@ impl LegacyShard for ToBase58 {
 
   fn name(&mut self) -> &str {
     "ToBase58"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard encodes the input(either a byte sequence or a string) into a base58 encoded string."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The byte sequence or string to encode."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Returns the base58 encoded string."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -90,6 +103,18 @@ impl LegacyShard for FromBase58 {
 
   fn name(&mut self) -> &str {
     "FromBase58"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard decodes the base58 encoded string and returns it as a decoded byte sequence."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The base58 encoded string to decode."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Returns the decoded byte sequence."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -144,6 +169,18 @@ impl LegacyShard for ToLEB128 {
 
   fn name(&mut self) -> &str {
     "ToLEB128"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard encodes the input(a signed or unsigned integer) into a LEB128 encoded byte sequence."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The integer to encode."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Returns the LEB128 encoded byte sequence."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -213,6 +250,18 @@ impl LegacyShard for FromLEB128 {
 
   fn name(&mut self) -> &str {
     "FromLEB128"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard decodes the LEB128 encoded byte sequence and returns it as an integer (signed or unsigned depending on what was specified in the Signed parameter)."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The LEB128 encoded byte sequence to decode."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Returns the decoded integer."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {

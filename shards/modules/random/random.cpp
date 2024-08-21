@@ -15,6 +15,7 @@ struct RandBase {
 };
 
 template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return OUTTYPE; }
   static SHParametersInfo parameters() { return _params; }
@@ -67,12 +68,40 @@ private:
   ExposedInfo _requiredInfo{};
 };
 
-using RandomInt = Rand<CoreInfo::IntType, SHType::Int>;
-using RandomFloat = Rand<CoreInfo::FloatType, SHType::Float>;
+struct RandomIntOp : public Rand<CoreInfo::IntType, SHType::Int> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard generates a random integer between 0 (inclusive) and the maximum value specified in the Max parameter (exclusive).");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a random integer.");
+  }
+};
+
+struct RandomFloatOp : public Rand<CoreInfo::FloatType, SHType::Float> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard generates a random float between 0 and the maximum value specified in the Max parameter (exclusive).");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a random float.");
+  }
+};
+
+using RandomInt = RandomIntOp;
+using RandomFloat = RandomFloatOp;
 
 struct RandomBytes : public RandBase {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard generates a random sequence of bytes. The size of the sequence is specified in the Size parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns a random sequence of bytes.");
+  }
   static SHParametersInfo parameters() { return _params; }
 
   void setParam(int index, const SHVar &value) { _size = value.payload.intValue; }
