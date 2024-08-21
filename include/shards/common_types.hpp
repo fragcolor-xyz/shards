@@ -85,13 +85,13 @@ struct CoreInfo {
 
   static inline Type TableOfAnySeqType = Type::TableOf(AnySeqType);
 
-  static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = Float4Type}}};
+  static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = Float4Type}, .fixedSize = 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
   static inline Types Float4x4Types{{Float4x4Type, Float4x4SeqType}};
-  static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = Float3Type}}};
+  static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = Float3Type}, .fixedSize = 3}};
   static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
   static inline Types Float3x3Types{{Float3x3Type, Float3x3SeqType}};
-  static inline Type Float2x2Type{{SHType::Seq, {.seqTypes = Float2Type}}};
+  static inline Type Float2x2Type{{SHType::Seq, {.seqTypes = Float2Type}, .fixedSize = 2}};
   static inline Type Float2x2SeqType = Type::SeqOf(Float2x2Type);
   static inline Types Float2x2Types{{Float2x2Type, Float2x2SeqType}};
 
