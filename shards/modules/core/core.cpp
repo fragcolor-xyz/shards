@@ -894,6 +894,18 @@ private:
 };
 
 struct Reduce {
+  static SHOptionalString help() {
+    return SHCCSTR("Reduces a sequence to a single value by applying a an operation(specified in the Apply parameter) to each item of the sequence.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The sequence to reduce.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The resulting value after applying the operation to each item of the sequence.");
+  }
+
   SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -2535,6 +2547,20 @@ struct Once {
   }
 };
 
+struct PassShard: public LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard is a \"no operation\" shard. It simply passes through the input without modifying it.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return DefaultHelpText::InputHelpPass;
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
+};
+
 SHARDS_REGISTER_FN(core) {
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
@@ -2601,9 +2627,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Insert", Insert);
   REGISTER_SHARD("Assoc", Assoc);
 
-  using PassMockShard = LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
   using ExitShard = LambdaShard<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
-  REGISTER_SHARD("Pass", PassMockShard);
+  REGISTER_SHARD("Pass", PassShard);
   REGISTER_SHARD("Exit", ExitShard);
 
   using HasherShard = LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type>;

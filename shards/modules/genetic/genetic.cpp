@@ -40,6 +40,19 @@ struct Random {
 
 struct Mutant;
 struct Evolve {
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("This shard returns a [Type::Float Type::Wire] pair. This pair represents the wire configuration from the "
+                   "current generation that scored the best fitness score and the fitness score itself.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard uses genetic algorithm to evolve and change the configuration of the wire specified in the Wire "
+                   "parameter. The evolved wires are given a score based on the fitness wire specified in the Fitness Wire "
+                   "parameter. The shard then outputs the best wire and its fitness score. This shard should be used in "
+                   "conjunction with the Mutant shard.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return _outputType; }
   static SHParametersInfo parameters() { return _params; }
@@ -588,6 +601,15 @@ private:
 };
 
 struct Mutant {
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard modifies the parameters of the shard specified in the Shard parameter. Which parameters are "
+                   "modified is specified Indices parameter and how they are modified is specified in the Mutations parameter. "
+                   "This shard should be used in conjunction with the Evolve shard to evolve the wire.");
+  }
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -766,8 +788,7 @@ private:
       {"Shard", SHCCSTR("The shard to mutate."), {CoreInfo::ShardRefType}},
       {"Indices", SHCCSTR("The parameter indices to mutate of the inner shard."), {CoreInfo::IntSeqType}},
       {"Mutations",
-       SHCCSTR("Optional wires of shards (or Nones) to call when mutating one "
-               "of the parameters, if empty a default operator will be used."),
+       SHCCSTR("Optional operations to apply to the parameters, if empty a default operator will be used."),
        {CoreInfo::ShardsOrNoneSeq}},
       {"Options",
        SHCCSTR("Mutation options table - a table with mutation options."),
@@ -959,11 +980,14 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
 }
 
 struct DShard {
-  static SHOptionalString help() { return SHCCSTR("A dynamic shard."); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard is a dynamic shard that will transform into the shard specified in the Name parameter at runtime. This shard "
+        "can be used in conjunction with Mutate and Evolve to create complex genetic algorithm implementations.");
+  }
 
-  static inline Parameters _params{
-      {"Name", SHCCSTR("The name of the shard to wrap."), {CoreInfo::StringType}},
-      {"Parameters", SHCCSTR("The parameters to pass to the wrapped shard."), {CoreInfo::AnySeqType}}};
+  static inline Parameters _params{{"Name", SHCCSTR("The name of the shard to transform into."), {CoreInfo::StringType}},
+                                   {"Parameters", SHCCSTR("The parameters to pass to the new shard."), {CoreInfo::AnySeqType}}};
 
   static SHParametersInfo parameters() { return _params; }
 

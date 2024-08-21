@@ -376,10 +376,35 @@ SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("Msg", Msg);
   REGISTER_SHARD("CaptureLog", CaptureLog);
 
-  using FlushShard = LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
-  REGISTER_SHARD("FlushLog", FlushShard);
+  struct LogFlush : public LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
+    static SHOptionalString help() {
+      return SHCCSTR("This shard flushes the log buffer to the console. This ensures that any pending log messages are immediately written to the console.");
+    }
 
-  using ChangeLevelShard = LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType>;
-  REGISTER_SHARD("SetLogLevel", ChangeLevelShard);
+    static SHOptionalString inputHelp() {
+      return DefaultHelpText::InputHelpPass;
+    }
+
+    static SHOptionalString outputHelp() {
+      return DefaultHelpText::OutputHelpPass;
+    }
+  };
+
+  struct LogChangeLevel : public LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType> {
+    static SHOptionalString help() {
+      return SHCCSTR("This shard changes the log level to the level specified by the string passed as input. ");
+    }
+
+    static SHOptionalString inputHelp() {
+    return SHCCSTR("A string representing the new log level (e.g., 'debug', 'info', 'warn', 'error', 'critical').");
+    }
+
+    static SHOptionalString outputHelp() {
+      return DefaultHelpText::OutputHelpPass;
+    }
+  };
+
+  REGISTER_SHARD("FlushLog", LogFlush);
+  REGISTER_SHARD("SetLogLevel", LogChangeLevel);
 }
 }; // namespace shards
