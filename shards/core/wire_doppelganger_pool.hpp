@@ -54,6 +54,15 @@ template <typename T> struct WireDoppelgangerPool {
     _wireStr = stream.str();
   }
 
+  WireDoppelgangerPool(WireDoppelgangerPool&& other) noexcept
+    : _pool(std::move(other._pool)),
+      _avail(std::move(other._avail)),
+      _wireStr(std::move(other._wireStr)),
+      _master(std::move(other._master))
+  {
+    // No need to lock since we're moving and the other object is being destroyed
+  }
+
   // notice users should stop wires themselves, we might want wires to persist
   // after this object lifetime
   void stopAll()
