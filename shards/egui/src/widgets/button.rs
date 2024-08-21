@@ -14,6 +14,7 @@ use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
@@ -25,7 +26,11 @@ use shards::types::Var;
 use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::SHType_Bool;
+use core::ffi::CStr;
+use core::cmp::Ordering;
 
 use super::TextWrap;
 
@@ -44,6 +49,16 @@ struct Button {
   style: ClonedVar,
   #[shard_param("Wrap", "The text wrapping mode.", [*TEXTWRAP_TYPE, common_type::bool])]
   wrap: ClonedVar,
+  #[shard_param(
+    "Selected",
+    "Indicates whether the button is selected.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  selected: ParamVar,
+
+  exposing: ExposedTypes,
+  should_expose: bool,
+
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -62,6 +77,9 @@ impl Default for Button {
       wrap: ClonedVar(TextWrap::Extend.into()),
       style: ClonedVar::default(),
       required: Vec::new(),
+      selected: ParamVar::default(),
+      exposing: ExposedTypes::new(),
+      should_expose: false,
     }
   }
 }
@@ -95,14 +113,61 @@ impl Shard for Button {
     util::require_context(&mut self.required);
     util::require_parents(&mut self.required);
 
-    self.action.compose(data)?;
+    if self.selected.is_variable() {
+      self.should_expose = true; // assume we expose a new variable
+
+      let shared: ExposedTypes = data.shared.into();
+      for var in shared {
+        let (a, b) = unsafe {
+          (
+            CStr::from_ptr(var.name),
+            CStr::from_ptr(self.selected.get_name()),
+          )
+        };
+        if CStr::cmp(a, b) == Ordering::Equal {
+          self.should_expose = false;
+          if var.exposedType.basicType != SHType_Bool {
+            return Err("ImageButton: bool variable required.");
+          }
+          break;
+        }
+      }
+    }
+
+    if !self.action.is_empty() {
+      self.action.compose(data)?;
+    }
+
     shards::util::require_shards_contents(&mut self.required, &self.action);
 
     Ok(common_type::bool)
   }
 
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
+    if self.selected.is_variable() && self.should_expose {
+      self.exposing.clear();
+
+      let exp_info = ExposedInfo {
+        exposedType: common_type::bool,
+        name: self.selected.get_name(),
+        help: shccstr!("The exposed bool variable"),
+        ..ExposedInfo::default()
+      };
+
+      self.exposing.push(exp_info);
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
+
+    if self.should_expose {
+      self.selected.get_mut().valueType = common_type::bool.basicType;
+    }
+
     Ok(())
   }
 
@@ -141,10 +206,19 @@ impl Shard for Button {
         button = button.wrap_mode(wrap);
       }
 
+      let selected = self.selected.get();
+      if !selected.is_none() {
+        button = button.selected(selected.try_into()?);
+      }
+
       let mut button_clicked = false;
 
       let response = ui.add(button);
       if response.clicked() {
+        if self.selected.is_variable() {
+          let selected: bool = selected.try_into()?;
+          self.selected.set_fast_unsafe(&(!selected).into());
+        }
         let mut output = Var::default();
         if self.action.activate(context, input, &mut output) == WireState::Error {
           return Err("Failed to activate button");

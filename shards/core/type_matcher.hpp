@@ -74,7 +74,8 @@ struct TypeMatcher {
           return false;
         }
         // if a fixed size is requested make sure it fits at least enough elements
-        if (!ignoreFixedSeq && receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
+        if (!ignoreFixedSeq && receiverType.fixedSize != 0 && inputType.fixedSize != 0 && // for now check only if both fixed
+            receiverType.fixedSize > inputType.fixedSize) {
           return false;
         }
       }

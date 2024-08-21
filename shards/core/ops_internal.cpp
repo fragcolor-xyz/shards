@@ -246,6 +246,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
   // This code outputs non-breaking spaces for cleaner wrapping on the documentation page
   if (t.basicType == SHType::Seq) {
     os << "[";
+
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       if (t.seqTypes.elements[i].recursiveSelf) {
         os << "Self";
@@ -257,6 +258,10 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
       }
     }
     os << "]";
+
+    if (t.fixedSize != 0) {
+      os << "(" << t.fixedSize << ")";
+    }
   } else if (t.basicType == SHType::Set) {
     os << "<";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
