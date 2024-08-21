@@ -5,6 +5,9 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
+use crate::HELP_VALUE_IGNORED;
+use crate::OUTPUT_PASSED;
+use shards::types::OptionalString;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -65,12 +68,26 @@ impl LegacyShard for Save {
     Some(&self.requiring)
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard saves the current state of the UI as a byte sequence. It saves UI information such as the position of windows, the state of checkboxes, the state of sliders, etc."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    *HELP_VALUE_IGNORED
+  }
+
   fn inputTypes(&mut self) -> &shards::types::Types {
     &NONE_TYPES
   }
 
   fn outputTypes(&mut self) -> &shards::types::Types {
     &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Returns the current state of the UI as a byte sequence."
+    ))
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -140,12 +157,24 @@ impl LegacyShard for Restore {
     Some(&self.requiring)
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard restores the UI to a previously saved state (provided as input as a byte sequence)."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The UI state to restore to represented as a byte sequence."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *OUTPUT_PASSED
+  }
+
   fn inputTypes(&mut self) -> &shards::types::Types {
     &BYTES_TYPES
   }
 
   fn outputTypes(&mut self) -> &shards::types::Types {
-    &NONE_TYPES
+    &BYTES_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -171,7 +200,7 @@ impl LegacyShard for Restore {
       )
     })?;
 
-    Ok(Var::default())
+    Ok(*input)
   }
 }
 

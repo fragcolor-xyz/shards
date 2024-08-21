@@ -180,7 +180,7 @@ struct Replace : public Common {
 struct Format {
   static inline Type InputType = Type::SeqOf(CoreInfo::AnyType);
 
-  static SHOptionalString help() { return SHCCSTR("Concatenates all the elements of a sequence into a string"); }
+  static SHOptionalString help() { return SHCCSTR("This shard concatenates all the elements of a sequence into a string"); }
 
   static SHTypesInfo inputTypes() { return InputType; }
   static SHOptionalString inputHelp() {
@@ -210,7 +210,7 @@ struct Join {
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
 
   static SHOptionalString help() {
-    return SHCCSTR("Concatenates all the elements of a string sequence, using the specified separator between each element.");
+    return SHCCSTR("This shard concatenates all the elements of a string sequence, using the specified separator between each element.");
   }
 
   static SHTypesInfo inputTypes() { return InputType; }
@@ -529,7 +529,7 @@ struct Split {
   bool _keepSeparator{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard splits the input string into a sequence of its costituent strings, using the string specified "
+    return SHCCSTR("This shard splits the input string into a sequence of its constituent strings, using the string specified "
                    "in the Separator parameter to segment the input. If the KeepSeparator parameter is true, the separator will "
                    "be included in the output.");
   }
@@ -537,13 +537,13 @@ struct Split {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("A sequence of strings, containing the seperated parts of the input string.");
+    return SHCCSTR("A sequence of strings, containing the separated parts of the input string.");
   }
 
   static inline Parameters params{
       {{"Separator",
         SHCCSTR(
-            "The separator string to segment the string with. The input is split at each point where this string occurs."),
+            "The separator string to segment the input with. The input is split at each point where this string occurs."),
         {CoreInfo::StringType, CoreInfo::StringVarType}},
        {"KeepSeparator", SHCCSTR("Whether to keep the separator in the output."), {CoreInfo::BoolType}}}};
 
