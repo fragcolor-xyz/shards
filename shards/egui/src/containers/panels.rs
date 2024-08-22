@@ -27,7 +27,7 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::BOOL_OR_NONE_SLICE;
+use shards::types::BOOL_TYPES;
 use shards::types::FLOAT_OR_NONE_TYPES_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
@@ -42,7 +42,7 @@ lazy_static! {
     (
       cstr!("Resizable"),
       shccstr!("Whether the panel can be resized."),
-      BOOL_OR_NONE_SLICE,
+      &BOOL_TYPES[..],
     )
       .into(),
     (
@@ -83,7 +83,7 @@ macro_rules! impl_panel {
         Self {
           instance: ctx,
           requiring: Vec::new(),
-          resizable: ParamVar::default(),
+          resizable: ParamVar::new(true.into()),
           $default_size: ParamVar::default(),
           $min_size: ParamVar::default(),
           $max_size: ParamVar::default(),
@@ -223,10 +223,10 @@ macro_rules! impl_panel {
         }
 
         let mut panel = $egui_func(EguiId::new(self, 0));
+
         let resizable = self.resizable.get();
-        if !resizable.is_none() {
-          panel = panel.resizable(resizable.try_into()?);
-        }
+        panel = panel.resizable(resizable.try_into()?);
+
         let $default_size = self.$default_size.get();
         if !$default_size.is_none() {
           panel = panel.$default_size($default_size.try_into()?);

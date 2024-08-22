@@ -2367,10 +2367,11 @@ struct DoMany : public TryMany {
     _wires.resize(capacity);
 
     if (_wires.size() > oldWiresSize) {
-      int numToAcquire = _wires.size() - oldWiresSize;
+      int32_t numToAcquire = int32_t(_wires.size()) - int32_t(oldWiresSize);
+      shassert(numToAcquire >= 0 && "DoMany: numToAcquire is negative");
       auto batch = _pool->acquireBatch(numToAcquire);
       if (_composeSync) {
-        for (uint32_t i = 0; i < numToAcquire; i++) {
+        for (int32_t i = 0; i < numToAcquire; i++) {
           auto &cref = _wires[i + oldWiresSize];
           // compose on a worker thread!
           cref = _pool->acquireFromBatch(batch, i, _composer, _meshes[0].get());
@@ -2379,7 +2380,7 @@ struct DoMany : public TryMany {
         await(
             context,
             [&, this]() {
-              for (uint32_t i = 0; i < numToAcquire; i++) {
+              for (int32_t i = 0; i < numToAcquire; i++) {
                 auto &cref = _wires[i + oldWiresSize];
                 // compose on a worker thread!
                 cref = _pool->acquireFromBatch(batch, i, _composer, _meshes[0].get());
