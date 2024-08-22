@@ -946,7 +946,7 @@ struct Map {
   }
 
   void warmup(SHContext *ctx) {
-    _output.valueType = SHType::Seq;
+    _output.valueType = SHType::Seq; // We need this to be set here to avoid undefined behavior when input is empty!
     _tmp0 = referenceVariable(ctx, "$0");
     _tmp1 = referenceVariable(ctx, "$1");
     _shards.warmup(ctx);

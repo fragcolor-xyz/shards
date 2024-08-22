@@ -1195,7 +1195,7 @@ fn find_replacement_identifier<'a>(
 }
 
 fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) -> RcStrWrapper {
-  if fully_qualified.is_empty() {
+  if fully_qualified.is_empty() || partial.starts_with("$") {
     return partial.clone();
   }
 

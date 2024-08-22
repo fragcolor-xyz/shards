@@ -852,7 +852,7 @@ struct Match {
             !matchTypes(actionInfo, CoreInfo::ShardRefType, true, true, true) &&
             !matchTypes(actionInfo, CoreInfo::ShardRefSeqType, true, true, true)) {
           throw SHException(
-              fmt::format("Match: action at index {} is invalid, it should none, a shard or a sequence of shards.", idx));
+              fmt::format("Match: action at index {} is invalid, it should be none, a shard or a sequence of shards.", idx));
         }
         _actions[idx] = actionItem;
         _full[i] = _pcases[idx];      // this cannot be matchItem, cos that will be gone after this call!!

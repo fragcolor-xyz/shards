@@ -643,8 +643,12 @@ impl ShardRef {
       if !success {
         Err("Set parameter validation failed")
       } else {
-        (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
-        Ok(())
+        let err = (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
+        if err.code != 0 {
+          Err(err.message.into())
+        } else {
+          Ok(())
+        }
       }
     }
   }

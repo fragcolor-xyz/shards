@@ -36,12 +36,7 @@ struct Memoize {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_lastInput != input) {
       _lastInput = input;
-      // Need to try-catch because inlined shard doesn't handle
-      try {
-        _evaluate.activate(shContext, input, _lastOutput);
-      } catch (std::exception &e) {
-        shards::abortWire(shContext, e.what());
-      }
+      _evaluate.activate(shContext, input, _lastOutput);
     }
     return _lastOutput;
   }

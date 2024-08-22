@@ -29,3 +29,4 @@ TypeOf({Zip([t [@f4(0.0) @f4(1.0)]] Keys: ["a" "b"])}) | Log("t") | Assert.Is(@t
 
 {a: 1 b: 2 c: 3} | Map(Take(1)) | Assert.Is([1 2 3])
 {a: 1 b: 2.0 c: 3} | Map({$1}) | Assert.Is([1 2.0 3])
+{a: 1 b: 2.0 c: 3} | Map({$0 | ExpectString}) | Assert.Is(["a" "b" "c"])
