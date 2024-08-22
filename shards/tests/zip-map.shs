@@ -26,3 +26,6 @@ TypeOf({Zip([t r])}) | Log("t") | Assert.Is(@type([[Type::Float3 Type::Float4]])
 TypeOf({Zip([t [@f3(0.0) @f3(1.0)]])}) | Log("t") | Assert.Is(@type([[Type::Float3]]))
 TypeOf({Zip([t [@f3(0.0) @f3(1.0)]] Keys: ["a"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 "$1": Type::Float3}]))
 TypeOf({Zip([t [@f4(0.0) @f4(1.0)]] Keys: ["a" "b"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 b: Type::Float4}]))
+
+{a: 1 b: 2 c: 3} | Map(Take(1)) | Assert.Is([1 2 3])
+{a: 1 b: 2.0 c: 3} | Map(Take(1)) | Assert.Is([1 2.0 3])

@@ -838,7 +838,7 @@ private:
 };
 
 struct Map {
-  SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  SHTypesInfo inputTypes() { return ForEachShard::_types; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
@@ -851,11 +851,21 @@ struct Map {
   void destroy() { destroyVar(_output); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.seqTypes.len != 1) {
-      throw SHException("Map: Invalid sequence inner type, must be a single defined type.");
+    if (data.inputType.basicType != SHType::Seq && data.inputType.basicType != SHType::Table) {
+      throw SHException("Map: Invalid input type, must be a sequence or table.");
     }
     SHInstanceData dataCopy = data;
-    dataCopy.inputType = data.inputType.seqTypes.elements[0];
+    if (data.inputType.basicType == SHType::Seq) {
+      if (data.inputType.seqTypes.len == 1) {
+        dataCopy.inputType = data.inputType.seqTypes.elements[0];
+      } else {
+        dataCopy.inputType = CoreInfo::AnyType;
+      }
+      OVERRIDE_ACTIVATE(data, activateSeq);
+    } else { // Table
+      dataCopy.inputType = CoreInfo::AnySeqType;
+      OVERRIDE_ACTIVATE(data, activateTable);
+    }
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
     _outputType = {SHType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
@@ -869,11 +879,10 @@ struct Map {
 
   void cleanup(SHContext *context) { _shards.cleanup(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
     arrayResize(_output.payload.seqValue, 0);
     for (auto &item : input) {
-      // handle return short circuit, assume it was for us
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -884,23 +893,45 @@ struct Map {
     return _output;
   }
 
+  SHVar activateTable(SHContext *context, const SHVar &input) {
+    SHVar output{};
+    arrayResize(_output.payload.seqValue, 0);
+    const auto &table = input.payload.tableValue;
+    for (auto &[k, v] : table) {
+      _tableItem[0] = k;
+      _tableItem[1] = v;
+      const auto item = Var(_tableItem);
+      auto state = _shards.activate<true>(context, item, output);
+      if (state != SHWireState::Continue)
+        break;
+      size_t index = _output.payload.seqValue.len;
+      arrayResize(_output.payload.seqValue, index + 1);
+      cloneVar(_output.payload.seqValue.elements[index], output);
+    }
+    return _output;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
+
 private:
-  static inline Parameters _params{{"Apply", SHCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Shards}}};
+  static inline Parameters _params{{"Apply",
+                                    SHCCSTR("The function to apply to each item of the sequence or key-value pair of the table."),
+                                    {CoreInfo::Shards}}};
 
   SHVar _output{};
   ShardsVar _shards{};
   SHTypeInfo _outputSingleType{};
   Type _outputType{};
+  std::array<SHVar, 2> _tableItem;
 };
 
 struct Reduce {
   static SHOptionalString help() {
-    return SHCCSTR("Reduces a sequence to a single value by applying a an operation(specified in the Apply parameter) to each item of the sequence.");
+    return SHCCSTR("Reduces a sequence to a single value by applying a an operation(specified in the Apply parameter) to each "
+                   "item of the sequence.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence to reduce.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence to reduce."); }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("The resulting value after applying the operation to each item of the sequence.");
@@ -963,7 +994,7 @@ struct Reduce {
     SHVar output{};
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
-      // allow short circut with (Return)
+      // allow short circuit with (Return)
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -1262,11 +1293,10 @@ struct Replace {
        {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType, CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard replaces all occurrences of the pattern(specified in the Patterns parameter) found in the input sequence or string, with replacements (specified in the Replacements parameter).");
+    return SHCCSTR("This shard replaces all occurrences of the pattern(specified in the Patterns parameter) found in the input "
+                   "sequence or string, with replacements (specified in the Replacements parameter).");
   }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input sequence or string to be modified.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input sequence or string to be modified."); }
   static SHOptionalString outputHelp() {
     return SHCCSTR("returns the resulting sequence or string with the replacements applied.");
   }
@@ -1438,12 +1468,8 @@ struct Reverse {
   static SHOptionalString help() {
     return SHCCSTR("This shard reverses the order of the elements in the input sequence or string.");
   }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input sequence or string to be reversed.");
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the reversed sequence or string.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input sequence or string to be reversed."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the reversed sequence or string."); }
 
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
@@ -2547,18 +2573,14 @@ struct Once {
   }
 };
 
-struct PassShard: public LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
+struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
   static SHOptionalString help() {
     return SHCCSTR("This shard is a \"no operation\" shard. It simply passes through the input without modifying it.");
   }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpPass;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
-  static SHOptionalString outputHelp() {
-    return DefaultHelpText::OutputHelpPass;
-  }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };
 
 SHARDS_REGISTER_FN(core) {
