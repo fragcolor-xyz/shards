@@ -859,6 +859,8 @@ struct ForEachShard {
     for (auto &[k, v] : table) {
       assignVariableValue(*_tmp0, k);
       assignVariableValue(*_tmp1, v);
+      _tableItem[0] = k;
+      _tableItem[1] = v;
       const auto item = Var(_tableItem);
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
