@@ -451,6 +451,30 @@ macro_rules! get_like {
         compile_time_crc32::crc32!($hash)
       }
 
+      fn help(&mut self) -> OptionalString {
+        if $name_str == "Http.Get" {
+          OptionalString(shccstr!("This shard sends a GET request to the specified URL and returns the response."))
+        } else if $name_str == "Http.Head" {
+          OptionalString(shccstr!("This shard sends a HEAD request to the specified URL and returns the response."))
+        } else {
+          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and returns the response."))
+        }
+      }
+    
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The input for this shard should either be none or an optional string table of query parameters to append to the URL."))
+      }
+    
+      fn outputHelp(&mut self) -> OptionalString {
+        if $name_str == "Http.Get" {
+          OptionalString(shccstr!("The output is the response from the server through the GET request."))
+        } else if $name_str == "Http.Head" {
+          OptionalString(shccstr!("The output is the headers of the response from the server through the HEAD request."))
+        } else {
+          OptionalString(shccstr!("The output is the response from the server through the respective HTTP request."))
+        }
+      }
+
       fn inputTypes(&mut self) -> &Types {
         &GET_INPUT_TYPES
       }
@@ -576,6 +600,48 @@ macro_rules! post_like {
 
       fn hash() -> u32 {
         compile_time_crc32::crc32!($hash)
+      }
+
+      fn help(&mut self) -> OptionalString {
+        if $name_str == "Http.Post" {
+          OptionalString(shccstr!("This shard sends a HTTP POST request to the specified URL and returns the response."))
+        } else if $name_str == "Http.Put" {
+          OptionalString(shccstr!("This shard sends a HTTP PUT request to the specified URL and returns the response."))
+        } else if $name_str == "Http.Patch" {
+          OptionalString(shccstr!("This shard sends a HTTP PATCH request to the specified URL and returns the response."))
+        } else if $name_str == "Http.Delete" {
+          OptionalString(shccstr!("This shard sends a HTTP DELETE request to the specified URL and returns the response."))
+        } else {
+          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and returns the response."))
+        }
+      }
+    
+      fn inputHelp(&mut self) -> OptionalString {
+        if $name_str == "Http.Post" {
+          OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the POST request."))
+        } else if $name_str == "Http.Put" {
+          OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the PUT request."))
+        } else if $name_str == "Http.Patch" {
+          OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the PATCH request."))
+        } else if $name_str == "Http.Delete" {
+          OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the DELETE request."))
+        } else {
+          OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the respective HTTP request."))
+        }
+      }
+    
+      fn outputHelp(&mut self) -> OptionalString {
+        if $name_str == "Http.Post" {
+          OptionalString(shccstr!("The output is the response from the server through the POST request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+        } else if $name_str == "Http.Put" {
+          OptionalString(shccstr!("The output is the response from the server through the PUT request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+        } else if $name_str == "Http.Patch" {
+          OptionalString(shccstr!("The output is the response from the server through the PATCH request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+        } else if $name_str == "Http.Delete" {
+          OptionalString(shccstr!("The output is the response from the server through the DELETE request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+        } else {
+          OptionalString(shccstr!("The output is the response from the server through the respective HTTP request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+        }
       }
 
       fn inputTypes(&mut self) -> &Types {

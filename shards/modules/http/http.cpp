@@ -332,9 +332,34 @@ template <const string_view &METHOD> struct GetLike : public Base {
 };
 
 constexpr string_view GET = "GET";
-using Get = GetLike<GET>;
+struct Get : public GetLike<GET> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a GET request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "The input for this shard should either be none or an optional string table of query parameters to append to the URL.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The output is the response from the URL through the GET request."); }
+};
+
 constexpr string_view HEAD = "HEAD";
-using Head = GetLike<HEAD>;
+struct Head : public GetLike<HEAD> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a HEAD request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "The input for this shard should either be none or an optional string table of query parameters to append to the URL.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is the headers of the response from the URL through the HEAD request.");
+  }
+};
 
 template <const string_view &METHOD> struct PostLike : public Base {
   static inline Types InputTypes{{CoreInfo::NoneType, CoreInfo::StringTableType, CoreInfo::BytesType, CoreInfo::StringType}};
@@ -448,13 +473,72 @@ template <const string_view &METHOD> struct PostLike : public Base {
 };
 
 constexpr string_view POST = "POST";
-using Post = PostLike<POST>;
+struct Post : public PostLike<POST> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a HTTP POST request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input for this shard should either be none, string, bytes, or string table to send in the body of the "
+                   "POST request.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is the response from the server through the POST request as a string, byte sequence, or table (if "
+                   "the FullResponse parameter is set to true).");
+  }
+};
+
 constexpr string_view PUT = "PUT";
-using Put = PostLike<PUT>;
+struct Put : public PostLike<PUT> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a HTTP PUT request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "The input for this shard should either be none, string, bytes, or string table to send in the body of the PUT request.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is the response from the server through the PUT request as a string, byte sequence, or a table "
+                   "(if the FullResponse parameter is set to true).");
+  }
+};
+
 constexpr string_view PATCH = "PATCH";
-using Patch = PostLike<PATCH>;
+struct Patch : public PostLike<PATCH> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a HTTP PATCH request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input for this shard should either be none, string, bytes, or string table to send in the body of the "
+                   "PATCH request.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is the response from the server through the PATCH request as a string, byte sequence, or a table "
+                   "(if the FullResponse parameter is set to true).");
+  }
+};
+
 constexpr string_view DELETE = "DELETE";
-using Delete = PostLike<DELETE>;
+struct Delete : public PostLike<DELETE> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a HTTP DELETE request to the specified URL and returns the response.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input for this shard should either be none, string, bytes, or string table to send in the body of the "
+                   "DELETE request.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is the response from the server through the DELETE request as a string, byte sequence, or a table "
+                   "(if the FullResponse parameter is set to true).");
+  }
+};
 
 #else
 
@@ -485,6 +569,16 @@ struct Server {
       {"Port", SHCCSTR("The port this service will use."), {CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return params; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sets up an HTTP server that listens for incoming connections, creates new peers for each "
+                   "connection, and delegates request handling to the specified handler wire. It manages the lifecycle of "
+                   "connections and ensures proper cleanup when the server is stopped.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   // bypass
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -637,6 +731,20 @@ struct Read {
   static inline std::array<SHVar, 4> OutKeys{Var("method"), Var("headers"), Var("target"), Var("body")};
   static inline Type OutputType = Type::TableOf(OutTypes, OutKeys);
 
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard reads incoming HTTP requests from a client connection, parses its components, and returns them as a table. "
+        "This shard should be used in conjunction with the Http.Server shard to handle incoming requests.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return DefaultHelpText::InputHelpIgnored;
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output is a table containing the HTTP request method, headers, target, and body.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return OutputType; }
 
@@ -724,6 +832,18 @@ struct Read {
 
 struct Response {
   static inline Types PostInTypes{CoreInfo::StringType, CoreInfo::BytesType};
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends an HTTP response to the client after receiving an HTTP request.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input string or bytes sequence will be used directly as the body of the response.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
 
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
@@ -830,6 +950,21 @@ struct Response {
 
 struct Chunk {
   static inline Types PostInTypes{CoreInfo::StringType, CoreInfo::BytesType};
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard processes and packages outgoing Http response date into smaller manageable pieces and "
+                   "subsequently writes them to the socket while managing the chunked transfer encoding process.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input to the chunk shard is the data (String or Bytes) to be sent in the current chunk. This data is "
+                   "part of a larger response that will be sent in multiple chunks if necessary.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "The output is the same as the input. The chunked transfer encoding is handled internally when writing to the socket.");
+  }
 
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
@@ -962,6 +1097,18 @@ struct Chunk {
 };
 
 struct SendFile {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends a static file to the client over HTTP.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input for this shard should be a string representing the path to the file to be sent.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -1120,6 +1267,18 @@ struct SendFile {
 
 struct EncodeURI {
   std::string _output;
+  static SHOptionalString help() {
+    return SHCCSTR("This shard encodes a string into a URI-encoded format making it safe to use in URLs.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The string to be encoded.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The resulting URI-encoded string.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1131,6 +1290,19 @@ struct EncodeURI {
 
 struct DecodeURI {
   std::string _output;
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard decodes a URI-encoded string back into its original format.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The URI-encoded string to be decoded.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The resulting decoded string.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   SHVar activate(SHContext *context, const SHVar &input) {

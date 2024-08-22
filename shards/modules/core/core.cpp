@@ -747,7 +747,7 @@ struct ForEachShard {
   static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Processes every element or key-value pair of a sequence/table with a given shard or sequence of shards.");
+    return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` parameter.");
   }
 
   static SHTypesInfo inputTypes() { return _types; }
@@ -757,7 +757,7 @@ struct ForEachShard {
 
   static SHTypesInfo outputTypes() { return _types; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The output from processing the sequence/table elements or key-value pairs.");
+    return DefaultHelpText::OutputHelpPass;
   }
 
   static SHParametersInfo parameters() { return _params; }
@@ -891,6 +891,18 @@ private:
 };
 
 struct Map {
+  static SHOptionalString help() {
+    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and returns the modified sequence or table.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The sequence or table to process.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The resulting processed sequence or table.");
+  }
+
   SHTypesInfo inputTypes() { return ForEachShard::_types; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
@@ -2692,6 +2704,14 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+};
+
+struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes any input type, hashes them and returns their 128-bit hash value as a a sequence with 2 64-bit integer as elements.");
+  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as a sequence with 2 64-bit integer as elements."); }
 };
 
 SHARDS_REGISTER_FN(core) {

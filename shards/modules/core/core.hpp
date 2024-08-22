@@ -2438,17 +2438,19 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Outputs the count of characters (if the input is a string), elements (if the input is a sequence), or "
-                   "key-value pairs (if the input is a table). If the input type does not match any of these, it outputs 0.");
+    return SHCCSTR(
+        "This shard counts the sequence, string or table variable specified in the Name parameter. If the variable specified is "
+        "a string, it will count the number of characters. If the variable specified is a sequence, it will count the number of "
+        "elements. If the variable specified is a table, it will count the number of key-value pairs.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("Outputs the count of characters, elements, or key-value pairs in the specified variable. "
-                   "If the input type does not match, it outputs 0.");
+                   "If the variable type does not match, it outputs 0.");
   }
 
   SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::IntType; }
