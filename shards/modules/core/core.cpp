@@ -771,13 +771,34 @@ struct ForEachShard {
       throw ComposeError("ForEach shard expected a sequence or a table as input.");
     }
 
+    // we need to edit a copy of data
     auto dataCopy = data;
+    // we need to deep copy it
+    dataCopy.shared = {};
+    DEFER({ arrayFree(dataCopy.shared); });
+    // copy killing any existing $0 and $1
+    for (uint32_t i = data.shared.len; i > 0; i--) {
+      auto idx = i - 1;
+      auto &item = data.shared.elements[idx];
+      if (strcmp(item.name, "$0") != 0 && strcmp(item.name, "$1") != 0) {
+        arrayPush(dataCopy.shared, item);
+      }
+    }
+
     if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1) {
       dataCopy.inputType = data.inputType.seqTypes.elements[0];
     } else if (data.inputType.basicType == SHType::Table) {
       dataCopy.inputType = CoreInfo::AnySeqType;
     } else {
       dataCopy.inputType = CoreInfo::AnyType;
+    }
+
+    // Add special variables
+    _tmpInfo0.exposedType = dataCopy.inputType;
+    arrayPush(dataCopy.shared, _tmpInfo0);
+    if (data.inputType.basicType == SHType::Table) {
+      _tmpInfo1.exposedType = CoreInfo::AnyType;
+      arrayPush(dataCopy.shared, _tmpInfo1);
     }
 
     _shards.compose(dataCopy);
@@ -791,32 +812,55 @@ struct ForEachShard {
     return data.inputType;
   }
 
-  void warmup(SHContext *ctx) { _shards.warmup(ctx); }
+  void warmup(SHContext *ctx) {
+    _tmp0 = referenceVariable(ctx, "$0");
+    _tmp1 = referenceVariable(ctx, "$1");
+    _shards.warmup(ctx);
+  }
 
-  void cleanup(SHContext *context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) {
+    _shards.cleanup(context);
+    if (_tmp0) {
+      // _tmp0 is a reference, so we need to cleaning up like we do in Ref
+      const auto rc = _tmp0->refcount;
+      const auto flags = _tmp0->flags;
+      memset(_tmp0, 0x0, sizeof(SHVar));
+      _tmp0->refcount = rc;
+      _tmp0->flags = flags;
+      releaseVariable(_tmp0);
+      _tmp0 = nullptr;
+    }
+    if (_tmp1) {
+      // _tmp1 is a reference, so we need to cleaning up like we do in Ref
+      const auto rc = _tmp1->refcount;
+      const auto flags = _tmp1->flags;
+      memset(_tmp1, 0x0, sizeof(SHVar));
+      _tmp1->refcount = rc;
+      _tmp1->flags = flags;
+      releaseVariable(_tmp1);
+      _tmp1 = nullptr;
+    }
+  }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
     for (auto &item : input) {
+      assignVariableValue(*_tmp0, item);
       auto state = _shards.activate<true>(context, item, output);
-      // handle return short circuit, assume it was for us
       if (state != SHWireState::Continue)
         break;
     }
     return input;
   }
 
-  std::array<SHVar, 2> _tableItem;
-
   SHVar activateTable(SHContext *context, const SHVar &input) {
-    const auto &table = input.payload.tableValue;
     SHVar output{};
+    const auto &table = input.payload.tableValue;
     for (auto &[k, v] : table) {
-      _tableItem[0] = Var(k);
-      _tableItem[1] = v;
+      assignVariableValue(*_tmp0, k);
+      assignVariableValue(*_tmp1, v);
       const auto item = Var(_tableItem);
-      const auto state = _shards.activate<true>(context, item, output);
-      // handle return short circuit, assume it was for us
+      auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
     }
@@ -835,6 +879,11 @@ private:
        {CoreInfo::Shards}}};
 
   ShardsVar _shards{};
+  SHVar *_tmp0 = nullptr;
+  SHVar *_tmp1 = nullptr;
+  SHExposedTypeInfo _tmpInfo0{"$0"};
+  SHExposedTypeInfo _tmpInfo1{"$1"};
+  std::array<SHVar, 2> _tableItem;
 };
 
 struct Map {
@@ -854,7 +903,20 @@ struct Map {
     if (data.inputType.basicType != SHType::Seq && data.inputType.basicType != SHType::Table) {
       throw SHException("Map: Invalid input type, must be a sequence or table.");
     }
+    // we need to edit a copy of data
     SHInstanceData dataCopy = data;
+    // we need to deep copy it
+    dataCopy.shared = {};
+    DEFER({ arrayFree(dataCopy.shared); });
+    // copy killing any existing $0 and $1
+    for (uint32_t i = data.shared.len; i > 0; i--) {
+      auto idx = i - 1;
+      auto &item = data.shared.elements[idx];
+      if (strcmp(item.name, "$0") != 0 && strcmp(item.name, "$1") != 0) {
+        arrayPush(dataCopy.shared, item);
+      }
+    }
+
     if (data.inputType.basicType == SHType::Seq) {
       if (data.inputType.seqTypes.len == 1) {
         dataCopy.inputType = data.inputType.seqTypes.elements[0];
@@ -866,6 +928,15 @@ struct Map {
       dataCopy.inputType = CoreInfo::AnySeqType;
       OVERRIDE_ACTIVATE(data, activateTable);
     }
+
+    // Add special variables
+    _tmpInfo0.exposedType = dataCopy.inputType;
+    arrayPush(dataCopy.shared, _tmpInfo0);
+    if (data.inputType.basicType == SHType::Table) {
+      _tmpInfo1.exposedType = CoreInfo::AnyType;
+      arrayPush(dataCopy.shared, _tmpInfo1);
+    }
+
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
     _outputType = {SHType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
@@ -874,15 +945,40 @@ struct Map {
 
   void warmup(SHContext *ctx) {
     _output.valueType = SHType::Seq;
+    _tmp0 = referenceVariable(ctx, "$0");
+    _tmp1 = referenceVariable(ctx, "$1");
     _shards.warmup(ctx);
   }
 
-  void cleanup(SHContext *context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) {
+    _shards.cleanup(context);
+    if (_tmp0) {
+      // _tmp0 is a reference, so we need to cleaning up like we do in Ref
+      const auto rc = _tmp0->refcount;
+      const auto flags = _tmp0->flags;
+      memset(_tmp0, 0x0, sizeof(SHVar));
+      _tmp0->refcount = rc;
+      _tmp0->flags = flags;
+      releaseVariable(_tmp0);
+      _tmp0 = nullptr;
+    }
+    if (_tmp1) {
+      // _tmp1 is a reference, so we need to cleaning up like we do in Ref
+      const auto rc = _tmp1->refcount;
+      const auto flags = _tmp1->flags;
+      memset(_tmp1, 0x0, sizeof(SHVar));
+      _tmp1->refcount = rc;
+      _tmp1->flags = flags;
+      releaseVariable(_tmp1);
+      _tmp1 = nullptr;
+    }
+  }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
     arrayResize(_output.payload.seqValue, 0);
     for (auto &item : input) {
+      assignVariableValue(*_tmp0, item);
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -898,6 +994,8 @@ struct Map {
     arrayResize(_output.payload.seqValue, 0);
     const auto &table = input.payload.tableValue;
     for (auto &[k, v] : table) {
+      assignVariableValue(*_tmp0, k);
+      assignVariableValue(*_tmp1, v);
       _tableItem[0] = k;
       _tableItem[1] = v;
       const auto item = Var(_tableItem);
@@ -922,6 +1020,10 @@ private:
   ShardsVar _shards{};
   SHTypeInfo _outputSingleType{};
   Type _outputType{};
+  SHVar *_tmp0 = nullptr;
+  SHVar *_tmp1 = nullptr;
+  SHExposedTypeInfo _tmpInfo0{"$0"};
+  SHExposedTypeInfo _tmpInfo1{"$1"};
   std::array<SHVar, 2> _tableItem;
 };
 
