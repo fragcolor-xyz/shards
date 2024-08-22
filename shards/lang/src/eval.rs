@@ -1233,19 +1233,6 @@ impl ResolvedVar {
   fn new_const(sv: SVar) -> Self {
     Self::Constant(sv)
   }
-  fn is_const(&self) -> bool {
-    if let Self::Constant(_) = self {
-      true
-    } else {
-      false
-    }
-  }
-  fn as_var(&self) -> &SVar {
-    match self {
-      Self::Constant(sv) => sv,
-      Self::Variable(sv) => sv,
-    }
-  }
   fn into_var(self) -> SVar {
     match self {
       Self::Constant(sv) => sv,
