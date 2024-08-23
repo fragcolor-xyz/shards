@@ -2708,10 +2708,10 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
 
 struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes any input type, hashes them and returns their 128-bit hash value as a a sequence with 2 64-bit integer as elements.");
+    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit hash value as a a sequence with 2 64-bit integer as elements.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as a sequence with 2 64-bit integer as elements."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
 };
 
 SHARDS_REGISTER_FN(core) {

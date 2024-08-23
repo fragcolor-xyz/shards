@@ -5,6 +5,8 @@ use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 
+use shards::types::OptionalString;
+
 use shards::types::Context;
 
 use shards::types::Seq;
@@ -149,6 +151,39 @@ macro_rules! add_hasher {
       fn name(&mut self) -> &str {
         $name_str
       }
+
+      fn help(&mut self) -> OptionalString {
+        if $name_str == "Hash.Keccak-256" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 256-bit hash(of 32 bytes) using the Keccak-256 hashing algorithm."))
+        } else if $name_str == "Hash.Keccak-512" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 512-bit hash(of 64 bytes) using the Keccak-512 hashing algorithm."))
+        } else if $name_str == "Hash.Sha3-256" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 256-bit hash(of 32 bytes) using the SHA3-256 hashing algorithm."))
+        } else if $name_str == "Hash.Sha3-512" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 512-bit hash(of 64 bytes) using the SHA3-512 hashing algorithm."))
+        } else {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a hash using the specified hashing algorithm."))
+        }
+      }
+
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The string, bytes or a sequence of strings and bytes to hash."))
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+        if $name_str == "Hash.Keccak-256" {
+          OptionalString(shccstr!("Returns the 256-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.Keccak-512" {
+          OptionalString(shccstr!("Returns the 512-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.Sha3-256" {
+          OptionalString(shccstr!("Returns the 256-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.Sha3-512" {
+          OptionalString(shccstr!("Returns the 512-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else {
+          OptionalString(shccstr!("Returns the hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        }
+      }
+
       fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
         &INPUT_TYPES
       }
@@ -240,6 +275,31 @@ macro_rules! add_hasher2 {
       fn name(&mut self) -> &str {
         $name_str
       }
+
+      fn help(&mut self) -> OptionalString {
+        if $name_str == "Hash.Sha2-256" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 256-bit hash(of 32 bytes) using the SHA2-256 hashing algorithm."))
+        } else if $name_str == "Hash.Sha2-512" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 512-bit hash(of 64 bytes) using the SHA2-512 hashing algorithm."))
+        } else {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a hash using the specified hashing algorithm."))
+        }
+      }
+
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The string, bytes or a sequence of strings and bytes to hash."))
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+         if $name_str == "Hash.Sha2-256" {
+          OptionalString(shccstr!("Returns the 256-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.Sha2-512" {
+          OptionalString(shccstr!("Returns the 512-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else {
+          OptionalString(shccstr!("Returns the hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        }
+      }
+      
       fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
         &INPUT_TYPES
       }
@@ -319,6 +379,47 @@ macro_rules! add_hasher3 {
       fn name(&mut self) -> &str {
         $name_str
       }
+
+      fn help(&mut self) -> OptionalString {
+        if $name_str == "Hash.Blake2-128" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a compact 128-bit hash(of 16 bytes) using the BLAKE2b-128 hashing algorithm."))
+        } else if $name_str == "Hash.Blake2-256" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 256-bit hash(of 32 bytes) using the BLAKE2b-256 hashing algorithm."))
+        } else if $name_str == "Hash.XXH-64" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 64-bit hash(of 8 bytes) using the XXH64 hashing algorithm."))
+        } else if $name_str == "Hash.XXH-128" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 128-bit hash(of 16 bytes) using the XXH128 hashing algorithm."))
+        } else if $name_str == "Hash.XXH3-64" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 64-bit hash(of 8 bytes) using the XXH3(64-bit) hashing algorithm."))
+        } else if $name_str == "Hash.XXH3-128" {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a 128-bit hash(of 16 bytes) using the XXH3(128-bit) hashing algorithm."))
+        } else {
+          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings and bytes) into a hash using the specified hashing algorithm."))
+        }
+      }
+
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The string, bytes or a sequence of strings and bytes to hash."))
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+        if $name_str == "Hash.Blake2-128" {
+          OptionalString(shccstr!("Returns the 128-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.Blake2-256" {
+          OptionalString(shccstr!("Returns the 256-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.XXH-64" {
+          OptionalString(shccstr!("Returns the 64-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.XXH-128" {
+          OptionalString(shccstr!("Returns the 128-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.XXH3-64" {
+          OptionalString(shccstr!("Returns the 64-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else if $name_str == "Hash.XXH3-128" {
+          OptionalString(shccstr!("Returns the 128-bit hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        } else {
+          OptionalString(shccstr!("Returns the hash as a byte sequence (returns a sequence of bytes instead if the input was a sequence)."))
+        }
+      }
+
       fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
         &INPUT_TYPES
       }
