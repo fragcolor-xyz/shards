@@ -434,6 +434,13 @@ struct Profile {
   static inline Parameters _params{{"Action", SHCCSTR("The action shards to profile."), {CoreInfo::Shards}},
                                    {"Label", SHCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input of this shard will be provided as input to the shards in the Action parameter."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be the output of the shards in the Action parameter."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -1923,6 +1930,7 @@ RUNTIME_SHARD_END(Not);
 
 // Register IsNan
 RUNTIME_CORE_SHARD_FACTORY(IsValidNumber);
+RUNTIME_SHARD_help(IsValidNumber);
 RUNTIME_SHARD_inputTypes(IsValidNumber);
 RUNTIME_SHARD_inputHelp(IsValidNumber);
 RUNTIME_SHARD_outputTypes(IsValidNumber);
@@ -2222,6 +2230,7 @@ RUNTIME_SHARD_END(Slice);
 // Register Limit
 RUNTIME_CORE_SHARD_FACTORY(Limit);
 RUNTIME_SHARD_destroy(Limit);
+RUNTIME_SHARD_help(Limit);
 RUNTIME_SHARD_inputTypes(Limit);
 RUNTIME_SHARD_inputHelp(Limit);
 RUNTIME_SHARD_outputTypes(Limit);
@@ -2343,6 +2352,9 @@ SHVar export_strings(const SHVar &input) {
 #endif
 
 struct LastError {
+  static SHOptionalString help() { return SHCCSTR("This shard returns the last error message that occurred and returns it as a string."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The last error message that occurred as a string."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -2372,6 +2384,15 @@ struct LowestHighestShard {
 };
 
 struct LowestShard : LowestHighestShard {
+  static SHOptionalString help() {
+    return SHCCSTR("Takes a sequence and returns the element with the lowest value.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of elements of any type.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the element with the lowest value.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2388,6 +2409,15 @@ struct LowestShard : LowestHighestShard {
 };
 
 struct HighestShard : LowestHighestShard {
+  static SHOptionalString help() {
+    return SHCCSTR("Takes a sequence and returns the element with the highest value.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of elements of any type.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the element with the highest value.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2714,6 +2744,12 @@ struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreI
   static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
 };
 
+struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType> {
+  static SHOptionalString help() { return SHCCSTR("This shard will open the URL string input in the current system's default web browser."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The URL to navigate to."); }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+};
+
 SHARDS_REGISTER_FN(core) {
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
@@ -2784,7 +2820,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Pass", PassShard);
   REGISTER_SHARD("Exit", ExitShard);
 
-  using HasherShard = LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type>;
   REGISTER_SHARD("Hash", HasherShard);
 
   using BlockingSleepShard = LambdaShard<blockingSleepActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
@@ -2802,7 +2837,6 @@ SHARDS_REGISTER_FN(core) {
   using EmscriptenBrowseShard = LambdaShard<emscriptenBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", EmscriptenBrowseShard);
 #else
-  using WebBrowseShard = LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", WebBrowseShard);
 #endif
 

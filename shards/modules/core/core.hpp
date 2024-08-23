@@ -3543,19 +3543,17 @@ struct Limit {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Extracts a specified number of elements from the beginning of the input sequence. This operation is "
-                   "non-destructive and does not modify the target sequence.");
+    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) and returns the truncated sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input sequence from which elements will be extracted."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input sequence to truncate."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The extracted elements from the input sequence. If the input sequence contains multiple types, the output "
-                   "will be a sequence of those types.");
+    return SHCCSTR("The truncated sequence (or a single element if Max is 1).");
   }
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
