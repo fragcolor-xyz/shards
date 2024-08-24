@@ -50,10 +50,15 @@ pub(crate) fn highlight_generic(
   })
 }
 
+/*
+base16-ocean.dark,base16-eighties.dark,base16-mocha.dark,base16-ocean.light
+InspiredGitHub from here
+Solarized (dark) and Solarized (light)
+*/
 lazy_static! {
   static ref DEFAULT_THEMES: ThemeSet = ThemeSet::load_defaults();
-  static ref DARK_THEME: &'static Theme = &DEFAULT_THEMES.themes["Solarized (dark)"];
-  static ref LIGHT_THEME: &'static Theme = &DEFAULT_THEMES.themes["Solarized (light)"];
+  static ref DARK_THEME: &'static Theme = &DEFAULT_THEMES.themes["base16-ocean.dark"];
+  static ref LIGHT_THEME: &'static Theme = &DEFAULT_THEMES.themes["base16-ocean.light"];
 }
 
 pub(crate) struct CodeTheme {
@@ -181,31 +186,6 @@ impl<const FULL_LOAD: bool> Highlighter<FULL_LOAD> {
     }
 
     Some(job)
-  }
-}
-
-#[derive(Hash)]
-enum SyntectTheme {
-  Base16EightiesDark,
-  Base16MochaDark,
-  Base16OceanDark,
-  Base16OceanLight,
-  InspiredGitHub,
-  SolarizedDark,
-  SolarizedLight,
-}
-
-impl SyntectTheme {
-  fn syntect_key_name(&self) -> &'static str {
-    match self {
-      Self::Base16EightiesDark => "base16-eighties.dark",
-      Self::Base16MochaDark => "base16-mocha.dark",
-      Self::Base16OceanDark => "base16-ocean.dark",
-      Self::Base16OceanLight => "base16-ocean.light",
-      Self::InspiredGitHub => "InspiredGitHub",
-      Self::SolarizedDark => "Solarized (dark)",
-      Self::SolarizedLight => "Solarized (light)",
-    }
   }
 }
 
