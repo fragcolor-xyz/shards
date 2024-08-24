@@ -1,0 +1,8 @@
+@wire(parser {
+  @read("../../README.md") | Markdown.Parse
+})
+
+Repeat({
+  Do(parser) | Log
+  When(Is([]) Return)
+})
