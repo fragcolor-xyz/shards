@@ -7,6 +7,8 @@
 
 use egui::text::LayoutJob;
 
+use core::hash::Hash;
+use syntect::highlighting::Theme;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxDefinition;
 use syntect::parsing::SyntaxSet;
@@ -48,10 +50,22 @@ pub(crate) fn highlight_generic(
   })
 }
 
-#[derive(Hash)]
+lazy_static! {
+  static ref DEFAULT_THEMES: ThemeSet = ThemeSet::load_defaults();
+  static ref DARK_THEME: &'static Theme = &DEFAULT_THEMES.themes["Solarized (dark)"];
+  static ref LIGHT_THEME: &'static Theme = &DEFAULT_THEMES.themes["Solarized (light)"];
+}
+
 pub(crate) struct CodeTheme {
   dark_mode: bool,
-  syntect_theme: SyntectTheme,
+  pub theme: &'static Theme,
+}
+
+impl Hash for CodeTheme {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.dark_mode.hash(state);
+    self.theme.name.hash(state);
+  }
 }
 
 impl Default for CodeTheme {
@@ -64,14 +78,14 @@ impl CodeTheme {
   pub fn dark() -> Self {
     Self {
       dark_mode: true,
-      syntect_theme: SyntectTheme::SolarizedDark,
+      theme: &DARK_THEME,
     }
   }
 
   pub fn light() -> Self {
     Self {
       dark_mode: false,
-      syntect_theme: SyntectTheme::SolarizedLight,
+      theme: &LIGHT_THEME,
     }
   }
 }
@@ -132,8 +146,7 @@ impl<const FULL_LOAD: bool> Highlighter<FULL_LOAD> {
       .find_syntax_by_name(language)
       .or_else(|| self.syntaxes.find_syntax_by_extension(language))?;
 
-    let theme = theme.syntect_theme.syntect_key_name();
-    let mut h = HighlightLines::new(syntax, &self.themes.themes[theme]);
+    let mut h = HighlightLines::new(syntax, theme.theme);
 
     use egui::text::{LayoutSection, TextFormat};
     let mut job = LayoutJob {

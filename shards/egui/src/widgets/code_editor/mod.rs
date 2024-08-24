@@ -237,15 +237,30 @@ impl LegacyShard for CodeEditor {
         immutable = VarTextBuffer(self.variable.get());
         &mut immutable
       };
-      let code_editor = egui::TextEdit::multiline(text)
-        .id_source(id1)
-        .code_editor()
-        .desired_width(f32::INFINITY)
-        .layouter(&mut layouter);
-      let response = egui::ScrollArea::vertical()
-        .id_source(id2)
-        .show(ui, |ui| ui.centered_and_justified(|ui| ui.add(code_editor)))
-        .inner
+
+      let response = ui
+        .scope(|ui| {
+          let style = ui.style_mut();
+
+          if let Some(bg_color) = theme.theme.settings.background {
+            style.visuals.extreme_bg_color = syntect_color_to_egui(bg_color);
+          }
+
+          if let Some(selection_foreground) = theme.theme.settings.selection_foreground {
+            style.visuals.selection.bg_fill = syntect_color_to_egui(selection_foreground);
+          }
+
+          let code_editor = egui::TextEdit::multiline(text)
+            .id_source(id1)
+            .code_editor()
+            .desired_width(f32::INFINITY)
+            .layouter(&mut layouter);
+          egui::ScrollArea::vertical()
+            .id_source(id2)
+            .show(ui, |ui| ui.centered_and_justified(|ui| ui.add(code_editor)))
+            .inner
+            .inner
+        })
         .inner;
 
       if response.changed() || response.lost_focus() {
@@ -257,4 +272,8 @@ impl LegacyShard for CodeEditor {
       Err("No UI parent")
     }
   }
+}
+
+fn syntect_color_to_egui(color: syntect::highlighting::Color) -> egui::Color32 {
+  egui::Color32::from_rgb(color.r, color.g, color.b)
 }
