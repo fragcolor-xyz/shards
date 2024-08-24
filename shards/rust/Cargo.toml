@@ -11,7 +11,7 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 approx = "0.5.1"
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 compile-time-crc32 = "0.1.2"
 serde = { version = "1.0", features = ["derive"] }
 half = { version = "2.2.1" }

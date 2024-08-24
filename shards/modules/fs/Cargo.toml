@@ -10,7 +10,7 @@ edition = "2021"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, optional = true}
