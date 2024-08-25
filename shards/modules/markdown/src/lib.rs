@@ -1,15 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::{register_enum, register_shard};
+use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::types::{
-  common_type, AutoSeqVar, ClonedVar, ANY_TABLE_TYPES, NONE_TYPES, STRINGS_TYPES, STRING_TYPES,
-};
-use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
+use shards::types::{AutoSeqVar, ClonedVar, STRINGS_TYPES, STRING_TYPES};
+use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 use pulldown_cmark::{
-  BlockQuoteKind, CodeBlockKind, Event, LinkType, MetadataBlockKind, Parser, Tag, TagEnd,
+  BlockQuoteKind, CodeBlockKind, Event, LinkType, MetadataBlockKind, Options, Parser, Tag, TagEnd,
 };
 
 #[derive(shards::shard)]
@@ -65,7 +63,7 @@ impl Shard for MarkdownParseShard {
     if self.parser.is_none() {
       self.input = input.into();
       let input: &str = self.input.as_ref().try_into()?;
-      self.parser = Some(Parser::new(input));
+      self.parser = Some(Parser::new_ext(input, Options::all()));
     }
 
     self.output.0.clear();
@@ -79,7 +77,12 @@ impl Shard for MarkdownParseShard {
             self.output.0.push(&a);
             self.output.0.push(&b);
           }
-          Tag::Heading { level, .. } => {
+          Tag::Heading {
+            level,
+            id,
+            classes,
+            attrs,
+          } => {
             let a = Var::ephemeral_string("Start");
             let b = Var::ephemeral_string("Heading");
             let level = level.to_string();
@@ -87,7 +90,27 @@ impl Shard for MarkdownParseShard {
             self.output.0.push(&a);
             self.output.0.push(&b);
             self.output.0.push(&c);
-            // Note: id, classes, and attrs are ignored for simplicity
+            if let Some(id) = id {
+              let id = format!("#{}", id);
+              let d = Var::ephemeral_string(&id);
+              self.output.0.push(&d);
+            }
+            for class in classes {
+              let class = format!(".{}", class);
+              let d = Var::ephemeral_string(&class);
+              self.output.0.push(&d);
+            }
+            for (name, value) in attrs {
+              if let Some(value) = value {
+                let attr = format!("{}={}", name, value);
+                let d = Var::ephemeral_string(&attr);
+                self.output.0.push(&d);
+              } else {
+                let attr = format!("{}", name);
+                let d = Var::ephemeral_string(&attr);
+                self.output.0.push(&d);
+              }
+            }
           }
           Tag::BlockQuote(kind) => {
             let a = Var::ephemeral_string("Start");

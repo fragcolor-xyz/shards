@@ -2630,29 +2630,15 @@ fn process_macro(
     let args = unsafe { &*group.args };
     let shards = unsafe { &*group.shards };
 
-    if args.len()
-      != func
-        .params
-        .as_ref()
-        .ok_or(
-          (
-            format!(
-              "Macro {} requires {} parameters",
-              func.name.name,
-              args.len()
-            ),
-            line_info,
-          )
-            .into(),
-        )?
-        .len()
-    {
+    let expected_params = func.params.as_ref().map(|p| p.len()).unwrap_or(0);
+    let provided_args = args.len();
+
+    if provided_args != expected_params {
       return Err(
         (
           format!(
-            "Macro {} requires {} parameters",
-            func.name.name,
-            args.len()
+            "Macro {} requires {} parameters, but {} were provided",
+            func.name.name, expected_params, provided_args
           ),
           line_info,
         )
@@ -2742,7 +2728,7 @@ fn process_macro(
       eval_env.replacements.insert(arg.to_owned(), value_ptr);
     }
 
-    // ok so a macro is AST in Shards tables that we translate into Json and deserialize as AST
+    // ok so a macro is AST in Shards that we translate into Json and deserialize as AST
     let (ast_json, _) = eval_eval_expr(shards, &mut eval_env)?;
     Ok(Some(ast_json))
   } else {
