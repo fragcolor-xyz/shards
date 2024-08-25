@@ -11,4 +11,4 @@
 } Looped: true)
 
 @schedule(root test)
-@run(root FPS: 10 Iterations: 10) | Assert.Is(true)
+@run(root FPS: 10 Iterations: 20) | Assert.Is(true)
