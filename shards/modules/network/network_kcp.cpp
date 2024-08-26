@@ -326,6 +326,16 @@ struct ServerShard : public NetworkBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Server; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sets up a UDP network server using the KCP protocol, on the address and port specified in the "
+                   "Address and Port parameters. This server then handles client connections and disconnections, messages "
+                   "received from clients and broadcasting messages to these clients.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The server object created."); }
+
   struct Composer {
     ServerShard &server;
 
@@ -377,7 +387,7 @@ struct ServerShard : public NetworkBase {
        SHCCSTR("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
        {CoreInfo::FloatType}},
       {"OnDisconnect",
-       SHCCSTR("The flow to execute when a peer disconnects, The Peer ID will be the input."),
+       SHCCSTR("The shards to execute when a peer disconnects, The Peer ID will be the input."),
        {CoreInfo::ShardsOrNone}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -809,6 +819,14 @@ struct ServerShard : public NetworkBase {
 struct ClientShard : public NetworkBase {
   std::array<SHExposedTypeInfo, 1> _exposing;
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a UDP client connection using the KCP protocol, on the address and port specified in the Address and Port parameters.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The peer object created."); }
+
   SHExposedTypesInfo exposedVariables() {
     _exposing[0].name = "Network.Peer";
     _exposing[0].help = SHCCSTR("The exposed peer.");
@@ -831,7 +849,7 @@ struct ClientShard : public NetworkBase {
   static inline Parameters params{
       {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
       {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
-      {"Handler", SHCCSTR("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone}}};
+      {"Handler", SHCCSTR("The shards to execute when a packet is received."), {CoreInfo::ShardsOrNone}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 

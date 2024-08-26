@@ -68,11 +68,24 @@ void setDefaultServerParam(ParamVar &peerParam) {
 }
 
 struct Broadcast {
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends the input to all peers connected to the server (created by Network.Server) specified in the Server parameter.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input to broadcast to all connected peers.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  PARAM_PARAMVAR(_server, "Server", "The server", {Types::ServerVar});
-  PARAM_PARAMVAR(_exclude, "Exclude", "Peer IDs to exclude", {CoreInfo::IntVarSeqType, CoreInfo::IntSeqType, CoreInfo::NoneType});
+  PARAM_PARAMVAR(_server, "Server", "The server to send the input to.", {Types::ServerVar});
+  PARAM_PARAMVAR(_exclude, "Exclude", "The list of Peer IDs to exclude from the broadcast.", {CoreInfo::IntVarSeqType, CoreInfo::IntSeqType, CoreInfo::NoneType});
   PARAM_IMPL(PARAM_IMPL_FOR(_server), PARAM_IMPL_FOR(_exclude));
 
   Broadcast() {
@@ -99,9 +112,20 @@ struct Broadcast {
 };
 
 struct Send {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sends the input to the peer specified in the Peer parameter.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input to send to the peer.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
+
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
 
   PARAM_EXT(ParamVar, _peer, Types::PeerParameterInfo);
   PARAM_IMPL(PARAM_IMPL_FOR(_peer));
@@ -130,7 +154,15 @@ struct SendRaw {
     return types;
   }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("This shard sends the input bytes sequence or string to the peer specified in the Peer parameter."); }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input to send to the peer.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return DefaultHelpText::OutputHelpPass;
+  }
 
   PARAM_EXT(ParamVar, _peer, Types::PeerParameterInfo);
   PARAM_IMPL(PARAM_IMPL_FOR(_peer));
@@ -160,9 +192,19 @@ struct SendRaw {
 struct PeerID {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::IntType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("This shard returns the Peer ID of the peer specified in the Peer parameter as an integer."); }
 
-  PARAM_EXT(ParamVar, _peer, Types::PeerParameterInfo);
+  static SHOptionalString inputHelp() {
+    return DefaultHelpText::InputHelpIgnored;
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The Peer ID of the peer specified in the Peer parameter.");
+  }
+
+  static inline ParameterInfo PeerIDParameterInfo{"Peer", SHCCSTR("The Peer object to get the ID of."), {Types::PeerVar}};
+
+  PARAM_EXT(ParamVar, _peer, PeerIDParameterInfo);
   PARAM_IMPL(PARAM_IMPL_FOR(_peer));
 
   PeerID() { setDefaultPeerParam(_peer); }
@@ -185,9 +227,19 @@ struct PeerID {
 struct PeerShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Peer; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("This shard returns the peer object of the peer with the Peer ID specified in the Peer parameter."); }
 
-  PARAM_EXT(ParamVar, _peer, Types::PeerParameterInfo);
+  static SHOptionalString inputHelp() {
+    return DefaultHelpText::InputHelpIgnored;
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the Peer object specified.");
+  }
+
+  static inline ParameterInfo PeerParameInfo{"Peer", SHCCSTR("The Peer ID of the Peer object to get."), {Types::PeerVar}};
+
+  PARAM_EXT(ParamVar, _peer, PeerParameInfo);
   PARAM_IMPL(PARAM_IMPL_FOR(_peer));
 
   PeerShard() { setDefaultPeerParam(_peer); }

@@ -10,6 +10,10 @@ namespace Snappy {
 struct Compress {
   std::vector<char> _buffer;
 
+  static SHOptionalString help() { return SHCCSTR("This shard compresses the input bytes sequence using the Snappy algorithm and returns the compressed bytes sequence."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The bytes sequence to compress."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The compressed bytes sequence."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -23,6 +27,10 @@ struct Compress {
 
 struct Decompress {
   std::vector<char> _buffer;
+
+  static SHOptionalString help() { return SHCCSTR("This shard decompressed the input bytes sequence that has been previously compressed using the Snappy.Compress shard."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The compressed bytes sequence to decompress."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The decompressed bytes sequence."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }

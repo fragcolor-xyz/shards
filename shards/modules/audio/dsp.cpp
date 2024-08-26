@@ -26,7 +26,7 @@ struct FFTBase {
 
   static inline Types FloatTypes{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType, CoreInfo::AudioType}};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_state) {
       kiss_fft_free(_state);
       _state = nullptr;
@@ -40,6 +40,21 @@ struct FFTBase {
 };
 
 struct FFT : public FFTBase {
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a Fast Fourier Transform (FFT) on the input. It takes the time-domain representation of "
+                   "an audio (represented as a sounds object, float sequence or float2 sequence) and returns its "
+                   "frequency-domain representation as a float2 sequence.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The time-domain representation of an audio to be converted. Can be a float sequence, float2 sequence or a sound object.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The frequency-domain representation of the audio as a float2 sequence.");
+  }
+
   static SHTypesInfo inputTypes() { return FloatTypes; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
@@ -134,6 +149,18 @@ struct FFT : public FFTBase {
 struct IFFT : public FFTBase {
   bool _asAudio{false};
   bool _complex{false};
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain representation of an audio (represented as a float2 sequence) and returns its time-domain representation (as a float sequence, float2 sequence or an audio object.)");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The frequency-domain representation of an audio to be converted.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The time-domain representation of the audio as a float sequence, float2 sequence or an audio object (determined by the Audio and Complex parameters).");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
 
