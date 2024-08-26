@@ -204,7 +204,7 @@ impl LegacyShard for Checkbox {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let make_checkbox = |checked| -> Result<egui::Checkbox, &'static str> {
         Ok(if !self.label.is_none() {
@@ -226,7 +226,7 @@ impl LegacyShard for Checkbox {
         let checkbox = make_checkbox(checked)?;
 
         let response = ui.add(checkbox);
-        Ok(response.changed().into())
+        Ok(Some(response.changed().into()))
       } else {
         let variable = self.variable.get();
         let mut checked = if variable.is_none() {
@@ -237,7 +237,7 @@ impl LegacyShard for Checkbox {
         let checkbox = make_checkbox(&mut checked)?;
 
         let response = ui.add(checkbox);
-        Ok(response.changed().into())
+        Ok(Some(response.changed().into()))
       }
     } else {
       Err("No UI parent")

@@ -397,7 +397,7 @@ impl Shard for ShardsPrintShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &SHContext, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &SHContext, input: &Var) -> Result<Option<Var>, &str> {
     // ok we have 3 types, string (json), bytes (binary), and object (Program Rc etc)
     let string_ast: Result<&str, _> = input.try_into();
     let bytes_ast: Result<&[u8], _> = input.try_into();
@@ -438,7 +438,7 @@ impl Shard for ShardsPrintShard {
       }
       _ => return Err("Invalid input type"),
     }
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

@@ -343,7 +343,7 @@ impl LegacyShard for Table {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.push_id(EguiId::new(self, 0), |ui| {
         use egui_extras::{Column, TableBuilder};
@@ -447,7 +447,7 @@ impl LegacyShard for Table {
       .inner?;
 
       // Always passthrough the input
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

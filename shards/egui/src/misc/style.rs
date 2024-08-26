@@ -9,7 +9,7 @@ use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
 use shards::types::{common_type, ClonedVar, TableVar};
-use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, NONE_TYPES};
+use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var, ANY_TYPES};
 use shards::util::get_or_var;
 
 #[derive(shards::shards_enum)]
@@ -401,11 +401,11 @@ impl Default for StyleShard {
 #[shards::shard_impl]
 impl Shard for StyleShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -427,7 +427,7 @@ impl Shard for StyleShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let mut global_style = None;
 
     let no_default: bool = (&self.inherit_default.0).try_into()?;
@@ -698,7 +698,7 @@ impl Shard for StyleShard {
     when_set(&self.striped, |v| Ok(visuals.striped = v.try_into()?))?;
 
     when_set(&self.slider_trailing_fill, |v| {
-      Ok(visuals.slider_trailing_fill = v.try_into()?) 
+      Ok(visuals.slider_trailing_fill = v.try_into()?)
     })?;
 
     when_set(&self.selection, |v| {
@@ -729,7 +729,7 @@ impl Shard for StyleShard {
         .set_style(global_style);
     }
 
-    Ok(Var::default())
+    Ok(None)
   }
 }
 
@@ -779,11 +779,11 @@ impl Default for WidgetStyleShard {
 #[shards::shard_impl]
 impl Shard for WidgetStyleShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -805,7 +805,7 @@ impl Shard for WidgetStyleShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let mut global_style = None;
     let style = if let Ok(ui) = crate::util::get_parent_ui(self.parents.get()) {
       ui.style_mut()
@@ -847,7 +847,7 @@ impl Shard for WidgetStyleShard {
         .set_style(global_style);
     }
 
-    Ok(Var::default())
+    Ok(None)
   }
 }
 

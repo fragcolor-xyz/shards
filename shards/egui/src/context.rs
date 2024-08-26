@@ -173,9 +173,9 @@ impl Shard for ContextShard {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
-      return Ok(*input);
+      return Ok(None);
     }
 
     let egui_input = unsafe {
@@ -221,7 +221,7 @@ impl Shard for ContextShard {
       &UI_OUTPUT_TYPE,
     ));
 
-    Ok(self.last_output.0)
+    Ok(Some(self.last_output.0))
   }
 }
 
@@ -272,7 +272,7 @@ impl Shard for RenderShard {
     Ok(data.inputType)
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if input.is_seq() {
       let input_seq = input.as_seq()?;
       let num_ui_outputs = input_seq.len();
@@ -283,7 +283,7 @@ impl Shard for RenderShard {
       self.render_output_var(true, input)?
     }
 
-    Ok(*input)
+    Ok(None)
   }
 }
 

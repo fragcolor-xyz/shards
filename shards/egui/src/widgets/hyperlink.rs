@@ -127,7 +127,7 @@ impl LegacyShard for Hyperlink {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let url: &str = input.try_into()?;
 
@@ -147,7 +147,7 @@ impl LegacyShard for Hyperlink {
 
       ui.add(egui::Hyperlink::from_label_and_url(text, url));
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

@@ -217,9 +217,9 @@ macro_rules! impl_panel {
         Ok(())
       }
 
-      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
         if self.contents.is_empty() {
-          return Ok(*input);
+          return Ok(None);
         }
 
         let mut panel = $egui_func(EguiId::new(self, 0));
@@ -257,7 +257,7 @@ macro_rules! impl_panel {
             let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
             panel
               .show(egui_ctx, |ui| {
-                  util::activate_ui_contents(
+                util::activate_ui_contents(
                   context,
                   input,
                   ui,
@@ -270,7 +270,7 @@ macro_rules! impl_panel {
         })??;
 
         // Always passthrough the input
-        Ok(*input)
+        Ok(None)
       }
     }
   };
@@ -442,9 +442,9 @@ impl LegacyShard for CentralPanel {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
-      return Ok(*input);
+      return Ok(None);
     }
 
     let ui_ctx = util::get_current_context(&self.instance)?;
@@ -466,6 +466,6 @@ impl LegacyShard for CentralPanel {
     })??;
 
     // Always passthrough the input
-    Ok(*input)
+    Ok(None)
   }
 }

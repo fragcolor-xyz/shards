@@ -83,7 +83,7 @@ impl LegacyShard for Encrypt {
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let input = if let Ok(bytes) = <&[u8]>::try_from(input) {
       bytes
     } else if let Ok(s) = <&str>::try_from(input) {
@@ -123,7 +123,7 @@ impl LegacyShard for Encrypt {
 
     self.output.assign(&ciphertext.as_slice().into());
 
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -184,7 +184,7 @@ impl LegacyShard for Decrypt {
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let input = if let Ok(bytes) = <&[u8]>::try_from(input) {
       bytes
     } else {
@@ -222,7 +222,7 @@ impl LegacyShard for Decrypt {
 
     self.output.assign(&plaintext.as_slice().into());
 
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

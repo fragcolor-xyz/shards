@@ -155,7 +155,7 @@ macro_rules! add_hasher {
       fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
         &BYTES_TYPES
       }
-      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
         let mut k = $algo();
         self.output.resize($size, 0);
         if input.is_seq() {
@@ -185,7 +185,7 @@ macro_rules! add_hasher {
           }
         }
         k.finalize(&mut self.output);
-        Ok(self.output.as_slice().into())
+        Ok(Some(self.output.as_slice().into()))
       }
     }
   };
@@ -246,7 +246,7 @@ macro_rules! add_hasher2 {
       fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
         &BYTES_TYPES
       }
-      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
         let mut k = $algo();
         if input.is_seq() {
           let s: Seq = input.try_into().unwrap();
@@ -276,7 +276,7 @@ macro_rules! add_hasher2 {
         }
         self.output.clear();
         self.output.extend_from_slice(k.finalize().as_slice());
-        Ok(self.output.as_slice().into())
+        Ok(Some(self.output.as_slice().into()))
       }
     }
   };
@@ -325,7 +325,7 @@ macro_rules! add_hasher3 {
       fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
         &BYTES_TYPES
       }
-      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
         self.scratch.clear();
         if input.is_seq() {
           let s: Seq = input.try_into().unwrap();
@@ -356,7 +356,7 @@ macro_rules! add_hasher3 {
         let output: [u8; $size] = $algo(&self.scratch);
         self.output.clear();
         self.output.extend_from_slice(&output);
-        Ok(self.output.as_slice().into())
+        Ok(Some(self.output.as_slice().into()))
       }
     }
   };

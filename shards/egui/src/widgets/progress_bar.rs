@@ -135,25 +135,25 @@ impl LegacyShard for ProgressBar {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let progress = input.try_into()?;
-      let mut progressBar = egui::ProgressBar::new(progress);
+      let mut progress_bar = egui::ProgressBar::new(progress);
 
       let overlay = self.overlay.get();
       if !overlay.is_none() {
         let text: &str = overlay.try_into()?;
-        progressBar = progressBar.text(text);
+        progress_bar = progress_bar.text(text);
       }
 
       let desired_width = self.desired_width.get();
       if !desired_width.is_none() {
-        progressBar = progressBar.desired_width(desired_width.try_into()?);
+        progress_bar = progress_bar.desired_width(desired_width.try_into()?);
       }
 
-      ui.add(progressBar);
+      ui.add(progress_bar);
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

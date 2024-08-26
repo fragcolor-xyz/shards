@@ -87,7 +87,7 @@ impl LegacyShard for AddFont {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
     let pairs = SeqVar::wrap(*input);
 
@@ -107,6 +107,6 @@ impl LegacyShard for AddFont {
 
     egui_ctx.set_fonts(fonts);
 
-    Ok(*input)
+    Ok(None)
   }
 }

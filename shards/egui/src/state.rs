@@ -3,14 +3,14 @@ use lazy_static::__Deref;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
-use shards::core::register_legacy_shard;
-use shards::shard::LegacyShard;
 use crate::HELP_VALUE_IGNORED;
 use crate::OUTPUT_PASSED;
-use shards::types::OptionalString;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
+use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Var;
 use shards::types::BYTES_TYPES;
@@ -104,7 +104,7 @@ impl LegacyShard for Save {
     &mut self,
     _context: &shards::types::Context,
     _input: &shards::types::Var,
-  ) -> Result<shards::types::Var, &str> {
+  ) -> Result<Option<Var>, &str> {
     let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
     self.data = egui_ctx.memory_mut(|mem| {
       Ok::<_, &str>(Some(
@@ -113,7 +113,7 @@ impl LegacyShard for Save {
     })?;
 
     let data: Var = self.data.as_ref().unwrap().as_slice().into();
-    Ok(data)
+    Ok(Some(data))
   }
 }
 
@@ -162,7 +162,9 @@ impl LegacyShard for Restore {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The UI state to restore to represented as a byte sequence."))
+    OptionalString(shccstr!(
+      "The UI state to restore to represented as a byte sequence."
+    ))
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -191,7 +193,7 @@ impl LegacyShard for Restore {
     &mut self,
     _context: &shards::types::Context,
     input: &shards::types::Var,
-  ) -> Result<shards::types::Var, &str> {
+  ) -> Result<Option<Var>, &str> {
     let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
     let bytes: &[u8] = input.try_into()?;
     egui_ctx.memory_mut(|mem| {
@@ -200,7 +202,7 @@ impl LegacyShard for Restore {
       )
     })?;
 
-    Ok(*input)
+    Ok(None)
   }
 }
 

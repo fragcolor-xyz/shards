@@ -7,7 +7,6 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use crate::layouts::LAYOUT_FRAME_TYPE;
-use bindings::SHContext;
 use egui::Response;
 use shards::core::cloneVar;
 use shards::core::register_enum;

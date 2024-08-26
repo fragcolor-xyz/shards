@@ -202,7 +202,7 @@ impl LegacyShard for CodeEditor {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let theme = if ui.style().visuals.dark_mode {
         CodeTheme::dark()
@@ -264,9 +264,9 @@ impl LegacyShard for CodeEditor {
         .inner;
 
       if response.changed() || response.lost_focus() {
-        Ok(true.into())
+        Ok(Some(true.into()))
       } else {
-        Ok(false.into())
+        Ok(Some(false.into()))
       }
     } else {
       Err("No UI parent")

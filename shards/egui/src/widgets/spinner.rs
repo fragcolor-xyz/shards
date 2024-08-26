@@ -122,7 +122,7 @@ impl LegacyShard for Spinner {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let mut spinner = egui::Spinner::new();
 
@@ -133,7 +133,7 @@ impl LegacyShard for Spinner {
 
       ui.add(spinner);
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

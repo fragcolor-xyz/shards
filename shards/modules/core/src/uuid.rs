@@ -61,9 +61,9 @@ impl LegacyShard for UUIDCreate {
     &INT16_TYPES
   }
 
-  fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, _: &Var) -> Result<Option<Var>, &str> {
     let uuid = uuid::Uuid::new_v4();
-    Ok(uuid.as_bytes().into())
+    Ok(Some(uuid.as_bytes().into()))
   }
 }
 
@@ -97,7 +97,7 @@ impl LegacyShard for UUIDConvert {
     &INT16_TYPES
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let uuid = match (<&str>::try_from(input), <&[u8]>::try_from(input)) {
       (Ok(str), _) => uuid::Uuid::from_str(str).map_err(|e| {
         shlog_error!("Failed to parse UUID: {}", e);
@@ -109,7 +109,7 @@ impl LegacyShard for UUIDConvert {
       })?,
       _ => return Err("Invalid input type."),
     };
-    Ok(uuid.as_bytes().into())
+    Ok(Some(uuid.as_bytes().into()))
   }
 }
 
@@ -173,7 +173,7 @@ impl LegacyShard for UUIDToString {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: [u8; 16] = input.try_into()?;
     let uuid = uuid::Uuid::from_bytes(bytes);
     self.output = if self.hyphenated {
@@ -181,7 +181,7 @@ impl LegacyShard for UUIDToString {
     } else {
       uuid.simple().to_string().into()
     };
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -215,10 +215,10 @@ impl LegacyShard for UUIDToBytes {
     &BYTES_TYPES
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: [u8; 16] = input.try_into()?;
     self.output = bytes.as_ref().into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -288,11 +288,11 @@ impl LegacyShard for NanoIDCreate {
     }
   }
 
-  fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, _: &Var) -> Result<Option<Var>, &str> {
     let size = self.size as usize;
     let id = nanoid::nanoid!(size);
     self.output = id.into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -360,12 +360,12 @@ impl Shard for SnowflakeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let mut generator = SNOWFLAKE_GENERATOR.write().unwrap();
     generator.machine_id = self.machine_id.0.as_ref().try_into().unwrap();
     generator.node_id = self.node_id.0.as_ref().try_into().unwrap();
     let id = generator.real_time_generate();
-    Ok(id.into())
+    Ok(Some(id.into()))
   }
 }
 

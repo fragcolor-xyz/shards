@@ -12,7 +12,6 @@ use resvg::tiny_skia::Pixmap;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::shard;
-use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHVarPayload;
@@ -126,7 +125,7 @@ impl Shard for ToImage {
     self.cleanup_helper(ctx)?;
     Ok(())
   }
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let mut opt = usvg::Options::default();
 
     let ntree = match input.valueType {
@@ -193,7 +192,7 @@ impl Shard for ToImage {
     );
 
     self.output = pixmap_to_var(pixmap);
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

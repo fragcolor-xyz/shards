@@ -1,7 +1,7 @@
 use egui::CentralPanel;
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, NONE_TYPES};
+use shards::types::{common_type, ANY_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
 use crate::{util, CONTEXTS_NAME, PARENTS_UI_NAME};
@@ -30,11 +30,11 @@ impl Default for InspectionShard {
 #[shards::shard_impl]
 impl Shard for InspectionShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -55,12 +55,12 @@ impl Shard for InspectionShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
     ui_ctx.egui_ctx.inspection_ui(ui);
-    Ok(Var::default())
+    Ok(None)
   }
 }
 
@@ -88,11 +88,11 @@ impl Default for SettingsShard {
 #[shards::shard_impl]
 impl Shard for SettingsShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -113,12 +113,12 @@ impl Shard for SettingsShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
     ui_ctx.egui_ctx.settings_ui(ui);
-    Ok(Var::default())
+    Ok(None)
   }
 }
 

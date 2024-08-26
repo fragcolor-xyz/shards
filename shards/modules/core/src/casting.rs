@@ -67,7 +67,7 @@ impl LegacyShard for ToBase58 {
     &STRING_TYPES
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: Result<&[u8], &str> = input.try_into();
     let buffer = if let Ok(bytes) = bytes {
       bs58::encode(bytes).into_string()
@@ -80,7 +80,7 @@ impl LegacyShard for ToBase58 {
       }
     };
     self.output.assign(&Var::ephemeral_string(buffer.as_str()));
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -106,7 +106,9 @@ impl LegacyShard for FromBase58 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard decodes the base58 encoded string and returns it as a decoded byte sequence."))
+    OptionalString(shccstr!(
+      "This shard decodes the base58 encoded string and returns it as a decoded byte sequence."
+    ))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -125,13 +127,13 @@ impl LegacyShard for FromBase58 {
     &BYTES_TYPES
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let str_input: &str = input.try_into()?;
     self.output = bs58::decode(str_input).into_vec().map_err(|e| {
       shlog!("{}", e);
       "Failed to decode base58"
     })?;
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
 
@@ -209,7 +211,7 @@ impl LegacyShard for ToLEB128 {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.signed {
       let int_input: i64 = input.try_into()?;
       self.output.clear();
@@ -225,7 +227,7 @@ impl LegacyShard for ToLEB128 {
         .write_leb128(int_input)
         .map_err(|_| "Failed to convert uint to leb128")?;
     }
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
 
@@ -290,18 +292,18 @@ impl LegacyShard for FromLEB128 {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let mut bytes: &[u8] = input.try_into()?;
     if self.signed {
       let value: (i64, usize) = bytes
         .read_leb128()
         .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
-      Ok(value.0.into())
+      Ok(Some(value.0.into()))
     } else {
       let value: (u64, usize) = bytes
         .read_leb128()
         .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
-      Ok(value.0.into())
+      Ok(Some(value.0.into()))
     }
   }
 }

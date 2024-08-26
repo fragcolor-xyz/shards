@@ -304,11 +304,11 @@ impl Shard for DragDrop {
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
     Some(&self.inner_exposed)
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
-    Ok(if self.is_drop_target() {
+    Ok(Some(if self.is_drop_target() {
       let accepts_value = if !self.hover_callback.is_empty() {
         let cb_input: Var = ui_ctx.dnd_value.borrow().0;
         if cb_input.is_none() {
@@ -362,7 +362,7 @@ impl Shard for DragDrop {
       });
 
       inner.inner?
-    })
+    }))
   }
 }
 

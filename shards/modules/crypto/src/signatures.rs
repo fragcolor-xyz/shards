@@ -83,7 +83,7 @@ impl Shard for Sr25519SignShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: &[u8] = input.try_into()?;
 
     let key = self.key.get();
@@ -99,7 +99,7 @@ impl Shard for Sr25519SignShard {
     let signature = signature.to_bytes();
 
     self.output = Var::ephemeral_slice(&signature).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -143,7 +143,7 @@ impl Shard for Sr25519PublicKeyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key: &[u8] = input.try_into()?;
     let key = schnorrkel::MiniSecretKey::from_bytes(key).map_err(|e| {
       shlog!("{:?}", e);
@@ -152,7 +152,7 @@ impl Shard for Sr25519PublicKeyShard {
     let key = key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
     let key = key.public.to_bytes();
     self.output = Var::ephemeral_slice(&key).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -215,7 +215,7 @@ impl Shard for Sr25519VerifyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key = self.key.get();
     let key: &[u8] = key.try_into()?;
     let key = schnorrkel::PublicKey::from_bytes(key).map_err(|e| {
@@ -235,7 +235,7 @@ impl Shard for Sr25519VerifyShard {
     let sign_context = schnorrkel::signing_context(SIGNING_CTX);
     let ok = key.verify(sign_context.bytes(message), &signature).is_ok();
 
-    Ok(ok.into())
+    Ok(Some(ok.into()))
   }
 }
 
@@ -292,7 +292,7 @@ impl Shard for Ed25519SignShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key: &[u8] = input.try_into()?;
 
     // Ensure the key is exactly 32 bytes
@@ -308,7 +308,7 @@ impl Shard for Ed25519SignShard {
     let signing_key = SigningKey::from_bytes(&key_array);
     let public_key = signing_key.verifying_key();
     self.output = Var::ephemeral_slice(public_key.as_bytes()).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -353,7 +353,7 @@ impl Shard for Ed25519PublicKeyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key: &[u8] = input.try_into()?;
 
     // Ensure the key is exactly 32 bytes
@@ -369,7 +369,7 @@ impl Shard for Ed25519PublicKeyShard {
     let signing_key = SigningKey::from_bytes(&key_array);
     let public_key = signing_key.verifying_key();
     self.output = Var::ephemeral_slice(public_key.as_bytes()).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -427,7 +427,7 @@ impl Shard for Ed25519VerifyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key = self.key.get();
     let key: &[u8] = key.try_into()?;
 
@@ -462,7 +462,7 @@ impl Shard for Ed25519VerifyShard {
     let signature = Signature::from_bytes(&signature_array);
 
     let ok = verifying_key.verify(message, &signature).is_ok();
-    Ok(ok.into())
+    Ok(Some(ok.into()))
   }
 }
 

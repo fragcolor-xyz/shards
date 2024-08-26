@@ -44,13 +44,13 @@ impl Shard for RandomName {
     &STRING_TYPES
   }
 
-  fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, _: &Var) -> Result<Option<Var>, &str> {
     let words_count: i64 = self.words_count.0.as_ref().try_into()?;
     let separator: &str = self.separator.0.as_ref().try_into()?;
     let mut rng = rand::thread_rng();
     let pname = petname::Petnames::default().generate(&mut rng, words_count as u8, separator);
     self.output = pname.into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

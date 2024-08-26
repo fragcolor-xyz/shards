@@ -181,9 +181,9 @@ impl LegacyShard for Tooltip {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
-      return Ok(*input);
+      return Ok(None);
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
@@ -210,7 +210,7 @@ impl LegacyShard for Tooltip {
         }
       }
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

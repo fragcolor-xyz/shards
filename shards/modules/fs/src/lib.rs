@@ -46,10 +46,8 @@ lazy_static! {
   pub static ref STRING_OR_STRINGS_TYPES: Types = vec![common_type::string, common_type::strings];
   pub static ref SEQ_OF_STRINGS_TYPE: Type = Type::seq(&*STRING_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Types = vec![*SEQ_OF_STRINGS_TYPE];
-
   pub static ref FILTER_SEQ_TYPE: Type = Type::seq(&*SEQ_OF_STRINGS_TYPES);
   pub static ref FILTER_SEQ_TYPES: Types = vec![*FILTER_SEQ_TYPE];
-
   static ref SAVEFILEDIALOG_PARAMETERS: Parameters = vec![
     (
       cstr!("Filters"),
@@ -139,12 +137,12 @@ impl Shard for FileDialog {
   }
 
   #[cfg(feature = "rfd-enabled")]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
-    Ok(run_blocking(self, context, input))
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
+    Ok(Some(run_blocking(self, context, input)))
   }
 
   #[cfg(not(feature = "rfd-enabled"))]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
     Err("FileDialog is not supported on this platform")
   }
 }
@@ -322,12 +320,12 @@ impl LegacyShard for SaveFileDialog {
   }
 
   #[cfg(feature = "rfd-enabled")]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
-    Ok(run_blocking(self, context, input))
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
+    Ok(Some(run_blocking(self, context, input)))
   }
 
   #[cfg(not(feature = "rfd-enabled"))]
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
     Err("SaveFileDialog is not supported on this platform")
   }
 }
@@ -412,7 +410,7 @@ impl Shard for NotifyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
     if self.current_path.0.as_ref() != input {
       self.current_path.assign(input);
       self.watcher = Some(self.reset()?);
@@ -457,7 +455,7 @@ impl Shard for NotifyShard {
       }
     }
 
-    Ok(self.output.0 .0)
+    Ok(Some(self.output.0 .0))
   }
 }
 

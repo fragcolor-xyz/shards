@@ -5,8 +5,6 @@ use shards::SHStringWithLen;
 use slotmap::Key;
 
 use log::{error, info};
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 const VERSION_STR: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 

@@ -73,7 +73,7 @@ impl Shard for MarkdownViewerShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
       egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
@@ -81,7 +81,7 @@ impl Shard for MarkdownViewerShard {
         .syntax_theme_dark(THEME_DARK)
         .syntax_theme_light(THEME_LIGHT)
         .show(ui, &mut self.cache, text);
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

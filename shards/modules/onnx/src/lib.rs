@@ -20,7 +20,6 @@ use shards::{
   types::{common_type, ClonedVar, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
-use std::ffi::CString;
 use std::rc::Rc;
 use tract_onnx::prelude::*;
 
@@ -114,7 +113,7 @@ impl LegacyShard for Load {
     }
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let path: &str = self.path.0.as_ref().try_into()?;
     let mut model = tract_onnx::onnx()
       // load the model
@@ -159,7 +158,7 @@ impl LegacyShard for Load {
     self.model = Some(Rc::new(ModelWrapper { model, shape }));
 
     let model_ref = self.model.as_ref().unwrap();
-    Ok(Var::new_object(model_ref, &MODEL_VAR_TYPE))
+    Ok(Some(Var::new_object(model_ref, &MODEL_VAR_TYPE)))
   }
 }
 
@@ -231,7 +230,7 @@ impl LegacyShard for Activate {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let current_model = self.model_var.get();
     let model = match self.previous_model {
       None => {
@@ -291,7 +290,7 @@ impl LegacyShard for Activate {
       self.output[i] = Var::from(*v);
     }
 
-    Ok(self.output.as_ref().into())
+    Ok(Some(self.output.as_ref().into()))
   }
 }
 

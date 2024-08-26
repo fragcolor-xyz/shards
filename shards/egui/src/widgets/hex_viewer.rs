@@ -129,7 +129,7 @@ impl LegacyShard for HexViewer {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     use egui_memory_editor::MemoryEditor;
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
@@ -202,7 +202,7 @@ impl LegacyShard for HexViewer {
       }
       mem_editor.draw_editor_contents_read_only(ui, mem, |mem, address| mem[address].into());
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

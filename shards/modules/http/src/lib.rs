@@ -500,7 +500,7 @@ macro_rules! get_like {
         self.rb._compose(data)
       }
 
-      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
         if !self.rb.keep_alive {
           self.rb._open_client()?;
         }
@@ -534,7 +534,7 @@ macro_rules! get_like {
 
         if self.rb.retry == 0 {
           let _ = self.rb._finalize(context, request);
-          return Ok(self.rb.output.0);
+          return Ok(Some(self.rb.output.0));
         } else {
           let mut retries = self.rb.retry;
           loop {
@@ -546,7 +546,7 @@ macro_rules! get_like {
             let result = self.rb._finalize(context, request);
 
             if let Some(()) = result {
-              return Ok(self.rb.output.0);
+              return Ok(Some(self.rb.output.0));
             }
 
             // Check if retries are exhausted
@@ -627,7 +627,7 @@ macro_rules! post_like {
         self.rb._compose(data)
       }
 
-      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &'static str> {
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
         if !self.rb.keep_alive {
           self.rb._open_client()?;
         }
@@ -697,7 +697,7 @@ macro_rules! post_like {
 
         if self.rb.retry == 0 {
           let _ = self.rb._finalize(context, request);
-          return Ok(self.rb.output.0);
+          return Ok(Some(self.rb.output.0));
         } else {
           let mut retries = self.rb.retry;
           loop {
@@ -709,7 +709,7 @@ macro_rules! post_like {
             let result = self.rb._finalize(context, request);
 
             if let Some(()) = result {
-              return Ok(self.rb.output.0);
+              return Ok(Some(self.rb.output.0));
             }
 
             // Check if retries are exhausted
@@ -785,7 +785,7 @@ impl Shard for HttpStreamShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Var, &'static str> {
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &'static str> {
     let stream = *self.stream.get();
     let result = run_future(context, async move {
       let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
@@ -812,7 +812,7 @@ impl Shard for HttpStreamShard {
       })?
     });
     self.output = result;
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

@@ -176,7 +176,7 @@ impl Shard for Button {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
       let mut text = egui::RichText::new(label);
@@ -236,7 +236,7 @@ impl Shard for Button {
       }
 
       // button not clicked during this frame
-      Ok(button_clicked.into())
+      Ok(Some(button_clicked.into()))
     } else {
       Err("No UI parent")
     }

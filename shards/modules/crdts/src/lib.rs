@@ -117,7 +117,7 @@ impl Shard for CRDTOpenShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if self.output.is_none() {
       let client_id = self.client_id.get();
       let client_id = match client_id.valueType {
@@ -147,7 +147,7 @@ impl Shard for CRDTOpenShard {
 
       self.output = Var::new_object(&self.crdt, &CRDT_TYPE);
     }
-    Ok(self.output)
+    Ok(Some(self.output))
   }
 }
 
@@ -200,7 +200,7 @@ impl Shard for CRDTLoadShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
@@ -211,7 +211,7 @@ impl Shard for CRDTLoadShard {
     let doc = binding.as_mut().unwrap();
     let crdt = &mut doc.crdt;
     *crdt = bincode::deserialize(slice).unwrap();
-    Ok(Var::default())
+    Ok(None)
   }
 }
 
@@ -266,7 +266,7 @@ impl Shard for CRDTSaveShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
@@ -277,7 +277,7 @@ impl Shard for CRDTSaveShard {
     let crdt = &doc.crdt;
     shlog_trace!("CRDT.Save: {:?}", crdt);
     self.output = bincode::serialize(crdt).unwrap();
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
 
@@ -343,7 +343,7 @@ impl Shard for CRDTSetShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
@@ -384,7 +384,7 @@ impl Shard for CRDTSetShard {
     crdt.apply(op);
 
     // just return the slice reference, we hold those bytes for this activation lifetime
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
 
@@ -448,7 +448,7 @@ impl Shard for CRDTGetShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
@@ -473,9 +473,9 @@ impl Shard for CRDTGetShard {
     if let Some(value) = value {
       let value = value.read();
       let value = value.val.first().unwrap();
-      Ok(value.0 .0)
+      Ok(Some(value.0 .0))
     } else {
-      Ok(Var::default())
+      Ok(Some(Var::default()))
     }
   }
 }
@@ -542,7 +542,7 @@ impl Shard for CRDTDeleteShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
@@ -582,7 +582,7 @@ impl Shard for CRDTDeleteShard {
     crdt.apply(op);
 
     // just return the slice reference, we hold those bytes for this activation lifetime
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
 
@@ -642,7 +642,7 @@ impl Shard for CRDTMergeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if self.crdt1.is_none() {
       let crdt = self.crdt1_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
@@ -668,7 +668,7 @@ impl Shard for CRDTMergeShard {
 
     crdt1.merge(crdt2);
 
-    Ok(*input)
+    Ok(None)
   }
 }
 
@@ -721,7 +721,7 @@ impl Shard for CRDTApplyShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     // initialize the CRDT if it's not already
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
@@ -787,7 +787,7 @@ impl Shard for CRDTApplyShard {
       }
     }
 
-    Ok(*input)
+    Ok(None)
   }
 }
 
@@ -845,7 +845,7 @@ impl Shard for CRDTStateShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if self.crdt.is_none() {
       let crdt = self.crdt_param.get();
       let crdt = Var::from_object_as_clone(crdt, &CRDT_TYPE)?;
@@ -857,10 +857,9 @@ impl Shard for CRDTStateShard {
     let crdt = &doc.crdt;
     let state: crdts::ctx::ReadCtx<(), u128> = crdt.read_ctx();
     self.output = bincode::serialize(&state).map_err(|_| "Failed to serialize state.")?;
-    Ok(self.output.as_slice().into())
+    Ok(Some(self.output.as_slice().into()))
   }
 }
-
 
 #[no_mangle]
 pub extern "C" fn shardsRegister_crdts_crdts(core: *mut shards::shardsc::SHCore) {

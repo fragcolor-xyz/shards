@@ -145,13 +145,13 @@ impl LegacyShard for RenderTarget {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     Err("Invalid input type")
   }
 }
 
 impl RenderTarget {
-  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ctx = util::get_current_context(&self.contexts)?;
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
@@ -170,7 +170,7 @@ impl RenderTarget {
       let image = egui::widgets::Image::new(img);
       image.paint_at(ui, rect);
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

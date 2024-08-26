@@ -4,10 +4,10 @@
 use crate::util;
 use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
-use crate::FLOAT_VAR_OR_NONE_SLICE;
 use egui::RichText;
 use shards::shard::Shard;
 use shards::shardsc;
@@ -178,7 +178,7 @@ impl Shard for TextField {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
 
     let mut mutable: MutVarTextBuffer;
@@ -223,9 +223,9 @@ impl Shard for TextField {
     let response = ui.add(text_edit);
 
     if response.changed() {
-      Ok(*self.variable.get())
+      Ok(Some(*self.variable.get()))
     } else {
-      Ok(Var::default())
+      Ok(Some(Var::default()))
     }
   }
 }
