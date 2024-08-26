@@ -140,7 +140,7 @@ impl LegacyShard for PlotLine {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let plot_ui: &mut egui_plot::PlotUi =
       Var::from_object_ptr_mut_ref(self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
 
@@ -167,6 +167,6 @@ impl LegacyShard for PlotLine {
 
     plot_ui.line(chart);
 
-    Ok(*input)
+    Ok(None)
   }
 }

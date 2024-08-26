@@ -107,17 +107,16 @@ impl Shard for Image {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     Err("Invalid input type")
   }
 }
 
 impl Image {
-  fn activate_image(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_image(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let version = unsafe { input.__bindgen_anon_1.version };
     if self.current_version != version {
       self.cached_ui_image.invalidate();
@@ -143,13 +142,13 @@ impl Image {
       };
       ui.image(img);
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }
   }
 
-  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ctx = util::get_current_context(&self.contexts)?;
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(ctx, input)?;
@@ -168,7 +167,7 @@ impl Image {
       };
       ui.image(img);
 
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }

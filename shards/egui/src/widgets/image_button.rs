@@ -183,13 +183,13 @@ impl Shard for ImageButton {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     Err("Invalid input type")
   }
 }
 
 impl ImageButton {
-  fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ctx = util::get_current_context(&self.contexts)?;
 
@@ -212,7 +212,7 @@ impl ImageButton {
     self.activate_common(ctx, context, input, ui, texture_id, texture_size)
   }
 
-  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ctx = util::get_current_context(&self.contexts)?;
 
@@ -242,7 +242,7 @@ impl ImageButton {
     ui: &mut egui::Ui,
     texture_id: egui::TextureId,
     size: egui::Vec2,
-  ) -> Result<Var, &str> {
+  ) -> Result<Option<Var>, &str> {
     let img = SizedTexture {
       id: texture_id,
       size,
@@ -278,7 +278,7 @@ impl ImageButton {
     }
 
     // button not clicked during this frame
-    Ok(button_clicked.into())
+    Ok(Some(button_clicked.into()))
   }
 
   impl_override_activate! {

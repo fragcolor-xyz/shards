@@ -92,7 +92,7 @@ impl Shard for AreaShard {
 
     Ok(output_type)
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let (x, y): (f32, f32) = self.position.get().try_into().unwrap_or_default();
 
     let ui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
@@ -127,7 +127,7 @@ impl Shard for AreaShard {
         .inner
     })??;
 
-    Ok(result)
+    Ok(Some(result))
   }
 }
 
@@ -197,7 +197,7 @@ impl Shard for SubAreaShard {
 
     Ok(output_type)
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let parent_ui = util::get_parent_ui(&self.parents.get())?;
     let (ox, oy): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
 
@@ -238,7 +238,7 @@ impl Shard for SubAreaShard {
 
     self.last_size = Some(ui.min_size());
 
-    Ok(result)
+    Ok(Some(result))
   }
 }
 

@@ -200,7 +200,7 @@ impl Shard for WindowShard {
     Ok(data.inputType)
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     // If the window should be drawn this frame
     let gui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
@@ -337,7 +337,7 @@ impl Shard for WindowShard {
     }
 
     // Always passthrough the input
-    Ok(*input)
+    Ok(None)
   }
 }
 

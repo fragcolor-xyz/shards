@@ -820,7 +820,7 @@ struct Match {
   }
 
   static inline Parameters params{
-      {"Cases", SHCCSTR("Values to match against the input. A `nil` case will match anything."), {CoreInfo::AnySeqType}},
+      {"Cases", SHCCSTR("Values to match against the input. A `none` case will match anything."), {CoreInfo::AnySeqType}},
       {"Passthrough",
        SHCCSTR("Parameter to control the shard's output. `true` allows the `Match` shard's input itself to appear as its output; "
                "`false` allows the matched shard's output to appear as `Match` shard's output."),

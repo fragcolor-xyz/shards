@@ -133,7 +133,7 @@ impl LegacyShard for ECDSASign {
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: &[u8] = input.try_into()?;
 
     let key = self.key.get();
@@ -149,7 +149,7 @@ impl LegacyShard for ECDSASign {
     signature[0..64].copy_from_slice(&x.0.serialize()[..]);
     signature[64] = x.1.serialize();
     self.output.assign(&signature[..].into());
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -210,7 +210,7 @@ impl LegacyShard for ECDSAPubKey {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key = get_key(input)?;
     let key = libsecp256k1::PublicKey::from_secret_key(&key);
     if !self.compressed {
@@ -220,7 +220,7 @@ impl LegacyShard for ECDSAPubKey {
       let key: [u8; 33] = key.serialize_compressed();
       self.output.assign(&key[..].into());
     }
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -281,11 +281,11 @@ impl LegacyShard for ECDSAPrivKey {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let key = get_key(input)?;
     let key: [u8; 32] = key.serialize();
     self.output.assign(&key[..].into());
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -360,7 +360,7 @@ impl LegacyShard for ECDSARecover {
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let bytes: &[u8] = input.try_into()?;
 
     let signature = self.signature.get();
@@ -391,7 +391,7 @@ impl LegacyShard for ECDSARecover {
       let key: [u8; 65] = pub_key.serialize();
       self.output.assign(&key[..].into());
     }
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

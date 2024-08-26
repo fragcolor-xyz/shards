@@ -3,7 +3,7 @@ use egui::{Color32, LayerId, Pos2, Rect, Rgba, Rounding, Stroke, Ui, UiStackInfo
 use shards::core::register_shard;
 use shards::types::{
   common_type, Context, ExposedTypes, InstanceData, OptionalString, ParamVar, ShardsVar, Type,
-  Types, Var, FLOAT_TYPES, NONE_TYPES, SHARDS_OR_NONE_TYPES,
+  Types, Var, ANY_TYPES, FLOAT_TYPES, SHARDS_OR_NONE_TYPES,
 };
 
 use crate::shards::shard;
@@ -51,10 +51,10 @@ impl Default for CanvasShard {
 #[shard_impl]
 impl Shard for CanvasShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.warmup_helper(context)?;
@@ -80,9 +80,9 @@ impl Shard for CanvasShard {
     shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
     shards::util::require_shards_contents(&mut self.required, &self.contents);
 
-    Ok(NONE_TYPES[0])
+    Ok(ANY_TYPES[0])
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let (x, y, w, h): (f32, f32, f32, f32) = self.rect.get().try_into()?;
 
     let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
@@ -105,7 +105,9 @@ impl Shard for CanvasShard {
       &mut ui,
       &mut self.parents,
       &mut self.contents,
-    )
+    );
+
+    Ok(None)
   }
 }
 
@@ -141,10 +143,10 @@ impl Default for CircleShard {
 #[shard_impl]
 impl Shard for CircleShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
   fn input_help(&mut self) -> OptionalString {
     *HELP_VALUE_IGNORED
@@ -168,9 +170,9 @@ impl Shard for CircleShard {
     if self.radius.is_none() {
       return Err("Radius is required");
     }
-    Ok(NONE_TYPES[0])
+    Ok(ANY_TYPES[0])
   }
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let painter = ui.painter();
     let (cx, cy): (f32, f32) = self.center.get().try_into()?;
@@ -190,7 +192,7 @@ impl Shard for CircleShard {
       rx,
       Stroke::new(stroke_width, stroke_color),
     );
-    Ok(Var::default())
+    Ok(None)
   }
 }
 

@@ -232,7 +232,7 @@ macro_rules! impl_ui_slider {
         Ok(())
       }
 
-      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
         if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
           let value: &mut $native_type = if self.variable.is_variable() {
             self.variable.get_mut().try_into()?
@@ -261,7 +261,7 @@ macro_rules! impl_ui_slider {
           })
           .inner?;
 
-          Ok((*value).into())
+          Ok(Some((*value).into()))
         } else {
           Err("No UI parent")
         }
@@ -485,7 +485,7 @@ macro_rules! impl_ui_n_slider {
         Ok(())
       }
 
-      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
         if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
           let max: &[$native_type; $n] = self.max.get().try_into()?;
           let min: &[$native_type; $n] = self.min.get().try_into()?;
@@ -520,9 +520,9 @@ macro_rules! impl_ui_n_slider {
           .inner?;
 
           if self.variable.is_variable() {
-            Ok(*self.variable.get())
+            Ok(Some(*self.variable.get()))
           } else {
-            Ok((&self.tmp).into())
+            Ok(Some((&self.tmp).into()))
           }
         } else {
           Err("No UI parent")

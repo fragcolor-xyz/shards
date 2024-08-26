@@ -280,7 +280,7 @@ impl LegacyShard for ListBox {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(parent) = util::get_current_parent_opt(self.parents.get())? {
       let current_index = if self.index.is_variable() {
         self.index.get().try_into()?
@@ -293,7 +293,7 @@ impl LegacyShard for ListBox {
       let seq: Seq = input.try_into()?;
 
       if seq.is_empty() {
-        return Ok(Var::default());
+        return Ok(Some(Var::default()));
       }
 
       parent
@@ -391,7 +391,7 @@ impl LegacyShard for ListBox {
           self.tmp = fixup;
         }
 
-        Ok(Var::default())
+        Ok(Some(Var::default()))
       } else {
         if self.index.is_variable() {
           self.index.set_fast_unsafe(&current_index.into());
@@ -400,7 +400,7 @@ impl LegacyShard for ListBox {
         }
 
         // this is fine because we don't own input and seq is just a view of it in this case
-        Ok(seq[current_index as usize])
+        Ok(Some(seq[current_index as usize]))
       }
     } else {
       Err("No UI parent")

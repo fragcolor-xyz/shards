@@ -149,7 +149,7 @@ impl Shard for Selectable {
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
     Some(&self.inner_exposed)
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
@@ -309,7 +309,7 @@ impl Shard for Selectable {
     }
 
     // Outputs whether the contents are selected or not
-    Ok(is_selected.into())
+    Ok(Some(is_selected.into()))
   }
 }
 

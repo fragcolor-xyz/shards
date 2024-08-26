@@ -999,7 +999,7 @@ impl Shard for ReadShard {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let code: &str = input.try_into()?;
 
     let output_type = self.output_type.0.as_ref().try_into() as Result<AstType, _>;
@@ -1054,7 +1054,7 @@ impl Shard for ReadShard {
       }
     }
 
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -1104,11 +1104,11 @@ impl Shard for ShardsErrorsShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let object = unsafe { &*Var::from_ref_counted_object::<Program>(input, &AST_TYPE)? };
     self.output.0.clear();
     self.process_sequence(&object.sequence);
-    Ok(self.output.0 .0)
+    Ok(Some(self.output.0 .0))
   }
 }
 

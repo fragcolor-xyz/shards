@@ -118,13 +118,13 @@ impl Shard for PropertyShard {
     }
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_current_parent_opt(self.parents.get()).map_err(|_| "No parent UI");
 
     match (&self.property.0).try_into()? {
       Property::PixelsPerPoint => {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
-        Ok(egui_ctx.pixels_per_point().into())
+        Ok(Some(egui_ctx.pixels_per_point().into()))
       }
       Property::RemainingSpace => {
         let ui = ui?.ok_or("No parent UI")?;
@@ -138,24 +138,24 @@ impl Shard for PropertyShard {
 
         // Float4 rect as (X0, Y0, X1, Y1)
         let result_rect: Var = (min.x, min.y, max.x, max.y).into();
-        Ok(result_rect)
+        Ok(Some(result_rect))
       }
       Property::ScreenSize => {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
         let size = egui_ctx.screen_rect().size();
-        Ok((size.x, size.y).into())
+        Ok(Some((size.x, size.y).into()))
       }
       Property::IsAnythingBeingDragged => {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
         let is_dragging = egui_ctx.dragged_id().is_some()
           || egui_ctx.drag_started_id().is_some()
           || egui_ctx.drag_stopped_id().is_some();
-        Ok(is_dragging.into())
+        Ok(Some(is_dragging.into()))
       }
       Property::CursorPosition => {
         let egui_ctx: &egui::Context = &util::get_current_context(&self.contexts)?.egui_ctx;
         let pos = egui_ctx.input(|i| i.pointer.interact_pos().unwrap_or_default());
-        Ok((pos.x, pos.y).into())
+        Ok(Some((pos.x, pos.y).into()))
       }
       Property::IsHovered => {
         let ui = ui?.ok_or("No parent UI")?;
@@ -166,7 +166,7 @@ impl Shard for PropertyShard {
             false
           }
         });
-        Ok(res.into())
+        Ok(Some(res.into()))
       }
     }
   }

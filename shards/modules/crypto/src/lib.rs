@@ -22,9 +22,9 @@ extern crate shards;
 extern crate lazy_static;
 
 pub mod chachapoly;
-pub mod signatures;
 pub mod ecdsa;
 pub mod hash;
+pub mod signatures;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
 
@@ -69,7 +69,7 @@ impl Shard for MnemonicGenerate {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let size: i64 = input.try_into().unwrap();
     let mnemonic_type = match size {
       12 => MnemonicType::Words12,
@@ -81,7 +81,7 @@ impl Shard for MnemonicGenerate {
     };
     let mnemonic = Mnemonic::new(mnemonic_type, Language::English);
     self.output = Var::ephemeral_string(mnemonic.phrase()).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 
@@ -139,14 +139,14 @@ impl Shard for MnemonicToSeed {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let string: &str = input.try_into().unwrap();
     let mnemonic =
       Mnemonic::from_phrase(string, Language::English).map_err(|_| "Invalid mnemonic")?;
     let seed = Self::seed_from_entropy(mnemonic.entropy(), "").map_err(|_| "Invalid entropy")?;
     // let seed = Seed::new(&mnemonic, "");
     self.output = Var::ephemeral_slice(seed.as_slice()).into();
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

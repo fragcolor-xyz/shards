@@ -81,14 +81,17 @@ pub trait ShardGeneratedOverloads {
 
 pub trait Shard {
   fn setup(&mut self) {}
+
   fn destroy(&mut self) {}
 
   fn input_types(&mut self) -> &Types;
+
   fn input_help(&mut self) -> OptionalString {
     OptionalString::default()
   }
 
   fn output_types(&mut self) -> &Types;
+
   fn output_help(&mut self) -> OptionalString {
     OptionalString::default()
   }
@@ -104,13 +107,16 @@ pub trait Shard {
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     Ok(Type::default())
   }
+
   fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
     Ok(())
   }
+
   fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str>;
 
   fn mutate(&mut self, _options: Table) {}
 
@@ -119,7 +125,9 @@ pub trait Shard {
   fn get_state(&mut self) -> Var {
     Var::default()
   }
+
   fn set_state(&mut self, _state: &Var) {}
+
   fn reset_state(&mut self) {}
 }
 
@@ -127,11 +135,13 @@ pub trait LegacyShard {
   fn registerName() -> &'static str
   where
     Self: Sized;
+
   fn hash() -> u32
   where
     Self: Sized;
 
   fn name(&mut self) -> &str;
+
   fn help(&mut self) -> OptionalString {
     OptionalString::default()
   }
@@ -139,22 +149,27 @@ pub trait LegacyShard {
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
+
   fn setParam(&mut self, _index: i32, _value: &Var) -> Result<(), &str> {
     Ok(())
   }
+
   fn getParam(&mut self, _index: i32) -> Var {
     Var::default()
   }
 
   fn setup(&mut self) {}
+
   fn destroy(&mut self) {}
 
   fn inputTypes(&mut self) -> &Types;
+
   fn inputHelp(&mut self) -> OptionalString {
     OptionalString::default()
   }
 
   fn outputTypes(&mut self) -> &Types;
+
   fn outputHelp(&mut self) -> OptionalString {
     OptionalString::default()
   }
@@ -176,6 +191,7 @@ pub trait LegacyShard {
   {
     false
   }
+
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     Ok(Type::default())
   }
@@ -183,7 +199,9 @@ pub trait LegacyShard {
   fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
     Ok(())
   }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str>;
+
   fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
@@ -194,6 +212,7 @@ pub trait LegacyShard {
   {
     false
   }
+
   fn mutate(&mut self, _options: Table) {}
 
   fn hasCrossover() -> bool
@@ -202,6 +221,7 @@ pub trait LegacyShard {
   {
     false
   }
+
   fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
 
   fn hasState() -> bool
@@ -213,7 +233,9 @@ pub trait LegacyShard {
   fn getState(&mut self) -> Var {
     Var::default()
   }
+
   fn setState(&mut self, _state: &Var) {}
+
   fn resetState(&mut self) {}
 }
 
@@ -337,8 +359,12 @@ unsafe extern "C" fn legacy_shard_activate<T: LegacyShard>(
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   match (*blk).shard.activate(&(*arg2), &(*arg3)) {
     Ok(value) => {
-      (*blk).outputStorage = value;
-      &(*blk).outputStorage
+      if let Some(value) = value {
+        (*blk).outputStorage = value;
+        &(*blk).outputStorage
+      } else {
+        arg3
+      }
     }
     Err(error) => {
       abortWire(&(*arg2), error);
@@ -712,8 +738,12 @@ unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated + ShardGeneratedOv
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.activate(&(*arg2), &(*arg3)) {
     Ok(value) => {
-      (*blk).outputStorage = value;
-      &(*blk).outputStorage
+      if let Some(value) = value {
+        (*blk).outputStorage = value;
+        &(*blk).outputStorage
+      } else {
+        arg3 // pass through the input
+      }
     }
     Err(error) => {
       abortWire(&(*arg2), error);
@@ -954,9 +984,13 @@ macro_rules! impl_legacy_override_activate {
       let blk = arg1 as *mut $crate::shard::LegacyShardWrapper<$legacy_shard_name>;
       match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
         Ok(value) => {
-          (*blk).outputStorage = value;
-          &(*blk).outputStorage
-        },
+          if let Some(value) = value {
+            (*blk).outputStorage = value;
+            &(*blk).outputStorage
+          } else {
+            arg3 // pass through the input
+          }
+        }
         Err(error) => {
           $crate::core::abortWire(&(*arg2), error);
           &(*blk).outputStorage
@@ -983,9 +1017,13 @@ macro_rules! impl_override_activate {
       let blk = arg1 as *mut $crate::shard::ShardWrapper<$shard_name>;
       match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
         Ok(value) => {
-          (*blk).outputStorage = value;
-          &(*blk).outputStorage
-        },
+          if let Some(value) = value {
+            (*blk).outputStorage = value;
+            &(*blk).outputStorage
+          } else {
+            arg3 // pass through the input
+          }
+        }
         Err(error) => {
           $crate::core::abortWire(&(*arg2), error);
           &(*blk).outputStorage

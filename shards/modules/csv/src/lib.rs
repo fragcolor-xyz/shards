@@ -129,7 +129,7 @@ impl LegacyShard for CSVRead {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let text: &str = input.try_into()?;
     let sep: &str = self.separator.as_ref().try_into()?;
     let mut reader = ReaderBuilder::new()
@@ -148,7 +148,7 @@ impl LegacyShard for CSVRead {
       }
       self.output.push(&output.as_ref().into());
     }
-    Ok(self.output.as_ref().into())
+    Ok(Some(self.output.as_ref().into()))
   }
 }
 
@@ -226,7 +226,7 @@ impl LegacyShard for CSVWrite {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let sep: &str = self.separator.as_ref().try_into()?;
     let mut writer = WriterBuilder::new()
       .has_headers(!self.no_header)
@@ -255,7 +255,7 @@ impl LegacyShard for CSVWrite {
     })?;
     let output: Var = output.as_ref().into();
     self.output.assign(&output);
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

@@ -1,6 +1,6 @@
 use egui::Sense;
 use shards::shard::Shard;
-use shards::types::{ClonedVar, SeqVar, ShardsVar, NONE_TYPES, SEQ_OF_SHARDS_TYPES};
+use shards::types::{ClonedVar, SeqVar, ShardsVar, ANY_TYPES, SEQ_OF_SHARDS_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
 use crate::{util, PARENTS_UI_NAME};
@@ -40,11 +40,11 @@ impl Default for OverlayShard {
 #[shards::shard_impl]
 impl Shard for OverlayShard {
   fn input_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -81,7 +81,7 @@ impl Shard for OverlayShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_current_parent_opt(self.parents.get())?.ok_or("No parent UI")?;
 
     // let min_rect = ui.min_rect();
@@ -97,6 +97,6 @@ impl Shard for OverlayShard {
 
     ui.allocate_rect(used_ui, Sense::hover());
 
-    Ok(Var::default())
+    Ok(None)
   }
 }

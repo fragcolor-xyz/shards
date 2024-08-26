@@ -213,7 +213,7 @@ macro_rules! impl_ui_input {
         Ok(())
       }
 
-      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
         if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
           let value: &mut $native_type = if self.variable.is_variable() {
             self.variable.get_mut().try_into()?
@@ -230,7 +230,7 @@ macro_rules! impl_ui_input {
 
           ui.add(drag_value);
 
-          Ok((*value).into())
+          Ok(Some((*value).into()))
         } else {
           Err("No UI parent")
         }
@@ -423,7 +423,7 @@ macro_rules! impl_ui_n_input {
         Ok(())
       }
 
-      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+      fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
         if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
           ui.horizontal(|ui| {
             let values: &mut [$native_type; $n] = if self.variable.is_variable() {
@@ -439,9 +439,9 @@ macro_rules! impl_ui_n_input {
           });
 
           if self.variable.is_variable() {
-            Ok(*self.variable.get())
+            Ok(Some(*self.variable.get()))
           } else {
-            Ok((&self.tmp).into())
+            Ok(Some((&self.tmp).into()))
           }
         } else {
           Err("No UI parent")

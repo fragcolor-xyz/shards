@@ -185,17 +185,17 @@ impl LegacyShard for Tab {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
       // no contents, same as inactive
-      return Ok(false.into());
+      return Ok(None);
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
 
       // Always passthrough the input
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }
@@ -397,9 +397,9 @@ impl LegacyShard for DockArea {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.tabs.surfaces_count() == 0 {
-      return Ok(*input);
+      return Ok(None);
     }
 
     let gui_ctx = util::get_current_context(&self.instance)?;
@@ -416,7 +416,7 @@ impl LegacyShard for DockArea {
     }
 
     // Always passthrough the input
-    Ok(*input)
+    Ok(None)
   }
 }
 

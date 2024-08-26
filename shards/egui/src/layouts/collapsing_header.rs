@@ -197,7 +197,7 @@ impl LegacyShard for CollapsingHeader {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     with_possible_panic(|| {
       if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
         let default_open: bool = self.defaultOpen.get().try_into()?;
@@ -230,10 +230,10 @@ impl LegacyShard for CollapsingHeader {
         } {
           match ret {
             Err(err) => Err(err),
-            Ok(_) => Ok(*input),
+            Ok(_) => Ok(None),
           }
         } else {
-          Ok(*input)
+          Ok(None)
         }
       } else {
         Err("No UI parent")

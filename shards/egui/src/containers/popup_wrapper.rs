@@ -140,7 +140,7 @@ impl Shard for PopupWrapper {
     Ok(data.inputType)
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let widget_result = if !self.widget.is_empty() {
         // Activate the widget that should leave a response inside the context.
@@ -156,7 +156,7 @@ impl Shard for PopupWrapper {
           response
         } else {
           // Do nothing and passthrough input since there is no supported widget that has given a response.
-          return Ok(*input);
+          return Ok(None);
         };
 
         // If provided a custom id, we do not cache it because a new id may be provided to the same shard multiple times lest ID conflicts
@@ -216,7 +216,7 @@ impl Shard for PopupWrapper {
     }
 
     // Always passthrough the input
-    Ok(*input)
+    Ok(None)
   }
 }
 

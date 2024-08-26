@@ -181,7 +181,7 @@ impl LegacyShard for ColorInput {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let color: shardsc::SHColor = if self.variable.is_variable() {
         unsafe { self.variable.get().payload.__bindgen_anon_1.colorValue }
@@ -203,7 +203,7 @@ impl LegacyShard for ColorInput {
         self.tmp = color;
       }
 
-      Ok(color.into())
+      Ok(Some(color.into()))
     } else {
       Err("No UI parent")
     }

@@ -117,10 +117,10 @@ impl LegacyShard for CloseMenu {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.close_menu();
-      Ok(*input)
+      Ok(None)
     } else {
       Err("No UI parent")
     }
@@ -246,10 +246,10 @@ impl LegacyShard for Menu {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
       // no contents, same as inactive
-      return Ok(false.into());
+      return Ok(Some(false.into()));
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
@@ -264,11 +264,11 @@ impl LegacyShard for Menu {
           // propagate the error
           Err(err) => Err(err),
           // menu is active
-          Ok(_) => Ok(true.into()),
+          Ok(_) => Ok(Some(true.into())),
         }
       } else {
         // menu is inactive
-        Ok(false.into())
+        Ok(Some(false.into()))
       }
     } else {
       Err("No UI parent")
@@ -388,10 +388,10 @@ impl LegacyShard for MenuBar {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.contents.is_empty() {
       // no contents, same as inactive
-      return Ok(false.into());
+      return Ok(Some(false.into()));
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
@@ -403,7 +403,7 @@ impl LegacyShard for MenuBar {
         // propagate the error
         Err(err) => Err(err),
         // menubar is active
-        Ok(_) => Ok(true.into()),
+        Ok(_) => Ok(Some(true.into())),
       }
     } else {
       Err("No UI parent")

@@ -2622,7 +2622,7 @@ impl Shard for UIShardsShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &ShardsContext, _input: &Var) -> Result<Option<Var>, &str> {
     let ast_var = self.ast_object.get();
     let ast = unsafe { &mut *Var::from_ref_counted_object::<Program>(ast_var, &AST_TYPE)? };
     if self.ast.0 != *ast_var {
@@ -2665,7 +2665,7 @@ impl Shard for UIShardsShard {
       root.accept_mut(&mut mutator);
     });
 
-    Ok(self.context.has_changed.into())
+    Ok(Some(self.context.has_changed.into()))
   }
 }
 

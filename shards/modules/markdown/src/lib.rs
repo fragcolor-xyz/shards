@@ -59,7 +59,7 @@ impl Shard for MarkdownParseShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if self.parser.is_none() {
       self.input = input.into();
       let input: &str = self.input.as_ref().try_into()?;
@@ -600,7 +600,7 @@ impl Shard for MarkdownParseShard {
       }
     }
 
-    Ok(self.output.0 .0)
+    Ok(Some(self.output.0 .0))
   }
 }
 

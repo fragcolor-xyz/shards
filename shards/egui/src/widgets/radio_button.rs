@@ -215,7 +215,7 @@ impl LegacyShard for RadioButton {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
       let mut text = egui::RichText::new(label);
@@ -238,11 +238,11 @@ impl LegacyShard for RadioButton {
         }
 
         // radio button clicked during this frame
-        return Ok(true.into());
+        return Ok(Some(true.into()));
       }
 
       // radio button not clicked during this frame
-      Ok(false.into())
+      Ok(Some(false.into()))
     } else {
       Err("No UI parent")
     }

@@ -199,7 +199,7 @@ impl Shard for FFIInvokeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let cif = self.cif.as_ref().unwrap(); // qed, warmup should have failed
     let symbol = self.actual_symbol.unwrap(); // qed, warmup should have failed
     let return_type = self.actual_return.unwrap(); // qed, warmup should have failed
@@ -375,7 +375,7 @@ impl Shard for FFIInvokeShard {
         unreachable!()
       }
     };
-    Ok(output)
+    Ok(Some(output))
   }
 }
 
@@ -466,11 +466,11 @@ impl Shard for FFILoadGlobalShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let symbol = self.actual_symbol.unwrap(); // qed, warmup should have failed
     let output = symbol as i64;
     let output = output.into();
-    Ok(output)
+    Ok(Some(output))
   }
 }
 

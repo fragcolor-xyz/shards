@@ -106,14 +106,14 @@ impl LegacyShard for DateFormat {
     }
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let time = Utc.timestamp_opt(input.try_into()?, 0);
     match time {
       LocalResult::Single(time) => {
         let formatter: &str = self.formatting.0.as_ref().try_into()?;
         let output = time.format(formatter).to_string();
         self.output.assign_string(&output.as_str());
-        Ok(self.output.0)
+        Ok(Some(self.output.0))
       }
       _ => Err("Date.Format: input must be a valid epoch seconds timestamp"),
     }

@@ -4147,7 +4147,7 @@ impl LegacyShard for EvalShard {
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let maybe_bytes: Result<&[u8], _> = input.try_into();
     let maybe_string: Result<&str, _> = input.try_into();
     let maybe_object = unsafe { Var::from_ref_counted_object::<Program>(input, &AST_TYPE) };
@@ -4237,7 +4237,7 @@ impl LegacyShard for EvalShard {
 
     self.output = wire.0.into();
 
-    Ok(self.output.0)
+    Ok(Some(self.output.0))
   }
 }
 

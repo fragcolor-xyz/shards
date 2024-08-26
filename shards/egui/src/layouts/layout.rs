@@ -562,7 +562,7 @@ impl LegacyShard for LayoutConstructor {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     let mut has_parent = false;
 
     let parent_layout_class = if !self.parent.get().is_none() {
@@ -935,7 +935,7 @@ impl LegacyShard for LayoutConstructor {
     }
 
     let layout_class_ref = self.layout_class.as_ref().unwrap();
-    Ok(Var::new_object(layout_class_ref, &LAYOUTCLASS_TYPE))
+    Ok(Some(Var::new_object(layout_class_ref, &LAYOUTCLASS_TYPE)))
   }
 }
 
@@ -1064,7 +1064,7 @@ impl Shard for LayoutShard {
     Ok(data.inputType)
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
     let layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
       self.layout_class.get(),
@@ -1180,6 +1180,10 @@ impl Shard for LayoutShard {
 
     let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
 
+    if self.contents.is_empty() {
+      return Ok(None);
+    }
+
     with_possible_panic(|| {
       // if there is a frame, draw it as the outermost ui element
       if let Some(frame) = frame {
@@ -1198,9 +1202,6 @@ impl Shard for LayoutShard {
                   ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size); // set minimum size of entire layout
 
-                    if self.contents.is_empty() {
-                      return Ok(*input);
-                    }
                     util::activate_ui_contents(
                       context,
                       input,
@@ -1216,10 +1217,6 @@ impl Shard for LayoutShard {
               // inside of frame, no scroll area to render, render inner layout
               ui.allocate_ui_with_layout(max_size, layout, |ui| {
                 ui.set_min_size(min_size); // set minimum size of entire layout
-
-                if self.contents.is_empty() {
-                  return Ok(*input);
-                }
 
                 util::activate_ui_contents(
                   context,
@@ -1243,10 +1240,6 @@ impl Shard for LayoutShard {
               ui.allocate_ui_with_layout(max_size, layout, |ui| {
                 ui.set_min_size(min_size); // set minimum size of entire layout
 
-                if self.contents.is_empty() {
-                  return Ok(*input);
-                }
-
                 util::activate_ui_contents(
                   context,
                   input,
@@ -1263,10 +1256,6 @@ impl Shard for LayoutShard {
           ui.allocate_ui_with_layout(max_size, layout, |ui| {
             ui.set_min_size(min_size); // set minimum size of entire layout
 
-            if self.contents.is_empty() {
-              return Ok(*input);
-            }
-
             util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           })
           .inner
@@ -1275,7 +1264,7 @@ impl Shard for LayoutShard {
     })??;
 
     // Always passthrough the input
-    Ok(*input)
+    Ok(None)
   }
 }
 
