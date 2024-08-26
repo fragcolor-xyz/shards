@@ -313,6 +313,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   std::atomic_bool composing{false};
   std::atomic_bool stopping{false};
 
+  // no ideal to be owned, as it triggers deep copy, but for now we need to keep it
+  // at some point we should find where it needs to be retained and retain it there
   shards::OwnedVar currentInput{};
   SHVar previousOutput{};
 

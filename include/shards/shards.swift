@@ -4,71 +4,72 @@
 // WIP: This is a work in progress
 
 /*
-final class MyShard1 : IShard {
-    static var name: StaticString = "MyShard1"
-    static var help: StaticString = ""
+ final class MyShard1 : IShard {
+     static var name: StaticString = "MyShard1"
+     static var help: StaticString = ""
 
-    var inputTypes: [SHTypeInfo] = [
-        VarType.AnyValue.asSHTypeInfo()
-    ]
-    var outputTypes: [SHTypeInfo] = [
-        VarType.AnyValue.asSHTypeInfo()
-    ]
+     var inputTypes: [SHTypeInfo] = [
+         VarType.AnyValue.asSHTypeInfo()
+     ]
+     var outputTypes: [SHTypeInfo] = [
+         VarType.AnyValue.asSHTypeInfo()
+     ]
 
-    var parameters: [SHParameterInfo] = []
-    func setParam(idx: Int, value: SHVar) -> Result<Void, ShardError> {
-        .failure(ShardError(message: "Not implemented"))
-    }
-    func getParam(idx: Int) -> SHVar {
-        SHVar()
-    }
+     var parameters: [SHParameterInfo] = []
+     func setParam(idx: Int, value: SHVar) -> Result<Void, ShardError> {
+         .failure(ShardError(message: "Not implemented"))
+     }
+     func getParam(idx: Int) -> SHVar {
+         SHVar()
+     }
 
-    var exposedVariables: [SHExposedTypeInfo] = []
-    var requiredVariables: [SHExposedTypeInfo] = []
+     var exposedVariables: [SHExposedTypeInfo] = []
+     var requiredVariables: [SHExposedTypeInfo] = []
 
-    func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError> {
-        .success(data.inputType)
-    }
+     func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError> {
+         .success(data.inputType)
+     }
 
-    func warmup(context: Context) -> Result<Void, ShardError> {
-        .success(())
-    }
+     func warmup(context: Context) -> Result<Void, ShardError> {
+         .success(())
+     }
 
-    func cleanup(context: Context) -> Result<Void, ShardError> {
-        .success(())
-    }
+     func cleanup(context: Context) -> Result<Void, ShardError> {
+         .success(())
+     }
 
-    func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError> {
-        guard input.type == .Int else {
-            return .failure(ShardError(message: "Expected Int input"))
-        }
-        let result = input.int * 2
-        return .success(SHVar(value: result))
-    }
+     func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError> {
+         guard input.type == .Int else {
+             return .failure(ShardError(message: "Expected Int input"))
+         }
+         let result = input.int * 2
+         return .success(SHVar(value: result))
+     }
 
-    // -- DON'T EDIT THE FOLLOWING --
-    typealias ShardType = MyShard1
-    static var inputTypesCFunc: SHInputTypesProc {{ bridgeInputTypes(ShardType.self, shard: $0) }}
-    static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
-    static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
-    static var nameCFunc: SHNameProc {{ _ in bridgeName(ShardType.self) }}
-    static var hashCFunc: SHHashProc {{ _ in bridgeHash(ShardType.self) }}
-    static var helpCFunc: SHHelpProc {{ _ in bridgeHelp(ShardType.self) }}
-    static var parametersCFunc: SHParametersProc {{ bridgeParameters(ShardType.self, shard: $0) }}
-    static var setParamCFunc: SHSetParamProc {{ bridgeSetParam(ShardType.self, shard: $0, idx: $1, input: $2)}}
-    static var getParamCFunc: SHGetParamProc {{ bridgeGetParam(ShardType.self, shard: $0, idx: $1)}}
-    static var exposedVariablesCFunc: SHExposedVariablesProc {{ bridgeExposedVariables(ShardType.self, shard: $0) }}
-    static var requiredVariablesCFunc: SHRequiredVariablesProc {{ bridgeRequiredVariables(ShardType.self, shard: $0) }}
-    static var composeCFunc: SHComposeProc {{ bridgeCompose(ShardType.self, shard: $0, data: $1) }}
-    static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
-    static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0, ctx: $1) }}
-    static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
-    var errorCache: ContiguousArray<CChar> = []
-}
+     // -- DON'T EDIT THE FOLLOWING --
+     typealias ShardType = MyShard1
+     static var inputTypesCFunc: SHInputTypesProc {{ bridgeInputTypes(ShardType.self, shard: $0) }}
+     static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
+     static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
+     static var nameCFunc: SHNameProc {{ _ in bridgeName(ShardType.self) }}
+     static var hashCFunc: SHHashProc {{ _ in bridgeHash(ShardType.self) }}
+     static var helpCFunc: SHHelpProc {{ _ in bridgeHelp(ShardType.self) }}
+     static var parametersCFunc: SHParametersProc {{ bridgeParameters(ShardType.self, shard: $0) }}
+     static var setParamCFunc: SHSetParamProc {{ bridgeSetParam(ShardType.self, shard: $0, idx: $1, input: $2)}}
+     static var getParamCFunc: SHGetParamProc {{ bridgeGetParam(ShardType.self, shard: $0, idx: $1)}}
+     static var exposedVariablesCFunc: SHExposedVariablesProc {{ bridgeExposedVariables(ShardType.self, shard: $0) }}
+     static var requiredVariablesCFunc: SHRequiredVariablesProc {{ bridgeRequiredVariables(ShardType.self, shard: $0) }}
+     static var composeCFunc: SHComposeProc {{ bridgeCompose(ShardType.self, shard: $0, data: $1) }}
+     static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
+     static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0, ctx: $1) }}
+     static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
+     var errorCache: ContiguousArray<CChar> = []
+     var output: SHVar = SHVar()
+ }
 
-and register with:
-RegisterShard(MyShard1.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }, { createSwiftShard(MyShard1.self) })
-*/
+ and register with:
+ RegisterShard(MyShard1.name.utf8Start.withMemoryRebound(to: Int8.self, capacity: 1) { $0 }, { createSwiftShard(MyShard1.self) })
+ */
 
 import Foundation
 import shards
@@ -85,27 +86,27 @@ public var G = Globals()
 
 public var RegisterShard: SHRegisterShard = G.Core.pointee.registerShard
 
-public enum VarType : UInt8, CustomStringConvertible, CaseIterable {
+public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case NoValue
     case AnyValue
     case Enum
     case Bool
-    case Int    // A 64bits int
-    case Int2   // A vector of 2 64bits ints
-    case Int3   // A vector of 3 32bits ints
-    case Int4   // A vector of 4 32bits ints
-    case Int8   // A vector of 8 16bits ints
-    case Int16  // A vector of 16 8bits ints
-    case Float  // A 64bits float
+    case Int // A 64bits int
+    case Int2 // A vector of 2 64bits ints
+    case Int3 // A vector of 3 32bits ints
+    case Int4 // A vector of 4 32bits ints
+    case Int8 // A vector of 8 16bits ints
+    case Int16 // A vector of 16 8bits ints
+    case Float // A 64bits float
     case Float2 // A vector of 2 64bits floats
     case Float3 // A vector of 3 32bits floats
     case Float4 // A vector of 4 32bits floats
-    case Color  // A vector of 4 uint8
-    case Shard  // a shard, useful for future introspection shards!
+    case Color // A vector of 4 uint8
+    case Shard // a shard, useful for future introspection shards!
     case EndOfBlittableTypes = 50 // anything below this is not blittable (ish)
     case Bytes // pointer + size
     case String
-    case Path       // An OS filesystem path
+    case Path // An OS filesystem path
     case ContextVar // A string label to find from SHContext variables
     case Image
     case Seq
@@ -115,93 +116,91 @@ public enum VarType : UInt8, CustomStringConvertible, CaseIterable {
     case Array // Notice: of just blittable types!
 
     public var description: String {
-        get {
-            switch self {
-            case .NoValue:
-                return "None"
-            case .AnyValue:
-                return "Any"
-            case .Enum:
-                return "Enum"
-            case .Bool:
-                return "Bool"
-            case .Int:
-                return "Int"
-            case .Int2:
-                return "Int2"
-            case .Int3:
-                return "Int3"
-            case .Int4:
-                return "Int4"
-            case .Int8:
-                return "Int8"
-            case .Int16:
-                return "Int16"
-            case .Float:
-                return "Float"
-            case .Float2:
-                return "Float2"
-            case .Float3:
-                return "Float3"
-            case .Float4:
-                return "Float4"
-            case .Color:
-                return "Color"
-            case .Shard:
-                return "Shard"
-            case .Bytes:
-                return "Bytes"
-            case .String:
-                return "String"
-            case .Path:
-                return "Path"
-            case .ContextVar:
-                return "ContextVar"
-            case .Image:
-                return "Image"
-            case .Seq:
-                return "Seq"
-            case .Table:
-                return "Table"
-            case .Wire:
-                return "Wire"
-            case .Object:
-                return "Object"
-            case .Array:
-                return "Array"
-            default:
-                fatalError("Type not found!")
-            }
+        switch self {
+        case .NoValue:
+            return "None"
+        case .AnyValue:
+            return "Any"
+        case .Enum:
+            return "Enum"
+        case .Bool:
+            return "Bool"
+        case .Int:
+            return "Int"
+        case .Int2:
+            return "Int2"
+        case .Int3:
+            return "Int3"
+        case .Int4:
+            return "Int4"
+        case .Int8:
+            return "Int8"
+        case .Int16:
+            return "Int16"
+        case .Float:
+            return "Float"
+        case .Float2:
+            return "Float2"
+        case .Float3:
+            return "Float3"
+        case .Float4:
+            return "Float4"
+        case .Color:
+            return "Color"
+        case .Shard:
+            return "Shard"
+        case .Bytes:
+            return "Bytes"
+        case .String:
+            return "String"
+        case .Path:
+            return "Path"
+        case .ContextVar:
+            return "ContextVar"
+        case .Image:
+            return "Image"
+        case .Seq:
+            return "Seq"
+        case .Table:
+            return "Table"
+        case .Wire:
+            return "Wire"
+        case .Object:
+            return "Object"
+        case .Array:
+            return "Array"
+        default:
+            fatalError("Type not found!")
         }
     }
 
     func uxInlineable() -> Bool {
         return self == VarType.NoValue
-        || self == VarType.AnyValue
-        || self == VarType.Int
-        || self == VarType.Int2
-        || self == VarType.Int3
-        || self == VarType.Int4
-        || self == VarType.Int8
-        || self == VarType.Int16
-        || self == VarType.Float
-        || self == VarType.Float2
-        || self == VarType.Float3
-        || self == VarType.Float4
+            || self == VarType.AnyValue
+            || self == VarType.Int
+            || self == VarType.Int2
+            || self == VarType.Int3
+            || self == VarType.Int4
+            || self == VarType.Int8
+            || self == VarType.Int16
+            || self == VarType.Float
+            || self == VarType.Float2
+            || self == VarType.Float3
+            || self == VarType.Float4
     }
 
     func asSHType() -> SHType {
-        SHType(rawValue: self.rawValue)
+        SHType(rawValue: rawValue)
     }
 
     func asSHTypeInfo() -> SHTypeInfo {
         var info = SHTypeInfo()
-        info.basicType = self.asSHType()
+        info.basicType = asSHType()
         return info
     }
 }
 
-extension SHVar : CustomStringConvertible {
+extension SHVar: CustomStringConvertible {
     public var description: String {
         switch type {
         case .NoValue:
@@ -262,15 +261,11 @@ extension SHVar : CustomStringConvertible {
     }
 
     public var typename: String {
-        get {
-            type.description
-        }
+        type.description
     }
 
     public var type: VarType {
-        get {
-            VarType(rawValue: self.valueType.rawValue)!
-        }
+        VarType(rawValue: valueType.rawValue)!
     }
 
     public mutating func Clone(dst: inout SHVar) {
@@ -362,12 +357,10 @@ extension SHVar : CustomStringConvertible {
     }
 
     public var string: String {
-        get {
-            assert(type == .String, "String variable expected!")
-            let stringPtr = UnsafeMutablePointer<CChar>(mutating: payload.stringValue)
-            let buffer = UnsafeMutableBufferPointer<CChar>(start: stringPtr, count: Int(payload.stringLen))
-            return .init(cString: Array(buffer))
-        }
+        assert(type == .String, "String variable expected!")
+        let stringPtr = UnsafeMutablePointer<CChar>(mutating: payload.stringValue)
+        let buffer = UnsafeMutableBufferPointer<CChar>(start: stringPtr, count: Int(payload.stringLen))
+        return .init(cString: Array(buffer))
     }
 
     init(value: ShardPtr) {
@@ -423,9 +416,9 @@ public struct Context {
     }
 }
 
-public typealias ShardPtr = Optional<UnsafeMutablePointer<Shard>>
+public typealias ShardPtr = UnsafeMutablePointer<Shard>?
 
-public final class ShardError : Error {
+public final class ShardError: Error {
     public var message: String
 
     init(message: String) {
@@ -433,7 +426,7 @@ public final class ShardError : Error {
     }
 }
 
-public protocol IShard : AnyObject {
+public protocol IShard: AnyObject {
     static var name: StaticString { get }
     static var help: StaticString { get }
 
@@ -476,10 +469,10 @@ public protocol IShard : AnyObject {
     static var cleanupCFunc: SHCleanupProc { get }
     static var activateCFunc: SHActivateProc { get }
     var errorCache: ContiguousArray<CChar> { get set }
+    var output: SHVar { get set }
 }
 
-public extension IShard {
-}
+public extension IShard {}
 
 @inlinable public func bridgeParameters<T: IShard>(_: T.Type, shard: ShardPtr) -> SHParametersInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
@@ -488,7 +481,7 @@ public extension IShard {
     let paramsPtr = b.parameters.withUnsafeBufferPointer {
         $0.baseAddress
     }
-    result.elements = UnsafeMutablePointer<SHParameterInfo>.init(mutating: paramsPtr)
+    result.elements = UnsafeMutablePointer<SHParameterInfo>(mutating: paramsPtr)
     result.len = UInt32(b.parameters.count)
     return result
 }
@@ -509,14 +502,14 @@ public extension IShard {
     switch result {
     case .success():
         return error
-    case .failure(let err):
+    case let .failure(err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message.string = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer {
             $0.baseAddress
         }
         error.message.len = UInt64(b.errorCache.count)
-        return error;
+        return error
     }
 }
 
@@ -545,7 +538,7 @@ public extension IShard {
     let ptr = b.inputTypes.withUnsafeBufferPointer {
         $0.baseAddress
     }
-    result.elements = UnsafeMutablePointer<SHTypeInfo>.init(mutating: ptr)
+    result.elements = UnsafeMutablePointer<SHTypeInfo>(mutating: ptr)
     result.len = UInt32(b.inputTypes.count)
     return result
 }
@@ -557,7 +550,7 @@ public extension IShard {
     let ptr = b.outputTypes.withUnsafeBufferPointer {
         $0.baseAddress
     }
-    result.elements = UnsafeMutablePointer<SHTypeInfo>.init(mutating: ptr)
+    result.elements = UnsafeMutablePointer<SHTypeInfo>(mutating: ptr)
     result.len = UInt32(b.outputTypes.count)
     return result
 }
@@ -568,22 +561,21 @@ public extension IShard {
     var value = SHShardComposeResult()
     let result = b.compose(data: data!.pointee)
     switch result {
-    case .success(let typ):
+    case let .success(typ):
         value.result = typ
         return value
-    case .failure(let err):
+    case let .failure(err):
         var error = SHError()
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message.string = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer {
             $0.baseAddress
         }
         error.message.len = UInt64(b.errorCache.count)
         value.error = error
-        return value;
+        return value
     }
 }
-
 
 @inlinable public func bridgeWarmup<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?) -> SHError {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
@@ -593,14 +585,14 @@ public extension IShard {
     switch result {
     case .success():
         return error
-    case .failure(let err):
+    case let .failure(err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message.string = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer {
             $0.baseAddress
         }
         error.message.len = UInt64(b.errorCache.count)
-        return error;
+        return error
     }
 }
 
@@ -612,33 +604,34 @@ public extension IShard {
     switch result {
     case .success():
         return error
-    case .failure(let err):
+    case let .failure(err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message.string = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer {
             $0.baseAddress
         }
         error.message.len = UInt64(b.errorCache.count)
-        return error;
+        return error
     }
 }
 
-@inlinable public func bridgeActivate<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?, input: UnsafePointer<SHVar>?) -> SHVar {
+@inlinable public func bridgeActivate<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?, input: UnsafePointer<SHVar>?) -> UnsafePointer<SHVar>? {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
     let result = b.activate(context: Context(context: ctx), input: input!.pointee)
     switch result {
-    case .success(let res):
-        return res
-    case .failure(let error):
+    case let .success(res):
+        b.output = res
+        return withUnsafePointer(to: b.output) { $0 }
+    case let .failure(error):
         var errorMsg = SHStringWithLen()
         let error = error.message.utf8CString
-        errorMsg.string = error.withUnsafeBufferPointer{
+        errorMsg.string = error.withUnsafeBufferPointer {
             $0.baseAddress
         }
         errorMsg.len = UInt64(error.count)
         G.Core.pointee.abortWire(ctx, errorMsg)
-        return SHVar()
+        return withUnsafePointer(to: b.output) { $0 }
     }
 }
 
@@ -649,7 +642,7 @@ public extension IShard {
     let ptr = b.exposedVariables.withUnsafeBufferPointer {
         $0.baseAddress
     }
-    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>.init(mutating: ptr)
+    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>(mutating: ptr)
     result.len = UInt32(b.exposedVariables.count)
     return result
 }
@@ -661,7 +654,7 @@ public extension IShard {
     let ptr = b.requiredVariables.withUnsafeBufferPointer {
         $0.baseAddress
     }
-    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>.init(mutating: ptr)
+    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>(mutating: ptr)
     result.len = UInt32(b.requiredVariables.count)
     return result
 }
@@ -679,19 +672,19 @@ public extension IShard {
     withUnsafeBytes(of: &abi) { buffer.append(contentsOf: $0) }
 
     // Compute the hash using a simple algorithm (FNV-1a in this case)
-    var hash: UInt32 = 2166136261
+    var hash: UInt32 = 2_166_136_261
     for byte in buffer {
         hash ^= UInt32(byte)
-        hash &*= 16777619
+        hash &*= 16_777_619
     }
 
     return hash
 }
 
 func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
-#if DEBUG
-    print("Creating swift shard: \(T.name)")
-#endif
+    #if DEBUG
+        print("Creating swift shard: \(T.name)")
+    #endif
     let shard = T()
     let cwrapper = UnsafeMutablePointer<SwiftShard>.allocate(capacity: 1)
     cwrapper.initialize(to: SwiftShard())
@@ -744,7 +737,7 @@ struct Parameter {
 class ParameterInfo {
     init(name: String, types: SHTypesInfo, index: Int) {
         self.name = name
-        self.help = ""
+        help = ""
         self.types = types
         self.index = index
     }
@@ -762,17 +755,15 @@ class ParameterInfo {
     var index: Int
 }
 
-class ShardController : Equatable, Identifiable {
+class ShardController: Equatable, Identifiable {
     var id: Int {
-        get {
-            nativeShard.hashValue
-        }
+        nativeShard.hashValue
     }
 
     convenience init(name: String) {
         let n = name.utf8CString
         var cname = SHStringWithLen()
-        cname.string = n.withUnsafeBufferPointer{
+        cname.string = n.withUnsafeBufferPointer {
             $0.baseAddress
         }
         cname.len = UInt64(n.count)
@@ -785,7 +776,7 @@ class ShardController : Equatable, Identifiable {
         let blkname = nativeShard?.pointee.name(nativeShard!)
         let nparams = nativeShard?.pointee.parameters(nativeShard)
         if (nparams?.len ?? 0) > 0 {
-            for i in 0..<nparams!.len {
+            for i in 0 ..< nparams!.len {
                 let nparam = nparams!.elements[Int(i)]
                 let nparamId = "\(blkname!)-\(nparam.name!)"
                 if let info = ShardController.infos[nparamId] {
@@ -795,7 +786,8 @@ class ShardController : Equatable, Identifiable {
                         name: .init(cString: nparam.name!),
                         // help: .init(cString: nparam.help!),
                         types: nparam.valueTypes,
-                        index: Int(i))
+                        index: Int(i)
+                    )
                     ShardController.infos[nparamId] = info
                     params.append(Parameter(shard: self, info: info))
                 }
@@ -811,42 +803,32 @@ class ShardController : Equatable, Identifiable {
         }
     }
 
-    static func ==(lhs: ShardController, rhs: ShardController) -> Bool {
+    static func == (lhs: ShardController, rhs: ShardController) -> Bool {
         return lhs.nativeShard == rhs.nativeShard
     }
 
     var inputTypes: UnsafeMutableBufferPointer<SHTypeInfo> {
-        get {
-            let infos = nativeShard!.pointee.inputTypes(nativeShard!)
-            return .init(start: infos.elements, count: Int(infos.len))
-        }
+        let infos = nativeShard!.pointee.inputTypes(nativeShard!)
+        return .init(start: infos.elements, count: Int(infos.len))
     }
 
     var noInput: Bool {
-        get {
-            inputTypes.allSatisfy {info in
-                info.basicType == None
-            }
+        inputTypes.allSatisfy { info in
+            info.basicType == None
         }
     }
 
     var outputTypes: UnsafeMutableBufferPointer<SHTypeInfo> {
-        get {
-            let infos = nativeShard!.pointee.outputTypes(nativeShard!)
-            return .init(start: infos.elements, count: Int(infos.len))
-        }
+        let infos = nativeShard!.pointee.outputTypes(nativeShard!)
+        return .init(start: infos.elements, count: Int(infos.len))
     }
 
     var name: String {
-        get {
-            .init(cString: nativeShard!.pointee.name(nativeShard)!)
-        }
+        .init(cString: nativeShard!.pointee.name(nativeShard)!)
     }
 
     var parameters: [Parameter] {
-        get {
-            params
-        }
+        params
     }
 
     func getParam(index: Int) -> SHVar {
@@ -854,9 +836,9 @@ class ShardController : Equatable, Identifiable {
     }
 
     func setParam(index: Int, value: SHVar) -> ShardController {
-#if DEBUG
-        print("setParam(\(index), \(value))")
-#endif
+        #if DEBUG
+            print("setParam(\(index), \(value))")
+        #endif
         var mutableValue = value
         let error = nativeShard!.pointee.setParam(nativeShard, Int32(index), &mutableValue)
         if error.code != SH_ERROR_NONE {
@@ -869,7 +851,7 @@ class ShardController : Equatable, Identifiable {
         for idx in params.indices {
             if params[idx].info.name == name {
                 params[idx].value = value
-                return self;
+                return self
             }
         }
         fatalError("Parameter not found! \(name)")
@@ -880,7 +862,7 @@ class ShardController : Equatable, Identifiable {
             if params[idx].info.name == name {
                 var ustr = string.utf8CString
                 params[idx].value = SHVar(value: &ustr)
-                return self;
+                return self
             }
         }
         fatalError("Parameter not found! \(name)")
@@ -902,7 +884,7 @@ class ShardController : Equatable, Identifiable {
                 vshards.withUnsafeMutableBufferPointer {
                     params[idx].value.seq = $0
                 }
-                return self;
+                return self
             }
         }
         fatalError("Parameter not found! \(name)")
@@ -963,8 +945,8 @@ class WireController {
 
     convenience init(shards: [ShardController]) {
         self.init()
-        shards.forEach {
-            add(shard: $0)
+        for item in shards {
+            add(shard: item)
         }
     }
 
@@ -1025,7 +1007,7 @@ class WireController {
         } else {
             let n = name.utf8CString
             var cname = SHStringWithLen()
-            cname.string = n.withUnsafeBufferPointer{
+            cname.string = n.withUnsafeBufferPointer {
                 $0.baseAddress
             }
             cname.len = UInt64(n.count)
@@ -1083,7 +1065,7 @@ extension SHStringWithLen {
     static func fromStatic(_ staticString: StaticString) -> SHStringWithLen {
         var result = SHStringWithLen()
         result.string = staticString.withUTF8Buffer { buffer in
-            return unsafeBitCast(buffer.baseAddress, to: UnsafePointer<CChar>.self)
+            unsafeBitCast(buffer.baseAddress, to: UnsafePointer<CChar>.self)
         }
         result.len = UInt64(staticString.utf8CodeUnitCount)
         return result
@@ -1114,29 +1096,29 @@ class Shards {
         message.utf8CString.withUnsafeBufferPointer { buffer in
             var shString = SHStringWithLen()
             shString.string = buffer.baseAddress
-            shString.len = UInt64(buffer.count - 1)  // Subtract 1 to exclude null terminator
+            shString.len = UInt64(buffer.count - 1) // Subtract 1 to exclude null terminator
             G.Core.pointee.log(shString)
         }
     }
 }
 
-
 #if canImport(UIKit)
-import UIKit
-extension UIView {
-    var safeArea: UIEdgeInsets {
-        if #available(iOS 11, *) {
-            if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first {
-                return window.safeAreaInsets
-            }
-        }
-        return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
-    }
-}
+    import UIKit
 
-@_cdecl("shards_get_uiview_safe_area")
-public func getViewSafeArea(uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?) {
-    let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
-    uiEdgeInsets.pointee = view.safeArea
-}
+    extension UIView {
+        var safeArea: UIEdgeInsets {
+            if #available(iOS 11, *) {
+                if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first {
+                    return window.safeAreaInsets
+                }
+            }
+            return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
+        }
+    }
+
+    @_cdecl("shards_get_uiview_safe_area")
+    public func getViewSafeArea(uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?) {
+        let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
+        uiEdgeInsets.pointee = view.safeArea
+    }
 #endif

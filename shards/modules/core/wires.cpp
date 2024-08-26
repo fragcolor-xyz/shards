@@ -310,7 +310,7 @@ struct Wait : public WireBase {
     WireBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     ensureWire();
 
     if (unlikely(!wire)) {
@@ -2145,7 +2145,7 @@ struct WhenDone : Spawn {
     WireBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     _activated = true;
 
     // keep variables captured up to date
@@ -2153,8 +2153,6 @@ struct WhenDone : Spawn {
     for (auto &v : _vars) {
       _cache.push_back(v.get());
     }
-
-    return input;
   }
 };
 
@@ -2526,10 +2524,7 @@ public:
 
   void cleanup(SHContext *context) { _brancher.cleanup(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    _brancher.activate();
-    return input;
-  }
+  void activate(SHContext *context, const SHVar &input) { _brancher.activate(); }
 };
 
 SHARDS_REGISTER_FN(wires) {
@@ -2539,7 +2534,7 @@ SHARDS_REGISTER_FN(wires) {
 
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Async>;
-  using RunWireStep = RunWire<false, RunWireMode::Stepped>;
+  using RunWireStep = RunWire<true, RunWireMode::Stepped>;
   REGISTER_SHARD("SwitchTo", SwitchTo);
   REGISTER_SHARD("Wait", Wait);
   REGISTER_SHARD("Stop", StopWire);

@@ -33,7 +33,7 @@
 
   Repeat({
     Math.Inc(i)
-    i | IsLessEqual(5) | Assert.Is(true)
+    i | Log("i") | IsLessEqual(5) | Log("i") | Assert.Is(true)
   } Times: times Until: {i | Is(5)})
   i | Assert.Is(5)
 

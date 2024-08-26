@@ -75,3 +75,4 @@ docs/forbidden_shards.inl
 docs/shards_docs_merged.txt
 shards/langffi/Cargo.lock
 ai/training-set.jsonl
+.aider*

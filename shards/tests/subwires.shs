@@ -47,21 +47,21 @@
   Assert.Is("Ok!" true)
 
   Msg("message 1")
-  1
+  1 > step-test
   Pause
   Msg("message 2")
 
   ; test jumping to another coro
   SwitchTo(jumphere)
   Msg("ticked resumed")
-  2
+  2 > step-test
   Pause
   Msg("message 3")
-  3
+  3 > step-test
   Pause
 
   Msg("message 4")
-  4
+  4 > step-test
   Pause
 
   ; make sure main is not stopped in this case
@@ -72,21 +72,21 @@
 
 @wire(ticked2 {
   Msg("message 1")
-  1
+  1 > step-test
   Pause
   Msg("message 2")
 
   ; test jumping to another coro
   SwitchTo(jumphere2 true)
   Msg("ticked resumed")
-  2
+  2 > step-test
   Pause
   Msg("message 3")
-  3
+  3 > step-test
   Pause
 
   Msg("message 4")
-  4
+  4 > step-test
   Msg("ticked2 done")
 })
 
@@ -121,61 +121,62 @@
 
   "Ok!" = var-from-root
   ; test a stepped wire that Stops
+  0 >= step-test
   Step(ticked)
   Msg("had message 1")
-  Assert.Is(1 true) ; pause after 1
+  step-test | Assert.Is(1 true) ; pause after 1
 
   Step(ticked)
   Msg("had message 2")
-  Assert.Is(1 true) ; resume pauses jumped
+  step-test | Assert.Is(1 true) ; resume pauses jumped
 
   Step(ticked)
   Msg("before ticked resume")
-  Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+  step-test | Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
 
   Step(ticked) ; pause after 2
-  Assert.Is(2 true)
+  step-test | Assert.Is(2 true)
 
   Step(ticked) ; resume pauses when going stopping
   Msg("had message 3")
-  Assert.Is(3 true) ; pause after 3
+  step-test | Assert.Is(3 true) ; pause after 3
 
   Step(ticked)
   Msg("had message 4")
-  Assert.Is(4 true) ; pause after 4
+  step-test | Assert.Is(4 true) ; pause after 4
 
   Step(ticked) ; will stop the wire
-  Assert.Is(4 true)
+  step-test | Assert.Is(4 true)
   Step(ticked) ; last result wire is done
-  Assert.Is(4 true)
+  step-test | Assert.Is(4 true)
   Step(ticked) ; last result wire is done
-  Assert.Is(4 true)
+  step-test | Assert.Is(4 true)
 
   ; test a stepped wire that never stops and rotates
   Repeat({
     Msg("repeating!")
     Step(ticked2)
     Msg("had message 1")
-    Assert.Is(1 true) ; pause after 1
+    step-test | Assert.Is(1 true) ; pause after 1
 
     Step(ticked2)
     Msg("had message 2")
-    Assert.Is(1 true) ; resume pauses jumped
+    step-test | Assert.Is(1 true) ; resume pauses jumped
 
     Step(ticked2)
     Msg("before ticked resume")
-    Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+    step-test | Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
 
     Step(ticked2) ; pause after 2
-    Assert.Is(2 true)
+    step-test | Assert.Is(2 true)
 
     Step(ticked2) ; resume pauses when going stopping
     Msg("had message 3")
-    Assert.Is(3 true) ; pause after 3
+    step-test | Assert.Is(3 true) ; pause after 3
 
     Step(ticked2)
     Msg("had message 4")
-    Assert.Is(4 true) ; pause after 4
+    step-test | Assert.Is(4 true) ; pause after 4
   } Times: 3)
 
   SwitchTo(started true)

@@ -177,7 +177,7 @@ impl RenderTarget {
   }
 
   impl_legacy_override_activate! {
-    extern "C" fn texture_activate() -> Var {
+    extern "C" fn texture_activate() -> *const Var {
       RenderTarget::activate_texture()
     }
   }

@@ -943,7 +943,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
           auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
           if (mblks.valueType == SHType::ShardRef) {
             auto blk = mblks.payload.shardValue;
-            current = blk->activate(blk, &ctx, &current);
+            current = *blk->activate(blk, &ctx, &current);
           } else if (mblks.valueType == SHType::Seq) {
             auto blks = mblks.payload.seqValue;
             SHVar out{};
@@ -1110,12 +1110,12 @@ struct DShard {
       _wrapped->cleanup(_wrapped, context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     if (!_wrapped) {
       throw ActivationError("Wrapped shard was null!");
     }
 
-    return _wrapped->activate(_wrapped, context, &input);
+    return *_wrapped->activate(_wrapped, context, &input);
   }
 
   void mutate(SHTable options) {

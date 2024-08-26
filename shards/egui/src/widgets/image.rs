@@ -175,13 +175,13 @@ impl Image {
   }
 
   impl_override_activate! {
-    extern "C" fn activate_image_override() -> Var {
+    extern "C" fn activate_image_override() -> *const Var {
       Image::activate_image()
     }
   }
 
   impl_override_activate! {
-    extern "C" fn activate_texture_override() -> Var {
+    extern "C" fn activate_texture_override() -> *const Var {
       Image::activate_texture()
     }
   }

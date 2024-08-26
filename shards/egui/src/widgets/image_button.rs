@@ -282,13 +282,13 @@ impl ImageButton {
   }
 
   impl_override_activate! {
-    extern "C" fn image_activate() -> Var {
+    extern "C" fn image_activate() -> *const Var {
       ImageButton::activate_image()
     }
   }
 
   impl_override_activate! {
-    extern "C" fn texture_activate() -> Var {
+    extern "C" fn texture_activate() -> *const Var {
       ImageButton::activate_texture()
     }
   }

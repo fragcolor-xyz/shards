@@ -38,10 +38,10 @@ struct WireBase {
   static inline const SHOptionalString InputBaseWire =
       SHCCSTR("Any input type is accepted. The input of this shard will be given as input for the specified Wire");
 
-  static inline const SHOptionalString InputManyWire =
-      SHCCSTR("This shard takes a sequence of values as input. Each value from the sequence is provided as input to its corresponding "
-              "copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, will be the same as "
-              "the number of elements in the sequence provided.");
+  static inline const SHOptionalString InputManyWire = SHCCSTR(
+      "This shard takes a sequence of values as input. Each value from the sequence is provided as input to its corresponding "
+      "copy of the scheduled Wire. The total number of copies of the specified Wire scheduled, will be the same as "
+      "the number of elements in the sequence provided.");
 
   ParamVar wireref{};
   std::shared_ptr<SHWire> wire;
@@ -341,9 +341,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     } else if constexpr (WIRE_MODE == RunWireMode::Async) {
       return DefaultHelpText::OutputHelpPass;
     } else {
-      return SHCCSTR("The output of this shard will be the output of the Wire that is executed. Note that because the Wire's "
-                     "output might change as the Wire's state is progressed, the output of this Shard will be of Type::Any. "
-                     "Thus, the output of this shard, should always be checked or converted to the appropriate Type.");
+      return DefaultHelpText::OutputHelpPass;
     }
   }
 

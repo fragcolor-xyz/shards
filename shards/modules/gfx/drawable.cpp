@@ -136,9 +136,9 @@ struct DrawShard {
       throw ComposeError("Draw requires a queue");
 
     if (data.inputType.basicType == SHType::Seq) {
-      OVERRIDE_ACTIVATE(data, activateSeq);
+      OVERRIDE_ACTIVATE1(data, activateSeq);
     } else {
-      OVERRIDE_ACTIVATE(data, activateSingle);
+      OVERRIDE_ACTIVATE1(data, activateSingle);
     }
 
     return data.inputType;
@@ -148,7 +148,7 @@ struct DrawShard {
 
   template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
-  SHVar activateSingle(SHContext *shContext, const SHVar &input) {
+  void activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
     std::visit(
         [&](auto &drawable) {
@@ -158,18 +158,16 @@ struct DrawShard {
           }
         },
         varAsObjectChecked<SHDrawable>(input, ShardsTypes::Drawable).drawable);
-    return input;
   }
 
-  SHVar activateSeq(SHContext *shContext, const SHVar &input) {
+  void activateSeq(SHContext *shContext, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     for (size_t i = 0; i < seq.len; i++) {
-      (void)activateSingle(shContext, seq.elements[i]);
+      activateSingle(shContext, seq.elements[i]);
     }
-    return input;
   }
 
-  SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
+  void activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
 };
 
 } // namespace gfx

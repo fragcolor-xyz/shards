@@ -224,6 +224,7 @@ pub struct LegacyShardWrapper<T: LegacyShard> {
   name: Option<CString>,
   help: Option<CString>,
   error: Option<CString>,
+  pub outputStorage: Var,
 }
 
 #[repr(C, align(16))] // ensure alignment is 16 bytes
@@ -233,6 +234,7 @@ pub struct ShardWrapper<T: Shard + ShardGenerated + ShardGeneratedOverloads> {
   name: Option<CString>,
   help: Option<CString>,
   error: Option<CString>,
+  pub outputStorage: Var,
 }
 
 /// # Safety
@@ -331,13 +333,16 @@ unsafe extern "C" fn legacy_shard_activate<T: LegacyShard>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
   arg3: *const SHVar,
-) -> SHVar {
+) -> *const SHVar {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   match (*blk).shard.activate(&(*arg2), &(*arg3)) {
-    Ok(value) => value,
+    Ok(value) => {
+      (*blk).outputStorage = value;
+      &(*blk).outputStorage
+    }
     Err(error) => {
       abortWire(&(*arg2), error);
-      Var::default()
+      &(*blk).outputStorage
     }
   }
 }
@@ -536,6 +541,7 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
     name: None,
     help: None,
     error: None,
+    outputStorage: Var::default(),
   };
   shard.header.nameLength = shard.shard.name().len() as u32;
   return shard;
@@ -702,13 +708,16 @@ unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated + ShardGeneratedOv
   arg1: *mut CShard,
   arg2: *mut SHContext,
   arg3: *const SHVar,
-) -> SHVar {
+) -> *const SHVar {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.activate(&(*arg2), &(*arg3)) {
-    Ok(value) => value,
+    Ok(value) => {
+      (*blk).outputStorage = value;
+      &(*blk).outputStorage
+    }
     Err(error) => {
       abortWire(&(*arg2), error);
-      Var::default()
+      &(*blk).outputStorage
     }
   }
 }
@@ -873,6 +882,7 @@ pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() 
     name: None,
     help: None,
     error: None,
+    outputStorage: Var::default(),
   };
   shard.header.nameLength = shard.shard.name().len() as u32;
   return shard;
@@ -931,7 +941,7 @@ macro_rules! decl_override_activate {
 macro_rules! impl_legacy_override_activate {
   (
     $(#[$meta:meta])*
-    extern "C" fn $override_name:ident() -> Var {
+    extern "C" fn $override_name:ident() -> *const Var {
       $legacy_shard_name:ident::$override_impl:ident()
     }
   ) => {
@@ -940,13 +950,16 @@ macro_rules! impl_legacy_override_activate {
       arg1: *mut $crate::shardsc::Shard,
       arg2: *mut Context,
       arg3: *const Var,
-    ) -> Var {
+    ) -> *const Var {
       let blk = arg1 as *mut $crate::shard::LegacyShardWrapper<$legacy_shard_name>;
       match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
-        Ok(value) => value,
+        Ok(value) => {
+          (*blk).outputStorage = value;
+          &(*blk).outputStorage
+        },
         Err(error) => {
           $crate::core::abortWire(&(*arg2), error);
-          Var::default()
+          &(*blk).outputStorage
         }
       }
     }
@@ -957,7 +970,7 @@ macro_rules! impl_legacy_override_activate {
 macro_rules! impl_override_activate {
   (
     $(#[$meta:meta])*
-    extern "C" fn $override_name:ident() -> Var {
+    extern "C" fn $override_name:ident() -> *const Var {
       $shard_name:ident::$override_impl:ident()
     }
   ) => {
@@ -966,13 +979,16 @@ macro_rules! impl_override_activate {
       arg1: *mut $crate::shardsc::Shard,
       arg2: *mut Context,
       arg3: *const Var,
-    ) -> Var {
+    ) -> *const Var {
       let blk = arg1 as *mut $crate::shard::ShardWrapper<$shard_name>;
       match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
-        Ok(value) => value,
+        Ok(value) => {
+          (*blk).outputStorage = value;
+          &(*blk).outputStorage
+        },
         Err(error) => {
           $crate::core::abortWire(&(*arg2), error);
-          Var::default()
+          &(*blk).outputStorage
         }
       }
     }
