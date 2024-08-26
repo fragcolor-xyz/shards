@@ -754,7 +754,7 @@ struct ForEachShard {
   static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` parameter.");
+    return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` parameter. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
   static SHTypesInfo inputTypes() { return _types; }
@@ -899,7 +899,7 @@ private:
 
 struct Map {
   static SHOptionalString help() {
-    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and returns the modified sequence or table.");
+    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and returns the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1059,7 +1059,7 @@ private:
 struct Reduce {
   static SHOptionalString help() {
     return SHCCSTR("Reduces a sequence to a single value by applying a an operation(specified in the Apply parameter) to each "
-                   "item of the sequence.");
+                   "item of the sequence. Note that this shard is able to use the $0 internal variable.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence to reduce."); }
@@ -2738,7 +2738,7 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
 
 struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit hash value as a a sequence with 2 64-bit integer as elements.");
+    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit hash value as an int2 (a sequence with 2 integers as elements).");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
