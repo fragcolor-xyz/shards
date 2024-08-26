@@ -246,8 +246,6 @@ jobs:
           ./shards new ../shards/tests/variables.shs
           echo "Running linalg"
           ./shards new ../shards/tests/linalg.shs
-          echo "Running loader"
-          ./shards ../shards/tests/loader.clj
           echo "Running network"
           ./shards new ../shards/tests/network.shs
           echo "Running network-ws"

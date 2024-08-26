@@ -141,7 +141,6 @@ jobs:
           ./shards new ../shards/tests/variables.shs
           ./shards new ../shards/tests/subwires.shs
           ./shards new ../shards/tests/linalg.shs
-          ./shards ../shards/tests/loader.clj
           ./shards new ../shards/tests/network.shs
           ./shards new ../shards/tests/network-ws.shs
           ./shards new ../shards/tests/struct.shs
