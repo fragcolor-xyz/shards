@@ -15,22 +15,6 @@ use crate::formatter::format_str;
 use crate::read;
 use crate::read::AST_TYPE;
 
-const INDENT_LENGTH: usize = 2;
-
-struct Context {
-  indent: usize,
-  previous: Option<*const Context>,
-}
-
-impl Default for Context {
-  fn default() -> Self {
-    Context {
-      indent: 0,
-      previous: None,
-    }
-  }
-}
-
 impl Identifier {
   fn to_string(&self) -> String {
     if self.namespaces.is_empty() {
@@ -80,14 +64,12 @@ fn format_f32(f: f32) -> String {
 }
 
 pub struct PrintVisitor {
-  context: Context,
   output: String,
 }
 
 impl PrintVisitor {
   pub fn new() -> Self {
     PrintVisitor {
-      context: Context::default(),
       output: String::new(),
     }
   }
@@ -96,24 +78,8 @@ impl PrintVisitor {
     self.output
   }
 
-  fn indent(&mut self) {
-    self.context.indent += INDENT_LENGTH;
-  }
-
-  fn dedent(&mut self) {
-    if self.context.indent >= INDENT_LENGTH {
-      self.context.indent -= INDENT_LENGTH;
-    }
-  }
-
   fn write(&mut self, text: &str) {
     self.output.push_str(text);
-  }
-
-  fn write_line(&mut self, text: &str) {
-    self.write(&" ".repeat(self.context.indent));
-    self.write(text);
-    self.write("\n");
   }
 }
 

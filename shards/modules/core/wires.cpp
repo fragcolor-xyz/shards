@@ -2145,7 +2145,7 @@ struct WhenDone : Spawn {
     WireBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     _activated = true;
 
     // keep variables captured up to date
@@ -2153,8 +2153,6 @@ struct WhenDone : Spawn {
     for (auto &v : _vars) {
       _cache.push_back(v.get());
     }
-
-    return input;
   }
 };
 
