@@ -106,6 +106,9 @@ private:
   std::optional<boost::context::continuation> continuation;
 #if SH_DEBUG_CONSISTENT_RESUMER
   std::optional<std::thread::id> consistentResumer;
+#if SH_DEBUG_CONSISTENT_RESUMER > 1
+  std::list<std::string> creatorStack;
+#endif
 #endif
 
 public:

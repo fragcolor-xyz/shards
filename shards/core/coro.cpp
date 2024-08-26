@@ -111,6 +111,9 @@ Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
 void Fiber::init(std::function<void()> fn) {
 #if SH_DEBUG_CONSISTENT_RESUMER
   consistentResumer.emplace(std::this_thread::get_id());
+#if SH_DEBUG_CONSISTENT_RESUMER > 1
+  creatorStack = getThreadNameStack();
+#endif
 #endif
   continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [=](boost::context::continuation &&sink) {
     continuation.emplace(std::move(sink));

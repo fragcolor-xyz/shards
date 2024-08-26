@@ -57,6 +57,7 @@ endif()
 
 ## Uncomment to enable consistent resumer debugging, this might be useful to debug some specific issues when coroutines cannot be resumed on different threads
 if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER AND NOT EMSCRIPTEN)
+  # Set to non-zero to enable, Set to 2 to enable more detailed logging
   target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)
 endif()
 
