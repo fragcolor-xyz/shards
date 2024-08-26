@@ -117,7 +117,6 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     return &shard->core.activate(context, input);
   }
   case InlineShard::CoreIsLessEqual: {
-    SHLOG_DEBUG("IsLessEqual");
     auto shard = reinterpret_cast<shards::IsLessEqualRuntime *>(blk);
     return &shard->core.activate(context, input);
   }
