@@ -1269,7 +1269,7 @@ TEST_CASE("UnsafeActivate-shard") {
   DEFER(b1->destroy(b1));
   b1->setParam(b1, 0, &fVar);
   SHVar input{};
-  CHECK(b1->activate(b1, nullptr, &input).payload.intValue == 77);
+  CHECK(b1->activate(b1, nullptr, &input)->payload.intValue == 77);
 }
 
 TEST_CASE("AWAIT/AWAITNE") {

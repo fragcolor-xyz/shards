@@ -804,9 +804,9 @@ struct ForEachShard {
     _shards.compose(dataCopy);
 
     if (data.inputType.basicType == SHType::Table) {
-      OVERRIDE_ACTIVATE(data, activateTable);
+      OVERRIDE_ACTIVATE1(data, activateTable);
     } else {
-      OVERRIDE_ACTIVATE(data, activateSeq);
+      OVERRIDE_ACTIVATE1(data, activateSeq);
     }
 
     return data.inputType;
@@ -842,7 +842,7 @@ struct ForEachShard {
     }
   }
 
-  SHVar activateSeq(SHContext *context, const SHVar &input) {
+  void activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
     for (auto &item : input) {
       assignVariableValue(*_tmp0, item);
@@ -850,10 +850,9 @@ struct ForEachShard {
       if (state != SHWireState::Continue)
         break;
     }
-    return input;
   }
 
-  SHVar activateTable(SHContext *context, const SHVar &input) {
+  void activateTable(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto &table = input.payload.tableValue;
     for (auto &[k, v] : table) {
@@ -866,13 +865,9 @@ struct ForEachShard {
       if (state != SHWireState::Continue)
         break;
     }
-    return input;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    throw ActivationError("Invalid activation path");
-    return input;
-  }
+  void activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation path"); }
 
 private:
   static inline Parameters _params{
@@ -1011,7 +1006,7 @@ struct Map {
     return _output;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
+  void activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
 
 private:
   static inline Parameters _params{{"Apply",
@@ -2667,13 +2662,12 @@ struct Once {
 #endif
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) {
     if (!isRepeating()) {
       activateOnce(context, input);
     } else {
       activateTimed(context, input);
     }
-    return input;
   }
 };
 
