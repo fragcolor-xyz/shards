@@ -25,6 +25,7 @@ struct GizmosContextShard {
                  "The view used to render the gizmos."
                  "When drawing over a scene, the view should be the same.",
                  {Type::VariableOf(gfx::ShardsTypes::View)});
+  PARAM_PARAMVAR(_viewSize, "ViewSize", "The size of the view", {CoreInfo::NoneType, CoreInfo::Int2Type, CoreInfo::Int2VarType});
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::ShardsTypes::DrawQueue)});
   PARAM_PARAMVAR(_scaling, "Scaling", "The scaling factor for gizmo elements.",
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
@@ -34,8 +35,8 @@ struct GizmosContextShard {
         "Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is "
         "being pressed and so edited.",
         {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_scaling),
-             PARAM_IMPL_FOR(_interactive));
+  PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_viewSize), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content),
+             PARAM_IMPL_FOR(_scaling), PARAM_IMPL_FOR(_interactive));
 
   input::OptionalInputContext _inputContext;
   gfx::OptionalGraphicsRendererContext _gfxContext;
@@ -85,7 +86,11 @@ struct GizmosContextShard {
       throw ComposeError("Queue not set");
 
     if (!_view.isVariable())
-      throw ComposeError("View not set");
+      throw std::runtime_error("View must be a variable");
+
+    if (_viewSize.isNone() && (!_gfxContext && !_inputContext)) {
+      throw std::runtime_error("ViewSize must be set if running outside of graphics/input context");
+    }
 
     _innerExposedInfo = ExposedInfo(data.shared);
     _innerExposedInfo.push_back(GizmoContext::VariableInfo);
@@ -129,7 +134,9 @@ struct GizmosContextShard {
       isInteractive = (bool)(Var &)_interactive.get();
     }
 
-    if (_gfxContext) {
+    if (!_viewSize.isNone()) {
+      gizmoInput.viewportSize = (float2)toInt2(_viewSize.get());
+    } else if (_gfxContext) {
       auto &vs = _gfxContext->renderer->getViewStack();
       gizmoInput.viewportSize = float2(vs.getOutput().referenceSize);
     }

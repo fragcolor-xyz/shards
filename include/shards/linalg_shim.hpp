@@ -47,10 +47,10 @@ template <typename T> struct generic {
   SHType valueType = _TypeOf<Self>::type;
   uint16_t flags{};
   uint32_t refcount{};
-  
+
   generic() = default;
   generic(const Base &other) { *this = other; }
-  generic(const Self& other) { *this = other; }
+  generic(const Self &other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
@@ -78,10 +78,10 @@ template <typename T, int M> struct vec {
   SHType valueType = _TypeOf<TVec>::type;
   uint16_t flags{};
   uint32_t refcount{};
-  
+
   vec() = default;
   vec(const TVec &other) { *this = other; }
-  vec(const Self& other) { *this = other; }
+  vec(const Self &other) { *this = other; }
 
   operator const SHVar &() const { return reinterpret_cast<SHVar &>(*this); }
   operator SHVar &() { return reinterpret_cast<SHVar &>(*this); }
@@ -109,6 +109,7 @@ using Float = generic<double>;
 using Int4 = vec<int32_t, 4>;
 using Int3 = vec<int32_t, 3>;
 using Int2 = vec<int64_t, 2>;
+using UInt2 = vec<uint64_t, 2>;
 using Int = generic<int64_t>;
 } // namespace padded
 
@@ -253,6 +254,8 @@ struct alignas(16) Mat4 {
     res.payload.seqValue.cap = 0;
     return res;
   }
+
+  static Mat4 &fromVar(const SHVar &var) { return *reinterpret_cast<Mat4 *>(var.payload.seqValue.elements); }
 };
 
 using Vec2 = padded::Float2;
@@ -310,12 +313,34 @@ template <typename TVec> inline auto toVec(const SHVar &value) {
   return Conv::convert(value);
 }
 
-inline auto toFloat2(const SHVar &value) { return *reinterpret_cast<const padded::Float2 &>(value); }
-inline auto toFloat3(const SHVar &value) { return *reinterpret_cast<const padded::Float3 &>(value); }
-inline auto toFloat4(const SHVar &value) { return *reinterpret_cast<const padded::Float4 &>(value); }
-inline auto toInt2(const SHVar &value) { return *reinterpret_cast<const padded::Int2 &>(value); }
-inline auto toInt3(const SHVar &value) { return *reinterpret_cast<const padded::Int3 &>(value); }
-inline auto toInt4(const SHVar &value) { return *reinterpret_cast<const padded::Int4 &>(value); }
+inline auto toFloat2(const SHVar &value) {
+  shassert(value.valueType == SHType::Float2);
+  return *reinterpret_cast<const padded::Float2 &>(value);
+}
+inline auto toFloat3(const SHVar &value) {
+  shassert(value.valueType == SHType::Float3);
+  return *reinterpret_cast<const padded::Float3 &>(value);
+}
+inline auto toFloat4(const SHVar &value) {
+  shassert(value.valueType == SHType::Float4);
+  return *reinterpret_cast<const padded::Float4 &>(value);
+}
+inline auto toInt2(const SHVar &value) {
+  shassert(value.valueType == SHType::Int2);
+  return *reinterpret_cast<const padded::Int2 &>(value);
+}
+inline auto toUInt2(const SHVar &value) {
+  shassert(value.valueType == SHType::Int2);
+  return *reinterpret_cast<const padded::UInt2 &>(value);
+}
+inline auto toInt3(const SHVar &value) {
+  shassert(value.valueType == SHType::Int3);
+  return *reinterpret_cast<const padded::Int3 &>(value);
+}
+inline auto toInt4(const SHVar &value) {
+  shassert(value.valueType == SHType::Int4);
+  return *reinterpret_cast<const padded::Int4 &>(value);
+}
 
 template <typename TVec> inline SHVar genericToVar(const TVec &value) {
   using Conv = VectorConversion<TVec>;

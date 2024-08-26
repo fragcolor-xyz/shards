@@ -21,9 +21,36 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
+set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
+
+# Don't enable these ones
+option(USE_AVX2 "Enable AVX2" OFF)
+option(USE_AVX512 "Enable AVX512" OFF)
+
+if(EMSCRIPTEN)
+  set(ENABLE_EXTENSIONS_BASE ON) # Can use web assembly SIMD 
+  set(ENABLE_EXTENSIONS OFF) # Non of the other once because they add -mpopcnt, -mbmi, etc.
+else()
+  set(ENABLE_EXTENSIONS_BASE ON)
+  set(ENABLE_EXTENSIONS ON)
+endif()
+
+# This triggers warnings+errors on valgrind build
+option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
+option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS_BASE})
+option(USE_SSE4_2 "Enable SSE4.2" ${ENABLE_EXTENSIONS})
+option(USE_AVX "Enable AVX" ${ENABLE_EXTENSIONS})
+option(USE_LZCNT "Enable LZCNT" ${ENABLE_EXTENSIONS})
+option(USE_TZCNT "Enable TZCNT" ${ENABLE_EXTENSIONS})
+option(USE_F16C "Enable F16C" ${ENABLE_EXTENSIONS})
+option(USE_FMADD "Enable FMADD" ${ENABLE_EXTENSIONS})
+
+add_subdirectory(JoltPhysics/Build)
+
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "" FORCE)
 endif()
+
 set(TBB_STRICT OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(oneTBB)
@@ -33,6 +60,7 @@ if(NOT EMSCRIPTEN)
     if(GNU_STATIC_BUILD)
       set(OPENSSL_USE_STATIC_LIBS TRUE)
     endif()
+
     find_package(OpenSSL REQUIRED)
     add_library(OpenSSL INTERFACE)
     target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
@@ -45,17 +73,17 @@ if(NOT EMSCRIPTEN)
     set(OPENSSLDIR "/etc/ssl" CACHE PATH "" FORCE)
 
     set(LIBRE_SSL_DIR "" CACHE FILEPATH "Use libressl from this path, not setting this will download the sources automatically")
+
     if(LIBRE_SSL_DIR)
       set(libressl_SOURCE_DIR ${LIBRE_SSL_DIR})
 
       message(STATUS "Using libressl from LIBRE_SSL_DIR=${libressl_SOURCE_DIR}")
       add_subdirectory(${libressl_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libressl)
     else()
-
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
         libressl
-        URL      https://develop.fragcolor.com/libressl-3.9.2.tar.gz
+        URL https://develop.fragcolor.com/libressl-3.9.2.tar.gz
         URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
         ${LIBRESSL_PATCH_COMMAND}
       )
@@ -67,7 +95,7 @@ if(NOT EMSCRIPTEN)
     set_property(GLOBAL PROPERTY libressl_SOURCE_DIR ${libressl_SOURCE_DIR})
 
     # NOTE: External project doesn't work with Xcode here
-    #  since ssl/cypto builds into object library referenced by static library
+    # since ssl/cypto builds into object library referenced by static library
     add_library(OpenSSL INTERFACE)
     add_library(OpenSSL::SSL ALIAS OpenSSL)
     add_library(OpenSSL::Crypto ALIAS crypto)
@@ -79,7 +107,9 @@ endif()
 if(WIN32)
   set(BOOST_STACKTRACE_ENABLE_WINDBG_CACHED ON CACHE BOOL "")
 endif()
+
 set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
+
 if(BOOST_DIR)
   message(STATUS "Using boost from BOOST_DIR=${BOOST_DIR}")
   add_subdirectory(${BOOST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/boost)
@@ -87,7 +117,8 @@ else()
   message(STATUS "Fetching boost")
   FetchContent_Declare(
     boost
-    URL      https://develop.fragcolor.com/boost-1.81.0-shards-5.7z
+    URL https://develop.fragcolor.com/boost-1.81.0-shards-5.7z
+
     # URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards-5/output.7z
     URL_HASH SHA256=a890f672200cf9f018cbd75a433a4dd7837e09a97b0b9287861a497a4a744626
   )
@@ -115,21 +146,21 @@ sh_add_external_project(
   CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
   RELATIVE_INCLUDE_PATHS .
   RELATIVE_BINARY_INCLUDE_PATHS .
-  REPO_ARGS GIT_REPOSITORY    https://github.com/shards-lang/snappy.git
-            GIT_TAG           9e3775b)
+  REPO_ARGS GIT_REPOSITORY https://github.com/shards-lang/snappy.git
+  GIT_TAG 9e3775b)
 
 sh_add_external_project(
   NAME brotli_a
   TARGETS brotlidec-static brotlienc-static brotlicommon-static
   CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1
   RELATIVE_INCLUDE_PATHS c/include
-  REPO_ARGS GIT_REPOSITORY    https://github.com/shards-lang/brotli.git
-            GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
-
+  REPO_ARGS GIT_REPOSITORY https://github.com/shards-lang/brotli.git
+  GIT_TAG e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   set(CATCH2_LIB_SUFFIX "d")
 endif()
+
 sh_add_external_project(
   NAME catch2_a
   INSTALL

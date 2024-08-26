@@ -1,8 +1,9 @@
 #ifndef BAF72001_29B7_424A_AD7D_70C476A48508
 #define BAF72001_29B7_424A_AD7D_70C476A48508
 
-#include "hasherxxh128.hpp"
+#include "hasherxxh3.hpp"
 #include "unique_id.hpp"
+#include "linalg.hpp"
 #include <unordered_map>
 #include <set>
 
@@ -10,17 +11,14 @@ namespace gfx::detail {
 
 // Specialize this for custom types
 template <typename T, typename H, typename = void> struct PipelineHash {
-  static constexpr bool applies() { return false; }
 };
 
 template <typename T, typename H>
 struct PipelineHash<T, H, std::void_t<decltype(std::declval<T>().getPipelineHash(*(H *)0), bool())>> {
-  static constexpr bool applies() { return true; }
   static void apply(const T &val, H &hasher) { val.getPipelineHash(hasher); }
 };
 
 template <typename H> struct PipelineHash<float4x4, H> {
-  static constexpr bool applies() { return true; }
   static void apply(const float4x4 &val, H &hasher) {
     hasher(val.x);
     hasher(val.y);
@@ -29,9 +27,13 @@ template <typename H> struct PipelineHash<float4x4, H> {
   }
 };
 
+template<typename T>
+concept CanApplyPipelineHash = requires(const T &val, shards::DummyHasher hasher) {
+  PipelineHash<T, shards::DummyHasher>::apply(val, hasher);
+};
+
 struct PipelineHashVisitor {
-  template <typename T, typename H> static constexpr auto applies(...) { return PipelineHash<T, H>::applies(); }
-  template <typename T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
+  template <CanApplyPipelineHash T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
 };
 
 struct References {
@@ -52,7 +54,7 @@ struct IPipelineHashStorage {
   virtual void addHash(UniqueId id, Hash128 hash) = 0;
 };
 
-typedef HasherXXH128<PipelineHashVisitor> PipelineHasher;
+typedef HasherXXH3<PipelineHashVisitor> PipelineHasher;
 
 // Does 2 things while traversing gfx objects:
 // - Collect the pipeline hash to determine pipeline permutation

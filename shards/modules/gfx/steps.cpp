@@ -7,8 +7,7 @@
 #include <shards/iterator.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/fwd.hpp>
-#include <gfx/hash.hpp>
-#include <gfx/hasherxxh128.hpp>
+#include <gfx/hasherxxh3.hpp>
 #include <gfx/unique_id.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/pipeline_step.hpp>
@@ -244,7 +243,7 @@ struct HashState {
   Hash128 hash;
 
   template <typename T> bool update(const T &step) {
-    HasherXXH128<> hasher;
+    HasherXXH3<> hasher;
     for (const FeaturePtr &feature : step.features) {
       hasher(feature->getId());
     }

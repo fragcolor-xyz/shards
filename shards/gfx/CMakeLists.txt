@@ -25,6 +25,7 @@ set(GFX_SOURCES
   gizmos/shapes.cpp
   gizmos/gizmo_input.cpp
   gizmos/gizmos.cpp
+  gizmos/text.cpp
   shader/generator.cpp
   shader/generator_context.cpp
   shader/blocks.cpp
@@ -52,6 +53,13 @@ endif()
 
 add_library(gfx ${GFX_SOURCES})
 
+target_bundle_files(gfx 
+  PREFIX bundled
+  NAMESPACE bundled
+  FILES 
+    "gizmos/BigBlue_TerminalPlus.bin"
+)
+
 # Always optimize files with hot-paths
 set_source_files_properties(
   drawables/mesh_tree_drawable.cpp
@@ -75,6 +83,7 @@ target_link_libraries(gfx
   tinygltf draco-wrapper
   magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container Boost::tti
+  brotlidec-static brotlicommon-static
   shards-logging
   shards-fast-string
 )

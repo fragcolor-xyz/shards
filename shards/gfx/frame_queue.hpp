@@ -13,7 +13,7 @@
 #include "renderer_types.hpp"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
-#include "hasherxxh128.hpp"
+#include "hasherxxh3.hpp"
 #include <initializer_list>
 
 namespace gfx::detail {
@@ -66,7 +66,7 @@ public:
   void enqueue(const ViewData &viewData, const PipelineSteps &steps) { queue.emplace_back(viewData, steps); }
 
   const RenderGraph &getOrCreateRenderGraph() {
-    HasherXXH128<HasherDefaultVisitor> hasher;
+    HasherXXH3<HasherDefaultVisitor> hasher;
     for (auto &entry : queue) {
       for (auto &step : entry.steps) {
         std::visit([&](auto &step) { hasher(step.getId()); }, *step.get());

@@ -21,6 +21,7 @@ function(target_bundle_files BUNDLED_TARGET)
     RELATIVE_TO # Specifies the base path that will be stripped from the input paths
     PREFIX # Specifies the base path that will be added onto the bundled paths
     VISIBILITY # Specifies the visibility of include paths (default: PRIVATE)
+    NAMESPACE
   )
   set(MULTI_ARGS
     FILES # The list of file paths to bundle
@@ -38,7 +39,7 @@ function(target_bundle_files BUNDLED_TARGET)
   set(GENERATED_HEADER_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
   target_include_directories(${BUNDLED_TARGET} ${BUNDLED_VISIBILITY} ${GENERATED_HEADER_ROOT_DIR})
 
-  set(GENERATED_HEADER_DIR "${GENERATED_HEADER_ROOT_DIR}/${NAMESPACE}")
+  set(GENERATED_HEADER_DIR "${GENERATED_HEADER_ROOT_DIR}/${BUNDLED_NAMESPACE}")
   file(MAKE_DIRECTORY ${GENERATED_HEADER_DIR})
 
   set(IN_PATHS)

@@ -74,37 +74,43 @@ void WireframeRenderer::reset(size_t frameCounter) {
 }
 void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable, float4 color) {
   if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
-    Mesh *meshPtr = meshDrawable->mesh.get();
-    auto it = meshCache.find(meshPtr);
-    if (it == meshCache.end()) {
-      WireframeMeshGenerator meshGenerator;
-      meshGenerator.mesh = meshDrawable->mesh;
-      MeshCacheEntry entry{
-          .wireMesh = meshGenerator.generate(),
-          .weakMesh = meshDrawable->mesh,
-      };
-
-      it = meshCache.insert_or_assign(meshPtr, entry).first;
-    }
-    detail::touchCacheItem(it->second, currentFrameCounter);
-
-    auto drawable = it->second.drawablePool.newValue([&](auto &drawable) {
-      drawable->mesh = it->second.wireMesh;
-      drawable->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
-      drawable->material.reset();
-      drawable->features.clear();
-      drawable->parameters.clear();
-      drawable->features.push_back(wireframeFeature);
-    });
+    auto drawable = getWireframeDrawable(meshDrawable->mesh, color);
+    drawable->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
     drawable->transform = meshDrawable->transform;
-    static FastString fs_baseColor = "baseColor";
-    drawable->parameters.set(fs_baseColor, color);
     queue.add(drawable);
   } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     allocator->reset();
     TransformUpdaterCollector collector(*allocator.get());
-    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get(), color); };
+    collector.collector = [&](DrawablePtr drawable, const float4x4 &) { overlayWireframe(queue, *drawable.get(), color); };
     collector.update(*treeDrawable);
   }
 }
+
+std::shared_ptr<MeshDrawable> WireframeRenderer::getWireframeDrawable(const MeshPtr &mesh, float4 color) {
+  Mesh *meshPtr = mesh.get();
+  auto it = meshCache.find(meshPtr);
+  if (it == meshCache.end()) {
+    WireframeMeshGenerator meshGenerator;
+    meshGenerator.mesh = mesh;
+    MeshCacheEntry entry{
+        .wireMesh = meshGenerator.generate(),
+        .weakMesh = mesh,
+    };
+
+    it = meshCache.insert_or_assign(meshPtr, entry).first;
+  }
+  detail::touchCacheItem(it->second, currentFrameCounter);
+
+  auto drawable = it->second.drawablePool.newValue([&](auto &drawable) {
+    drawable->mesh = it->second.wireMesh;
+    drawable->material.reset();
+    drawable->features.clear();
+    drawable->parameters.clear();
+    drawable->features.push_back(wireframeFeature);
+  });
+  static FastString fs_baseColor = "baseColor";
+  drawable->parameters.set(fs_baseColor, color);
+  return drawable;
+}
+
 } // namespace gfx

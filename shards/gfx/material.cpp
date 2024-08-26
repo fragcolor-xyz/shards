@@ -10,7 +10,6 @@ UniqueId Material::getNextId() {
 }
 
 template <typename H> struct detail::PipelineHash<NumParameter, H> {
-  static constexpr bool applies() { return true; }
   static void apply(const NumParameter &val, H &hasher) {
     std::visit([&](auto &&arg) { hasher(arg); }, val);
   }

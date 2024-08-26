@@ -4,7 +4,7 @@
 #include "boost/core/allocator_access.hpp"
 #include "renderer_types.hpp"
 #include "pipeline_hash_collector.hpp"
-#include "hasherxxh128.hpp"
+#include "hasherxxh3.hpp"
 #include <magic_enum.hpp>
 #include <type_traits>
 #include <unordered_map>
