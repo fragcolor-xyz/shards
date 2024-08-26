@@ -2526,10 +2526,7 @@ public:
 
   void cleanup(SHContext *context) { _brancher.cleanup(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    _brancher.activate();
-    return input;
-  }
+  void activate(SHContext *context, const SHVar &input) { _brancher.activate(); }
 };
 
 SHARDS_REGISTER_FN(wires) {
@@ -2539,7 +2536,7 @@ SHARDS_REGISTER_FN(wires) {
 
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Async>;
-  using RunWireStep = RunWire<false, RunWireMode::Stepped>;
+  using RunWireStep = RunWire<true, RunWireMode::Stepped>;
   REGISTER_SHARD("SwitchTo", SwitchTo);
   REGISTER_SHARD("Wait", Wait);
   REGISTER_SHARD("Stop", StopWire);
