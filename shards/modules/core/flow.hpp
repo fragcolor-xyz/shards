@@ -247,46 +247,47 @@ struct Cond {
 
   SHExposedTypesInfo exposedVariables() { return _wireValidation.exposedInfo; }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  shards::Var _output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    memset(&_output, 0, sizeof(SHVar));
     if (unlikely(_actions.size() == 0)) {
       if (_passthrough)
         return input;
       else
-        return {}; // None
+        return _output;
     }
 
     auto idx = 0;
     SHVar actionInput = input;
     SHVar finalOutput{};
     for (auto &cond : _conditions) {
-      SHVar output{};
       Shards shards{&cond[0], (uint32_t)cond.size(), 0};
-      auto state = activateShards2(shards, context, input, output);
+      auto state = activateShards2(shards, context, input, _output);
       // conditional flow so we might have "returns" form (And) (Or)
       if (unlikely(state > SHWireState::Return))
-        return output;
+        return _output;
 
-      if (output.payload.boolValue) {
+      if (_output.payload.boolValue) {
         // Do the action if true!
         // And stop here
-        output = {};
+        memset(&_output, 0, sizeof(SHVar));
         Shards action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
-        state = activateShards(action, context, actionInput, output);
+        state = activateShards(action, context, actionInput, _output);
         if (state != SHWireState::Continue)
-          return output;
+          return _output;
         if (_threading) {
           // set the output as the next action input (not cond tho!)
-          finalOutput = output;
+          finalOutput = _output;
           actionInput = finalOutput;
         } else {
           // not _threading so short circuit here
-          return _passthrough ? input : output;
+          return _passthrough ? input : _output;
         }
       }
       idx++;
     }
 
-    return _passthrough ? input : finalOutput;
+    return _passthrough ? input : _output;
   }
 };
 
@@ -409,14 +410,14 @@ struct Maybe : public BaseSubFlow {
     BaseSubFlow::warmup(ctx);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output = input;
+  shards::Var _output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     if (likely(_shards)) {
       auto prev_level = logging::getSinkLevel();
       if (_silent) {
         logging::setSinkLevel(spdlog::level::off);
       }
-      auto state = _shards.activate(context, input, output);
+      auto state = _shards.activate(context, input, _output);
       if (_silent) {
         logging::setSinkLevel(prev_level);
       }
@@ -429,22 +430,27 @@ struct Maybe : public BaseSubFlow {
         if (likely(!context->onLastResume)) {
           context->resetErrorStack();
           context->continueFlow();
-          if (_elseBlks)
-            _elseBlks.activate(context, input, output);
-          else
+          if (_elseBlks) {
+            _elseBlks.activate(context, input, _output);
+            return _output;
+          } else {
             return input;
+          }
         } else {
           SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume, line: {}, column: {}", context->getErrorMessage(),
                       _self->line, _self->column);
           // Just continue as the wire is done
-          return Var::Empty;
+          return _output;
         }
       } else {
-        if (!_elseBlks)
+        if (!_elseBlks) {
           return input; // implicit pass through if no else blks
+        } else {
+          return _output;
+        }
       }
     }
-    return output;
+    return input;
   }
 
 private:
@@ -519,7 +525,7 @@ struct Await : public BaseSubFlow {
     return output;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     bool locked = false;
     DEFER({
       if (locked)
@@ -678,17 +684,17 @@ template <bool COND> struct When {
     _action.warmup(ctx);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    auto state = _cond.activate<true>(context, input, output);
+  shards::Var _output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    auto state = _cond.activate<true>(context, input, _output);
     if (unlikely(state > SHWireState::Return))
       return input;
 
     // type check in compose!
-    if (output.payload.boolValue == COND) {
-      _action.activate(context, input, output);
+    if (_output.payload.boolValue == COND) {
+      _action.activate(context, input, _output);
       if (!_passth)
-        return output;
+        return _output;
     }
 
     return input;
@@ -778,21 +784,21 @@ struct IfBlock {
     _else.warmup(ctx);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    auto state = _cond.activate<true>(context, input, output);
+  shards::Var _output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    auto state = _cond.activate<true>(context, input, _output);
     if (unlikely(state > SHWireState::Return))
       return input;
 
     // type check in compose!
-    if (output.payload.boolValue) {
-      _then.activate(context, input, output);
+    if (_output.payload.boolValue) {
+      _then.activate(context, input, _output);
     } else {
-      _else.activate(context, input, output);
+      _else.activate(context, input, _output);
     }
 
     if (!_passth)
-      return output;
+      return _output;
     else
       return input;
   }
@@ -923,15 +929,15 @@ struct Match {
     resolver.cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar finalOutput{};
+  shards::Var _output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     bool matched = false;
     resolver.reassign();
     for (auto i = 0; i < _ncases; i++) {
       auto &case_ = _cases[i];
       auto &action = _actions[i];
       if (case_ == input || case_.valueType == SHType::None) {
-        action.activate(context, input, finalOutput);
+        action.activate(context, input, _output);
         matched = true;
         break;
       }
@@ -948,7 +954,7 @@ struct Match {
       throw ActivationError(
           fmt::format("Failed to match input ({}), no matching case is present. Could be any of {}", input, expected));
     }
-    return _pass ? input : finalOutput;
+    return _pass ? input : _output;
   }
 };
 
@@ -990,10 +996,9 @@ struct Sub {
 
   void cleanup(SHContext *ctx) { _shards.cleanup(ctx); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output{};
+  void activate(SHContext *context, const SHVar &input) {
+    SHVar output{}; // ignored but next call needs it
     _shards.activate(context, input, output);
-    return input;
   }
 };
 } // namespace shards

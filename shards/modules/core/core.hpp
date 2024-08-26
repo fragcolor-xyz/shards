@@ -141,21 +141,25 @@ struct BaseOpsBin {
 
   void warmup(SHContext *context) { _operand.warmup(context); }
   void cleanup(SHContext *context) { _operand.cleanup(); }
+
+  shards::Var _output;
 };
 
-#define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                               \
-  struct NAME : public BaseOpsBin {                                                   \
-    FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {    \
-      const auto &value = _operand.get();                                             \
-      if (input OP value) {                                                           \
-        return shards::Var::True;                                                     \
-      }                                                                               \
-      return shards::Var::False;                                                      \
-    }                                                                                 \
-    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                     \
-    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; } \
-    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }        \
-  };                                                                                  \
+#define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                                   \
+  struct NAME : public BaseOpsBin {                                                       \
+    FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) { \
+      const auto &value = _operand.get();                                                 \
+      if (input OP value) {                                                               \
+        _output = shards::Var::True;                                                      \
+        return _output;                                                                   \
+      }                                                                                   \
+      _output = shards::Var::False;                                                       \
+      return _output;                                                                     \
+    }                                                                                     \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }     \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
+  };                                                                                      \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
 // Now use the updated macro with help text for each operation
@@ -174,7 +178,7 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
 
 #define LOGIC_ANY_SEQ_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                           \
   struct NAME : public BaseOpsBin {                                                       \
-    SHVar activate(SHContext *context, const SHVar &input) {                              \
+    const SHVar &activate(SHContext *context, const SHVar &input) {                       \
       const auto &value = _operand.get();                                                 \
       if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {             \
         auto vlen = value.payload.seqValue.len;                                           \
@@ -183,31 +187,37 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
           throw ActivationError("Failed to compare, input len > value len.");             \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i]) { \
-            return shards::Var::True;                                                     \
+            _output = shards::Var::True;                                                  \
+            return _output;                                                               \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
       } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {      \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value) {                              \
-            return shards::Var::True;                                                     \
+            _output = shards::Var::True;                                                  \
+            return _output;                                                               \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
       } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {      \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
           if (input OP value.payload.seqValue.elements[i]) {                              \
-            return shards::Var::True;                                                     \
+            _output = shards::Var::True;                                                  \
+            return _output;                                                               \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
       } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {      \
         if (input OP value) {                                                             \
-          return shards::Var::True;                                                       \
+          _output = shards::Var::True;                                                    \
+          return _output;                                                                 \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        _output = shards::Var::False;                                                     \
+        return _output;                                                                   \
       }                                                                                   \
-      return shards::Var::False;                                                          \
+      _output = shards::Var::False;                                                       \
+      return _output;                                                                     \
     }                                                                                     \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
     static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }  \
@@ -218,7 +228,7 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
 
 #define LOGIC_ALL_SEQ_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                              \
   struct NAME : public BaseOpsBin {                                                          \
-    SHVar activate(SHContext *context, const SHVar &input) {                                 \
+    const SHVar &activate(SHContext *context, const SHVar &input) {                          \
       const auto &value = _operand.get();                                                    \
       if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                \
         auto vlen = value.payload.seqValue.len;                                              \
@@ -227,31 +237,40 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
           throw ActivationError("Failed to compare, input len > value len.");                \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i])) { \
-            return shards::Var::False;                                                       \
+            _output = shards::Var::False;                                                    \
+            return _output;                                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        _output = shards::Var::True;                                                         \
+        return _output;                                                                      \
       } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {         \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
-            return shards::Var::False;                                                       \
+            _output = shards::Var::False;                                                    \
+            return _output;                                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        _output = shards::Var::True;                                                         \
+        return _output;                                                                      \
       } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {         \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
-            return shards::Var::False;                                                       \
+            _output = shards::Var::False;                                                    \
+            return _output;                                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        _output = shards::Var::True;                                                         \
+        return _output;                                                                      \
       } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {         \
         if (!(input OP value)) {                                                             \
-          return shards::Var::False;                                                         \
+          _output = shards::Var::False;                                                      \
+          return _output;                                                                    \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        _output = shards::Var::True;                                                         \
+        return _output;                                                                      \
       }                                                                                      \
-      return shards::Var::False;                                                             \
+      _output = shards::Var::False;                                                          \
+      return _output;                                                                        \
     }                                                                                        \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                            \
     static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }     \
@@ -321,7 +340,7 @@ LOGIC_ALL_SEQ_OP(
   RUNTIME_SHARD_parameters(NAME);        \
   RUNTIME_SHARD_setParam(NAME);          \
   RUNTIME_SHARD_getParam(NAME);          \
-  RUNTIME_SHARD_activate(NAME);          \
+  RUNTIME_SHARD_activate2(NAME);         \
   RUNTIME_SHARD_requiredVariables(NAME); \
   RUNTIME_SHARD_help(NAME);              \
   RUNTIME_SHARD_inputHelp(NAME);         \
@@ -340,7 +359,9 @@ struct Input {
 
   SHTypeInfo compose(const SHInstanceData &data) { return data.wire->inputType; }
 
-  FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { return context->wireStack.back()->currentInput; }
+  FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
+    return context->wireStack.back()->currentInput;
+  }
 };
 
 struct Pause {
@@ -475,7 +496,7 @@ struct And {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
       context->rebaseFlow();
@@ -504,7 +525,7 @@ struct Or {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Stop the flow and succeed
       context->returnFlow(input);
@@ -526,7 +547,11 @@ struct Not {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The negation of the input."); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
+  shards::Var output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    output = shards::Var(!input.payload.boolValue);
+    return output;
+  }
 };
 
 struct IsNone {
@@ -538,7 +563,11 @@ struct IsNone {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("`true` is the type of input is `None`; otherwise, `false`."); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType == SHType::None); }
+  shards::Var output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    output = shards::Var(input.valueType == SHType::None);
+    return output;
+  }
 };
 
 struct IsNotNone {
@@ -552,7 +581,11 @@ struct IsNotNone {
     return SHCCSTR("`true` is the type of input different from `None`; otherwise, `false`.");
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != SHType::None); }
+  shards::Var output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    output = shards::Var(input.valueType != SHType::None);
+    return output;
+  }
 };
 
 struct IsTrue {
@@ -564,7 +597,11 @@ struct IsTrue {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `true`; otherwise, `false`."); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.payload.boolValue); }
+  shards::Var output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    output = shards::Var(input.payload.boolValue);
+    return output;
+  }
 };
 
 struct IsFalse {
@@ -576,7 +613,11 @@ struct IsFalse {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `false`; otherwise, `false`."); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
+  shards::Var output;
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    output = shards::Var(!input.payload.boolValue);
+    return output;
+  }
 };
 
 struct Restart {
@@ -1016,7 +1057,7 @@ struct SetUpdateBase : public SetBase {
 
   void setupDispatcher(SHContext *context, bool isGlobal) { _dispatcherPtr = &context->main->mesh.lock()->dispatcher; }
 
-  ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) {
     checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
@@ -1048,7 +1089,7 @@ struct SetUpdateBase : public SetBase {
     return *vptr;
   }
 
-  ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) {
     // Clone will try to recycle memory and such
     cloneVar(*_target, input);
     return *_target;
@@ -1325,7 +1366,7 @@ struct Ref : public SetBase {
     throw ActivationError("Invalid Ref activation function.");
   }
 
-  ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) {
     checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
@@ -1353,7 +1394,7 @@ struct Ref : public SetBase {
     }
   }
 
-  ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) {
     // must keep flags!
     assignVariableValue(*_target, input);
     return input;
@@ -1801,7 +1842,7 @@ struct Swap {
 
   OwnedVar _cache;
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     _cache = _first.get();
     cloneVar(_first.get(), _second.get());
     cloneVar(_second.get(), _cache);
@@ -2010,7 +2051,7 @@ struct Push : public SeqBase {
     return data.inputType;
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
     }
@@ -3788,7 +3829,8 @@ struct Repeat {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
 
-  FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
+
     bool forever = _forever || _times.isNone();
     int repeats;
     if (!_times.isNone()) {
@@ -3811,7 +3853,7 @@ struct Repeat {
     return input;
   }
 
-  FLATTEN ALWAYS_INLINE SHVar activateUntilPred(SHContext *context, const SHVar &input) {
+  FLATTEN ALWAYS_INLINE const SHVar &activateUntilPred(SHContext *context, const SHVar &input) {
     std::optional<int> repeats = !_times.isNone() ? std::make_optional((int)(Var &)_times.get()) : std::nullopt;
     do {
       if (repeats) {

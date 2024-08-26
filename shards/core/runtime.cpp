@@ -684,7 +684,7 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 }
 
 template <typename T, bool HANDLES_RETURN>
-ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
+ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
 #if !defined(NDEBUG) || defined(SH_RELWITHDEBINFO)
   // check for stack overflow
@@ -698,8 +698,9 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 #endif
 #endif
 
-  // store initial input
-  auto input = wireInput;
+  // store initial input, as pointer, otherwise we risk corruption if the input changes while we are processing
+  auto *input = &initialInput;
+  const auto *output = &finalOutput;
 
   // find len based on shards type
   size_t len;
@@ -725,10 +726,16 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
 
-    output = activateShard(blk, context, input);
+    if (blk->inlineShardId != InlineShard::NotInline) {
+      output = activateShardInline(blk, context, *input);
+      shassert(output && "activateShardInline returned nullptr");
+    } else {
+      output = blk->activate(blk, context, input);
+    }
 
     // Deal with aftermath of activation
     if (unlikely(!context->shouldContinue())) {
+      finalOutput = *output; // shallow copy it anyways
       auto state = context->getState();
       switch (state) {
       case SHWireState::Return:
@@ -743,7 +750,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
         return state;
       case SHWireState::Rebase:
         // reset input to wire one and reset state
-        input = wireInput;
+        input = &initialInput;
         context->continueFlow();
         continue;
       case SHWireState::Continue:
@@ -754,6 +761,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     // Pass output to next block input
     input = output;
   }
+
+  finalOutput = *output;
   return SHWireState::Continue;
 }
 
@@ -1472,7 +1481,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
   try {
-    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
+    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wireInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Returned};

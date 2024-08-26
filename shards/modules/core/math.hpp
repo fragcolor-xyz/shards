@@ -341,7 +341,7 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
     }
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     const auto operand = _operand.get();
     operateFast(_opType, _result, input, operand);
     return _result;

@@ -38,6 +38,7 @@ template <class T> struct ShardWrapper {
   Shard header;
   T shard;
   std::string lastError;
+  SHVar outputStorage; // we added this as a refactor workaround, when activate returns a non ref/pointer type
   static inline const char *name = "";
   static inline uint32_t crc = 0;
 
@@ -211,12 +212,23 @@ template <class T> struct ShardWrapper {
     // activate
     static_assert(has_activate<T>::value, "Shards must have an \"activate\" method.");
     if constexpr (has_activate<T>::value) {
-      result->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {
+      result->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
+        auto self = reinterpret_cast<ShardWrapper<T> *>(b);
         try {
-          return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
+          using ReturnType = decltype(self->shard.activate(ctx, *v));
+          if constexpr (std::is_same_v<ReturnType, void>) {
+            self->shard.activate(ctx, *v);
+            return v; // Return the input if activate doesn't return anything
+          } else if constexpr (std::is_reference_v<ReturnType>) {
+            return &self->shard.activate(ctx, *v); // Return the reference directly
+          } else {
+            // Return a shallow copy, this technically is a deprecated behavior which should be slowly removed
+            self->outputStorage = self->shard.activate(ctx, *v);
+            return &self->outputStorage;
+          }
         } catch (const std::exception &e) {
           shards::abortWire(ctx, e.what());
-          return SHVar{};
+          return &self->outputStorage;
         }
       });
     }
@@ -300,15 +312,28 @@ template <class T> struct ShardWrapper {
 #define REGISTER_SHARD_ALIAS(__name__, __type__) \
   ::shards::registerShard(__name__, &::shards::ShardWrapper<__type__>::create, NAMEOF_FULL_TYPE(__type__))
 
-#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                 \
-  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                       \
-    try {                                                                                                                     \
-      return reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__( \
-          ctx, *v);                                                                                                           \
-    } catch (std::exception & e) {                                                                                            \
-      shards::abortWire(ctx, e.what());                                                                                       \
-      return SHVar{};                                                                                                         \
-    }                                                                                                                         \
+#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                            \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * { \
+    auto self = reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b);         \
+    try {                                                                                                                \
+      self->outputStorage = self->shard.__func__(ctx, *v);                                                               \
+      return &self->outputStorage;                                                                                       \
+    } catch (std::exception & e) {                                                                                       \
+      shards::abortWire(ctx, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                       \
+    }                                                                                                                    \
+  })
+
+#define OVERRIDE_ACTIVATE1(__data__, __func__)                                                                           \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * { \
+    auto self = reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b);         \
+    try {                                                                                                                \
+      self->shard.__func__(ctx, *v);                                                                                     \
+      return v;                                                                                                          \
+    } catch (std::exception & e) {                                                                                       \
+      shards::abortWire(ctx, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                       \
+    }                                                                                                                    \
   })
 
 template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType> struct TSimpleShard {

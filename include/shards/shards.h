@@ -639,7 +639,7 @@ struct SHVarPayload {
 // SHVar flags
 #define SHVAR_FLAGS_NONE (0)
 #define SHVAR_FLAGS_USES_OBJINFO (1 << 0) // 1
-#define SHVAR_FLAGS_REF_COUNTED (1 << 1) // 2
+#define SHVAR_FLAGS_REF_COUNTED (1 << 1)  // 2
 // this marks a variable external and even if references are counted
 // it won't be destroyed automatically
 #define SHVAR_FLAGS_EXTERNAL (1 << 2) // 3
@@ -759,7 +759,7 @@ typedef struct SHVar(__cdecl *SHGetParamProc)(struct Shard *, int);
 typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData *data);
 
 // The core of the shard processing, avoid syscalls here
-typedef struct SHVar(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
+typedef const struct SHVar *(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
 // Generally when stop() is called
 // Note that context may be null in some cases
@@ -1073,7 +1073,7 @@ typedef void(__cdecl *SHImageIncRefProc)(struct SHImage *);
 typedef void(__cdecl *SHImageDecRefProc)(struct SHImage *);
 typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
 typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
-typedef uint32_t (__cdecl *SHImageDeriveDataLengthProc)(struct SHImage *);
+typedef uint32_t(__cdecl *SHImageDeriveDataLengthProc)(struct SHImage *);
 
 typedef struct _SHCore {
   // Aligned allocator

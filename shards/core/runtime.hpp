@@ -286,16 +286,6 @@ template <typename T, typename C> AnyStorage<T> getOrCreateAnyStorage(C *context
   return getOrCreateAnyStorage<decltype(v), T>(context, storageKey, v);
 }
 
-FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
-  ZoneScoped;
-  ZoneName(blk->name(blk), blk->nameLength);
-
-  SHVar output;
-  if (!activateShardInline(blk, context, input, output))
-    output = blk->activate(blk, context, &input);
-  return output;
-}
-
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);
 
 inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar &input) {

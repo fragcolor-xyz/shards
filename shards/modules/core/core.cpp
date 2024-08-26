@@ -2553,7 +2553,7 @@ struct Once {
     _repeat.cleanup(context);
     _blks.cleanup(context);
     if (self)
-      self->inlineShardId = InlineShard::CoreOnce;
+      self->inlineShardId = InlineShard::NotInline;
     _next = {};
   }
 

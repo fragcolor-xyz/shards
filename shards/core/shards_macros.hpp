@@ -11,6 +11,7 @@
     Shard header;                                                                                                        \
     _name_ core;                                                                                                         \
     std::string lastError;                                                                                               \
+    SHVar outputStorage;                                                                                                 \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
@@ -43,6 +44,7 @@
     Shard header;                                                                                                        \
     _name_ core;                                                                                                         \
     std::string lastError;                                                                                               \
+    SHVar outputStorage;                                                                                                 \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
@@ -74,6 +76,7 @@
     Shard header;                               \
     _name_ core;                                \
     std::string lastError;                      \
+    SHVar outputStorage;                        \
   };
 #define RUNTIME_SHARD_FACTORY(_namespace_, _name_)                                                                       \
   __cdecl Shard *createShard##_name_() {                                                                                 \
@@ -107,6 +110,7 @@
     Shard header;                       \
     _name_ core;                        \
     std::string lastError;              \
+    SHVar outputStorage;                \
   };
 #define RUNTIME_CORE_SHARD_FACTORY(_name_)                                                                               \
   __cdecl Shard *createShard##_name_() {                                                                                 \
@@ -213,14 +217,39 @@
     }                                                                                                   \
   });
 
-#define RUNTIME_SHARD_activate(_name_)                                                                      \
-  result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) { \
-    try {                                                                                                   \
-      return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                    \
-    } catch (std::exception & e) {                                                                          \
-      shards::abortWire(context, e.what());                                                                 \
-      return SHVar{};                                                                                       \
-    }                                                                                                       \
+#define RUNTIME_SHARD_activate(_name_)                                                                                       \
+  result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) -> const SHVar * { \
+    auto self = reinterpret_cast<_name_##Runtime *>(shard);                                                                  \
+    try {                                                                                                                    \
+      self->outputStorage = self->core.activate(context, *input);                                                            \
+      return &self->outputStorage;                                                                                           \
+    } catch (std::exception & e) {                                                                                           \
+      shards::abortWire(context, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                           \
+    }                                                                                                                        \
+  });
+
+#define RUNTIME_SHARD_activate1(_name_)                                                                                      \
+  result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) -> const SHVar * { \
+    auto self = reinterpret_cast<_name_##Runtime *>(shard);                                                                  \
+    try {                                                                                                                    \
+      self->core.activate(context, *input);                                                                                  \
+      return input;                                                                                                          \
+    } catch (std::exception & e) {                                                                                           \
+      shards::abortWire(context, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                           \
+    }                                                                                                                        \
+  });
+
+#define RUNTIME_SHARD_activate2(_name_)                                                                                      \
+  result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) -> const SHVar * { \
+    auto self = reinterpret_cast<_name_##Runtime *>(shard);                                                                  \
+    try {                                                                                                                    \
+      return &self->core.activate(context, *input);                                                                          \
+    } catch (std::exception & e) {                                                                                           \
+      shards::abortWire(context, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                           \
+    }                                                                                                                        \
   });
 
 #define RUNTIME_SHARD_cleanup(_name_)                                                                   \

@@ -134,7 +134,7 @@ function(shards_generate_rust_union TARGET_NAME)
   list(APPEND RUST_TARGETS ${UNION_EXTRA_RUST_TARGETS})
 
   # Disable union
-  if(SHARDS_NO_RUST_UNION) 
+  if(SHARDS_NO_RUST_UNION)
     add_library(${TARGET_NAME} INTERFACE)
     foreach(RUST_TARGET ${RUST_TARGETS})
       message(STATUS "RUST TARGET: ${RUST_TARGET}")
@@ -158,7 +158,7 @@ function(shards_generate_rust_union TARGET_NAME)
       get_property(RUST_FEATURES TARGET ${RUST_TARGET} PROPERTY RUST_FEATURES)
       unset(RUST_FEATURES_STRING)
       unset(RUST_FEATURES_STRING1)
-      if(RUST_FEATURES) 
+      if(RUST_FEATURES)
         unset(RUST_FEATURES_QUOTED)
         foreach(FEATURE ${RUST_FEATURES})
           list(APPEND RUST_FEATURES_QUOTED \"${FEATURE}\")
@@ -352,7 +352,7 @@ function(shards_generate_union UNION_TARGET_NAME)
   if(NOT SHARDS_INLINE_EVERYTHING)
     foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
       file(APPEND ${GENERATED_TEMP}
-        "ALWAYS_INLINE bool activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&, SHVar&);\n"
+        "ALWAYS_INLINE const SHVar *activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&);\n"
       )
     endforeach()
 
@@ -360,16 +360,18 @@ function(shards_generate_union UNION_TARGET_NAME)
   endif()
 
   file(APPEND ${GENERATED_TEMP}
-    "ALWAYS_INLINE bool activateShardInline(Shard *shard, SHContext *context, const SHVar &input, SHVar &output) {\n")
+    "ALWAYS_INLINE const SHVar *activateShardInline(Shard *shard, SHContext *context, const SHVar &input) {\n")
 
   foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
     file(APPEND ${GENERATED_TEMP}
-      "  if (activateShardInline_${MODULE_ID}(shard, context, input, output))\n"
-      "    return true;\n")
+      "  auto res = activateShardInline_${MODULE_ID}(shard, context, input);\n"
+      "  if (res) {\n"
+      "    return res;\n"
+      "  }\n")
   endforeach()
 
   file(APPEND ${GENERATED_TEMP}
-    "  return false;\n"
+    "  return nullptr;\n"
     "}\n\n")
 
   file(APPEND ${GENERATED_TEMP} "}\n")

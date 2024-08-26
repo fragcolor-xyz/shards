@@ -310,7 +310,7 @@ struct Wait : public WireBase {
     WireBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     ensureWire();
 
     if (unlikely(!wire)) {
