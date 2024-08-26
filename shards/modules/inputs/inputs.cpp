@@ -668,7 +668,8 @@ struct MatchModifier : public Base {
 
   PARAM_VAR(_modifiers, "Modifiers",
             "Sequence of Modifier keys to check for such as Modifier::Shift, Modifier::Alt, Modifier::Primary and "
-            "Modifier::Secondary.", {CoreInfo::NoneType, Types::ModifierKeys});
+            "Modifier::Secondary.",
+            {CoreInfo::NoneType, Types::ModifierKeys});
   PARAM_IMPL(PARAM_IMPL_FOR(_modifiers));
 
   SDL_Keymod _modifierMask;
@@ -804,7 +805,7 @@ struct HandleURL : public Base {
 
   std::vector<DropFileEvent> tmpEvents;
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     tmpEvents.clear();
     for (auto &evt : _inputContext->getEvents()) {
       if (const DropFileEvent *de = std::get_if<DropFileEvent>(&evt.event)) {
@@ -846,8 +847,6 @@ struct HandleURL : public Base {
       }
     }
     tmpEvents.clear();
-
-    return input;
   }
 };
 

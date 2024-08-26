@@ -28,7 +28,7 @@ struct RendererShard {
   static inline Type OutputType = Type(WindowContext::Type);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   RendererShard() { _ignoreCompilationErrors = Var(false); }
 
@@ -87,7 +87,7 @@ struct RendererShard {
     renderer.cleanup(context);
   }
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
+  void activate(SHContext *shContext, const SHVar &input) {
     auto &windowContext = varAsObjectChecked<shards::WindowContext>(_window.get(), shards::WindowContext::Type);
 
     SHVar tmpOutput{};
@@ -101,7 +101,6 @@ struct RendererShard {
       _contents.activate(shContext, input, tmpOutput);
       renderer.end();
     }
-    return SHVar{};
   }
 };
 

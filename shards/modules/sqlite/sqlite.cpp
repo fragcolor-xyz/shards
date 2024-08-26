@@ -725,7 +725,7 @@ struct Transaction : public Base {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  const SHVar &activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, false);
 
     // avoid transaction nesting

@@ -126,7 +126,6 @@ struct TimerShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-
     Var offsetVar{_offset.get()};
     float offset = offsetVar.isNone() ? 0.0f : float(offsetVar);
 

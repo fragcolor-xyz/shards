@@ -412,7 +412,7 @@ struct Device {
     channels.clear();
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     // refresh this
     _deviceVar->payload.objectValue = this;
 
@@ -429,15 +429,11 @@ struct Device {
 
     if (stopped) {
       context->stopFlow(Var::Empty);
-      return Var::Empty;
     }
-
-    return input;
   }
 };
 
 struct Channel {
-
   static SHOptionalString help() {
     return SHCCSTR("This shard represents an audio channel in the mesh. It manages the routing and processing of audio data "
                    "between input and output buses, applies volume control, and executes custom audio processing shards. "
@@ -637,7 +633,7 @@ struct Channel {
 
   bool _started{false};
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     if (!_started) {
       // setup captured variables as mesh externals
       std::deque<shards::OwnedVar> capturedVars;
@@ -653,7 +649,6 @@ struct Channel {
       // _data.shards warmup is done in the audio thread
       _started = true;
     }
-    return input;
   }
   // Must be able to handle device inputs, being an instrument, Aux, busses
   // re-route and send
@@ -1127,10 +1122,11 @@ struct Engine {
   bool _initialized{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard initializes an audio engine in the mesh, and this enables audio playback and processing capabilites. "
-                   "It manages resources, handles audio mixing, and provides spatial audio "
-                   "functionality. The Audio.Engine is used in conjunction with other audio shards like Audio.Sound, Audio.Play "
-                   "and Audio.Pause to create a complete audio system to process and play audio.");
+    return SHCCSTR(
+        "This shard initializes an audio engine in the mesh, and this enables audio playback and processing capabilites. "
+        "It manages resources, handles audio mixing, and provides spatial audio "
+        "functionality. The Audio.Engine is used in conjunction with other audio shards like Audio.Sound, Audio.Play "
+        "and Audio.Pause to create a complete audio system to process and play audio.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }

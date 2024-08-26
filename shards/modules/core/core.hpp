@@ -3704,7 +3704,7 @@ struct ForRangeShard {
     return data.inputType;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     auto from = _from.get().payload.intValue;
     auto to = _to.get().payload.intValue;
 
@@ -3725,8 +3725,6 @@ struct ForRangeShard {
           break;
       }
     }
-
-    return input;
   }
 };
 
@@ -3830,7 +3828,6 @@ struct Repeat {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
 
   FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
-
     bool forever = _forever || _times.isNone();
     int repeats;
     if (!_times.isNone()) {
