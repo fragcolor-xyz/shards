@@ -3,15 +3,15 @@ use super::WireVariable;
 use crate::util;
 use crate::EguiId;
 use crate::UIRenderer;
-use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
 use crate::HELP_VALUE_IGNORED;
 use crate::OUTPUT_PASSED;
-use shards::types::OptionalString;
+use crate::PARENTS_UI_NAME;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::InstanceData;
+use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::RawString;
@@ -48,9 +48,6 @@ lazy_static! {
     )
       .into()
   ];
-  static ref WIRE_VAR_NAMES: Vec<Var> = vec![shstr!("Wire").into(), shstr!("Name").into()];
-  static ref WIRE_VAR_TTYPE: Type = Type::table(&WIRE_VAR_NAMES, &WIRE_VAR_TYPES);
-  static ref WIRE_VAR_INPUT: Vec<Type> = vec![*WIRE_VAR_TTYPE];
 }
 
 static HEADERS_TYPES: &[Type] = &[
