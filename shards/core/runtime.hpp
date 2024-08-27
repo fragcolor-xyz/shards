@@ -195,7 +195,7 @@ struct SHContext {
 
   constexpr SHWireState getState() const { return state; }
 
-  constexpr SHVar getFlowStorage() const { return flowStorage; }
+  constexpr SHVar &getFlowStorage() { return flowStorage; }
 
   void mirror(const SHContext *other) {
     state = other->state;

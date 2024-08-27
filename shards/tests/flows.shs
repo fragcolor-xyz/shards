@@ -183,39 +183,6 @@
   TryMany(print-a Threads: 3 Policy: WaitUntil::FirstSuccess)
   Assert.Is("A" true)
 
-  @wire(keep-state {
-    Once({
-      Input >= starting
-    })
-    starting | Log | Math.Add(my-adder) > starting
-  })
-  3 = my-adder
-  Const([1 22 333]) >= my-result
-  Repeat({
-    my-result
-    StepMany(keep-state)
-    ExpectIntSeq > my-result ; step many will return intermediate outputs!
-
-  } Times: 3)
-  my-result
-  Assert.Is([10 31 342] true)
-
-  @wire(keep-state2 {
-    Once({
-      Input >= starting
-    })
-    starting | Log | Math.Add(my-adder) > starting
-  } Looped: true)
-  Const([1 22 333]) >= my-result
-  Repeat({
-    ; my-result NO NEED HERE AS WE KEEP STATE BY LOOP
-    StepMany(keep-state2)
-    ExpectIntSeq > my-result ; step many will return intermediate outputs!
-
-  } Times: 3)
-  my-result
-  Assert.Is([10 31 342] true)
-
   @wire(keep-state3 {
     Once({
       Input >= starting
@@ -527,19 +494,6 @@
     "!" | AppendTo(str)
     str
   }) | Log("DoMany'd")
-
-  Repeat({
-    [1 2 3] | StepMany({
-      = i
-      Once({1 >= i-2})
-      i | Math.Multiply(i-2)
-      {
-        Math.Inc(i-2)
-        i-2 | When(IsMore(3) {0 | Stop})
-      }
-    }) | Log("StepMany'd")
-
-  } Times: 6)
 })
 
 @schedule(root test-inline-wires)

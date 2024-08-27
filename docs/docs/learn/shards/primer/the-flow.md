@@ -23,7 +23,7 @@ In the example below, John and Lucy are taking apples in turn. The Looped Wires 
       (Math.Dec .apples)
       .apples (Log "Apples Remaining"))
 
-    (defloop john 
+    (defloop john
       (Msg "Taking an apple!")
       "John" (Do take-an-apple))
 
@@ -38,7 +38,7 @@ In the example below, John and Lucy are taking apples in turn. The Looped Wires 
 
     1. The value passed into the Wire is saved into a variable. In this case, the string "John" or "Lucy" is passed into the Wire and saved into the variable `.name`.
 
-    2. The program starts with 10 apples. This value decreases each time the Wire `take-an-apple` is called. 
+    2. The program starts with 10 apples. This value decreases each time the Wire `take-an-apple` is called.
 
 === "Output"
     ```
@@ -379,7 +379,7 @@ Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
 ### Flow Difference
 
-The stepped Wire runs similarly to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
+The stepped Wire runs similarly to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire.
 
 For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
 
@@ -393,7 +393,7 @@ Being scheduled on a Wire allows the stepped Wire to share the same scope and en
 
 Most of the methods described in this chapter will "snapshot" the variables of the Wire that called it. That is:
 
-- Variables existing in the caller Wire will be copied and made available to the callee Wire. 
+- Variables existing in the caller Wire will be copied and made available to the callee Wire.
 
 - **Changes made to variable copies will not be reflected on the original variables.**
 
@@ -417,14 +417,14 @@ The example also showcases how variables defined in `john` are affected by chang
     (defwire bake-apple ;; (2)
       (Math.Dec .fresh-apples)
       (Msg "Baking apple...")
-      .fresh-apples (Log "Fresh Apple (-1)") 
+      .fresh-apples (Log "Fresh Apple (-1)")
       (Pause 1)
       (Math.Inc .baked-apples)
       (Msg "Baking complete!")
       .baked-apples (Log "Baked Apple (+1)"))
 
     (defloop john
-      (Setup 
+      (Setup
        5 >= .fresh-apples
        0 >= .baked-apples)
 
@@ -458,174 +458,6 @@ The example also showcases how variables defined in `john` are affected by chang
     [take-an-apple] Fresh Apple (+1): 8
     [bake-apple] Baking complete!
     [bake-apple] Baked Apple (+1): 2
-    ```
-
-## Stepmany
-
-- Takes a sequence as input.
-
-- `Step`s a clone of a Wire for each value in the sequence.
-
-[`Stepmany`](../../../../reference/shards/shards/General/Stepmany) can be used when you wish to `Step` the same Wire multiple times.
-
-!!! note
-    When using `Step`, any variables from the Wire being Stepped from can be modified. As such, it cannot be used interchangeably with `Spawn` which makes a copy of the original variables instead.
-
-In the example below, five different copies of `take-an-apple` are scheduled on the main Looped Wire `box-of-apples`. Each copy has a different waiting time which we specify in the array passed into `StepMany`.
-
-=== "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
-
-    (defloop take-apple
-      (Msg "\n") ;; (1)
-      (Setup 0 >= .time-before-taking-apple)
-      > .time-before-taking-apple (Log "Wait time")
-      (Msg "Waiting to take apple...")
-      (Pause .time-before-taking-apple) (Math.Dec .fresh-apples)
-      (Msg "\n")
-      (Msg "Took an apple!")
-      .fresh-apples (Log "Apples left"))
-
-    (defloop box-of-apples
-      (Setup
-       100 >= .fresh-apples)
-      [1, 5, 1, 3, 2] (StepMany take-apple))
-
-    (schedule main box-of-apples)
-    (run main 1 10)
-    ```
-
-    1. `\n` is used in `Msg` to create a new line. This makes the results more readable as you can see in "Output".
-
-=== "Output"
-    ```
-    [take-apple-1] Wait time: 1
-    [take-apple-1] Waiting to take apple...
-    [take-apple-2]
-    
-    [take-apple-2] Wait time: 5
-    [take-apple-2] Waiting to take apple...
-    [take-apple-3]
-    
-    [take-apple-3] Wait time: 1
-    [take-apple-3] Waiting to take apple...
-    [take-apple-4]
-    
-    [take-apple-4] Wait time: 3
-    [take-apple-4] Waiting to take apple...
-    [take-apple-5]
-    
-    [take-apple-5] Wait time: 2
-    [take-apple-5] Waiting to take apple...
-    [take-apple-1]
-    
-    [take-apple-1] Took an apple!
-    [take-apple-1] Apples left: 99
-    [take-apple-3]
-    
-    [take-apple-3] Took an apple!
-    [take-apple-3] Apples left: 98
-    [take-apple-1]
-    
-    [take-apple-1] Wait time: 1
-    [take-apple-1] Waiting to take apple...
-    [take-apple-3]
-    
-    [take-apple-3] Wait time: 1
-    [take-apple-3] Waiting to take apple...
-    [take-apple-5]
-    
-    [take-apple-5] Took an apple!
-    [take-apple-5] Apples left: 97
-    [take-apple-1]
-    
-    [take-apple-1] Took an apple!
-    [take-apple-1] Apples left: 96
-    [take-apple-3]
-    
-    [take-apple-3] Took an apple!
-    [take-apple-3] Apples left: 95
-    [take-apple-4]
-    
-    [take-apple-4] Took an apple!
-    [take-apple-4] Apples left: 94
-    [take-apple-5]
-    
-    [take-apple-5] Wait time: 2
-    [take-apple-5] Waiting to take apple...
-    [take-apple-1]
-    
-    [take-apple-1] Wait time: 1
-    [take-apple-1] Waiting to take apple...
-    [take-apple-3]
-    
-    [take-apple-3] Wait time: 1
-    [take-apple-3] Waiting to take apple...
-    [take-apple-4]
-    
-    [take-apple-4] Wait time: 3
-    [take-apple-4] Waiting to take apple...
-    [take-apple-1]
-    
-    [take-apple-1] Took an apple!
-    [take-apple-1] Apples left: 93
-    [take-apple-2]
-    
-    [take-apple-2] Took an apple!
-    [take-apple-2] Apples left: 92
-    [take-apple-3]
-    
-    [take-apple-3] Took an apple!
-    [take-apple-3] Apples left: 91
-    [take-apple-5]
-    
-    [take-apple-5] Took an apple!
-    [take-apple-5] Apples left: 90
-    [take-apple-1]
-    
-    [take-apple-1] Wait time: 1
-    [take-apple-1] Waiting to take apple...
-    [take-apple-2]
-    
-    [take-apple-2] Wait time: 5
-    [take-apple-2] Waiting to take apple...
-    [take-apple-3]
-    
-    [take-apple-3] Wait time: 1
-    [take-apple-3] Waiting to take apple...
-    [take-apple-5]
-    
-    [take-apple-5] Wait time: 2
-    [take-apple-5] Waiting to take apple...
-    [take-apple-4]
-    
-    [take-apple-4] Took an apple!
-    [take-apple-4] Apples left: 89
-    [take-apple-1]
-    
-    [take-apple-1] Took an apple!
-    [take-apple-1] Apples left: 88
-    [take-apple-3]
-    
-    [take-apple-3] Took an apple!
-    [take-apple-3] Apples left: 87
-    [take-apple-4]
-    
-    [take-apple-4] Wait time: 3
-    [take-apple-4] Waiting to take apple...
-    [take-apple-1]
-    
-    [take-apple-1] Wait time: 1
-    [take-apple-1] Waiting to take apple...
-    [take-apple-3]
-    
-    [take-apple-3] Wait time: 1
-    [take-apple-3] Waiting to take apple...
-    [take-apple-5]
-    
-    [take-apple-5] Took an apple!
-    [take-apple-5] Apples left: 86
     ```
 
 ## Branch
@@ -801,9 +633,9 @@ In the following examples, John attempts to hit a moving target by firing arrows
 
 ??? "Multithreading with `TryMany`"
     `TryMany` has the additional parameters of `Threads` and `Coroutines` which allow it to work better with a very large input. A large input means that it has a large number of Wire copies to run.
-    
+
     `Threads` will determine the number of Wires that `TryMany` can run at the same time, while `Coroutines` determines the maximum number of Wires running together on each thread at any point in time.
-    
+
     Using `Threads` and `Coroutines` helps to split the work and makes your program runs more efficiently.
 
 
@@ -817,10 +649,10 @@ In the next chapter, we will take a look at what working with data in Shards is 
 | :------- | :----------------------- | :------------- | :--------------- | :------------------ |
 | Do       | Yes                      | No             | Yes              | Yes                 |
 | Detach   | No                       | Yes            | Yes              | Yes                 |
-| Spawn    | No                       | Yes            | Yes              | No                  | 
-| Start    | No                       | Yes            | No               | No                  | 
-| Resume   | No                       | Yes            | Yes              | Yes                 |  
-| Step     | Yes                      | Yes            | Yes              | Yes                 | 
+| Spawn    | No                       | Yes            | Yes              | No                  |
+| Start    | No                       | Yes            | No               | No                  |
+| Resume   | No                       | Yes            | Yes              | Yes                 |
+| Step     | Yes                      | Yes            | Yes              | Yes                 |
 | StepMany | Yes                      | Yes            | Yes              | No                  |
 | Branch   | Yes                      | No             | Yes              | Yes                 |
 | Expand   | Yes                      | Yes            | Yes              | No                  |

@@ -2019,110 +2019,6 @@ struct WhenDone : Spawn {
   }
 };
 
-struct StepMany : public TryMany {
-
-  static SHOptionalString inputHelp() { return InputManyWire; }
-
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns the output of all the scheduled copies in a sequence. (Note that the output of the copies "
-                   "of the specified Wire might change as their states progresses. Thus the Type of the of the output of this "
-                   "shard should always be checked or converted to the appropriate Type.)");
-  }
-
-  SHOptionalString help() {
-    return SHCCSTR(
-        "This shard takes a sequence of values as input, schedules multiple copies of the specified Wire and progresses their "
-        "states "
-        "concurrently. This means that a pause in any copy of the specified Wire, will not pause the parent Wire's "
-        "execution. Each value from the sequence is provided as input to its corresponding copy of the specified Wire. The "
-        "shard then returns a sequence of values containing the output of all scheduled copies.");
-  }
-
-  static inline Parameters _params{
-      {"Wire", SHCCSTR("The Wire to create copies of and progress concurrently."), IntoWires::RunnableTypes},
-  };
-
-  static SHParametersInfo parameters() { return _params; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    WireBase::resolveWire();
-
-    TryMany::compose(data);
-    return CoreInfo::AnySeqType; // we don't know the output type as we return output every step
-  }
-
-  void warmup(SHContext *context) {
-    TryMany::warmup(context);
-    _meshes.clear();
-    _meshes.push_back(context->main->mesh.lock());
-  }
-
-  void cleanup(SHContext *context) {
-    TryMany::cleanup(context);
-    _meshes.clear();
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto len = getLength(input);
-
-    // Compute required size
-    size_t capacity = std::max(MinWiresAdded, len);
-
-    // Only ever grow
-    capacity = std::max(_wires.size(), capacity);
-
-    _outputs.resize(capacity);
-    _wires.resize(capacity);
-
-    for (uint32_t i = 0; i < len; i++) {
-      auto &cref = _wires[i];
-      if (!cref) {
-        cref = _pool->acquire(_composer, _meshes[0].get());
-      }
-
-      // Allow to re run wires
-      if (shards::hasEnded(cref->wire.get())) {
-        // stop the root
-        if (!shards::stop(cref->wire.get())) {
-          throw ActivationError(fmt::format("StepMany: errors while running wire: {}", cref->wire->name));
-        }
-      }
-
-      // Prepare and start if no callc was called
-      if (!coroutineValid(cref->wire->coro)) {
-        cref->wire->mesh = context->main->mesh;
-
-        // pre-set wire context with our context
-        // this is used to copy wireStack over to the new one
-        cref->wire->context = context;
-
-        // Notice we don't share our flow!
-        // let the wire create one by passing null
-        shards::prepare(cref->wire.get(), nullptr);
-      }
-
-      const SHVar &inputElement = input.payload.seqValue.elements[i];
-
-      if (!shards::isRunning(cref->wire.get())) {
-        // Starting
-        shards::start(cref->wire.get(), inputElement);
-      } else {
-        // Update input
-        cref->wire->currentInput = inputElement;
-      }
-
-      // Tick the wire on the flow that this wire created
-      SHDuration now = SHClock::now().time_since_epoch();
-      shards::tick(cref->wire->context->flow->wire, now);
-
-      // this can be anything really...
-      cloneVar(_outputs[i], cref->wire->previousOutput);
-    }
-
-    return Var(_outputs.data(), len);
-  }
-};
-
 struct DoMany : public TryMany {
   bool _composeSync{};
 
@@ -2410,7 +2306,6 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("Spawn", Spawn);
   REGISTER_SHARD("Expand", Expand);
   REGISTER_SHARD("Branch", Branch);
-  REGISTER_SHARD("StepMany", StepMany);
   REGISTER_SHARD("DoMany", DoMany);
   REGISTER_SHARD("Peek", Peek);
   REGISTER_SHARD("IsRunning", IsRunning);
