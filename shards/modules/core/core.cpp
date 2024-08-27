@@ -785,7 +785,8 @@ struct ForEachShard {
       }
     }
 
-    if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1) {
+    auto singleSeqType = data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1;
+    if (singleSeqType) {
       dataCopy.inputType = data.inputType.seqTypes.elements[0];
     } else if (data.inputType.basicType == SHType::Table) {
       dataCopy.inputType = CoreInfo::AnySeqType;
@@ -794,8 +795,14 @@ struct ForEachShard {
     }
 
     // Add special variables
-    _tmpInfo0.exposedType = dataCopy.inputType;
-    arrayPush(dataCopy.shared, _tmpInfo0);
+    if (data.inputType.basicType == SHType::Seq) {
+      _tmpInfo0.exposedType = dataCopy.inputType;
+      arrayPush(dataCopy.shared, _tmpInfo0);
+    } else {
+      _tmpInfo0.exposedType = CoreInfo::AnyType;
+      arrayPush(dataCopy.shared, _tmpInfo0);
+    }
+    // $1 always any type as it's always for table case
     if (data.inputType.basicType == SHType::Table) {
       _tmpInfo1.exposedType = CoreInfo::AnyType;
       arrayPush(dataCopy.shared, _tmpInfo1);
@@ -927,8 +934,14 @@ struct Map {
     }
 
     // Add special variables
-    _tmpInfo0.exposedType = dataCopy.inputType;
-    arrayPush(dataCopy.shared, _tmpInfo0);
+    if (data.inputType.basicType == SHType::Seq) {
+      _tmpInfo0.exposedType = dataCopy.inputType;
+      arrayPush(dataCopy.shared, _tmpInfo0);
+    } else {
+      _tmpInfo0.exposedType = CoreInfo::AnyType;
+      arrayPush(dataCopy.shared, _tmpInfo0);
+    }
+    // $1 always any type as it's always for table case
     if (data.inputType.basicType == SHType::Table) {
       _tmpInfo1.exposedType = CoreInfo::AnyType;
       arrayPush(dataCopy.shared, _tmpInfo1);
