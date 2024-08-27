@@ -1,0 +1,14 @@
+[package]
+name = "wasi_reactor_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasi = "0.13.2+wasi-0.2.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+panic = "abort"
+lto = true

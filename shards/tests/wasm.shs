@@ -8,6 +8,7 @@
   "" | Wasm.Run("../../deps/wasm3/test/wasi/simple/test.wasm" ["cat" "wasm.shs"]) | Log("r2")
   "" | Wasm.Run("../../deps/wasm3/test/lang/fib32.wasm" ["10"] EntryPoint: "fib") | Log("r3")
   "" | Wasm.Run("../../deps/wasm3/test/lang/fib32.wasm" ["20"] EntryPoint: "fib") | Log("r4")
+  ; "" | Wasm.Run("../../lib/wasm/reactor-sample/target/wasm32-wasi/release/wasi_reactor_example.wasm" EntryPoint: "goodbye") | Log("r5")
 } Looped: true)
 
 @schedule(root test)
