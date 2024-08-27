@@ -2052,8 +2052,11 @@ struct Push : public SeqBase {
   }
 
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_clear && _firstPush) {
@@ -2180,8 +2183,11 @@ struct Sequence : public SeqBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_clear) {
@@ -2231,7 +2237,7 @@ struct TableDecl : public VariableBase {
     assert(_cell);
   }
 
-  void fillVariableCell() {
+  void fillTableCell() {
     auto &kv = _key.get();
     _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
@@ -2361,8 +2367,11 @@ struct TableDecl : public VariableBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillTableCell();
+      }
     }
 
     return input;
@@ -2454,8 +2463,11 @@ struct Count : SeqUser {
   SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::IntType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     switch (_cell->valueType) {
@@ -2503,8 +2515,11 @@ struct Clear : SeqUser {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType == SHType::Seq) {
@@ -2518,6 +2533,7 @@ struct Clear : SeqUser {
     } else if (_cell->valueType == SHType::Table) {
       // Clear all key-value pairs in the table
       _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
+      _cell->version++; // and bump version
     }
 
     return input;
@@ -2537,8 +2553,11 @@ struct Shuffle : SeqUser {
   static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType == SHType::Seq) {
@@ -2562,8 +2581,11 @@ struct Drop : SeqUser {
   static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType == SHType::Seq) {
@@ -2596,8 +2618,11 @@ struct DropFront : SeqUser {
   static SHOptionalString outputHelp() { return SHCCSTR("The input is passed through as the output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType == SHType::Seq && _cell->payload.seqValue.len > 0) {
@@ -2670,8 +2695,11 @@ struct Pop : SeqUser {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType != SHType::Seq) {
@@ -2745,8 +2773,11 @@ struct PopFront : SeqUser {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(_isTable && _key.isVariable())) {
-      fillVariableCell();
+    if (unlikely(_isTable)) {
+      checkIfTableChanged();
+      if (unlikely(_cell == nullptr)) {
+        fillVariableCell();
+      }
     }
 
     if (_cell->valueType != SHType::Seq) {
