@@ -325,7 +325,7 @@ impl RequestBase {
     Ok(output_type)
   }
 
-  fn _finalize(&mut self, context: &Context, request: RequestBuilder) -> Option<()> {
+  fn _finalize(&mut self, context: &Context, request: RequestBuilder) -> Result<(), &'static str> {
     let as_bytes = self.as_bytes;
     let full_response = self.full_response;
     let streaming = self.streaming;
@@ -422,18 +422,11 @@ impl RequestBase {
         shlog_error!("Task join error: {}", e);
         "Failed to join task"
       })?
-    });
+    })?;
 
     self.output = result;
 
-    // now check self.output.flags if has SHVAR_FLAGS_ABORT
-    // if so return None
-    // else return Some(())
-    if (self.output.0.flags as u32) & shards::SHVAR_FLAGS_ABORT != 0 {
-      None
-    } else {
-      Some(())
-    }
+    Ok(())
   }
 }
 
@@ -533,7 +526,7 @@ macro_rules! get_like {
         }
 
         if self.rb.retry == 0 {
-          let _ = self.rb._finalize(context, request);
+          let _ = self.rb._finalize(context, request)?;
           return Ok(Some(self.rb.output.0));
         } else {
           let mut retries = self.rb.retry;
@@ -545,7 +538,7 @@ macro_rules! get_like {
 
             let result = self.rb._finalize(context, request);
 
-            if let Some(()) = result {
+            if let Ok(()) = result {
               return Ok(Some(self.rb.output.0));
             }
 
@@ -696,7 +689,7 @@ macro_rules! post_like {
         }
 
         if self.rb.retry == 0 {
-          let _ = self.rb._finalize(context, request);
+          let _ = self.rb._finalize(context, request)?;
           return Ok(Some(self.rb.output.0));
         } else {
           let mut retries = self.rb.retry;
@@ -708,7 +701,7 @@ macro_rules! post_like {
 
             let result = self.rb._finalize(context, request);
 
-            if let Some(()) = result {
+            if let Ok(()) = result {
               return Ok(Some(self.rb.output.0));
             }
 
@@ -810,7 +803,7 @@ impl Shard for HttpStreamShard {
         shlog_error!("Task join error: {}", e);
         "Failed to join task"
       })?
-    });
+    })?;
     self.output = result;
     Ok(Some(self.output.0))
   }

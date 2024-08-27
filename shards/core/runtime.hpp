@@ -148,6 +148,7 @@ struct SHContext {
   }
 
   void cancelFlow(std::string_view message) {
+    SHLOG_DEBUG("Cancelling flow: {}", message);
     state = SHWireState::Error;
     errorMessage = message;
   }
@@ -238,7 +239,9 @@ struct DefaultHelpText {
 
   static inline const SHOptionalString InputHelpAnyType = SHCCSTR("Input of any type is accepted.");
 
-  static inline const SHOptionalString InputHelpAnyButType = SHCCSTR("Input of any type is accepted. For types without inherent value (e.g., None, Bool), a lexicographical comparison is used.");
+  static inline const SHOptionalString InputHelpAnyButType =
+      SHCCSTR("Input of any type is accepted. For types without inherent value (e.g., None, Bool), a lexicographical comparison "
+              "is used.");
 
   static inline const SHOptionalString InputHelpIgnored = SHCCSTR("The input of this shard is ignored.");
 

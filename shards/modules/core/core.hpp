@@ -1199,7 +1199,7 @@ struct Set : public SetUpdateBase {
       _onStartConnection.release();
     }
 
-    shassert(_self && "Self should be valid at this point");
+    shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_tracked) {
       _target->flags |= SHVAR_FLAGS_TRACKED;
@@ -1484,7 +1484,7 @@ struct Update : public SetUpdateBase {
   void warmup(SHContext *context) {
     SetBase::warmup(context);
 
-    shassert(_self && "Self should be valid at this point");
+    shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_isExposed) {
       if (!(_target->flags & SHVAR_FLAGS_TRACKED)) {
@@ -1510,7 +1510,7 @@ struct Update : public SetUpdateBase {
   void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    shassert(_isExposed && "This shard should not be activated if variable not exposed");
+    shassert_extended(context, _isExposed && "This shard should not be activated if variable not exposed");
 
     SHVar output;
     if (_isTable)
@@ -1518,7 +1518,7 @@ struct Update : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
+    shassert_extended(context, _dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
     OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
     _dispatcherPtr->trigger(ev);
@@ -3060,30 +3060,30 @@ struct Take {
     }
   }
 
-#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                                               \
-  ALWAYS_INLINE SHVar __name__(SHContext *context, const SHVar &input) {                             \
-    shassert(input.valueType == SHType::Seq || input.valueType == SHType::String ||                  \
-             input.valueType == SHType::Bytes && "Take: Expected seq, string or bytes input type."); \
-    const auto inputLen = size_t(__len__);                                                           \
-    const auto &indices = _indicesVar ? *_indicesVar : _indices;                                     \
-    if (likely(!_seqOutput)) {                                                                       \
-      const auto index = indices.payload.intValue;                                                   \
-      if (index < 0 || size_t(index) >= inputLen) {                                                  \
-        throw OutOfRangeEx(inputLen, index);                                                         \
-      }                                                                                              \
-      return __val__;                                                                                \
-    } else {                                                                                         \
-      const uint32_t nindices = indices.payload.seqValue.len;                                        \
-      shards::arrayResize(_cachedSeq, nindices);                                                     \
-      for (uint32_t i = 0; nindices > i; i++) {                                                      \
-        const auto index = indices.payload.seqValue.elements[i].payload.intValue;                    \
-        if (index < 0 || size_t(index) >= inputLen) {                                                \
-          throw OutOfRangeEx(inputLen, index);                                                       \
-        }                                                                                            \
-        _cachedSeq.elements[i] = __val__;                                                            \
-      }                                                                                              \
-      return shards::Var(_cachedSeq);                                                                \
-    }                                                                                                \
+#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                                                                     \
+  ALWAYS_INLINE SHVar __name__(SHContext *context, const SHVar &input) {                                                   \
+    shassert_extended(context, input.valueType == SHType::Seq || input.valueType == SHType::String ||                      \
+                                   input.valueType == SHType::Bytes && "Take: Expected seq, string or bytes input type."); \
+    const auto inputLen = size_t(__len__);                                                                                 \
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;                                                           \
+    if (likely(!_seqOutput)) {                                                                                             \
+      const auto index = indices.payload.intValue;                                                                         \
+      if (index < 0 || size_t(index) >= inputLen) {                                                                        \
+        throw OutOfRangeEx(inputLen, index);                                                                               \
+      }                                                                                                                    \
+      return __val__;                                                                                                      \
+    } else {                                                                                                               \
+      const uint32_t nindices = indices.payload.seqValue.len;                                                              \
+      shards::arrayResize(_cachedSeq, nindices);                                                                           \
+      for (uint32_t i = 0; nindices > i; i++) {                                                                            \
+        const auto index = indices.payload.seqValue.elements[i].payload.intValue;                                          \
+        if (index < 0 || size_t(index) >= inputLen) {                                                                      \
+          throw OutOfRangeEx(inputLen, index);                                                                             \
+        }                                                                                                                  \
+        _cachedSeq.elements[i] = __val__;                                                                                  \
+      }                                                                                                                    \
+      return shards::Var(_cachedSeq);                                                                                      \
+    }                                                                                                                      \
   }
 
   ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, input.payload.seqValue.elements[index])
@@ -3091,7 +3091,7 @@ struct Take {
   ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, shards::Var(input.payload.bytesValue[index]))
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
-    shassert(input.valueType == SHType::Table && "Take: Expected table input type.");
+    shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
 
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
     if (!_seqOutput) {

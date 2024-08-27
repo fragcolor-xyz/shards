@@ -514,7 +514,7 @@ pub fn run_future<
 >(
   context: &'a SHContext,
   f: F,
-) -> ClonedVar {
+) -> Result<ClonedVar, &'static str> {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &f as *const F as *mut F as *mut c_void;
@@ -529,7 +529,11 @@ pub fn run_future<
     // before exiting, we need to forget f, otherwise we double free
     std::mem::forget(f);
 
-    result
+    if result.0.flags & SHVAR_FLAGS_ABORT as u16 != 0 {
+      Err("Failed to run future")
+    } else {
+      Ok(result)
+    }
   }
 }
 
