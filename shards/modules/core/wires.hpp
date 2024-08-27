@@ -483,6 +483,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         return wire->previousOutput;
       }
     } else if constexpr (WIRE_MODE == RunWireMode::Inline) {
+      if (!wire->warmedUp) {
+        // ok this can happen if Stop was called on the wire
+        // and we are running it again
+        // Stop is a legit way to clear the wire state
+        wire->warmup(context);
+      }
+
       // Run within the root flow
       auto runRes = runSubWire(wire.get(), context, input);
       if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {

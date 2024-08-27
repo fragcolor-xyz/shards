@@ -1150,6 +1150,12 @@ template <class T> struct BaseLoader : public BaseRunner {
       activateStepMode(context, input);
       return wire->previousOutput;
     } else {
+      if (!wire->warmedUp) {
+        // ok this can happen if Stop was called on the wire
+        // and we are running it again
+        // Stop is a legit way to clear the wire state
+        wire->warmup(context);
+      }
       // Run within the root flow
       const auto runRes = runSubWire(wire.get(), context, input);
       if (likely(runRes.state != SHRunWireOutputState::Failed)) {
