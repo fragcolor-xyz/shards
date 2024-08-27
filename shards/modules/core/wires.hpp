@@ -341,7 +341,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     } else if constexpr (WIRE_MODE == RunWireMode::Async) {
       return DefaultHelpText::OutputHelpPass;
     } else {
-      return DefaultHelpText::OutputHelpPass;
+      return DefaultHelpText::OutputHelpPass; // Stepped
     }
   }
 
@@ -358,10 +358,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   static inline const SHOptionalString SteppedHelpText =
       SHCCSTR("The first time Step is called, the specified wire is scheduled. On subsequent calls, the specified Wire's state "
               "is progressed before the current Wire continues its execution. This means that a pause "
-              "in execution of the child Wire will not pause the parent Wire."
-              "(Note that the output of the of the specified Wire might change as their state progresses and thus the "
-              "Type of the output of "
-              "this shard should always be checked or converted).");
+              "in execution of the child Wire will not pause the parent Wire.");
 
   SHOptionalString help() {
     if constexpr (WIRE_MODE == RunWireMode::Inline) {
@@ -442,9 +439,9 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   SHVar activateNil(SHContext *, const SHVar &input) { return input; }
 
   SHVar activateLoop(SHContext *context, const SHVar &input) {
-    auto inputCopy = input;
+    auto *inputPtr = &input;
   run_wire_loop:
-    auto runRes = runSubWire(wire.get(), context, inputCopy);
+    auto runRes = runSubWire(wire.get(), context, *inputPtr);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
@@ -452,7 +449,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       return runRes.output;
     } else {
       if (runRes.state == SHRunWireOutputState::Restarted) {
-        inputCopy = context->getFlowStorage();
+        inputPtr = &context->getFlowStorage();
         context->continueFlow();
         SH_SUSPEND(context, 0.0);
         goto run_wire_loop;
