@@ -100,6 +100,12 @@ if(EMSCRIPTEN_PTHREADS)
   set(RUST_NIGHTLY TRUE)
 endif()
 
+if(WIN32)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    list(APPEND RUST_FLAGS -Ctarget-feature=+crt-static)
+  endif()
+endif()
+
 # Currently required for --crate-type argument
 list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zunstable-options)
 
