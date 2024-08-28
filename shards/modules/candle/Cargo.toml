@@ -1,5 +1,5 @@
 [package]
-name = "shards-onnx"
+name = "shards-candle"
 description = ""
 license = "BSD-3-Clause"
 version = "0.1.0"
@@ -13,5 +13,5 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-tract-onnx = { version = "0.21.6-pre" }
 candle-core = "0.6.0"
+tokenizers = { version = "0.19.1", default-features = false, features = ["onig"]}
