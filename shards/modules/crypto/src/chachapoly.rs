@@ -9,6 +9,7 @@ use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ParamVar;
 use shards::types::Parameters;
+use shards::types::OptionalString;
 
 use shards::types::Type;
 use shards::types::BYTES_TYPES;
@@ -20,7 +21,7 @@ lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes,];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
-    shccstr!("The private key to be used to encrypt/decrypt the input payload."),
+    shccstr!("The private key to be used to encrypt/decrypt the input. Must be 32 bytes long."),
     CRYPTO_KEY_TYPES
   )
     .into()];
@@ -44,6 +45,18 @@ impl LegacyShard for Encrypt {
 
   fn name(&mut self) -> &str {
     "ChaChaPoly.Encrypt"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard takes the input string or bytes sequence and encrypts it using the ChaCha20-Poly1305 algorithm with the provided key (provided in the Key parameter). It then returns the encrypted bytes sequence."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The string or bytes sequence to encrypt."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The encrypted bytes sequence."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -145,6 +158,18 @@ impl LegacyShard for Decrypt {
 
   fn name(&mut self) -> &str {
     "ChaChaPoly.Decrypt"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard decrypts an input ChaCha20-Poly1305 encrypted bytes sequence using the provided key (provided in the Key parameter). It then returns the decrypted bytes sequence."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The encrypted bytes sequence to decrypt."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The decrypted bytes sequence."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {

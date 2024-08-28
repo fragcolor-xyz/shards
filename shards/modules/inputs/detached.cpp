@@ -48,6 +48,16 @@ static inline Type WindowContextType = WindowContext::Type;
 static inline CapturingBrancher::IgnoredVariables IgnoredVariables{IInputContext::VariableName};
 
 struct GetWindowContext {
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard obtains the current window context and makes the information (window size, current time since application "
+        "started, delta time since last frame, input events etc.) available to the rest of the Shards program.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the current window context."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return WindowContextType; }
 

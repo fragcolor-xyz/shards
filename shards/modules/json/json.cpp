@@ -405,7 +405,7 @@ void from_json(const json &j, SHVar &var) {
     tmpImage.channels = j.at("channels").get<int32_t>();
     tmpImage.flags = j.at("flags").get<int32_t>();
     auto binsize = shards::imageDeriveDataLength(&tmpImage);
-    SHImage& outImage = *(var.payload.imageValue = shards::imageNew(binsize));
+    SHImage &outImage = *(var.payload.imageValue = shards::imageNew(binsize));
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     memcpy(outImage.data, &buffer[0], binsize);
     break;
@@ -617,6 +617,14 @@ struct ToJson {
     else
       return Var(_indent);
   }
+  static SHOptionalString help() { return SHCCSTR("This shard takes its input and converts it into a JSON string."); }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("If Pure is set to true, this shard acceps an input of anytype. If Pure is set to false, this shard only "
+                   "accepts tables, sequences, strings, numbers, booleans and none.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the input converted to a JSON string."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -692,6 +700,16 @@ struct ToJson {
 struct FromJson {
   SHVar _output{};
   bool _pure{true};
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard parses a JSON string and returns its contents as the appropriate type.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("A JSON string to be parsed."); }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns the contents of the input JSON string as the appropriate type.");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
 

@@ -26,14 +26,22 @@ using namespace linalg::aliases;
 namespace shards {
 namespace Imaging {
 struct Convolve {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard extracts a patch from an image of dimensions specified in the Radius parameter and returns the "
+                   "extracted patch as an image. Everytime the shard is subsequently called, the centre of the patch to extract "
+                   "is advanced by the number of pixels specified in the Step parameter.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to extract patches from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The extracted patch as an image."); }
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters _params{{"Radius",
-                                    SHCCSTR("The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and "
-                                            "so on."),
-                                    {CoreInfo::IntType}},
-                                   {"Step", SHCCSTR("How many pixels to advance each activation."), {CoreInfo::IntType}}};
+  static inline Parameters _params{
+      {"Radius",
+       SHCCSTR("The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and "
+               "so on."),
+       {CoreInfo::IntType}},
+      {"Step", SHCCSTR("How many pixels to advance the centre of the patch extracted each activation."), {CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -133,6 +141,12 @@ private:
 };
 
 struct StripAlpha {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes an image with 4 channels(RGBA) and converts it to a 3-channel(RGB) image with the alpha channel removed.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to remove the alpha channel from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The image with the alpha channel removed."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
@@ -303,6 +317,12 @@ private:
 };
 
 struct FillAlpha {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes an image with 3-channels(RGB) and converts it to a 4-channel(RGBA) image with the alpha channel set to 255.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The 3 channel image to convert."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The converted 4 channel image with the alpha channel filled."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
@@ -363,6 +383,12 @@ struct FillAlpha {
 };
 
 struct Resize {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard resizes an image to the specified dimensions specified in the Width and Height parameters.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to resize."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resized image."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
@@ -461,6 +487,20 @@ private:
 };
 
 struct ImageGetPixel {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard analyzes the image(specified in the Image parameter) and returns the colour value(RGBA) of the pixel at "
+                   "the specified position.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The position of the pixel to obtain the colour value of, represented as an int2 vector. The first element of "
+                   "the vector represents the x coordinate, and the second element represents the y coordinate.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The colour(RGBA) values of the pixel at the specified position as a int4 or float4 vector. The first element "
+                   "of the vector represents the red value, the second element represents the green value, the third element "
+                   "represents the blue value, and the fourth element represents the alpha value.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   static inline Types OutputTypes{CoreInfo::Int4Type, CoreInfo::Float4Type};
@@ -566,6 +606,14 @@ struct ImageGetPixel {
 struct LoadImage {
   enum class BPP { u8, u16, f32 };
   DECL_ENUM_INFO(BPP, BPP, 'ibpp');
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard loads an image from a file or bytes sequence and returns it as an image type, that can "
+                   "subsequently be used by other shards such as UI.Image and UI.ImageButton.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("An image represented as a bytes sequence"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The image as an image type."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }

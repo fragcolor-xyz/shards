@@ -128,7 +128,15 @@ template <typename T> inline void pollnetLog(pollnet_ctx *ctx, socketstatus_t st
 struct WSServerShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Server; }
-  static SHOptionalString help() { return SHCCSTR("A WebSocket server."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sets up a Websocket network server using TCP, on the address and port specified in the "
+                   "Address and Port parameters. This server then handles client connections and disconnections, messages "
+                   "received from clients and broadcasting messages to these clients.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The server object created."); }
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
   PARAM_PARAMVAR(_port, "Port", ("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar});
@@ -138,7 +146,7 @@ struct WSServerShard {
   PARAM_VAR(_timeout, "Timeout",
             ("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
             {CoreInfo::FloatType});
-  PARAM(ShardsVar, _onDisconnect, "OnDisconnect", ("The flow to execute when a peer disconnects, The Peer ID will be the input."),
+  PARAM(ShardsVar, _onDisconnect, "OnDisconnect", ("The shards to execute when a peer disconnects, The Peer ID will be the input."),
         {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_port), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_timeout),
              PARAM_IMPL_FOR(_onDisconnect));
@@ -396,11 +404,17 @@ struct WSClient {
 struct WSClientShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Peer; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a WebSocket client connection using the TCP, on the address specified in the Address.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The peer object created."); }
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
-  PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
-  PARAM_VAR(_raw, "Raw", ("Receive raw byte packets."), {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM(ShardsVar, _handler, "Handler", ("The shards to execute when a packet is received."), {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_raw, "Raw", ("If set to true, the client will receive raw byte packets instead of serialized objects."), {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw));
 
   std::shared_ptr<WSClient> _client;

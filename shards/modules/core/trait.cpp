@@ -10,7 +10,10 @@ namespace shards {
 struct MakeTrait {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("This shard creates a trait with the specified name and types and makes it available for use in the wire."); }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The trait object created."); }
 
   static inline shards::Types TypeTableTypes{{
       shards::CoreInfo::TypeType,

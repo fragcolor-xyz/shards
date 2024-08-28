@@ -10,6 +10,7 @@ extern crate lazy_static;
 extern crate compile_time_crc32;
 
 use shards::shardsc::SHObjectTypeInfo;
+use shards::types::OptionalString;
 use shards::types::{
   ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
   STRING_TYPES,
@@ -43,7 +44,7 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("Input Shape"),
+      cstr!("InputShape"),
       shccstr!("The shape of the input tensor."),
       &SEQ_OF_INT_TYPES[..]
     )
@@ -83,6 +84,18 @@ impl LegacyShard for Load {
 
   fn name(&mut self) -> &str {
     "ONNX.Load"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard creates a loaded ONNX model from the file specified in the Path parameter. The model will also expect the input shape specified in the InputShape parameter."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The input of this shard is ignored."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Returns the ONNX model object."))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -182,6 +195,18 @@ impl LegacyShard for Activate {
 
   fn name(&mut self) -> &str {
     "ONNX.Activate"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("This shard runs the loaded ONNX model (created using the ONNX.Load shard) specified in the Model parameter. It takes the float sequence input, creates a tensor with a matching shape expected by the model, runs the model on the tensor and returns the output tensor as a sequence of floats."))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The float sequence to run inference on."))
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output tensor as a sequence of floats."))
   }
 
   fn inputTypes(&mut self) -> &Types {

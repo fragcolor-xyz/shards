@@ -13,6 +13,16 @@ struct Compress {
   std::vector<uint8_t> _buffer;
   int _quality{BROTLI_DEFAULT_QUALITY};
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard compresses the input bytes sequence using the Brotli algorithm and returns the smaller compressed "
+                   "bytes sequence. The size of the resulting bytes sequence and the speed of compression can be controlled "
+                   "using the Quality parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The bytes sequence to compress."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The compressed bytes sequence."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -47,6 +57,14 @@ struct Compress {
 
 struct Decompress {
   std::vector<uint8_t> _buffer;
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard decompresses the input bytes sequence that has been previously compressed using the Brotli.Compress shard.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The compressed bytes sequence to decompress."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The reverted uncompressed bytes sequence."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
