@@ -9,8 +9,10 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+use shards::core::register_shard;
+use shards::shard::Shard;
 use shards::shardsc::SHObjectTypeInfo;
-use shards::types::OptionalString;
+use shards::types::{InstanceData, OptionalString};
 use shards::types::{
   ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
   STRING_TYPES,
@@ -319,6 +321,63 @@ impl LegacyShard for Activate {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info("CandleTest", "AddDescriptionHere")]
+struct CandleTestShard {
+  #[shard_required]
+  required: ExposedTypes,
+}
+
+impl Default for CandleTestShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CandleTestShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+    use candle_core::{Device, Tensor};
+
+    let device = Device::Cpu;
+
+    let a = Tensor::randn(0f32, 1., (2, 3), &device).unwrap();
+    let b = Tensor::randn(0f32, 1., (3, 4), &device).unwrap();
+
+    let c = a.matmul(&b).unwrap();
+    println!("{c}");
+
+    Ok(None)
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_onnx_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -327,4 +386,5 @@ pub extern "C" fn shardsRegister_onnx_rust(core: *mut shards::shardsc::SHCore) {
 
   register_legacy_shard::<Load>();
   register_legacy_shard::<Activate>();
+  register_shard::<CandleTestShard>();
 }
