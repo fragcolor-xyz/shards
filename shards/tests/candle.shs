@@ -10,6 +10,7 @@
 
   "data/tokenizer.json" | FS.Read | Candle.Tokenizer = tokenizer
   "This is a test." | Candle.Tokens(Tokenizer: tokenizer) | Log
+  "This is a test." | Candle.Tokens(Tokenizer: tokenizer AsTensor: true) | Log
 })
 
 @schedule(main candle-test)

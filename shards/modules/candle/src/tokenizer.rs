@@ -1,3 +1,4 @@
+use candle_core::{Device, Tensor};
 use shards::shard::Shard;
 use shards::types::InstanceData;
 use shards::types::{common_type, ClonedVar, Context, Type, Types, Var, FRAG_CC};
@@ -8,6 +9,8 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 
 use std::str::FromStr;
 use tokenizers::Tokenizer;
+
+use crate::{TensorWrapper, TENSOR_TYPE};
 
 struct TokenizerWrapper(Tokenizer);
 ref_counted_object_type_impl!(TokenizerWrapper);
@@ -89,7 +92,11 @@ pub(crate) struct TokensShard {
   #[shard_param("AddSpecialTokens", "If true, add special tokens.", [common_type::bool])]
   add_special_tokens: ClonedVar,
 
-  output: AutoSeqVar,
+  #[shard_param("AsTensor", "Outputs a candle tensor object instead of an int sequence.", [common_type::bool])]
+  as_tensor: ClonedVar,
+
+  output_seq: AutoSeqVar,
+  output_tensor: ClonedVar,
 }
 
 impl Default for TokensShard {
@@ -98,7 +105,9 @@ impl Default for TokensShard {
       required: ExposedTypes::new(),
       tokenizer: ParamVar::new(Var::default()),
       add_special_tokens: true.into(),
-      output: AutoSeqVar::new(),
+      as_tensor: false.into(),
+      output_seq: AutoSeqVar::new(),
+      output_tensor: ClonedVar::default(),
     }
   }
 }
@@ -162,12 +171,28 @@ impl Shard for TokensShard {
       .get_ids()
       .to_vec();
 
-    self.output.0.clear();
-    for token in tokens {
-      let token: Var = token.into();
-      self.output.0.push(&token);
+    let as_tensor: bool = self.as_tensor.as_ref().try_into()?;
+    if as_tensor {
+      let device = Device::Cpu; // todo add gpu support
+      let token_ids = Tensor::new(&tokens[..], &device)
+        .map_err(|e| {
+          shlog_error!("Failed to create tensor: {:?}", e);
+          "Failed to create tensor"
+        })?
+        .unsqueeze(0)
+        .map_err(|e| {
+          shlog_error!("Failed to unsqueeze tensor: {:?}", e);
+          "Failed to unsqueeze tensor"
+        })?;
+      self.output_tensor = Var::new_ref_counted(TensorWrapper(token_ids), &*TENSOR_TYPE).into();
+      Ok(Some(self.output_tensor.0))
+    } else {
+      self.output_seq.0.clear();
+      for token in tokens {
+        let token: Var = token.into();
+        self.output_seq.0.push(&token);
+      }
+      Ok(Some(self.output_seq.0 .0))
     }
-
-    Ok(Some(self.output.0 .0))
   }
 }
