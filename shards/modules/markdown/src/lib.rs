@@ -44,12 +44,13 @@ impl Shard for MarkdownParseShard {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+
+    self.parser = None; // this is important to reset parser's state
 
     Ok(())
   }
