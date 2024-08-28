@@ -115,7 +115,7 @@ void Fiber::init(std::function<void()> fn) {
   creatorStack = getThreadNameStack();
 #endif
 #endif
-  continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [=](boost::context::continuation &&sink) {
+  continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [this, fn](boost::context::continuation &&sink) {
     continuation.emplace(std::move(sink));
     fn();
     return std::move(continuation.value());

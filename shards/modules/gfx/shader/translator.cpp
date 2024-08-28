@@ -255,7 +255,6 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     // Push reference to assigned value
     return WGSLBlock(valueType, blocks::makeBlock<blocks::ReadGlobal>(uniqueVariableName));
   } else {
-    const Type *foundFieldType{};
     TranslationBlockRef *parent{};
     bool isNewVariable = true;
     if (allowUpdate) {
