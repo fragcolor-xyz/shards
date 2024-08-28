@@ -614,7 +614,7 @@ struct StopWire : public WireBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureWire();
 
-    if (unlikely(!wire || context == wire->context)) {
+    if (!wire || wire.get() == context->currentWire()) {
       // in this case we stop the current wire
       context->stopFlow(input);
       return input;
