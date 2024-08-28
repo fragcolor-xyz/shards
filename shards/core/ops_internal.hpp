@@ -13,6 +13,61 @@
 #include <spdlog/fmt/ostr.h> // must be included
 
 namespace shards {
+
+inline SHVar getZeroVarWithType(SHType type) {
+  SHVar v{};
+  v.valueType = type;
+  return v;
+}
+inline SHVar getDefaultValue(const SHTypeInfo &type) {
+  switch (type.basicType) {
+  case SHType::Any:
+    return getZeroVarWithType(SHType::None);
+  case SHType::None:
+  case SHType::Bool:
+  case SHType::Int:
+  case SHType::Int2:
+  case SHType::Int3:
+  case SHType::Int4:
+  case SHType::Int8:
+  case SHType::Int16:
+  case SHType::Float2:
+  case SHType::Float3:
+  case SHType::Float4:
+  case SHType::Color:
+  case SHType::Bytes:
+  case SHType::Seq:
+  case SHType::Table:
+  case SHType::Array:
+  case SHType::Set:
+  case SHType::Float:
+    return getZeroVarWithType(type.basicType);
+  case SHType::String:
+  case SHType::Path:
+    return shards::Var("");
+  case SHType::Enum:
+    throw std::runtime_error("Cannot generate default value for Enum type");
+  case SHType::ContextVar:
+    throw std::runtime_error("Cannot generate default value for ContextVar type");
+  case SHType::Image:
+    throw std::runtime_error("Cannot generate default value for Image type");
+  case SHType::Wire:
+    throw std::runtime_error("Cannot generate default value for Wire type");
+  case SHType::ShardRef:
+    throw std::runtime_error("Cannot generate default value for ShardRef type");
+  case SHType::Object:
+    throw std::runtime_error("Cannot generate default value for Object type");
+  case SHType::Audio:
+    throw std::runtime_error("Cannot generate default value for Audio type");
+  case SHType::Type:
+    throw std::runtime_error("Cannot generate default value for Type type");
+  case SHType::Trait:
+    throw std::runtime_error("Cannot generate default value for Trait type");
+  default:
+    throw std::runtime_error("Unknown SHType");
+  }
+}
+
 struct DocsFriendlyFormatter {
   bool ignoreNone{};
 
