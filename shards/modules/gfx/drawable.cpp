@@ -28,9 +28,9 @@ struct DrawableShard {
 
   PARAM_IMPL(PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
-  static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The drawable's transform"); }
-
+  static SHOptionalString help() { return SHCCSTR("This shard creates a drawable object that can be added to a drawables queue for the render pipeline."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The transformation matrix of the drawable object to adopt."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The drawable object."); }
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Drawable; }
 
@@ -109,15 +109,19 @@ struct DrawableShard {
   }
 };
 
-// MainWindow is only required if Queue is not specified
 struct DrawShard {
   static inline shards::Types SingleDrawableTypes = shards::Types{ShardsTypes::Drawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
   static inline shards::Types DrawableTypes{ShardsTypes::Drawable, DrawableSeqType};
 
-  PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
+  PARAM_PARAMVAR(_queue, "Queue", "The queue object to add the drawable object to.",
                  {Type::VariableOf(ShardsTypes::DrawQueue)});
   PARAM_IMPL(PARAM_IMPL_FOR(_queue));
+
+  static SHOptionalString help() { return SHCCSTR("This shard takes the input drawable object (or sequence of drawable objects) and adds them to the draw queue (created by GFX.DrawQueue) specified in the Queue parameter."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The drawable object (or sequence of drawable objects) to add to the draw queue."); }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return DrawableTypes; }
@@ -190,11 +194,14 @@ namespace gfx {
 struct DrawQueueShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::DrawQueue; }
-  static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
+  static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue object to add drawables to (using GFX.Draw)."); }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The drawable queue object."); }
 
   PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
             {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_VAR(_threaded, "Threaded", "When enabled, output uniuqe queue references to be able to use them with channels",
+  PARAM_VAR(_threaded, "Threaded", "When enabled, output unique queue references to be able to use them with channels",
             {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_trace, "Trace", "Enables debug tracing on this queue", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded), PARAM_IMPL_FOR(_trace));
@@ -265,7 +272,10 @@ struct DrawQueueShard {
 struct ClearQueueShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::DrawQueue; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString help() { return SHCCSTR("Clears a draw queue"); }
+  static SHOptionalString help() { return SHCCSTR("Removes all drawable objects from the input drawable queue."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The drawable queue object to clear."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("None."); }
 
   static SHParametersInfo parameters() {
     static Parameters parameters = {};
@@ -290,7 +300,10 @@ struct GetQueueDrawablesShard {
 
   static SHTypesInfo inputTypes() { return ShardsTypes::DrawQueue; }
   static SHTypesInfo outputTypes() { return OutputSeqType; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves the individual drawables in a draw queue"); }
+  static SHOptionalString help() { return SHCCSTR("Converts the input drawable queue object to a sequence of drawable objects."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The drawable queue object to convert to a sequence of drawable objects."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence of drawable objects."); }
 
   SeqVar _outputSeq;
   std::vector<SHDrawable *> _objects;
