@@ -3,17 +3,12 @@
 @mesh(main)
 
 @wire(ml-test {
-  ; ; should be normalized using mean = [0.485, 0.456, 0.406] and std = [0.229, 0.224, 0.225]
-  ; LoadImage("../../assets/simple1.PNG") | StripAlpha | ResizeImage(224, 224) | ImageToFloats = image
-  ; ONNX.Load("data/mobilenet_v2_Opset18.onnx" [1 3 224 224]) = model | Log
-  ; Await(image | ONNX.Activate(Model: model) | Log)
-
-  ; MLTest | Log
-
-  "data/gte-tiny-tokenizer.json" | FS.Read | ML.Tokenizer = tokenizer
-  "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
-  "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
-  [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [2 3] Type: TensorType::F32) | Tensor.ToString | Log
+  [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [2 3] Type: TensorType::F32)
+  {Tensor.ToString | Log}
+  Tensor.Transpose
+  {Tensor.ToString | Log}
+  Tensor.Sum
+  {Tensor.ToString | Log}
 
   [2 2 2] = shape
   Maybe({; this one will fail
@@ -24,6 +19,10 @@
   Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
 
   When({@has-models | Is("true")} {
+    "data/gte-tiny-tokenizer.json" | FS.Read | ML.Tokenizer = tokenizer
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
+
     "data/gte-tiny-config.json" | FS.Read | FromJson | ExpectTable = config | Log
     "data/gte-tiny.safetensors" | FS.Read(Bytes: true)
     ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: config) = bert-model
@@ -31,8 +30,19 @@
     Repeat({
       "Here is a test sentence" | ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = test1-tokens
       Tensor.ZerosLike = test1-zeros
-      [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Take(0) | Tensor.ToString | Log
-    } Times: 100)
+      [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Take(0) = emb-i | Tensor.ToString | Log
+
+      "Here is another test sentence" | ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = test2-tokens
+      Tensor.ZerosLike = test2-zeros
+      [test2-tokens test2-zeros] | ML.Forward(Model: bert-model) | Take(0) = emb-j | Tensor.ToString | Log
+
+      ; cosine similarity
+      emb-i | Tensor.Mul(emb-j) | Tensor.Sum | Tensor.ToFloat = sum-ij | Log
+      emb-i | Tensor.Mul(emb-i) | Tensor.Sum | Tensor.ToFloat = sum-i2 | Log
+      emb-j | Tensor.Mul(emb-j) | Tensor.Sum | Tensor.ToFloat = sum-j2 | Log
+      ; sum-ij | Tensor.Div(Tensor.Mul(sum-i sum-j)) = cosine-similarity
+      ; cosine-similarity | Log
+    } Times: 10)
   })
 })
 

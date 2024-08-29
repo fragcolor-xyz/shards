@@ -7,9 +7,9 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
 use candle_core::{DType, Tensor};
 
+mod model;
 mod tensor;
 mod tokenizer;
-mod model;
 
 struct TensorWrapper(Tensor);
 ref_counted_object_type_impl!(TensorWrapper);
@@ -85,4 +85,14 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_enum::<model::Formats>();
   register_shard::<tensor::TensorZerosLikeShard>();
   register_shard::<model::ForwardShard>();
+  register_shard::<tensor::TensorMulShard>();
+  register_shard::<tensor::TensorSubShard>();
+  register_shard::<tensor::TensorAddShard>();
+  register_shard::<tensor::TensorPowShard>();
+  register_shard::<tensor::TensorDivShard>();
+  register_shard::<tensor::TensorMatMulShard>();
+  register_shard::<tensor::TensorSumShard>();
+  register_shard::<tensor::TensorReshapeShard>();
+  register_shard::<tensor::TensorTransposeShard>();
+  register_shard::<tensor::TensorToFloatShard>();
 }
