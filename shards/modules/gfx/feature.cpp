@@ -174,7 +174,7 @@ struct FeatureShard {
   // Any variables used in the callback will be copied during this shard's activation
   // The output should be a single parameter table
   PARAM_VAR(_viewGenerators, "ViewGenerators",
-            "A collection of callbacks that will be run to generate per-view shader parameters during rendering",
+            "A collection of callbacks that will be run to generate per-view shader parameters during rendering. These parameters are added to the view buffer.",
             {IntoWires::RunnableTypes, {CoreInfo::NoneType}});
   // [(-> ...)]/(-> ...)/[<wire>]/<wire>
   // Any variables used in the callback will be copied during this shard's activation
@@ -188,7 +188,7 @@ struct FeatureShard {
   //   :<name> <default-value>        (type will be derived from value)
   PARAM_PARAMVAR(
       _params, "Params",
-      "The parameters to expose to shaders, these default values can later be modified by the Params parameter in GFX.Material or GFX.Drawable.",
+      "The parameters to add to the object buffer and expose to shaders, these default values can later be modified by the Params parameter in GFX.Material or GFX.Drawable.",
       {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
 
   // Table of block shader parameters, can be defined using any of the formats below:
