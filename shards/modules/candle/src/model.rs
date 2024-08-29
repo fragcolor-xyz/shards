@@ -7,6 +7,7 @@ use shards::ref_counted_object_type_impl;
 use shards::shard::Shard;
 use shards::shlog_error;
 use shards::types::common_type;
+use shards::types::AutoSeqVar;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
@@ -20,12 +21,12 @@ use shards::types::{ClonedVar, Context, Type, Types, Var};
 use candle_core::Device;
 
 use crate::TensorWrapper;
-use crate::TENSORS_TYPE;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_TYPE;
 use crate::TENSOR_TYPE_VEC;
 
 enum Model {
+  ONNX(candle_onnx::onnx::ModelProto),
   Bert(BertModel),
 }
 
@@ -40,17 +41,21 @@ lazy_static! {
 #[derive(shards::shards_enum)]
 #[enum_info(b"mMDL", "MLModels", "A model type and architecture.")]
 pub enum ModelType {
+  #[enum_value("An ONNX model.")]
+  ONNX = 0x0,
   #[enum_value("A BERT model.")]
-  Bert = 0x0,
+  Bert = 0x1,
 }
 
 #[derive(shards::shards_enum)]
 #[enum_info(b"mFMT", "MLFormats", "The format of the model.")]
 pub enum Formats {
+  #[enum_value("ONNX")]
+  ONNX = 0x0,
   #[enum_value("GGUF")]
-  GGUF = 0x0,
+  GGUF = 0x1,
   #[enum_value("SafeTensor")]
-  SafeTensor = 0x1,
+  SafeTensor = 0x2,
 }
 
 #[derive(shards::shard)]
@@ -119,10 +124,6 @@ impl Shard for ModelShard {
       return Err("Format is required");
     }
 
-    if self.configuration.is_none() {
-      return Err("Configuration is required");
-    }
-
     Ok(self.output_types()[0])
   }
 
@@ -133,13 +134,30 @@ impl Shard for ModelShard {
     let data: &[u8] = input.try_into()?;
 
     let model = match model {
-      ModelType::Bert => match format {
-        Formats::GGUF => {
-          unimplemented!()
+      ModelType::ONNX => match format {
+        Formats::ONNX => {
+          let model =
+            <candle_onnx::onnx::ModelProto as prost::Message>::decode(data).map_err(|e| {
+              shlog_error!("Failed to load model: {}", e);
+              "Failed to load model"
+            })?;
+          Model::ONNX(model)
         }
+        _ => {
+          return Err("Unsupported format");
+        }
+      },
+      ModelType::Bert => match format {
         Formats::SafeTensor => {
-          let vb =
-            candle_nn::VarBuilder::from_slice_safetensors(data, DTYPE, &Device::Cpu).unwrap();
+          if self.configuration.is_none() {
+            return Err("Configuration is required");
+          }
+
+          let vb = candle_nn::VarBuilder::from_slice_safetensors(data, DTYPE, &Device::Cpu)
+            .map_err(|e| {
+              shlog_error!("Failed to load model: {}", e);
+              "Failed to load model"
+            })?;
           let config: TableVar = self.configuration.get().as_ref().try_into()?;
           let config = BertConfig::try_from(&config)?;
           let model = BertModel::load(vb, &config.0).map_err(|e| {
@@ -147,6 +165,9 @@ impl Shard for ModelShard {
             "Failed to load model"
           })?;
           Model::Bert(model)
+        }
+        _ => {
+          return Err("Unsupported format");
         }
       },
     };
@@ -277,7 +298,7 @@ pub(crate) struct ForwardShard {
   #[shard_param("Model", "The model to use.", [*MODEL_VAR_TYPE])]
   model: ParamVar,
 
-  output: ClonedVar,
+  outputs: AutoSeqVar,
 }
 
 impl Default for ForwardShard {
@@ -285,7 +306,7 @@ impl Default for ForwardShard {
     Self {
       required: ExposedTypes::new(),
       model: ParamVar::default(),
-      output: ClonedVar::default(),
+      outputs: AutoSeqVar::new(),
     }
   }
 }
@@ -297,7 +318,7 @@ impl Shard for ForwardShard {
   }
 
   fn output_types(&mut self) -> &Types {
-    &TENSOR_TYPE_VEC
+    &TENSORS_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -322,9 +343,40 @@ impl Shard for ForwardShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensors: SeqVar = input.try_into()?;
+
     let model =
       unsafe { &mut *Var::from_ref_counted_object::<Model>(&self.model.get(), &*MODEL_TYPE)? };
-    let output = match model {
+
+    self.outputs.0.clear();
+
+    match model {
+      Model::ONNX(model) => {
+        let graph = model.graph.as_ref().unwrap();
+        if tensors.len() != graph.input.len() {
+          return Err("Invalid number of tensors");
+        }
+        let mut inputs = HashMap::new();
+        for (i, ref tensor) in tensors.iter().enumerate() {
+          let tensor =
+            unsafe { &*Var::from_ref_counted_object::<TensorWrapper>(tensor, &*TENSOR_TYPE)? };
+          inputs.insert(graph.input[i].name.to_string(), tensor.0.clone());
+        }
+        let outputs = candle_onnx::simple_eval(&model, inputs).map_err(|e| {
+          let input_names: Vec<_> = graph.input.iter().map(|i| &i.name).collect();
+          let output_names: Vec<_> = graph.output.iter().map(|o| &o.name).collect();
+          shlog_error!(
+            "Failed to forward: {}. Input names: {:?}, Output names: {:?}",
+            e,
+            input_names,
+            output_names
+          );
+          "Failed to forward"
+        })?;
+        for (_, output) in outputs {
+          let output = Var::new_ref_counted(TensorWrapper(output), &*TENSOR_TYPE);
+          self.outputs.0.push(&output);
+        }
+      }
       Model::Bert(model) => {
         if tensors.len() == 2 {
           let input_ids = unsafe {
@@ -333,17 +385,20 @@ impl Shard for ForwardShard {
           let input_type_ids = unsafe {
             &mut *Var::from_ref_counted_object::<TensorWrapper>(&tensors[1], &*TENSOR_TYPE)?
           };
-          model.forward(&input_ids.0, &input_type_ids.0)
+          let output = model
+            .forward(&input_ids.0, &input_type_ids.0)
+            .map_err(|e| {
+              shlog_error!("Failed to forward: {}", e);
+              "Failed to forward"
+            })?;
+          let output = Var::new_ref_counted(TensorWrapper(output), &*TENSOR_TYPE);
+          self.outputs.0.push(&output);
         } else {
           return Err("Invalid number of tensors");
         }
       }
     }
-    .map_err(|e| {
-      shlog_error!("Failed to forward: {}", e);
-      "Failed to forward"
-    })?;
-    self.output = Var::new_ref_counted(TensorWrapper(output), &*TENSOR_TYPE).into();
-    Ok(Some(self.output.0))
+
+    Ok(Some(self.outputs.0 .0))
   }
 }

@@ -10,7 +10,7 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 use std::str::FromStr;
 use tokenizers::Tokenizer;
 
-use crate::{TensorWrapper, TENSOR_TYPE};
+use crate::{TensorType, TensorWrapper, TENSORS_TYPE, TENSORTYPE_TYPE, TENSOR_TYPE};
 
 struct TokenizerWrapper(Tokenizer);
 ref_counted_object_type_impl!(TokenizerWrapper);
@@ -95,6 +95,9 @@ pub(crate) struct TokensShard {
   #[shard_param("AsTensor", "Outputs a tensor object instead of an int sequence.", [common_type::bool])]
   as_tensor: ClonedVar,
 
+  #[shard_param("Format", "The format of the output tensor. If As Tensor is true.", [*TENSORTYPE_TYPE])]
+  format: ClonedVar,
+
   output_seq: AutoSeqVar,
   output_tensor: ClonedVar,
 }
@@ -108,6 +111,7 @@ impl Default for TokensShard {
       as_tensor: false.into(),
       output_seq: AutoSeqVar::new(),
       output_tensor: ClonedVar::default(),
+      format: TensorType::U32.into(),
     }
   }
 }
@@ -178,17 +182,34 @@ impl Shard for TokensShard {
 
     let as_tensor: bool = self.as_tensor.as_ref().try_into()?;
     if as_tensor {
+      let format: TensorType = self.format.0.as_ref().try_into()?;
       let device = Device::Cpu; // todo add gpu support
-      let token_ids = Tensor::new(&tokens[..], &device)
-        .map_err(|e| {
-          shlog_error!("Failed to create tensor: {:?}", e);
-          "Failed to create tensor"
-        })?
-        .unsqueeze(0)
-        .map_err(|e| {
-          shlog_error!("Failed to unsqueeze tensor: {:?}", e);
-          "Failed to unsqueeze tensor"
-        })?;
+      let token_ids = match format {
+        TensorType::U32 => Tensor::new(&tokens[..], &device)
+          .map_err(|e| {
+            shlog_error!("Failed to create tensor: {:?}", e);
+            "Failed to create tensor"
+          })?
+          .unsqueeze(0)
+          .map_err(|e| {
+            shlog_error!("Failed to unsqueeze tensor: {:?}", e);
+            "Failed to unsqueeze tensor"
+          }),
+        TensorType::I64 => {
+          let tokens: Vec<i64> = tokens.into_iter().map(|token| token as i64).collect();
+          Tensor::new(&tokens[..], &device)
+            .map_err(|e| {
+              shlog_error!("Failed to create tensor: {:?}", e);
+              "Failed to create tensor"
+            })?
+            .unsqueeze(0)
+            .map_err(|e| {
+              shlog_error!("Failed to unsqueeze tensor: {:?}", e);
+              "Failed to unsqueeze tensor"
+            })
+        }
+        _ => Err("Invalid format"),
+      }?;
       self.output_tensor = Var::new_ref_counted(TensorWrapper(token_ids), &*TENSOR_TYPE).into();
       Ok(Some(self.output_tensor.0))
     } else {

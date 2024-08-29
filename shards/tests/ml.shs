@@ -24,14 +24,20 @@
   Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
 
   When({@has-models | Is("true")} {
-    "data/bert-config.json" | FS.Read | FromJson | ExpectTable = bert-config | Log
-    "data/bert.safetensors" | FS.Read(Bytes: true)
-    ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: bert-config) = bert-model
+    "data/model.onnx"
+    ; "data/GIST-all-MiniLM-L6-v2.onnx"
+    FS.Read(Bytes: true)
+    ML.Model(Model: MLModels::ONNX Format: MLFormats::ONNX) = gist-model
+
+    ; "data/bert-config.json" | FS.Read | FromJson | ExpectTable = bert-config | Log
+    ; "data/bert.safetensors" | FS.Read(Bytes: true)
+    ; ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: bert-config) = bert-model
 
     Repeat({
-      "Here is a test sentence" | ML.Tokens(Tokenizer: tokenizer AsTensor: true) = test1-tokens
+      "Here is a test sentence" | ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = test1-tokens
       Tensor.ZerosLike = test1-zeros
-      [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Tensor.ToString | Log
+      ; [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Tensor.ToString | Log
+      [test1-tokens test1-zeros] | ML.Forward(Model: gist-model) | Take(0) | Tensor.ToString | Log
     } Times: 100)
   })
 })
