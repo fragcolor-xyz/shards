@@ -6559,6 +6559,7 @@ lazy_static! {
   pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
   pub static ref SEQ_OF_SEQ_OF_ANY: Type = Type::seq(&ANYS_TYPES);
   pub static ref SEQ_OF_SEQ_OF_ANY_TYPES: Vec<Type> = vec![*SEQ_OF_SEQ_OF_ANY];
+  pub static ref SEQ_OF_INT_OR_FLOAT_TYPES: Vec<Type> = vec![*SEQ_OF_INT, *SEQ_OF_FLOAT];
 }
 
 macro_rules! test_to_from_vec1 {

@@ -23,17 +23,17 @@ lazy_static! {
 
 #[derive(shards::shard)]
 #[shard_info(
-  "Candle.Tokenizer",
+  "ML.Tokenizer",
   "Loads a tokenizer from an input json string, ready to be used for tokenizing text."
 )]
-pub(crate) struct CandleTokenizer {
+pub(crate) struct MLTokenizer {
   #[shard_required]
   required: ExposedTypes,
 
   output: ClonedVar,
 }
 
-impl Default for CandleTokenizer {
+impl Default for MLTokenizer {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
@@ -43,7 +43,7 @@ impl Default for CandleTokenizer {
 }
 
 #[shards::shard_impl]
-impl Shard for CandleTokenizer {
+impl Shard for MLTokenizer {
   fn input_types(&mut self) -> &Types {
     &STRING_TYPES
   }
@@ -81,7 +81,7 @@ impl Shard for CandleTokenizer {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Candle.Tokens", "Tokenizes text using a tokenizer.")]
+#[shard_info("ML.Tokens", "Tokenizes text using a tokenizer.")]
 pub(crate) struct TokensShard {
   #[shard_required]
   required: ExposedTypes,
@@ -92,7 +92,7 @@ pub(crate) struct TokensShard {
   #[shard_param("AddSpecialTokens", "If true, add special tokens.", [common_type::bool])]
   add_special_tokens: ClonedVar,
 
-  #[shard_param("AsTensor", "Outputs a candle tensor object instead of an int sequence.", [common_type::bool])]
+  #[shard_param("AsTensor", "Outputs a tensor object instead of an int sequence.", [common_type::bool])]
   as_tensor: ClonedVar,
 
   output_seq: AutoSeqVar,
@@ -141,7 +141,12 @@ impl Shard for TokensShard {
       return Err("Tokenizer is not set");
     }
 
-    Ok(self.output_types()[0])
+    let as_tensor = self.as_tensor.as_ref().try_into()?;
+    if as_tensor {
+      Ok(*TENSOR_TYPE)
+    } else {
+      Ok(SEQ_OF_INT_TYPES[0])
+    }
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {

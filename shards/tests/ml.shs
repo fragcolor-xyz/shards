@@ -1,0 +1,26 @@
+@mesh(main)
+
+@wire(ml-test {
+  ; ; should be normalized using mean = [0.485, 0.456, 0.406] and std = [0.229, 0.224, 0.225]
+  ; LoadImage("../../assets/simple1.PNG") | StripAlpha | ResizeImage(224, 224) | ImageToFloats = image
+  ; ONNX.Load("data/mobilenet_v2_Opset18.onnx" [1 3 224 224]) = model | Log
+  ; Await(image | ONNX.Activate(Model: model) | Log)
+
+  ; MLTest | Log
+
+  "data/tokenizer.json" | FS.Read | ML.Tokenizer = tokenizer
+  "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
+  "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
+  [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [2 3] Type: TensorType::F32) | Tensor.ToString | Log
+
+  [2 2 2] = shape
+  Maybe({; this one will fail
+    [1.0 2.0 3.0 4.0 5.0 6.0]
+    Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
+  })
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0]
+  Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
+})
+
+@schedule(main ml-test)
+@run(main) | Assert.Is(true)
