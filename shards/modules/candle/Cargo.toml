@@ -14,4 +14,9 @@ lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 candle-core = "0.6.0"
-tokenizers = { version = "0.19.1", default-features = false, features = ["onig"]}
+tokenizers = { version = "0.19.1", default-features = false, features = [
+  "onig",
+] }
+candle-transformers = "0.6.0"
+candle-nn = "0.6.0"
+serde_json = "1.0.102"

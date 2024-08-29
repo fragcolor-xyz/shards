@@ -5,7 +5,6 @@ use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::SEQ_OF_INT_OR_FLOAT_TYPES;
-use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, SeqVar, Type, Types, Var};
 use shards::{SHType_Float, SHType_Int};
@@ -244,6 +243,66 @@ impl Shard for TensorShard {
 
     self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
 
+    Ok(Some(self.output.0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ZerosLike",
+  "Creates a tensor of zeros with the same shape as the input tensor."
+)]
+pub(crate) struct TensorZerosLikeShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: ClonedVar,
+}
+
+impl Default for TensorZerosLikeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorZerosLikeShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+    let tensor = tensor.0.zeros_like().map_err(|e| {
+      shlog_error!("Failed to create tensor: {}", e);
+      "Failed to create tensor"
+    })?;
+    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }

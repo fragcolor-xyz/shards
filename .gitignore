@@ -76,3 +76,5 @@ docs/shards_docs_merged.txt
 shards/langffi/Cargo.lock
 ai/training-set.jsonl
 .aider*
+shards/tests/data/bert-config.json
+shards/tests/data/bert.safetensors

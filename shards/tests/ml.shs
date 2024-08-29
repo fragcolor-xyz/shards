@@ -1,3 +1,5 @@
+@define(has-models false IgnoreRedefined: true)
+
 @mesh(main)
 
 @wire(ml-test {
@@ -20,6 +22,18 @@
   })
   [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0]
   Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
+
+  When({@has-models | Is("true")} {
+    "data/bert-config.json" | FS.Read | FromJson | ExpectTable = bert-config | Log
+    "data/bert.safetensors" | FS.Read(Bytes: true)
+    ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: bert-config) = bert-model
+
+    Repeat({
+      "Here is a test sentence" | ML.Tokens(Tokenizer: tokenizer AsTensor: true) = test1-tokens
+      Tensor.ZerosLike = test1-zeros
+      [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Tensor.ToString | Log
+    } Times: 100)
+  })
 })
 
 @schedule(main ml-test)

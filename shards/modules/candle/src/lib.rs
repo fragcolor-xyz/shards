@@ -9,6 +9,7 @@ use candle_core::{DType, Tensor};
 
 mod tensor;
 mod tokenizer;
+mod model;
 
 struct TensorWrapper(Tensor);
 ref_counted_object_type_impl!(TensorWrapper);
@@ -17,6 +18,8 @@ lazy_static! {
   pub static ref TENSOR_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"cTEN")); // last letter used as version
   pub static ref TENSOR_TYPE_VEC: Vec<Type> = vec![*TENSOR_TYPE];
   pub static ref TENSOR_VAR_TYPE: Type = Type::context_variable(&TENSOR_TYPE_VEC);
+  pub static ref TENSORS_TYPE: Type = Type::seq(&TENSOR_TYPE_VEC);
+  pub static ref TENSORS_TYPE_VEC: Vec<Type> = vec![*TENSORS_TYPE];
 }
 
 #[derive(shards::shards_enum, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -77,4 +80,9 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_enum::<TensorType>();
   register_shard::<tensor::MLTensorToStringShard>();
   register_shard::<tensor::TensorShard>();
+  register_shard::<model::ModelShard>();
+  register_enum::<model::ModelType>();
+  register_enum::<model::Formats>();
+  register_shard::<tensor::TensorZerosLikeShard>();
+  register_shard::<model::ForwardShard>();
 }
