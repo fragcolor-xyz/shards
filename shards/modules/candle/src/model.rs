@@ -23,10 +23,8 @@ use candle_core::Device;
 use crate::TensorWrapper;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_TYPE;
-use crate::TENSOR_TYPE_VEC;
 
 enum Model {
-  ONNX(candle_onnx::onnx::ModelProto),
   Bert(BertModel),
 }
 
@@ -41,8 +39,6 @@ lazy_static! {
 #[derive(shards::shards_enum)]
 #[enum_info(b"mMDL", "MLModels", "A model type and architecture.")]
 pub enum ModelType {
-  #[enum_value("An ONNX model.")]
-  ONNX = 0x0,
   #[enum_value("A BERT model.")]
   Bert = 0x1,
 }
@@ -50,8 +46,6 @@ pub enum ModelType {
 #[derive(shards::shards_enum)]
 #[enum_info(b"mFMT", "MLFormats", "The format of the model.")]
 pub enum Formats {
-  #[enum_value("ONNX")]
-  ONNX = 0x0,
   #[enum_value("GGUF")]
   GGUF = 0x1,
   #[enum_value("SafeTensor")]
@@ -134,19 +128,6 @@ impl Shard for ModelShard {
     let data: &[u8] = input.try_into()?;
 
     let model = match model {
-      ModelType::ONNX => match format {
-        Formats::ONNX => {
-          let model =
-            <candle_onnx::onnx::ModelProto as prost::Message>::decode(data).map_err(|e| {
-              shlog_error!("Failed to load model: {}", e);
-              "Failed to load model"
-            })?;
-          Model::ONNX(model)
-        }
-        _ => {
-          return Err("Unsupported format");
-        }
-      },
       ModelType::Bert => match format {
         Formats::SafeTensor => {
           if self.configuration.is_none() {
@@ -268,9 +249,14 @@ impl TryFrom<&TableVar> for BertConfig {
           config_map.insert("use_cache", value);
         }
         "classifier_dropout" => {
-          let value: f64 = value.try_into()?;
-          let value = serde_json::to_value(value).map_err(|_| "Failed to convert value to f64")?;
-          config_map.insert("classifier_dropout", value);
+          if value.is_none() {
+            config_map.insert("classifier_dropout", serde_json::Value::Null);
+          } else {
+            let value: f64 = value.try_into()?;
+            let value =
+              serde_json::to_value(value).map_err(|_| "Failed to convert value to f64")?;
+            config_map.insert("classifier_dropout", value);
+          }
         }
         "model_type" => {
           let value: String = value.try_into()?;
@@ -350,33 +336,6 @@ impl Shard for ForwardShard {
     self.outputs.0.clear();
 
     match model {
-      Model::ONNX(model) => {
-        let graph = model.graph.as_ref().unwrap();
-        if tensors.len() != graph.input.len() {
-          return Err("Invalid number of tensors");
-        }
-        let mut inputs = HashMap::new();
-        for (i, ref tensor) in tensors.iter().enumerate() {
-          let tensor =
-            unsafe { &*Var::from_ref_counted_object::<TensorWrapper>(tensor, &*TENSOR_TYPE)? };
-          inputs.insert(graph.input[i].name.to_string(), tensor.0.clone());
-        }
-        let outputs = candle_onnx::simple_eval(&model, inputs).map_err(|e| {
-          let input_names: Vec<_> = graph.input.iter().map(|i| &i.name).collect();
-          let output_names: Vec<_> = graph.output.iter().map(|o| &o.name).collect();
-          shlog_error!(
-            "Failed to forward: {}. Input names: {:?}, Output names: {:?}",
-            e,
-            input_names,
-            output_names
-          );
-          "Failed to forward"
-        })?;
-        for (_, output) in outputs {
-          let output = Var::new_ref_counted(TensorWrapper(output), &*TENSOR_TYPE);
-          self.outputs.0.push(&output);
-        }
-      }
       Model::Bert(model) => {
         if tensors.len() == 2 {
           let input_ids = unsafe {

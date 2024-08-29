@@ -19,6 +19,5 @@ tokenizers = { version = "0.19.1", default-features = false, features = [
 ] }
 candle-transformers = "0.6.0"
 candle-nn = "0.6.0"
-candle-onnx = "0.6.0"
 serde_json = "1.0.102"
-prost = "0.12.1"
+

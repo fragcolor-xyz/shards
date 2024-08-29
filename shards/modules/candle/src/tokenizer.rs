@@ -10,7 +10,7 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 use std::str::FromStr;
 use tokenizers::Tokenizer;
 
-use crate::{TensorType, TensorWrapper, TENSORS_TYPE, TENSORTYPE_TYPE, TENSOR_TYPE};
+use crate::{TensorType, TensorWrapper, TENSORTYPE_TYPE, TENSOR_TYPE};
 
 struct TokenizerWrapper(Tokenizer);
 ref_counted_object_type_impl!(TokenizerWrapper);

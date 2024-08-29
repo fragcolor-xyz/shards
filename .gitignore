@@ -79,3 +79,5 @@ ai/training-set.jsonl
 shards/tests/data/bert-config.json
 *.safetensors
 *.onnx
+shards/tests/data/gte-tiny-config.json
+shards/tests/data/gte-tiny-tokenizer.json
