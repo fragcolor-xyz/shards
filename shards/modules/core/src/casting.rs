@@ -48,11 +48,11 @@ impl LegacyShard for ToBase58 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard encodes the input(either a byte sequence or a string) into a base58 encoded string."))
+    OptionalString(shccstr!("This shard encodes the input(either a byte array or a string) into a base58 encoded string."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The byte sequence or string to encode."))
+    OptionalString(shccstr!("The byte array or string to encode."))
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -107,7 +107,7 @@ impl LegacyShard for FromBase58 {
 
   fn help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "This shard decodes the base58 encoded string and returns it as a decoded byte sequence."
+      "This shard decodes the base58 encoded string and returns it as a decoded byte array."
     ))
   }
 
@@ -116,7 +116,7 @@ impl LegacyShard for FromBase58 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the decoded byte sequence."))
+    OptionalString(shccstr!("Returns the decoded byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -174,7 +174,7 @@ impl LegacyShard for ToLEB128 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard encodes the input(a signed or unsigned integer) into a LEB128 encoded byte sequence."))
+    OptionalString(shccstr!("This shard encodes the input(a signed or unsigned integer) into a LEB128 encoded byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -182,7 +182,7 @@ impl LegacyShard for ToLEB128 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the LEB128 encoded byte sequence."))
+    OptionalString(shccstr!("Returns the LEB128 encoded byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -255,11 +255,11 @@ impl LegacyShard for FromLEB128 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard decodes the LEB128 encoded byte sequence and returns it as an integer (signed or unsigned depending on what was specified in the Signed parameter)."))
+    OptionalString(shccstr!("This shard decodes the LEB128 encoded byte array and returns it as an integer (signed or unsigned depending on what was specified in the Signed parameter)."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The LEB128 encoded byte sequence to decode."))
+    OptionalString(shccstr!("The LEB128 encoded byte array to decode."))
   }
 
   fn outputHelp(&mut self) -> OptionalString {

@@ -384,7 +384,7 @@ struct WindowPosition {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the position of the window as an int2. The first element represents the x-coordinate and the second represents the y-coordinate."); }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to get the position of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -417,7 +417,7 @@ struct MoveWindow {
   static SHOptionalString inputHelp() { return SHCCSTR("The position to move the window to. The first element represents the x-coordinate and the second represents the y-coordinate."); }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to move.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -451,7 +451,7 @@ struct OsUiScaleFactor {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
   static SHOptionalString help() { return SHCCSTR("Outputs the scaling factor for UI as determined by the operating system."); }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to get the UI scaling factor of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -491,7 +491,7 @@ struct WindowInsets {
 
   RequiredWindowContext _requiredWindowContext;
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to get the insets of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 

@@ -14,14 +14,14 @@ struct UIPassShard {
   static SHTypesInfo outputTypes() { return gfx::ShardsTypes::PipelineStep; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a render pass object designed for rendering UI using the drawables queue specified in the Queue parameter.");
+    return SHCCSTR("This shard creates a render pass object designed for rendering UI using the UI drawable objects from the drawables queue specified in the Queue parameter.");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("The render pass object."); }
 
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
-  PARAM_PARAMVAR(_queue, "Queue", "The drawables queue to be used for UI rendering.",
+  PARAM_PARAMVAR(_queue, "Queue", "The drawables queue to get the UI drawable objects from.",
                  {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::DrawQueue)});
   PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_name));
 

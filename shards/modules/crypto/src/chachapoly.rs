@@ -48,15 +48,15 @@ impl LegacyShard for Encrypt {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard takes the input string or bytes sequence and encrypts it using the ChaCha20-Poly1305 algorithm with the provided key (provided in the Key parameter). It then returns the encrypted bytes sequence."))
+    OptionalString(shccstr!("This shard takes the input string or byte array and encrypts it using the ChaCha20-Poly1305 algorithm with the provided key (provided in the Key parameter). It then returns the encrypted byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The string or bytes sequence to encrypt."))
+    OptionalString(shccstr!("The string or byte array to encrypt."))
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The encrypted bytes sequence."))
+    OptionalString(shccstr!("The encrypted byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -161,15 +161,15 @@ impl LegacyShard for Decrypt {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard decrypts an input ChaCha20-Poly1305 encrypted bytes sequence using the provided key (provided in the Key parameter). It then returns the decrypted bytes sequence."))
+    OptionalString(shccstr!("This shard decrypts an input ChaCha20-Poly1305 encrypted byte array using the provided key (provided in the Key parameter). It then returns the decrypted byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The encrypted bytes sequence to decrypt."))
+    OptionalString(shccstr!("The encrypted byte array to decrypt."))
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The decrypted bytes sequence."))
+    OptionalString(shccstr!("The decrypted byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {

@@ -300,9 +300,9 @@ struct GetQueueDrawablesShard {
 
   static SHTypesInfo inputTypes() { return ShardsTypes::DrawQueue; }
   static SHTypesInfo outputTypes() { return OutputSeqType; }
-  static SHOptionalString help() { return SHCCSTR("Converts the input drawable queue object to a sequence of drawable objects."); }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the drawable objects from the input drawable queue and outputs it as a sequence of drawable objects."); }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The drawable queue object to convert to a sequence of drawable objects."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The drawable queue to retrieve the drawable objects from."); }
   static SHOptionalString outputHelp() { return SHCCSTR("A sequence of drawable objects."); }
 
   SeqVar _outputSeq;

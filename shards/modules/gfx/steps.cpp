@@ -265,8 +265,8 @@ struct DrawablePassShard {
   static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a render pass object, meant for rendering drawable objects as is, using the drawables "
-                   "queue object (specified in the Queue parameter) "
+    return SHCCSTR("This shard creates a render pass object, meant for rendering drawable objects, using the drawables from the drawables "
+                   "queue (specified in the Queue parameter) "
                    "and the sequence of features objects (specified in the Features parameter).");
   }
 
@@ -274,7 +274,7 @@ struct DrawablePassShard {
   static SHOptionalString outputHelp() { return SHCCSTR("The render pass object for use in a render pipeline."); }
 
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
-  PARAM_PARAMVAR(_queue, "Queue", "The drawables queue to use to create the render pass.", {DrawQueueVarType});
+  PARAM_PARAMVAR(_queue, "Queue", "The drawables queue to get drawables from.", {DrawQueueVarType});
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);

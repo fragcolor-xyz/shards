@@ -484,7 +484,7 @@ struct Post : public PostLike<POST> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The output is the response from the server through the POST request as a string, byte sequence, or table (if "
+    return SHCCSTR("The output is the response from the server through the POST request as a string, byte array, or table (if "
                    "the FullResponse parameter is set to true).");
   }
 };
@@ -501,7 +501,7 @@ struct Put : public PostLike<PUT> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The output is the response from the server through the PUT request as a string, byte sequence, or a table "
+    return SHCCSTR("The output is the response from the server through the PUT request as a string, byte array, or a table "
                    "(if the FullResponse parameter is set to true).");
   }
 };
@@ -518,7 +518,7 @@ struct Patch : public PostLike<PATCH> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The output is the response from the server through the PATCH request as a string, byte sequence, or a table "
+    return SHCCSTR("The output is the response from the server through the PATCH request as a string, byte array, or a table "
                    "(if the FullResponse parameter is set to true).");
   }
 };
@@ -535,7 +535,7 @@ struct Delete : public PostLike<DELETE> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The output is the response from the server through the DELETE request as a string, byte sequence, or a table "
+    return SHCCSTR("The output is the response from the server through the DELETE request as a string, byte array, or a table "
                    "(if the FullResponse parameter is set to true).");
   }
 };
@@ -838,7 +838,7 @@ struct Response {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input string or bytes sequence will be used directly as the body of the response.");
+    return SHCCSTR("The input string or byte array will be used directly as the body of the response.");
   }
 
   static SHOptionalString outputHelp() {

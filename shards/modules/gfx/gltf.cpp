@@ -109,8 +109,8 @@ struct GLTFShard {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard can take 2 different types of input. It can take a 4x4 transformation matrix containing the "
-                   "translation, rotation and scale for the glTF model to adopt. Or, it can accept a table which contain the "
+    return SHCCSTR("This shard can take 2 different types of input. It can take a 4x4 transformation "
+                   "for the glTF model to adopt. Or, it can accept a table which contain the "
                    "transformation matrix and additional information to modify the materials of the glTF model.");
   }
 

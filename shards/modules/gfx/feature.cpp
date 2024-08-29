@@ -188,7 +188,7 @@ struct FeatureShard {
   //   :<name> <default-value>        (type will be derived from value)
   PARAM_PARAMVAR(
       _params, "Params",
-      "The parameters to expose to shaders, these default values can later be modified.",
+      "The parameters to expose to shaders, these default values can later be modified by the Params parameter in GFX.Material or GFX.Drawable.",
       {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
 
   // Table of block shader parameters, can be defined using any of the formats below:
