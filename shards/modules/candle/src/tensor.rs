@@ -1,11 +1,13 @@
 use shards::shard::Shard;
 use shards::shlog_error;
 use shards::types::common_type;
+use shards::types::AutoSeqVar;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_OR_FLOAT_TYPES;
+use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, SeqVar, Type, Types, Var};
 use shards::{SHType_Float, SHType_Int};
@@ -516,7 +518,7 @@ pub(crate) struct TensorDivShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Other", "The tensor to divide by.", [*TENSOR_VAR_TYPE])]
+  #[shard_param("Other", "The tensor to divide by.", [*TENSOR_VAR_TYPE, common_type::float])]
   other: ParamVar,
 
   output: ClonedVar,
@@ -565,14 +567,24 @@ impl Shard for TensorDivShard {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
       unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
-    let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
-    };
-    let tensor = (&tensor.0 / &other.0).map_err(|e| {
-      shlog_error!("Failed to divide tensors: {}", e);
-      "Failed to divide tensors"
-    })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    let other = self.other.get();
+    if other.is_float() {
+      let other: f64 = other.try_into()?;
+      let tensor = (&tensor.0 / other).map_err(|e| {
+        shlog_error!("Failed to divide tensors: {}", e);
+        "Failed to divide tensors"
+      })?;
+      self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    } else {
+      let other = unsafe {
+        &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      };
+      let tensor = (&tensor.0 / &other.0).map_err(|e| {
+        shlog_error!("Failed to divide tensors: {}", e);
+        "Failed to divide tensors"
+      })?;
+      self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    }
     Ok(Some(self.output.0))
   }
 }
@@ -988,5 +1000,61 @@ impl Shard for TensorToFloatShard {
     };
 
     Ok(Some(scalar.into()))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info("Tensor.Shape", "Outputs the shape of the tensor.")]
+pub(crate) struct ShapeShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for ShapeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for ShapeShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_INT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+    let shape = tensor.0.shape();
+    self.output.0.clear();
+    for dim in shape.dims().iter() {
+      let dim: Var = (*dim as i64).into();
+      self.output.0.push(&dim);
+    }
+    Ok(Some(self.output.0 .0))
   }
 }

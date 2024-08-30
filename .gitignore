@@ -81,3 +81,5 @@ shards/tests/data/bert-config.json
 *.onnx
 shards/tests/data/gte-tiny-config.json
 shards/tests/data/gte-tiny-tokenizer.json
+shards/tests/data/GIST-all-MiniLM-L6-v2-config.json
+shards/tests/data/GIST-all-MiniLM-L6-v2-tokenizer.json
