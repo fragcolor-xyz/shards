@@ -2,9 +2,7 @@ use candle_core::{Device, Tensor};
 use shards::shard::Shard;
 use shards::types::InstanceData;
 use shards::types::{common_type, ClonedVar, Context, Type, Types, Var, FRAG_CC};
-use shards::types::{
-  AutoSeqVar, ExposedTypes, ParamVar, NONE_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
-};
+use shards::types::{AutoSeqVar, ExposedTypes, ParamVar, SEQ_OF_INT_TYPES, STRING_TYPES};
 use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 
 use std::str::FromStr;
@@ -49,7 +47,7 @@ impl Shard for MLTokenizer {
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &TOKENIZER_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
