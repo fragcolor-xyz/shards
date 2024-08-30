@@ -10,10 +10,11 @@ use shards::types::SEQ_OF_INT_OR_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, SeqVar, Type, Types, Var};
-use shards::{SHType_Float, SHType_Int};
+use shards::{SHType_Float as SHTYPE_FLOAT, SHType_Int as SHTYPE_INT};
 
 use candle_core::{Device, Shape, Tensor};
 
+use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_VAR_TYPE;
 use crate::{TensorType, TensorWrapper, TENSORTYPE_TYPES, TENSOR_TYPE, TENSOR_TYPE_VEC};
 
@@ -172,7 +173,7 @@ impl Shard for TensorShard {
     let input_type = unsafe { data.inputType.details.seqTypes.elements.offset(0).as_ref() };
     if let Some(input_type) = input_type {
       match input_type.basicType {
-        SHType_Int => {
+        SHTYPE_INT => {
           if !matches!(
             tensor_type,
             TensorType::I64 | TensorType::U32 | TensorType::U8
@@ -180,7 +181,7 @@ impl Shard for TensorShard {
             return Err("Invalid input type: expected integer tensor type");
           }
         }
-        SHType_Float => {
+        SHTYPE_FLOAT => {
           if !matches!(
             tensor_type,
             TensorType::F32 | TensorType::F64 | TensorType::F16 | TensorType::BF16
@@ -1055,6 +1056,184 @@ impl Shard for ShapeShard {
       let dim: Var = (*dim as i64).into();
       self.output.0.push(&dim);
     }
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info("Tensor.Stack", "Stacks a sequence of tensors along a new axis.")]
+pub(crate) struct TensorStackShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param(
+        "Dim",
+        "The dimension along which to stack the tensors. Default is 0.",
+        [common_type::int, common_type::none]
+    )]
+  dim: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for TensorStackShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      dim: ParamVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorStackShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSORS_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let seq: SeqVar = input.try_into()?;
+
+    if seq.len() == 0 {
+      return Err("Input sequence is empty");
+    }
+
+    let tensors: Vec<&Tensor> = seq
+      .iter()
+      .map(|v| unsafe {
+        let wrapper = Var::from_ref_counted_object::<TensorWrapper>(&v, &*TENSOR_TYPE)?;
+        Ok(&(*wrapper).0)
+      })
+      .collect::<Result<_, &str>>()?;
+
+    let dim = if self.dim.is_none() {
+      0
+    } else {
+      let dim: usize = self.dim.get().try_into()?;
+      dim
+    };
+
+    let stacked = Tensor::stack(&tensors, dim).map_err(|e| {
+      shlog_error!("Failed to stack tensors: {}", e);
+      "Failed to stack tensors"
+    })?;
+
+    self.output = Var::new_ref_counted(TensorWrapper(stacked), &*TENSOR_TYPE).into();
+    Ok(Some(self.output.0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.Split",
+  "Splits a tensor into multiple tensors along a specified dimension."
+)]
+pub(crate) struct TensorSplitShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param(
+        "Dim",
+        "The dimension along which to split the tensor. Default is 0.",
+        [common_type::int, common_type::none]
+    )]
+  dim: ParamVar,
+
+  #[shard_param(
+        "Sections",
+        "The number of sections to split the tensor into.",
+        [common_type::int]
+    )]
+  sections: ParamVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorSplitShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      dim: ParamVar::default(),
+      sections: ParamVar::default(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorSplitShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &TENSORS_TYPE_VEC
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+
+    if self.sections.is_none() {
+      return Err("Sections parameter is required");
+    }
+
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+
+    let dim = if self.dim.is_none() {
+      0
+    } else {
+      let dim: usize = self.dim.get().try_into()?;
+      dim
+    };
+
+    let sections: usize = self.sections.get().try_into()?;
+
+    let split_tensors = tensor.0.chunk(sections, dim).map_err(|e| {
+      shlog_error!("Failed to chunk tensor: {}", e);
+      "Failed to chunk tensor"
+    })?;
+
+    self.output.0.clear();
+    for split_tensor in split_tensors {
+      let wrapped_tensor = Var::new_ref_counted(TensorWrapper(split_tensor), &*TENSOR_TYPE);
+      self.output.0.push(&wrapped_tensor);
+    }
+
     Ok(Some(self.output.0 .0))
   }
 }

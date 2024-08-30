@@ -16,41 +16,75 @@
     Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
   })
   [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0]
-  Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
+  Tensor(Shape: shape Type: TensorType::F32) = tensor1-test | Tensor.ToString | Log
+
+  tensor1-test | Tensor.Split(0 2) = tensors-split | ForEach({Tensor.ToString | Log("Split")})
+  ; and stack them back together
+  tensors-split | Tensor.Stack(0) | Tensor.ToString | Log
 
   When({@has-models | Is("true")} {
-    ; "data/gte-tiny-tokenizer.json"
-    "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
+    "data/gte-tiny-tokenizer.json"
+    ; "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
     FS.Read | ML.Tokenizer = tokenizer
     "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
     "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
 
-    ; "data/gte-tiny-config.json"
-    "data/GIST-all-MiniLM-L6-v2-config.json"
+    "data/gte-tiny-config.json"
+    ; "data/GIST-all-MiniLM-L6-v2-config.json"
     FS.Read | FromJson | ExpectTable = config | Log
-    ; "data/gte-tiny.safetensors"
-    "data/GIST-all-MiniLM-L6-v2.safetensors"
+    "data/gte-tiny.safetensors"
+    ; "data/GIST-all-MiniLM-L6-v2.safetensors"
     FS.Read(Bytes: true)
     ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: config) = bert-model
 
-    Repeat({
-      "I love pasta" | ML.Tokens(tokenizer AsTensor: true Format: TensorType::I64) = test1-tokens
-      Tensor.ZerosLike = test1-zeros | Tensor.Shape | RTake(1) | ToFloat = num-tokens1
-      [test1-tokens test1-zeros] | ML.Forward(Model: bert-model) | Take(0)
-      Tensor.Sum([1]) | Tensor.Div(num-tokens1) = emb-i
+    ; questions
+    [
+      "What is the capital of France?"
+      "What is the capital of Germany?"
+      "What is the capital of Italy?"
+      "What is the capital of Spain?"
+      "What is the capital of Portugal?"
+      "What is the capital of Poland?"
+      "What is the capital of Romania?"
+      "What is the capital of Bulgaria?"
+    ] = questions
 
-      "Do you like pizza?" | ML.Tokens(tokenizer AsTensor: true Format: TensorType::I64) = test2-tokens
-      Tensor.ZerosLike = test2-zeros | Tensor.Shape | RTake(1) | ToFloat = num-tokens2
-      [test2-tokens test2-zeros] | ML.Forward(Model: bert-model) | Take(0)
-      Tensor.Sum([1]) | Tensor.Div(num-tokens2) = emb-j
+    ; answers
+    [
+      "Paris"
+      "Berlin"
+      "Rome"
+      "Madrid"
+      "Lisbon"
+      "Warsaw"
+      "Bucharest"
+      "Sofia"
+    ] = answers
 
-      ; cosine similarity
-      emb-i | Tensor.Mul(emb-j) | Tensor.Sum | Tensor.ToFloat = sum-ij
-      emb-i | Tensor.Mul(emb-i) | Tensor.Sum | Tensor.ToFloat = sum-i2
-      emb-j | Tensor.Mul(emb-j) | Tensor.Sum | Tensor.ToFloat = sum-j2
-      sum-i2 | Mul(sum-j2) | Sqrt = sqrt-ij
-      sum-ij | Div(sqrt-ij) = cosine-similarity | Log
-    } Times: 10)
+    questions | ForEach({
+      = question
+      ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = question-tokens
+      Tensor.ZerosLike = question-zeros | Tensor.Shape | RTake(1) | ToFloat >= num-tokens
+      [question-tokens question-zeros] | ML.Forward(Model: bert-model) | Take(0)
+      Tensor.Sum([1]) | Tensor.Div(num-tokens) = question-emb
+
+      answers | ForEach({
+        = answer
+        ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = answer-tokens
+        Tensor.ZerosLike = answer-zeros | Tensor.Shape | RTake(1) | ToFloat > num-tokens
+        [answer-tokens answer-zeros] | ML.Forward(Model: bert-model) | Take(0)
+        Tensor.Sum([1]) | Tensor.Div(num-tokens) = answer-emb
+
+        ; cosine similarity
+        question-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-ij
+        question-emb | Tensor.Mul(question-emb) | Tensor.Sum | Tensor.ToFloat = sum-i2
+        answer-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-j2
+        sum-i2 | Mul(sum-j2) | Sqrt = sqrt-ij
+        sum-ij | Div(sqrt-ij) = cosine-similarity
+
+        [question answer cosine-similarity] | Log
+      })
+    })
   })
 })
 

@@ -96,4 +96,6 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorTransposeShard>();
   register_shard::<tensor::TensorToFloatShard>();
   register_shard::<tensor::ShapeShard>();
+  register_shard::<tensor::TensorSplitShard>();
+  register_shard::<tensor::TensorStackShard>();
 }
