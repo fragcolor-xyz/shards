@@ -15,7 +15,6 @@ use shards::types::SeqVar;
 use shards::types::TableVar;
 use shards::types::BYTES_TYPES;
 use shards::types::FRAG_CC;
-use shards::types::NONE_TYPES;
 use shards::types::{ClonedVar, Context, Type, Types, Var};
 
 use candle_core::Device;
@@ -93,7 +92,7 @@ impl Shard for ModelShard {
   }
 
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &MODEL_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
