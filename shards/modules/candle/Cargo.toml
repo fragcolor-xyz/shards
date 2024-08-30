@@ -1,0 +1,23 @@
+[package]
+name = "shards-ml"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+candle-core = "0.6.0"
+tokenizers = { version = "0.19.1", default-features = false, features = [
+  "onig",
+] }
+candle-transformers = "0.6.0"
+candle-nn = "0.6.0"
+serde_json = "1.0.102"
+

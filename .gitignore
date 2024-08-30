@@ -76,3 +76,10 @@ docs/shards_docs_merged.txt
 shards/langffi/Cargo.lock
 ai/training-set.jsonl
 .aider*
+shards/tests/data/bert-config.json
+*.safetensors
+*.onnx
+shards/tests/data/gte-tiny-config.json
+shards/tests/data/gte-tiny-tokenizer.json
+shards/tests/data/GIST-all-MiniLM-L6-v2-config.json
+shards/tests/data/GIST-all-MiniLM-L6-v2-tokenizer.json

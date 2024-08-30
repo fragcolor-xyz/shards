@@ -1,0 +1,92 @@
+@define(has-models false IgnoreRedefined: true)
+
+@mesh(main)
+
+@wire(ml-test {
+  [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [2 3] Type: TensorType::F32)
+  {Tensor.ToString | Log}
+  Tensor.Transpose
+  {Tensor.ToString | Log}
+  Tensor.Sum
+  {Tensor.ToString | Log}
+
+  [2 2 2] = shape
+  Maybe({; this one will fail
+    [1.0 2.0 3.0 4.0 5.0 6.0]
+    Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
+  })
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0]
+  Tensor(Shape: shape Type: TensorType::F32) = tensor1-test | Tensor.ToString | Log
+
+  tensor1-test | Tensor.Split(0 2) = tensors-split | ForEach({Tensor.ToString | Log("Split")})
+  ; and stack them back together
+  tensors-split | Tensor.Stack(0) | Tensor.ToString | Log
+
+  When({@has-models | Is("true")} {
+    "data/gte-tiny-tokenizer.json"
+    ; "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
+    FS.Read | ML.Tokenizer = tokenizer
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
+
+    "data/gte-tiny-config.json"
+    ; "data/GIST-all-MiniLM-L6-v2-config.json"
+    FS.Read | FromJson | ExpectTable = config | Log
+    "data/gte-tiny.safetensors"
+    ; "data/GIST-all-MiniLM-L6-v2.safetensors"
+    FS.Read(Bytes: true)
+    ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: config) = bert-model
+
+    ; questions
+    [
+      "What is the capital of France?"
+      "What is the capital of Germany?"
+      "What is the capital of Italy?"
+      "What is the capital of Spain?"
+      "What is the capital of Portugal?"
+      "What is the capital of Poland?"
+      "What is the capital of Romania?"
+      "What is the capital of Bulgaria?"
+    ] = questions
+
+    ; answers
+    [
+      "Paris"
+      "Berlin"
+      "Rome"
+      "Madrid"
+      "Lisbon"
+      "Warsaw"
+      "Bucharest"
+      "Sofia"
+    ] = answers
+
+    questions | ForEach({
+      = question
+      ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = question-tokens
+      Tensor.ZerosLike = question-zeros | Tensor.Shape | RTake(1) | ToFloat >= num-tokens
+      [question-tokens question-zeros] | ML.Forward(Model: bert-model) | Take(0)
+      Tensor.Sum([1]) | Tensor.Div(num-tokens) = question-emb
+
+      answers | ForEach({
+        = answer
+        ML.Tokens(Tokenizer: tokenizer AsTensor: true Format: TensorType::I64) = answer-tokens
+        Tensor.ZerosLike = answer-zeros | Tensor.Shape | RTake(1) | ToFloat > num-tokens
+        [answer-tokens answer-zeros] | ML.Forward(Model: bert-model) | Take(0)
+        Tensor.Sum([1]) | Tensor.Div(num-tokens) = answer-emb
+
+        ; cosine similarity
+        question-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-ij
+        question-emb | Tensor.Mul(question-emb) | Tensor.Sum | Tensor.ToFloat = sum-i2
+        answer-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-j2
+        sum-i2 | Mul(sum-j2) | Sqrt = sqrt-ij
+        sum-ij | Div(sqrt-ij) = cosine-similarity
+
+        [question answer cosine-similarity] | Log
+      })
+    })
+  })
+})
+
+@schedule(main ml-test)
+@run(main) | Assert.Is(true)
