@@ -147,7 +147,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // we can add early in this case!
   // useful for Resume/Start
   if (passthrough) {
-    auto [_, done] = composeCtx->visitedWires.emplace(wire.get(), data.inputType);
+    auto [_, done] = composeCtx->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
@@ -205,6 +205,9 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   // write output type
   SHTypeInfo wireOutput = wire->outputType;
+  composeCtx->visitedWires.insert_or_assign(wire.get(), wireOutput);
+  SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(), *wire->inputType,
+              wire->outputType);
 
 #if SH_CORO_NEED_STACK_MEM
   // Propagate stack size
@@ -220,17 +223,6 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
       outputType = CoreInfo::AnyType; // unpredictable
     else
       outputType = data.inputType;
-  }
-
-  if (!passthrough && mode != Stepped) {
-    shassert(data.privateContext && "Composition context should be set");
-    auto &composeCtx = *reinterpret_cast<CompositionContext *>(data.privateContext);
-
-    auto [_, done] = composeCtx.visitedWires.emplace(wire.get(), outputType);
-    if (done) {
-      SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
-                  *wire->inputType, wire->outputType);
-    }
   }
 
   return outputType;
