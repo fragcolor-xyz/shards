@@ -84,6 +84,7 @@ if(APPLE)
     "-framework IOKit"
     "-framework QuartzCore"
     "-framework Metal"
+    "-framework MetalPerformanceShaders"
     "-framework Security"
     "-framework CoreHaptics"
     "-framework GameController"

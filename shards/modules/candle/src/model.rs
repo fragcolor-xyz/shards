@@ -19,6 +19,7 @@ use shards::types::{ClonedVar, Context, Type, Types, Var};
 
 use candle_core::Device;
 
+use crate::get_global_device;
 use crate::TensorWrapper;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_TYPE;
@@ -70,6 +71,9 @@ pub(crate) struct ModelShard {
   )]
   configuration: ParamVar,
 
+  #[shard_param("GPU", "Whether to use the GPU (if available).", [common_type::bool])]
+  gpu: ClonedVar,
+
   output: ClonedVar,
 }
 
@@ -80,6 +84,7 @@ impl Default for ModelShard {
       model: ClonedVar::default(),
       format: ClonedVar::default(),
       configuration: ParamVar::default(),
+      gpu: false.into(),
       output: ClonedVar::default(),
     }
   }
@@ -103,6 +108,7 @@ impl Shard for ModelShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -133,8 +139,14 @@ impl Shard for ModelShard {
             return Err("Configuration is required");
           }
 
-          let vb = candle_nn::VarBuilder::from_slice_safetensors(data, DTYPE, &Device::Cpu)
-            .map_err(|e| {
+          let device = if self.gpu.as_ref().try_into()? {
+            get_global_device()
+          } else {
+            &Device::Cpu
+          };
+
+          let vb =
+            candle_nn::VarBuilder::from_slice_safetensors(data, DTYPE, device).map_err(|e| {
               shlog_error!("Failed to load model: {}", e);
               "Failed to load model"
             })?;
@@ -313,6 +325,7 @@ impl Shard for ForwardShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.outputs = AutoSeqVar::new();
     Ok(())
   }
 

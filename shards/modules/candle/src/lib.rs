@@ -5,11 +5,33 @@ use shards::core::{register_enum, register_shard};
 use shards::types::{Type, FRAG_CC};
 use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
-use candle_core::{DType, Tensor};
+use candle_core::{DType, Device, Tensor};
 
 mod model;
 mod tensor;
 mod tokenizer;
+
+use once_cell::sync::OnceCell;
+
+static GLOBAL_DEVICE: OnceCell<Device> = OnceCell::new();
+
+pub fn get_global_device() -> &'static Device {
+  GLOBAL_DEVICE.get_or_init(|| {
+    #[cfg(any(
+      target_os = "macos",
+      target_os = "ios",
+      target_os = "visionos",
+      target_os = "tvos"
+    ))]
+    {
+      Device::new_metal(0).unwrap_or(Device::Cpu)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+      Device::cuda_if_available(0).unwrap_or(Device::Cpu)
+    }
+  })
+}
 
 struct TensorWrapper(Tensor);
 ref_counted_object_type_impl!(TensorWrapper);
@@ -98,4 +120,5 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::ShapeShard>();
   register_shard::<tensor::TensorSplitShard>();
   register_shard::<tensor::TensorStackShard>();
+  register_shard::<tensor::TensorSliceShard>();
 }

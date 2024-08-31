@@ -8,7 +8,7 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 use std::str::FromStr;
 use tokenizers::Tokenizer;
 
-use crate::{TensorType, TensorWrapper, TENSORTYPE_TYPE, TENSOR_TYPE};
+use crate::{get_global_device, TensorType, TensorWrapper, TENSORTYPE_TYPE, TENSOR_TYPE};
 
 struct TokenizerWrapper(Tokenizer);
 ref_counted_object_type_impl!(TokenizerWrapper);
@@ -52,13 +52,12 @@ impl Shard for MLTokenizer {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -96,6 +95,9 @@ pub(crate) struct TokensShard {
   #[shard_param("Format", "The format of the output tensor. If As Tensor is true.", [*TENSORTYPE_TYPE])]
   format: ClonedVar,
 
+  #[shard_param("GPU", "If true, the output tensor will be on the GPU (if ).", [common_type::bool])]
+  gpu: ClonedVar,
+
   output_seq: AutoSeqVar,
   output_tensor: ClonedVar,
 }
@@ -110,6 +112,7 @@ impl Default for TokensShard {
       output_seq: AutoSeqVar::new(),
       output_tensor: ClonedVar::default(),
       format: TensorType::U32.into(),
+      gpu: false.into(),
     }
   }
 }
@@ -126,13 +129,13 @@ impl Shard for TokensShard {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
+    self.output_seq = AutoSeqVar::new();
+    self.output_tensor = ClonedVar::default();
     Ok(())
   }
 
@@ -181,9 +184,13 @@ impl Shard for TokensShard {
     let as_tensor: bool = self.as_tensor.as_ref().try_into()?;
     if as_tensor {
       let format: TensorType = self.format.0.as_ref().try_into()?;
-      let device = Device::Cpu; // todo add gpu support
+      let device = if self.gpu.as_ref().try_into()? {
+        get_global_device()
+      } else {
+        &Device::Cpu
+      };
       let token_ids = match format {
-        TensorType::U32 => Tensor::new(&tokens[..], &device)
+        TensorType::U32 => Tensor::new(&tokens[..], device)
           .map_err(|e| {
             shlog_error!("Failed to create tensor: {:?}", e);
             "Failed to create tensor"
@@ -195,7 +202,7 @@ impl Shard for TokensShard {
           }),
         TensorType::I64 => {
           let tokens: Vec<i64> = tokens.into_iter().map(|token| token as i64).collect();
-          Tensor::new(&tokens[..], &device)
+          Tensor::new(&tokens[..], device)
             .map_err(|e| {
               shlog_error!("Failed to create tensor: {:?}", e);
               "Failed to create tensor"
