@@ -189,6 +189,11 @@ function(shards_generate_rust_union TARGET_NAME)
     set(CARGO_CRATE_NAME ${TARGET_NAME})
 
     file(COPY_FILE ${LIB_RS_TMP} ${LIB_RS} ONLY_IF_DIFFERENT)
+
+    if(VISIONOS)
+      string(APPEND CARGO_OBJC_DEP "objc = { git = \"https://github.com/shards-lang/rust-objc.git\", rev = \"b2d834c95e38d89c39d42eea3587b584596f0848\" }")
+    endif()
+
     configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Cargo.toml.in" ${CARGO_TOML})
 
     # Add the rust library
