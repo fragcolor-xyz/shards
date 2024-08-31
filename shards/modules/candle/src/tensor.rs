@@ -6,6 +6,7 @@ use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::FLOAT_TYPES;
+use shards::types::SEQ_OF_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_OR_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
@@ -1358,5 +1359,183 @@ impl Shard for TensorSliceShard {
 
     self.output = Var::new_ref_counted(TensorWrapper(sliced), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
+  }
+}
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ToFloats",
+  "Flattens a tensor into a Shards sequence of floats."
+)]
+pub(crate) struct TensorToFloatsShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorToFloatsShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorToFloatsShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+
+    self.output.0.clear();
+
+    let flattened = tensor.0.flatten_all().map_err(|e| {
+      shlog_error!("Failed to flatten tensor: {}", e);
+      "Failed to flatten tensor"
+    })?;
+    let data = match tensor.0.dtype() {
+      candle_core::DType::F32 => {
+        let vec = flattened.to_vec1::<f32>().map_err(|e| {
+          shlog_error!("Failed to convert F32 tensor to vec: {}", e);
+          "Failed to convert F32 tensor to vec"
+        })?;
+        vec.into_iter().map(|v| v as f64).collect::<Vec<f64>>()
+      }
+      candle_core::DType::F64 => flattened.to_vec1::<f64>().map_err(|e| {
+        shlog_error!("Failed to convert F64 tensor to vec: {}", e);
+        "Failed to convert F64 tensor to vec"
+      })?,
+      _ => return Err("Unsupported tensor dtype for conversion to floats"),
+    };
+    for value in data {
+      self.output.0.push(&value.into());
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ToInts",
+  "Flattens a tensor into a Shards sequence of integers."
+)]
+pub(crate) struct TensorToIntsShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorToIntsShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorToIntsShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_INT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+
+    self.output.0.clear();
+
+    match tensor.0.dtype() {
+      candle_core::DType::I64 => {
+        let flattened = tensor.0.flatten_all().map_err(|e| {
+          shlog_error!("Failed to flatten tensor: {}", e);
+          "Failed to flatten tensor"
+        })?;
+        let data = flattened.to_vec1::<i64>().map_err(|e| {
+          shlog_error!("Failed to convert tensor to vec: {}", e);
+          "Failed to convert tensor to vec"
+        })?;
+        for &value in &data {
+          self.output.0.push(&value.into());
+        }
+      }
+      candle_core::DType::U32 => {
+        let flattened = tensor.0.flatten_all().map_err(|e| {
+          shlog_error!("Failed to flatten tensor: {}", e);
+          "Failed to flatten tensor"
+        })?;
+        let data = flattened.to_vec1::<u32>().map_err(|e| {
+          shlog_error!("Failed to convert tensor to vec: {}", e);
+          "Failed to convert tensor to vec"
+        })?;
+        for &value in &data {
+          self.output.0.push(&(value as i64).into());
+        }
+      }
+      candle_core::DType::U8 => {
+        let flattened = tensor.0.flatten_all().map_err(|e| {
+          shlog_error!("Failed to flatten tensor: {}", e);
+          "Failed to flatten tensor"
+        })?;
+        let data = flattened.to_vec1::<u8>().map_err(|e| {
+          shlog_error!("Failed to convert tensor to vec: {}", e);
+          "Failed to convert tensor to vec"
+        })?;
+        for &value in &data {
+          self.output.0.push(&(value as i64).into());
+        }
+      }
+      _ => return Err("Unsupported tensor dtype for conversion to integers"),
+    }
+
+    Ok(Some(self.output.0 .0))
   }
 }
