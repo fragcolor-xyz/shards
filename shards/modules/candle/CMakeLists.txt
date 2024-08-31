@@ -1,5 +1,10 @@
 if(APPLE)
   list(APPEND ML_RUST_FEATURES "metal")
+  list(APPEND ML_RUST_FEATURES "accelerate")
+endif()
+
+if(WIN32 OR DESKTOP_LINUX)
+  list(APPEND ML_RUST_FEATURES "cuda")
 endif()
 
 add_rust_library(NAME shards-ml

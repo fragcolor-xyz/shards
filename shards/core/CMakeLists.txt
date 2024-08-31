@@ -83,6 +83,7 @@ if(APPLE)
     "-framework CoreVideo"
     "-framework IOKit"
     "-framework QuartzCore"
+    "-framework Accelerate"
     "-framework Metal"
     "-framework MetalPerformanceShaders"
     "-framework Security"

@@ -2,6 +2,7 @@
 @define(ml/embeddings/max-tokens 512)
 @define(ml/embeddings/overlap 64)
 @define(ml/embeddings/chunk-size #(512 | Sub(64)))
+@define(ml/embeddings/use-gpu true IgnoreRedefined: true)
 
 @wire(ml/download-dependencies {
   none | Http.Get(URL: @ml/manifest/url) | FromJson | ExpectTable = manifest
@@ -52,7 +53,7 @@
     Model: MLModels::Bert
     Format: MLFormats::SafeTensor
     Configuration: ml/embeddings/config
-    GPU: true
+    GPU: @ml/embeddings/use-gpu
   )) = ml/embeddings/model
 
   {
@@ -70,7 +71,7 @@
     loaded | Take("model") = ml/embeddings/model
   })
 
-  ML.Tokens(ml/embeddings/tokenizer AsTensor: true GPU: true) = tokens
+  ML.Tokens(ml/embeddings/tokenizer AsTensor: true GPU: @ml/embeddings/use-gpu) = tokens
   Tensor.Shape | RTake(0) | If(IsMore(@ml/embeddings/max-tokens) {
       = num-tokens
       0 >= processed
