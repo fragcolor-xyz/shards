@@ -138,19 +138,22 @@ template <SHType SHTYPE, SHType SHOTHER> struct ToSeq {
     } else if constexpr (SHTYPE == SHType::Bytes) {
       return SHCCSTR("Returns the input bytes represented as a sequence of integers.");
     } else {
-      return SHCCSTR("The output is a sequence of the specified type created from the input bytes or image. Each byte or pixel is "
-                   "converted to an element of the output sequence.");
+      return SHCCSTR(
+          "The output is a sequence of the specified type created from the input bytes or image. Each byte or pixel is "
+          "converted to an element of the output sequence.");
     }
   }
 
   static SHOptionalString help() {
     if constexpr (SHTYPE == SHType::Image) {
-      return SHCCSTR("Convert an image into a sequence of floats. Each pixel in the image is converted to a float value between 0 and 1 and stored in the sequence.");
+      return SHCCSTR("Convert an image into a sequence of floats. Each pixel in the image is converted to a float value between "
+                     "0 and 1 and stored in the sequence.");
     } else if constexpr (SHTYPE == SHType::Bytes) {
-      return SHCCSTR("Convert bytes into a sequence of integers. Each byte is interpreted as an integer and stored in the sequence.");
+      return SHCCSTR(
+          "Convert bytes into a sequence of integers. Each byte is interpreted as an integer and stored in the sequence.");
     } else {
       return SHCCSTR("Converts a sequence of bytes or an image into a sequence of another specified type. Each byte or pixel in "
-                   "the input is interpreted and converted to an element of the output sequence of the specified type.");
+                     "the input is interpreted and converted to an element of the output sequence of the specified type.");
     }
   }
 
@@ -176,14 +179,11 @@ template <SHType SHTYPE> struct ToString1 {
 
   static SHTypesInfo inputTypes() { return _inputType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR(
-        "Accepts a byte sequence as input. Each byte in the sequence is interpreted as a character.");
+    return SHCCSTR("Accepts a byte sequence as input. Each byte in the sequence is interpreted as a character.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The output is a string created from the input sequence of bytes.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output is a string created from the input sequence of bytes."); }
 
   static SHOptionalString help() {
     return SHCCSTR("Converts a sequence of bytes into a string. Each byte in the sequence is interpreted as a character in the "
@@ -210,13 +210,12 @@ template <SHType FROMTYPE> struct ToImage {
 
   static SHTypesInfo inputTypes() { return _inputType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Takes a sequence of floats as input and converts it into an image. The sequence length must be equal to Width x Height x Channels.");
+    return SHCCSTR("Takes a sequence of floats as input and converts it into an image. The sequence length must be equal to "
+                   "Width x Height x Channels.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns and image.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns and image."); }
 
   static SHOptionalString help() {
     return SHCCSTR("Converts a sequence of floats into an image. The image dimensions (width and height) and the "
@@ -565,7 +564,8 @@ template <SHType ET> struct ExpectX {
       return SHCCSTR("Checks the input value if it is none. The shard returns the input value unchanged if it is of the "
                      "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else {
-      return SHCCSTR("Checks the input value if it is of the type specified. The shard returns the input value unchanged if it is of the appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
+      return SHCCSTR("Checks the input value if it is of the type specified. The shard returns the input value unchanged if it "
+                     "is of the appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     }
   }
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -742,9 +742,7 @@ struct Expect {
   uint64_t _expectedTypeHash{0};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpAnyType;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The input value unchanged if it matches the expected type."); }
@@ -829,9 +827,9 @@ struct ExpectLike {
 
   void destroy() { clearDerived(); }
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void warmup(SHContext *context) { _typeOf.warmup(context); }
 
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { _typeOf.cleanup(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     bool haveOutputOf = _outputOf.shards().len > 0;
@@ -951,49 +949,65 @@ template <SHType ET> struct IsX {
 
   static SHOptionalString help() {
     if constexpr (ET == SHType::Int) {
-      return SHCCSTR("Checks the input value if it is of type Int. The shard will return true if the input value is of type Int, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is of type Int. The shard will return true if the input value is of type Int, "
+                     "and false otherwise.");
     } else if constexpr (ET == SHType::Int2) {
-      return SHCCSTR("Checks the input value if it is a vector of 2 Int elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector of 2 Int elements. The shard will return true if the input is of "
+                     "the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Int3) {
-      return SHCCSTR("Checks the input value if it is a vector of 3 Int elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector of 3 Int elements. The shard will return true if the input is of "
+                     "the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Int4) {
-      return SHCCSTR("Checks the input value if it is a vector of 4 Int elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector of 4 Int elements. The shard will return true if the input is of "
+                     "the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Int8) {
-      return SHCCSTR("Checks the input value if it is a vector of 8 Int elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector of 8 Int elements. The shard will return true if the input is of "
+                     "the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Int16) {
-      return SHCCSTR("Checks the input value if it is a vector of 16 Int elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector of 16 Int elements. The shard will return true if the input is of "
+                     "the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Color) {
-      return SHCCSTR(
-          "Checks the input value if it is vector of four color channels (RGBA). The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is vector of four color channels (RGBA). The shard will return true if the "
+                     "input is of the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Float) {
-      return SHCCSTR("Checks the input value if it is of type Float. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is of type Float. The shard will return true if the input is of the "
+                     "appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Float2) {
-      return SHCCSTR(
-          "Checks the input value if it is a vector with two Float elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector with two Float elements. The shard will return true if the input "
+                     "is of the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Float3) {
-      return SHCCSTR(
-          "Checks the input value if it is a vector with three Float elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector with three Float elements. The shard will return true if the "
+                     "input is of the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Float4) {
-      return SHCCSTR(
-          "Checks the input value if it is a vector with float Float elements. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a vector with float Float elements. The shard will return true if the "
+                     "input is of the appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Bytes) {
-      return SHCCSTR("Checks the input value if it is of type Bytes. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is of type Bytes. The shard will return true if the input is of the "
+                     "appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::Bool) {
-      return SHCCSTR("Checks the input value if it is a Boolean. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a Boolean. The shard will return true if the input is of the appropriate "
+                     "type, and false otherwise.");
     } else if constexpr (ET == SHType::Image) {
-      return SHCCSTR("Checks the input value if it is an Image file. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is an Image file. The shard will return true if the input is of the "
+                     "appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::String) {
-      return SHCCSTR("Checks the input value if it is a String. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a String. The shard will return true if the input is of the appropriate "
+                     "type, and false otherwise.");
     } else if constexpr (ET == SHType::Wire) {
-      return SHCCSTR("Checks the input value if it is a Wire. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a Wire. The shard will return true if the input is of the appropriate "
+                     "type, and false otherwise.");
     } else if constexpr (ET == SHType::Table) {
-      return SHCCSTR("Checks the input value if it is a Table. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is a Table. The shard will return true if the input is of the appropriate "
+                     "type, and false otherwise.");
     } else if constexpr (ET == SHType::Audio) {
-      return SHCCSTR("Checks the input value if it is an Audio file. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is an Audio file. The shard will return true if the input is of the "
+                     "appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::None) {
-      return SHCCSTR("Checks the input value if it is none. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is none. The shard will return true if the input is of the appropriate type, "
+                     "and false otherwise.");
     } else {
-      return SHCCSTR("Checks the input value if it is of the type specified. The shard will return true if the input is of the appropriate type, and false otherwise.");
+      return SHCCSTR("Checks the input value if it is of the type specified. The shard will return true if the input is of the "
+                     "appropriate type, and false otherwise.");
     }
   }
 
@@ -1061,14 +1075,15 @@ struct HexToBytes {
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR(
-        "Accepts a hexadecimal string as input. The input may optionally start with '0x' or '0X'.");
+    return SHCCSTR("Accepts a hexadecimal string as input. The input may optionally start with '0x' or '0X'.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The decoded bytes sequence from the input hexadecimal string."); }
 
-  static SHOptionalString help() { return SHCCSTR("Converts a hexadecimal string to its original bytes sequence representation."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a hexadecimal string to its original bytes sequence representation.");
+  }
 
   int convert(const char *hex_str, size_t hex_str_len, unsigned char *byte_array, size_t byte_array_max) {
     size_t i = 0, j = 0;
