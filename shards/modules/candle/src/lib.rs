@@ -17,6 +17,8 @@ static GLOBAL_DEVICE: OnceCell<Device> = OnceCell::new();
 
 pub fn get_global_device() -> &'static Device {
   GLOBAL_DEVICE.get_or_init(|| {
+    let mut device = Device::Cpu;
+
     #[cfg(any(
       target_os = "macos",
       target_os = "ios",
@@ -24,12 +26,15 @@ pub fn get_global_device() -> &'static Device {
       target_os = "tvos"
     ))]
     {
-      Device::new_metal(0).unwrap_or(Device::Cpu)
+      device = Device::new_metal(0).unwrap_or(Device::Cpu);
     }
-    #[cfg(not(target_os = "macos"))]
+
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
-      Device::cuda_if_available(0).unwrap_or(Device::Cpu)
+      device = Device::cuda_if_available(0).unwrap_or(Device::Cpu);
     }
+
+    device
   })
 }
 
