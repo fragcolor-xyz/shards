@@ -1,0 +1,108 @@
+@define(ml/manifest/url "https://develop.fragcolor.com/ml-embeddings-manifest.json")
+@define(ml/embeddings/max-tokens 512)
+@define(ml/embeddings/overlap 64)
+@define(ml/embeddings/chunk-size #(512 | Sub(64)))
+@define(ml/embeddings/use-gpu true IgnoreRedefined: true)
+
+@wire(ml/download-dependencies {
+  none | Http.Get(URL: @ml/manifest/url) | FromJson | ExpectTable = manifest
+  manifest:version | ExpectString = version
+  "shards.ml.embeddings.version.txt" | If(FS.IsFile {
+      FS.Read | IsNot(version)
+    } {
+      true
+    }
+  ) = need-update
+
+  When({need-update} {
+    manifest:tokenizer | ExpectString = tokenizer-url
+    manifest:model | ExpectString = model-url
+    manifest:config | ExpectString = config-url
+
+    [tokenizer-url model-url config-url]
+    TryMany({
+      = url
+      none | Http.Get(URL: url Bytes: true Timeout: 120)
+    })
+    {
+      Take(0) = tokenizer-bytes
+      "shards.ml.embeddings.tokenizer.bin" | FS.Write(tokenizer-bytes Overwrite: true)
+    }
+    {
+      Take(1) = model-bytes
+      "shards.ml.embeddings.model.bin" | FS.Write(model-bytes Overwrite: true)
+    }
+    {
+      Take(2) = config-bytes
+      "shards.ml.embeddings.config.bin" | FS.Write(config-bytes Overwrite: true)
+    }
+
+    "shards.ml.embeddings.version.txt" | FS.Write(version Overwrite: true)
+  })
+})
+
+@wire(ml/load {
+  Once({
+    Do(ml/download-dependencies)
+  })
+
+  "shards.ml.embeddings.tokenizer.bin" | FS.Read | Await(ML.Tokenizer) = ml/embeddings/tokenizer
+  "shards.ml.embeddings.config.bin" | FS.Read | Await(FromJson) | ExpectTable = ml/embeddings/config
+  "shards.ml.embeddings.model.bin" | FS.Read(Bytes: true)
+  Await(ML.Model(
+    Model: MLModels::Bert
+    Format: MLFormats::SafeTensor
+    Configuration: ml/embeddings/config
+    GPU: @ml/embeddings/use-gpu
+  )) = ml/embeddings/model
+
+  {
+    tokenizer: ml/embeddings/tokenizer
+    model: ml/embeddings/model
+  }
+})
+
+@wire(ml/embed {
+  Once({
+    Msg("Loading model...")
+    Detach(ml/load) ; this allows us to Stop/Cleanup md/load once everything is loaded
+    Wait(ml/load) = loaded
+    loaded | Take("tokenizer") = ml/embeddings/tokenizer
+    loaded | Take("model") = ml/embeddings/model
+  })
+
+  ML.Tokens(ml/embeddings/tokenizer AsTensor: true GPU: @ml/embeddings/use-gpu) = tokens
+  Tensor.Shape | RTake(0) | If(IsMore(@ml/embeddings/max-tokens) {
+      = num-tokens
+      0 >= processed
+      Sequence(tensors Type: @type([Tensor]))
+      Repeat({
+        tokens | Tensor.Slice(
+          Dim: 1
+          Start: processed
+          End: (processed | Add(@ml/embeddings/max-tokens))
+        ) = tokens-chunk
+        ; notice we advance by chunk-size, not max-tokens, to leave an overlap
+        processed | Add(@ml/embeddings/chunk-size) > processed
+
+        tokens-chunk | Tensor.ZerosLike = tokens-zeros
+        [tokens-chunk tokens-zeros] | ML.Forward(Model: ml/embeddings/model) | Take(0) >> tensors
+      } Until: {processed | IsMoreEqual(num-tokens)})
+      tensors
+    } {
+      tokens | Tensor.ZerosLike = tokens-zeros
+      [tokens tokens-zeros] | ML.Forward(Model: ml/embeddings/model)
+    }
+  )
+})
+
+@wire(_test {
+  "Hello world!" | Do(ml/embed) | ForEach({
+    Tensor.ToString | Log
+  })
+  @read("../../readme.md") | Do(ml/embed) | ForEach({
+    Tensor.ToString | Log
+  })
+})
+
+Do(_test)

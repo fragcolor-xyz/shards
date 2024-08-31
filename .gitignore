@@ -79,7 +79,9 @@ ai/training-set.jsonl
 shards/tests/data/bert-config.json
 *.safetensors
 *.onnx
-shards/tests/data/gte-tiny-config.json
-shards/tests/data/gte-tiny-tokenizer.json
-shards/tests/data/GIST-all-MiniLM-L6-v2-config.json
-shards/tests/data/GIST-all-MiniLM-L6-v2-tokenizer.json
+gte-tiny-config.json
+gte-tiny-tokenizer.json
+GIST-all-MiniLM-L6-v2-config.json
+GIST-all-MiniLM-L6-v2-tokenizer.json
+ml-embeddings-manifest.json
+shards.ml.embeddings.version.txt

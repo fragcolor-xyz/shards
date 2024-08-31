@@ -41,7 +41,7 @@ add_rust_library(
 )
 
 # Option to include SQLite vector extension
-option(WITH_SQLITE_VEC "Include SQLite vector extension" OFF)
+option(WITH_SQLITE_VEC "Include SQLite vector extension" ON)
 
 if(WITH_SQLITE_VEC)
   # Create SQLite vector extension library

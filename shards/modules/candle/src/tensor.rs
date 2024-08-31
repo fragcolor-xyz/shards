@@ -14,6 +14,7 @@ use shards::{SHType_Float as SHTYPE_FLOAT, SHType_Int as SHTYPE_INT};
 
 use candle_core::{Device, Shape, Tensor};
 
+use crate::get_global_device;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_VAR_TYPE;
 use crate::{TensorType, TensorWrapper, TENSORTYPE_TYPES, TENSOR_TYPE, TENSOR_TYPE_VEC};
@@ -53,6 +54,7 @@ impl Shard for MLTensorToStringShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -94,12 +96,13 @@ pub(crate) struct TensorShard {
   )]
   dtype: ClonedVar,
 
-  // #[shard_param(
-  //   "GPU",
-  //   "The GPU ID (Supports only CUDA and Metal) to use. If not provided, the CPU will be used.",
-  //   [common_type::none, common_type::int]
-  // )]
-  // device: ClonedVar,
+  #[shard_param(
+    "GPU",
+    "If true, the tensor will be created on the GPU (if available).",
+    [common_type::bool]
+  )]
+  device: ClonedVar,
+
   shape_candle: Option<Shape>,
 
   ints_cache: Vec<i64>,
@@ -115,6 +118,7 @@ impl Default for TensorShard {
       required: ExposedTypes::new(),
       shape: ParamVar::default(),
       dtype: TensorType::F32.into(),
+      device: false.into(),
       shape_candle: None,
       output: ClonedVar::default(),
       ints_cache: vec![],
@@ -141,6 +145,7 @@ impl Shard for TensorShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -215,10 +220,15 @@ impl Shard for TensorShard {
           .collect::<Vec<_>>();
         self.shape_candle = Some(Shape::from(shape));
       }
-      self.shape_candle.as_ref().unwrap()
+      self.shape_candle.as_ref().ok_or("Shape is required")?
     };
 
-    let device = Device::Cpu;
+    let gpu: bool = self.device.0.as_ref().try_into()?;
+    let device = if gpu {
+      get_global_device()
+    } else {
+      &Device::Cpu
+    };
 
     let tensor_type: TensorType = self.dtype.0.as_ref().try_into().unwrap();
 
@@ -291,7 +301,7 @@ impl Shard for TensorZerosLikeShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -351,6 +361,7 @@ impl Shard for TensorMulShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -418,6 +429,7 @@ impl Shard for TensorAddShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -485,6 +497,7 @@ impl Shard for TensorSubShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -552,6 +565,7 @@ impl Shard for TensorDivShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -632,6 +646,7 @@ impl Shard for TensorPowShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -699,6 +714,7 @@ impl Shard for TensorMatMulShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -762,6 +778,7 @@ impl Shard for TensorTransposeShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -825,6 +842,7 @@ impl Shard for TensorReshapeShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -902,6 +920,7 @@ impl Shard for TensorSumShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -1039,6 +1058,7 @@ impl Shard for ShapeShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
     Ok(())
   }
 
@@ -1069,7 +1089,7 @@ pub(crate) struct TensorStackShard {
   #[shard_param(
         "Dim",
         "The dimension along which to stack the tensors. Default is 0.",
-        [common_type::int, common_type::none]
+        [common_type::int, common_type::int_var, common_type::none]
     )]
   dim: ParamVar,
 
@@ -1080,7 +1100,7 @@ impl Default for TensorStackShard {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
-      dim: ParamVar::default(),
+      dim: ParamVar::new(0.into()),
       output: ClonedVar::default(),
     }
   }
@@ -1103,6 +1123,7 @@ impl Shard for TensorStackShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
     Ok(())
   }
 
@@ -1155,16 +1176,16 @@ pub(crate) struct TensorSplitShard {
   #[shard_param(
         "Dim",
         "The dimension along which to split the tensor. Default is 0.",
-        [common_type::int, common_type::none]
+        [common_type::int, common_type::int_var, common_type::none]
     )]
   dim: ParamVar,
 
   #[shard_param(
-        "Sections",
-        "The number of sections to split the tensor into.",
-        [common_type::int]
+        "Size",
+        "The size of the sections to split the tensor into.",
+        [common_type::int, common_type::int_var]
     )]
-  sections: ParamVar,
+  size: ParamVar,
 
   output: AutoSeqVar,
 }
@@ -1173,8 +1194,8 @@ impl Default for TensorSplitShard {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
-      dim: ParamVar::default(),
-      sections: ParamVar::default(),
+      dim: ParamVar::new(0.into()),
+      size: ParamVar::default(),
       output: AutoSeqVar::new(),
     }
   }
@@ -1197,13 +1218,14 @@ impl Shard for TensorSplitShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
     Ok(())
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
 
-    if self.sections.is_none() {
+    if self.size.is_none() {
       return Err("Sections parameter is required");
     }
 
@@ -1221,9 +1243,9 @@ impl Shard for TensorSplitShard {
       dim
     };
 
-    let sections: usize = self.sections.get().try_into()?;
+    let size: usize = self.size.get().try_into()?;
 
-    let split_tensors = tensor.0.chunk(sections, dim).map_err(|e| {
+    let split_tensors = tensor.0.chunk(size, dim).map_err(|e| {
       shlog_error!("Failed to chunk tensor: {}", e);
       "Failed to chunk tensor"
     })?;
@@ -1235,5 +1257,106 @@ impl Shard for TensorSplitShard {
     }
 
     Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info("Tensor.Slice", "Slices a tensor along a specified dimension.")]
+pub(crate) struct TensorSliceShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param(
+        "Dim",
+        "The dimension along which to slice the tensor.",
+        [common_type::int, common_type::int_var]
+    )]
+  dim: ParamVar,
+
+  #[shard_param(
+        "Start",
+        "The starting index of the slice.",
+        [common_type::int, common_type::int_var]
+    )]
+  start: ParamVar,
+
+  #[shard_param(
+        "End",
+        "The ending index of the slice (exclusive).",
+        [common_type::int, common_type::int_var]
+    )]
+  end: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for TensorSliceShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      dim: ParamVar::default(),
+      start: ParamVar::default(),
+      end: ParamVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorSliceShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+
+    if self.dim.is_none() || self.start.is_none() || self.end.is_none() {
+      return Err("Dim, Start, and End parameters are required");
+    }
+
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor =
+      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+
+    let dim: usize = self.dim.get().try_into()?;
+    let start: usize = self.start.get().try_into()?;
+    let end: usize = self.end.get().try_into()?;
+
+    // Check for overflow
+    let mut len = end.checked_sub(start).ok_or("Slice end is before start")?;
+
+    // Ensure the slice is within bounds
+    let dim_size = tensor.0.dim(dim).map_err(|e| {
+      shlog_error!("Failed to get dimension size: {}", e);
+      "Failed to get dimension size"
+    })?;
+    len = len.min(dim_size - start);
+
+    let sliced = tensor.0.narrow(dim, start, len).map_err(|e| {
+      shlog_error!("Failed to slice tensor: {}", e);
+      "Failed to slice tensor"
+    })?;
+
+    self.output = Var::new_ref_counted(TensorWrapper(sliced), &*TENSOR_TYPE).into();
+    Ok(Some(self.output.0))
   }
 }
