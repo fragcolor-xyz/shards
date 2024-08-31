@@ -126,6 +126,9 @@ jobs:
 
           echo "Running Stack overflow test"
           build/shards new shards/tests/fib.shs
+
+          echo "Running ML embeddings test"
+          build/shards new lib/ml/test.shs
       - name: Test Physics
         env:
           RUST_BACKTRACE: full

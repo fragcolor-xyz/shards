@@ -1,0 +1,16 @@
+@include("embeddings.shs" Once: true)
+
+@wire(_test {
+  "Hello world!" | Do(ml/embed) | ForEach({
+    Tensor.ToString | Log
+  })
+  @read("../../readme.md") | Do(ml/embed) | ForEach({
+    {
+      Tensor.ToFloats = floats
+      Count(floats) | Assert.Is(@ml/embeddings/size)
+    }
+    Tensor.ToString | Log
+  })
+})
+
+Do(_test)

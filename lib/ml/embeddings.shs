@@ -3,6 +3,7 @@
 @define(ml/embeddings/overlap 64)
 @define(ml/embeddings/chunk-size #(512 | Sub(64)))
 @define(ml/embeddings/use-gpu true IgnoreRedefined: true)
+@define(ml/embeddings/size 384)
 
 @wire(ml/download-dependencies {
   none | Http.Get(URL: @ml/manifest/url) | FromJson | ExpectTable = manifest
@@ -72,7 +73,8 @@
   })
 
   ML.Tokens(ml/embeddings/tokenizer AsTensor: true GPU: @ml/embeddings/use-gpu) = tokens
-  Tensor.Shape | RTake(0) | If(IsMore(@ml/embeddings/max-tokens) {
+  Tensor.Shape | RTake(0)
+  If(IsMore(@ml/embeddings/max-tokens) {
       = num-tokens
       0 >= processed
       Sequence(tensors Type: @type([Tensor]))
@@ -86,23 +88,18 @@
         processed | Add(@ml/embeddings/chunk-size) > processed
 
         tokens-chunk | Tensor.ZerosLike = tokens-zeros
-        [tokens-chunk tokens-zeros] | ML.Forward(Model: ml/embeddings/model) | Take(0) >> tensors
+        [tokens-chunk tokens-zeros] | ML.Forward(Model: ml/embeddings/model) | Take(0)
+        {Tensor.Shape | Take(1) | ToFloat = num-tokens-float}
+        Tensor.Sum([1]) | Tensor.Div(num-tokens-float) >> tensors
       } Until: {processed | IsMoreEqual(num-tokens)})
       tensors
     } {
+      ToFloat = num-tokens-float
       tokens | Tensor.ZerosLike = tokens-zeros
-      [tokens tokens-zeros] | ML.Forward(Model: ml/embeddings/model)
+      [tokens tokens-zeros] | ML.Forward(Model: ml/embeddings/model) | Take(0)
+      Tensor.Sum([1]) | Tensor.Div(num-tokens-float) = embedding
+      [embedding]
     }
   )
 })
 
-@wire(_test {
-  "Hello world!" | Do(ml/embed) | ForEach({
-    Tensor.ToString | Log
-  })
-  @read("../../readme.md") | Do(ml/embed) | ForEach({
-    Tensor.ToString | Log
-  })
-})
-
-Do(_test)
