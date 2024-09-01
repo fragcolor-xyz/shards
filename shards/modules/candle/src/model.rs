@@ -37,14 +37,14 @@ lazy_static! {
 }
 
 #[derive(shards::shards_enum)]
-#[enum_info(b"mMDL", "MLModels", "A model type and architecture.")]
+#[enum_info(b"mMDL", "MLModels", "A machine learning model type and architecture.")]
 pub enum ModelType {
   #[enum_value("A BERT model.")]
   Bert = 0x1,
 }
 
 #[derive(shards::shards_enum)]
-#[enum_info(b"mFMT", "MLFormats", "The format of the model.")]
+#[enum_info(b"mFMT", "MLFormats", "The format of the machine learning model.")]
 pub enum Formats {
   #[enum_value("GGUF")]
   GGUF = 0x1,
@@ -53,7 +53,7 @@ pub enum Formats {
 }
 
 #[derive(shards::shard)]
-#[shard_info("ML.Model", "A model is a collection of parameters and biases.")]
+#[shard_info("ML.Model", "This shard allows you to load a machine learning model and specify its format and configuration.")]
 pub(crate) struct ModelShard {
   #[shard_required]
   required: ExposedTypes,
