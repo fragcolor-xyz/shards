@@ -6,8 +6,8 @@
 // Required for shards-egui C++ bindings
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
-use crate::layouts::LAYOUT_FRAME_TYPE;
 use egui::Response;
+use layouts::LAYOUTFRAME_TYPE;
 use shards::core::cloneVar;
 use shards::core::register_enum;
 use shards::fourCharacterCode;
@@ -82,8 +82,8 @@ lazy_static! {
   static ref LAYOUTCLASS_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUTCLASS_VAR_TYPE];
   static ref LAYOUTCLASS_VAR_OR_NONE_SLICE: Vec<Type> =
     vec![*LAYOUTCLASS_VAR_TYPE, common_type::none];
-  static ref LAYOUT_FRAME_TYPE_VEC: Vec<Type> = vec![*LAYOUT_FRAME_TYPE];
-  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_FRAME_TYPE, common_type::none];
+  static ref LAYOUT_FRAME_TYPE_VEC: Vec<Type> = vec![*LAYOUTFRAME_TYPE];
+  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUTFRAME_TYPE, common_type::none];
   static ref LAYOUT_FRAME_VAR_TYPE: Type = Type::context_variable(&LAYOUT_FRAME_TYPE_VEC);
   static ref LAYOUT_FRAME_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUT_FRAME_VAR_TYPE];
 }

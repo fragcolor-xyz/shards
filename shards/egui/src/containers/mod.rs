@@ -5,48 +5,38 @@
 #![allow(non_upper_case_globals)]
 
 use shards::core::register_enum;
-use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
-use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
-use shards::types::Type;
 use shards::types::WireState;
-use shards::types::FRAG_CC;
 use shards::types::{ShardsVar, Table, Var};
 use shards::Shards;
 
 use crate::util::with_object_stack_var;
 use crate::EGUI_UI_TYPE;
 
-shenum! {
-  pub struct Order {
-  [description("Painted behind all floating windows.")]
-  const Background = 1 << 0;
-  [description("Special layer between panels and windows.")]
-  const PanelResizeLine = 1 << 1;
-  [description("Normal moveable windows that you reorder by click.")]
-  const Middle = 1 << 2;
-  [description("Popups, menus etc that should always be painted on top of windows. Foreground objects can also have tooltips.")]
-  const Foreground = 1 << 3;
-  [description("Things floating on top of everything else, like tooltips. You cannot interact with these.")]
-  const Tooltip = 1 << 4;
-  [description("Debug layer, always painted last / on top.")]
-  const Debug = 1 << 5;
-  }
-
-  pub struct OrderInfo {}
-}
-
-shenum_types! {
-  OrderInfo,
-  const OrderCC = fourCharacterCode(*b"egOr");
-  pub static ref OrderEnumInfo;
-  pub static ref ORDER_TYPE: Type;
-  pub static ref ORDER_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_ORDER: Type;
-  pub static ref SEQ_OF_ORDER_TYPES: Vec<Type>;
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"egOr",
+  "Order",
+  "Identifies the order in which UI elements are painted."
+)]
+pub enum Order {
+  #[enum_value("Painted behind all floating windows.")]
+  Background = 1 << 0,
+  #[enum_value("Special layer between panels and windows.")]
+  PanelResizeLine = 1 << 1,
+  #[enum_value("Normal moveable windows that you reorder by click.")]
+  Middle = 1 << 2,
+  #[enum_value("Popups, menus etc that should always be painted on top of windows. Foreground objects can also have tooltips.")]
+  Foreground = 1 << 3,
+  #[enum_value(
+    "Things floating on top of everything else, like tooltips. You cannot interact with these."
+  )]
+  Tooltip = 1 << 4,
+  #[enum_value("Debug layer, always painted last / on top.")]
+  Debug = 1 << 5,
 }
 
 impl From<Order> for egui::Order {
@@ -96,7 +86,8 @@ impl TabData {
           .into();
 
           Ok(())
-        }).unwrap();
+        })
+        .unwrap();
       }
       return WireState::Continue;
     }
@@ -164,30 +155,23 @@ struct Tab {
   exposing: ExposedTypes,
 }
 
-shenum! {
-  pub struct WindowFlags {
-    [description("Do not display the title bar.")]
-    const NoTitleBar = 1 << 0;
-    [description("Do not allow resizing the window.")]
-    const NoResize = 1 << 1;
-    [description("Display scrollbars.")]
-    const Scrollbars = 1 << 2;
-    [description("Do not display the collapse button.")]
-    const NoCollapse = 1 << 3;
-    [description("Do not allow window movement.")]
-    const Immovable = 1 << 4;
-  }
-  pub struct WindowFlagsInfo {}
-}
-
-shenum_types! {
-  WindowFlagsInfo,
-  const WindowFlagsCC = fourCharacterCode(*b"egWF");
-  pub static ref WindowFlagsEnumInfo;
-  pub static ref WINDOW_FLAGS_TYPE: Type;
-  pub static ref WINDOW_FLAGS_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_WINDOW_FLAGS: Type;
-  pub static ref SEQ_OF_WINDOW_FLAGS_TYPES: Vec<Type>;
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"egWF",
+  "WindowFlags",
+  "Window flags for customizing window behavior and appearance."
+)]
+pub enum WindowFlags {
+  #[enum_value("Do not display the title bar.")]
+  NoTitleBar = 1 << 0,
+  #[enum_value("Do not allow resizing the window.")]
+  NoResize = 1 << 1,
+  #[enum_value("Display scrollbars.")]
+  Scrollbars = 1 << 2,
+  #[enum_value("Do not display the collapse button.")]
+  NoCollapse = 1 << 3,
+  #[enum_value("Do not allow window movement.")]
+  Immovable = 1 << 4,
 }
 
 macro_rules! decl_panel {
@@ -236,15 +220,14 @@ pub fn register_shards() {
   selectable::register_shards();
   register_enum::<PopupLocation>();
   register_legacy_shard::<Scope>();
-  register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
+  register_enum::<WindowFlags>();
+  register_enum::<Order>();
   register_legacy_shard::<BottomPanel>();
   register_legacy_shard::<CentralPanel>();
   register_legacy_shard::<LeftPanel>();
   register_legacy_shard::<RightPanel>();
   register_legacy_shard::<TopPanel>();
   register_shard::<overlay::OverlayShard>();
-
-  assert_eq!(WindowFlagsCC, 1701271366);
 }
 
 // lazy static table with experimental true set

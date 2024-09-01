@@ -2,8 +2,8 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::containers::WindowFlags;
-use crate::containers::SEQ_OF_WINDOW_FLAGS;
-use crate::containers::WINDOW_FLAGS_TYPE;
+use crate::containers::WINDOWFLAGS_TYPE;
+use crate::containers::WINDOWFLAGS_TYPES;
 use crate::util;
 use crate::util::with_possible_panic;
 use crate::Anchor;
@@ -26,7 +26,8 @@ use shards::types::{
 use shards::{core::register_shard, types::STRING_VAR_OR_NONE_SLICE};
 
 lazy_static! {
-  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
+  static ref SEQ_OF_WINDOW_FLAGS: Type = Type::seq(&WINDOWFLAGS_TYPES);
+  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOWFLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
 }
 
 #[derive(shard)]
@@ -294,7 +295,7 @@ impl Shard for WindowShard {
       // else, if no closable provided, then default to false, which does nothing
 
       for bits in WindowShard::try_get_flags(self.flags.get())? {
-        match (WindowFlags { bits }) {
+        match bits {
           WindowFlags::NoTitleBar => {
             window = window.title_bar(false);
           }
@@ -310,7 +311,6 @@ impl Shard for WindowShard {
           WindowFlags::Immovable => {
             window = window.movable(false);
           }
-          _ => (),
         }
       }
 
@@ -342,17 +342,12 @@ impl Shard for WindowShard {
 }
 
 impl WindowShard {
-  fn try_get_flags(var: &Var) -> Result<Vec<i32>, &str> {
+  fn try_get_flags(var: &Var) -> Result<Vec<WindowFlags>, &str> {
     match var.valueType {
-      shards::SHType_Enum => Ok(vec![unsafe {
-        var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
-      }]),
+      shards::SHType_Enum => Ok(vec![var.try_into()?]),
       shards::SHType_Seq => {
         let seq: Seq = var.try_into()?;
-        seq
-          .iter()
-          .map(|v| Ok(unsafe { v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue }))
-          .collect()
+        seq.iter().map(|v| Ok(v.try_into()?)).collect()
       }
       shards::SHType_None => Ok(Vec::new()),
       _ => Err("Invalid type"),

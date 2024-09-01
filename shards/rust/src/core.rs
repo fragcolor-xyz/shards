@@ -353,7 +353,7 @@ pub fn releaseVariable(var: &SHVar) {
   }
 }
 
-pub fn register_legacy_enum(vendorId: i32, typeId: i32, info: SHEnumInfo) {
+pub fn register_enum_internal(vendorId: i32, typeId: i32, info: SHEnumInfo) {
   unsafe {
     (*Core).registerEnumType.unwrap_unchecked()(vendorId, typeId, info);
   }

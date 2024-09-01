@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::register_legacy_enum;
+use shards::core::register_enum;
 use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
@@ -47,40 +47,29 @@ struct PlotLine {
   name: ParamVar,
 }
 
-shenum! {
-  pub struct MarkerShape {
-    [description("Display a point as a circle.")]
-    const Circle = 0;
-    [description("Display a point as a diamond.")]
-    const Diamond = 1;
-    [description("Display a point as a square.")]
-    const Square = 2;
-    [description("Display a point as a cross.")]
-    const Cross = 3;
-    [description("Display a point as a plus sign.")]
-    const Plus = 4;
-    [description("Display a point as an arrow pointing upwards.")]
-    const Up = 5;
-    [description("Display a point as an arrow pointing downwards.")]
-    const Down = 6;
-    [description("Display a point as an arrow pointing to the left.")]
-    const Left = 7;
-    [description("Display a point as an arrow pointing to the right.")]
-    const Right = 8;
-    [description("Display a point as an asterisk.")]
-    const Asterisk = 9;
-  }
-  pub struct MarkerShapeInfo {}
-}
-
-shenum_types! {
-  MarkerShapeInfo,
-  const MarkerShapeCC = fourCharacterCode(*b"egMS");
-  pub static ref MarkerShapeEnumInfo;
-  pub static ref MARKER_SHAPE_TYPE: Type;
-  pub static ref MARKER_SHAPE_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_MARKER_SHAPE: Type;
-  pub static ref SEQ_OF_MARKER_SHAPE_TYPES: Vec<Type>;
+#[derive(shards::shards_enum)]
+#[enum_info(b"egMS", "MarkerShape", "Marker shape options for plot points")]
+pub enum MarkerShape {
+  #[enum_value("Display a point as a circle.")]
+  Circle = 0,
+  #[enum_value("Display a point as a diamond.")]
+  Diamond = 1,
+  #[enum_value("Display a point as a square.")]
+  Square = 2,
+  #[enum_value("Display a point as a cross.")]
+  Cross = 3,
+  #[enum_value("Display a point as a plus sign.")]
+  Plus = 4,
+  #[enum_value("Display a point as an arrow pointing upwards.")]
+  Up = 5,
+  #[enum_value("Display a point as an arrow pointing downwards.")]
+  Down = 6,
+  #[enum_value("Display a point as an arrow pointing to the left.")]
+  Left = 7,
+  #[enum_value("Display a point as an arrow pointing to the right.")]
+  Right = 8,
+  #[enum_value("Display a point as an asterisk.")]
+  Asterisk = 9,
 }
 
 // egui::widgets::plot::items::MarkerShape
@@ -104,5 +93,5 @@ pub fn register_shards() {
   register_legacy_shard::<PlotBar>();
   register_legacy_shard::<PlotLine>();
   register_legacy_shard::<PlotPoints>();
-  register_legacy_enum(FRAG_CC, MarkerShapeCC, MarkerShapeEnumInfo.as_ref().into());
+  register_enum::<MarkerShape>();
 }

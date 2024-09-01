@@ -1,17 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::register_legacy_enum;
+use shards::core::register_enum;
 use shards::core::register_legacy_shard;
-use shards::fourCharacterCode;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
 use shards::types::Type;
-use shards::types::FRAG_CC;
-use std::rc::Rc;
 
 struct CollapsingHeader {
   parents: ParamVar,
@@ -96,11 +93,12 @@ struct EguiScrollAreaSettings {
 
 impl EguiScrollAreaSettings {
   pub fn to_egui_scrollarea(&self) -> egui::ScrollArea {
+    let scroll_visibility = self.scroll_visibility.clone();
     egui::ScrollArea::new([
       self.enable_horizontal_scroll_bar,
       self.enable_vertical_scroll_bar,
     ])
-    .scroll_bar_visibility(self.scroll_visibility.into())
+    .scroll_bar_visibility(scroll_visibility.into())
     .max_width(self.max_width)
     .max_height(self.max_height)
     .min_scrolled_width(self.min_width)
@@ -110,16 +108,15 @@ impl EguiScrollAreaSettings {
   }
 }
 
-shenum! {
-  pub struct ScrollVisibility {
-    [description("The scroll bars will always be visible.")]
-    const AlwaysVisible = 1 << 0;
-    [description("The scroll bars will only be visible when needed")]
-    const VisibleWhenNeeded = 1 << 1;
-    [description("The scroll bars will always be hidden.")]
-    const AlwaysHidden = 1 << 2;
-  }
-  pub struct ScrollVisibilityInfo {}
+#[derive(shards::shards_enum, Clone)]
+#[enum_info(b"egSV", "ScrollVisibility", "Scroll bar visibility options")]
+pub enum ScrollVisibility {
+  #[enum_value("The scroll bars will always be visible.")]
+  AlwaysVisible = 1 << 0,
+  #[enum_value("The scroll bars will only be visible when needed")]
+  VisibleWhenNeeded = 1 << 1,
+  #[enum_value("The scroll bars will always be hidden.")]
+  AlwaysHidden = 1 << 2,
 }
 
 impl From<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
@@ -130,74 +127,50 @@ impl From<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
         egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
       }
       ScrollVisibility::AlwaysHidden => egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
-      _ => unreachable!(),
     }
   }
 }
 
-shenum_types! {
-  ScrollVisibilityInfo,
-  const ScrollVisibilityCC = fourCharacterCode(*b"egSV");
-  pub static ref ScrollVisibilityEnumInfo;
-  pub static ref SCROLL_VISIBILITY_TYPE: Type;
-  pub static ref SCROLL_VISIBILITY_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_SCROLL_VISIBILITY: Type;
-  pub static ref SEQ_OF_SCROLL_VISIBILITY_TYPES: Vec<Type>;
+#[derive(shards::shards_enum, Clone)]
+#[enum_info(b"egLF", "LayoutFrame", "Frame styling options")]
+pub enum LayoutFrame {
+  #[enum_value("Use the frame styling for grouping widgets together.")]
+  Widgets = 1 << 0,
+  #[enum_value("Use the frame styling for a side top panel.")]
+  SideTopPanel = 1 << 1,
+  #[enum_value("Use the frame styling for the central panel.")]
+  CentralPanel = 1 << 2,
+  #[enum_value("Use the frame styling for a window.")]
+  Window = 1 << 3,
+  #[enum_value("Use the frame styling for a menu.")]
+  Menu = 1 << 4,
+  #[enum_value("Use the frame styling for a popup.")]
+  Popup = 1 << 5,
+  #[enum_value("Use the frame styling for a canvas to draw on.")]
+  Canvas = 1 << 6,
+  #[enum_value("Use the frame styling for a dark canvas to draw on.")]
+  DarkCanvas = 1 << 7,
 }
 
-lazy_static! {
-  static ref SCROLL_VISIBILITY_OR_NONE_SLICE: Vec<Type> =
-    vec![*SCROLL_VISIBILITY_TYPE, common_type::none];
-}
-
-shenum! {
-  pub struct LayoutFrame {
-  [description("Use the frame styling for grouping widgets together.")]
-  const Widgets = 1 << 0;
-  [description("Use the frame styling for a side top panel.")]
-  const SideTopPanel = 1 << 1;
-  [description("Use the frame styling for the central panel.")]
-  const CentralPanel = 1 << 2;
-  [description("Use the frame styling for a window.")]
-  const Window = 1 << 3;
-  [description("Use the frame styling for a menu.")]
-  const Menu = 1 << 4;
-  [description("Use the frame styling for a popup.")]
-  const Popup = 1 << 5;
-  [description("Use the frame styling for a canvas to draw on.")]
-  const Canvas = 1 << 6;
-  [description("Use the frame styling for a dark canvas to draw on.")]
-  const DarkCanvas = 1 << 7;
-  }
-  pub struct LayoutFrameInfo {}
-}
-
-shenum_types! {
-  LayoutFrameInfo,
-  const LayoutFrameCC = fourCharacterCode(*b"egLF");
-  pub static ref LayoutFrameEnumInfo;
-  pub static ref LAYOUT_FRAME_TYPE: Type;
-  pub static ref LAYOUT_FRAME_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_LAYOUT_FRAME: Type;
-  pub static ref SEQ_OF_LAYOUT_FRAME_TYPES: Vec<Type>;
-}
-
-lazy_static! {
-  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_FRAME_TYPE, common_type::none];
-}
-
-shenum! {
-  pub struct LayoutDirection {
-    [description("Describes a horizontal layout where its contents are arranged from the left to the right.")]
-    const LeftToRight = 1 << 0;
-    [description("Describes a horizontal layout where its contents are arranged from the right to the left.")]
-    const RightToLeft = 1 << 1;
-    [description("Describes a vertical layout where its contents are arranged from the top to the bottom.")]
-    const TopDown = 1 << 2;
-    [description("Describes a vertical layout where its contents are arranged from the bottom to the top.")]
-    const BottomUp = 1 << 3;
-  }
-  pub struct LayoutDirectionInfo {}
+#[derive(shards::shards_enum, Clone)]
+#[enum_info(b"egLD", "LayoutDirection", "Layout direction options")]
+pub enum LayoutDirection {
+  #[enum_value(
+    "Describes a horizontal layout where its contents are arranged from the left to the right."
+  )]
+  LeftToRight = 1 << 0,
+  #[enum_value(
+    "Describes a horizontal layout where its contents are arranged from the right to the left."
+  )]
+  RightToLeft = 1 << 1,
+  #[enum_value(
+    "Describes a vertical layout where its contents are arranged from the top to the bottom."
+  )]
+  TopDown = 1 << 2,
+  #[enum_value(
+    "Describes a vertical layout where its contents are arranged from the bottom to the top."
+  )]
+  BottomUp = 1 << 3,
 }
 
 impl From<LayoutDirection> for egui::Direction {
@@ -207,44 +180,27 @@ impl From<LayoutDirection> for egui::Direction {
       LayoutDirection::RightToLeft => egui::Direction::RightToLeft,
       LayoutDirection::TopDown => egui::Direction::TopDown,
       LayoutDirection::BottomUp => egui::Direction::BottomUp,
-      _ => unreachable!(),
     }
   }
 }
 
-shenum_types! {
-  LayoutDirectionInfo,
-  const LayoutDirectionCC = fourCharacterCode(*b"egLD");
-  pub static ref LayoutDirectionEnumInfo;
-  pub static ref LAYOUT_DIRECTION_TYPE: Type;
-  pub static ref LAYOUT_DIRECTION_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_LAYOUT_DIRECTION: Type;
-  pub static ref SEQ_OF_LAYOUT_DIRECTION_TYPES: Vec<Type>;
-}
-
-lazy_static! {
-  static ref LAYOUT_DIRECTION_OR_NONE_SLICE: Vec<Type> =
-    vec![*LAYOUT_DIRECTION_TYPE, common_type::none];
-}
-
-shenum! {
-  pub struct LayoutAlign {
-  [description("Left or top alignment for e.g. anchors and layouts.")]
-  const Min = 1 << 0;
-  [description("Left alignment for e.g. anchors and layouts.")]
-  const Left = 1 << 1;
-  [description("Top alignment for e.g. anchors and layouts.")]
-  const Top = 1 << 2;
-  [description("Horizontal or vertical center alignment for e.g. anchors and layouts.")]
-  const Center = 1 << 3;
-  [description("Right or bottom center alignment for e.g. anchors and layouts.")]
-  const Max = 1 << 4;
-  [description("Right alignment for e.g. anchors and layouts.")]
-  const Right = 1 << 5;
-  [description("Bottom center alignment for e.g. anchors and layouts.")]
-  const Bottom = 1 << 6;
-  }
-  pub struct LayoutAlignInfo {}
+#[derive(shards::shards_enum, Clone)]
+#[enum_info(b"egLA", "LayoutAlign", "Layout alignment options")]
+pub enum LayoutAlign {
+  #[enum_value("Left or top alignment for e.g. anchors and layouts.")]
+  Min = 1 << 0,
+  #[enum_value("Left alignment for e.g. anchors and layouts.")]
+  Left = 1 << 1,
+  #[enum_value("Top alignment for e.g. anchors and layouts.")]
+  Top = 1 << 2,
+  #[enum_value("Horizontal or vertical center alignment for e.g. anchors and layouts.")]
+  Center = 1 << 3,
+  #[enum_value("Right or bottom center alignment for e.g. anchors and layouts.")]
+  Max = 1 << 4,
+  #[enum_value("Right alignment for e.g. anchors and layouts.")]
+  Right = 1 << 5,
+  #[enum_value("Bottom center alignment for e.g. anchors and layouts.")]
+  Bottom = 1 << 6,
 }
 
 impl From<LayoutAlign> for egui::Align {
@@ -257,23 +213,17 @@ impl From<LayoutAlign> for egui::Align {
       LayoutAlign::Max => egui::Align::Max,
       LayoutAlign::Right => egui::Align::Max,
       LayoutAlign::Bottom => egui::Align::Max,
-      _ => unreachable!(),
     }
   }
 }
 
-shenum_types! {
-  LayoutAlignInfo,
-  const LayoutAlignCC = fourCharacterCode(*b"egLA");
-  pub static ref LayoutAlignEnumInfo;
-  pub static ref LAYOUT_ALIGN_TYPE: Type;
-  pub static ref LAYOUT_ALIGN_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_LAYOUT_ALIGN: Type;
-  pub static ref SEQ_OF_LAYOUT_ALIGN_TYPES: Vec<Type>;
-}
-
 lazy_static! {
-  static ref LAYOUT_ALIGN_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUT_ALIGN_TYPE, common_type::none];
+  static ref SCROLL_VISIBILITY_OR_NONE_SLICE: Vec<Type> =
+    vec![*SCROLLVISIBILITY_TYPE, common_type::none];
+  static ref LAYOUT_FRAME_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUTFRAME_TYPE, common_type::none];
+  static ref LAYOUT_DIRECTION_OR_NONE_SLICE: Vec<Type> =
+    vec![*LAYOUTDIRECTION_TYPE, common_type::none];
+  static ref LAYOUT_ALIGN_OR_NONE_SLICE: Vec<Type> = vec![*LAYOUTALIGN_TYPE, common_type::none];
 }
 
 struct Indent {
@@ -368,18 +318,10 @@ pub fn register_shards() {
   register_legacy_shard::<Grid>();
   register_legacy_shard::<Group>();
   register_legacy_shard::<Horizontal>();
-  register_legacy_enum(
-    FRAG_CC,
-    ScrollVisibilityCC,
-    ScrollVisibilityEnumInfo.as_ref().into(),
-  );
-  register_legacy_enum(
-    FRAG_CC,
-    LayoutDirectionCC,
-    LayoutDirectionEnumInfo.as_ref().into(),
-  );
-  register_legacy_enum(FRAG_CC, LayoutFrameCC, LayoutFrameEnumInfo.as_ref().into());
-  register_legacy_enum(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
+  register_enum::<ScrollVisibility>();
+  register_enum::<LayoutFrame>();
+  register_enum::<LayoutDirection>();
+  register_enum::<LayoutAlign>();
   register_legacy_shard::<Indent>();
   register_legacy_shard::<NextRow>();
   register_legacy_shard::<ScrollArea>();

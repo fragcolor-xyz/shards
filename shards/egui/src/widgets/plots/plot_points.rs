@@ -6,7 +6,7 @@ use super::PlotPoints;
 use super::EGUI_PLOT_UI_TYPE;
 use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
-use crate::widgets::plots::MARKER_SHAPE_TYPES;
+use crate::widgets::plots::MARKERSHAPE_TYPES;
 use crate::COLOR_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use shards::shard::LegacyShard;
@@ -40,7 +40,7 @@ lazy_static! {
     (
       cstr!("Shape"),
       shccstr!("Shape of the marker."),
-      &MARKER_SHAPE_TYPES[..],
+      &MARKERSHAPE_TYPES[..],
     )
       .into(),
     (
@@ -194,12 +194,8 @@ impl LegacyShard for PlotPoints {
 
     let shape = self.shape.get();
     if !shape.is_none() {
-      chart = chart.shape(
-        MarkerShape {
-          bits: unsafe { shape.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue },
-        }
-        .into(),
-      );
+      let shape: MarkerShape = shape.try_into()?;
+      chart = chart.shape(shape.into());
     }
 
     let radius = self.radius.get();
@@ -227,8 +223,6 @@ impl From<MarkerShape> for egui_plot::MarkerShape {
       MarkerShape::Left => egui_plot::MarkerShape::Left,
       MarkerShape::Right => egui_plot::MarkerShape::Right,
       MarkerShape::Asterisk => egui_plot::MarkerShape::Asterisk,
-      // default
-      _ => egui_plot::MarkerShape::Circle,
     }
   }
 }

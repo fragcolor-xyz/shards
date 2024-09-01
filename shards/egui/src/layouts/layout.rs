@@ -3,42 +3,30 @@
 
 use super::EguiScrollAreaSettings;
 use super::LayoutAlign;
-use super::LayoutAlignCC;
 use super::LayoutDirection;
-use super::LayoutDirectionCC;
 use super::LayoutFrame;
-use super::LayoutFrameCC;
 use super::ScrollVisibility;
-use crate::layouts::ScrollVisibilityCC;
 use crate::layouts::LAYOUT_ALIGN_OR_NONE_SLICE;
-use crate::layouts::LAYOUT_ALIGN_TYPES;
 use crate::layouts::LAYOUT_DIRECTION_OR_NONE_SLICE;
-use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::layouts::SCROLL_VISIBILITY_OR_NONE_SLICE;
-use crate::layouts::SCROLL_VISIBILITY_TYPES;
 use crate::util;
 use crate::util::with_possible_panic;
-use crate::Anchor;
 use crate::EguiId;
-use crate::ANCHOR_TYPE;
 use crate::ANCHOR_TYPES;
-use crate::EGUI_UI_TYPE;
 use crate::FLOAT2_VAR_OR_NONE_SLICE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
-use crate::FLOAT_VAR_SLICE;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::LAYOUTCLASS_TYPE;
 use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
 use crate::LAYOUTCLASS_VAR_OR_NONE_SLICE;
 use crate::LAYOUT_FRAME_OR_NONE_SLICE;
-use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
-use shards::core::{register_enum, register_shard};
+use shards::core::register_shard;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
+use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -54,8 +42,44 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::{common_type, NONE_TYPES};
 use std::rc::Rc;
+
+macro_rules! retrieve_layout_class_attribute {
+  ($layout_class:ident, $attribute:ident) => {{
+    let mut parent = $layout_class as *const LayoutClass;
+    let mut result = None;
+    while !parent.is_null() {
+      unsafe {
+        if let Some(attribute) = &(*parent).$attribute {
+          // found the attribute, can return now
+          result = Some(attribute.clone());
+          break;
+        } else {
+          // attribute not found in parent, continue looking through parents
+          parent = (*parent).parent;
+        }
+      }
+    }
+    result
+  }};
+  ($layout_class:ident, $attribute:ident, $member:ident) => {{
+    let mut parent = $layout_class as *const LayoutClass;
+    let mut result = None;
+    while !parent.is_null() {
+      unsafe {
+        if let Some(attribute) = &(*parent).$attribute {
+          // found the member attribute, can return now
+          result = Some(attribute.$member.clone());
+          break;
+        } else {
+          // attribute not found in parent, continue looking through parents
+          parent = (*parent).parent;
+        }
+      }
+    }
+    result
+  }};
+}
 
 struct LayoutClass {
   parent: *const LayoutClass,
@@ -109,69 +133,6 @@ macro_rules! retrieve_parameter {
       None
     }
   };
-}
-
-macro_rules! retrieve_enum_parameter {
-  ($param:ident, $name:literal, $type:ident, $typeId:expr) => {
-    // Check if parameter has been passed in, and if so retrieve it
-    if !$param.is_none() {
-      let value = $param;
-      // Check for correct enum type
-      if value.valueType == crate::shardsc::SHType_Enum
-        && unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == $typeId }
-      {
-        // Retrieve value
-        let bits = unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
-        let value = $type { bits };
-        Some(value)
-      } else {
-        Err("Expected Enum value of same Enum type.").map_err(|e| {
-          shlog!("{}: {}", $name, e);
-          "Invalid attribute value received"
-        })?
-      }
-    } else {
-      // No parameter to retrieve from, caller should retrieve from parent or use default value
-      None
-    }
-  };
-}
-
-macro_rules! retrieve_layout_class_attribute {
-  ($layout_class:ident, $attribute:ident) => {{
-    let mut parent = $layout_class as *const LayoutClass;
-    let mut result = None;
-    while !parent.is_null() {
-      unsafe {
-        if let Some(attribute) = &(*parent).$attribute {
-          // found the attribute, can return now
-          result = Some(attribute.clone());
-          break;
-        } else {
-          // attribute not found in parent, continue looking through parents
-          parent = (*parent).parent;
-        }
-      }
-    }
-    result
-  }};
-  ($layout_class:ident, $attribute:ident, $member:ident) => {{
-    let mut parent = $layout_class as *const LayoutClass;
-    let mut result = None;
-    while !parent.is_null() {
-      unsafe {
-        if let Some(attribute) = &(*parent).$attribute {
-          // found the member attribute, can return now
-          result = Some(attribute.$member.clone());
-          break;
-        } else {
-          // attribute not found in parent, continue looking through parents
-          parent = (*parent).parent;
-        }
-      }
-    }
-    result
-  }};
 }
 
 lazy_static! {
@@ -586,9 +547,8 @@ impl LegacyShard for LayoutConstructor {
     let mut create_new_layout = false;
 
     let cross_align = self.cross_align.get();
-    let cross_align = if let Some(cross_align) =
-      retrieve_enum_parameter!(cross_align, "cross_align", LayoutAlign, LayoutAlignCC)
-    {
+    let cross_align: egui::Align = if !cross_align.is_none() {
+      let cross_align: LayoutAlign = cross_align.try_into()?;
       create_new_layout = true;
       cross_align.into()
     } else {
@@ -603,12 +563,8 @@ impl LegacyShard for LayoutConstructor {
     };
 
     let main_direction = self.main_direction.get();
-    let main_direction = if let Some(main_direction) = retrieve_enum_parameter!(
-      main_direction,
-      "main_direction",
-      LayoutDirection,
-      LayoutDirectionCC
-    ) {
+    let main_direction: egui::Direction = if !main_direction.is_none() {
+      let main_direction: LayoutDirection = main_direction.try_into()?;
       create_new_layout = true;
       main_direction.into()
     } else {
@@ -620,9 +576,8 @@ impl LegacyShard for LayoutConstructor {
     };
 
     let main_align = self.main_align.get();
-    let main_align = if let Some(main_align) =
-      retrieve_enum_parameter!(main_align, "main_align", LayoutAlign, LayoutAlignCC)
-    {
+    let main_align: egui::Align = if !main_align.is_none() {
+      let main_align: LayoutAlign = main_align.try_into()?;
       create_new_layout = true;
       main_align.into()
     } else {
@@ -675,7 +630,7 @@ impl LegacyShard for LayoutConstructor {
         }
       };
 
-    let mut layout = if create_new_layout {
+    let layout = if create_new_layout {
       Some(
         egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align)
           .with_main_align(main_align)
@@ -722,15 +677,8 @@ impl LegacyShard for LayoutConstructor {
 
     let frame = if !self.frame.get().is_none() {
       let frame = self.frame.get();
-      if frame.valueType == crate::shardsc::SHType_Enum
-        && unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == LayoutFrameCC }
-      {
-        let bits = unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
-        Some(LayoutFrame { bits })
-      } else {
-        // should be unreachable due to parameter type checking
-        return Err("Invalid frame type provided. Expected LayoutFrame for Frame");
-      }
+      let frame: LayoutFrame = frame.try_into()?;
+      Some(frame)
     } else {
       None
     };
@@ -778,13 +726,9 @@ impl LegacyShard for LayoutConstructor {
     let create_new_scroll_area = enable_horizontal_scroll_bar || enable_vertical_scroll_bar;
 
     let scroll_visibility = self.scroll_visibility.get();
-    let scroll_visibility = if let Some(scroll_visibility) = retrieve_enum_parameter!(
-      scroll_visibility,
-      "scroll_visibility",
-      ScrollVisibility,
-      ScrollVisibilityCC
-    ) {
-      scroll_visibility
+    let scroll_visibility: ScrollVisibility = if !scroll_visibility.is_none() {
+      let scroll_visibility: ScrollVisibility = scroll_visibility.try_into()?;
+      scroll_visibility.into()
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
@@ -1190,44 +1134,46 @@ impl Shard for LayoutShard {
         frame
           .show(ui, |ui| {
             // set whether all widgets in the contents are enabled or disabled
-            ui.set_enabled(!disabled);
-            // add the new child_ui created by frame onto the stack of parents
-            // inside of frame
-            // render scroll area and inner layout if there is a scroll area
-            if let Some(scroll_area) = scroll_area {
-              scroll_area
-                .id_source(scroll_area_id)
-                .show(ui, |ui| {
-                  // inside of scroll area
-                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                    ui.set_min_size(min_size); // set minimum size of entire layout
+            ui.add_enabled_ui(!disabled, |ui| {
+              // add the new child_ui created by frame onto the stack of parents
+              // inside of frame
+              // render scroll area and inner layout if there is a scroll area
+              if let Some(scroll_area) = scroll_area {
+                scroll_area
+                  .id_source(scroll_area_id)
+                  .show(ui, |ui| {
+                    // inside of scroll area
+                    ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                      ui.set_min_size(min_size); // set minimum size of entire layout
 
-                    util::activate_ui_contents(
-                      context,
-                      input,
-                      ui,
-                      &mut self.parents,
-                      &mut self.contents,
-                    )
+                      util::activate_ui_contents(
+                        context,
+                        input,
+                        ui,
+                        &mut self.parents,
+                        &mut self.contents,
+                      )
+                    })
+                    .inner
                   })
                   .inner
+              } else {
+                // inside of frame, no scroll area to render, render inner layout
+                ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                  ui.set_min_size(min_size); // set minimum size of entire layout
+
+                  util::activate_ui_contents(
+                    context,
+                    input,
+                    ui,
+                    &mut self.parents,
+                    &mut self.contents,
+                  )
                 })
                 .inner
-            } else {
-              // inside of frame, no scroll area to render, render inner layout
-              ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                ui.set_min_size(min_size); // set minimum size of entire layout
-
-                util::activate_ui_contents(
-                  context,
-                  input,
-                  ui,
-                  &mut self.parents,
-                  &mut self.contents,
-                )
-              })
-              .inner
-            }
+              }
+            })
+            .inner
           })
           .inner
       } else {
