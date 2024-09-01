@@ -435,11 +435,16 @@ struct Profile {
                                    {"Label", SHCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
+    return SHCCSTR(
+        "This shard returns the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input of this shard will be provided as input to the shards in the Action parameter."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be the output of the shards in the Action parameter."); }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input of this shard will be provided as input to the shards in the Action parameter.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The output of this shard will be the output of the shards in the Action parameter.");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -754,7 +759,8 @@ struct ForEachShard {
   static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` parameter. Note that this shard is able to use the $0 and $1 internal variables.");
+    return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` "
+                   "parameter. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
   static SHTypesInfo inputTypes() { return _types; }
@@ -763,9 +769,7 @@ struct ForEachShard {
   }
 
   static SHTypesInfo outputTypes() { return _types; }
-  static SHOptionalString outputHelp() {
-    return DefaultHelpText::OutputHelpPass;
-  }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -899,16 +903,14 @@ private:
 
 struct Map {
   static SHOptionalString help() {
-    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and returns the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
+    return SHCCSTR(
+        "Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter "
+        "and returns the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence or table to process.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence or table to process."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The resulting processed sequence or table.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resulting processed sequence or table."); }
 
   SHTypesInfo inputTypes() { return ForEachShard::_types; }
 
@@ -1848,16 +1850,25 @@ struct GetEnumTypeHelp {
 
     auto &info = it->second;
     _output["name"] = Var(info.name, 0);
+
+    if (info.help.string) {
+      _output["help"] = Var(info.help.string, 0);
+    } else {
+      _output["help"] = Var("");
+    }
+
     auto labels = SeqVar{};
     for (uint32_t i = 0; i < info.labels.len; i++) {
       labels.emplace_back(Var(info.labels.elements[i], 0));
     }
     _output["labels"] = std::move(labels);
+
     auto values = SeqVar{};
     for (uint32_t i = 0; i < info.values.len; i++) {
       values.emplace_back(Var(info.values.elements[i]));
     }
     _output["values"] = std::move(values);
+
     auto descriptions = SeqVar{};
     for (uint32_t i = 0; i < info.descriptions.len; i++) {
       // string can be null
@@ -2352,7 +2363,9 @@ SHVar export_strings(const SHVar &input) {
 #endif
 
 struct LastError {
-  static SHOptionalString help() { return SHCCSTR("This shard returns the last error message that occurred and returns it as a string."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard returns the last error message that occurred and returns it as a string.");
+  }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("The last error message that occurred as a string."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -2384,15 +2397,9 @@ struct LowestHighestShard {
 };
 
 struct LowestShard : LowestHighestShard {
-  static SHOptionalString help() {
-    return SHCCSTR("Takes a sequence and returns the element with the lowest value.");
-  }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("A sequence of elements of any type.");
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the element with the lowest value.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Takes a sequence and returns the element with the lowest value."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the element with the lowest value."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2409,15 +2416,9 @@ struct LowestShard : LowestHighestShard {
 };
 
 struct HighestShard : LowestHighestShard {
-  static SHOptionalString help() {
-    return SHCCSTR("Takes a sequence and returns the element with the highest value.");
-  }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("A sequence of elements of any type.");
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the element with the highest value.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Takes a sequence and returns the element with the highest value."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the element with the highest value."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2738,14 +2739,20 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
 
 struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit hash value as an int2 (a sequence with 2 integers as elements).");
+    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit "
+                   "hash value as an int2 (a sequence with 2 integers as elements).");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit "
+                   "integer elements.");
+  }
 };
 
 struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType> {
-  static SHOptionalString help() { return SHCCSTR("This shard will open the URL string input in the current system's default web browser."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard will open the URL string input in the current system's default web browser.");
+  }
   static SHOptionalString inputHelp() { return SHCCSTR("The URL to navigate to."); }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };

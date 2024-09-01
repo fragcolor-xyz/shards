@@ -5158,6 +5158,7 @@ macro_rules! shenum {
 
     $vis_2 struct $SHEnumInfo {
       name: &'static str,
+      help: shards::types::OptionalString,
       labels: shards::types::Strings,
       values: Vec<i32>,
       descriptions: shards::types::OptionalStrings,
@@ -5277,6 +5278,7 @@ macro_rules! __impl_shenuminfo {
 
         Self {
           name: cstr!(std::stringify!($SHEnum)),
+          help: shards::types::OptionalString(shccstr!("")), // TODO: add help!
           labels,
           values: vec![$($value,)*],
           descriptions,
@@ -5294,6 +5296,7 @@ macro_rules! __impl_shenuminfo {
       fn from(info: &$SHEnumInfo) -> Self {
         Self {
           name: info.name.as_ptr() as *const std::os::raw::c_char,
+          help: info.help.0,
           labels: info.labels.s,
           values: shards::shardsc::SHEnums {
             elements: (&info.values).as_ptr() as *mut i32,

@@ -492,6 +492,7 @@ typedef struct SHExtendedObjectTypeInfo {
 
 struct SHEnumInfo {
   SHString name;
+  SHOptionalString help;
   SHStrings labels;
   SHEnums values;
   SHOptionalStrings descriptions;

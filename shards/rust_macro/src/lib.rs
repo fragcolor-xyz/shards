@@ -205,7 +205,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
     quote! {
       #vis struct #enum_info_id {
         name: &'static str,
-        desc: shards::types::OptionalString,
+        help: shards::types::OptionalString,
         enum_type: shards::types::Type,
         labels: shards::types::Strings,
         values: Vec<i32>,
@@ -247,7 +247,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
 
           Self {
             name: shards::cstr!(#enum_name_expr),
-            desc: shards::types::OptionalString(shards::shccstr!(#enum_desc_expr)),
+            help: shards::types::OptionalString(shards::shccstr!(#enum_desc_expr)),
             enum_type: shards::types::Type::enumeration(shards::types::FRAG_CC, shards::fourCharacterCode(*#enum_id_expr)),
             labels,
             values: vec![#(Self::#value_ids,)*],
@@ -316,6 +316,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
         fn from(info: &#enum_info_id) -> Self {
           Self {
             name: info.name.as_ptr() as *const std::os::raw::c_char,
+            help: info.help.0,
             labels: info.labels.s,
             values: shards::shardsc::SHEnums {
               elements: (&info.values).as_ptr() as *mut i32,
