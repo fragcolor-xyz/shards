@@ -103,3 +103,12 @@
   )
 })
 
+@wire(ml/cosine-similarity {
+  {Take(0) = tensor-a}
+  {Take(1) = tensor-b}
+  tensor-a | Tensor.Mul(tensor-b) | Tensor.Sum | Tensor.ToFloat = sum-ij
+  tensor-a | Tensor.Mul(tensor-a) | Tensor.Sum | Tensor.ToFloat = sum-i2
+  tensor-b | Tensor.Mul(tensor-b) | Tensor.Sum | Tensor.ToFloat = sum-j2
+  sum-i2 | Mul(sum-j2) | Sqrt = sqrt-ij
+  sum-ij | Div(sqrt-ij)
+} Pure: true)

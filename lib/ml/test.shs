@@ -11,6 +11,13 @@
     }
     Tensor.ToString | Log
   })
+
+  ; testing memory ref counting with take
+  "coding" | Do(ml/embed) | Take(0) = coding-embedding
+  "documentation" | Do(ml/embed) | Take(0) = documentation-embedding
+  "general" | Do(ml/embed) | Take(0) = general-embedding
+
+  [coding-embedding documentation-embedding] | Do(ml/cosine-similarity) | Log
 })
 
 Do(_test)

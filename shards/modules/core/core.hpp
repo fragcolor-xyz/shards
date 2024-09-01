@@ -2819,8 +2819,8 @@ struct Take {
                    "established to exist at compose time, the output will be of type Any.");
   }
 
-  SHSeq _cachedSeq{};
-  SHVar _output{};
+  SeqVar _cachedSeq{};
+  OwnedVar _output{};
   SHVar _indices{};
   SHVar *_indicesVar{nullptr};
   ExposedInfo _exposedInfo{};
@@ -2835,19 +2835,14 @@ struct Take {
   Type _seqOutputType{};
   std::vector<SHTypeInfo> _seqOutputTypes;
 
-  void destroy() {
-    destroyVar(_indices);
-    destroyVar(_output);
-  }
+  void destroy() { destroyVar(_indices); }
 
   void cleanup(SHContext *context) {
     if (_indicesVar) {
       releaseVariable(_indicesVar);
       _indicesVar = nullptr;
     }
-    if (_cachedSeq.elements) {
-      shards::arrayFree(_cachedSeq);
-    }
+    _cachedSeq.clear();
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Indexables; }
@@ -3104,18 +3099,19 @@ struct Take {
       if (index < 0 || size_t(index) >= inputLen) {                                                                        \
         throw OutOfRangeEx(inputLen, index);                                                                               \
       }                                                                                                                    \
-      return __val__;                                                                                                      \
+      _output = __val__;                                                                                                   \
+      return _output;                                                                                                      \
     } else {                                                                                                               \
       const uint32_t nindices = indices.payload.seqValue.len;                                                              \
-      shards::arrayResize(_cachedSeq, nindices);                                                                           \
+      _cachedSeq.resize(nindices);                                                                                         \
       for (uint32_t i = 0; nindices > i; i++) {                                                                            \
         const auto index = indices.payload.seqValue.elements[i].payload.intValue;                                          \
         if (index < 0 || size_t(index) >= inputLen) {                                                                      \
           throw OutOfRangeEx(inputLen, index);                                                                             \
         }                                                                                                                  \
-        _cachedSeq.elements[i] = __val__;                                                                                  \
+        _cachedSeq[i] = __val__;                                                                                           \
       }                                                                                                                    \
-      return shards::Var(_cachedSeq);                                                                                      \
+      return _cachedSeq;                                                                                                   \
     }                                                                                                                      \
   }
 
@@ -3131,23 +3127,24 @@ struct Take {
       const auto key = indices;
       const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
       if (!val) {
-        return Var::Empty;
+        _output = Var::Empty;
       } else {
-        return *val;
+        _output = *val;
       }
+      return _output;
     } else {
       const uint32_t nkeys = indices.payload.seqValue.len;
-      shards::arrayResize(_cachedSeq, nkeys);
+      _cachedSeq.resize(nkeys);
       for (uint32_t i = 0; nkeys > i; i++) {
         const auto key = indices.payload.seqValue.elements[i];
         const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
         if (!val) {
-          _cachedSeq.elements[i] = Var::Empty;
+          _cachedSeq[i] = Var::Empty;
         } else {
-          _cachedSeq.elements[i] = *val;
+          _cachedSeq[i] = *val;
         }
       }
-      return Var(_cachedSeq);
+      return _cachedSeq;
     }
   }
 
@@ -3223,18 +3220,19 @@ struct RTake : public Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      return input.payload.seqValue.elements[inputLen - 1 - index];
+      _output = input.payload.seqValue.elements[inputLen - 1 - index];
+      return _output;
     } else {
       const uint32_t nindices = indices.payload.seqValue.len;
-      shards::arrayResize(_cachedSeq, nindices);
+      _cachedSeq.resize(nindices);
       for (uint32_t i = 0; nindices > i; i++) {
         const auto index = indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        _cachedSeq.elements[i] = input.payload.seqValue.elements[inputLen - 1 - index];
+        _cachedSeq[i] = input.payload.seqValue.elements[inputLen - 1 - index];
       }
-      return shards::Var(_cachedSeq);
+      return _cachedSeq;
     }
   }
 };
@@ -3574,7 +3572,8 @@ struct Limit {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) and returns the truncated sequence.");
+    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) "
+                   "and returns the truncated sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -3583,9 +3582,7 @@ struct Limit {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The truncated sequence (or a single element if Max is 1).");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The truncated sequence (or a single element if Max is 1)."); }
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
