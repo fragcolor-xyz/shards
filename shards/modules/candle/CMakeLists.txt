@@ -4,15 +4,22 @@ if(APPLE)
   list(APPEND ML_RUST_FEATURES "accelerate")
 endif()
 
-# Try to find CUDA package (optional)
-find_package(CUDAToolkit QUIET)
+# Add an option to enable or disable CUDA support
+option(ENABLE_CUDA "Enable CUDA support" OFF)
 
-# Check if CUDA is found
-if(CUDAToolkit_FOUND)
-  message(STATUS "CUDA found. Enabling CUDA support.")
-  list(APPEND ML_RUST_FEATURES "cuda")
+# Try to find CUDA package (optional)
+if(ENABLE_CUDA)
+  find_package(CUDAToolkit QUIET)
+
+  # Check if CUDA is found
+  if(CUDAToolkit_FOUND)
+    message(STATUS "CUDA found. Enabling CUDA support.")
+    list(APPEND ML_RUST_FEATURES "cuda")
+  else()
+    message(STATUS "CUDA not found. Skipping CUDA support.")
+  endif()
 else()
-  message(STATUS "CUDA not found. Skipping CUDA support.")
+  message(STATUS "CUDA support is disabled.")
 endif()
 
 # Define the Rust library with the collected features
