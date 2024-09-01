@@ -643,7 +643,7 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  DECL_ENUM_INFO(MeanKind, Mean, 'mean');
+  DECL_ENUM_INFO(MeanKind, Mean, "Type of mean calculation to be performed. Specifies whether to use arithmetic, geometric, or harmonic averaging.", 'mean');
 
   static SHOptionalString help() { return SHCCSTR("Calculates the mean of a sequence of floating point numbers."); }
 

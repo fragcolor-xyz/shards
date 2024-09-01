@@ -39,7 +39,7 @@ enum class ShaderLiteralType {
 };
 }
 
-DECL_ENUM_INFO(gfx::shader::ShaderLiteralType, ShaderLiteralType, '_slt');
+DECL_ENUM_INFO(gfx::shader::ShaderLiteralType, ShaderLiteralType, "Type of shader literal insertion. Determines how and where shader code is inserted into the compilation process.", '_slt');
 ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Inline,
           SHCCSTR("Insert shader code directly into current scope"));
 ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Header,

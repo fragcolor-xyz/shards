@@ -116,8 +116,8 @@ struct DebugRenderer : public JPH::DebugRenderer {
   }
 };
 
-DECL_ENUM_INFO(JPH::BodyManager::EShapeColor, PhysicsDebugShapeColor, 'phDc');
-DECL_ENUM_INFO(JPH::ESoftBodyConstraintColor, PhysicsDebugSoftBodyConstraintColor, 'phSd');
+DECL_ENUM_INFO(JPH::BodyManager::EShapeColor, PhysicsDebugShapeColor, "Specifies colors for debug rendering of physics shapes. Used to visually distinguish different types of physics objects during debugging.", 'phDc');
+DECL_ENUM_INFO(JPH::ESoftBodyConstraintColor, PhysicsDebugSoftBodyConstraintColor, "Defines colors for debug rendering of soft body constraints. Helps visualize the internal structure and behavior of soft bodies in physics simulations.", 'phSd');
 
 struct DebugDrawShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }

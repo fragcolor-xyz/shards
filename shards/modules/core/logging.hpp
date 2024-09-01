@@ -9,7 +9,7 @@
 namespace shards {
 struct Enums {
   enum class LogLevel { Trace, Debug, Info, Warning, Error };
-  DECL_ENUM_INFO(LogLevel, LogLevel, 'logL');
+  DECL_ENUM_INFO(LogLevel, LogLevel, "Severity levels for logging messages. Helps categorize and filter log entries based on their importance.", 'logL');
 };
 }; // namespace shards
 

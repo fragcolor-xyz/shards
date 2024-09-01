@@ -605,7 +605,7 @@ struct ImageGetPixel {
 
 struct LoadImage {
   enum class BPP { u8, u16, f32 };
-  DECL_ENUM_INFO(BPP, BPP, 'ibpp');
+  DECL_ENUM_INFO(BPP, BPP, "Specifies the bits per pixel for image data. Determines the color depth and precision of image representations.", 'ibpp');
 
   static SHOptionalString help() {
     return SHCCSTR("This shard loads an image from a file or bytes sequence and returns it as an image type, that can "

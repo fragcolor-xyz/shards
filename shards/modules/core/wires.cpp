@@ -1327,7 +1327,7 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
 };
 
 struct ParallelBase : public CapturingSpawners {
-  DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
+  DECL_ENUM_INFO(WaitUntil, WaitUntil, "Policy for determining when to stop waiting in parallel operations. Defines the conditions under which execution should proceed.", 'tryM');
 
   static inline Parameters _params{
       {"Wire", SHCCSTR("The Wire to copy and schedule."), IntoWire::RunnableTypes},

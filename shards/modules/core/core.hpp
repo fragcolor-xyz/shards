@@ -24,7 +24,7 @@ using namespace std::chrono_literals;
 
 namespace shards {
 struct CoreInfo2 {
-  DECL_ENUM_INFO(BasicTypes, Type, 'type');
+  DECL_ENUM_INFO(BasicTypes, Type, "Fundamental data types supported by the system. Used for type checking and data manipulation.", 'type');
   static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = TypeEnumInfo::Type}}};
   static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };

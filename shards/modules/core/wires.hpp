@@ -15,7 +15,7 @@ namespace shards {
 enum RunWireMode { Inline, Async, Stepped };
 
 struct WireBase {
-  DECL_ENUM_INFO(RunWireMode, RunWireMode, 'runc');
+  DECL_ENUM_INFO(RunWireMode, RunWireMode, "Execution mode for running wires. Specifies whether to run inline, asynchronously, or in a stepped manner.", 'runc');
 
   static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
 

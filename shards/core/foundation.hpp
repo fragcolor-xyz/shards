@@ -1068,16 +1068,27 @@ typedef TParamVar<InternalCore> ParamVar;
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
-  static inline const char _NAME_##Name[] = #_NAME_;                  \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
+#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
+  struct _NAME_##EnumInfoWrapper {                                            \
+    static inline const char Name[] = #_NAME_;                                \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);              \
+  };                                                                          \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,    \
+    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,             \
+    _VENDOR_CC_, _CC_, false>
 
-#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
-  static inline const char _NAME_##Name[] = #_NAME_;                        \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
+#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
+  struct _NAME_##EnumInfoWrapper {                                                  \
+    static inline const char Name[] = #_NAME_;                                      \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                    \
+  };                                                                                \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,          \
+    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,                   \
+    _VENDOR_CC_, _CC_, true>
 
-#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
-#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
+#define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
+#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
+  DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 
 #define SH_CONCAT1(_a_, _b_) _a_##_b_
 #define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)

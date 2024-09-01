@@ -112,7 +112,7 @@ struct BuiltinMeshShard {
     Plane,
   };
 
-  DECL_ENUM_INFO(Type, BuiltinMeshType, 'bmid');
+  DECL_ENUM_INFO(Type, BuiltinMeshType, "Type of built-in mesh. Identifies predefined mesh shapes available in the system.", 'bmid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }

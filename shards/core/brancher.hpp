@@ -13,7 +13,10 @@
 namespace shards {
 
 enum BranchFailureBehavior { Everything, Known, Ignore };
-DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
+DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure,
+               "Defines how to handle failures in branching operations. Determines whether to continue execution, handle known "
+               "errors, or ignore failures entirely.",
+               'brcB');
 
 // Runs wires in a separate mesh while capturing variables
 struct Brancher {

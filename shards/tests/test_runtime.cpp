@@ -1126,7 +1126,7 @@ struct GamePadTable : public TableVar {
 };
 
 struct HandTable : public GamePadTable {
-  DECL_ENUM_INFO(XRHand, XrHand, 'xrha');
+  DECL_ENUM_INFO(XRHand, XrHand, "XR hand", 'xrha');
 
   HandTable()
       : GamePadTable(),                           //

@@ -422,7 +422,7 @@ struct Write {
 
 struct Copy {
   enum class IfExists { Fail, Skip, Overwrite, Update };
-  DECL_ENUM_INFO(IfExists, IfExists, 'fsow');
+  DECL_ENUM_INFO(IfExists, IfExists, "Action to take when a destination file already exists during a copy operation. Determines whether to fail, skip, overwrite, or update the file.", 'fsow');
 
   ParamVar _destination{};
   IfExists _overwrite{IfExists::Fail};

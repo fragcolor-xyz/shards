@@ -34,11 +34,8 @@ add_shards_module(core SOURCES ${SOURCES}
     NotInline
     NoopShard
     CoreConst
-    CoreSleep
     CoreInput
-    CoreForRange
     CoreRepeat
-    CoreOnce
     CoreGet
     CoreRefRegular
     CoreRefTable
@@ -68,38 +65,6 @@ add_shards_module(core SOURCES ${SOURCES}
     MathMod
     MathLShift
     MathRShift
-    MathAbs
-    MathExp
-    MathExp2
-    MathExpm1
-    MathLog
-    MathLog10
-    MathLog2
-    MathLog1p
-    MathSqrt
-    MathFastSqrt
-    MathFastInvSqrt
-    MathCbrt
-    MathSin
-    MathCos
-    MathTan
-    MathAsin
-    MathAcos
-    MathAtan
-    MathSinh
-    MathCosh
-    MathTanh
-    MathAsinh
-    MathAcosh
-    MathAtanh
-    MathErf
-    MathErfc
-    MathTGamma
-    MathLGamma
-    MathCeil
-    MathFloor
-    MathTrunc
-    MathRound
 )
 
 if(EMSCRIPTEN)

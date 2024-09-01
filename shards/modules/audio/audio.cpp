@@ -535,7 +535,7 @@ struct Channel {
   std::deque<ParamVar> _vars;
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Wire needs to capture all it needs, so we need deeper informations
+    // Wire needs to capture all it needs, so we need to copy it!
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
     dataCopy.requiredVariables = &data.wire->requirements; // this ensures we get the right requirements deep
@@ -656,7 +656,7 @@ struct Channel {
 
 struct Oscillator {
   enum class Waveform { Sine, Square, Triangle, Sawtooth };
-  DECL_ENUM_INFO(Waveform, Waveform, 'wave');
+  DECL_ENUM_INFO(Waveform, Waveform, "Type of waveform used in audio synthesis. Defines the shape of the oscillator's output signal.", 'wave');
 
   ma_waveform _wave;
 
@@ -893,6 +893,7 @@ struct ReadFile {
 
     if (_initialized) {
       ma_decoder_uninit(&_decoder);
+      memset(&_decoder, 0, sizeof(ma_decoder));
       _initialized = false;
     }
 

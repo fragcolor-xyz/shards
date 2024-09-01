@@ -193,13 +193,14 @@ template <typename E, E Value> struct TEnumHelp {
   static inline SHOptionalString help = SHOptionalString{""};
 };
 
-template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+template <class SH_CORE_, typename E_, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 struct TEnumInfo {
   using Enum = E_;
   using SHCore = SH_CORE_;
   static constexpr bool IsFlags = IsFlags_;
   static constexpr shards::Type Type{{SHType::Enum, {.enumeration = {.vendorId = VendorId_, .typeId = TypeId_}}}};
   static inline const char *Name = Name_;
+  static inline const SHOptionalString Help = Help_;
   static constexpr int32_t VendorId = VendorId_;
   static constexpr int32_t TypeId = TypeId_;
 };
@@ -224,7 +225,11 @@ struct EnumRegisterImpl {
 
     EnumRegisterImpl result{};
     auto &info = result.info;
+
     info.name = TEnumInfo::Name;
+
+    info.help = TEnumInfo::Help;
+
     for (auto &view : Impl::eseq) {
       result.labels.emplace_back(view);
     }

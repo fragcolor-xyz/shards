@@ -56,10 +56,10 @@ ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Velocity,
 ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::AlphaBlend, SHCCSTR("Simple feature that enables alpha blending"));
 
 namespace gfx {
-DECL_ENUM_INFO(RequiredAttributes_, RequiredAttributes, 'fatt');
+DECL_ENUM_INFO(RequiredAttributes_, RequiredAttributes, "Attributes required for a graphics feature. Specifies the necessary properties or capabilities for a feature to function.", 'fatt');
 
 struct BuiltinFeatureShard {
-  DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, 'feid');
+  DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, "Identifier for built-in graphics features. Used to reference pre-defined functionality in the graphics system.", 'feid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Feature; }

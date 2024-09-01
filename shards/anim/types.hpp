@@ -15,7 +15,7 @@ namespace detail {
 using namespace shards;
 // NOTE: This needs to be a struct ensure correct initialization order under clang
 struct Container {
-  DECL_ENUM_INFO(Interpolation, Interpolation, 'i11n');
+  DECL_ENUM_INFO(Interpolation, Interpolation, "Interpolation type used for animation. Determines how values are calculated between keyframes.", 'i11n');
 
   static inline Types PathComponentTypes{CoreInfo::StringType};
   static inline Type Path = Type::SeqOf(PathComponentTypes);

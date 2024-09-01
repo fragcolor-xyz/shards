@@ -318,11 +318,11 @@ using IterableSeq = IterableArray<SHSeq, SHVar, &Core::seqResize, &Core::seqFree
 using IterableExposedInfo =
     IterableArray<SHExposedTypesInfo, SHExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
 
-template <typename E, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
-class EnumInfo : public TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_> {
+template <typename E, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+class EnumInfo : public TEnumInfo<Core, E, Name_, Help_, VendorId_, TypeId_, IsFlags_> {
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
-      : TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
+      : TEnumInfo<Core, E, Name_, Help_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
 };
 
 inline void registerShard(const char *fullName, SHShardConstructor constructor, std::string_view _) {

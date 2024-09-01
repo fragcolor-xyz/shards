@@ -11,7 +11,7 @@
 
 namespace shards::Physics {
 
-DECL_ENUM_INFO(JPH::EConstraintSpace, ConstraintSpace, 'phCs');
+DECL_ENUM_INFO(JPH::EConstraintSpace, ConstraintSpace, "Defines the coordinate space for physics constraints. Affects how constraints are applied and calculated in the physics simulation.", 'phCs');
 
 std::atomic_uint64_t ConstraintNode::UidCounter{};
 

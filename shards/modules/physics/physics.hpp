@@ -80,8 +80,8 @@ inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate
 [[nodiscard]] inline float4 toLinalg(const JPH::Vec4 &f4) noexcept { return float4{f4.GetX(), f4.GetY(), f4.GetZ(), f4.GetW()}; }
 [[nodiscard]] inline float4 toLinalgLinearColor(const JPH::Color &f4) noexcept { return toLinalg(f4.ToVec4()); }
 
-DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF, 'phDf');
-DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion, 'phMo');
+DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF, "Specifies the allowed degrees of freedom for physics objects. Controls which axes an object can move or rotate around in the physics simulation.", 'phDf');
+DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion, "Defines the motion type of physics objects. Determines how objects interact with forces and constraints in the physics simulation.", 'phMo');
 
 struct BodyNode {
   static std::atomic_uint64_t UidCounter;
