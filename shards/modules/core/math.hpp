@@ -89,6 +89,16 @@ struct BinaryBase : public Base {
        CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
        CoreInfo::ColorType,     CoreInfo::ColorVarType, CoreInfo::AnySeqType,    CoreInfo::AnyVarSeqType}};
 
+  static inline Types OnlyNumbers{
+    {
+      CoreInfo::IntType,       CoreInfo::IntVarType,   CoreInfo::Int2Type,      CoreInfo::Int2VarType,  CoreInfo::Int3Type,
+      CoreInfo::Int3VarType,   CoreInfo::Int4Type,     CoreInfo::Int4VarType,   CoreInfo::Int8Type,     CoreInfo::Int8VarType,
+      CoreInfo::Int16Type,     CoreInfo::Int16VarType, CoreInfo::FloatType,     CoreInfo::FloatVarType, CoreInfo::Float2Type,
+      CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
+      CoreInfo::ColorType,     CoreInfo::ColorVarType
+    }
+  };
+
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", SHCCSTR("The operand for this operation."), MathTypesOrVar));
 
@@ -271,7 +281,7 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
   TOp op;
 
   static SHOptionalString help() {
-    return SHCCSTR("Applies the binary operation on the input value and the operand and returns the result (or a sequence of "
+    return SHCCSTR("Applies the binary operation on the input value and the operand and outputs the result (or a sequence of "
                    "results if the input and the operand are sequences).");
   }
 
@@ -352,6 +362,10 @@ template <class TOp> struct BinaryIntOperation : public BinaryOperation<TOp> {
   static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
                                      CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
+  static inline Types IntOrSeqTypesOrBool{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                           CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType,
+                                           CoreInfo::BoolType, CoreInfo::BoolVarType}};
+
   static SHParametersInfo parameters() {
     static Types ParamTypes = []() {
       static Types types = BinaryBase::MathTypesOrVar;
@@ -421,7 +435,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Applies the unary operation on the input value and returns the result. If the input is a sequence, the "
+    return SHCCSTR("Applies the unary operation on the input value and outputs the result. If the input is a sequence, the "
                    "operation is applied to each element of the sequence.");
   }
 
@@ -461,7 +475,7 @@ template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
 };
 
-template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp> {
+template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -536,38 +550,238 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
   using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntOrBoolTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
-MATH_BINARY_OPERATION(Add, +, 0);
-MATH_BINARY_OPERATION(Subtract, -, 0);
-MATH_BINARY_OPERATION(Multiply, *, 0);
-MATH_BINARY_OPERATION(Divide, /, 1);
-MATH_BINARY_OPERATION(Mod, %, 0);
-MATH_BINARY_INT_BOOL_OPERATION(Xor, ^);
-MATH_BINARY_INT_BOOL_OPERATION(And, &);
-MATH_BINARY_INT_BOOL_OPERATION(Or, |);
-MATH_BINARY_INT_OPERATION(LShift, <<);
-MATH_BINARY_INT_OPERATION(RShift, >>);
+// MATH_BINARY_OPERATION(Add, +, 0);
+// MATH_BINARY_OPERATION(Subtract, -, 0);
+// MATH_BINARY_OPERATION(Multiply, *, 0);
+// MATH_BINARY_OPERATION(Divide, /, 1);
+// MATH_BINARY_OPERATION(Mod, %, 0);
+// MATH_BINARY_INT_BOOL_OPERATION(Xor, ^);
+// MATH_BINARY_INT_BOOL_OPERATION(And, &);
+// MATH_BINARY_INT_BOOL_OPERATION(Or, |);
+// MATH_BINARY_INT_OPERATION(LShift, <<);
+// MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_UNARY_OPERATION(NAME, FUNCI, FUNCF)                                         \
-  struct NAME##Op final {                                                                \
-    template <typename T> T apply(const T &lhs) {                                        \
-      if constexpr (std::is_unsigned_v<T>) {                                             \
-        return lhs;                                                                      \
-      } else if constexpr (std::is_integral_v<T>) {                                      \
-        return FUNCI(lhs);                                                               \
-      } else {                                                                           \
-        return FUNCF(lhs);                                                               \
-      }                                                                                  \
-    }                                                                                    \
-  };                                                                                     \
-  using NAME = UnaryOperation<BasicUnaryOperation<NAME##Op, DispatchType::NumberTypes>>; \
-  RUNTIME_SHARD_TYPE(Math, NAME);
+struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard adds the input value to the value provided in the Operand parameter.");
+  }
 
-#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                        \
-  struct NAME##Op final {                                                                    \
-    template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                        \
-  };                                                                                         \
-  using NAME = UnaryFloatOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
-  RUNTIME_SHARD_TYPE(Math, NAME);
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to add the value specified in the Operand parameter to.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the addition."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to add to the input."), MathTypesOrVar));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Add);
+
+struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard subtracts the value provided in the Operand parameter from the input value.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to subtract the value specified in the Operand parameter from.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the subtraction."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to subtract from the input."), MathTypesOrVar));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Subtract);
+
+struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard multiplies the input value by the value provided in the Operand parameter.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to multiply the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the multiplication."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to multiply the input by."), MathTypesOrVar));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Multiply);
+
+struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard divides the input value by the value provided in the Operand parameter.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to divide the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the division."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to divide the input by."), MathTypesOrVar));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Divide);
+
+struct Mod : public BinaryOperation<BasicBinaryOperation<ModOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard calculates the remainder of the division of the input value by the value provided in the Operand parameter.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to divide the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the modulus operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(ParamsInfo::Param(
+        "Operand", SHCCSTR("The value or sequence of values to divide the input by and get the remainder of."), MathTypesOrVar));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Mod);
+
+struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType::IntOrBoolTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise XOR operation on the input with the value specified in the "
+                   "Operand parameter and outputs the result. A bitwise XOR operation is a binary operation that compares each "
+                   "bit of the binary representations of two numbers and outputs 1 if the bits are different and 0 if they are "
+                   "the same. The shard then outputs a value, whose binary representation is the concatenation of the resulting "
+                   "1s and 0s from the XOR comparison.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to compare the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the value resulting from the XOR operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Xor);
+
+struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType::IntOrBoolTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise AND operation on the input value with the value specified in the "
+                   "Operand parameter and outputs the result. A bitwise AND operation is a binary operation that compares each "
+                   "bit of the binary representations of two numbers and outputs 1 if the bits are 1 and 0 otherwise. The "
+                   "shard then outputs a value, whose binary representation is the concatenation of the resulting 1s and 0s from "
+                   "the AND comparison.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to compare the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the value resulting from the AND operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, And);
+
+struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::IntOrBoolTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard performs a bitwise OR operation on the input value with the value specified in the "
+        "Operand parameter and outputs the result. A bitwise OR operation is a binary operation that compares each "
+        "bit of the binary representations of two numbers and outputs 1 if either bit is 1 and 0 if both bits are 0. The "
+        "shard then outputs a value, whose binary representation is the concatenation of the resulting 1s and 0s from the Or "
+        "comparison.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value or the sequence of values to compare the value specified in the Operand parameter with.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the value resulting from the OR operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Or);
+
+struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, DispatchType::IntTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard shifts the bits of the input value to the left by the number of positions specified in the Operand "
+        "parameter. The shard then outputs a value, whose binary representation is the resulting shifted binary.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The integer or the sequence of integers to shift the bits of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the value resulting from the left shift operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(ParamsInfo::Param(
+        "Operand", SHCCSTR("The number of positions to shift the bits of the input value to the left by."), IntOrSeqTypes));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, LShift);
+
+struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, DispatchType::IntTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard shifts the bits of the input value to the right by the number of positions specified in the Operand "
+        "parameter. The shard then outputs a value, whose binary representation is the resulting shifted binary.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The integer or the sequence of integers to shift the bits of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the value resulting from the right shift operation."); }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo customParams(ParamsInfo::Param(
+        "Operand", SHCCSTR("The number of positions to shift the bits of the input value to the right by."), IntOrSeqTypes));
+    return SHParametersInfo(customParams);
+  }
+};
+RUNTIME_SHARD_TYPE(Math, RShift);
+
+#define MATH_UNARY_OPERATION(NAME, FUNCI, FUNCF)    \
+  struct NAME##Op final {                           \
+    template <typename T> T apply(const T &lhs) {   \
+      if constexpr (std::is_unsigned_v<T>) {        \
+        return lhs;                                 \
+      } else if constexpr (std::is_integral_v<T>) { \
+        return FUNCI(lhs);                          \
+      } else {                                      \
+        return FUNCF(lhs);                          \
+      }                                             \
+    }                                               \
+  };
+
+#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                 \
+  struct NAME##Op final {                                             \
+    template <typename T> T apply(const T &lhs) { return FUNC(lhs); } \
+  };
 
 MATH_UNARY_OPERATION(Abs, __builtin_llabs, __builtin_fabs);
 MATH_UNARY_FLOAT_OPERATION(Exp, __builtin_exp, __builtin_expf);
@@ -601,6 +815,428 @@ MATH_UNARY_FLOAT_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
 MATH_UNARY_FLOAT_OPERATION(Floor, __builtin_floor, __builtin_floorf);
 MATH_UNARY_FLOAT_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_FLOAT_OPERATION(Round, __builtin_round, __builtin_roundf);
+
+struct Abs : public UnaryOperation<BasicUnaryOperation<AbsOp, DispatchType::NumberTypes>> {
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the absolute value of the input."); }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The numeric value or a sequence of numeric values to get the absolute value of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the absolute value of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Abs);
+
+struct Exp : public UnaryFloatOperation<BasicUnaryOperation<ExpOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the exponential function (e^x) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to use as the exponent for e (Euler's number).");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (e^x)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Exp);
+
+struct Exp2 : public UnaryFloatOperation<BasicUnaryOperation<Exp2Op, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the exponential function (2^x) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats used as the exponent for 2."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (2^x)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Exp2);
+
+struct Expm1 : public UnaryFloatOperation<BasicUnaryOperation<Expm1Op, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the exponential function (e^x - 1) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats used as the exponent for e (Euler's number).");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (e^x - 1)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Expm1);
+
+struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the natural logarithm (ln(x)) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the natural logarithm of. This value must be a positive "
+                   "number or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm (ln(x)) of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Log);
+
+struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the base 10 logarithm (log10(x)) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the base 10 logarithm of. This value must be a positive "
+                   "number or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Outputs the base 10 logarithm (log10(x)) of the input, which is the power to which 10 must be raised to obtain x.");
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Log10);
+
+struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the base 2 logarithm (log2(x)) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the base 2 logarithm of. This value must be a positive "
+                   "number or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Outputs the base 2 logarithm (log2(x)) of the input, which is the power to which 2 must be raised to obtain x.");
+  }
+};
+RUNTIME_SHARD_TYPE(Math, Log2);
+
+struct Log1p : public UnaryFloatOperation<BasicUnaryOperation<Log1pOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the natural logarithm (ln(1+x)) for the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the natural logarithm of. This value must be a positive "
+                   "number or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm (ln(1+x)) of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Log1p);
+
+struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the square root of the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the square root of. This value must be a positive number "
+                   "or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the square root of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Sqrt);
+
+struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the square root of the given input, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the square root of. This value must be a positive number "
+                   "or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the square root of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, FastSqrt);
+
+struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse square root of the given input, which is 1/√x, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse square root of. This value must be a positive "
+                   "number or sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse square root of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, FastInvSqrt);
+
+struct Cbrt : public UnaryFloatOperation<BasicUnaryOperation<CbrtOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the cube root of the given input, which is ∛x, where the input is x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the cube root of. This value must be a positive number or "
+                   "sequence of positive numbers.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cube root of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Cbrt);
+
+struct Sin : public UnaryFloatOperation<BasicUnaryOperation<SinOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the sine of the given input (sin(x)), where the input x is the angle in radians.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the sine of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the sine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Sin);
+
+struct Cos : public UnaryFloatOperation<BasicUnaryOperation<CosOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the cosine of the given input (cos(x)), where the input x is the angle in radians.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the cosine of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cosine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Cos);
+
+struct Tan : public UnaryFloatOperation<BasicUnaryOperation<TanOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the tangent of the given input (tan(x)), where the input x is the angle in radians.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the tangent of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the tangent of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Tan);
+
+struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse sine of the given input (asin(x)), where the input x is the sine value.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse sine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose sine is the input value."); }
+};
+RUNTIME_SHARD_TYPE(Math, Asin);
+
+struct Acos : public UnaryFloatOperation<BasicUnaryOperation<AcosOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard calculates the inverse cosine of the given input (acos(x)), where the input x is the cosine value.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse cosine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose cosine is the input value."); }
+};
+RUNTIME_SHARD_TYPE(Math, Acos);
+
+struct Atan : public UnaryFloatOperation<BasicUnaryOperation<AtanOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard calculates the inverse tangent of the given input (atan(x)), where the input x is the tangent value.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse tangent of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose tangent is the input value."); }
+};
+RUNTIME_SHARD_TYPE(Math, Atan);
+
+struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the hyperbolic sine of the given input (sinh(x)), where the input x is the real number "
+                   "used in the exponential calculation (sinh(x) = (e^x - e^-x) / 2).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic sine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic sine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Sinh);
+
+struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input (cosh(x)), where the input x is the real "
+                   "number used in the exponential calculation (cosh(x) = (e^x + e^-x) / 2).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic cosine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic cosine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Cosh);
+
+struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input (tanh(x)), where the input x is the real "
+                   "number used in the exponential calculation (tanh(x) = sinh(x) / cosh(x) = (e^x - e^-x) / (e^x + e^-x)).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic tangent of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic tangent of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Tanh);
+
+struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input (asinh(x)), where input x, outputs y "
+                   "such that sinh(y) = x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic sine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic sine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Asinh);
+
+struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input (acosh(x)), where input x, outputs y "
+                   "such that cosh(y) = x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic cosine of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic cosine of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Acosh);
+
+struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse hyperbolic tangent of the given input (atanh(x)), where x, outputs y such "
+                   "that tanh(y) = x.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic tangent of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic tangent of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Atanh);
+
+struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the error function of the given input (erf(x)). For input x, outputs the probability "
+                   "that a random variable with normal distribution of mean 0 and variance 1/2 falls in the range [-x, x] "
+                   "(erf(x) = (2/√π) ∫₀ˣ e^(-t²) dt).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the error function of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the error function of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Erf);
+
+struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the complementary error function of the given input (erfc(x)). For input x, outputs "
+                   "the probability that the absolute value of a random variable with normal distribution of mean 0 and variance "
+                   "1/2 is greater than x (erfc(x) = 1 - erf(x)).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the complementary error function of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the complementary error function of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, Erfc);
+
+struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard calculates the gamma function of the given input (TGamma(x)). Γ(x) extends factorial to real numbers.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the gamma function of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the gamma function of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, TGamma);
+
+struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard calculates the log gamma function of the given input (lgamma(x)). For input x, outputs the natural "
+        "logarithm of the absolute value of the gamma function (lgamma(x) = ln|Γ(x)|).");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the log gamma function of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the log gamma function of the input."); }
+};
+RUNTIME_SHARD_TYPE(Math, LGamma);
+
+struct Ceil : public UnaryFloatOperation<BasicUnaryOperation<CeilOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() { return SHCCSTR("This shard rounds up the input to the nearest integer."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to round up."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded up to the nearest integer (as a float)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Ceil);
+
+struct Floor : public UnaryFloatOperation<BasicUnaryOperation<FloorOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() { return SHCCSTR("This shard rounds down the input to the nearest integer."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to round down."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded down to the nearest integer (as a float)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Floor);
+
+struct Trunc : public UnaryFloatOperation<BasicUnaryOperation<TruncOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard truncates the input floating-point number towards zero, removing any fractional part without rounding.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to truncate."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input truncated to the nearest integer (as a float)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Trunc);
+
+struct Round : public UnaryFloatOperation<BasicUnaryOperation<RoundOp, DispatchType::FloatTypes>> {
+  static SHOptionalString help() { return SHCCSTR("This shard rounds the input floating-point number to the nearest integer."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to round."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded to the nearest integer (as a float)."); }
+};
+RUNTIME_SHARD_TYPE(Math, Round);
 
 struct Mean {
   struct ArithMean {
@@ -641,18 +1277,20 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  DECL_ENUM_INFO(MeanKind, Mean, "Type of mean calculation to be performed. Specifies whether to use arithmetic, geometric, or harmonic averaging.", 'mean');
+  DECL_ENUM_INFO(
+      MeanKind, Mean,
+      "Type of mean calculation to be performed. Specifies whether to use arithmetic, geometric, or harmonic averaging.", 'mean');
 
-  static SHOptionalString help() { return SHCCSTR("Calculates the mean of a sequence of floating point numbers."); }
+  static SHOptionalString help() { return SHCCSTR("Calculates the average value of a sequence of floating point numbers."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of floating point numbers."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence of floating point numbers to calculate the average of."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The calculated mean."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The calculated average as a float."); }
 
   static SHParametersInfo parameters() {
-    static Parameters params{{"Kind", SHCCSTR("The kind of Pythagorean means."), {MeanEnumInfo::Type}}};
+    static Parameters params{{"Kind", SHCCSTR("The type of average to calculate."), {MeanEnumInfo::Type}}};
     return params;
   }
 
@@ -682,35 +1320,95 @@ struct Mean {
   MeanKind mean{MeanKind::Arithmetic};
 };
 
-struct IncOp final {
+struct IncOp {
   template <typename T> T apply(const T &a) { return a + 1; }
 };
-using Inc = UnaryVarOperation<BasicUnaryOperation<IncOp>>;
 
-struct DecOp final {
+struct Inc : public UnaryVarOperation<BasicUnaryOperation<IncOp>> {
+  static SHOptionalString help() { return SHCCSTR("Increases the input by 1."); }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The float or integer (or sequence of floats or integers) to increase by 1.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input increased by 1."); }
+};
+RUNTIME_SHARD_TYPE(Math, Inc);
+
+struct DecOp {
   template <typename T> T apply(const T &a) { return a - 1; }
 };
-using Dec = UnaryVarOperation<BasicUnaryOperation<DecOp>>;
+
+struct Dec : public UnaryVarOperation<BasicUnaryOperation<DecOp>> {
+  static SHOptionalString help() { return SHCCSTR("Decreases the input by 1."); }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The float or integer (or sequence of floats or integers) to decrease by 1.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input decreased by 1."); }
+};
+RUNTIME_SHARD_TYPE(Math, Dec);
 
 struct NegateOp final {
   template <typename T> T apply(const T &a) { return -a; }
 };
-using Negate = UnaryOperation<BasicUnaryOperation<NegateOp>>;
+struct Negate : public UnaryVarOperation<BasicUnaryOperation<NegateOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard reverses the sign of the input. (A positive number becomes negative, and vice versa).");
+  }
 
-struct MaxOp final {
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The float or integer (or sequence of floats or integers) to reverse the sign of.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input with its sign reversed."); }
+};
+RUNTIME_SHARD_TYPE(Math, Negate);
+
+struct MaxOp {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::max(lhs, rhs); }
 };
-using Max = BinaryOperation<BasicBinaryOperation<MaxOp>>;
+struct Max : public BinaryOperation<BasicBinaryOperation<MaxOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard compares the input with the value specified in the `Operand` parameter and outputs the larger value.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The first value to compare with."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The larger value between the input and the operand."); }
+};
+RUNTIME_SHARD_TYPE(Math, Max);
 
 struct MinOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::min(lhs, rhs); }
 };
-using Min = BinaryOperation<BasicBinaryOperation<MinOp>>;
+struct Min : public BinaryOperation<BasicBinaryOperation<MinOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard compares the input with the value specified in the `Operand` parameter and outputs the smaller value.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The first value to compare with."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The smaller value between the input and the operand."); }
+};
+RUNTIME_SHARD_TYPE(Math, Min);
 
 struct PowOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::pow(lhs, rhs); }
 };
-using Pow = BinaryOperation<BasicBinaryOperation<PowOp>>;
+struct Pow : public BinaryOperation<BasicBinaryOperation<PowOp>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard raises the input to the power of the exponend specified in the Operand parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The base value to raise the power of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The result of raising the input to the power of the operand."); }
+};
+RUNTIME_SHARD_TYPE(Math, Pow);
 
 struct LerpOp final {
   template <typename T> T apply(const T &lhs, const T &rhs, double t) { return T((double)lhs + (double(rhs) - double(lhs)) * t); }
@@ -728,12 +1426,21 @@ struct Lerp final {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return Base::MathTypes; }
 
-  static SHOptionalString help() { return SHCCSTR("Linearly interpolate between two values based on input"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The factor to interpolate between the start and end values."); }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The interpolated value between the start and end values based on the factor provided as input.");
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Linearly interpolate between the start value specified in the `First` parameter and the end value specified "
+                   "in the `Second` parameter based on the factor provided as input.");
+  }
 
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"First", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
-        {"Second", SHCCSTR("The second value"), BinaryBase::MathTypesOrVar},
+        {"First", SHCCSTR("The start value"), BinaryBase::OnlyNumbers},
+        {"Second", SHCCSTR("The end value"), BinaryBase::OnlyNumbers},
     };
     return params;
   }
@@ -813,12 +1520,20 @@ struct Clamp final {
   static SHTypesInfo inputTypes() { return Base::MathTypesNoSeq; }
   static SHTypesInfo outputTypes() { return Base::MathTypesNoSeq; }
 
-  static SHOptionalString help() { return SHCCSTR("Clamps the input value between the Min and Max values"); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard ensures the input value falls within the specified range. If the value falls below the minimum, "
+                   "the Min value is returned. If the value exceeds the maximum, the Max value is returned. Otherwise, the value "
+                   "is returned unchanged.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to clamp."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The clamped value."); }
 
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Min", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
-        {"Max", SHCCSTR("The second value"), BinaryBase::MathTypesOrVar},
+        {"Min", SHCCSTR("The lower bound of the range"), BinaryBase::MathTypesOrVar},
+        {"Max", SHCCSTR("The upper bound of the range"), BinaryBase::MathTypesOrVar},
     };
     return params;
   }
