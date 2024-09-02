@@ -422,14 +422,14 @@ template <typename TShard> struct Read : public IOBase {
 
 struct ShaderReadInput : public Read<blocks::ReadInput> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard either reads the value of the specified vertex attribute supplied to the vertex or reads the interpolated value of that attribute, output from the vertex stage and provided to the pixel.");
+    return SHCCSTR("This shard reads the value of the shader input specified in the Name parameter.");
   }
   static SHOptionalString inputHelp() { return ShaderDefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The value of the  specified attribute."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The value of the  specified shader input."); }
 
   SHParametersInfo parameters() {
     static shards::Parameters params = {
-        {"Name", SHCCSTR("The name of the vertex attribute to read."), {shards::CoreInfo::StringType}},
+        {"Name", SHCCSTR("The name of the shader input to read."), {shards::CoreInfo::StringType}},
     };
     return params;
   };
@@ -610,14 +610,14 @@ template <typename TShard> struct Write : public IOBase {
 
 struct ShaderWriteOutput: public Write<blocks::WriteOutput> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sets the value passed as input to the vertex attribute specified in the Name parameter and outputs it to the next stage or render target.");
+    return SHCCSTR("This shard writes the input value to the shader output or one of the outputs of the render pass (specified in the Name parameter).");
   }
-  static SHOptionalString inputHelp() { return SHCCSTR("The value to set to the vertex attribute specified."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to write to the shader output specified."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The shard outputs none, but the value is passed to the next stage or render target."); }
   
   SHParametersInfo parameters() {
     static shards::Parameters params = {
-        {"Name", SHCCSTR("The name of the attribute to set the input value to and output."), {shards::CoreInfo::StringType}},
+        {"Name", SHCCSTR("The name of the output to write to."), {shards::CoreInfo::StringType}},
     };
     return params;
   };
@@ -889,12 +889,12 @@ struct WithInput {
 
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard creates a conditional statement within a shader code. If the vertex attribute (or the interpolated value of the vertex attribute supplied to the pixel) specified in the Name parameter is being received at the stage that calls this shard, "
+        "This shard creates a conditional statement within a shader code. If the shader input specified in the Name parameter is available to the shader stage that calls this shard, "
         "the code in the Then parameter will be executed. Otherwise, the code in the Else parameter will execute.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard does not read the attribute value directly. Use Shader.ReadInput within the Then branch if you need to access the attribute value.");
+    return SHCCSTR("This shard does not read the attribute value directly. Use Shader.ReadInput within the Then branch if you need to access the shader input value.");
   }
 
   static SHOptionalString outputHelp() {
