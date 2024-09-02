@@ -15,7 +15,7 @@
     } {
       true
     }
-  ) = need-update
+  ) = need-update | Log("Embeddings model needs update")
 
   When({need-update} {
     manifest:tokenizer | ExpectString = tokenizer-url
