@@ -221,7 +221,6 @@ pub fn register_shards() {
   register_enum::<PopupLocation>();
   register_legacy_shard::<Scope>();
   register_enum::<WindowFlags>();
-  register_enum::<Order>();
   register_legacy_shard::<BottomPanel>();
   register_legacy_shard::<CentralPanel>();
   register_legacy_shard::<LeftPanel>();

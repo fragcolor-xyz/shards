@@ -15,7 +15,9 @@ namespace shards {
 enum RunWireMode { Inline, Async, Stepped };
 
 struct WireBase {
-  DECL_ENUM_INFO(RunWireMode, RunWireMode, "Execution mode for running wires. Specifies whether to run inline, asynchronously, or in a stepped manner.", 'runc');
+  DECL_ENUM_INFO(RunWireMode, RunWireMode,
+                 "Execution mode for running wires. Specifies whether to run inline, asynchronously, or in a stepped manner.",
+                 'runc');
 
   static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
 
@@ -180,7 +182,10 @@ struct BaseRunner : public WireBase {
     if (wire) {
       if (mode == RunWireMode::Inline && wire->wireUsers.count(this) != 0) {
         wire->wireUsers.erase(this);
-        wire->cleanup();
+        if (wire->wireUsers.empty()) {
+          SHLOG_TRACE("BaseRunner: no more users of wire {}, cleaning up", wire->name);
+          wire->cleanup();
+        }
       } else if (!wire->detached) {
         // but avoid stopping if detached and scheduled
         shards::stop(wire.get());

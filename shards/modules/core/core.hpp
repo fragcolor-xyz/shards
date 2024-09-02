@@ -2819,8 +2819,8 @@ struct Take {
                    "established to exist at compose time, the output will be of type Any.");
   }
 
-  SeqVar _cachedSeq{};
-  OwnedVar _output{};
+  SHSeq _cachedSeq{};
+  SHVar _output{};
   SHVar _indices{};
   SHVar *_indicesVar{nullptr};
   ExposedInfo _exposedInfo{};
@@ -2835,14 +2835,19 @@ struct Take {
   Type _seqOutputType{};
   std::vector<SHTypeInfo> _seqOutputTypes;
 
-  void destroy() { destroyVar(_indices); }
+  void destroy() {
+    destroyVar(_indices);
+    destroyVar(_output);
+  }
 
   void cleanup(SHContext *context) {
     if (_indicesVar) {
       releaseVariable(_indicesVar);
       _indicesVar = nullptr;
     }
-    _cachedSeq.clear();
+    if (_cachedSeq.elements) {
+      shards::arrayFree(_cachedSeq);
+    }
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Indexables; }
@@ -3099,19 +3104,18 @@ struct Take {
       if (index < 0 || size_t(index) >= inputLen) {                                                                        \
         throw OutOfRangeEx(inputLen, index);                                                                               \
       }                                                                                                                    \
-      _output = __val__;                                                                                                   \
-      return _output;                                                                                                      \
+      return __val__;                                                                                                      \
     } else {                                                                                                               \
       const uint32_t nindices = indices.payload.seqValue.len;                                                              \
-      _cachedSeq.resize(nindices);                                                                                         \
+      shards::arrayResize(_cachedSeq, nindices);                                                                           \
       for (uint32_t i = 0; nindices > i; i++) {                                                                            \
         const auto index = indices.payload.seqValue.elements[i].payload.intValue;                                          \
         if (index < 0 || size_t(index) >= inputLen) {                                                                      \
           throw OutOfRangeEx(inputLen, index);                                                                             \
         }                                                                                                                  \
-        _cachedSeq[i] = __val__;                                                                                           \
+        _cachedSeq.elements[i] = __val__;                                                                                  \
       }                                                                                                                    \
-      return _cachedSeq;                                                                                                   \
+      return shards::Var(_cachedSeq);                                                                                      \
     }                                                                                                                      \
   }
 
@@ -3127,24 +3131,23 @@ struct Take {
       const auto key = indices;
       const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
       if (!val) {
-        _output = Var::Empty;
+        return Var::Empty;
       } else {
-        _output = *val;
+        return *val;
       }
-      return _output;
     } else {
       const uint32_t nkeys = indices.payload.seqValue.len;
-      _cachedSeq.resize(nkeys);
+      shards::arrayResize(_cachedSeq, nkeys);
       for (uint32_t i = 0; nkeys > i; i++) {
         const auto key = indices.payload.seqValue.elements[i];
         const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
         if (!val) {
-          _cachedSeq[i] = Var::Empty;
+          _cachedSeq.elements[i] = Var::Empty;
         } else {
-          _cachedSeq[i] = *val;
+          _cachedSeq.elements[i] = *val;
         }
       }
-      return _cachedSeq;
+      return Var(_cachedSeq);
     }
   }
 
@@ -3220,19 +3223,18 @@ struct RTake : public Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      _output = input.payload.seqValue.elements[inputLen - 1 - index];
-      return _output;
+      return input.payload.seqValue.elements[inputLen - 1 - index];
     } else {
       const uint32_t nindices = indices.payload.seqValue.len;
-      _cachedSeq.resize(nindices);
+      shards::arrayResize(_cachedSeq, nindices);
       for (uint32_t i = 0; nindices > i; i++) {
         const auto index = indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        _cachedSeq[i] = input.payload.seqValue.elements[inputLen - 1 - index];
+        _cachedSeq.elements[i] = input.payload.seqValue.elements[inputLen - 1 - index];
       }
-      return _cachedSeq;
+      return shards::Var(_cachedSeq);
     }
   }
 };
