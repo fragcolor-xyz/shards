@@ -620,11 +620,11 @@ struct ToJson {
   static SHOptionalString help() { return SHCCSTR("This shard takes its input and converts it into a JSON string."); }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("If Pure is set to true, this shard acceps an input of anytype. If Pure is set to false, this shard only "
-                   "accepts tables, sequences, strings, numbers, booleans and none.");
+    return SHCCSTR("If Pure is set to false, this shard accepts an input of any type. If Pure is set to true, this shard only "
+                   "accepts standard JSON types (tables, sequences, strings, numbers, booleans and none).");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the input converted to a JSON string."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input converted to a JSON string."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -702,13 +702,13 @@ struct FromJson {
   bool _pure{true};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard parses a JSON string and returns its contents as the appropriate type.");
+    return SHCCSTR("This shard parses a JSON string and outputs its contents as the appropriate type.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A JSON string to be parsed."); }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the contents of the input JSON string as the appropriate type.");
+    return SHCCSTR("Outputs the contents of the input JSON string as the appropriate type.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
