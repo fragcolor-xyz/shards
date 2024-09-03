@@ -174,6 +174,8 @@ macro_rules! impl_ui_input {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: shccstr!("The exposed variable"),
+            declared: true,
+            isMutable: true,
             ..ExposedInfo::default()
           };
 
@@ -386,6 +388,7 @@ macro_rules! impl_ui_n_input {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: shccstr!("The exposed variable"),
+            declared: true,
             ..ExposedInfo::default()
           };
 

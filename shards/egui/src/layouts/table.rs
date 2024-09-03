@@ -274,7 +274,8 @@ impl LegacyShard for Table {
           isMutable: false,
           isProtected: false,
           global: false,
-          exposed: false,
+          tracked: false,
+          declared: true,
         };
         shared.push(index_info);
         // update shared

@@ -187,6 +187,8 @@ macro_rules! impl_ui_slider {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: shccstr!("The exposed variable"),
+            declared: true,
+            isMutable: true,
             ..ExposedInfo::default()
           };
 
@@ -440,6 +442,7 @@ macro_rules! impl_ui_n_slider {
             exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: shccstr!("The exposed variable"),
+            declared: true,
             ..ExposedInfo::default()
           };
 

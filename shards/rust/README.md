@@ -300,6 +300,7 @@ Implement this function when a shard can receive a variable as parameter that do
         exposedType: common_type::int,
         name: self.my_param.get_name(),
         help: shccstr!("The exposed variable"),
+        declared: true,
         ..ExposedInfo::default()
       };
 

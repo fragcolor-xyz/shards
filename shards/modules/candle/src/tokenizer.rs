@@ -1,4 +1,4 @@
-use candle_core::{Device, Tensor};
+use candle_core::{Device, Tensor as CandleTensor};
 use shards::shard::Shard;
 use shards::types::InstanceData;
 use shards::types::{common_type, ClonedVar, Context, Type, Types, Var, FRAG_CC};
@@ -6,12 +6,12 @@ use shards::types::{AutoSeqVar, ExposedTypes, ParamVar, SEQ_OF_INT_TYPES, STRING
 use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 
 use std::str::FromStr;
-use tokenizers::Tokenizer;
+use tokenizers::Tokenizer as TokenizerPure;
 
-use crate::{get_global_device, TensorType, TensorWrapper, TENSORTYPE_TYPE, TENSOR_TYPE};
+use crate::{get_global_device, Tensor, TensorType, TENSORTYPE_TYPE, TENSOR_TYPE};
 
-struct TokenizerWrapper(Tokenizer);
-ref_counted_object_type_impl!(TokenizerWrapper);
+pub(crate) struct Tokenizer(TokenizerPure);
+ref_counted_object_type_impl!(Tokenizer);
 
 lazy_static! {
   pub static ref TOKENIZER_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"TOKn")); // last letter used as version
@@ -68,11 +68,11 @@ impl Shard for MLTokenizer {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let input_str: &str = input.try_into()?;
-    let tokenizer = Tokenizer::from_str(input_str).map_err(|e| {
+    let tokenizer = TokenizerPure::from_str(input_str).map_err(|e| {
       shlog_error!("Failed to create tokenizer: {:?}", e);
       "Failed to create tokenizer"
     })?;
-    self.output = Var::new_ref_counted(TokenizerWrapper(tokenizer), &*TOKENIZER_TYPE).into();
+    self.output = Var::new_ref_counted(Tokenizer(tokenizer), &*TOKENIZER_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -158,10 +158,7 @@ impl Shard for TokensShard {
     let input_str: &str = input.try_into()?;
 
     let tokenizer = unsafe {
-      &mut *Var::from_ref_counted_object::<TokenizerWrapper>(
-        &self.tokenizer.get(),
-        &*TOKENIZER_TYPE,
-      )?
+      &mut *Var::from_ref_counted_object::<Tokenizer>(&self.tokenizer.get(), &*TOKENIZER_TYPE)?
     };
 
     let add_special_tokens: bool = self.add_special_tokens.as_ref().try_into()?;
@@ -190,7 +187,7 @@ impl Shard for TokensShard {
         &Device::Cpu
       };
       let token_ids = match format {
-        TensorType::U32 => Tensor::new(&tokens[..], device)
+        TensorType::U32 => CandleTensor::new(&tokens[..], device)
           .map_err(|e| {
             shlog_error!("Failed to create tensor: {:?}", e);
             "Failed to create tensor"
@@ -202,7 +199,7 @@ impl Shard for TokensShard {
           }),
         TensorType::I64 => {
           let tokens: Vec<i64> = tokens.into_iter().map(|token| token as i64).collect();
-          Tensor::new(&tokens[..], device)
+          CandleTensor::new(&tokens[..], device)
             .map_err(|e| {
               shlog_error!("Failed to create tensor: {:?}", e);
               "Failed to create tensor"
@@ -215,7 +212,7 @@ impl Shard for TokensShard {
         }
         _ => Err("Invalid format"),
       }?;
-      self.output_tensor = Var::new_ref_counted(TensorWrapper(token_ids), &*TENSOR_TYPE).into();
+      self.output_tensor = Var::new_ref_counted(Tensor(token_ids), &*TENSOR_TYPE).into();
       Ok(Some(self.output_tensor.0))
     } else {
       self.output_seq.0.clear();

@@ -172,6 +172,8 @@ impl LegacyShard for RadioButton {
         },
         name: self.variable.get_name(),
         help: shccstr!("The exposed variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 

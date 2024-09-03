@@ -34,7 +34,8 @@ impl Default for EguiHost {
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
         global: false,
-        exposed: false,
+        tracked: false,
+        declared: false,
       },
       ExposedInfo {
         exposedType: EGUI_UI_TYPE,
@@ -43,7 +44,8 @@ impl Default for EguiHost {
         isMutable: false,
         isProtected: true, // don't allow to be used in code/wires
         global: false,
-        exposed: false,
+        tracked: false,
+        declared: false,
       },
     ];
 

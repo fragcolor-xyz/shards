@@ -142,6 +142,8 @@ impl LegacyShard for ColorInput {
         exposedType: common_type::color,
         name: self.variable.get_name(),
         help: shccstr!("The exposed color variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 

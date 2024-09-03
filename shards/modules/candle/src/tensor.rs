@@ -13,12 +13,12 @@ use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, SeqVar, Type, Types, Var};
 use shards::{SHType_Float as SHTYPE_FLOAT, SHType_Int as SHTYPE_INT};
 
-use candle_core::{Device, Shape, Tensor};
+use candle_core::{Device, Shape, Tensor as CandleTensor};
 
 use crate::get_global_device;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_VAR_TYPE;
-use crate::{TensorType, TensorWrapper, TENSORTYPE_TYPES, TENSOR_TYPE, TENSOR_TYPE_VEC};
+use crate::{TensorType, Tensor, TENSORTYPE_TYPES, TENSOR_TYPE, TENSOR_TYPE_VEC};
 
 #[derive(shards::shard)]
 #[shard_info("Tensor.ToString", "Outputs a string representation of a tensor.")]
@@ -66,7 +66,7 @@ impl Shard for MLTensorToStringShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let string = format!("{}", tensor.0);
     let string = Var::ephemeral_string(string.as_str());
     self.output = string.into();
@@ -240,7 +240,7 @@ impl Shard for TensorShard {
         self
           .floats_cache
           .extend(seq.iter().map(|v| f64::try_from(&v).unwrap()));
-        Tensor::from_slice(&self.floats_cache, shape, &device).map_err(|e| {
+        CandleTensor::from_slice(&self.floats_cache, shape, &device).map_err(|e| {
           shlog_error!("Failed to create tensor: {}", e);
           "Failed to create tensor"
         })?
@@ -250,14 +250,14 @@ impl Shard for TensorShard {
         self
           .ints_cache
           .extend(seq.iter().map(|v| i64::try_from(&v).unwrap()));
-        Tensor::from_slice(&self.ints_cache, shape, &device).map_err(|e| {
+        CandleTensor::from_slice(&self.ints_cache, shape, &device).map_err(|e| {
           shlog_error!("Failed to create tensor: {}", e);
           "Failed to create tensor"
         })?
       }
     };
 
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
 
     Ok(Some(self.output.0))
   }
@@ -313,12 +313,12 @@ impl Shard for TensorZerosLikeShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let tensor = tensor.0.zeros_like().map_err(|e| {
       shlog_error!("Failed to create tensor: {}", e);
       "Failed to create tensor"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -378,15 +378,15 @@ impl Shard for TensorMulShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
     };
     let tensor = (&tensor.0 * &other.0).map_err(|e| {
       shlog_error!("Failed to multiply tensors: {}", e);
       "Failed to multiply tensors"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -446,15 +446,15 @@ impl Shard for TensorAddShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
     };
     let tensor = (&tensor.0 + &other.0).map_err(|e| {
       shlog_error!("Failed to add tensors: {}", e);
       "Failed to add tensors"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -514,15 +514,15 @@ impl Shard for TensorSubShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
     };
     let tensor = (&tensor.0 - &other.0).map_err(|e| {
       shlog_error!("Failed to subtract tensors: {}", e);
       "Failed to subtract tensors"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -582,7 +582,7 @@ impl Shard for TensorDivShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = self.other.get();
     if other.is_float() {
       let other: f64 = other.try_into()?;
@@ -590,16 +590,16 @@ impl Shard for TensorDivShard {
         shlog_error!("Failed to divide tensors: {}", e);
         "Failed to divide tensors"
       })?;
-      self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+      self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     } else {
       let other = unsafe {
-        &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+        &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
       };
       let tensor = (&tensor.0 / &other.0).map_err(|e| {
         shlog_error!("Failed to divide tensors: {}", e);
         "Failed to divide tensors"
       })?;
-      self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+      self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     }
     Ok(Some(self.output.0))
   }
@@ -663,15 +663,15 @@ impl Shard for TensorPowShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
     };
     let tensor = tensor.0.pow(&other.0).map_err(|e| {
       shlog_error!("Failed to raise tensor to power: {}", e);
       "Failed to raise tensor to power"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -731,15 +731,15 @@ impl Shard for TensorMatMulShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let other = unsafe {
-      &mut *Var::from_ref_counted_object::<TensorWrapper>(&self.other.get(), &*TENSOR_TYPE)?
+      &mut *Var::from_ref_counted_object::<Tensor>(&self.other.get(), &*TENSOR_TYPE)?
     };
     let tensor = tensor.0.matmul(&other.0).map_err(|e| {
       shlog_error!("Failed to perform matrix multiplication: {}", e);
       "Failed to perform matrix multiplication"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -790,12 +790,12 @@ impl Shard for TensorTransposeShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let tensor = tensor.0.transpose(0, 1).map_err(|e| {
       shlog_error!("Failed to transpose tensor: {}", e);
       "Failed to transpose tensor"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -859,7 +859,7 @@ impl Shard for TensorReshapeShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let shape = self.shape.get();
     let shape = shape.as_seq()?;
     let shape: Vec<usize> = shape
@@ -870,7 +870,7 @@ impl Shard for TensorReshapeShard {
       shlog_error!("Failed to reshape tensor: {}", e);
       "Failed to reshape tensor"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -932,7 +932,7 @@ impl Shard for TensorSumShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     let dims = self.dims.get();
 
@@ -950,7 +950,7 @@ impl Shard for TensorSumShard {
       shlog_error!("Failed to sum tensor: {}", e);
       "Failed to sum tensor"
     })?;
-    self.output = Var::new_ref_counted(TensorWrapper(tensor), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(tensor), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -1000,7 +1000,7 @@ impl Shard for TensorToFloatShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     let scalar = match tensor.0.dtype() {
       candle_core::DType::F32 => {
@@ -1070,7 +1070,7 @@ impl Shard for ShapeShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
     let shape = tensor.0.shape();
     self.output.0.clear();
     for dim in shape.dims().iter() {
@@ -1140,10 +1140,10 @@ impl Shard for TensorStackShard {
       return Err("Input sequence is empty");
     }
 
-    let tensors: Vec<&Tensor> = seq
+    let tensors: Vec<&CandleTensor> = seq
       .iter()
       .map(|v| unsafe {
-        let wrapper = Var::from_ref_counted_object::<TensorWrapper>(&v, &*TENSOR_TYPE)?;
+        let wrapper = Var::from_ref_counted_object::<Tensor>(&v, &*TENSOR_TYPE)?;
         Ok(&(*wrapper).0)
       })
       .collect::<Result<_, &str>>()?;
@@ -1155,12 +1155,12 @@ impl Shard for TensorStackShard {
       dim
     };
 
-    let stacked = Tensor::stack(&tensors, dim).map_err(|e| {
+    let stacked = CandleTensor::stack(&tensors, dim).map_err(|e| {
       shlog_error!("Failed to stack tensors: {}", e);
       "Failed to stack tensors"
     })?;
 
-    self.output = Var::new_ref_counted(TensorWrapper(stacked), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(stacked), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -1235,7 +1235,7 @@ impl Shard for TensorSplitShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     let dim = if self.dim.is_none() {
       0
@@ -1253,7 +1253,7 @@ impl Shard for TensorSplitShard {
 
     self.output.0.clear();
     for split_tensor in split_tensors {
-      let wrapped_tensor = Var::new_ref_counted(TensorWrapper(split_tensor), &*TENSOR_TYPE);
+      let wrapped_tensor = Var::new_ref_counted(Tensor(split_tensor), &*TENSOR_TYPE);
       self.output.0.push(&wrapped_tensor);
     }
 
@@ -1336,7 +1336,7 @@ impl Shard for TensorSliceShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     let dim: usize = self.dim.get().try_into()?;
     let start: usize = self.start.get().try_into()?;
@@ -1357,7 +1357,7 @@ impl Shard for TensorSliceShard {
       "Failed to slice tensor"
     })?;
 
-    self.output = Var::new_ref_counted(TensorWrapper(sliced), &*TENSOR_TYPE).into();
+    self.output = Var::new_ref_counted(Tensor(sliced), &*TENSOR_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -1410,7 +1410,7 @@ impl Shard for TensorToFloatsShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     self.output.0.clear();
 
@@ -1489,7 +1489,7 @@ impl Shard for TensorToIntsShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let tensor =
-      unsafe { &mut *Var::from_ref_counted_object::<TensorWrapper>(&input, &*TENSOR_TYPE)? };
+      unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
 
     self.output.0.clear();
 

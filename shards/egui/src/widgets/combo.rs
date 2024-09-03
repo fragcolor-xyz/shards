@@ -199,6 +199,8 @@ impl LegacyShard for Combo {
         exposedType: common_type::int,
         name: self.index.get_name(),
         help: shccstr!("The exposed int variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 

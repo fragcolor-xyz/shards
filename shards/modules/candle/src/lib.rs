@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate lazy_static;
 
-use shards::core::{register_enum, register_shard};
+use shards::core::{register_enum, register_object_type, register_shard};
 use shards::types::{Type, FRAG_CC};
 use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
-use candle_core::{DType, Device, Tensor};
+use candle_core::{DType, Device, Tensor as CandleTensor};
 
 mod model;
 mod tensor;
@@ -38,8 +38,8 @@ pub fn get_global_device() -> &'static Device {
   })
 }
 
-struct TensorWrapper(Tensor);
-ref_counted_object_type_impl!(TensorWrapper);
+struct Tensor(CandleTensor);
+ref_counted_object_type_impl!(Tensor);
 
 lazy_static! {
   pub static ref TENSOR_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"cTEN")); // last letter used as version
@@ -128,4 +128,8 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorSliceShard>();
   register_shard::<tensor::TensorToIntsShard>();
   register_shard::<tensor::TensorToFloatsShard>();
+
+  register_object_type::<Tensor>(FRAG_CC, fourCharacterCode(*b"cTEN"));
+  register_object_type::<tokenizer::Tokenizer>(FRAG_CC, fourCharacterCode(*b"TOKn"));
+  register_object_type::<model::Model>(FRAG_CC, fourCharacterCode(*b"cMOD"));
 }

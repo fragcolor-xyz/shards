@@ -147,6 +147,8 @@ impl Shard for TextField {
         exposedType: common_type::string,
         name: self.variable.get_name(),
         help: shccstr!("The exposed string variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 

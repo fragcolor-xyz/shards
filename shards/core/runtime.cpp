@@ -953,6 +953,17 @@ void validateConnection(InternalCompositionContext &ctx) {
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
+    if (exposed_param.declared && ctx.wire) {
+      auto inserted = ctx.wire->getComposeData().declaredVariables.emplace(name, exposed_param.isMutable);
+      SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
+      // check if we are not declaring a mutable var twice, and match the mutability
+      if (!inserted.second && inserted.first->second != exposed_param.isMutable) {
+        throw ComposeError(fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+      }
+      // clear declared flag on exposed param
+      exposed_param.declared = false;
+    }
+
     ctx.exposed[name] = exposed_param;
   }
 
@@ -1089,7 +1100,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       }
 
       SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
-      expInfo.exposed = var.flags & SHVAR_FLAGS_TRACKED;
+      expInfo.tracked = var.flags & SHVAR_FLAGS_TRACKED;
       std::string_view sName(key.payload.stringValue, key.payload.stringLen);
       ctx.inherited[sName] = expInfo;
     }

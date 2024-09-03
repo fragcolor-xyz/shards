@@ -123,7 +123,7 @@ public:
 
     // Clear exposed flags, since these are copies
     for (auto &req : _mergedRequirements._innerInfo) {
-      req.exposed = false;
+      req.tracked = false;
     }
 
     // Copy shared

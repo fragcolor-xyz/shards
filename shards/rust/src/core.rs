@@ -15,6 +15,7 @@ use crate::types::InstanceData;
 use crate::types::Mesh;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
+use crate::types::RCObjectVar;
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::WireState;
@@ -351,6 +352,17 @@ pub fn releaseVariable(var: &SHVar) {
     let v = var as *const SHVar as *mut SHVar;
     (*Core).releaseVariable.unwrap_unchecked()(v);
   }
+}
+
+pub fn register_object_type_internal(vendorId: i32, typeId: i32, info: SHObjectInfo) {
+  unsafe {
+    (*Core).registerObjectType.unwrap_unchecked()(vendorId, typeId, info);
+  }
+}
+
+pub fn register_object_type<T: RCObjectVar>(vendor_id: i32, type_id: i32) {
+  let info = T::get_info();
+  register_object_type_internal(vendor_id, type_id, unsafe { *info });
 }
 
 pub fn register_enum_internal(vendorId: i32, typeId: i32, info: SHEnumInfo) {
