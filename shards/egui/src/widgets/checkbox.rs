@@ -161,6 +161,8 @@ impl LegacyShard for Checkbox {
         exposedType: common_type::bool,
         name: self.variable.get_name(),
         help: shccstr!("The exposed bool variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 

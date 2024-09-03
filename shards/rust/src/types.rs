@@ -781,7 +781,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      exposed: false,
+      tracked: false,
+      declared: false,
     }
   }
 
@@ -796,7 +797,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      exposed: false,
+      tracked: false,
+      declared: false,
     }
   }
 
@@ -808,7 +810,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      exposed: false,
+      tracked: false,
+      declared: false,
     }
   }
 
@@ -825,7 +828,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      exposed: false,
+      tracked: false,
+      declared: false,
     }
   }
 
@@ -842,7 +846,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      exposed: false,
+      tracked: false,
+      declared: false,
     }
   }
 }

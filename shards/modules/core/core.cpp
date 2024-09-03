@@ -540,9 +540,9 @@ struct XpendTo : public XPendBase {
           throw ComposeError("AppendTo/PrependTo input type is not compatible "
                              "with the backing SHType::Seq.");
         }
-        if (cons.exposed) {
-          SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be exposed.", _collection.variableName());
-          throw ComposeError("AppendTo/PrependTo: Variable cannot be exposed.");
+        if (cons.tracked) {
+          SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be tracked.", _collection.variableName());
+          throw ComposeError("AppendTo/PrependTo: Variable cannot be tracked.");
         }
         // Validation Ok if here..
         return data.inputType;

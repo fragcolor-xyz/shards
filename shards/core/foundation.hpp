@@ -285,6 +285,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   struct ComposeData {
     // List of output types used for this wire
     std::vector<SHTypeInfo> outputTypes;
+    // name, isMutable
+    std::unordered_map<std::string_view, bool> declaredVariables;
   };
   std::shared_ptr<ComposeData> composeData;
 

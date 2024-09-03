@@ -24,7 +24,8 @@ using namespace std::chrono_literals;
 
 namespace shards {
 struct CoreInfo2 {
-  DECL_ENUM_INFO(BasicTypes, Type, "Fundamental data types supported by the system. Used for type checking and data manipulation.", 'type');
+  DECL_ENUM_INFO(BasicTypes, Type,
+                 "Fundamental data types supported by the system. Used for type checking and data manipulation.", 'type');
   static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = TypeEnumInfo::Type}}};
   static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };
@@ -1032,7 +1033,7 @@ struct SetBase : public VariableBase {
         }
       }
 
-      if (reference.exposed) {
+      if (reference.tracked) {
         _isExposed = true;
       } else {
         _isExposed = false;
@@ -1169,13 +1170,16 @@ struct Set : public SetUpdateBase {
     }
 
     if (_tracked) {
-      _exposedInfo._innerInfo.elements[0].exposed = true;
+      _exposedInfo._innerInfo.elements[0].tracked = true;
     } else {
-      _exposedInfo._innerInfo.elements[0].exposed = false;
+      _exposedInfo._innerInfo.elements[0].tracked = false;
     }
 
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
+
+    // We declared this variable in this shard
+    _exposedInfo._innerInfo.elements[0].declared = true;
 
     return data.inputType;
   }
@@ -1338,6 +1342,9 @@ struct Ref : public SetBase {
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefRegular;
     }
 
+    // We declared this variable in this shard
+    _exposedInfo._innerInfo.elements[0].declared = true;
+
     return data.inputType;
   }
 
@@ -1360,6 +1367,14 @@ struct Ref : public SetBase {
 
     _cell = nullptr;
     _key.cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceWireVariable(context->currentWire(), _name.c_str());
+    _key.warmup(context);
   }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
@@ -1999,7 +2014,7 @@ struct Push : public SeqBase {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &cv = data.shared.elements[i];
         if (cv.name == _name) {
-          if (cv.exposed) {
+          if (cv.tracked) {
             // cannot push into exposed variables
             throw ComposeError("Cannot push into exposed variables");
           }
@@ -2033,7 +2048,7 @@ struct Push : public SeqBase {
             throw ComposeError("Cannot mutate a protected variable");
           }
 
-          if (cv.exposed) {
+          if (cv.tracked) {
             // cannot push into exposed variables
             throw ComposeError("Cannot push into exposed variables");
           }
@@ -2048,6 +2063,11 @@ struct Push : public SeqBase {
       updateSeqInfo();
       _firstPush = true;
     }
+
+    if (_firstPush) {
+      _exposedInfo._innerInfo.elements[0].declared = true;
+    }
+
     return data.inputType;
   }
 
@@ -2178,6 +2198,9 @@ struct Sequence : public SeqBase {
     if (_weakType.basicType != SHType::Seq) {
       throw ComposeError("Sequence - Type must be a sequence.");
     }
+
+    // Ensure declared
+    _exposedInfo._innerInfo.elements[0].declared = true;
 
     return data.inputType;
   }
@@ -2363,6 +2386,9 @@ struct TableDecl : public VariableBase {
       throw ComposeError("Table - Type must be a table.");
     }
 
+    // Ensure declared
+    _exposedInfo._innerInfo.elements[0].declared = true;
+
     return data.inputType;
   }
 
@@ -2413,7 +2439,7 @@ struct SeqUser : VariableBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     for (auto &shared : data.shared) {
       std::string_view vName(shared.name);
-      if (vName == _name && shared.exposed) {
+      if (vName == _name && shared.tracked) {
         SHLOG_ERROR("Exposed variable {} can only be updated using Update.", _name);
         throw ComposeError("Exposed variables can only be updated using Update.");
       }

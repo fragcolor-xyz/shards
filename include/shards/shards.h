@@ -523,8 +523,11 @@ struct SHExposedTypeInfo {
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
 
-  // If the variable is market as exposed, apps building on top will can use this feature
-  SHBool exposed;
+  // If the variable is market as tracked, apps building on top will can use this feature
+  SHBool tracked;
+
+  // If the variable is declared in this shard (not inherited from an inner shard)
+  SHBool declared;
 };
 
 typedef struct SHStringPayload {

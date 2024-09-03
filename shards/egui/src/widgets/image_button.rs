@@ -110,6 +110,8 @@ impl Shard for ImageButton {
         exposedType: common_type::bool,
         name: self.selected.get_name(),
         help: shccstr!("The exposed bool variable"),
+        declared: true,
+        isMutable: true,
         ..ExposedInfo::default()
       };
 
