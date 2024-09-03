@@ -20,11 +20,11 @@ use shards::types::{ClonedVar, Context, Type, Types, Var};
 use candle_core::Device;
 
 use crate::get_global_device;
-use crate::TensorWrapper;
+use crate::Tensor;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_TYPE;
 
-enum Model {
+pub enum Model {
   Bert(BertModel),
 }
 
@@ -351,10 +351,10 @@ impl Shard for ForwardShard {
       Model::Bert(model) => {
         if tensors.len() == 2 {
           let input_ids = unsafe {
-            &mut *Var::from_ref_counted_object::<TensorWrapper>(&tensors[0], &*TENSOR_TYPE)?
+            &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)?
           };
           let input_type_ids = unsafe {
-            &mut *Var::from_ref_counted_object::<TensorWrapper>(&tensors[1], &*TENSOR_TYPE)?
+            &mut *Var::from_ref_counted_object::<Tensor>(&tensors[1], &*TENSOR_TYPE)?
           };
           let output = model
             .forward(&input_ids.0, &input_type_ids.0)
@@ -362,7 +362,7 @@ impl Shard for ForwardShard {
               shlog_error!("Failed to forward: {}", e);
               "Failed to forward"
             })?;
-          let output = Var::new_ref_counted(TensorWrapper(output), &*TENSOR_TYPE);
+          let output = Var::new_ref_counted(Tensor(output), &*TENSOR_TYPE);
           self.outputs.0.push(&output);
         } else {
           return Err("Invalid number of tensors");
