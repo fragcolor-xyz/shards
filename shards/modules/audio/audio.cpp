@@ -12,10 +12,6 @@
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #endif
 
-#ifdef __clang__
-#pragma clang attribute pop
-#endif
-
 #ifdef __APPLE__
 #define MA_NO_RUNTIME_LINKING
 #endif
@@ -31,10 +27,6 @@
 #undef C
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
-
-#ifdef __clang__
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#endif
 
 #ifdef __clang__
 #pragma clang attribute pop
