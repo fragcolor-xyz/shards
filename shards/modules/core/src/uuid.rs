@@ -271,7 +271,7 @@ impl LegacyShard for NanoIDCreate {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PARAMETERS)
+    Some(&NANO_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {

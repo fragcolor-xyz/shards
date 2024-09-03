@@ -51,5 +51,17 @@ pub fn get_styled_text(
     }
   }
 
+  if let Some(weak) = style.get_static("weak") {
+    if !weak.is_none() && weak.try_into()? {
+      text = text.weak();
+    }
+  }
+
+  if let Some(strong) = style.get_static("strong") {
+    if !strong.is_none() && strong.try_into()? {
+      text = text.strong();
+    }
+  }
+
   Ok(text)
 }

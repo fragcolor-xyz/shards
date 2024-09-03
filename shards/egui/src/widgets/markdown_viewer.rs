@@ -3,19 +3,28 @@
 
 use crate::util;
 use crate::EguiId;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
-use shards::types::OptionalString;
+use shards::types::InstanceData;
 use shards::types::ParamVar;
+use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::STRING_TYPES;
-use shards::types::InstanceData;
-use shards::shard::Shard;
-use shards::types::Type;
+use std::cell::RefCell;
+
+thread_local! {
+    static MARKDOWN_CACHE: RefCell<egui_commonmark::CommonMarkCache> = {
+        let mut cache = egui_commonmark::CommonMarkCache::default();
+        cache.add_syntax_from_str(
+            include_str!("code_editor/sublime-syntax.yml"),
+            Some("shards"),
+        );
+        RefCell::new(cache)
+    };
+}
 
 const THEME_LIGHT: &str = "Solarized (light)";
 const THEME_DARK: &str = "Solarized (dark)";
@@ -27,23 +36,15 @@ pub struct MarkdownViewerShard {
   requiring: ExposedTypes,
   #[shard_warmup]
   parents: ParamVar,
-
-  cache: egui_commonmark::CommonMarkCache,
 }
 
 impl Default for MarkdownViewerShard {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
-    let mut cache = egui_commonmark::CommonMarkCache::default();
-    cache.add_syntax_from_str(
-      include_str!("code_editor/sublime-syntax.yml"),
-      Some("shards"),
-    );
     Self {
       parents,
       requiring: Vec::new(),
-      cache,
     }
   }
 }
@@ -76,11 +77,13 @@ impl Shard for MarkdownViewerShard {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
-      egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
-        .indentation_spaces(2)
-        .syntax_theme_dark(THEME_DARK)
-        .syntax_theme_light(THEME_LIGHT)
-        .show(ui, &mut self.cache, text);
+      MARKDOWN_CACHE.with(|cache| {
+        egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
+          .indentation_spaces(2)
+          .syntax_theme_dark(THEME_DARK)
+          .syntax_theme_light(THEME_LIGHT)
+          .show(ui, &mut cache.borrow_mut(), text);
+      });
       Ok(None)
     } else {
       Err("No UI parent")
