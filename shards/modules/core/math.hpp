@@ -434,11 +434,9 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
         output.valueType = SHType::Seq;
       }
 
-      shards::arrayResize(output.payload.seqValue, 0);
+      shards::arrayResize(output.payload.seqValue, a.payload.seqValue.len);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-        const auto len = output.payload.seqValue.len;
-        shards::arrayResize(output.payload.seqValue, len + 1);
-        op.operateDirect(output.payload.seqValue.elements[len], a.payload.seqValue.elements[i]);
+        op.operateDirect(output.payload.seqValue.elements[i], a.payload.seqValue.elements[i]);
       }
     } else {
       throw std::logic_error("Invalid operation type for unary operation");
