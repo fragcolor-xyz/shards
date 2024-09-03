@@ -172,15 +172,15 @@ macro_rules! add_hasher {
 
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Hash.Keccak-256" {
-          OptionalString(shccstr!("Returns the 256-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.Keccak-512" {
-          OptionalString(shccstr!("Returns the 512-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.Sha3-256" {
-          OptionalString(shccstr!("Returns the 256-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.Sha3-512" {
-          OptionalString(shccstr!("Returns the 512-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else {
-          OptionalString(shccstr!("Returns the hash as a byte array."))
+          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         }
       }
 
@@ -292,11 +292,11 @@ macro_rules! add_hasher2 {
 
       fn outputHelp(&mut self) -> OptionalString {
          if $name_str == "Hash.Sha2-256" {
-          OptionalString(shccstr!("Returns the 256-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.Sha2-512" {
-          OptionalString(shccstr!("Returns the 512-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else {
-          OptionalString(shccstr!("Returns the hash as a byte array."))
+          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         }
       }
       
@@ -404,19 +404,19 @@ macro_rules! add_hasher3 {
 
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Hash.Blake2-128" {
-          OptionalString(shccstr!("Returns the 128-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.Blake2-256" {
-          OptionalString(shccstr!("Returns the 256-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.XXH-64" {
-          OptionalString(shccstr!("Returns the 64-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 64-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.XXH-128" {
-          OptionalString(shccstr!("Returns the 128-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.XXH3-64" {
-          OptionalString(shccstr!("Returns the 64-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 64-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else if $name_str == "Hash.XXH3-128" {
-          OptionalString(shccstr!("Returns the 128-bit hash as a byte array."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         } else {
-          OptionalString(shccstr!("Returns the hash as a byte array."))
+          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
         }
       }
 
