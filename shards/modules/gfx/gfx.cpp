@@ -27,8 +27,18 @@ struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  PARAM_PARAMVAR(_steps, "Steps", "Render steps to follow.", {Type::VariableOf(ShardsTypes::PipelineStepSeq), ShardsTypes::PipelineStepSeq});
-  PARAM_PARAMVAR(_view, "View", "The view to render. (Optional)", {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::View)});
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes the sequence of render pass objects specified in the Steps parameter, processes it "
+                   "sequentially, and renders the final scene based on the view object specified in the View parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns none."); }
+
+  PARAM_PARAMVAR(_steps, "Steps", "Sequence of render pass objects to process.",
+                 {Type::VariableOf(ShardsTypes::PipelineStepSeq), ShardsTypes::PipelineStepSeq});
+  PARAM_PARAMVAR(_view, "View", "The view to render. If no view object is provided, the default view will be used.",
+                 {CoreInfo::NoneType, Type::VariableOf(ShardsTypes::View)});
   PARAM_IMPL(PARAM_IMPL_FOR(_steps), PARAM_IMPL_FOR(_view));
 
   OptionalGraphicsContext _graphicsContext;
@@ -40,7 +50,7 @@ struct RenderShard {
 
   PARAM_REQUIRED_VARIABLES();
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _graphicsRendererContext.cleanup(context);
     _graphicsContext.cleanup(context);
     _defaultView.reset();

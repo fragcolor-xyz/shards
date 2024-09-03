@@ -39,11 +39,11 @@ void registerCoreShards() {
   REGISTER_SHADER_SHARD("Shader.Literal", Literal);
 
   // Basic IO
-  REGISTER_SHADER_SHARD("Shader.ReadInput", gfx::shader::Read<blocks::ReadInput>);
+  REGISTER_SHADER_SHARD("Shader.ReadInput", gfx::shader::ShaderReadInput);
   REGISTER_SHADER_SHARD("Shader.ReadBuffer", gfx::shader::ReadBuffer);
-  REGISTER_SHADER_SHARD("Shader.ReadGlobal", gfx::shader::Read<blocks::ReadGlobal>);
-  REGISTER_SHADER_SHARD("Shader.WriteGlobal", gfx::shader::Write<blocks::WriteGlobal>);
-  REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
+  REGISTER_SHADER_SHARD("Shader.ReadGlobal", gfx::shader::ShaderReadGlobal);
+  REGISTER_SHADER_SHARD("Shader.WriteGlobal", gfx::shader::ShaderWriteGlobal);
+  REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::ShaderWriteOutput);
   REGISTER_SHADER_SHARD("Shader.SampleTexture", gfx::shader::SampleTexture);
   REGISTER_SHADER_SHARD("Shader.SampleTextureCoord", gfx::shader::SampleTextureCoord);
   REGISTER_SHADER_SHARD("Shader.RefTexture", gfx::shader::RefTexture);

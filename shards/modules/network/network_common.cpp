@@ -154,7 +154,7 @@ struct SendRaw {
     return types;
   }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("This shard sends the input bytes sequence or string to the peer specified in the Peer parameter."); }
+  static SHOptionalString help() { return SHCCSTR("This shard sends the input byte array or string to the peer specified in the Peer parameter."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input to send to the peer.");

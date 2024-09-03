@@ -19,8 +19,8 @@ Replacements: [21 22]
 Log(Prefix:"result" Level: LogLevel::Info) 
 """
 
-explanation: """The Replace Shard will take a sequence as input and replace all elements with indeces specified in the Patterns parameter, with the corresponding
-element in the sequence in the Replacements parameter. The Patterns seqeuence and the Replacements sequence need to be of the same length.
+explanation: """The Replace Shard will take a sequence as input and replace all elements with indices specified in the Patterns parameter, with the corresponding
+element in the sequence in the Replacements parameter. The Patterns sequence and the Replacements sequence need to be of the same length.
 The Replace shard outputs the resulting modified sequence.
 """
 

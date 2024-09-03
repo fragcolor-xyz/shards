@@ -125,7 +125,7 @@ template <SHType SHTYPE, SHType SHOTHER> struct ToSeq {
     if constexpr (SHTYPE == SHType::Image) {
       return SHCCSTR("Takes an image as input.");
     } else if constexpr (SHTYPE == SHType::Bytes) {
-      return SHCCSTR("Takes a byte sequence as input.");
+      return SHCCSTR("Takes a byte array as input.");
     } else {
       return SHCCSTR("Takes an input value.");
     }
@@ -179,7 +179,8 @@ template <SHType SHTYPE> struct ToString1 {
 
   static SHTypesInfo inputTypes() { return _inputType; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Accepts a byte sequence as input. Each byte in the sequence is interpreted as a character.");
+    return SHCCSTR(
+        "Accepts a byte array as input. Each byte in the sequence is interpreted as a character.");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -279,11 +280,11 @@ template <SHType FROMTYPE> struct ToBytes {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts sequence of integers as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("A byte sequence representing the sequence of integers."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A byte array representing the sequence of integers."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("Converts a sequence of integers into a byte sequence. Each integer in the sequence is serialized into its "
-                   "binary representation and concatenated into the resulting byte sequence.");
+    return SHCCSTR("Converts a sequence of integers into a byte array. Each integer in the sequence is serialized into its "
+                   "binary representation and concatenated into the resulting byte array.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -318,7 +319,7 @@ struct ToHex {
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
 
   static SHTypesInfo inputTypes() { return toHexTypes; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Takes an integer, byte sequence, or string value."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes an integer, byte array, or string value."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The hexadecimal string representation of the input value."); }
@@ -1019,7 +1020,7 @@ struct ToBase64 {
   static inline Types _inputTypes{{CoreInfo::BytesType, CoreInfo::StringType}};
 
   static SHTypesInfo inputTypes() { return _inputTypes; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a bytes sequence or a string value as input."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a byte array or a string value as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the Base64 encoded string representation of the input value."); }
@@ -1079,11 +1080,9 @@ struct HexToBytes {
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The decoded bytes sequence from the input hexadecimal string."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The decoded byte array from the input hexadecimal string."); }
 
-  static SHOptionalString help() {
-    return SHCCSTR("Converts a hexadecimal string to its original bytes sequence representation.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Converts a hexadecimal string to its original byte array representation."); }
 
   int convert(const char *hex_str, size_t hex_str_len, unsigned char *byte_array, size_t byte_array_max) {
     size_t i = 0, j = 0;
@@ -1153,9 +1152,9 @@ struct ImageToBytes {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts an image as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The input image represented as a byte sequence."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input image represented as a byte array."); }
 
-  static SHOptionalString help() { return SHCCSTR("Converts an image into a byte sequence."); }
+  static SHOptionalString help() { return SHCCSTR("Converts an image into a byte array."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHImage &image = *input.payload.imageValue;

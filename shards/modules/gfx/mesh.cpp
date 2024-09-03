@@ -22,9 +22,20 @@ struct MeshShard {
 
   static SHTypesInfo inputTypes() { return InputTable; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a mesh object using the data provided in the Vertices and Indices keys of the input table.");
+  }
 
-  PARAM_VAR(_layoutParam, "Layout", "The names for each vertex attribute.", {VertexAttributeSeqType});
-  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.",
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input table containing Vertices and Indices keys with the relevent values to construct the mesh object.");
+  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The created mesh object."); }
+
+  PARAM_VAR(_layoutParam, "Layout",
+            "The names for each vertex attribute. The sequence provided will also be the pattern that dictates how the sequence value of the Vertices key in "
+            "the input table will be interpreted.",
+            {VertexAttributeSeqType});
+  PARAM_VAR(_windingOrderParam, "WindingOrder", "Determines which side of the triangle is considered the front face.",
             {ShardsTypes::WindingOrderEnumInfo::Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
 
@@ -116,6 +127,13 @@ struct BuiltinMeshShard {
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates the ready-made mesh object of the shape defined in the Type parameter.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output is a mesh object."); }
 
   PARAM_VAR(_type, "Type", "The type of object to make.", {BuiltinMeshTypeEnumInfo::Type})
   PARAM_IMPL(PARAM_IMPL_FOR(_type));

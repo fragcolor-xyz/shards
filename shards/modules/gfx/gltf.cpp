@@ -103,6 +103,19 @@ struct GLTFShard {
   static SHTypesInfo inputTypes() { return InputTypes; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Drawable; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes the glTF model (specified either in the Path, Bytes or Copy parameter) and outputs a "
+                   "drawable object which can be subsequently added to the drawables queue for the render pipline.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("This shard can take 2 different types of input. It can take a 4x4 transformation "
+                   "for the glTF model to adopt. Or, it can accept a table which contain the "
+                   "transformation matrix and additional information to modify the materials of the glTF model.");
+  }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the drawable object."); }
+
   PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_bytes, "Bytes", "The bytes to load the model from",
@@ -622,6 +635,12 @@ struct GLTFShard {
 struct GLBPacker {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes the glTF file (specified by the input file path) and converts it into GLB format.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("Path to the glTF file to convert."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the GLB bytes of the converted glTF file."); }
 
   std::vector<uint8_t> _output;
 

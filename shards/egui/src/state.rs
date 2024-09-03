@@ -69,7 +69,7 @@ impl LegacyShard for Save {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard saves the current state of the UI as a byte sequence. It saves UI information such as the position of windows, the state of checkboxes, the state of sliders, etc."))
+    OptionalString(shccstr!("This shard saves the current state of the UI as a byte array. It saves UI information such as the position of windows, the state of checkboxes, the state of sliders, etc."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -86,7 +86,7 @@ impl LegacyShard for Save {
 
   fn outputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "Returns the current state of the UI as a byte sequence."
+      "Returns the current state of the UI as a byte array."
     ))
   }
 
@@ -158,12 +158,12 @@ impl LegacyShard for Restore {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard restores the UI to a previously saved state (provided as input as a byte sequence)."))
+    OptionalString(shccstr!("This shard restores the UI to a previously saved state (provided as input as a byte array)."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The UI state to restore to represented as a byte sequence."
+      "The UI state to restore to represented as a byte array."
     ))
   }
 
