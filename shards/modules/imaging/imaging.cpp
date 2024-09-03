@@ -608,11 +608,11 @@ struct LoadImage {
   DECL_ENUM_INFO(BPP, BPP, "Specifies the bits per pixel for image data. Determines the color depth and precision of image representations.", 'ibpp');
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard loads an image from a file or bytes sequence and returns it as an image type, that can "
+    return SHCCSTR("This shard loads an image from a file (specified in the File parameter) or byte array (passed as input) and returns it as an image type, that can "
                    "subsequently be used by other shards such as UI.Image and UI.ImageButton.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("An image represented as a bytes sequence"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("An image represented as a byte array"); }
   static SHOptionalString outputHelp() { return SHCCSTR("The image as an image type."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }

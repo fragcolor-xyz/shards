@@ -10,9 +10,9 @@ namespace Snappy {
 struct Compress {
   std::vector<char> _buffer;
 
-  static SHOptionalString help() { return SHCCSTR("This shard compresses the input bytes sequence using the Snappy algorithm and returns the compressed bytes sequence."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The bytes sequence to compress."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The compressed bytes sequence."); }
+  static SHOptionalString help() { return SHCCSTR("This shard compresses the input byte array using the Snappy algorithm and returns the compressed byte array."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The byte array to compress."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The compressed byte array."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
@@ -28,9 +28,9 @@ struct Compress {
 struct Decompress {
   std::vector<char> _buffer;
 
-  static SHOptionalString help() { return SHCCSTR("This shard decompressed the input bytes sequence that has been previously compressed using the Snappy.Compress shard."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The compressed bytes sequence to decompress."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The decompressed bytes sequence."); }
+  static SHOptionalString help() { return SHCCSTR("This shard decompressed the input byte array that has been previously compressed using the Snappy.Compress shard."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The compressed byte array to decompress."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The decompressed byte array."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }

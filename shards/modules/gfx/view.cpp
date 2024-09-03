@@ -83,7 +83,16 @@ struct ViewShard {
   static SHTypesInfo outputTypes() { return ShardsTypes::View; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Defines a viewer (or camera) for a rendered frame based on a view transform matrix");
+    return SHCCSTR("This shard creates and manages a view object, which defines and controls the view or camera settings for a "
+                   "rendering pipeline.");
+  }
+
+  static SHOptionalString inputHelp() {
+    return DefaultHelpText::InputHelpIgnored;
+  }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The view object created.");
   }
 
   PARAM_PARAMVAR(_viewTransform, "View", "The view matrix.", {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)});
@@ -212,6 +221,8 @@ struct RenderIntoShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {CoreInfo::NoneType, AttachmentTable});
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::Shards});
@@ -397,7 +408,14 @@ struct RenderIntoShard {
 struct ViewProjectionMatrixShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
-  static SHOptionalString help() { return SHCCSTR("Returns the combined view projection matrix of the view"); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes the input view object and returns its combined view-projection matrix, which encapsulates "
+                   "both the view position and orientation(view matrix) and its orthographic projection(projection matrix).");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A 4x4 matrix representing the view object's combined view-projection matrix.");
+  }
 
   PARAM_PARAMVAR(_viewSize, "ViewSize", "The size of the screen this view is being used with",
                  {CoreInfo::Float2Type, CoreInfo::Float2VarType});
@@ -426,7 +444,12 @@ struct ViewProjectionMatrixShard {
 struct ViewMatrixShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
-  static SHOptionalString help() { return SHCCSTR("Returns the view matrix of the view"); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard takes the input view object and returns its view matrix, which represents the camera's position "
+                   "and orientation in the world space.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A 4x4 matrix representing the view object's view matrix."); }
 
   PARAM_IMPL();
 
@@ -451,7 +474,16 @@ struct ViewMatrixShard {
 struct ViewRangeShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
-  static SHOptionalString help() { return SHCCSTR("Returns the view near/far range"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard takes the input view object and returns a float2 representing the view's near and far clipping range. The "
+        "first value in the float2 represents the near clipping range while the second value represents the far clipping range.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A float2 representing the view's near and far clipping range.");
+  }
 
   PARAM_IMPL();
 

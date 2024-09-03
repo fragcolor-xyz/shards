@@ -366,7 +366,7 @@ struct Container {
       "OutputScale", SHCCSTR("The scale that the output should be rendered as"), {CoreInfo::NoneType, CoreInfo::AnyType}};
 
   static inline ParameterInfo NameParameterInfo{
-      "Name", SHCCSTR("A name for this step, to aid in debugging"), {CoreInfo::NoneType, CoreInfo::StringType}};
+      "Name", SHCCSTR("A name for this pass, to aid in debugging"), {CoreInfo::NoneType, CoreInfo::StringType}};
 
 #undef ENUM
 #undef OBJECT

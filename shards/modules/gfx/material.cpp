@@ -12,6 +12,11 @@ struct MaterialShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Material; }
 
+  static SHOptionalString help() { return SHCCSTR("This shard creates a material from the given parameters and features."); }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the material created as a material object."); }
+
   PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
 

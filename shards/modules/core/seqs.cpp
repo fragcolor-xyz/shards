@@ -241,7 +241,7 @@ struct IndexOf {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The index of the item or a sequence of indeces.");
+    return SHCCSTR("The index of the item or a sequence of indices.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -375,15 +375,15 @@ struct Join {
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard will concatenate a sequence of strings or bytes into a single string or bytes represented as a single byte sequence.");
+    return SHCCSTR("This shard will concatenate a sequence of strings or bytes into a single string or byte array and output it as a byte array.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence of strings or bytes sequence to concatenate.");
+    return SHCCSTR("The sequence of strings or byte array to concatenate.");
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The concatenated string or bytes represented as a byte sequence.");
+    return SHCCSTR("The concatenated string or bytes represented as a byte array.");
   }
 
   static SHTypesInfo inputTypes() { return InputType; }

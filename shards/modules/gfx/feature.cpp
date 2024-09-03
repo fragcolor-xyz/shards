@@ -61,6 +61,11 @@ DECL_ENUM_INFO(RequiredAttributes_, RequiredAttributes, "Attributes required for
 struct BuiltinFeatureShard {
   DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, "Identifier for built-in graphics features. Used to reference pre-defined functionality in the graphics system.", 'feid');
 
+  static SHOptionalString help() { return SHCCSTR("This shard creates the ready-made feature object of the feature specified in the ID parameter, for use in a rendering pass."); }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The feature object for use in a rendering pass."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Feature; }
 
@@ -146,6 +151,11 @@ struct FeatureShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Feature; }
 
+  static SHOptionalString help() { return SHCCSTR("This shard creates a feature object based on what was provided in the different parameters."); }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The feature object for use in a rendering pass."); }
+
   // A shader entry point looks like the following
   //   {:Name <string> :Stage <ProgrammableGraphicsStage> :Before [...] :After [...] :EntryPoint (-> ...)}
   // The Before/After parameters are optional and can be used to specify dependencies
@@ -178,7 +188,7 @@ struct FeatureShard {
   //   :<name> <default-value>        (type will be derived from value)
   PARAM_PARAMVAR(
       _params, "Params",
-      "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
+      "The parameters to expose to shaders, these default values can later be modified by the Params parameter in GFX.Material or GFX.Drawable.",
       {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
 
   // Table of block shader parameters, can be defined using any of the formats below:

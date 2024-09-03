@@ -302,6 +302,10 @@ struct WindowSize {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
+  static SHOptionalString help() { return SHCCSTR("This shard returns the dimensions of the window specified in the Window parameter."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the dimensions of the window as an int2. The first element represents the width and the second represents the height."); }
+
   PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
@@ -331,6 +335,10 @@ struct WindowSize {
 struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  static SHOptionalString help() { return SHCCSTR("This shard resizes the window specified in the Window parameter to the dimensions specified in the input."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The size to resize the window to. The first element represents the width and the second represents the height."); }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   PARAM_PARAMVAR(_window, "Window", "The window to resize", {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
@@ -372,7 +380,11 @@ struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+  static SHOptionalString help() { return SHCCSTR("This shard returns the position of the window specified in the Window parameter."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the position of the window as an int2. The first element represents the x-coordinate and the second represents the y-coordinate."); }
+
+  PARAM_PARAMVAR(_window, "Window", "The window to get the position of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -401,7 +413,11 @@ struct MoveWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+  static SHOptionalString help() { return SHCCSTR("This shard moves the window specified in the Window parameter to the position specified in the input."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The position to move the window to. The first element represents the x-coordinate and the second represents the y-coordinate."); }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+
+  PARAM_PARAMVAR(_window, "Window", "The window to move.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -435,7 +451,7 @@ struct OsUiScaleFactor {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
   static SHOptionalString help() { return SHCCSTR("Outputs the scaling factor for UI as determined by the operating system."); }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to get the UI scaling factor of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -467,13 +483,15 @@ struct OsUiScaleFactor {
 struct WindowInsets {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Float4Type; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The window inset values as a float4."); }
   static SHOptionalString help() {
-    return SHCCSTR("Retrieves the window inset values when rendering on mobile devices and screens with a keep-out area");
+    return SHCCSTR("Retrieves the window inset values when rendering on mobile devices and screens with a keep-out area.");
   }
 
   RequiredWindowContext _requiredWindowContext;
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to get the insets of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 

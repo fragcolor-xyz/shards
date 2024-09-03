@@ -264,17 +264,26 @@ struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a render pass object, meant for rendering drawable objects, using the drawables from the drawables "
+                   "queue (specified in the Queue parameter) "
+                   "and the sequence of features objects (specified in the Features parameter).");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The render pass object for use in a render pipeline."); }
+
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
-  PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
+  PARAM_PARAMVAR(_queue, "Queue", "The drawables queue to get drawables from.", {DrawQueueVarType});
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);
   PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_sort, "Sort",
-                 "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
+                 "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching.",
                  {CoreInfo::NoneType, ShardsTypes::SortModeEnumInfo::Type,
                   Type::VariableOf(ShardsTypes::SortModeEnumInfo::Type)});
   PARAM_VAR(_ignoreDrawableFeatures, "IgnoreDrawableFeatures",
-            "Ignore any features on drawables and only use the features specified in this pass",
+            "Ignore any features on drawables and only use the features specified in this pass.",
             {CoreInfo::NoneType, CoreInfo::BoolType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs),
@@ -350,6 +359,14 @@ struct EffectPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a render pass object designed for applying post processing effects or full-screen "
+                   "rendering techniques.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The render pass object for use in a render pipeline."); }
+
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
   PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
@@ -416,10 +433,11 @@ struct EffectPassShard {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
     if (!_composeWith.isNone()) {
-      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, shader::VariableRemapping(), [&]() {
-        // Create a new object to force shader recompile
-        wrapperFeature = std::make_shared<Feature>();
-      });
+      shader::applyComposeWithHashed(context, _composeWith.get(), _composedWithHash, _composedWith, shader::VariableRemapping(),
+                                     [&]() {
+                                       // Create a new object to force shader recompile
+                                       wrapperFeature = std::make_shared<Feature>();
+                                     });
     }
 
     shared::applyAll(context, step, _outputs, _outputScale, _features, _name);
@@ -462,10 +480,20 @@ struct CopyPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a render pass object that is meant for transferring render data from one stage of the "
+                   "render pipeline to the next. It is also able to make changes to the render data specified in the Inputs "
+                   "parameter, like changing its texture format or down sampling the texture. It makes these changes through its "
+                   "Outputs and OutputScale parameters.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The render pass object for use in a render pipeline."); }
+
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
   PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
-  PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+  PARAM_PARAMVAR(_inputs, "Inputs", "The names of the render pass objects to modify as a sequence of strings.", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs));
 

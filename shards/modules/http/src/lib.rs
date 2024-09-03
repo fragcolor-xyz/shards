@@ -632,15 +632,15 @@ macro_rules! post_like {
     
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Http.Post" {
-          OptionalString(shccstr!("The output is the response from the server through the POST request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+          OptionalString(shccstr!("The output is the response from the server through the POST request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
         } else if $name_str == "Http.Put" {
-          OptionalString(shccstr!("The output is the response from the server through the PUT request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+          OptionalString(shccstr!("The output is the response from the server through the PUT request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
         } else if $name_str == "Http.Patch" {
-          OptionalString(shccstr!("The output is the response from the server through the PATCH request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+          OptionalString(shccstr!("The output is the response from the server through the PATCH request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
         } else if $name_str == "Http.Delete" {
-          OptionalString(shccstr!("The output is the response from the server through the DELETE request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+          OptionalString(shccstr!("The output is the response from the server through the DELETE request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
         } else {
-          OptionalString(shccstr!("The output is the response from the server through the respective HTTP request as a string, byte sequence, or table (if the FullResponse parameter is set to true)."))
+          OptionalString(shccstr!("The output is the response from the server through the respective HTTP request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
         }
       }
 

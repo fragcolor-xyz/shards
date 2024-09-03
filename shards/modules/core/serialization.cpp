@@ -134,7 +134,7 @@ struct ReadFile {
 
 struct ToBytes {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes a value and converts it to a serialized binary representation (a serialized byte sequence).");
+    return SHCCSTR("This shard takes a value and converts it to a serialized binary representation (a serialized byte array).");
   }
 
   static SHOptionalString inputHelp() {
@@ -142,7 +142,7 @@ struct ToBytes {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard will return a seriliazed byte sequence representing the input value.");
+    return SHCCSTR("This shard will return a seriliazed byte array representing the input value.");
   }
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
@@ -167,7 +167,7 @@ struct FromBytes {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard will take a byte sequence.");
+    return SHCCSTR("This shard will take a byte array.");
   }
 
   static SHOptionalString outputHelp() {
