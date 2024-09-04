@@ -83,7 +83,7 @@ macro_rules! impl_panel {
         Self {
           instance: ctx,
           requiring: Vec::new(),
-          resizable: ParamVar::new(true.into()),
+          resizable: ParamVar::new(false.into()),
           $default_size: ParamVar::default(),
           $min_size: ParamVar::default(),
           $max_size: ParamVar::default(),
