@@ -143,10 +143,10 @@ struct EndFrame {
 struct ViewportShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Int4Type; }
-  static SHOptionalString help() { return SHCCSTR("This shard returns the dimensions of the current viewport as an int4"); }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the dimensions of the current viewport as an int4"); }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the dimensions of the current viewport as an int4."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the dimensions of the current viewport as an int4."); }
 
   // PARAM_PARAMVAR(_someParam, "RenameThis", "AddDescriptionHere", {shards::CoreInfo::AnyType});
   PARAM_IMPL();

@@ -42,7 +42,7 @@ struct Mutant;
 struct Evolve {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns a [Type::Float Type::Wire] pair. This pair represents the wire configuration from the "
+    return SHCCSTR("This shard outputs a [Type::Float Type::Wire] pair. This pair represents the wire configuration from the "
                    "current generation that scored the best fitness score and the fitness score itself.");
   }
 

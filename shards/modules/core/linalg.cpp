@@ -374,7 +374,7 @@ struct Decompose {
   }
   static SHTypesInfo outputTypes() { return Types::TRS; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a table containing the Translation, Rotation, and Scale components. Eg. {translation: @f3(1 2 3), "
+    return SHCCSTR("Outputs a table containing the Translation, Rotation, and Scale components. Eg. {translation: @f3(1 2 3), "
                    "rotation: @f4(0 0 0 1), scale: @f3(1 1 1)}");
   }
 
@@ -416,7 +416,7 @@ struct Compose {
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a 4x4 transformation matrix (sequence of four float4 vectors) "
+    return SHCCSTR("Outputs a 4x4 transformation matrix (sequence of four float4 vectors) "
                    "that combines the input translation, rotation, and scale.");
   }
 
@@ -454,7 +454,7 @@ struct Project {
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a float3 vector representing the projected 2D point (x, y) in screen space, "
+    return SHCCSTR("Outputs a float3 vector representing the projected 2D point (x, y) in screen space, "
                    "with the z component representing the depth.");
   }
 
@@ -521,7 +521,7 @@ struct Unproject {
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a float3 vector representing the unprojected 3D point in world space.");
+    return SHCCSTR("Outputs a float3 vector representing the unprojected 3D point in world space.");
   }
 
   static SHOptionalString help() {
@@ -603,7 +603,7 @@ struct QuaternionMultiply {
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a float4 vector representing the resulting quaternion after multiplication.");
+    return SHCCSTR("Outputs a float4 vector representing the resulting quaternion after multiplication.");
   }
 
   static SHOptionalString help() {
@@ -644,7 +644,7 @@ struct QuaternionSlerp {
     return SHCCSTR("Takes a float value between 0 and 1 representing the interpolation factor.");
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float4 vector representing the interpolated quaternion."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float4 vector representing the interpolated quaternion."); }
 
   static SHOptionalString help() {
     return SHCCSTR("This shard performs Spherical Linear Interpolation (SLERP) between two quaternions (represented as float4 vectors). "
@@ -690,11 +690,11 @@ struct QuaternionRotate {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString inputHelp() { return SHCCSTR("Takes a float3 vector representing the 3D vector to be rotated."); }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns a float3 vector representing the rotated 3D vector."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float3 vector representing the rotated 3D vector."); }
 
   static SHOptionalString help() {
     return SHCCSTR("This shard rotates the input 3D vector (represented as a float3) by the quaternion (represented as a float4) specified in the Operand parameter and "
-                   "returns the resulting rotated 3D vector. A float4 vector is a vector with 4 float elements while a float3 "
+                   "outputs the resulting rotated 3D vector. A float4 vector is a vector with 4 float elements while a float3 "
                    "vector is a vector with 3 float elements.");
   }
 

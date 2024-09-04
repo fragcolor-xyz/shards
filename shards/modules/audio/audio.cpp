@@ -437,7 +437,7 @@ struct Channel {
     return SHCCSTR("Any input type is accepted. The input will be passed to the code specified in the Shards parameter.");
   }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the output of the code specified in the Shards parameter."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the output of the code specified in the Shards parameter."); }
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
@@ -1243,7 +1243,7 @@ struct Sound : EngineUser {
     return SHCCSTR("Accepts a string representing the path to the audio file or asset to be loaded.");
   }
   static SHTypesInfo outputTypes() { return ObjType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns a Sound object that can be used with other audio shards."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a Sound object that can be used with other audio shards."); }
 
   PARAM_VAR(_spatialized, "Spatialized", "If the sound should have 3D audio capabilities.", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_spatialized));
@@ -1302,7 +1302,7 @@ struct Start : EngineUser {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+    return SHCCSTR("Outputs the same Sound object that was input, allowing for further manipulation.");
   }
 
   void setup() { _looped = Var(false); }
@@ -1350,7 +1350,7 @@ struct Pause {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+    return SHCCSTR("Outputs the same Sound object that was input, allowing for further manipulation.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1374,7 +1374,7 @@ struct Stop {
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts a Sound object created by the Audio.Sound shard."); }
   static SHTypesInfo outputTypes() { return Sound::ObjType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the same Sound object that was input, allowing for further manipulation.");
+    return SHCCSTR("Outputs the same Sound object that was input, allowing for further manipulation.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

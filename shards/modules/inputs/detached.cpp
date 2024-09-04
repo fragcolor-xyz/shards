@@ -56,7 +56,7 @@ struct GetWindowContext {
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the current window context."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the current window context."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return WindowContextType; }

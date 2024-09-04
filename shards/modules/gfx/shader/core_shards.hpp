@@ -736,7 +736,7 @@ struct RefTexture {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::TextureTypes; }
 
-  static SHOptionalString help() { return SHCCSTR("Returns a reference to the texture object for a named texture."); }
+  static SHOptionalString help() { return SHCCSTR("Outputs a reference to the texture object for a named texture."); }
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
@@ -776,7 +776,7 @@ struct RefSampler {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Sampler; }
 
-  static SHOptionalString help() { return SHCCSTR("Returns a reference to the default sampler object for a named texture."); }
+  static SHOptionalString help() { return SHCCSTR("Outputs a reference to the default sampler object for a named texture."); }
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
@@ -814,7 +814,7 @@ struct RefBuffer {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Buffer; }
 
-  static SHOptionalString help() { return SHCCSTR("Returns a reference to the default sampler object for a named texture."); }
+  static SHOptionalString help() { return SHCCSTR("Outputs a reference to the default sampler object for a named texture."); }
 
   PARAM_VAR(_name, "Name", "The name of the buffer", {CoreInfo::StringType});
   PARAM_VAR(_pointer, "Pointer", "Reference as pointer", {CoreInfo::NoneType, CoreInfo::BoolType});
@@ -898,7 +898,7 @@ struct WithInput {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns none");
+    return SHCCSTR("This shard outputs none");
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -957,7 +957,7 @@ struct WithTexture {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns none");
+    return SHCCSTR("This shard outputs none");
   }
 
   PARAM_REQUIRED_VARIABLES();

@@ -56,7 +56,7 @@ impl LegacyShard for ToBase58 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the base58 encoded string."))
+    OptionalString(shccstr!("Outputs the base58 encoded string."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -106,9 +106,7 @@ impl LegacyShard for FromBase58 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "This shard decodes the base58 encoded string and returns it as a decoded byte array."
-    ))
+    OptionalString(shccstr!("This shard decodes the base58 encoded string and outputs it as a decoded byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -116,7 +114,7 @@ impl LegacyShard for FromBase58 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the decoded byte array."))
+    OptionalString(shccstr!("Outputs the decoded byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -182,7 +180,7 @@ impl LegacyShard for ToLEB128 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the LEB128 encoded byte array."))
+    OptionalString(shccstr!("Outputs the LEB128 encoded byte array."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -255,7 +253,7 @@ impl LegacyShard for FromLEB128 {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard decodes the LEB128 encoded byte array and returns it as an integer (signed or unsigned depending on what was specified in the Signed parameter)."))
+    OptionalString(shccstr!("This shard decodes the LEB128 encoded byte array and outputs it as an integer (signed or unsigned depending on what was specified in the Signed parameter)."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -263,7 +261,7 @@ impl LegacyShard for FromLEB128 {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Returns the decoded integer."))
+    OptionalString(shccstr!("Outputs the decoded integer."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {

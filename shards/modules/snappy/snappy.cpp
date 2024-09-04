@@ -10,7 +10,7 @@ namespace Snappy {
 struct Compress {
   std::vector<char> _buffer;
 
-  static SHOptionalString help() { return SHCCSTR("This shard compresses the input byte array using the Snappy algorithm and returns the compressed byte array."); }
+  static SHOptionalString help() { return SHCCSTR("This shard compresses the input byte array using the Snappy algorithm and outputs the compressed byte array."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The byte array to compress."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The compressed byte array."); }
 

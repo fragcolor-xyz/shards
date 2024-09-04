@@ -172,15 +172,15 @@ macro_rules! add_hasher {
 
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Hash.Keccak-256" {
-          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte array."))
         } else if $name_str == "Hash.Keccak-512" {
-          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte array."))
         } else if $name_str == "Hash.Sha3-256" {
-          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte array."))
         } else if $name_str == "Hash.Sha3-512" {
-          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte array."))
         } else {
-          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the hash as a byte array."))
         }
       }
 
@@ -278,11 +278,11 @@ macro_rules! add_hasher2 {
 
       fn help(&mut self) -> OptionalString {
         if $name_str == "Hash.Sha2-256" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 256-bit hash(of 32 bytes) using the SHA2-256 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 256-bit hash (32-bytes) of the input (string, bytes or a sequence of strings/bytes) using the Keccak-256 hashing algorithm."))
         } else if $name_str == "Hash.Sha2-512" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 512-bit hash(of 64 bytes) using the SHA2-512 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 512-bit hash (64-bytes) of the input (string, bytes or a sequence of strings/bytes) using the SHA2-512 hashing algorithm."))
         } else {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a hash using the specified hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the hash of the input (string, bytes or a sequence of strings/bytes) using the specified hashing algorithm."))
         }
       }
 
@@ -292,11 +292,11 @@ macro_rules! add_hasher2 {
 
       fn outputHelp(&mut self) -> OptionalString {
          if $name_str == "Hash.Sha2-256" {
-          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte array."))
         } else if $name_str == "Hash.Sha2-512" {
-          OptionalString(shccstr!("Outputs the 512-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 512-bit hash as a byte array."))
         } else {
-          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the hash as a byte array."))
         }
       }
       
@@ -382,19 +382,19 @@ macro_rules! add_hasher3 {
 
       fn help(&mut self) -> OptionalString {
         if $name_str == "Hash.Blake2-128" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a compact 128-bit hash(of 16 bytes) using the BLAKE2b-128 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the compact 128-bit hash(of 16 bytes) of the input (string, bytes or a sequence of strings/bytes) using the BLAKE2b-128 hashing algorithm."))
         } else if $name_str == "Hash.Blake2-256" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 256-bit hash(of 32 bytes) using the BLAKE2b-256 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 256-bit hash(of 32 bytes) of the input (string, bytes or a sequence of strings/bytes) using the BLAKE2b-256 hashing algorithm."))
         } else if $name_str == "Hash.XXH-64" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 64-bit hash(of 8 bytes) using the XXH64 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 64-bit hash(of 8 bytes) of the input (string, bytes or a sequence of strings/bytes) using the XXH64 hashing algorithm."))
         } else if $name_str == "Hash.XXH-128" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 128-bit hash(of 16 bytes) using the XXH128 hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 128-bit hash(of 16 bytes) of the input (string, bytes or a sequence of strings/bytes) using the XXH128 hashing algorithm."))
         } else if $name_str == "Hash.XXH3-64" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 64-bit hash(of 8 bytes) using the XXH3(64-bit) hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 64-bit hash(of 8 bytes) of the input (string, bytes or a sequence of strings/bytes) using the XXH3(64-bit) hashing algorithm."))
         } else if $name_str == "Hash.XXH3-128" {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a 128-bit hash(of 16 bytes) using the XXH3(128-bit) hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the 128-bit hash(of 16 bytes) of the input (string, bytes or a sequence of strings/bytes) using the XXH3(128-bit) hashing algorithm."))
         } else {
-          OptionalString(shccstr!("This shard converts the input (string, bytes or a sequence of strings/bytes) into a hash using the specified hashing algorithm."))
+          OptionalString(shccstr!("This shard outputs the hash of the input (string, bytes or a sequence of strings/bytes) using the specified hashing algorithm."))
         }
       }
 
@@ -404,19 +404,19 @@ macro_rules! add_hasher3 {
 
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Hash.Blake2-128" {
-          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte array."))
         } else if $name_str == "Hash.Blake2-256" {
-          OptionalString(shccstr!("Outputs the 256-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 256-bit hash as a byte array."))
         } else if $name_str == "Hash.XXH-64" {
-          OptionalString(shccstr!("Outputs the 64-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 64-bit hash as a byte array."))
         } else if $name_str == "Hash.XXH-128" {
-          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte array."))
         } else if $name_str == "Hash.XXH3-64" {
-          OptionalString(shccstr!("Outputs the 64-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 64-bit hash as a byte array."))
         } else if $name_str == "Hash.XXH3-128" {
-          OptionalString(shccstr!("Outputs the 128-bit hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the 128-bit hash as a byte array."))
         } else {
-          OptionalString(shccstr!("Outputs the hash as a byte sequence (outputs a sequence of bytes instead if the input was a sequence)."))
+          OptionalString(shccstr!("Outputs the hash as a byte array."))
         }
       }
 

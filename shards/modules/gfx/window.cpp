@@ -302,9 +302,9 @@ struct WindowSize {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard returns the dimensions of the window specified in the Window parameter."); }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the dimensions of the window specified in the Window parameter."); }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the dimensions of the window as an int2. The first element represents the width and the second represents the height."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the dimensions of the window as an int2. The first element represents the width and the second represents the height."); }
 
   PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
@@ -380,9 +380,9 @@ struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard returns the position of the window specified in the Window parameter."); }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the position of the window specified in the Window parameter."); }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the position of the window as an int2. The first element represents the x-coordinate and the second represents the y-coordinate."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the position of the window as an int2. The first element represents the x-coordinate and the second represents the y-coordinate."); }
 
   PARAM_PARAMVAR(_window, "Window", "The window to get the position of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});

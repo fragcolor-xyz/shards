@@ -74,7 +74,7 @@ struct RandomIntOp : public Rand<CoreInfo::IntType, SHType::Int> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a random integer.");
+    return SHCCSTR("Outputs a random integer.");
   }
 };
 
@@ -84,7 +84,7 @@ struct RandomFloatOp : public Rand<CoreInfo::FloatType, SHType::Float> {
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a random float.");
+    return SHCCSTR("Outputs a random float.");
   }
 };
 
@@ -100,7 +100,7 @@ struct RandomBytes : public RandBase {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a random sequence of bytes.");
+    return SHCCSTR("Outputs a random sequence of bytes.");
   }
   static SHParametersInfo parameters() { return _params; }
 

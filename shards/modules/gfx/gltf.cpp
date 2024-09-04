@@ -114,7 +114,7 @@ struct GLTFShard {
                    "transformation matrix and additional information to modify the materials of the glTF model.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the drawable object."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the drawable object."); }
 
   PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
@@ -640,7 +640,7 @@ struct GLBPacker {
     return SHCCSTR("This shard takes the glTF file (specified by the input file path) and converts it into GLB format.");
   }
   static SHOptionalString inputHelp() { return SHCCSTR("Path to the glTF file to convert."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the GLB bytes of the converted glTF file."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the GLB bytes of the converted glTF file."); }
 
   std::vector<uint8_t> _output;
 

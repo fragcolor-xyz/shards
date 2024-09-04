@@ -165,17 +165,17 @@ struct BaseOpsBin {
 
 // Now use the updated macro with help text for each operation
 LOGIC_OP(Is, ==, "Checks if the input is equal to the operand.",
-         "Returns true if the input is equal to the operand and false otherwise.");
+         "Outputs true if the input is equal to the operand and false otherwise.");
 LOGIC_OP(IsNot, !=, "Checks if the input is not equal to the operand.",
-         "Returns true if the input is not equal to the operand and false otherwise.");
+         "Outputs true if the input is not equal to the operand and false otherwise.");
 LOGIC_OP(IsMore, >, "Checks if the input is greater than the operand.",
-         "Returns true if the input is greater than the operand and false otherwise.");
+         "Outputs true if the input is greater than the operand and false otherwise.");
 LOGIC_OP(IsLess, <, "Checks if the input is less than the operand.",
-         "Returns true if the input is less than the operand and false otherwise.");
+         "Outputs true if the input is less than the operand and false otherwise.");
 LOGIC_OP(IsMoreEqual, >=, "Checks if the input is greater than or equal to the operand.",
-         "Returns true if the input is greater than or equal to the operand and false otherwise.");
+         "Outputs true if the input is greater than or equal to the operand and false otherwise.");
 LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the operand.",
-         "Returns true if the input is less than or equal to the operand and false otherwise.");
+         "Outputs true if the input is less than or equal to the operand and false otherwise.");
 
 #define LOGIC_ANY_SEQ_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                           \
   struct NAME : public BaseOpsBin {                                                       \
@@ -281,56 +281,56 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
 LOGIC_ANY_SEQ_OP(IsAny, ==,
-                 "Checks if any element in the input is equal to the given value. It returns true if any element is equal and "
+                 "Checks if any element in the input is equal to the given value. It outputs true if any element is equal and "
                  "false otherwise.",
-                 "Returns true if any element in the input is equal to the specified value and false otherwise.");
+                 "Outputs true if any element in the input is equal to the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(IsAll, ==,
-                 "Checks if all elements in the input are equal to the given value. It returns true if all elements are equal "
+                 "Checks if all elements in the input are equal to the given value. It outputs true if all elements are equal "
                  "and false otherwise.",
-                 "Returns true if all elements in the input are equal to the specified value and false otherwise.");
+                 "Outputs true if all elements in the input are equal to the specified value and false otherwise.");
 LOGIC_ANY_SEQ_OP(IsAnyNot, !=,
-                 "Checks if any element in the input is not equal to the given value. It returns true if any element is not "
+                 "Checks if any element in the input is not equal to the given value. It outputs true if any element is not "
                  "equal and false otherwise.",
-                 "Returns true if any element in the input is not equal to the specified value and false otherwise.");
+                 "Outputs true if any element in the input is not equal to the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(IsAllNot, !=,
-                 "Checks if all elements in the input are not equal to the given value. It returns true if all elements are "
+                 "Checks if all elements in the input are not equal to the given value. It outputs true if all elements are "
                  "not equal and false otherwise.",
-                 "Returns true if all elements in the input are not equal to the specified value and false otherwise.");
+                 "Outputs true if all elements in the input are not equal to the specified value and false otherwise.");
 LOGIC_ANY_SEQ_OP(IsAnyMore, >,
-                 "Checks if any element in the input is greater than the given value. It returns true if any element is "
+                 "Checks if any element in the input is greater than the given value. It outputs true if any element is "
                  "greater and false otherwise.",
-                 "Returns true if any element in the input is greater than the specified value and false otherwise.");
+                 "Outputs true if any element in the input is greater than the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(IsAllMore, >,
-                 "Checks if all elements in the input are greater than the given value. It returns true if all elements are "
+                 "Checks if all elements in the input are greater than the given value. It outputs true if all elements are "
                  "greater and false otherwise.",
-                 "Returns true if all elements in the input are greater than the specified value and false otherwise.");
+                 "Outputs true if all elements in the input are greater than the specified value and false otherwise.");
 LOGIC_ANY_SEQ_OP(IsAnyLess, <,
-                 "Checks if any element in the input is less than the given value. It returns true if any element is less and "
+                 "Checks if any element in the input is less than the given value. It outputs true if any element is less and "
                  "false otherwise.",
-                 "Returns true if any element in the input is less than the specified value and false otherwise.");
+                 "Outputs true if any element in the input is less than the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(IsAllLess, <,
-                 "Checks if all elements in the input are less than the given value. It returns true if all elements are less "
+                 "Checks if all elements in the input are less than the given value. It outputs true if all elements are less "
                  "and false otherwise.",
-                 "Returns true if all elements in the input are less than the specified value and false otherwise.");
+                 "Outputs true if all elements in the input are less than the specified value and false otherwise.");
 LOGIC_ANY_SEQ_OP(
     IsAnyMoreEqual, >=,
-    "Checks if any element in the input is greater than or equal to the given value. It returns true if any element is "
+    "Checks if any element in the input is greater than or equal to the given value. It outputs true if any element is "
     "greater or equal and false otherwise.",
-    "Returns true if any element in the input is greater than or equal to the specified value and false otherwise.");
+    "Outputs true if any element in the input is greater than or equal to the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(
     IsAllMoreEqual, >=,
-    "Checks if all elements in the input are greater than or equal to the given value. It returns true if all elements are "
+    "Checks if all elements in the input are greater than or equal to the given value. It outputs true if all elements are "
     "greater or equal and false otherwise.",
-    "Returns true if all elements in the input are greater than or equal to the specified value and false otherwise.");
+    "Outputs true if all elements in the input are greater than or equal to the specified value and false otherwise.");
 LOGIC_ANY_SEQ_OP(IsAnyLessEqual, <=,
-                 "Checks if any element in the input is less than or equal to the given value. It returns true if any element "
+                 "Checks if any element in the input is less than or equal to the given value. It outputs true if any element "
                  "is less or equal and false otherwise.",
-                 "Returns true if any element in the input is less than or equal to the specified value and false otherwise.");
+                 "Outputs true if any element in the input is less than or equal to the specified value and false otherwise.");
 LOGIC_ALL_SEQ_OP(
     IsAllLessEqual, <=,
-    "Checks if all elements in the input are less than or equal to the given value. It returns true if all elements are less "
+    "Checks if all elements in the input are less than or equal to the given value. It outputs true if all elements are less "
     "or equal and false otherwise.",
-    "Returns true if all elements in the input are less than or equal to the specified value and false otherwise.");
+    "Outputs true if all elements in the input are less than or equal to the specified value and false otherwise.");
 
 #define LOGIC_OP_DESC(NAME)              \
   RUNTIME_CORE_SHARD_FACTORY(NAME);      \
@@ -664,7 +664,7 @@ struct Return {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Stops the current flow and returns the provided input. This shard is used to exit the execution of the "
+    return SHCCSTR("Stops the current flow and outputs the provided input. This shard is used to exit the execution of the "
                    "current wire early within loops or conditional flows, returning the specified input.");
   }
 
@@ -699,14 +699,14 @@ struct IsValidNumber {
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(std::isnormal(input.payload.floatValue)); }
 
   static SHOptionalString help() {
-    return SHCCSTR("Checks if the input is a valid floating-point number (not zero, subnormal, infinity, or NaN). Returns true "
-                   "if the input is a normal floating-point number, otherwise returns false.");
+    return SHCCSTR("Checks if the input is a valid floating-point number (not zero, subnormal, infinity, or NaN). Outputs true "
+                   "if the input is a normal floating-point number, otherwise outputs false.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The floating-point number to be checked."); }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns true if the input is a valid normal floating-point number, otherwise returns false.");
+    return SHCCSTR("Outputs true if the input is a valid normal floating-point number, otherwise outputs false.");
   }
 };
 
@@ -3600,8 +3600,7 @@ struct Limit {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) "
-                   "and returns the truncated sequence.");
+    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) and outputs the truncated sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }

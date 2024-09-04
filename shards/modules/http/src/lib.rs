@@ -453,11 +453,11 @@ macro_rules! get_like {
 
       fn help(&mut self) -> OptionalString {
         if $name_str == "Http.Get" {
-          OptionalString(shccstr!("This shard sends a GET request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a GET request to the specified URL and outputs the response."))
         } else if $name_str == "Http.Head" {
-          OptionalString(shccstr!("This shard sends a HEAD request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a HEAD request to the specified URL and outputs the response."))
         } else {
-          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and returns the response."))
+          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and outputs the response."))
         }
       }
     
@@ -604,15 +604,15 @@ macro_rules! post_like {
 
       fn help(&mut self) -> OptionalString {
         if $name_str == "Http.Post" {
-          OptionalString(shccstr!("This shard sends a HTTP POST request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a HTTP POST request to the specified URL and outputs the response."))
         } else if $name_str == "Http.Put" {
-          OptionalString(shccstr!("This shard sends a HTTP PUT request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a HTTP PUT request to the specified URL and outputs the response."))
         } else if $name_str == "Http.Patch" {
-          OptionalString(shccstr!("This shard sends a HTTP PATCH request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a HTTP PATCH request to the specified URL and outputs the response."))
         } else if $name_str == "Http.Delete" {
-          OptionalString(shccstr!("This shard sends a HTTP DELETE request to the specified URL and returns the response."))
+          OptionalString(shccstr!("This shard sends a HTTP DELETE request to the specified URL and outputs the response."))
         } else {
-          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and returns the response."))
+          OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and outputs the response."))
         }
       }
     

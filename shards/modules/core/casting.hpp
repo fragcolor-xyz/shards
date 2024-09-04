@@ -25,27 +25,27 @@ template <SHType ToType> struct ToNumber {
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     if constexpr (ToType == SHType::Int) {
-      return SHCCSTR("Returns a numerical whole number without any fractional or decimal component.");
+      return SHCCSTR("Outputs a numerical whole number without any fractional or decimal component.");
     } else if constexpr (ToType == SHType::Int2) {
-      return SHCCSTR("Returns a vector of two Int elements.");
+      return SHCCSTR("Outputs a vector of two Int elements.");
     } else if constexpr (ToType == SHType::Int3) {
-      return SHCCSTR("Returns a vector of three Int elements.");
+      return SHCCSTR("Outputs a vector of three Int elements.");
     } else if constexpr (ToType == SHType::Int4) {
-      return SHCCSTR("Returns a vector of four Int elements.");
+      return SHCCSTR("Outputs a vector of four Int elements.");
     } else if constexpr (ToType == SHType::Int8) {
-      return SHCCSTR("Returns a vector of eight Int elements.");
+      return SHCCSTR("Outputs a vector of eight Int elements.");
     } else if constexpr (ToType == SHType::Int16) {
-      return SHCCSTR("Returns a vector of sixteen Int elements.");
+      return SHCCSTR("Outputs a vector of sixteen Int elements.");
     } else if constexpr (ToType == SHType::Color) {
-      return SHCCSTR("Returns a vector of four color channels (RGBA).");
+      return SHCCSTR("Outputs a vector of four color channels (RGBA).");
     } else if constexpr (ToType == SHType::Float) {
-      return SHCCSTR("Returns a numerical value that can include a fractional or decimal component.");
+      return SHCCSTR("Outputs a numerical value that can include a fractional or decimal component.");
     } else if constexpr (ToType == SHType::Float2) {
-      return SHCCSTR("Returns a vector of two Float elements.");
+      return SHCCSTR("Outputs a vector of two Float elements.");
     } else if constexpr (ToType == SHType::Float3) {
-      return SHCCSTR("Returns a vector of three Float elements.");
+      return SHCCSTR("Outputs a vector of three Float elements.");
     } else if constexpr (ToType == SHType::Float4) {
-      return SHCCSTR("Returns a vector of Four Float elements.");
+      return SHCCSTR("Outputs a vector of Four Float elements.");
     } else {
       return SHCCSTR("Converts various input types into the specified type");
     }
@@ -326,25 +326,25 @@ template <SHType ToType> struct MakeVector {
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     if constexpr (ToType == SHType::Int2) {
-      return SHCCSTR("Returns a vector of two Int elements.");
+      return SHCCSTR("Outputs a vector of two Int elements.");
     } else if constexpr (ToType == SHType::Int3) {
-      return SHCCSTR("Returns a vector of three Int elements.");
+      return SHCCSTR("Outputs a vector of three Int elements.");
     } else if constexpr (ToType == SHType::Int4) {
-      return SHCCSTR("Returns a vector of four Int elements.");
+      return SHCCSTR("Outputs a vector of four Int elements.");
     } else if constexpr (ToType == SHType::Int8) {
-      return SHCCSTR("Returns a vector of eight Int elements.");
+      return SHCCSTR("Outputs a vector of eight Int elements.");
     } else if constexpr (ToType == SHType::Int16) {
-      return SHCCSTR("Returns a vector of sixteen Int elements.");
+      return SHCCSTR("Outputs a vector of sixteen Int elements.");
     } else if constexpr (ToType == SHType::Color) {
-      return SHCCSTR("Returns a vector of four color channels (RGBA).");
+      return SHCCSTR("Outputs a vector of four color channels (RGBA).");
     } else if constexpr (ToType == SHType::Float2) {
-      return SHCCSTR("Returns a vector of two Float elements.");
+      return SHCCSTR("Outputs a vector of two Float elements.");
     } else if constexpr (ToType == SHType::Float3) {
-      return SHCCSTR("Returns a vector of three Float elements.");
+      return SHCCSTR("Outputs a vector of three Float elements.");
     } else if constexpr (ToType == SHType::Float4) {
-      return SHCCSTR("Returns a vector of Four Float elements.");
+      return SHCCSTR("Outputs a vector of Four Float elements.");
     } else {
-      return SHCCSTR("Returns a vector");
+      return SHCCSTR("Outputs a vector");
     }
   }
 
