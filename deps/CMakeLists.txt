@@ -29,6 +29,9 @@ option(USE_AVX512 "Enable AVX512" OFF)
 
 # Required by Jolt as we enable RTTI
 set(CPP_RTTI_ENABLED ON CACHE BOOL "Enable C++ RTTI" FORCE)
+if(EMSCRIPTEN)
+  set(CPP_EXCEPTIONS_ENABLED ON CACHE BOOL "Enable C++ exceptions" FORCE) # wasm requires exceptions to be enabled cos we use exceptions
+endif()
 
 # This triggers warnings+errors on valgrind build
 option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
