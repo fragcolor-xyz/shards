@@ -27,23 +27,14 @@ set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
 option(USE_AVX2 "Enable AVX2" OFF)
 option(USE_AVX512 "Enable AVX512" OFF)
 
-if(EMSCRIPTEN)
-  set(ENABLE_EXTENSIONS_BASE ON) # Can use web assembly SIMD 
-  set(ENABLE_EXTENSIONS OFF) # Non of the other once because they add -mpopcnt, -mbmi, etc.
-else()
-  set(ENABLE_EXTENSIONS_BASE ON)
-  set(ENABLE_EXTENSIONS ON)
-endif()
+# Required by Jolt as we enable RTTI
+set(CPP_RTTI_ENABLED ON CACHE BOOL "Enable C++ RTTI" FORCE)
 
 # This triggers warnings+errors on valgrind build
 option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
-option(USE_SSE4_1 "Enable SSE4.1" ${ENABLE_EXTENSIONS_BASE})
-option(USE_SSE4_2 "Enable SSE4.2" ${ENABLE_EXTENSIONS})
-option(USE_AVX "Enable AVX" ${ENABLE_EXTENSIONS})
-option(USE_LZCNT "Enable LZCNT" ${ENABLE_EXTENSIONS})
-option(USE_TZCNT "Enable TZCNT" ${ENABLE_EXTENSIONS})
-option(USE_F16C "Enable F16C" ${ENABLE_EXTENSIONS})
-option(USE_FMADD "Enable FMADD" ${ENABLE_EXTENSIONS})
+
+# Required by Jolt to build with WASM SIMD
+option(USE_WASM_SIMD "Enable WASM SIMD" ON)
 
 add_subdirectory(JoltPhysics/Build)
 
