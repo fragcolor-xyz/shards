@@ -1349,10 +1349,11 @@ struct Dec : public UnaryVarOperation<BasicUnaryOperation<DecOp>> {
 };
 RUNTIME_SHARD_TYPE(Math, Dec);
 
-struct NegateOp final {
+struct NegateOp {
   template <typename T> T apply(const T &a) { return -a; }
 };
-struct Negate : public UnaryVarOperation<BasicUnaryOperation<NegateOp>> {
+
+struct Negate : public UnaryOperation<BasicUnaryOperation<NegateOp>> {
   static SHOptionalString help() {
     return SHCCSTR("This shard reverses the sign of the input. (A positive number becomes negative, and vice versa).");
   }
