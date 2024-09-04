@@ -974,8 +974,7 @@ struct Cbrt : public UnaryFloatOperation<BasicUnaryOperation<CbrtOp, DispatchTyp
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the cube root of. This value must be a positive number or "
-                   "sequence of positive numbers.");
+    return SHCCSTR("The input float or sequence of floats to calculate the cube root of.");
   }
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cube root of the input."); }
@@ -1401,7 +1400,7 @@ struct PowOp final {
 };
 struct Pow : public BinaryOperation<BasicBinaryOperation<PowOp>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard raises the input to the power of the exponend specified in the Operand parameter.");
+    return SHCCSTR("This shard raises the input to the power of the exponent specified in the Operand parameter.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The base value to raise the power of."); }
