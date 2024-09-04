@@ -726,11 +726,16 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
 
-    if (blk->inlineShardId != InlineShard::NotInline) {
-      output = activateShardInline(blk, context, *input);
-      shassert(output && "activateShardInline returned nullptr");
-    } else {
-      output = blk->activate(blk, context, input);
+    {
+      ZoneScopedN("activateShard");
+      ZoneName(blk->name(blk), blk->nameLength);
+
+      if (blk->inlineShardId != InlineShard::NotInline) {
+        output = activateShardInline(blk, context, *input);
+        shassert(output && "activateShardInline returned nullptr");
+      } else {
+        output = blk->activate(blk, context, input);
+      }
     }
 
     // Deal with aftermath of activation
