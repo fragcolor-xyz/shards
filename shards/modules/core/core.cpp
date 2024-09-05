@@ -435,7 +435,8 @@ struct Profile {
                                    {"Label", SHCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard outputs the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
+    return SHCCSTR(
+        "This shard outputs the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
   }
 
   static SHOptionalString inputHelp() {
@@ -535,8 +536,10 @@ struct XpendTo : public XPendBase {
           throw ComposeError("AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
         if (cons.exposedType.basicType == SHType::Seq &&
-            (cons.exposedType.seqTypes.len != 1 || !matchTypes(data.inputType,cons.exposedType.seqTypes.elements[0], true, true, true))) {
-          throw ComposeError(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})", data.inputType, cons.exposedType.seqTypes.elements[0]));
+            (cons.exposedType.seqTypes.len != 1 ||
+             !matchTypes(data.inputType, cons.exposedType.seqTypes.elements[0], true, true, true))) {
+          throw ComposeError(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})", data.inputType,
+                                         cons.exposedType.seqTypes.elements[0]));
         }
         if (cons.tracked) {
           SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be tracked.", _collection.variableName());
@@ -813,8 +816,15 @@ struct ForEachShard {
     }
     // $1 always any type as it's always for table case
     if (data.inputType.basicType == SHType::Table) {
-      _tmpInfo1.exposedType = CoreInfo::AnyType;
-      arrayPush(dataCopy.shared, _tmpInfo1);
+      auto &tableType = data.inputType.table;
+      // Wildcard table type
+      if (tableType.types.len == 1 && tableType.keys.len == 1 && tableType.keys.elements[0].valueType == SHType::None) {
+        _tmpInfo1.exposedType = tableType.types.elements[0];
+        arrayPush(dataCopy.shared, _tmpInfo1);
+      } else {
+        _tmpInfo1.exposedType = CoreInfo::AnyType;
+        arrayPush(dataCopy.shared, _tmpInfo1);
+      }
     }
 
     _shards.compose(dataCopy);
@@ -901,7 +911,9 @@ private:
 
 struct Map {
   static SHOptionalString help() {
-    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
+    return SHCCSTR(
+        "Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter "
+        "and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence or table to process."); }
@@ -2391,15 +2403,9 @@ struct LowestHighestShard {
 };
 
 struct LowestShard : LowestHighestShard {
-  static SHOptionalString help() {
-    return SHCCSTR("Takes a sequence and outputs the element with the lowest value.");
-  }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("A sequence of elements of any type.");
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the element with the lowest value.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Takes a sequence and outputs the element with the lowest value."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the element with the lowest value."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2416,15 +2422,9 @@ struct LowestShard : LowestHighestShard {
 };
 
 struct HighestShard : LowestHighestShard {
-  static SHOptionalString help() {
-    return SHCCSTR("Takes a sequence and outputs the element with the highest value.");
-  }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("A sequence of elements of any type.");
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the element with the highest value.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Takes a sequence and outputs the element with the highest value."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the element with the highest value."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2745,10 +2745,14 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
 
 struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and outputs their 128-bit hash value as an int2 (a sequence with 2 integers as elements).");
+    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and outputs their 128-bit "
+                   "hash value as an int2 (a sequence with 2 integers as elements).");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("This shard outputs the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit "
+                   "integer elements.");
+  }
 };
 
 struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType> {
