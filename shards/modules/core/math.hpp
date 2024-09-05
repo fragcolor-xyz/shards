@@ -547,17 +547,6 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
   using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntOrBoolTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
-// MATH_BINARY_OPERATION(Add, +, 0);
-// MATH_BINARY_OPERATION(Subtract, -, 0);
-// MATH_BINARY_OPERATION(Multiply, *, 0);
-// MATH_BINARY_OPERATION(Divide, /, 1);
-// MATH_BINARY_OPERATION(Mod, %, 0);
-// MATH_BINARY_INT_BOOL_OPERATION(Xor, ^);
-// MATH_BINARY_INT_BOOL_OPERATION(And, &);
-// MATH_BINARY_INT_BOOL_OPERATION(Or, |);
-// MATH_BINARY_INT_OPERATION(LShift, <<);
-// MATH_BINARY_INT_OPERATION(RShift, >>);
-
 struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
   static SHOptionalString help() {
     return SHCCSTR("This shard adds the input value to the value provided in the Operand parameter.");
