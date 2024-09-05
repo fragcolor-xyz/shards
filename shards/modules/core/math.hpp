@@ -89,15 +89,12 @@ struct BinaryBase : public Base {
        CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
        CoreInfo::ColorType,     CoreInfo::ColorVarType, CoreInfo::AnySeqType,    CoreInfo::AnyVarSeqType}};
 
-  static inline Types OnlyNumbers{
-    {
-      CoreInfo::IntType,       CoreInfo::IntVarType,   CoreInfo::Int2Type,      CoreInfo::Int2VarType,  CoreInfo::Int3Type,
-      CoreInfo::Int3VarType,   CoreInfo::Int4Type,     CoreInfo::Int4VarType,   CoreInfo::Int8Type,     CoreInfo::Int8VarType,
-      CoreInfo::Int16Type,     CoreInfo::Int16VarType, CoreInfo::FloatType,     CoreInfo::FloatVarType, CoreInfo::Float2Type,
-      CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
-      CoreInfo::ColorType,     CoreInfo::ColorVarType
-    }
-  };
+  static inline Types OnlyNumbers{{CoreInfo::IntType,    CoreInfo::IntVarType,    CoreInfo::Int2Type,   CoreInfo::Int2VarType,
+                                   CoreInfo::Int3Type,   CoreInfo::Int3VarType,   CoreInfo::Int4Type,   CoreInfo::Int4VarType,
+                                   CoreInfo::Int8Type,   CoreInfo::Int8VarType,   CoreInfo::Int16Type,  CoreInfo::Int16VarType,
+                                   CoreInfo::FloatType,  CoreInfo::FloatVarType,  CoreInfo::Float2Type, CoreInfo::Float2VarType,
+                                   CoreInfo::Float3Type, CoreInfo::Float3VarType, CoreInfo::Float4Type, CoreInfo::Float4VarType,
+                                   CoreInfo::ColorType,  CoreInfo::ColorVarType}};
 
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", SHCCSTR("The operand for this operation."), MathTypesOrVar));
@@ -829,44 +826,50 @@ RUNTIME_SHARD_TYPE(Math, Abs);
 
 struct Exp : public UnaryFloatOperation<BasicUnaryOperation<ExpOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the exponential function (e^x) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the exponential function with base e (Euler's number) for the given input. The "
+                   "exponential function is equivalent to raising Euler's number to the power of the input.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to use as the exponent for e (Euler's number).");
+    return SHCCSTR("The input float or sequence of floats to use as the exponent for the base e exponential function.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (e^x)."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
 RUNTIME_SHARD_TYPE(Math, Exp);
 
 struct Exp2 : public UnaryFloatOperation<BasicUnaryOperation<Exp2Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the exponential function (2^x) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the exponential function with base 2 for the given input. The exponential function "
+                   "with base 2 is equivalent to raising 2 to the power of the input.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats used as the exponent for 2."); }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats used as the exponent for the base 2 exponential function.");
+  }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (2^x)."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
 RUNTIME_SHARD_TYPE(Math, Exp2);
 
 struct Expm1 : public UnaryFloatOperation<BasicUnaryOperation<Expm1Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the exponential function (e^x - 1) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the exponential function with base e (Euler's number) for the given input and "
+                   "subtracts 1 from the result.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats used as the exponent for e (Euler's number).");
+    return SHCCSTR("The input float or sequence of floats used as the exponent for the base e exponential function.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation (e^x - 1)."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
 RUNTIME_SHARD_TYPE(Math, Expm1);
 
 struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the natural logarithm (ln(x)) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the natural logarithm for the given input. The output is the exponent to which e must "
+                   "be raised to obtain the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -874,13 +877,14 @@ struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType:
                    "number or sequence of positive numbers.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm (ln(x)) of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm of the input."); }
 };
 RUNTIME_SHARD_TYPE(Math, Log);
 
 struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the base 10 logarithm (log10(x)) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the base 10 logarithm for the given input. The output is the exponent to which 10 must "
+                   "be raised to obtain the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -888,16 +892,14 @@ struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchT
                    "number or sequence of positive numbers.");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR(
-        "Outputs the base 10 logarithm (log10(x)) of the input, which is the power to which 10 must be raised to obtain x.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the base 10 logarithm of the input."); }
 };
 RUNTIME_SHARD_TYPE(Math, Log10);
 
 struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the base 2 logarithm (log2(x)) for the given input, where the input is x.");
+    return SHCCSTR("This shard calculates the base 2 logarithm for the given input. The output is the exponent to which 2 must "
+                   "be raised to obtain the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -905,31 +907,25 @@ struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchTyp
                    "number or sequence of positive numbers.");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR(
-        "Outputs the base 2 logarithm (log2(x)) of the input, which is the power to which 2 must be raised to obtain x.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the base 2 logarithm."); }
 };
 RUNTIME_SHARD_TYPE(Math, Log2);
 
 struct Log1p : public UnaryFloatOperation<BasicUnaryOperation<Log1pOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the natural logarithm (ln(1+x)) for the given input, where the input is x.");
+    return SHCCSTR("This shard adds 1 to the input and then calculates the natural logarithm of the result.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the natural logarithm of. This value must be a positive "
-                   "number or sequence of positive numbers.");
+    return SHCCSTR("The input float or sequence of floats to add 1 to and then calculate the natural logarithm of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm (ln(1+x)) of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm of the input plus 1."); }
 };
 RUNTIME_SHARD_TYPE(Math, Log1p);
 
 struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the square root of the given input, where the input is x.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the square root of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the square root of. This value must be a positive number "
@@ -941,9 +937,7 @@ struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchTyp
 RUNTIME_SHARD_TYPE(Math, Sqrt);
 
 struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the square root of the given input, where the input is x.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the square root of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the square root of. This value must be a positive number "
@@ -955,9 +949,7 @@ struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, Dis
 RUNTIME_SHARD_TYPE(Math, FastSqrt);
 
 struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse square root of the given input, which is 1/√x, where the input is x.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse square root of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse square root of. This value must be a positive "
@@ -969,13 +961,9 @@ struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtO
 RUNTIME_SHARD_TYPE(Math, FastInvSqrt);
 
 struct Cbrt : public UnaryFloatOperation<BasicUnaryOperation<CbrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the cube root of the given input, which is ∛x, where the input is x.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the cube root of the given input."); }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the cube root of.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the cube root of."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cube root of the input."); }
 };
@@ -983,7 +971,7 @@ RUNTIME_SHARD_TYPE(Math, Cbrt);
 
 struct Sin : public UnaryFloatOperation<BasicUnaryOperation<SinOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the sine of the given input (sin(x)), where the input x is the angle in radians.");
+    return SHCCSTR("This shard calculates the sine of the given input, where the input is the angle in radians.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the sine of."); }
@@ -994,7 +982,7 @@ RUNTIME_SHARD_TYPE(Math, Sin);
 
 struct Cos : public UnaryFloatOperation<BasicUnaryOperation<CosOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the cosine of the given input (cos(x)), where the input x is the angle in radians.");
+    return SHCCSTR("This shard calculates the cosine of the given input, where the input is the angle in radians.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the cosine of."); }
@@ -1005,7 +993,7 @@ RUNTIME_SHARD_TYPE(Math, Cos);
 
 struct Tan : public UnaryFloatOperation<BasicUnaryOperation<TanOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the tangent of the given input (tan(x)), where the input x is the angle in radians.");
+    return SHCCSTR("This shard calculates the tangent of the given input, where the input is the angle in radians.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the tangent of."); }
@@ -1016,7 +1004,8 @@ RUNTIME_SHARD_TYPE(Math, Tan);
 
 struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse sine of the given input (asin(x)), where the input x is the sine value.");
+    return SHCCSTR("This shard calculates the inverse sine of the given input, where the input is the sine value. The output is "
+                   "the angle in radians whose sine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1029,8 +1018,8 @@ RUNTIME_SHARD_TYPE(Math, Asin);
 
 struct Acos : public UnaryFloatOperation<BasicUnaryOperation<AcosOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard calculates the inverse cosine of the given input (acos(x)), where the input x is the cosine value.");
+    return SHCCSTR("This shard calculates the inverse cosine of the given input, where the input is the cosine value. The output "
+                   "is the angle in radians whose cosine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1043,8 +1032,8 @@ RUNTIME_SHARD_TYPE(Math, Acos);
 
 struct Atan : public UnaryFloatOperation<BasicUnaryOperation<AtanOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard calculates the inverse tangent of the given input (atan(x)), where the input x is the tangent value.");
+    return SHCCSTR("This shard calculates the inverse tangent of the given input, where the input is the tangent value. The "
+                   "output is the angle in radians whose tangent is the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1057,8 +1046,9 @@ RUNTIME_SHARD_TYPE(Math, Atan);
 
 struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic sine of the given input (sinh(x)), where the input x is the real number "
-                   "used in the exponential calculation (sinh(x) = (e^x - e^-x) / 2).");
+    return SHCCSTR("This shard calculates the hyperbolic sine of the given input, where the input is the real number. The "
+                   "hyperbolic sine is a hyperbolic function that is analogous to the circular sine function, but it uses "
+                   "exponential functions instead of angles.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1071,8 +1061,7 @@ RUNTIME_SHARD_TYPE(Math, Sinh);
 
 struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input (cosh(x)), where the input x is the real "
-                   "number used in the exponential calculation (cosh(x) = (e^x + e^-x) / 2).");
+    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input, where the input is the real number. The hyperbolic cosine is a hyperbolic function that is analogous to the circular cosine function, but it uses exponential functions instead of angles.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1085,8 +1074,7 @@ RUNTIME_SHARD_TYPE(Math, Cosh);
 
 struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input (tanh(x)), where the input x is the real "
-                   "number used in the exponential calculation (tanh(x) = sinh(x) / cosh(x) = (e^x - e^-x) / (e^x + e^-x)).");
+    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input, where the input is the real number. The hyperbolic tangent is a hyperbolic function that is analogous to the circular tangent function, but it uses exponential functions instead of angles.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1099,29 +1087,27 @@ RUNTIME_SHARD_TYPE(Math, Tanh);
 
 struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input (asinh(x)), where input x, outputs y "
-                   "such that sinh(y) = x.");
+    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input, where the input is the hyperbolic sine value. The output is the real number whose hyperbolic sine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic sine of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic sine of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic sine is the input value."); }
 };
 RUNTIME_SHARD_TYPE(Math, Asinh);
 
 struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input (acosh(x)), where input x, outputs y "
-                   "such that cosh(y) = x.");
+    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input, where the input is the hyperbolic cosine value. The output is the real number whose hyperbolic cosine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic cosine of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic cosine of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic cosine is the input value."); }
 };
 RUNTIME_SHARD_TYPE(Math, Acosh);
 
@@ -1135,66 +1121,64 @@ struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchT
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic tangent of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse hyperbolic tangent of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic tangent is the input value."); }
 };
 RUNTIME_SHARD_TYPE(Math, Atanh);
 
 struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the error function of the given input (erf(x)). For input x, outputs the probability "
-                   "that a random variable with normal distribution of mean 0 and variance 1/2 falls in the range [-x, x] "
-                   "(erf(x) = (2/√π) ∫₀ˣ e^(-t²) dt).");
+    return SHCCSTR("This shard calculates the error function of the given input. The error function is related to the probability "
+                   "that a random variable with normal distribution of mean 0 and variance 1/2 falls in the range specified by the input value.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the error function of.");
+    return SHCCSTR("The input float or sequence of floats to calculate the error function of. This can be any real number.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the error function of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs probability result of the error function of the input. The output is always between -1 and 1."); }
 };
 RUNTIME_SHARD_TYPE(Math, Erf);
 
 struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the complementary error function of the given input (erfc(x)). For input x, outputs "
-                   "the probability that the absolute value of a random variable with normal distribution of mean 0 and variance "
-                   "1/2 is greater than x (erfc(x) = 1 - erf(x)).");
+    return SHCCSTR("This shard calculates the complementary error function of the given input. The complementary error function is related to the probability "
+                   "that the absolute value of a random variable with normal distribution of mean 0 and variance "
+                   "1/2 is greater than the input value.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the complementary error function of.");
+    return SHCCSTR("The input float or sequence of floats to calculate the complementary error function of. This can be any real number.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the complementary error function of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the probability result of the complementary error function of the input. The output is always between 0 and 2."); }
 };
 RUNTIME_SHARD_TYPE(Math, Erfc);
 
 struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard calculates the gamma function of the given input (TGamma(x)). Γ(x) extends factorial to real numbers.");
+    return SHCCSTR("This shard calculates the gamma function of the given input. The gamma function is a mathematical function "
+                   "that extends the concept of factorial to non-integer and complex numbers.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the gamma function of.");
+    return SHCCSTR("This shard calculates the gamma function of the given input.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the gamma function of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the gamma function of the input. The output is always positive for positive inputs."); }
 };
 RUNTIME_SHARD_TYPE(Math, TGamma);
 
 struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard calculates the log gamma function of the given input (lgamma(x)). For input x, outputs the natural "
-        "logarithm of the absolute value of the gamma function (lgamma(x) = ln|Γ(x)|).");
+        "This shard calculates the log gamma function of the given input. The log gamma function is the natural logarithm of the absolute value of the gamma function.");
   }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the log gamma function of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the log gamma function of the input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the log gamma function of the input. The output is always positive for positive inputs."); }
 };
 RUNTIME_SHARD_TYPE(Math, LGamma);
 
