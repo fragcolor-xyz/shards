@@ -408,6 +408,71 @@
   })
 })
 
+
+@define(ship-vertices {
+  {
+    "Vertices": [
+      @f3(0.0 1.0 0.0) @color(0xff0000) ; Vertex 1 (Red)
+      @f3(-1.0 -1.0 0.0) @color(0x00ff00) ; Vertex 2 (Green)
+      @f3(1.0 -1.0 0.0) @color(0x0000ff) ; Vertex 3 (Blue)
+      
+      @f3(0.0 1.0 0.5) @color(0xff0000) ; Vertex 1 (Red)
+      @f3(-1.0 -1.0 0.5) @color(0x00ff00) ; Vertex 2 (Green)
+      @f3(1.0 -1.0 0.5) @color(0x0000ff) ; Vertex 3 (Blue)
+    ]
+    "Indices": [
+      0 1 2 ; Define the triangle using the indices of the vertices
+      3 4 5 ; Some depth is required for physics to work
+    ]
+  }
+})
+
+@define(test-2d-triangle-custom-mass {
+  @run-base-test({
+    @ground-common
+    
+    Once({
+      @ship-vertices | GFX.Mesh(Layout: ["position" "color"]) = mesh
+      mesh | Physics.HullShape = mesh-shape
+      
+      @f3(0.0 5.0 0.0) >= body-p0
+      3.14 | Math.AxisAngleZ >= body-r0
+      
+      @f3(1.0 6.5 0.0) >= body-p1
+      -1.9 | Math.AxisAngleZ >= body-r1
+      
+      @f3(0.0 3.0 0.0) >= body-p2
+      2.9 | Math.AxisAngleZ >= body-r2
+    })
+    
+    Physics.Body(body-p0 body-r0
+      Shape: mesh-shape
+      MotionType: PhysicsMotion::Dynamic
+      AllowedDOFs: [PhysicsDOF::TranslationX PhysicsDOF::TranslationY PhysicsDOF::RotationZ]
+      Mass: 100.0
+    ) = body0
+    
+    Physics.Body(body-p1 body-r1
+      Shape: mesh-shape
+      MotionType: PhysicsMotion::Dynamic
+      AllowedDOFs: [PhysicsDOF::TranslationX PhysicsDOF::TranslationY PhysicsDOF::RotationZ]
+      Mass: 200.0
+    ) = body1
+    
+    Physics.Body(body-p2 body-r2
+      Shape: mesh-shape
+      MotionType: PhysicsMotion::Dynamic
+      AllowedDOFs: [PhysicsDOF::TranslationX PhysicsDOF::TranslationY PhysicsDOF::RotationZ]
+      Mass: 40.0
+    ) = body2
+    
+    Once({
+      body0 | Physics.ApplyForce(Linear: @f3(0.0 10000.0 0.0))
+      body1 | Physics.ApplyForce(Linear: @f3(0.0 10000.0 0.0))
+      body2 | Physics.ApplyForce(Linear: @f3(0.0 10000.0 0.0))
+    } Every: 2.0)
+  })
+})
 @test-basic
 @test-dof([
   PhysicsDOF::TranslationX PhysicsDOF::TranslationY
@@ -420,3 +485,4 @@
 @test-constraints-0
 @test-constraints-1
 @test-soft-body
+@test-2d-triangle-custom-mass

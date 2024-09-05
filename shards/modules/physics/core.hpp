@@ -311,10 +311,13 @@ struct IBodyMirror {
       settings.mAllowedDOFs = inParams.allowedDofs;
       settings.mMotionType = inParams.motionType;
       settings.mIsSensor = inParams.sensor;
+      settings.mOverrideMassProperties = inParams.mass > 0.0f ? JPH::EOverrideMassProperties::CalculateInertia
+                                                              : JPH::EOverrideMassProperties::CalculateMassAndInertia;
+      settings.mMassPropertiesOverride.mMass = inParams.mass;
       settings.mCollisionGroup.SetGroupFilter(GroupFilter::instance());
       settings.mCollisionGroup.SetGroupID(inParams.groupMembership);
       settings.mCollisionGroup.SetSubGroupID(inParams.collisionMask);
-      settings.mAllowSleeping = false; // TODO: Add a parameter to control this
+      settings.mAllowSleeping = false;               // TODO: Add a parameter to control this
       settings.mCollideKinematicVsNonDynamic = true; // TODO: Add a parameter to control this
       data.body = bodyInterface.CreateBody(settings);
       data.paramHash0 = node->paramHash0;
@@ -375,7 +378,14 @@ struct IBodyMirror {
       mp->SetMaxLinearVelocity(inParams.maxLinearVelocity);
       mp->SetMaxAngularVelocity(inParams.maxAngularVelocity);
       mp->SetGravityFactor(inParams.gravityFactor);
-      mp->SetMassProperties(inParams.allowedDofs, std::get<0>(node->shape)->GetMassProperties());
+
+      auto massProp = std::get<0>(node->shape)->GetMassProperties();
+      if (inParams.mass > 0.0f) {
+        massProp.mMass = inParams.mass;
+      } else {
+        massProp.mMass = data.body->GetShape()->GetMassProperties().mMass;
+      }
+      mp->SetMassProperties(inParams.allowedDofs, massProp);
       data.body->SetMotionType(inParams.motionType);
       JPH::CollisionGroup group;
       group.SetGroupFilter(GroupFilter::instance());

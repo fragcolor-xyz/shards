@@ -24,6 +24,8 @@ enum ParamTypeMask : uint32_t {
   PTM_AllowedDOFs = 1 << 7,
   PTM_MotionType = 1 << 8,
   PTM_CollisionGroup = 1 << 9,
+  PTM_Mass = 1 << 10,
+  // Ensure PTM_Mass is handled in all relevant parts of the code
 };
 
 static ParamTypeMask &operator|=(ParamTypeMask &lhs, ParamTypeMask rhs) {
@@ -67,6 +69,8 @@ struct BodyShard {
       {CoreInfo::Int2Type, CoreInfo::Int2VarType});
   PARAM_VAR(_sensor, "Sensor", "Sensors only detect collisions but do not interact with collided objects (AKA triggers)",
             {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_mass, "Mass", "Mass of the body, <= 0 uses default mass calculation",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_tag, "Tag", "Tag for the body used in collision events", {CoreInfo::AnyType});
   PARAM_PARAMVAR(_context, "Context", "The physics context", {ShardsContext::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_location), PARAM_IMPL_FOR(_rotation), PARAM_IMPL_FOR(_static), PARAM_IMPL_FOR(_enabled),
@@ -75,7 +79,7 @@ struct BodyShard {
              PARAM_IMPL_FOR(_gravityFactor), PARAM_IMPL_FOR(_allowedDOFs), PARAM_IMPL_FOR(_motionType),
              PARAM_IMPL_FOR(_collisionGroup),
              PARAM_IMPL_FOR(_sensor), //
-             PARAM_IMPL_FOR(_tag), PARAM_IMPL_FOR(_context));
+             PARAM_IMPL_FOR(_mass), PARAM_IMPL_FOR(_tag), PARAM_IMPL_FOR(_context));
 
   ParamTypeMask _dynamicParameterMask = PTM_None;
 
@@ -117,6 +121,7 @@ struct BodyShard {
     _motionType = Var::Enum(JPH::EMotionType::Dynamic, PhysicsMotionEnumInfo::Type);
     _sensor = Var(false);
     _collisionGroup = toVar(int2(0xFFFFFFFF, 0xFFFFFFFF));
+    _mass = Var(0.0f);
   }
 
   void warmup(SHContext *context) {
@@ -178,6 +183,8 @@ struct BodyShard {
       _dynamicParameterMask |= PTM_MotionType;
     if (_collisionGroup.isVariable())
       _dynamicParameterMask |= PTM_CollisionGroup;
+    if (_mass.isVariable())
+      _dynamicParameterMask |= PTM_Mass;
 
     return outputTypes().elements[0];
   }
@@ -212,6 +219,8 @@ struct BodyShard {
     outParams.allowedDofs = convertAllowedDOFs(_allowedDOFs.get());
     outParams.motionType = (JPH::EMotionType)_motionType.get().payload.enumValue;
 
+    outParams.mass = _mass.get().payload.floatValue;
+  
     auto cm = toUInt2(_collisionGroup.get());
     outParams.groupMembership = cm.x;
     outParams.collisionMask = cm.y;
@@ -256,7 +265,7 @@ struct BodyShard {
       }
       instNode->updateParamHash0();
     }
-    if ((_dynamicParameterMask & 0b1111110000) != 0) {
+    if ((_dynamicParameterMask & 0b11111110000) != 0) {
       if (_dynamicParameterMask & PTM_MaxLinearVelocity) {
         outParams.maxLinearVelocity = _maxLinearVelocity.get().payload.floatValue;
       }
@@ -276,6 +285,9 @@ struct BodyShard {
         auto cm = toUInt2(_collisionGroup.get());
         outParams.groupMembership = cm.x;
         outParams.collisionMask = cm.y;
+      }
+      if (_dynamicParameterMask & PTM_Mass) {
+        outParams.mass = _mass.get().payload.floatValue;
       }
       instNode->updateParamHash1();
     }

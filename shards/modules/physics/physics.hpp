@@ -118,6 +118,7 @@ struct BodyNode {
       bool sensor;
       uint32_t groupMembership;
       uint32_t collisionMask;
+      float mass;
     } regular;
     struct {
       float friction;
@@ -162,6 +163,9 @@ inline void BodyNode::updateParamHash1() {
     hasher(params.regular.gravityFactor);
     hasher((uint8_t &)params.regular.allowedDofs);
     hasher((uint8_t &)params.regular.motionType);
+    hasher(params.regular.groupMembership);
+    hasher(params.regular.collisionMask);
+    hasher(params.regular.mass);
     paramHash1 = hasher.getDigest();
   } else {
     paramHash1 = 0;
