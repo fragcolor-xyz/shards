@@ -48,7 +48,7 @@ impl LegacyShard for Encrypt {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard takes the input string or byte array and encrypts it using the ChaCha20-Poly1305 algorithm with the provided key (provided in the Key parameter). It then returns the encrypted byte array."))
+    OptionalString(shccstr!("This shard takes the input string or byte array and encrypts it using the ChaCha20-Poly1305 algorithm with the provided key (provided in the Key parameter). It then outputs the encrypted byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -161,7 +161,7 @@ impl LegacyShard for Decrypt {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard decrypts an input ChaCha20-Poly1305 encrypted byte array using the provided key (provided in the Key parameter). It then returns the decrypted byte array."))
+    OptionalString(shccstr!("This shard decrypts an input ChaCha20-Poly1305 encrypted byte array using the provided key (provided in the Key parameter). It then outputs the decrypted byte array."))
   }
 
   fn inputHelp(&mut self) -> OptionalString {

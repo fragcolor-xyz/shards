@@ -240,7 +240,7 @@ struct Wait : public WireBase {
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("If Passthrough is true, this shard outputs the input value, passed through unchanged. Otherwise, it "
-                   "returns the output of the Wire it waited for.");
+                   "outputs the output of the Wire it waited for.");
   }
 
   SHOptionalString help() {
@@ -442,11 +442,11 @@ struct Peek : public WireBase {
 
   static SHOptionalString outputHelp() {
     return SHCCSTR(
-        "This shard either returns none if the peeked Wire is still in progress, or the peeked Wire's output if it has ended.");
+        "This shard either outputs none if the peeked Wire is still in progress, or the peeked Wire's output if it has ended.");
   }
 
   SHOptionalString help() {
-    return SHCCSTR("Checks if another Wire has ended (Note that a looped Wire will never end). Returns the Wire's output if it "
+    return SHCCSTR("Checks if another Wire has ended (Note that a looped Wire will never end). Outputs the Wire's output if it "
                    "has ended, or none if it is still in progress.");
   }
 
@@ -527,8 +527,8 @@ struct StopWire : public WireBase {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnoredOrPass; }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Depending on what is specified in the Passthrough parameter, this shard either returns the input value, "
-                   "passed through unchanged or it returns the output of the stopped Wire. Note that if it returns the output of "
+    return SHCCSTR("Depending on what is specified in the Passthrough parameter, this shard either outputs the input value, "
+                   "passed through unchanged or it outputs the output of the stopped Wire. Note that if it outputs the output of "
                    "the stopped wire, it will be of Type::Any and thus should be checked or converted to the appropriate Type.");
   }
 
@@ -1789,7 +1789,7 @@ struct Spawn : public CapturingSpawners {
 
   static SHOptionalString inputHelp() { return InputBaseWire; }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the specific copy of the Wire that was scheduled."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the specific copy of the Wire that was scheduled."); }
 
   SHOptionalString help() {
     return SHCCSTR("Schedules the specified Wire and runs it asynchronously. The current Wire will continue "
@@ -2025,14 +2025,14 @@ struct DoMany : public TryMany {
   static SHOptionalString inputHelp() { return InputManyWire; }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns the output of all the scheduled copies in a sequence.");
+    return SHCCSTR("This shard outputs the output of all the scheduled copies in a sequence.");
   }
 
   SHOptionalString help() {
     return SHCCSTR(
         "This shard takes a sequence of values as input, schedules multiple copies of a specified Wire and executes them "
         "sequentially. Each value from the sequence is provided as input to its corresponding copy of the specified Wire. The "
-        "shard then returns a sequence of values containing the output of all copies of the specified Wire.");
+        "shard then outputs a sequence of values containing the output of all copies of the specified Wire.");
   }
 
   static inline Types BoolTypes{CoreInfo::BoolType};

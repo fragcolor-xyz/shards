@@ -14,7 +14,7 @@ struct Compress {
   int _quality{BROTLI_DEFAULT_QUALITY};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard compresses the input byte array using the Brotli algorithm and returns the smaller compressed "
+    return SHCCSTR("This shard compresses the input byte array using the Brotli algorithm and outputs the smaller compressed "
                    "byte array. The size of the resulting byte array and the speed of compression can be controlled "
                    "using the Quality parameter.");
   }

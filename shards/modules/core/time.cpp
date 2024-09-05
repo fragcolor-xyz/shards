@@ -12,10 +12,10 @@ struct Now {
   static inline ProcessClock _clock{};
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard returns the amount of time that has elapsed since the shards application or script was launched in seconds.");
+        "This shard outputs the amount of time that has elapsed since the shards application or script was launched in seconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the amount of time that has elapsed in seconds."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in seconds."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -28,11 +28,11 @@ struct Now {
 
 struct NowMs : public Now {
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the amount of time that has elapsed since the shards application or script was launched "
+    return SHCCSTR("This shard outputs the amount of time that has elapsed since the shards application or script was launched "
                    "in milliseconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the amount of time that has elapsed in milliseconds."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in milliseconds."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
@@ -44,11 +44,11 @@ struct Delta {
   DeltaTimer _deltaTimer;
 
   static SHOptionalString help() {
-    return SHCCSTR(R"(Returns the time between the last call of this shard and the current call in seconds, capped to a limit)");
+    return SHCCSTR(R"(Outputs the time between the last call of this shard and the current call in seconds, capped to a limit)");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the amount of time that has elapsed in seconds."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in seconds."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
@@ -64,10 +64,10 @@ struct Delta {
 struct DeltaMs : public Delta {
   static SHOptionalString help() {
     return SHCCSTR(
-        "Returns the time between the last call of this shard and the current call in milliseconds, capped to a limit");
+        "Outputs the time between the last call of this shard and the current call in milliseconds, capped to a limit");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the amount of time that has elapsed in milliseconds."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in milliseconds."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using Type = std::chrono::duration<double, std::milli>;
@@ -77,7 +77,7 @@ struct DeltaMs : public Delta {
 
 struct EpochMs {
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the the amount of time that has elapsed from the Unix epoch to the current system time in "
+    return SHCCSTR("This shard outputs the the amount of time that has elapsed from the Unix epoch to the current system time in "
                    "milliseconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
@@ -95,7 +95,7 @@ struct EpochMs {
 struct Epoch {
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard returns the the amount of time that has elapsed from the Unix epoch to the current system time in seconds.");
+        "This shard outputs the the amount of time that has elapsed from the Unix epoch to the current system time in seconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Amount of time since the Unix epoch in seconds."); }

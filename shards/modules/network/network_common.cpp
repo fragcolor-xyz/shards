@@ -192,7 +192,7 @@ struct SendRaw {
 struct PeerID {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::IntType; }
-  static SHOptionalString help() { return SHCCSTR("This shard returns the Peer ID of the peer specified in the Peer parameter as an integer."); }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the Peer ID of the peer specified in the Peer parameter as an integer."); }
 
   static SHOptionalString inputHelp() {
     return DefaultHelpText::InputHelpIgnored;
@@ -227,14 +227,14 @@ struct PeerID {
 struct PeerShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Peer; }
-  static SHOptionalString help() { return SHCCSTR("This shard returns the peer object of the peer with the Peer ID specified in the Peer parameter."); }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the peer object of the peer with the Peer ID specified in the Peer parameter."); }
 
   static SHOptionalString inputHelp() {
     return DefaultHelpText::InputHelpIgnored;
   }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the Peer object specified.");
+    return SHCCSTR("Outputs the Peer object specified.");
   }
 
   static inline ParameterInfo PeerParameInfo{"Peer", SHCCSTR("The Peer ID of the Peer object to get."), {Types::PeerVar}};

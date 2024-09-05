@@ -51,7 +51,7 @@ struct Match : public Common {
   }
   static SHOptionalString inputHelp() { return SHCCSTR("The string to match."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns either a sequence of strings, containing the fully matched string and any capture groups or an empty "
+    return SHCCSTR("Outputs either a sequence of strings, containing the fully matched string and any capture groups or an empty "
                    "sequence if there are no matches.");
   }
 

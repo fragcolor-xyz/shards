@@ -33,7 +33,7 @@ struct RenderShard {
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("This shard returns none."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs none."); }
 
   PARAM_PARAMVAR(_steps, "Steps", "Sequence of render pass objects to process.",
                  {Type::VariableOf(ShardsTypes::PipelineStepSeq), ShardsTypes::PipelineStepSeq});

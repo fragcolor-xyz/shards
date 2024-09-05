@@ -334,7 +334,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
 constexpr string_view GET = "GET";
 struct Get : public GetLike<GET> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a GET request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a GET request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -348,7 +348,7 @@ struct Get : public GetLike<GET> {
 constexpr string_view HEAD = "HEAD";
 struct Head : public GetLike<HEAD> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a HEAD request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a HEAD request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -475,7 +475,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
 constexpr string_view POST = "POST";
 struct Post : public PostLike<POST> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a HTTP POST request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a HTTP POST request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -492,7 +492,7 @@ struct Post : public PostLike<POST> {
 constexpr string_view PUT = "PUT";
 struct Put : public PostLike<PUT> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a HTTP PUT request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a HTTP PUT request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -509,7 +509,7 @@ struct Put : public PostLike<PUT> {
 constexpr string_view PATCH = "PATCH";
 struct Patch : public PostLike<PATCH> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a HTTP PATCH request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a HTTP PATCH request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -526,7 +526,7 @@ struct Patch : public PostLike<PATCH> {
 constexpr string_view DELETE = "DELETE";
 struct Delete : public PostLike<DELETE> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard sends a HTTP DELETE request to the specified URL and returns the response.");
+    return SHCCSTR("This shard sends a HTTP DELETE request to the specified URL and outputs the response.");
   }
 
   static SHOptionalString inputHelp() {
@@ -733,7 +733,7 @@ struct Read {
 
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard reads incoming HTTP requests from a client connection, parses its components, and returns them as a table. "
+        "This shard reads incoming HTTP requests from a client connection, parses its components, and outputs them as a table. "
         "This shard should be used in conjunction with the Http.Server shard to handle incoming requests.");
   }
 

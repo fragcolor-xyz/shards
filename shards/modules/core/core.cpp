@@ -435,8 +435,7 @@ struct Profile {
                                    {"Label", SHCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard returns the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
+    return SHCCSTR("This shard outputs the amount of time(nanoseconds) it took to execute the shards provided in the Action parameter.");
   }
 
   static SHOptionalString inputHelp() {
@@ -903,9 +902,7 @@ private:
 
 struct Map {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter "
-        "and returns the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
+    return SHCCSTR("Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence or table to process."); }
@@ -1431,7 +1428,7 @@ struct Replace {
   }
   static SHOptionalString inputHelp() { return SHCCSTR("The input sequence or string to be modified."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("returns the resulting sequence or string with the replacements applied.");
+    return SHCCSTR("Outputs the resulting sequence or string with the replacements applied.");
   }
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
@@ -1602,7 +1599,7 @@ struct Reverse {
     return SHCCSTR("This shard reverses the order of the elements in the input sequence or string.");
   }
   static SHOptionalString inputHelp() { return SHCCSTR("The input sequence or string to be reversed."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the reversed sequence or string."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the reversed sequence or string."); }
 
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
@@ -2363,9 +2360,7 @@ SHVar export_strings(const SHVar &input) {
 #endif
 
 struct LastError {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard returns the last error message that occurred and returns it as a string.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard outputs the last error message that occurred as a string."); }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("The last error message that occurred as a string."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -2397,9 +2392,15 @@ struct LowestHighestShard {
 };
 
 struct LowestShard : LowestHighestShard {
-  static SHOptionalString help() { return SHCCSTR("Takes a sequence and returns the element with the lowest value."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the element with the lowest value."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Takes a sequence and outputs the element with the lowest value.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of elements of any type.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the element with the lowest value.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2416,9 +2417,15 @@ struct LowestShard : LowestHighestShard {
 };
 
 struct HighestShard : LowestHighestShard {
-  static SHOptionalString help() { return SHCCSTR("Takes a sequence and returns the element with the highest value."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of elements of any type."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the element with the highest value."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Takes a sequence and outputs the element with the highest value.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A sequence of elements of any type.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the element with the highest value.");
+  }
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     if (seq.len == 0) {
@@ -2739,14 +2746,10 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
 
 struct HasherShard : public LambdaShard<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and returns their 128-bit "
-                   "hash value as an int2 (a sequence with 2 integers as elements).");
+    return SHCCSTR("This shard takes any input type, hashes them using the XXH128 hashing algorithm and outputs their 128-bit hash value as an int2 (a sequence with 2 integers as elements).");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard returns the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit "
-                   "integer elements.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the input's hashed value as an int2 (a sequence with 2 integers as elements) with 64-bit integer elements."); }
 };
 
 struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::StringType, CoreInfo::StringType> {

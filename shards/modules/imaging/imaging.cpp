@@ -27,7 +27,7 @@ namespace shards {
 namespace Imaging {
 struct Convolve {
   static SHOptionalString help() {
-    return SHCCSTR("This shard extracts a patch from an image of dimensions specified in the Radius parameter and returns the "
+    return SHCCSTR("This shard extracts a patch from an image of dimensions specified in the Radius parameter and outputs the "
                    "extracted patch as an image. Everytime the shard is subsequently called, the centre of the patch to extract "
                    "is advanced by the number of pixels specified in the Step parameter.");
   }
@@ -488,7 +488,7 @@ private:
 
 struct ImageGetPixel {
   static SHOptionalString help() {
-    return SHCCSTR("This shard analyzes the image(specified in the Image parameter) and returns the colour value(RGBA) of the pixel at "
+    return SHCCSTR("This shard analyzes the image(specified in the Image parameter) and outputs the colour value(RGBA) of the pixel at "
                    "the specified position.");
   }
   static SHOptionalString inputHelp() {
@@ -509,7 +509,7 @@ struct ImageGetPixel {
   PARAM_PARAMVAR(_image, "Position", "The position of the pixel to retrieve", {CoreInfo::ImageType, CoreInfo::ImageVarType});
   PARAM_VAR(_asInteger, "AsInteger", "Read the pixel as an integer", {CoreInfo::BoolType});
   PARAM_VAR(_default, "Default",
-            "When specified, out of bounds or otherwise failed reads will returns this value instead of failing",
+            "When specified, out of bounds or otherwise failed reads will outputs this value instead of failing",
             {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Int4Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_image), PARAM_IMPL_FOR(_asInteger), PARAM_IMPL_FOR(_default));
 
@@ -608,7 +608,7 @@ struct LoadImage {
   DECL_ENUM_INFO(BPP, BPP, "Specifies the bits per pixel for image data. Determines the color depth and precision of image representations.", 'ibpp');
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard loads an image from a file (specified in the File parameter) or byte array (passed as input) and returns it as an image type, that can "
+    return SHCCSTR("This shard loads an image from a file (specified in the File parameter) or byte array (passed as input) and outputs it as an image type, that can "
                    "subsequently be used by other shards such as UI.Image and UI.ImageButton.");
   }
 

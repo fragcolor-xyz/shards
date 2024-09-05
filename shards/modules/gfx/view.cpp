@@ -409,7 +409,7 @@ struct ViewProjectionMatrixShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes the input view object and returns its combined view-projection matrix, which encapsulates "
+    return SHCCSTR("This shard takes the input view object and outputs its combined view-projection matrix, which encapsulates "
                    "both the view position and orientation(view matrix) and its orthographic projection(projection matrix).");
   }
   static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
@@ -445,7 +445,7 @@ struct ViewMatrixShard {
   static SHTypesInfo inputTypes() { return ShardsTypes::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes the input view object and returns its view matrix, which represents the camera's position "
+    return SHCCSTR("This shard takes the input view object and outputs its view matrix, which represents the camera's position "
                    "and orientation in the world space.");
   }
   static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
@@ -476,7 +476,7 @@ struct ViewRangeShard {
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard takes the input view object and returns a float2 representing the view's near and far clipping range. The "
+        "This shard takes the input view object and outputs a float2 representing the view's near and far clipping range. The "
         "first value in the float2 represents the near clipping range while the second value represents the far clipping range.");
   }
 

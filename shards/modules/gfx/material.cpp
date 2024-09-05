@@ -15,7 +15,7 @@ struct MaterialShard {
   static SHOptionalString help() { return SHCCSTR("This shard creates a material from the given parameters and features."); }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Returns the material created as a material object."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the material created as a material object."); }
 
   PARAM_EXT(ParamVar, _params, ShardsTypes::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, ShardsTypes::FeaturesParameterInfo);

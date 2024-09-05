@@ -192,11 +192,11 @@ struct MousePixelPos : public Base {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the pixel position of the cursor represented as a vector with 2 int elements.");
+    return SHCCSTR("Outputs the pixel position of the cursor represented as a vector with 2 int elements.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the current pixel position of the cursor within the input region, represented as an int2 "
+    return SHCCSTR("This shard outputs the current pixel position of the cursor within the input region, represented as an int2 "
                    "vector. The first element represents the x position of the cursor, and the second element represents the y "
                    "position of the cursor. The coordinates are in pixel space, with (0,0) being the top-left corner of the "
                    "input region and (input-region-pixel-width, input-region-pixel-height) being the bottom-right corner.");
@@ -222,11 +222,11 @@ struct MouseDelta : public Base {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns how much the mouse has moved since the last frame, represented as a vector with 2 float elements.");
+    return SHCCSTR("Outputs how much the mouse has moved since the last frame, represented as a vector with 2 float elements.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns how much the mouse has moved since the last frame as a float2 vector. The first "
+    return SHCCSTR("This shard outputs how much the mouse has moved since the last frame as a float2 vector. The first "
                    "element represents the horizontal movement (a positive value indicates movement to the right), and the "
                    "second element represents the vertical movement (a positive value indicates movement downwards).");
   }
@@ -256,11 +256,11 @@ struct MousePos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the position of the cursor represented as a vector with 2 float elements.");
+    return SHCCSTR("Outputs the position of the cursor represented as a vector with 2 float elements.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the current logical position of the cursor within the input region, represented as a "
+    return SHCCSTR("This shard outputs the current logical position of the cursor within the input region, represented as a "
                    "float2 vector. The first element represents the x position of the cursor, and the second element represents "
                    "the y position of the cursor. The coordinates are in the same space as the input region's size, with (0,0) "
                    "being the top-left corner and (input-region-width,input-region-height) being the bottom-right corner.");
@@ -286,11 +286,11 @@ struct InputRegionSize : public Base {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the size of the input region represented as a vector with two float elements.");
+    return SHCCSTR("Outputs the size of the input region represented as a vector with two float elements.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the size of the input region represented as a float2 vector. The first element represents "
+    return SHCCSTR("This shard outputs the size of the input region represented as a float2 vector. The first element represents "
                    "the width of the region, and the second element represents the height of the region.");
   }
 
@@ -312,11 +312,11 @@ struct InputRegionPixelSize : public Base {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the pixel size of the input region represented as a vector with two int elements.");
+    return SHCCSTR("Outputs the pixel size of the input region represented as a vector with two int elements.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns the pixel size of the input region represented as an int2 vector. The first element "
+    return SHCCSTR("This shard outputs the pixel size of the input region represented as an int2 vector. The first element "
                    "represents the width of the region, and the second element represents the height of the region.");
   }
 
@@ -658,11 +658,11 @@ struct MatchModifier : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR(
-        "Returns a boolean value: true if any of the specified modifier keys are currently pressed down and false otherwise.");
+        "Outputs a boolean value: true if any of the specified modifier keys are currently pressed down and false otherwise.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns true if any of the modifier keys in the sequence provided in the Modifier parameter are "
+    return SHCCSTR("This shard outputs true if any of the modifier keys in the sequence provided in the Modifier parameter are "
                    "currently pressed down, and false otherwise.");
   }
 
@@ -703,11 +703,11 @@ struct IsKeyDown : public Base {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns a boolean value indicating whether the specified key is currently pressed down.");
+    return SHCCSTR("Outputs a boolean value indicating whether the specified key is currently pressed down.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard returns true if the key specified is currently pressed down, and false otherwise.");
+    return SHCCSTR("This shard outputs true if the key specified is currently pressed down, and false otherwise.");
   }
 
   SDL_Keycode _keyCode;

@@ -40,7 +40,7 @@ struct GetClipboard {
     return DefaultHelpText::InputHelpIgnored;
   }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Returns the current clipboard contents as a string.");
+    return SHCCSTR("Outputs the current clipboard contents as a string.");
   }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }

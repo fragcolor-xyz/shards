@@ -43,7 +43,7 @@ struct FFT : public FFTBase {
 
   static SHOptionalString help() {
     return SHCCSTR("This shard performs a Fast Fourier Transform (FFT) on the input. It takes the time-domain representation of "
-                   "an audio (represented as a sounds object, float sequence or float2 sequence) and returns its "
+                   "an audio (represented as a sounds object, float sequence or float2 sequence) and outputs its "
                    "frequency-domain representation as a float2 sequence.");
   }
 
@@ -151,7 +151,7 @@ struct IFFT : public FFTBase {
   bool _complex{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain representation of an audio (represented as a float2 sequence) and returns its time-domain representation (as a float sequence, float2 sequence or an audio object.)");
+    return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain representation of an audio (represented as a float2 sequence) and outputs its time-domain representation (as a float sequence, float2 sequence or an audio object.)");
   }
 
   static SHOptionalString inputHelp() {
