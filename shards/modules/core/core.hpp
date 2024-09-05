@@ -1526,17 +1526,18 @@ struct Update : public SetUpdateBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     shassert_extended(context, _isExposed && "This shard should not be activated if variable not exposed");
-
-    SHVar output;
-    if (_isTable)
-      output = activateTable(context, input);
-    else
-      output = activateRegular(context, input);
-
     shassert_extended(context, _dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
-    _dispatcherPtr->trigger(ev);
+    SHVar output;
+    if (_isTable) {
+      output = activateTable(context, input);
+      OnTrackedVarSet ev{context->main->id, _name, _key, *_cell, _isGlobal, context->currentWire()};
+      _dispatcherPtr->trigger(ev);
+    } else {
+      output = activateRegular(context, input);
+      OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
+      _dispatcherPtr->trigger(ev);
+    }
 
     return output;
   }
@@ -3600,7 +3601,8 @@ struct Limit {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) and outputs the truncated sequence.");
+    return SHCCSTR("This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) "
+                   "and outputs the truncated sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
