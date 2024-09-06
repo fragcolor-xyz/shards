@@ -106,6 +106,14 @@ if(WIN32)
   endif()
 endif()
 
+if(USE_TSAN)
+  list(APPEND RUST_FLAGS -Zsanitizer=thread)
+endif()
+
+# if(USE_ASAN)
+#   list(APPEND RUST_FLAGS -Zsanitizer=address)
+# endif()
+
 # Currently required for --crate-type argument
 list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zunstable-options)
 

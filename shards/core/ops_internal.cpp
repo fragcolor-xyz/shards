@@ -15,7 +15,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::None:
-    os << "None";
+    os << "none";
     break;
   case SHType::Any:
     os << "Any";
@@ -163,7 +163,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
   } break;
   case SHType::ContextVar: {
     auto sView = SHSTRVIEW(var);
-    os << "ContextVariable: " << sView;
+    os << "Var: " << sView;
   } break;
   case SHType::Path: {
     auto sView = SHSTRVIEW(var);
