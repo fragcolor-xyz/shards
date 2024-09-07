@@ -302,9 +302,14 @@ struct WindowSize {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard outputs the dimensions of the window specified in the Window parameter."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard outputs the dimensions of the window specified in the Window parameter.");
+  }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the dimensions of the window as an int2. The first element represents the width and the second represents the height."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the dimensions of the window as an int2. The first element represents the width and the second "
+                   "represents the height.");
+  }
 
   PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
@@ -336,8 +341,13 @@ struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard resizes the window specified in the Window parameter to the dimensions specified in the input."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The size to resize the window to. The first element represents the width and the second represents the height."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard resizes the window specified in the Window parameter to the dimensions specified in the input.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR(
+        "The size to resize the window to. The first element represents the width and the second represents the height.");
+  }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   PARAM_PARAMVAR(_window, "Window", "The window to resize", {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
@@ -380,9 +390,14 @@ struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard outputs the position of the window specified in the Window parameter."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard outputs the position of the window specified in the Window parameter.");
+  }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the position of the window as an int2. The first element represents the x-coordinate and the second represents the y-coordinate."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the position of the window as an int2. The first element represents the x-coordinate and the second "
+                   "represents the y-coordinate.");
+  }
 
   PARAM_PARAMVAR(_window, "Window", "The window to get the position of.",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
@@ -413,12 +428,16 @@ struct MoveWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static SHOptionalString help() { return SHCCSTR("This shard moves the window specified in the Window parameter to the position specified in the input."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The position to move the window to. The first element represents the x-coordinate and the second represents the y-coordinate."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard moves the window specified in the Window parameter to the position specified in the input.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The position to move the window to. The first element represents the x-coordinate and the second represents "
+                   "the y-coordinate.");
+  }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to move.",
-                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_PARAMVAR(_window, "Window", "The window to move.", {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
@@ -516,7 +535,8 @@ struct WindowInsets {
     // Actually is static for now, but keep this here might it be of use in the future
     float scale = 1.0f;
 #if SH_APPLE
-    scale *= _requiredWindowContext->window->getInputScale().x;
+    // call on mesh thread to avoid race condition
+    callOnMeshThread(shContext, [&]() { scale *= _requiredWindowContext->window->getInputScale().x; });
 #endif
     return toVar(Window::viewInset * scale);
   }
