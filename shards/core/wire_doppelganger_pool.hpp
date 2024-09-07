@@ -54,12 +54,9 @@ template <typename T> struct WireDoppelgangerPool {
     _wireStr = stream.str();
   }
 
-  WireDoppelgangerPool(WireDoppelgangerPool&& other) noexcept
-    : _pool(std::move(other._pool)),
-      _avail(std::move(other._avail)),
-      _wireStr(std::move(other._wireStr)),
-      _master(std::move(other._master))
-  {
+  WireDoppelgangerPool(WireDoppelgangerPool &&other) noexcept
+      : _pool(std::move(other._pool)), _avail(std::move(other._avail)), _wireStr(std::move(other._wireStr)),
+        _master(std::move(other._master)) {
     // No need to lock since we're moving and the other object is being destroyed
   }
 
@@ -76,7 +73,8 @@ template <typename T> struct WireDoppelgangerPool {
   }
 
   // Starts a batch acquire operation (which NEEDS to be completed with acquireFromBatch for each index in the batch)
-  // Large batch operations are faster since synchronization only happens during acquireBatch and acquireFromBatch can run in parallel without locks
+  // Large batch operations are faster since synchronization only happens during acquireBatch and acquireFromBatch can run in
+  // parallel without locks
   BatchOperation acquireBatch(size_t numWires) {
     ZoneScoped;
 
@@ -139,6 +137,41 @@ template <typename T> struct WireDoppelgangerPool {
     return &poolItem;
   }
 
+  T *acquireFromBatch(BatchOperation &batch, size_t index)
+    requires WireData<T>
+  {
+    shassert(index < batch.items.size() && "Index out of bounds");
+    auto &item = batch.items[index];
+    auto &poolItem = *item.poolItemPtr;
+
+    pmr::SharedTempAllocator tempAlloc;
+    if (!poolItem.wire) {
+      Serialization serializer{tempAlloc.getAllocator(), true};
+      std::shared_ptr<SHWire> wire;
+      {
+        ZoneScopedN("Deserialize");
+        std::stringstream stream(_wireStr);
+        Reader r(stream);
+        SHVar vwire{};
+        serializer.deserialize(r, vwire); // need to deserialize the wire template pointers in this case!
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+        destroyVar(vwire);
+      }
+
+      wire->parent = _master; // keep a reference to the master wire
+      poolItem.wire = wire;
+      poolItem.wire->name = fmt::format("{}-{}", wire->name, item.newItemIndex);
+      if constexpr (WireDataDeps<T>) {
+        poolItem.wires.clear();
+        for (auto &w : serializer.wires) {
+          poolItem.wires.push_back(SHWire::sharedFromRef(w.second));
+        }
+      }
+    }
+
+    return &poolItem;
+  }
+
   template <class Composer, typename Anything = void>
   T *acquire(Composer &composer, Anything *anything = nullptr)
     requires WireData<T>
@@ -147,6 +180,15 @@ template <typename T> struct WireDoppelgangerPool {
 
     auto batch = acquireBatch(1);
     return acquireFromBatch(batch, 0, composer, anything);
+  }
+
+  T *acquire()
+    requires WireData<T>
+  {
+    ZoneScoped;
+
+    auto batch = acquireBatch(1);
+    return acquireFromBatch(batch, 0);
   }
 
   void release(T *wire) {

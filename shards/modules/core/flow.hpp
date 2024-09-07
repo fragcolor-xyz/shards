@@ -202,7 +202,7 @@ struct Cond {
           auto curlen = _wireValidation.exposedInfo.len;
           auto newlen = validation.exposedInfo.len;
           if (curlen != newlen) {
-            SHLOG_INFO("Cond: number of exposed variables between actions mismatch, "
+            SHLOG_DEBUG("Cond: number of exposed variables between actions mismatch, "
                        "variables won't be exposed, flow is unpredictable!");
             exposing = false;
           }
@@ -210,7 +210,7 @@ struct Cond {
           if (exposing) {
             for (uint32_t i = 0; i < curlen; i++) {
               if (_wireValidation.exposedInfo.elements[i] != validation.exposedInfo.elements[i]) {
-                SHLOG_INFO("Cond: types of exposed variables between actions "
+                SHLOG_DEBUG("Cond: types of exposed variables between actions "
                            "mismatch, variables won't be exposed, flow is "
                            "unpredictable!");
                 exposing = false;
