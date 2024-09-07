@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <deque>
+#include <coroutine>
 
 #include <shards/shards.h>
 #include <shards/utility.hpp>
@@ -186,6 +187,78 @@ struct TidePool {
 };
 
 TidePool &getTidePool();
+
+struct TideAwaitable {
+  struct FutureWork : public shards::TidePool::Work {
+    std::future<void> _future;
+
+    FutureWork(std::future<void> &&future) : _future(std::move(future)) {}
+    virtual ~FutureWork() {}
+
+    virtual void call() { _future.wait(); }
+  } _work;
+
+  template <class T> TideAwaitable(T &&func) : _work(std::async(std::launch::deferred, std::forward<T>(func))) {}
+
+  bool await_ready() const noexcept { return _work._future.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
+  void await_suspend(std::coroutine_handle<> handle) { getTidePool().schedule(&_work); }
+  void await_resume() { _work._future.get(); }
+};
+
+struct TideTask {
+  struct promise_type {
+    std::exception_ptr _exp;
+
+    TideTask get_return_object() { return TideTask{std::coroutine_handle<promise_type>::from_promise(*this)}; }
+
+    std::suspend_never initial_suspend() { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+    void unhandled_exception() { _exp = std::current_exception(); }
+  };
+
+  std::coroutine_handle<promise_type> coro_;
+
+  TideTask(std::coroutine_handle<promise_type> coro) : coro_(coro) {}
+
+  // Move constructor
+  TideTask(TideTask &&other) noexcept : coro_(other.coro_) { other.coro_ = nullptr; }
+
+  // Move assignment operator
+  TideTask &operator=(TideTask &&other) noexcept {
+    if (this != &other) {
+      if (coro_)
+        coro_.destroy();
+      coro_ = other.coro_;
+      other.coro_ = nullptr;
+    }
+    return *this;
+  }
+
+  ~TideTask() {
+    if (coro_)
+      coro_.destroy();
+  }
+
+  void resume() const {
+    if (coro_)
+      coro_.resume();
+  }
+
+  bool done() const {
+    if (!coro_)
+      return true;
+    return coro_.done();
+  }
+
+  void rethrow() const {
+    if (coro_ && coro_.promise()._exp)
+      std::rethrow_exception(coro_.promise()._exp);
+  }
+
+  // Delete copy constructor and copy assignment operator
+  TideTask(const TideTask &) = delete;
+  TideTask &operator=(const TideTask &) = delete;
+};
 #endif
 
 template <typename FUNC, typename CANCELLATION>
