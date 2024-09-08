@@ -179,7 +179,11 @@ struct Env {
   typedef PyTypeObject *PyObject_Type;
   typedef PyTypeObject *PyBool_Type;
   typedef PyTypeObject *PyList_Type;
+  typedef PyTypeObject *PyBytes_Type;
   typedef PyObject *_Py_NoneStruct;
+
+  typedef PyObject *(__cdecl *PyBytes_FromStringAndSize)(const char *v, ssize_t len);
+  typedef PyObject *(__cdecl *PyUnicode_FromStringAndSize)(const char *u, ssize_t size);
 
   static inline PyUnicode_DecodeFSDefault _makeStr;
   static inline PyImport_Import _import;
@@ -229,8 +233,12 @@ struct Env {
   static inline PyCapsule_Type _capsule_type;
   static inline PyBool_Type _bool_type;
   static inline PyList_Type _list_type;
+  static inline PyBytes_Type _bytes_type;
 
   static inline _Py_NoneStruct _py_none;
+
+  static inline PyBytes_FromStringAndSize _bytesFromStringAndSize;
+  static inline PyUnicode_FromStringAndSize _unicodeFromStringAndSize;
 
   static PyObject *__cdecl methodPause(PyObject *self, PyObject *args) {
     auto ctxObj = make_pyshared(_getAttr(self, "__shcontext__"));
@@ -439,8 +447,12 @@ struct Env {
       DLIMPORT(_capsule_type, PyCapsule_Type);
       DLIMPORT(_list_type, PyList_Type);
       DLIMPORT(_bool_type, PyBool_Type);
+      DLIMPORT(_bytes_type, PyBytes_Type);
 
       DLIMPORT(_py_none, _Py_NoneStruct);
+
+      DLIMPORT(_bytesFromStringAndSize, PyBytes_FromStringAndSize);
+      DLIMPORT(_unicodeFromStringAndSize, PyUnicode_FromStringAndSize);
 
       SHLOG_TRACE("Python symbols loaded");
 
@@ -489,42 +501,76 @@ struct Env {
   static PyObject *var2Py(const SHVar &var) {
     switch (var.valueType) {
     case SHType::Int: {
-      return _buildValue("L", var.payload.intValue);
-    } break;
+      PyObject *result = _buildValue("L", var.payload.intValue);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Int2: {
-      return _buildValue("(LL)", var.payload.int2Value[0], var.payload.int2Value[1]);
-    } break;
+      PyObject *result = _buildValue("(LL)", var.payload.int2Value[0], var.payload.int2Value[1]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Int3: {
-      return _buildValue("(lll)", var.payload.int3Value[0], var.payload.int3Value[1], var.payload.int3Value[2]);
-    } break;
+      PyObject *result = _buildValue("(lll)", var.payload.int3Value[0], var.payload.int3Value[1], var.payload.int3Value[2]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Int4: {
-      return _buildValue("(llll)", var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2],
-                         var.payload.int4Value[3]);
-    } break;
+      PyObject *result = _buildValue("(llll)", var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2],
+                                     var.payload.int4Value[3]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Float: {
-      return _buildValue("d", var.payload.floatValue);
-    } break;
+      PyObject *result = _buildValue("d", var.payload.floatValue);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Float2: {
-      return _buildValue("(dd)", var.payload.float2Value[0], var.payload.float2Value[1]);
-    } break;
+      PyObject *result = _buildValue("(dd)", var.payload.float2Value[0], var.payload.float2Value[1]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Float3: {
-      return _buildValue("(fff)", var.payload.float3Value[0], var.payload.float3Value[1], var.payload.float3Value[2]);
-    } break;
+      PyObject *result = _buildValue("(fff)", var.payload.float3Value[0], var.payload.float3Value[1], var.payload.float3Value[2]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::Float4: {
-      return _buildValue("(dddd)", var.payload.float4Value[0], var.payload.float4Value[1], var.payload.float4Value[2],
-                         var.payload.float4Value[3]);
-    } break;
+      PyObject *result = _buildValue("(dddd)", var.payload.float4Value[0], var.payload.float4Value[1], var.payload.float4Value[2],
+                                     var.payload.float4Value[3]);
+      assert(result != nullptr);
+      return result;
+    }
     case SHType::String: {
-      auto str = SHSTRING_PREFER_SHSTRVIEW(var);
-      return _buildValue("s", str.c_str());
-    } break;
+      auto str = SHSTRVIEW(var);
+      PyObject *result = _unicodeFromStringAndSize(str.data(), str.size());
+      if (result == nullptr) {
+        Env::printErrors();
+        SHLOG_ERROR("Failed to create Python unicode object. Size: {}", str.size());
+        throw SHException("Failed to convert SHVar String to Python unicode object");
+      }
+      return result;
+    }
     case SHType::Bool: {
       return _bool(long(var.payload.boolValue));
-    } break;
+    }
     case SHType::None: {
       _py_none->refcount++;
       return _py_none;
-    } break;
+    }
+    case SHType::Bytes: {
+      PyObject *result = _bytesFromStringAndSize((const char *)var.payload.bytesValue, var.payload.bytesSize);
+      if (result == nullptr) {
+        Env::printErrors();
+        SHLOG_ERROR("Failed to create Python bytes object. Size: {}", var.payload.bytesSize);
+        if (var.payload.bytesValue == nullptr) {
+          SHLOG_ERROR("Bytes value pointer is null");
+        }
+        throw SHException("Failed to convert SHVar Bytes to Python bytes object");
+      }
+      return result;
+    }
     default:
       SHLOG_ERROR("Unsupported type {}", type2Name(var.valueType));
       throw SHException("Failed to convert SHVar into PyObject, type not supported!");
@@ -552,6 +598,13 @@ struct Env {
       res.payload.stringValue = str.data();
       res.payload.stringLen = str.size();
       return {res, std::get<1>(tstr)};
+    } else if (isBytes(obj)) {
+      res.valueType = SHType::Bytes;
+      auto bytes = toBytesView(obj);
+      auto str = std::get<0>(bytes);
+      res.payload.bytesValue = (uint8_t *)str.data();
+      res.payload.bytesSize = str.size();
+      return {res, std::get<1>(bytes)};
     } else if (isTuple(obj)) {
       auto tupSize = _tupleSize(obj.get());
       if (tupSize == 0) {
@@ -678,6 +731,10 @@ struct Env {
 
   static bool isNone(const PyObj &obj) { return obj.get() && isNone(obj.get()); }
 
+  static bool isBytes(const PyObject *obj) { return obj->type == _bytes_type || _typeIsSubType(obj->type, _bytes_type); }
+
+  static bool isBytes(const PyObj &obj) { return obj.get() && isBytes(obj.get()); }
+
   static ssize_t tupleSize(const PyObj &obj) { return _tupleSize(obj.get()); }
 
   static PyObj tupleGetItem(const PyObj &tup, ssize_t idx) { return make_pyborrow(_borrow_tupleGetItem(tup.get(), idx)); }
@@ -699,6 +756,19 @@ struct Env {
   }
 
   static std::tuple<std::string_view, PyObj> toStringView(const PyObj &obj) { return toStringView(obj.get()); }
+
+  static std::tuple<std::span<const uint8_t>, PyObj> toBytesView(PyObject *obj) {
+    char *data;
+    ssize_t len;
+    auto res = _bytesAsStringAndSize(obj, &data, &len);
+    if (res == -1) {
+      printErrors();
+      throw SHException("Bytes conversion failed!");
+    }
+    return {std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(data), len), make_pyborrow(obj)};
+  }
+
+  static std::tuple<std::span<const uint8_t>, PyObj> toBytesView(const PyObj &obj) { return toBytesView(obj.get()); }
 
   static PyObj capsule(void *ptr) { return make_pyshared(_newCapsule(ptr, nullptr, nullptr)); }
 
@@ -742,6 +812,8 @@ struct Env {
       return SHType::None;
     } else if (str == "Bool") {
       return SHType::Bool;
+    } else if (str == "Bytes") {
+      return SHType::Bytes;
     } else {
       throw ToTypesFailed("Unsupported toSHType type.");
     }
@@ -788,16 +860,8 @@ private:
 
 struct Interpreter {
   void init() {
-    // Try lazy init
-    if (!Env::ok()) {
-      Env::init();
-    }
-
-    // check count, if 0 do nothing, if > 0 we are in a sub interpreter and we need to call _newInterpreter
-    if (interpretersCount.fetch_add(1, std::memory_order_relaxed) > 0) {
-      ts = Env::_newInterpreter();
-      Env::initFrame();
-    }
+    ts = Env::_newInterpreter();
+    Env::initFrame();
   }
 
   void deinit() {
@@ -805,16 +869,9 @@ struct Interpreter {
       Env::_endInterpreter(ts);
       ts = nullptr;
     }
-
-    // reduce count
-    interpretersCount.fetch_sub(1, std::memory_order_relaxed);
   }
 
   PyThreadState *ts{nullptr};
-
-  // when count is 0 we open the main interpreter, no sub interpreters
-  // once we advance following interpreters will be sub interpreters
-  static inline std::atomic<int> interpretersCount{0};
 };
 
 struct Context {
@@ -832,12 +889,42 @@ private:
   PyThreadState *old{nullptr};
 };
 
-struct Py {
-  Py() { _ts.init(); }
+template <bool USE_SUB_INTERPRETER> struct Py {
+  Py() {
+    // Try lazy init
+    if (!Env::ok()) {
+      Env::init();
+    }
+
+    if constexpr (USE_SUB_INTERPRETER) {
+      _ts.init();
+    }
+  }
 
   ~Py() {
-    Context ctx(_ts);
-    _ts.deinit();
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
+
+    // Reset all PyObjs
+    _self.reset();
+    _module.reset();
+    _inputTypes.reset();
+    _outputTypes.reset();
+    _activate.reset();
+    _parameters.reset();
+    _setParam.reset();
+    _getParam.reset();
+    _compose.reset();
+    _currentResult.reset();
+    _pyParamResult.reset();
+
+    // Clear vector of PyObjs
+    _seqCacheObjs.clear();
+
+    if constexpr (USE_SUB_INTERPRETER) {
+      _ts.deinit();
+    }
   }
 
   Parameters params{{"Module",
@@ -846,7 +933,9 @@ struct Py {
                      {CoreInfo::StringType}}};
 
   SHParametersInfo parameters() {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     // clear cache first
     _paramNames.clear();
@@ -904,7 +993,9 @@ struct Py {
   }
 
   void setParam(int index, const SHVar &value) {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     if (index == 0) {
       // Handle here
@@ -921,7 +1012,9 @@ struct Py {
   }
 
   SHVar getParam(int index) {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     if (index == 0) {
       return Var(_scriptName);
@@ -947,7 +1040,9 @@ struct Py {
       throw SHException("Failed to load python script!");
     }
 
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     auto path = Env::_sysGetObj("path");
     // fix sys.path
@@ -1024,7 +1119,9 @@ struct Py {
   }
 
   SHTypesInfo inputTypes() {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     if (Env::isCallable(_inputTypes)) {
       PyObj pytype;
@@ -1046,7 +1143,9 @@ struct Py {
   }
 
   SHTypesInfo outputTypes() {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     if (Env::isCallable(_outputTypes)) {
       PyObj pytype;
@@ -1074,7 +1173,9 @@ struct Py {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    Context ctx(_ts);
+    if constexpr (USE_SUB_INTERPRETER) {
+      Context ctx(_ts);
+    }
 
     PyObj res;
     if (_self.get()) {
@@ -1148,7 +1249,10 @@ private:
   std::string _scriptName;
 };
 
-SHARDS_REGISTER_FN(py) { REGISTER_SHARD("Py", Py); }
+SHARDS_REGISTER_FN(py) {
+  REGISTER_SHARD("Py", Py<false>);
+  REGISTER_SHARD("PySub", Py<true>);
+}
 } // namespace Python
 } // namespace shards
 
