@@ -284,7 +284,7 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    # $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_link_options(
     $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
@@ -293,7 +293,7 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    # $<$<COMPILE_LANGUAGE:CXX,C>:-O1> # O1
+    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_ASAN>)
 endif()
@@ -304,12 +304,12 @@ if(USE_TSAN)
   add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    # $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_link_options(
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    # $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_TSAN>)
 endif()
