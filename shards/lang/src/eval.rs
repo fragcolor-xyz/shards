@@ -2195,12 +2195,16 @@ fn create_shard_inner(
     )
       .into(),
   )?;
+
   let s = AutoShardRef(s);
+
   let mut idx = 0i32;
   let mut as_idx = true;
-  let info = s.0.parameters();
   if let Some(ref params) = shard.params {
     for param in params {
+      // Refresh parameter info on each iteration, as parameters can be dynamic (once a parameter is set, it may change others)
+      let info = s.0.parameters();
+
       if let Some(ref name) = param.name {
         as_idx = false;
         let mut found = false;

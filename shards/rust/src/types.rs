@@ -660,6 +660,15 @@ impl ShardRef {
   pub fn get_line_info(&self) -> (u32, u32) {
     unsafe { ((*self.0).line, (*self.0).column) }
   }
+
+  pub fn properties(&self) -> Option<Table> {
+    if unsafe { (*self.0).properties.is_some() } {
+      let sh_table_ptr = unsafe { (*self.0).properties.unwrap_unchecked()(self.0) };
+      unsafe { Some(Table::from_sh_table(*sh_table_ptr)) }
+    } else {
+      None
+    }
+  }
 }
 
 #[derive(PartialEq)]
@@ -6049,6 +6058,10 @@ impl Table {
         owned: true,
       }
     }
+  }
+
+  pub fn from_sh_table(t: SHTable) -> Table {
+    Table { t, owned: false }
   }
 
   pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {

@@ -1,0 +1,19 @@
+@mesh(root)
+
+@wire(test-1 {
+  10 | Py("PyShard1" "Hello") | Assert.Is(20) | Add(20) | Assert.Is(40) | Log
+} Looped: true)
+
+@wire(test-2 {
+  20 | Py("PyShard1") | Assert.Is(30) | Add(20) | Assert.Is(50) | Log
+} Looped: true)
+
+@wire(test-3 {
+  Py("PyShard2") | Assert.Is(["Hello" "World"]) | Log
+} Looped: true)
+
+@schedule(root test-1)
+@schedule(root test-2)
+@schedule(root test-3)
+
+@run(root 0.1 25)
