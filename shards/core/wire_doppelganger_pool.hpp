@@ -137,15 +137,17 @@ template <typename T> struct WireDoppelgangerPool {
     return &poolItem;
   }
 
-  T *acquireFromBatch(BatchOperation &batch, size_t index)
+  std::pair<T *, bool> acquireFromBatch(BatchOperation &batch, size_t index)
     requires WireData<T>
   {
     shassert(index < batch.items.size() && "Index out of bounds");
     auto &item = batch.items[index];
     auto &poolItem = *item.poolItemPtr;
-
+    bool cached = true;
     pmr::SharedTempAllocator tempAlloc;
+
     if (!poolItem.wire) {
+      cached = false;
       Serialization serializer{tempAlloc.getAllocator(), true};
       std::shared_ptr<SHWire> wire;
       {
@@ -169,7 +171,7 @@ template <typename T> struct WireDoppelgangerPool {
       }
     }
 
-    return &poolItem;
+    return {&poolItem, cached};
   }
 
   template <class Composer, typename Anything = void>
@@ -182,7 +184,7 @@ template <typename T> struct WireDoppelgangerPool {
     return acquireFromBatch(batch, 0, composer, anything);
   }
 
-  T *acquire()
+  std::pair<T *, bool> acquire()
     requires WireData<T>
   {
     ZoneScoped;
