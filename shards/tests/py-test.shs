@@ -9,11 +9,15 @@
 } Looped: true)
 
 @wire(test-3 {
-  Py("PyShard2") | Assert.Is(["Hello" "World"]) | Log
+  Await(Py("PyShard2")) ; via GIL(ol) and such we support even this... well limited by the GIL
+  Assert.Is(["Hello" "World"]) | Log
 } Looped: true)
 
 @schedule(root test-1)
 @schedule(root test-2)
+
+@run(root 0.1 25)
+
 @schedule(root test-3)
 
 @run(root 0.1 25)

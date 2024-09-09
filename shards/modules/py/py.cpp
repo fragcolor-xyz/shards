@@ -120,6 +120,8 @@ struct PyThreadState {
 
 struct PyInterpreterState;
 
+typedef int PyGILState_STATE;
+
 struct Env {
   typedef void(__cdecl *Py_InitializeEx)(int handlers);
   typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault)(const char *str);
@@ -185,6 +187,13 @@ struct Env {
   typedef PyObject *(__cdecl *PyBytes_FromStringAndSize)(const char *v, ssize_t len);
   typedef PyObject *(__cdecl *PyUnicode_FromStringAndSize)(const char *u, ssize_t size);
 
+  typedef void(__cdecl *PyEval_InitThreads)();
+  typedef PyGILState_STATE(__cdecl *PyGILState_Ensure)();
+  typedef void(__cdecl *PyGILState_Release)(PyGILState_STATE);
+
+  typedef PyThreadState *(__cdecl *PyEval_SaveThread)();
+  typedef void(__cdecl *PyEval_RestoreThread)(PyThreadState *);
+
   static inline PyUnicode_DecodeFSDefault _makeStr;
   static inline PyImport_Import _import;
   static inline PyObject_GetAttrString _getAttr;
@@ -240,6 +249,13 @@ struct Env {
   static inline PyBytes_FromStringAndSize _bytesFromStringAndSize;
   static inline PyUnicode_FromStringAndSize _unicodeFromStringAndSize;
 
+  static inline PyEval_InitThreads _initThreads;
+  static inline PyGILState_Ensure _gilEnsure;
+  static inline PyGILState_Release _gilRelease;
+
+  static inline PyEval_SaveThread _saveThread;
+  static inline PyEval_RestoreThread _restoreThread;
+
   static PyObject *__cdecl methodPause(PyObject *self, PyObject *args) {
     auto ctxObj = make_pyshared(_getAttr(self, "__shcontext__"));
     if (!isCapsule(ctxObj)) {
@@ -262,13 +278,11 @@ struct Env {
       }
     }
 
-    // store ts
-    auto ts = _tsGet();
+    auto state = _saveThread();
 
     suspend((SHContext *)ctx, time);
 
-    // restore previous ts
-    _swapState(ts);
+    _restoreThread(state);
 
     _py_none->refcount++;
     return _py_none;
@@ -303,25 +317,6 @@ struct Env {
       return false;
     }
     return true;
-  }
-
-  static void initFrame() {
-    auto ts = _tsGet();
-    if (!ts) {
-      SHLOG_ERROR("Python thread state was NULL!");
-      return;
-    }
-
-    if (ts->frame)
-      return; // set already, quit
-
-    auto mod = _borrow_addModule("__main__");
-    auto dict = _borrow_modGetDict(mod);
-    auto code = make_pyshared(_pyCodeNew("nothing.py", "f", 0));
-    auto frame = _frameNew(ts, code.get(), dict, dict);
-    ts->frame = frame;
-
-    SHLOG_TRACE("Py frame initialized");
   }
 
   static inline std::vector<std::string> Path;
@@ -453,6 +448,16 @@ struct Env {
 
       DLIMPORT(_bytesFromStringAndSize, PyBytes_FromStringAndSize);
       DLIMPORT(_unicodeFromStringAndSize, PyUnicode_FromStringAndSize);
+
+      DLIMPORT(_initThreads, PyEval_InitThreads);
+      DLIMPORT(_gilEnsure, PyGILState_Ensure);
+      DLIMPORT(_gilRelease, PyGILState_Release);
+
+      DLIMPORT(_saveThread, PyEval_SaveThread);
+      DLIMPORT(_restoreThread, PyEval_RestoreThread);
+
+      _initThreads();
+      _savedThreadState = _saveThread();
 
       SHLOG_TRACE("Python symbols loaded");
 
@@ -854,57 +859,50 @@ struct Env {
     return res;
   }
 
+  static PyThreadState *saveThread() { return _saveThread(); }
+
+  static void restoreThread(PyThreadState *state) { _restoreThread(state); }
+
+  static void saveThreadState() { _savedThreadState = _saveThread(); }
+
+  static void restoreThreadState() { _restoreThread(_savedThreadState); }
+
 private:
   static inline bool _ok{false};
-};
-
-struct Interpreter {
-  void init() {
-    ts = Env::_newInterpreter();
-    Env::initFrame();
-  }
-
-  void deinit() {
-    if (ts) {
-      Env::_endInterpreter(ts);
-      ts = nullptr;
-    }
-  }
-
-  PyThreadState *ts{nullptr};
+  static inline PyThreadState *_savedThreadState{nullptr};
 };
 
 struct Context {
-  Context(const Interpreter &inter) {
-    if (inter.ts)
-      old = Env::_swapState(inter.ts);
+  Context() {
+    if (!Env::ok()) {
+      return;
+    }
+
+    _gstate = Env::_gilEnsure();
   }
 
   ~Context() {
-    if (old)
-      Env::_swapState(old);
+    if (!Env::ok()) {
+      return;
+    }
+
+    Env::_gilRelease(_gstate);
   }
 
 private:
-  PyThreadState *old{nullptr};
+  PyGILState_STATE _gstate;
 };
 
-template <bool USE_SUB_INTERPRETER> struct Py {
+struct Py {
   Py() {
     // Try lazy init
     if (!Env::ok()) {
       Env::init();
     }
-
-    if constexpr (USE_SUB_INTERPRETER) {
-      _ts.init();
-    }
   }
 
   ~Py() {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     // Reset all PyObjs
     _self.reset();
@@ -921,10 +919,6 @@ template <bool USE_SUB_INTERPRETER> struct Py {
 
     // Clear vector of PyObjs
     _seqCacheObjs.clear();
-
-    if constexpr (USE_SUB_INTERPRETER) {
-      _ts.deinit();
-    }
   }
 
   Parameters params{{"Module",
@@ -933,9 +927,7 @@ template <bool USE_SUB_INTERPRETER> struct Py {
                      {CoreInfo::StringType}}};
 
   SHParametersInfo parameters() {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     // clear cache first
     _paramNames.clear();
@@ -943,36 +935,36 @@ template <bool USE_SUB_INTERPRETER> struct Py {
 
     if (Env::isCallable(_parameters)) {
       std::vector<ParameterInfo> otherParams;
-      auto pyparams = Env::call(_parameters, Env::incRefGet(_self));
-      if (Env::isList(pyparams)) {
-        auto psize = Env::listSize(pyparams);
+      auto pyParams = Env::call(_parameters, Env::incRefGet(_self));
+      if (Env::isList(pyParams)) {
+        auto psize = Env::listSize(pyParams);
         for (ssize_t i = 0; i < psize; i++) {
-          auto pyparam = Env::listGetItem(pyparams, i);
-          if (!Env::isTuple(pyparam)) {
+          auto pyParam = Env::listGetItem(pyParams, i);
+          if (!Env::isTuple(pyParam)) {
             throw SHException("Malformed python block parameters, list of tuple expected");
           }
-          auto tupSize = Env::tupleSize(pyparam);
+          auto tupSize = Env::tupleSize(pyParam);
           if (tupSize == 2) {
             // has no help
-            auto pyname = Env::tupleGetItem(pyparam, 0);
+            auto pyname = Env::tupleGetItem(pyParam, 0);
             auto tnameview = Env::toStringView(pyname);
             auto nameview = std::get<0>(tnameview);
             auto &name = _paramNames.emplace_back(nameview);
-            auto pytypes = Env::tupleGetItem(pyparam, 1);
+            auto pytypes = Env::tupleGetItem(pyParam, 1);
             Types types;
             Env::extractTypes(pytypes, types, _paramsInners);
             otherParams.emplace_back(name.c_str(), SHOptionalString{}, types);
           } else if (tupSize == 3) {
             // has help
-            auto pyname = Env::tupleGetItem(pyparam, 0);
+            auto pyname = Env::tupleGetItem(pyParam, 0);
             auto tnameview = Env::toStringView(pyname);
             auto nameview = std::get<0>(tnameview);
             auto &name = _paramNames.emplace_back(nameview);
-            auto pyhelp = Env::tupleGetItem(pyparam, 0);
+            auto pyhelp = Env::tupleGetItem(pyParam, 0);
             auto thelpview = Env::toStringView(pyhelp);
             auto helpview = std::get<0>(thelpview);
             auto &help = _paramHelps.emplace_back(helpview);
-            auto pytypes = Env::tupleGetItem(pyparam, 2);
+            auto pytypes = Env::tupleGetItem(pyParam, 2);
             Types types;
             Env::extractTypes(pytypes, types, _paramsInners);
             otherParams.emplace_back(name.c_str(), SHOptionalString{help.c_str()}, types);
@@ -993,9 +985,7 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
   void setParam(int index, const SHVar &value) {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     if (index == 0) {
       // Handle here
@@ -1012,9 +1002,7 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
   SHVar getParam(int index) {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     if (index == 0) {
       return Var(_scriptName);
@@ -1038,10 +1026,6 @@ template <bool USE_SUB_INTERPRETER> struct Py {
     if (!Env::ok()) {
       SHLOG_ERROR("Script: {} cannot be loaded, no python support.", _scriptName);
       throw SHException("Failed to load python script!");
-    }
-
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
     }
 
     auto path = Env::_sysGetObj("path");
@@ -1119,9 +1103,7 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
   SHTypesInfo inputTypes() {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     if (Env::isCallable(_inputTypes)) {
       PyObj pytype;
@@ -1143,9 +1125,7 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
   SHTypesInfo outputTypes() {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     if (Env::isCallable(_outputTypes)) {
       PyObj pytype;
@@ -1167,15 +1147,15 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
   void cleanup() {
+    Context ctx;
+
     _seqCache.clear();
     _seqCacheObjs.clear();
     _currentResult = Env::none();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if constexpr (USE_SUB_INTERPRETER) {
-      Context ctx(_ts);
-    }
+    Context ctx;
 
     PyObj res;
     if (_self.get()) {
@@ -1216,8 +1196,6 @@ template <bool USE_SUB_INTERPRETER> struct Py {
   }
 
 private:
-  Interpreter _ts;
-
   Types _inputTypesStorage;
   std::list<SHTypeInfo> _inputInners;
   Types _outputTypesStorage;
@@ -1249,10 +1227,7 @@ private:
   std::string _scriptName;
 };
 
-SHARDS_REGISTER_FN(py) {
-  REGISTER_SHARD("Py", Py<false>);
-  REGISTER_SHARD("PySub", Py<true>);
-}
+SHARDS_REGISTER_FN(py) { REGISTER_SHARD("Py", Py); }
 } // namespace Python
 } // namespace shards
 
