@@ -585,6 +585,9 @@ struct AppendTo : public XpendTo {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case SHType::Seq: {
+      if (collection == input) {
+        throw ActivationError("AppendTo: Collection and input are the same variable.");
+      }
       auto &arr = collection.payload.seqValue;
       const auto len = arr.len;
       shards::arrayResize(arr, len + 1);
@@ -627,6 +630,9 @@ struct PrependTo : public XpendTo {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case SHType::Seq: {
+      if (collection == input) {
+        throw ActivationError("PrependTo: Collection and input are the same variable.");
+      }
       auto &arr = collection.payload.seqValue;
       const auto len = arr.len;
       shards::arrayResize(arr, len + 1);

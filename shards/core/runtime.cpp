@@ -959,11 +959,21 @@ void validateConnection(InternalCompositionContext &ctx) {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
     if (exposed_param.declared && ctx.wire) {
-      auto inserted = ctx.wire->getComposeData().declaredVariables.emplace(name, exposed_param.isMutable);
+      auto inserted = ctx.wire->getComposeData().declaredVariables.emplace(name, exposed_param);
       SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
       // check if we are not declaring a mutable var twice, and match the mutability
-      if (!inserted.second && inserted.first->second != exposed_param.isMutable) {
+      if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
         throw ComposeError(fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+      }
+      // check that we are not declaring a mutable var twice
+      if (!inserted.second && inserted.first->second.isMutable) {
+        if (inserted.first->second.exposedType.basicType == SHType::Table &&
+            exposed_param.exposedType.basicType == SHType::Table) {
+          // Allow redeclaration of mutable tables
+        } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
+          throw ComposeError(
+              fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
+        }
       }
       // clear declared flag on exposed param
       exposed_param.declared = false;
