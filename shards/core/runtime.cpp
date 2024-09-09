@@ -966,8 +966,10 @@ void validateConnection(InternalCompositionContext &ctx) {
         throw ComposeError(fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
       }
       // check that we are not declaring a mutable var twice
-      if (!inserted.second && inserted.first->second.isMutable) {
-        throw ComposeError(fmt::format("Mutable variable {} declared twice in wire {}", name, ctx.wire->name));
+      if (!inserted.second && inserted.first->second.isMutable &&
+          inserted.first->second.exposedType != exposed_param.exposedType) {
+        throw ComposeError(
+            fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
       }
       // clear declared flag on exposed param
       exposed_param.declared = false;
