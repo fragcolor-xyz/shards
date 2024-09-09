@@ -1,0 +1,20 @@
+; if we break this we get a crash, so fine to run as is
+
+@wire(fail {
+  Maybe({
+    Table(player-table)
+    player-table | Update(player-table uuid)
+    player-table | Log("Hello")
+  })
+
+  Maybe({
+    Sequence(player-seq)
+    player-seq | Push(player-seq)
+    player-seq | PrependTo(player-seq)
+    player-seq | Log("hello")
+  })
+})
+
+@mesh(root)
+@schedule(root fail)
+@run(root) | Assert.Is(true)

@@ -1058,7 +1058,7 @@ struct SetUpdateBase : public SetBase {
 
   void setupDispatcher(SHContext *context, bool isGlobal) { _dispatcherPtr = &context->main->mesh.lock()->dispatcher; }
 
-  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) noexcept {
     checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
@@ -1079,6 +1079,11 @@ struct SetUpdateBase : public SetBase {
     auto &kv = _key.get();
     SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
+    if (input.valueType == SHType::Table && input.payload.tableValue.opaque == _target->payload.tableValue.opaque) {
+      context->cancelFlow("Set/Update, attempted to set a variable to itself");
+      return input;
+    }
+
     // Clone will try to recycle memory and such
     cloneVar(*vptr, input);
 
@@ -1090,7 +1095,7 @@ struct SetUpdateBase : public SetBase {
     return *vptr;
   }
 
-  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
     // Clone will try to recycle memory and such
     cloneVar(*_target, input);
     return *_target;
@@ -1381,7 +1386,7 @@ struct Ref : public SetBase {
     throw ActivationError("Invalid Ref activation function.");
   }
 
-  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateTable(SHContext *context, const SHVar &input) noexcept {
     checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
@@ -1409,7 +1414,7 @@ struct Ref : public SetBase {
     }
   }
 
-  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
     // must keep flags!
     assignVariableValue(*_target, input);
     return input;
@@ -2015,10 +2020,15 @@ struct Push : public SeqBase {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &cv = data.shared.elements[i];
         if (cv.name == _name) {
+          if (cv.exposedType.basicType != SHType::Table) {
+            throw ComposeError("Expected a table variable.");
+          }
+
           if (cv.tracked) {
             // cannot push into exposed variables
             throw ComposeError("Cannot push into exposed variables");
           }
+
           if (cv.exposedType.table.types.elements) {
             auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
             auto &tableTypes = data.shared.elements[i].exposedType.table.types;
@@ -2072,7 +2082,7 @@ struct Push : public SeqBase {
     return data.inputType;
   }
 
-  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) noexcept {
     if (unlikely(_isTable)) {
       checkIfTableChanged();
       if (unlikely(_cell == nullptr)) {
