@@ -5,6 +5,7 @@
 #include <thread>
 #include <deque>
 #include <coroutine>
+#include <future>
 
 #include <shards/shards.h>
 #include <shards/utility.hpp>
@@ -189,20 +190,24 @@ struct TidePool {
 TidePool &getTidePool();
 
 struct TideAwaitable {
+  std::shared_future<void> _future;
   struct FutureWork : public shards::TidePool::Work {
-    std::future<void> _future;
+    std::shared_future<void> _future;
 
-    FutureWork(std::future<void> &&future) : _future(std::move(future)) {}
+    FutureWork(const std::shared_future<void> &future) : _future(future) {}
     virtual ~FutureWork() {}
 
-    virtual void call() { _future.wait(); }
-  } _work;
+    virtual void call() {
+      _future.wait();
+      delete this;
+    }
+  };
 
-  template <class T> TideAwaitable(T &&func) : _work(std::async(std::launch::deferred, std::forward<T>(func))) {}
+  template <class T> TideAwaitable(T &&func) : _future(std::async(std::launch::deferred, std::forward<T>(func))) {}
 
-  bool await_ready() const noexcept { return _work._future.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
-  void await_suspend(std::coroutine_handle<> handle) { getTidePool().schedule(&_work); }
-  void await_resume() { _work._future.get(); }
+  bool await_ready() const noexcept { return _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
+  void await_suspend(std::coroutine_handle<> handle) { getTidePool().schedule(new FutureWork(_future)); }
+  void await_resume() { _future.get(); }
 };
 
 struct TideTask {
