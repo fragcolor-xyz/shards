@@ -12,6 +12,8 @@ typedef std::shared_ptr<spdlog::logger> Logger;
 void initSinks(Logger logger);
 // Sets the log level for this logger based on the LOG_<name> environment variable if it is set
 void initLogLevel(Logger logger);
+// Init flush_on setting
+void initFlush(Logger logger);
 // Sets the log format for this logger based on the LOG_<name>_FORMAT environment variable if it is set
 void initLogFormat(Logger logger);
 void redirectAll(const std::vector<spdlog::sink_ptr> &sinks);
