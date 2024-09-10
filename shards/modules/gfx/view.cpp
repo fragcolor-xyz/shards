@@ -79,7 +79,7 @@ SHView SHView::deserialize(const std::string_view &data) {
 }
 
 struct ViewShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::View; }
 
   static SHOptionalString help() {
