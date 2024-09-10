@@ -21,6 +21,8 @@ add_shards_module(network SOURCES ${NETWORK_SOURCES}
   RUST_TARGETS ${NETWORK_RUST_TARGETS}
   REGISTER_SHARDS ${NETWORK_REGISTER_SHARDS})
 
+target_link_libraries(shards-module-network Tracy::TracyClient)
+
 if(ANDROID OR DESKTOP_LINUX)
   set(NEED_OPENSSL_SYS ON)
 endif()
