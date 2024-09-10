@@ -11,7 +11,10 @@
 
 namespace shards::Physics {
 
-DECL_ENUM_INFO(JPH::EConstraintSpace, ConstraintSpace, "Defines the coordinate space for physics constraints. Affects how constraints are applied and calculated in the physics simulation.", 'phCs');
+DECL_ENUM_INFO(JPH::EConstraintSpace, ConstraintSpace,
+               "Defines the coordinate space for physics constraints. Affects how constraints are applied and calculated in the "
+               "physics simulation.",
+               'phCs');
 
 std::atomic_uint64_t ConstraintNode::UidCounter{};
 
@@ -371,7 +374,7 @@ struct SliderConstraint final : public ConstraintBase {
   PARAM_IMPL_DERIVED(ConstraintBase, PARAM_IMPL_FOR(_space), PARAM_IMPL_FOR(_refA), PARAM_IMPL_FOR(_refB),
                      PARAM_IMPL_FOR(_sliderAxis), PARAM_IMPL_FOR(_normalAxis), PARAM_IMPL_FOR(_limitsMin),
                      PARAM_IMPL_FOR(_limitsMax), PARAM_IMPL_FOR(_limitSpring), PARAM_IMPL_FOR(_maxFrictionForce),
-                     PARAM_IMPL_FOR(_motorSettings));
+                     PARAM_IMPL_FOR(_motorSettings), PARAM_IMPL_FOR(_motorSpringSettings));
 
   SliderConstraint() {
     _space = Var::Enum(JPH::EConstraintSpace::LocalToBodyCOM, ConstraintSpaceEnumInfo::Type);
@@ -423,7 +426,7 @@ struct SliderConstraint final : public ConstraintBase {
     params->settings->mLimitsSpringSettings = SpringSettings().from(_limitSpring.get());
     params->settings->mMaxFrictionForce = _maxFrictionForce.get().payload.floatValue;
     params->settings->mMotorSettings = MotorSettings().from(_motorSettings.get());
-    params->settings->mMotorSettings.mSpringSettings   = SpringSettings().from(_motorSpringSettings.get());
+    params->settings->mMotorSettings.mSpringSettings = SpringSettings().from(_motorSpringSettings.get());
     params->updateParamHash0();
   }
 };
