@@ -220,5 +220,7 @@ false = is-false | IsFalse | Assert.Is(true) | Log
   Log("@for n")
 })
 
+[10.0 20.0 30.0 40.0 50.0] | Percentile(75.0) | Assert.Is(40.0) | Log
+
 none
 1

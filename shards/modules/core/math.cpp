@@ -82,4 +82,7 @@ SHARDS_REGISTER_FN(math) {
 
   REGISTER_SHARD("Math.Lerp", Lerp);
   REGISTER_SHARD_ALIAS("Lerp", Lerp);
+
+  REGISTER_SHARD("Math.Percentile", Percentile);
+  REGISTER_SHARD_ALIAS("Percentile", Percentile);
 }

@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <variant>
 #include <shards/math_ops.hpp>
+#include <shards/core/params.hpp>
 
 #define _PC
 #include "ShaderFastMathLib.h"
@@ -1050,7 +1051,9 @@ RUNTIME_SHARD_TYPE(Math, Sinh);
 
 struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input, where the input is the real number. The hyperbolic cosine is a hyperbolic function that is analogous to the circular cosine function, but it uses exponential functions instead of angles.");
+    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input, where the input is the real number. The "
+                   "hyperbolic cosine is a hyperbolic function that is analogous to the circular cosine function, but it uses "
+                   "exponential functions instead of angles.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1063,7 +1066,9 @@ RUNTIME_SHARD_TYPE(Math, Cosh);
 
 struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input, where the input is the real number. The hyperbolic tangent is a hyperbolic function that is analogous to the circular tangent function, but it uses exponential functions instead of angles.");
+    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input, where the input is the real number. The "
+                   "hyperbolic tangent is a hyperbolic function that is analogous to the circular tangent function, but it uses "
+                   "exponential functions instead of angles.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1076,7 +1081,8 @@ RUNTIME_SHARD_TYPE(Math, Tanh);
 
 struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input, where the input is the hyperbolic sine value. The output is the real number whose hyperbolic sine is the input value.");
+    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input, where the input is the hyperbolic sine "
+                   "value. The output is the real number whose hyperbolic sine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1089,7 +1095,8 @@ RUNTIME_SHARD_TYPE(Math, Asinh);
 
 struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input, where the input is the hyperbolic cosine value. The output is the real number whose hyperbolic cosine is the input value.");
+    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input, where the input is the hyperbolic "
+                   "cosine value. The output is the real number whose hyperbolic cosine is the input value.");
   }
 
   static SHOptionalString inputHelp() {
@@ -1116,30 +1123,39 @@ RUNTIME_SHARD_TYPE(Math, Atanh);
 
 struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the error function of the given input. The error function is related to the probability "
-                   "that a random variable with normal distribution of mean 0 and variance 1/2 falls in the range specified by the input value.");
+    return SHCCSTR(
+        "This shard calculates the error function of the given input. The error function is related to the probability "
+        "that a random variable with normal distribution of mean 0 and variance 1/2 falls in the range specified by the input "
+        "value.");
   }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the error function of. This can be any real number.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs probability result of the error function of the input. The output is always between -1 and 1."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs probability result of the error function of the input. The output is always between -1 and 1.");
+  }
 };
 RUNTIME_SHARD_TYPE(Math, Erf);
 
 struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the complementary error function of the given input. The complementary error function is related to the probability "
+    return SHCCSTR("This shard calculates the complementary error function of the given input. The complementary error function "
+                   "is related to the probability "
                    "that the absolute value of a random variable with normal distribution of mean 0 and variance "
                    "1/2 is greater than the input value.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The input float or sequence of floats to calculate the complementary error function of. This can be any real number.");
+    return SHCCSTR(
+        "The input float or sequence of floats to calculate the complementary error function of. This can be any real number.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the probability result of the complementary error function of the input. The output is always between 0 and 2."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Outputs the probability result of the complementary error function of the input. The output is always between 0 and 2.");
+  }
 };
 RUNTIME_SHARD_TYPE(Math, Erfc);
 
@@ -1149,25 +1165,27 @@ struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, Dispatc
                    "that extends the concept of factorial to non-integer and complex numbers.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard calculates the gamma function of the given input.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("This shard calculates the gamma function of the given input."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the gamma function of the input. The output is always positive for positive inputs."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the gamma function of the input. The output is always positive for positive inputs.");
+  }
 };
 RUNTIME_SHARD_TYPE(Math, TGamma);
 
 struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard calculates the log gamma function of the given input. The log gamma function is the natural logarithm of the absolute value of the gamma function.");
+    return SHCCSTR("This shard calculates the log gamma function of the given input. The log gamma function is the natural "
+                   "logarithm of the absolute value of the gamma function.");
   }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the log gamma function of.");
   }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the log gamma function of the input. The output is always positive for positive inputs."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the log gamma function of the input. The output is always positive for positive inputs.");
+  }
 };
 RUNTIME_SHARD_TYPE(Math, LGamma);
 
@@ -1567,6 +1585,63 @@ struct Clamp final {
     SHVar result{.valueType = a.valueType};
     dispatchType<DispatchType::NumberTypes>(a.valueType, ApplyClamp{}, result.payload, input.payload, a.payload, b.payload);
     return result;
+  }
+};
+
+struct Percentile {
+  Percentile() { _percentile = Var{50.0}; }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the percentile of the input value within the specified sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence of floats to calculate the percentile of."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The percentile of the input value within the specified sequence."); }
+
+  PARAM_PARAMVAR(_percentile, "Percentile", "The percentile to calculate.", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_percentile));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  std::vector<double> _sortedList;
+
+  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    auto percentile = _percentile.get().payload.floatValue / 100.0;
+
+    /*
+    Sort the List
+    Calculate the Index
+    Interpolate if Necessary:
+    */
+
+    _sortedList.resize(input.payload.seqValue.len);
+    for (size_t i = 0; i < input.payload.seqValue.len; ++i) {
+      _sortedList[i] = input.payload.seqValue.elements[i].payload.floatValue;
+    }
+
+    std::sort(_sortedList.begin(), _sortedList.end());
+
+    auto index = percentile * (_sortedList.size() - 1);
+
+    // index is not an integer so we interpolate between the lower and upper bounds
+    auto lower = _sortedList[static_cast<int>(std::floor(index))];
+    auto upper = _sortedList[static_cast<int>(std::ceil(index))];
+
+    auto threshold = lower + (upper - lower) * (index - std::floor(index));
+
+    return Var{threshold};
   }
 };
 
