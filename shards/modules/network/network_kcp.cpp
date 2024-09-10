@@ -14,6 +14,7 @@
 #pragma clang diagnostic pop
 #endif
 
+#include <tracy/Wrapper.hpp>
 #include "network.hpp"
 #include <shards/core/shared.hpp>
 #include <shards/core/foundation.hpp>
@@ -222,6 +223,9 @@ struct KCPPeer final : public Peer {
   void send(boost::span<const uint8_t> data) override {
     std::scoped_lock lock(mutex); // prevent concurrent sends
     auto size = data.size();
+
+    ZoneScopedN("Network::Send");
+    TracyMessageL("Network::Send");
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // send in chunks
@@ -560,6 +564,8 @@ struct ServerShard : public NetworkBase {
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
+    ZoneScopedN("Network::UDPOutput");
+
     KCPPeer *p = (KCPPeer *)user;
     ServerShard *s = (ServerShard *)p->user;
 
@@ -567,6 +573,7 @@ struct ServerShard : public NetworkBase {
 
     s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
                               [](boost::system::error_code ec, std::size_t bytes_sent) {
+                                TracyMessageL("Network::async_send_to (udp)");
                                 if (ec) {
                                   // ignore flow-control No buffer space available
                                   if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
@@ -593,6 +600,7 @@ struct ServerShard : public NetworkBase {
 
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                  TracyMessageL("Network::async_receive_from (udp)");
                                   if (!ec && bytes_recvd > 0) {
                                     KCPPeer *currentPeer = nullptr;
                                     std::shared_lock<std::shared_mutex> lock(peersMutex);
@@ -766,6 +774,8 @@ struct ServerShard : public NetworkBase {
         }
 
         if (peer->tryReceive(context)) {
+          ZoneScopedN("Network::Receive");
+          TracyMessageL("Network::Receive");
           auto &peer_ = peer; // avoid c++20 ext warning
           DEFER({
             // we need to ensure this gets called at all times
@@ -820,7 +830,8 @@ struct ClientShard : public NetworkBase {
   std::array<SHExposedTypeInfo, 1> _exposing;
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a UDP client connection using the KCP protocol, on the address and port specified in the Address and Port parameters.");
+    return SHCCSTR("This shard creates a UDP client connection using the KCP protocol, on the address and port specified in the "
+                   "Address and Port parameters.");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
