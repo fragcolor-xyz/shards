@@ -1706,6 +1706,9 @@ struct Get : public VariableBase {
     } else {
       if (_isTable) {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required table."), CoreInfo::AnyTableType));
+        if(_key.isVariable()) {
+          _exposedInfo.push_back(ExposedInfo::Variable(_key.variableName(), SHCCSTR("The required key."), CoreInfo::AnyType));
+        }
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType));
       }
