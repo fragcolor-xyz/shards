@@ -1150,7 +1150,7 @@ struct Set : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar &)_key : nullptr, data.inputType,
+      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar &)_key : &Var::Empty, data.inputType,
                                        existingExposedType ? &existingExposedType->exposedType : nullptr);
 
       if (_global) {
