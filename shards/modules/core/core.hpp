@@ -1718,9 +1718,6 @@ struct Get : public VariableBase {
 
   bool defaultTypeCheck(const SHVar &value) {
     if (value.valueType != _defaultValue.valueType) {
-      SHLOG_WARNING("Get found a variable but it's using the default value because the type found did not match with the default "
-                    "type, found {} expected {}",
-                    value.valueType, _defaultValue.valueType);
       return false;
     }
 
