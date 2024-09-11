@@ -137,7 +137,7 @@ lazy_static! {
       .into(),
     (
       cstr!("KeepAlive"),
-      shccstr!("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't be closed until this shard cleans up (including its worker thread)."),
+      shccstr!("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't be closed until this shard cleans up."),
       BOOL_TYPES_SLICE
     )
       .into(),
@@ -302,6 +302,7 @@ impl RequestBase {
     self.url.cleanup(ctx);
     self.headers.cleanup(ctx);
     self._close_client();
+    self.output = ClonedVar::default();
   }
 
   fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &'static str> {
@@ -460,11 +461,11 @@ macro_rules! get_like {
           OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and outputs the response."))
         }
       }
-    
+
       fn inputHelp(&mut self) -> OptionalString {
         OptionalString(shccstr!("The input for this shard should either be none or an optional string table of query parameters to append to the URL."))
       }
-    
+
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Http.Get" {
           OptionalString(shccstr!("The output is the response from the server through the GET request."))
@@ -615,7 +616,7 @@ macro_rules! post_like {
           OptionalString(shccstr!("this shard sends the respective HTTP request to the specified URL and outputs the response."))
         }
       }
-    
+
       fn inputHelp(&mut self) -> OptionalString {
         if $name_str == "Http.Post" {
           OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the POST request."))
@@ -629,7 +630,7 @@ macro_rules! post_like {
           OptionalString(shccstr!("The input for this shard should either be none, string, bytes, or string table to send in the body of the respective HTTP request."))
         }
       }
-    
+
       fn outputHelp(&mut self) -> OptionalString {
         if $name_str == "Http.Post" {
           OptionalString(shccstr!("The output is the response from the server through the POST request as a string, byte array, or table (if the FullResponse parameter is set to true)."))
