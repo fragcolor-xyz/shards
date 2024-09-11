@@ -122,7 +122,12 @@ struct TidePool {
     _controller = std::thread(&TidePool::controllerWorker, this);
   }
 
-  ~TidePool() {
+  ~TidePool() { terminate(); }
+
+  void terminate() {
+    if (!_running)
+      return;
+
     _running = false;
     // Ensure the thread is properly joined on destruction if it is joinable
     if (_controller.joinable()) {
