@@ -87,10 +87,12 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
 }
 
 static std::optional<spdlog::level::level_enum> getFlushLogLevel() {
+#if SHARDS_LOG_SDL
   auto val = SDL_getenv("LOG_FLUSH_ON");
   if (val) {
     return magic_enum::enum_cast<spdlog::level::level_enum>(val);
   }
+#endif
   return std::nullopt;
 }
 
