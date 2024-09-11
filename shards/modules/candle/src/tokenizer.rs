@@ -1,8 +1,8 @@
 use candle_core::{Device, Tensor as CandleTensor};
 use shards::shard::Shard;
-use shards::types::InstanceData;
 use shards::types::{common_type, ClonedVar, Context, Type, Types, Var, FRAG_CC};
 use shards::types::{AutoSeqVar, ExposedTypes, ParamVar, SEQ_OF_INT_TYPES, STRING_TYPES};
+use shards::types::{InstanceData, SeqVar};
 use shards::{fourCharacterCode, ref_counted_object_type_impl, shlog_error};
 
 use std::str::FromStr;
@@ -17,6 +17,7 @@ lazy_static! {
   pub static ref TOKENIZER_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"TOKn")); // last letter used as version
   pub static ref TOKENIZER_TYPE_VEC: Vec<Type> = vec![*TOKENIZER_TYPE];
   pub static ref TOKENIZER_VAR_TYPE: Type = Type::context_variable(&TOKENIZER_TYPE_VEC);
+  pub static ref INTS_OR_TENSOR_TYPES: Vec<Type> = vec![SEQ_OF_INT_TYPES[0], *TENSOR_TYPE];
 }
 
 #[derive(shards::shard)]
@@ -222,5 +223,107 @@ impl Shard for TokensShard {
       }
       Ok(Some(self.output_seq.0 .0))
     }
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "ML.Detokenize",
+  "Converts token IDs or tensors back into text using a tokenizer."
+)]
+pub(crate) struct MLDetokenizer {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Tokenizer", "The tokenizer to use for detokenization.", [*TOKENIZER_VAR_TYPE])]
+  tokenizer: ParamVar,
+
+  #[shard_param("SkipSpecialTokens", "If true, skip special tokens during detokenization.", [common_type::bool])]
+  skip_special_tokens: ClonedVar,
+
+  output: ClonedVar,
+}
+
+impl Default for MLDetokenizer {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      tokenizer: ParamVar::new(Var::default()),
+      skip_special_tokens: true.into(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for MLDetokenizer {
+  fn input_types(&mut self) -> &Types {
+    &INTS_OR_TENSOR_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+
+    if self.tokenizer.is_none() {
+      return Err("Tokenizer is not set");
+    }
+
+    Ok(STRING_TYPES[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tokenizer = unsafe {
+      &mut *Var::from_ref_counted_object::<Tokenizer>(&self.tokenizer.get(), &*TOKENIZER_TYPE)?
+    };
+
+    let skip_special_tokens: bool = self.skip_special_tokens.as_ref().try_into()?;
+
+    let token_ids: Vec<u32> = match input.is_seq() {
+      true => {
+        let input_seq: SeqVar = input.try_into()?;
+        input_seq
+          .iter()
+          .map(|token| u32::try_from(&token).unwrap())
+          .collect()
+      }
+      false => {
+        let tensor = unsafe { &*Var::from_ref_counted_object::<Tensor>(input, &*TENSOR_TYPE)? };
+        tensor
+          .0
+          .to_dtype(candle_core::DType::U32)
+          .and_then(|tensor| tensor.flatten_all()?.to_vec1())
+          .map_err(|e| {
+            shlog_error!("Failed to convert tensor to vector: {:?}", e);
+            "Failed to convert tensor to vector"
+          })?
+      }
+      _ => return Err("Invalid input type. Must be 'Sequence' or 'Tensor'"),
+    };
+
+    let decoded_text = tokenizer
+      .0
+      .decode(&token_ids, skip_special_tokens)
+      .map_err(|e| {
+        shlog_error!("Failed to detokenize text: {:?}", e);
+        "Failed to detokenize text"
+      })?;
+
+    self.output = decoded_text.into();
+    Ok(Some(self.output.0))
   }
 }

@@ -29,8 +29,8 @@
     "data/gte-tiny-tokenizer.json"
     ; "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
     FS.Read | ML.Tokenizer = tokenizer
-    "This is a test." | ML.Tokens(Tokenizer: tokenizer) | Log
-    "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) | Tensor.ToString | Log
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer) | ML.Detokenize(Tokenizer: tokenizer) | Log("Detokenized")
+    "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) {ML.Detokenize(Tokenizer: tokenizer) | Log("Detokenized 2")} | Tensor.ToString | Log
 
     "data/gte-tiny-config.json"
     ; "data/GIST-all-MiniLM-L6-v2-config.json"

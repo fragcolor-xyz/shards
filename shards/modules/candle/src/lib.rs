@@ -103,6 +103,7 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   }
 
   register_shard::<tokenizer::MLTokenizer>();
+  register_shard::<tokenizer::MLDetokenizer>();
   register_shard::<tokenizer::TokensShard>();
   register_enum::<TensorType>();
   register_shard::<tensor::MLTensorToStringShard>();

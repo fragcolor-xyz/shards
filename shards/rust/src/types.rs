@@ -4,8 +4,7 @@
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
 use crate::{
-  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHType_Audio,
-  SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT,
+  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHExtendedObjectTypeInfo, SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT
 };
 
 // Shard Constants
