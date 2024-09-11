@@ -10,7 +10,9 @@ use crate::PARENTS_UI_NAME;
 use crate::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
 use shards::shard::LegacyShard;
 
+use shards::types::common_type;
 use shards::types::Context;
+use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
@@ -21,7 +23,8 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::BOOL_TYPES_SLICE;
+use shards::types::BOOL_OR_VAR_SLICE;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
@@ -41,7 +44,13 @@ lazy_static! {
     (
       cstr!("DefaultOpen"),
       shccstr!("Whether the collapsing header is opened by default."),
-      BOOL_TYPES_SLICE,
+      BOOL_OR_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Open"),
+      shccstr!("A variable to control the open state of the collapsing header."),
+      BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
   ];
@@ -57,7 +66,8 @@ impl Default for CollapsingHeader {
       text: ParamVar::default(),
       header: ShardsVar::default(),
       contents: ShardsVar::default(),
-      defaultOpen: ParamVar::new(false.into()),
+      default_open: ParamVar::new(false.into()),
+      open: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -112,10 +122,13 @@ impl LegacyShard for CollapsingHeader {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 if value.is_none() || value.is_string() => self.text.set_param(value),
+      0 if value.is_none() || value.is_string() || value.is_context_var() => {
+        self.text.set_param(value)
+      }
       0 => self.header.set_param(value),
       1 => self.contents.set_param(value),
-      2 => self.defaultOpen.set_param(value),
+      2 => self.default_open.set_param(value),
+      3 => self.open.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -125,7 +138,8 @@ impl LegacyShard for CollapsingHeader {
       0 if self.header.is_empty() => self.text.get_param(),
       0 => self.header.get_param(),
       1 => self.contents.get_param(),
-      2 => self.defaultOpen.get_param(),
+      2 => self.default_open.get_param(),
+      3 => self.open.get_param(),
       _ => Var::default(),
     }
   }
@@ -135,6 +149,36 @@ impl LegacyShard for CollapsingHeader {
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
+
+    if self.default_open.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::bool,
+        name: self.default_open.get_name(),
+        help: shccstr!("Whether the collapsing header is opened by default."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
+
+    if self.text.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::string,
+        name: self.text.get_name(),
+        help: shccstr!("The heading text or widgets for this collapsing header."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
+
+    if self.open.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::bool,
+        name: self.open.get_name(),
+        help: shccstr!("A variable to control the open state of the collapsing header."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
 
     Some(&self.requiring)
   }
@@ -171,27 +215,38 @@ impl LegacyShard for CollapsingHeader {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
+
     self.text.warmup(ctx);
+
     if !self.header.is_empty() {
       self.header.warmup(ctx)?;
     }
+
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
-    self.defaultOpen.warmup(ctx);
+
+    self.default_open.warmup(ctx);
+
+    self.open.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.defaultOpen.cleanup(ctx);
+    self.default_open.cleanup(ctx);
+
+    self.open.cleanup(ctx);
+
     if !self.contents.is_empty() {
       self.contents.cleanup(ctx);
     }
+
     if !self.header.is_empty() {
       self.header.cleanup(ctx);
     }
     self.text.cleanup(ctx);
+
     self.parents.cleanup(ctx);
 
     Ok(())
@@ -200,22 +255,36 @@ impl LegacyShard for CollapsingHeader {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     with_possible_panic(|| {
       if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-        let default_open: bool = self.defaultOpen.get().try_into()?;
+        let default_open: bool = self.default_open.get().try_into()?;
+        let open = self.open.get();
+        let open = if open.is_none() {
+          None
+        } else {
+          Some(bool::try_from(open)?)
+        };
+
+        // yes the following is unused if not an heading, but the API so so convoluted that this is the best solution for clarity sake
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+          ui.ctx(),
+          egui::Id::new(EguiId::new(self, 0)),
+          default_open,
+        );
+
+        if let Some(open) = open {
+          state.set_open(open);
+        }
 
         if let Some(ret) = if self.header.is_empty() {
-          let text: &str = self.text.get().try_into().or::<&str>(Ok(""))?;
+          let text: &str = self.text.get().try_into()?;
           egui::CollapsingHeader::new(text)
+            .id_source(EguiId::new(self, 0))
             .default_open(default_open)
+            .open(open)
             .show(ui, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
             .body_returned
-        } else if let Some(body_response) =
-          egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            egui::Id::new(EguiId::new(self, 0)),
-            default_open,
-          )
+        } else if let Some(body_response) = state
           .show_header(ui, |ui| {
             util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.header)
           })

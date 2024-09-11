@@ -7,8 +7,10 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
 use shards::shard::LegacyShard;
+use shards::types::common_type;
 use shards::types::Context;
 
+use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
@@ -103,7 +105,9 @@ impl LegacyShard for Tooltip {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 if value.is_none() || value.is_string() => self.text.set_param(value),
+      1 if value.is_none() || value.is_string() || value.is_context_var() => {
+        self.text.set_param(value)
+      }
       1 => self.onhover.set_param(value),
       _ => Err("Invalid parameter index"),
     }
@@ -123,6 +127,16 @@ impl LegacyShard for Tooltip {
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
+
+    if self.text.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::string,
+        name: self.text.get_name(),
+        help: shccstr!("The heading text or widgets for this collapsing header."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
 
     Some(&self.requiring)
   }

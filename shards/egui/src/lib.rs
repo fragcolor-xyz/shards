@@ -60,6 +60,7 @@ pub static INT_VAR_OR_NONE_SLICE: &[Type] =
 pub static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
 pub static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
   common_type::string,
+  common_type::string_var,
   common_type::shard,
   common_type::shards,
   common_type::none,

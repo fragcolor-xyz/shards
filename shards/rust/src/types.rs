@@ -6280,6 +6280,7 @@ pub static FLOAT2_TYPES_SLICE: &[Type] = &[common_type::float2];
 pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::float3];
 pub static BOOL_TYPES_SLICE: &[Type] = &[common_type::bool];
 pub static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
+pub static BOOL_OR_VAR_SLICE: &[Type] = &[common_type::bool, common_type::bool_var];
 pub static BOOL_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::bool, common_type::bool_var, common_type::none];
 pub static STRING_TYPES_SLICE: &[Type] = &[common_type::string];

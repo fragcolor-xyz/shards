@@ -6,7 +6,9 @@ use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
+use shards::types::common_type;
 use shards::types::Context;
+use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
@@ -17,7 +19,7 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
+use shards::types::BOOL_OR_VAR_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
@@ -31,7 +33,7 @@ lazy_static! {
     (
       cstr!("Disable"),
       shccstr!("Whether the contents should be disabled."),
-      BOOL_VAR_OR_NONE_SLICE,
+      BOOL_OR_VAR_SLICE,
     )
       .into(),
   ];
@@ -117,6 +119,16 @@ impl LegacyShard for Disable {
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
+
+    if self.disable.is_variable() {
+      let exp_info = ExposedInfo {
+        exposedType: common_type::bool,
+        name: self.disable.get_name(),
+        help: shccstr!("Whether the contents are disabled."),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
 
     Some(&self.requiring)
   }
