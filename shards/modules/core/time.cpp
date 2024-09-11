@@ -201,20 +201,38 @@ private:
 struct MovingAverage {
   std::optional<gfx::MovingAverage<double>> _ma{};
 
-  static SHOptionalString help() { return SHCCSTR("This shard computes the average of a floating point number over a specified number of frames."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard computes the average of a floating point number over a specified number of frames.");
+  }
   static SHOptionalString inputHelp() { return SHCCSTR("The floating point number to compute the average of."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The average of the floating point number over the specified number of frames."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The average of the floating point number over the specified number of frames.");
+  }
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   PARAM_VAR(_windowSize, "Window", "The sample size in frames", {CoreInfo::IntType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_windowSize))
+  PARAM_PARAMVAR(_clear, "Clear", "Set to true to clear the moving average", {CoreInfo::NoneType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_windowSize), PARAM_IMPL_FOR(_clear))
 
   MovingAverage() { _windowSize = Var(16); }
 
-  void warmup(SHContext *context) { _ma.emplace(_windowSize.payload.intValue); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::FloatType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _ma.emplace(_windowSize.payload.intValue);
+  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (!_clear.isNone() && _clear.get().payload.boolValue) {
+      _ma->reset();
+    }
     _ma->add(input.payload.floatValue);
     return Var(_ma->getAverage());
   }
