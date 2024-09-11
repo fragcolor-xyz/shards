@@ -626,12 +626,14 @@ struct Server {
   std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
   void wireOnStop(const SHWire::OnStopEvent &e) {
-    SHLOG_TRACE("Wire {} stopped", e.wire->name);
+    SHLOG_DEBUG("Wire {} stopped", e.wire->name);
 
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       _pool->release(it->second);
       _wireContainers.erase(it);
+    } else {
+      SHLOG_ERROR("Wire {} not found in _wireContainers", e.wire->name);
     }
   }
 
