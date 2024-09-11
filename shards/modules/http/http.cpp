@@ -626,24 +626,22 @@ struct Server {
   std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
   void wireOnStop(const SHWire::OnStopEvent &e) {
-    SHLOG_DEBUG("Wire {} stopped", e.wire->name);
+    SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       _pool->release(it->second);
       _wireContainers.erase(it);
-    } else {
-      SHLOG_ERROR("Wire {} not found in _wireContainers", e.wire->name);
     }
   }
 
   // "Loop" forever accepting new connections.
   void accept_once(SHContext *context) {
     auto peer = _pool->acquire(_composer, context);
+    _wireContainers[peer->wire.get()] = peer;
 
     // Assume that we recycle containers so the connection might already exist!
     if (!peer->onStopConnection) {
-      _wireContainers[peer->wire.get()] = peer;
       auto mesh = context->main->mesh.lock();
       if (mesh) {
         peer->onStopConnection = mesh->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
@@ -739,9 +737,7 @@ struct Read {
         "This shard should be used in conjunction with the Http.Server shard to handle incoming requests.");
   }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpIgnored;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output is a table containing the HTTP request method, headers, target, and body.");
@@ -843,9 +839,7 @@ struct Response {
     return SHCCSTR("The input string or byte array will be used directly as the body of the response.");
   }
 
-  static SHOptionalString outputHelp() {
-    return DefaultHelpText::OutputHelpPass;
-  }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
@@ -1099,17 +1093,13 @@ struct Chunk {
 };
 
 struct SendFile {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard sends a static file to the client over HTTP.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard sends a static file to the client over HTTP."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input for this shard should be a string representing the path to the file to be sent.");
   }
 
-  static SHOptionalString outputHelp() {
-    return DefaultHelpText::OutputHelpPass;
-  }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1273,13 +1263,9 @@ struct EncodeURI {
     return SHCCSTR("This shard encodes a string into a URI-encoded format making it safe to use in URLs.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The string to be encoded.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to be encoded."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The resulting URI-encoded string.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resulting URI-encoded string."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1293,17 +1279,11 @@ struct EncodeURI {
 struct DecodeURI {
   std::string _output;
 
-  static SHOptionalString help() {
-    return SHCCSTR("This shard decodes a URI-encoded string back into its original format.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard decodes a URI-encoded string back into its original format."); }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The URI-encoded string to be decoded.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The URI-encoded string to be decoded."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The resulting decoded string.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resulting decoded string."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }

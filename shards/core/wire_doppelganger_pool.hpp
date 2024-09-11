@@ -201,8 +201,6 @@ template <typename T> struct WireDoppelgangerPool {
     _avail.emplace(wire);
   }
 
-  size_t available() const { return _avail.size(); }
-
 private:
   WireDoppelgangerPool() = delete;
 

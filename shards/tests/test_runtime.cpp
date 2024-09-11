@@ -12,6 +12,7 @@
 #include <shards/core/serialization.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/wire_dsl.hpp>
+#include "shards/core/wire_doppelganger_pool.hpp"
 
 #undef CHECK
 
@@ -2062,4 +2063,62 @@ TEST_CASE("ExtType") {
 
   bool matched2 = matchTypes(t1, t2, true, true, true);
   CHECK(!matched2);
+}
+
+struct TestWireData {
+  std::shared_ptr<SHWire> wire;
+};
+
+TEST_CASE("WireDoppelgangerPool acquire and release", "[WireDoppelgangerPool]") {
+  // Create a master wire
+  auto masterWire = SHWire::make("MasterWire");
+  shards::WireDoppelgangerPool<TestWireData> pool(SHWire::weakRef(masterWire));
+
+  // Test acquire
+  auto [item1, cached1] = pool.acquire();
+  REQUIRE(item1 != nullptr);
+  REQUIRE_FALSE(cached1);
+
+  auto [item2, cached2] = pool.acquire();
+  REQUIRE(item2 != nullptr);
+  REQUIRE_FALSE(cached2);
+
+  REQUIRE(item1 != item2);
+
+  // Release item1
+  pool.release(item1);
+
+  // Acquire again, should get item1 back
+  auto [item3, cached3] = pool.acquire();
+  REQUIRE(item3 == item1);
+  REQUIRE(cached3);
+
+  // Release all items
+  pool.release(item2);
+  pool.release(item3);
+
+  // Acquire multiple items
+  constexpr size_t numItems = 5;
+  std::vector<TestWireData *> items;
+  for (size_t i = 0; i < numItems; ++i) {
+    auto [item, cached] = pool.acquire();
+    REQUIRE(item != nullptr);
+    items.push_back(item);
+  }
+
+  // Check that all items are unique
+  std::unordered_set<TestWireData *> uniqueItems(items.begin(), items.end());
+  REQUIRE(uniqueItems.size() == numItems);
+
+  // Release all items
+  for (auto item : items) {
+    pool.release(item);
+  }
+
+  // Acquire again, should get all cached items
+  for (size_t i = 0; i < numItems; ++i) {
+    auto [item, cached] = pool.acquire();
+    REQUIRE(cached);
+    REQUIRE(uniqueItems.find(item) != uniqueItems.end());
+  }
 }
