@@ -16,6 +16,7 @@ namespace Network {
 constexpr uint32_t PeerCC = 'netP';
 constexpr uint32_t ServerCC = 'netS';
 
+
 struct Types {
   static inline Type Server{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = ServerCC}}}};
   static inline Type ServerVar = Type::VariableOf(Server);

@@ -22,6 +22,7 @@
 #include <shards/shardwrapper.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
+#include <shards/core/params.hpp>
 #include <shards/core/serialization.hpp>
 #include <shards/utility.hpp>
 #include <optional>
@@ -34,6 +35,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "wait.hpp"
 #include "shards/core/async.hpp"
 #include "log.hpp"
 
@@ -77,15 +79,24 @@ struct KCPPeer;
 struct NetworkBase {
   SHVar *_peerVar = nullptr;
 
-  ParamVar _addr{Var("localhost")};
-  ParamVar _port{Var(9191)};
-
   AnyStorage<NetworkContext> _sharedNetworkContext;
 
   std::optional<udp::socket> _socket;
   std::mutex _socketMutex;
 
   ExposedInfo _required;
+
+  PARAM_PARAMVAR(_addr, "Address", "The local bind address or the remote address.", {CoreInfo::StringOrStringVar});
+  PARAM_PARAMVAR(_port, "Port", "The port to bind if server or to connect to if client.", {CoreInfo::IntOrIntVar});
+  PARAM_PARAMVAR(_waitSignal, "WaitSignal", "The optional wait signal to notify on new network messages.",
+                 {CoreInfo::NoneType, shards::Network::WaitSignal::VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_addr), PARAM_IMPL_FOR(_port), PARAM_IMPL_FOR(_waitSignal));
+
+  NetworkBase() {
+    _addr = Var("0.0.0.0");
+    _port = Var(9000);
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     _required.clear();
     collectRequiredVariables(data.shared, _required, (SHVar &)_addr);
@@ -122,17 +133,11 @@ struct NetworkBase {
       releaseVariable(_peerVar);
       _peerVar = nullptr;
     }
-
-    _addr.cleanup();
-    _port.cleanup();
   }
 
   void warmup(SHContext *context) {
     auto mesh = context->main->mesh.lock();
     _sharedNetworkContext = getOrCreateAnyStorage<NetworkContext>(mesh.get(), "Network.Context");
-
-    _addr.warmup(context);
-    _port.warmup(context);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -367,13 +372,10 @@ struct ServerShard : public NetworkBase {
   SHVar *_serverVar{nullptr};
 
   std::unique_ptr<WireDoppelgangerPool<KCPPeer>> _pool;
-  OwnedVar _handlerMaster{};
 
   std::atomic<bool> _running{false};
 
   float _timeoutSecs = 30.0f;
-
-  ShardsVar _disconnectionHandler{};
 
   boost::lockfree::queue<const SHWire *> _stopWireQueue{16};
 
@@ -381,60 +383,21 @@ struct ServerShard : public NetworkBase {
 
   std::shared_ptr<SHMesh> _mesh;
 
-  static inline Parameters params{
-      {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
-      {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
-      {"Handler",
-       SHCCSTR("The wire to spawn for each new peer that connects, stopping that wire will break the connection."),
-       {CoreInfo::WireOrNone}},
-      {"Timeout",
-       SHCCSTR("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
-       {CoreInfo::FloatType}},
-      {"OnDisconnect",
-       SHCCSTR("The shards to execute when a peer disconnects, The Peer ID will be the input."),
-       {CoreInfo::ShardsOrNone}}};
+  PARAM_VAR(_handlerMaster, "Handler",
+            "The wire to spawn for each new peer that connects, stopping that wire will break the connection.",
+            {CoreInfo::WireOrNone});
+  PARAM_VAR(_timeout, "Timeout",
+            "The timeout in seconds after which a peer will be disconnected if there is no network activity.",
+            {CoreInfo::FloatType});
+  PARAM(ShardsVar, _disconnectionHandler, "OnDisconnect",
+        "The shards to execute when a peer disconnects, The Peer ID will be the input.", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL_DERIVED(NetworkBase, PARAM_IMPL_FOR(_handlerMaster), PARAM_IMPL_FOR(_timeout),
+                     PARAM_IMPL_FOR(_disconnectionHandler));
 
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _addr = value;
-      break;
-    case 1:
-      _port = value;
-      break;
-    case 2:
-      _handlerMaster = value;
-      break;
-    case 3:
-      _timeoutSecs = value.payload.floatValue;
-      break;
-    case 4:
-      _disconnectionHandler = value;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _addr;
-    case 1:
-      return _port;
-    case 2:
-      return _handlerMaster;
-    case 3:
-      return Var(_timeoutSecs);
-    case 4:
-      return _disconnectionHandler;
-    default:
-      return Var::Empty;
-    }
-  }
-
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     if (_handlerMaster.valueType == SHType::Wire)
       _pool.reset(new WireDoppelgangerPool<KCPPeer>(_handlerMaster.payload.wireValue));
 
@@ -508,12 +471,11 @@ struct ServerShard : public NetworkBase {
   }
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
     if (!_pool) {
       throw ComposeError("Peer wires pool not valid!");
     }
-
-    if (_disconnectionHandler)
-      _disconnectionHandler.warmup(context);
 
     _mesh = context->main->mesh.lock();
 
@@ -560,7 +522,7 @@ struct ServerShard : public NetworkBase {
 
     gcWires(context);
 
-    _disconnectionHandler.cleanup(context);
+    PARAM_CLEANUP(context);
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
@@ -598,10 +560,23 @@ struct ServerShard : public NetworkBase {
 
     std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
 
+    WaitSignal* waitSignal = _waitSignal.isNone() ? nullptr : static_cast<WaitSignal *>(_waitSignal->payload.objectValue);
+
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
-                                [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                [this, waitSignal](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   TracyMessageL("Network::async_receive_from (udp)");
                                   if (!ec && bytes_recvd > 0) {
+                                    std::optional<std::scoped_lock<std::mutex>> waitLock;
+                                    if (waitSignal) {
+                                      waitLock.emplace(waitSignal->_mtx);
+                                    }
+                                    DEFER({
+                                      if (waitSignal) {
+                                        waitLock.reset();
+                                        waitSignal->_cond.notify_all();
+                                      }
+                                    });
+
                                     KCPPeer *currentPeer = nullptr;
                                     std::shared_lock<std::shared_mutex> lock(peersMutex);
                                     auto it = _server._end2Peer.find(_sender);
@@ -852,46 +827,12 @@ struct ClientShard : public NetworkBase {
   static SHTypesInfo outputTypes() { return PeerType; }
 
   KCPPeer _peer;
-  ShardsVar _blks{};
   udp::endpoint _server;
 
   SHVar *_peerVarRef{};
 
-  static inline Parameters params{
-      {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
-      {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
-      {"Handler", SHCCSTR("The shards to execute when a packet is received."), {CoreInfo::ShardsOrNone}}};
-
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _addr = value;
-      break;
-    case 1:
-      _port = value;
-      break;
-    case 2:
-      _blks = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _addr;
-    case 1:
-      return _port;
-    case 2:
-      return _blks;
-    default:
-      return Var::Empty;
-    }
-  }
+  PARAM(ShardsVar, _blks, "Handler", "The shards to execute when a packet is received.", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL_DERIVED(NetworkBase, PARAM_IMPL_FOR(_blks));
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     ClientShard *c = (ClientShard *)user;
@@ -932,6 +873,7 @@ struct ClientShard : public NetworkBase {
 
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                  TracyMessageL("Network::async_receive_from (udp)");
                                   if (ec) {
                                     // certain errors are expected, ignore them
                                     if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
@@ -947,6 +889,18 @@ struct ClientShard : public NetworkBase {
                                     }
                                   } else {
                                     if (bytes_recvd > 0) {
+                                      auto waitSignal = static_cast<WaitSignal *>(_waitSignal->payload.objectValue);
+                                      std::optional<std::scoped_lock<std::mutex>> waitLock;
+                                      if (waitSignal) {
+                                        waitLock.emplace(waitSignal->_mtx);
+                                      }
+                                      DEFER({
+                                        if (waitSignal) {
+                                          waitLock.reset();
+                                          waitSignal->_cond.notify_all();
+                                        }
+                                      });
+
                                       std::scoped_lock lock(_peer.mutex);
 
                                       auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
@@ -960,7 +914,10 @@ struct ClientShard : public NetworkBase {
                                 });
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     NetworkBase::compose(data);
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), Types::Peer);
@@ -974,7 +931,7 @@ struct ClientShard : public NetworkBase {
 
   void cleanup(SHContext *context) {
     NetworkBase::cleanup(context);
-    _blks.cleanup(context);
+    PARAM_CLEANUP(context);
 
     if (_peerVarRef) {
       releaseVariable(_peerVarRef);
@@ -984,7 +941,7 @@ struct ClientShard : public NetworkBase {
 
   void warmup(SHContext *context) {
     NetworkBase::warmup(context);
-    _blks.warmup(context);
+    PARAM_WARMUP(context);
     _peerVarRef = referenceVariable(context, "Network.Peer");
   }
 

@@ -68,7 +68,6 @@ void setDefaultServerParam(ParamVar &peerParam) {
 }
 
 struct Broadcast {
-
   static SHOptionalString help() {
     return SHCCSTR("This shard sends the input to all peers connected to the server (created by Network.Server) specified in the Server parameter.");
   }
