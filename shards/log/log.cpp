@@ -86,6 +86,16 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
   return std::nullopt;
 }
 
+static std::optional<spdlog::level::level_enum> getFlushLogLevel() {
+#if SHARDS_LOG_SDL
+  auto val = SDL_getenv("LOG_FLUSH_ON");
+  if (val) {
+    return magic_enum::enum_cast<spdlog::level::level_enum>(val);
+  }
+#endif
+  return std::nullopt;
+}
+
 struct Config {
   // -- Compile time settings --
   static constexpr std::optional<spdlog::level::level_enum> DefaultStdOutLogLevel =
@@ -210,7 +220,7 @@ Sinks &globalSinks() {
 
 void __init(Logger logger) {
   spdlog::register_logger(logger);
-  logger->flush_on(spdlog::level::err);
+  initFlush(logger);
   initLogLevel(logger);
   initLogFormat(logger);
   initSinks(logger);
@@ -234,6 +244,14 @@ void initLogLevel(Logger logger) {
 
   if (auto ll = Config::getDefaultLogLevel()) {
     logger->set_level(ll.value());
+  }
+}
+
+void initFlush(Logger logger) {
+  if (auto flush = getFlushLogLevel()) {
+    logger->flush_on(*flush);
+  } else {
+    logger->flush_on(spdlog::level::err);
   }
 }
 
@@ -291,7 +309,7 @@ static void setupDefaultLogger(const std::string &fileName = "shards.log") {
   }
 
   auto logger = std::make_shared<spdlog::logger>("shards", sinks.distSink);
-  logger->flush_on(spdlog::level::err);
+  initFlush(logger);
   spdlog::set_default_logger(logger);
   initLogLevel(logger);
   initLogFormat(logger);
