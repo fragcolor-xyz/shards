@@ -1051,6 +1051,7 @@
   Get(seq-a)
   Map({
     Log("Map-1")
+    $i | Log("index")
   })
 
   Get(seq-a)
@@ -1072,6 +1073,7 @@
     Reduce({
       Math.Add($0)
       Log
+      {$i | Log("index")}
     })
   })
   Log

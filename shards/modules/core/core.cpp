@@ -500,10 +500,6 @@ struct Profile {
 };
 
 struct XPendBase {
-  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType, CoreInfo::StringVarType, CoreInfo::BytesVarType}};
-};
-
-struct XpendTo : public XPendBase {
   static inline thread_local std::string _scratchStr;
 
   ParamVar _collection{};
@@ -511,6 +507,7 @@ struct XpendTo : public XPendBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType, CoreInfo::StringVarType, CoreInfo::BytesVarType}};
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Collection", SHCCSTR("The collection to add the input to."), xpendTypes));
 
@@ -576,7 +573,7 @@ struct XpendTo : public XPendBase {
   void warmup(SHContext *context) { _collection.warmup(context); }
 };
 
-struct AppendTo : public XpendTo {
+struct AppendTo : public XPendBase {
   static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `:Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to append to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
@@ -621,7 +618,7 @@ struct AppendTo : public XpendTo {
   }
 };
 
-struct PrependTo : public XpendTo {
+struct PrependTo : public XPendBase {
   static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
@@ -668,7 +665,7 @@ struct PrependTo : public XpendTo {
   }
 };
 
-struct Insert : public XpendTo {
+struct Insert : public XPendBase {
   static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
@@ -683,12 +680,12 @@ struct Insert : public XpendTo {
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
   void warmup(SHContext *context) {
-    XpendTo::warmup(context);
+    XPendBase::warmup(context);
     _index.warmup(context);
   }
   void cleanup(SHContext *context) {
     _index.cleanup(context);
-    XpendTo::cleanup(context);
+    XPendBase::cleanup(context);
   }
 
   void setParam(int index, const SHVar &value) {
@@ -697,7 +694,7 @@ struct Insert : public XpendTo {
       _index = value;
       break;
     default:
-      XpendTo::setParam(index - 1, value);
+      XPendBase::setParam(index - 1, value);
     }
   }
 
@@ -706,7 +703,7 @@ struct Insert : public XpendTo {
     case 0:
       return _index;
     default:
-      return XpendTo::getParam(index - 1);
+      return XPendBase::getParam(index - 1);
     }
   }
 
@@ -767,7 +764,8 @@ struct ForEachShard {
 
   static SHOptionalString help() {
     return SHCCSTR("Processes every element or key-value pair of a sequence/table with the shards specified in the `Apply` "
-                   "parameter. Note that this shard is able to use the $0 and $1 internal variables.");
+                   "parameter. Note that this shard is able to use the $0 and $1 internal variables, as well as $i for the "
+                   "current index.");
   }
 
   static SHTypesInfo inputTypes() { return _types; }
@@ -833,6 +831,10 @@ struct ForEachShard {
       }
     }
 
+    // Add $i for index
+    _tmpInfoIndex.exposedType = CoreInfo::IntType;
+    arrayPush(dataCopy.shared, _tmpInfoIndex);
+
     _shards.compose(dataCopy);
 
     if (data.inputType.basicType == SHType::Table) {
@@ -847,6 +849,7 @@ struct ForEachShard {
   void warmup(SHContext *ctx) {
     _tmp0 = referenceVariable(ctx, "$0");
     _tmp1 = referenceVariable(ctx, "$1");
+    _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
 
@@ -872,12 +875,23 @@ struct ForEachShard {
       releaseVariable(_tmp1);
       _tmp1 = nullptr;
     }
+    if (_tmpIndex) {
+      const auto rc = _tmpIndex->refcount;
+      const auto flags = _tmpIndex->flags;
+      memset(_tmpIndex, 0x0, sizeof(SHVar));
+      _tmpIndex->refcount = rc;
+      _tmpIndex->flags = flags;
+      releaseVariable(_tmpIndex);
+      _tmpIndex = nullptr;
+    }
   }
 
   void activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
-    for (auto &item : input) {
+    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+      auto &item = input.payload.seqValue.elements[i];
       assignVariableValue(*_tmp0, item);
+      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -887,15 +901,18 @@ struct ForEachShard {
   void activateTable(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto &table = input.payload.tableValue;
+    uint32_t i = 0;
     for (auto &[k, v] : table) {
       assignVariableValue(*_tmp0, k);
       assignVariableValue(*_tmp1, v);
+      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
       _tableItem[0] = k;
       _tableItem[1] = v;
       const auto item = Var(_tableItem);
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
+      i++;
     }
   }
 
@@ -910,8 +927,10 @@ private:
   ShardsVar _shards{};
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
+  SHVar *_tmpIndex = nullptr; // New member for index reference
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
+  SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
   std::array<SHVar, 2> _tableItem;
 };
 
@@ -919,7 +938,8 @@ struct Map {
   static SHOptionalString help() {
     return SHCCSTR(
         "Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter "
-        "and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables.");
+        "and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables, "
+        "as well as $i for the current index.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence or table to process."); }
@@ -982,6 +1002,10 @@ struct Map {
       arrayPush(dataCopy.shared, _tmpInfo1);
     }
 
+    // Add $i for index
+    _tmpInfoIndex.exposedType = CoreInfo::IntType;
+    arrayPush(dataCopy.shared, _tmpInfoIndex);
+
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
     _outputType = {SHType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
@@ -992,6 +1016,7 @@ struct Map {
     _output.valueType = SHType::Seq; // We need this to be set here to avoid undefined behavior when input is empty!
     _tmp0 = referenceVariable(ctx, "$0");
     _tmp1 = referenceVariable(ctx, "$1");
+    _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
 
@@ -1017,13 +1042,24 @@ struct Map {
       releaseVariable(_tmp1);
       _tmp1 = nullptr;
     }
+    if (_tmpIndex) {
+      const auto rc = _tmpIndex->refcount;
+      const auto flags = _tmpIndex->flags;
+      memset(_tmpIndex, 0x0, sizeof(SHVar));
+      _tmpIndex->refcount = rc;
+      _tmpIndex->flags = flags;
+      releaseVariable(_tmpIndex);
+      _tmpIndex = nullptr;
+    }
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
     arrayResize(_output.payload.seqValue, 0);
-    for (auto &item : input) {
+    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+      auto &item = input.payload.seqValue.elements[i];
       assignVariableValue(*_tmp0, item);
+      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -1038,9 +1074,11 @@ struct Map {
     SHVar output{};
     arrayResize(_output.payload.seqValue, 0);
     const auto &table = input.payload.tableValue;
+    uint32_t i = 0;
     for (auto &[k, v] : table) {
       assignVariableValue(*_tmp0, k);
       assignVariableValue(*_tmp1, v);
+      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
       _tableItem[0] = k;
       _tableItem[1] = v;
       const auto item = Var(_tableItem);
@@ -1050,6 +1088,7 @@ struct Map {
       size_t index = _output.payload.seqValue.len;
       arrayResize(_output.payload.seqValue, index + 1);
       cloneVar(_output.payload.seqValue.elements[index], output);
+      i++;
     }
     return _output;
   }
@@ -1067,15 +1106,18 @@ private:
   Type _outputType{};
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
+  SHVar *_tmpIndex = nullptr; // New member for index reference
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
+  SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
   std::array<SHVar, 2> _tableItem;
 };
 
 struct Reduce {
   static SHOptionalString help() {
-    return SHCCSTR("Reduces a sequence to a single value by applying a an operation(specified in the Apply parameter) to each "
-                   "item of the sequence. Note that this shard is able to use the $0 internal variable.");
+    return SHCCSTR("Reduces a sequence to a single value by applying an operation (specified in the Apply parameter) to each "
+                   "item of the sequence. Note that this shard is able to use the $0 internal variable for the current item "
+                   "and $i for the current index.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence to reduce."); }
@@ -1107,16 +1149,21 @@ struct Reduce {
     dataCopy.shared = {};
     DEFER({ arrayFree(dataCopy.shared); });
     dataCopy.inputType = data.inputType.seqTypes.elements[0];
-    // copy killing any existing $0
+    // copy killing any existing $0 and $i
     for (uint32_t i = data.shared.len; i > 0; i--) {
       auto idx = i - 1;
       auto &item = data.shared.elements[idx];
-      if (strcmp(item.name, "$0") != 0) {
+      if (strcmp(item.name, "$0") != 0 && strcmp(item.name, "$i") != 0) {
         arrayPush(dataCopy.shared, item);
       }
     }
     _tmpInfo.exposedType = dataCopy.inputType;
     arrayPush(dataCopy.shared, _tmpInfo);
+
+    // Add $i for index
+    _tmpInfoIndex.exposedType = CoreInfo::IntType;
+    arrayPush(dataCopy.shared, _tmpInfoIndex);
+
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
     return _outputSingleType;
@@ -1124,6 +1171,7 @@ struct Reduce {
 
   void warmup(SHContext *ctx) {
     _tmp = referenceVariable(ctx, "$0");
+    _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
 
@@ -1131,6 +1179,16 @@ struct Reduce {
     _shards.cleanup(context);
     releaseVariable(_tmp);
     _tmp = nullptr;
+
+    if (_tmpIndex) {
+      const auto rc = _tmpIndex->refcount;
+      const auto flags = _tmpIndex->flags;
+      memset(_tmpIndex, 0x0, sizeof(SHVar));
+      _tmpIndex->refcount = rc;
+      _tmpIndex->flags = flags;
+      releaseVariable(_tmpIndex);
+      _tmpIndex = nullptr;
+    }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1141,6 +1199,9 @@ struct Reduce {
     SHVar output{};
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
+
+      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
+
       // allow short circuit with (Return)
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
@@ -1159,6 +1220,8 @@ private:
   ShardsVar _shards{};
   SHTypeInfo _outputSingleType{};
   SHExposedTypeInfo _tmpInfo{"$0"};
+  SHVar *_tmpIndex = nullptr; // New member for index reference
+  SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
 };
 
 struct Erase : SeqUser {

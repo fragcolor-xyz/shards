@@ -1706,7 +1706,7 @@ struct Get : public VariableBase {
     } else {
       if (_isTable) {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required table."), CoreInfo::AnyTableType));
-        if(_key.isVariable()) {
+        if (_key.isVariable()) {
           _exposedInfo.push_back(ExposedInfo::Variable(_key.variableName(), SHCCSTR("The required key."), CoreInfo::AnyType));
         }
       } else {
@@ -1718,8 +1718,9 @@ struct Get : public VariableBase {
 
   bool defaultTypeCheck(const SHVar &value) {
     if (value.valueType != _defaultValue.valueType) {
-      SHLOG_WARNING(
-          "Get found a variable but it's using the default value because the type found did not match with the default type.");
+      SHLOG_WARNING("Get found a variable but it's using the default value because the type found did not match with the default "
+                    "type, found {} expected {}",
+                    value.valueType, _defaultValue.valueType);
       return false;
     }
 
