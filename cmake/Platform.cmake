@@ -37,11 +37,14 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" AND NOT EMSCRIPT
   set(ARM FALSE)
 else()
   set(X86 FALSE)
+
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm)|(ARM)|(aarch64)|(AARCH64)")
     set(ARM TRUE)
+
     # Check for NEON support
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("-mfpu=neon" COMPILER_SUPPORTS_NEON)
+
     if(COMPILER_SUPPORTS_NEON)
       set(ARM_NEON TRUE)
     else()
@@ -123,7 +126,6 @@ if(EMSCRIPTEN)
     # add_link_options(-gsource-map)
   endif()
 
-
   add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-sDISABLE_EXCEPTION_CATCHING=0>")
   add_link_options("-sDISABLE_EXCEPTION_CATCHING=0")
 
@@ -140,12 +142,12 @@ if(EMSCRIPTEN)
     add_compile_options(-DBOOST_ASIO_DISABLE_THREADS=1)
   endif()
 
-  # TODO: move this to application specific code
-  # if(NODEJS)
-  #   add_link_options(-lnodefs.js)
-  # else()
-  #   add_link_options(-lidbfs.js)
-  # endif()
+# TODO: move this to application specific code
+# if(NODEJS)
+# add_link_options(-lnodefs.js)
+# else()
+# add_link_options(-lidbfs.js)
+# endif()
 else()
   set(HAVE_THREADS ON)
 endif()
@@ -216,16 +218,17 @@ endif()
 if(USE_LTO)
   add_compile_options($<$<COMPILE_LANGUAGE:CXX,C>:-flto>)
   add_link_options($<$<COMPILE_LANGUAGE:CXX,C>:-flto>)
-if(APPLE AND CMAKE_SWIFT_COMPILER)
-  add_compile_options(
-    $<$<COMPILE_LANGUAGE:Swift>:-O>
-    $<$<COMPILE_LANGUAGE:Swift>:-wmo>
-  )
-  add_link_options(
-    $<$<COMPILE_LANGUAGE:Swift>:-O>
-    $<$<COMPILE_LANGUAGE:Swift>:-wmo>
-  )
-endif()
+
+  if(APPLE AND CMAKE_SWIFT_COMPILER)
+    add_compile_options(
+      $<$<COMPILE_LANGUAGE:Swift>:-O>
+      $<$<COMPILE_LANGUAGE:Swift>:-wmo>
+    )
+    add_link_options(
+      $<$<COMPILE_LANGUAGE:Swift>:-O>
+      $<$<COMPILE_LANGUAGE:Swift>:-wmo>
+    )
+  endif()
 endif()
 
 add_compile_options(
@@ -284,7 +287,6 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_link_options(
     $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
@@ -293,8 +295,17 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
+
+  if(USE_ASAN GREATER 1)
+    add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    )
+    add_link_options(
+      $<$<COMPILE_LANGUAGE:CXX,C>:-O1> # O1
+    )
+  endif()
+
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_ASAN>)
 endif()
 
@@ -304,13 +315,19 @@ if(USE_TSAN)
   add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
   add_link_options(
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
   )
+  if(USE_TSAN GREATER 1)
+    add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    )
+    add_link_options(
+      $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    )
+  endif()
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_TSAN>)
 endif()
 
