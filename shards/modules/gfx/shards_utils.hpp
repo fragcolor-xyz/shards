@@ -66,6 +66,8 @@ inline bool applyFeaturesIfChanged(SHContext *context, std::vector<FeaturePtr> &
     auto &elem = input.payload.seqValue.elements[i];
     auto &newFeature = varAsObjectChecked<FeaturePtr>(elem, ShardsTypes::Feature);
     auto &outFeature = outFeatures[i];
+    if (!newFeature)
+      throw std::runtime_error(fmt::format("Feature at index {} is null", i));
     if (outFeature != newFeature) {
       outFeature = newFeature;
       changed = true;
