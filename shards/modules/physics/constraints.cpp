@@ -386,7 +386,7 @@ struct SliderConstraint final : public ConstraintBase {
     _limitsMax = Var(std::numeric_limits<float>::max());
     _limitSpring = SpringSettings::Default;
     _maxFrictionForce = Var(0.0f);
-    _motorSettings = SpringSettings::Default;
+    _motorSettings = MotorSettings::Default;
     _motorSpringSettings = SpringSettings::Default;
   }
 
