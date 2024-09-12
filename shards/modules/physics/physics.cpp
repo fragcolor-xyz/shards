@@ -23,8 +23,11 @@ struct ContextShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return ShardsContext::Type; }
   static SHOptionalString help() {
-    return SHCCSTR("The core of the physics system, needs to be activated at the start of the simulation");
+    return SHCCSTR(
+        "Creates and initializes the core physics context object that will manage the physics simulation environment.");
   }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the physics context object."); }
 
   PARAM_IMPL();
 
@@ -60,11 +63,17 @@ struct ContextShard {
 struct EndContextShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Runs physics simulation, should be run after defining physics bodies"); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard runs the physics simulation. It should be called after defining physics bodies to be included in "
+                   "the simulation.");
+  }
 
-  PARAM_PARAMVAR(_context, "Context", "The context", {ShardsContext::VarType});
-  PARAM_PARAMVAR(_timeStep, "TimeStep", "Time to simulate", {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_maxIterations, "MaxIterations", "Maximum number of iterations to run the simulation in",
+  PARAM_PARAMVAR(_context, "Context", "The physics context object that will manage the simulation", {ShardsContext::VarType});
+  PARAM_PARAMVAR(_timeStep, "TimeStep", "The amount of simulated time that will elapse during each call to this shard.",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_maxIterations, "MaxIterations",
+                 "Maximum number of iterations to run the simulation. A higher number will result in a more accurate simulation, "
+                 "but will take more time to compute.",
                  {CoreInfo::IntType, CoreInfo::IntVarSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_timeStep), PARAM_IMPL_FOR(_maxIterations));
 
@@ -175,10 +184,13 @@ struct CollisionsShard {
 
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return ContactTableSeqType; }
-  static SHOptionalString help() { return SHCCSTR("Outputs the list of contacts of a physics body"); }
+  static SHOptionalString help() {
+    return SHCCSTR("Gets the list of current contacts for the input physics body and runs the shards specified when a new "
+                   "contact is detected or when a contact is removed.");
+  }
 
-  PARAM(ShardsVar, _enter, "Enter", "Triggered when a new contact is removed", {shards::CoreInfo::ShardSeqOrNone});
-  PARAM(ShardsVar, _leave_, "Leave", "Triggered when a new contact is removed", {shards::CoreInfo::ShardSeqOrNone});
+  PARAM(ShardsVar, _enter, "Enter", "The code to execute when a new contact is detected.", {shards::CoreInfo::ShardSeqOrNone});
+  PARAM(ShardsVar, _leave_, "Leave", "The code to execute when a contact is removed.", {shards::CoreInfo::ShardSeqOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_enter), PARAM_IMPL_FOR(_leave_));
 
   struct PeristentBodyCollision {
@@ -275,7 +287,9 @@ struct CollisionsShard {
 struct DumpShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("Logs information about the current state of the physics simulation in the console."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
   PARAM_PARAMVAR(_context, "Context", "The context", {ShardsContext::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context));
@@ -319,7 +333,9 @@ struct DumpShard {
 struct LinearVelocityShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Float3Type; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves the linear velocity of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the linear velocity of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to retrieve the linear velocity from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the linear velocity of the input physics body as a float3."); }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -346,7 +362,9 @@ struct LinearVelocityShard {
 struct AngularVelocityShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Float3Type; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves the angular velocity of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the angular velocity of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to retrieve the angular velocity from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angular velocity of the input physics body as a float3."); }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -373,7 +391,12 @@ struct AngularVelocityShard {
 struct InverseMassShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::FloatType; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves 1.0 / mass of the physics body"); }
+  static SHOptionalString help() {
+    return SHCCSTR("Retrieves the inverse mass of the input physics body. The inverse mass is 1.0 divided by the mass of the "
+                   "input physics body.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to retrieve the inverse mass from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse mass of the input physics body as a float."); }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -398,7 +421,11 @@ struct InverseMassShard {
 struct CenterOfMassShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Float3Type; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves the center of mass of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the position of the center of mass of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to retrieve the position of the center of mass from."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the position of the center of mass of the input physics body as a float3.");
+  }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -425,7 +452,9 @@ struct CenterOfMassShard {
 struct MotionTypeShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return PhysicsMotionEnumInfo::Type; }
-  static SHOptionalString help() { return SHCCSTR("Retrieves the motion type of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the motion type of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to retrieve the motion type from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the motion type of the input physics body."); }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -450,7 +479,11 @@ struct MotionTypeShard {
 struct SetPoses {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
-  static SHOptionalString help() { return SHCCSTR("Override poses of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Overwrites the position and rotation of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the position and rotation of."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the input physics body with the overwritten position and rotation.");
+  }
 
   PARAM_PARAMVAR(_position, "Linear", "The position to set",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
@@ -486,7 +519,11 @@ struct SetPoses {
 struct SetVelocities {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
-  static SHOptionalString help() { return SHCCSTR("Override velocity of the physics body"); }
+  static SHOptionalString help() { return SHCCSTR("Overwrites the linear and angular velocity of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the linear and angular velocity of."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the input physics body with the overwritten linear and angular velocity.");
+  }
 
   PARAM_PARAMVAR(_linearVel, "Linear", "The linear velocity to set",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
@@ -524,7 +561,20 @@ template <int Mode> struct ApplyVelocity {
 
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
-  static SHOptionalString help() { return SHCCSTR("Applies a force to the physics body"); }
+
+  static SHOptionalString help() {
+    if constexpr (Mode == 0) {
+      return SHCCSTR("This shard applies a continuous force linear or angular force to the input physics body.");
+    } else {
+      return SHCCSTR("This shard applies a short instantaneous force to the input physics body.");
+    }
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to apply the linear or angular force to."); }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the input physics body with the applied linear or angular force.");
+  }
 
   PARAM_PARAMVAR(_linearForce, "Linear", "The linear force to apply", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_angularForce, "Angular", "The angular force to apply", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
@@ -566,9 +616,11 @@ struct ApplyForceAt {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
   static SHOptionalString help() { return SHCCSTR("Applies a force to the physics body at a specific location"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to apply the force to."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input physics body with the force applied."); }
 
-  PARAM_PARAMVAR(_force, "Force", "The force to apply", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_position, "Position", "The position to apply the force at",
+  PARAM_PARAMVAR(_force, "Force", "The force to apply represented as a float3 containing the magnitude and direction of the force.", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_position, "Position", "The position to apply the force at represented as a float3",
                  {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_force), PARAM_IMPL_FOR(_position));
 
