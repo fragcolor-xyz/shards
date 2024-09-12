@@ -17,7 +17,6 @@ struct CollapsingHeader {
   header: ShardsVar,
   contents: ShardsVar,
   default_open: ParamVar,
-  open: ParamVar,
   exposing: ExposedTypes,
 }
 

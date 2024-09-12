@@ -24,7 +24,6 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_OR_VAR_SLICE;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
@@ -47,12 +46,6 @@ lazy_static! {
       BOOL_OR_VAR_SLICE,
     )
       .into(),
-    (
-      cstr!("Open"),
-      shccstr!("A variable to control the open state of the collapsing header."),
-      BOOL_VAR_OR_NONE_SLICE,
-    )
-      .into(),
   ];
 }
 
@@ -67,7 +60,6 @@ impl Default for CollapsingHeader {
       header: ShardsVar::default(),
       contents: ShardsVar::default(),
       default_open: ParamVar::new(false.into()),
-      open: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -128,7 +120,6 @@ impl LegacyShard for CollapsingHeader {
       0 => self.header.set_param(value),
       1 => self.contents.set_param(value),
       2 => self.default_open.set_param(value),
-      3 => self.open.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -139,7 +130,6 @@ impl LegacyShard for CollapsingHeader {
       0 => self.header.get_param(),
       1 => self.contents.get_param(),
       2 => self.default_open.get_param(),
-      3 => self.open.get_param(),
       _ => Var::default(),
     }
   }
@@ -165,16 +155,6 @@ impl LegacyShard for CollapsingHeader {
         exposedType: common_type::string,
         name: self.text.get_name(),
         help: shccstr!("The heading text or widgets for this collapsing header."),
-        ..ExposedInfo::default()
-      };
-      self.requiring.push(exp_info);
-    }
-
-    if self.open.is_variable() {
-      let exp_info = ExposedInfo {
-        exposedType: common_type::bool,
-        name: self.open.get_name(),
-        help: shccstr!("A variable to control the open state of the collapsing header."),
         ..ExposedInfo::default()
       };
       self.requiring.push(exp_info);
@@ -228,15 +208,11 @@ impl LegacyShard for CollapsingHeader {
 
     self.default_open.warmup(ctx);
 
-    self.open.warmup(ctx);
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.default_open.cleanup(ctx);
-
-    self.open.cleanup(ctx);
 
     if !self.contents.is_empty() {
       self.contents.cleanup(ctx);
@@ -256,30 +232,19 @@ impl LegacyShard for CollapsingHeader {
     with_possible_panic(|| {
       if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
         let default_open: bool = self.default_open.get().try_into()?;
-        let open = self.open.get();
-        let open = if open.is_none() {
-          None
-        } else {
-          Some(bool::try_from(open)?)
-        };
 
         // yes the following is unused if not an heading, but the API so so convoluted that this is the best solution for clarity sake
-        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+        let state = egui::collapsing_header::CollapsingState::load_with_default_open(
           ui.ctx(),
           egui::Id::new(EguiId::new(self, 0)),
           default_open,
         );
-
-        if let Some(open) = open {
-          state.set_open(open);
-        }
 
         if let Some(ret) = if self.header.is_empty() {
           let text: &str = self.text.get().try_into()?;
           egui::CollapsingHeader::new(text)
             .id_source(EguiId::new(self, 0))
             .default_open(default_open)
-            .open(open)
             .show(ui, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
