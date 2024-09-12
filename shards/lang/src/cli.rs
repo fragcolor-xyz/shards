@@ -180,7 +180,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     shlog_error!("Error: {}", e);
     1
   } else {
-    0
+    0 
   }
 }
 
@@ -193,14 +193,18 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     std::io::read_to_string(std::io::stdin()).unwrap()
   } else {
     fs::read_to_string(file)?
-  };
+  }; 
+
+  let newline_style = formatter::detect_newline_style(&in_str);
 
   // add new line at the end of the file to be able to parse it correctly
-  in_str.push('\n');
+  newline_style.push_to_str(&mut in_str);;
+  
 
   if inline {
     let mut buf = std::io::BufWriter::new(Vec::new());
     let mut v = formatter::FormatterVisitor::new(&mut buf, &in_str);
+    v.newline_style = newline_style;
 
     crate::rule_visitor::process(&in_str, &mut v)?;
 
@@ -213,6 +217,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     };
 
     let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
+    v.newline_style = newline_style;
     crate::rule_visitor::process(&in_str, &mut v)?;
   }
 
