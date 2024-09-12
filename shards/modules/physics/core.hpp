@@ -220,38 +220,44 @@ template <MirrorableType T, AssociatedData TData> struct PhysicsMirror {
     // Add persistent bodies and remove inactive bodies
     for (auto it = map.begin(); it != map.end(); ++it) {
       auto &data = it->second;
-      if (data.lastTouched != frameCounter) {
-        auto &node = data.node;
-        if (node->persistence && node->enabled) {
-          active.push_back(&data);
-        } else {
-          if (data.getPhysicsObjectAdded()) {
-            mirrorInterface.removeFromPhysics(data);
-          }
-        }
-      }
+      maybeActivate(mirrorInterface, data, frameCounter);
     }
 
     // Create new bodies and update body params
     for (auto &dataPtr : active) {
       TData &data = *dataPtr;
+      updateActive(mirrorInterface, data);
+    }
+  }
 
-      if constexpr (MirrorInterface_IsValid<TInterface, TData>) {
-        bool valid = mirrorInterface.isValid(data);
-        if (valid) {
-          if (!data.getPhysicsObject()) { // Create new physics object
-            mirrorInterface.createPhysicsObject(data);
-            shassert(data.getPhysicsObject());
-            pobjMap.emplace(data.getPhysicsObject(), &data);
-          }
-          if (!data.getPhysicsObjectAdded()) {
-            mirrorInterface.addToPhysics(data);
-          }
-          mirrorInterface.maybeUpdateParams(data);
-        } else if (!valid && data.getPhysicsObjectAdded()) {
+  template <MirrorInterface_Base<TData> TInterface>
+  void updateNodeImmediate(TInterface &mirrorInterface, TData &data, uint64_t frameCounter) {
+    if (maybeActivate(mirrorInterface, data, frameCounter)) {
+      updateActive(mirrorInterface, data);
+    }
+  }
+
+private:
+  template <MirrorInterface_Base<TData> TInterface>
+  bool maybeActivate(TInterface &mirrorInterface, TData &data, uint64_t frameCounter) {
+    if (data.lastTouched != frameCounter) {
+      auto &node = data.node;
+      if (node->persistence && node->enabled) {
+        active.push_back(&data);
+        return true;
+      } else {
+        if (data.getPhysicsObjectAdded()) {
           mirrorInterface.removeFromPhysics(data);
         }
-      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+  template <MirrorInterface_Base<TData> TInterface> void updateActive(TInterface &mirrorInterface, TData &data) {
+    if constexpr (MirrorInterface_IsValid<TInterface, TData>) {
+      bool valid = mirrorInterface.isValid(data);
+      if (valid) {
         if (!data.getPhysicsObject()) { // Create new physics object
           mirrorInterface.createPhysicsObject(data);
           shassert(data.getPhysicsObject());
@@ -261,7 +267,19 @@ template <MirrorableType T, AssociatedData TData> struct PhysicsMirror {
           mirrorInterface.addToPhysics(data);
         }
         mirrorInterface.maybeUpdateParams(data);
+      } else if (!valid && data.getPhysicsObjectAdded()) {
+        mirrorInterface.removeFromPhysics(data);
       }
+    } else {
+      if (!data.getPhysicsObject()) { // Create new physics object
+        mirrorInterface.createPhysicsObject(data);
+        shassert(data.getPhysicsObject());
+        pobjMap.emplace(data.getPhysicsObject(), &data);
+      }
+      if (!data.getPhysicsObjectAdded()) {
+        mirrorInterface.addToPhysics(data);
+      }
+      mirrorInterface.maybeUpdateParams(data);
     }
   }
 };
@@ -299,8 +317,8 @@ struct IBodyMirror {
       auto &inParams = node->params.regular;
       auto bpl = inParams.motionType == JPH::EMotionType::Static ? BroadPhaseLayers::NON_MOVING.GetValue()
                                                                  : BroadPhaseLayers::MOVING.GetValue();
-      JPH::BodyCreationSettings settings(std::get<0>(node->shape).GetPtr(), JPH::RVec3Arg(node->location),
-                                         JPH::QuatArg(node->rotation), inParams.motionType, bpl);
+      JPH::BodyCreationSettings settings(std::get<0>(node->shape).GetPtr(), toJPHVec3(node->location), toJPHQuat(node->rotation),
+                                         inParams.motionType, bpl);
       settings.mFriction = inParams.friction;
       settings.mRestitution = inParams.restitution;
       settings.mLinearDamping = inParams.linearDamping;
@@ -326,8 +344,8 @@ struct IBodyMirror {
       SPDLOG_LOGGER_TRACE(logger, "Created body for node {}", (void *)&data);
     } else {
       auto &inParams = node->params.soft;
-      JPH::SoftBodyCreationSettings settings(std::get<1>(node->shape).GetPtr(), JPH::RVec3Arg(node->location),
-                                             JPH::QuatArg(node->rotation), BroadPhaseLayers::MOVING.GetValue());
+      JPH::SoftBodyCreationSettings settings(std::get<1>(node->shape).GetPtr(), toJPHVec3(node->location),
+                                             toJPHQuat(node->rotation), BroadPhaseLayers::MOVING.GetValue());
       settings.mFriction = inParams.friction;
       settings.mRestitution = inParams.restitution;
       settings.mLinearDamping = inParams.linearDamping;
@@ -510,6 +528,11 @@ public:
     return node;
   }
 
+  void initializeBodyImmediate(const std::shared_ptr<BodyNode> &node) {
+    IBodyMirror i0{&physicsSystem, physicsSystem.GetBodyInterface()};
+    bodyMirror.updateNodeImmediate(i0, bodyMirror.map[node->uid], frameCounter());
+  }
+
   template <typename TParams> std::shared_ptr<ConstraintNode> createNewConstraintNode() {
     auto node = ConstraintNode::create<TParams>();
     constraintMirror.addNode(node);
@@ -558,8 +581,10 @@ public:
       auto &src = node->node;
       auto &body = node->body;
 
-      src->location = body->GetPosition();
-      src->rotation = body->GetRotation();
+      src->prevLocation = src->location;
+      src->prevRotation = src->rotation;
+      src->location.payload = toLinalg(body->GetPosition());
+      src->rotation.payload = toLinalg(body->GetRotation());
       node->events.reset();
       if (src->neededCollisionEvents > 0) {
         auto it = eventMap.find(node->body);

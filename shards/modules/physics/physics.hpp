@@ -6,6 +6,7 @@
 #include <shards/core/exposed_type_utils.hpp>
 #include <shards/core/hasherxxh3.hpp>
 #include <shards/core/async.hpp>
+#include <shards/linalg_shim.hpp>
 #include <shards/common_types.hpp>
 #include <shards/log/log.hpp>
 #include <Jolt/Jolt.h>
@@ -78,10 +79,17 @@ inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate
 [[nodiscard]] inline float3 toLinalg(const JPH::Vec3 &f3) noexcept { return float3{f3.GetX(), f3.GetY(), f3.GetZ()}; }
 [[nodiscard]] inline float4 toLinalg(const JPH::Float4 &f4) noexcept { return float4{f4.x, f4.y, f4.z, f4.w}; }
 [[nodiscard]] inline float4 toLinalg(const JPH::Vec4 &f4) noexcept { return float4{f4.GetX(), f4.GetY(), f4.GetZ(), f4.GetW()}; }
+[[nodiscard]] inline float4 toLinalg(const JPH::Quat &f4) noexcept { return toLinalg(f4.mValue); }
 [[nodiscard]] inline float4 toLinalgLinearColor(const JPH::Color &f4) noexcept { return toLinalg(f4.ToVec4()); }
 
-DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF, "Specifies the allowed degrees of freedom for physics objects. Controls which axes an object can move or rotate around in the physics simulation.", 'phDf');
-DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion, "Defines the motion type of physics objects. Determines how objects interact with forces and constraints in the physics simulation.", 'phMo');
+DECL_ENUM_INFO(JPH::EAllowedDOFs, PhysicsDOF,
+               "Specifies the allowed degrees of freedom for physics objects. Controls which axes an object can move or rotate "
+               "around in the physics simulation.",
+               'phDf');
+DECL_ENUM_INFO(JPH::EMotionType, PhysicsMotion,
+               "Defines the motion type of physics objects. Determines how objects interact with forces and constraints in the "
+               "physics simulation.",
+               'phMo');
 
 struct BodyNode {
   static std::atomic_uint64_t UidCounter;
@@ -98,8 +106,10 @@ struct BodyNode {
   uint16_t neededCollisionEvents{};
 
   // Transform parameters
-  JPH::Vec3 location;
-  JPH::Quat rotation;
+  padded::Float3 prevLocation;
+  padded::Float3 location;
+  padded::Float4 prevRotation;
+  padded::Float4 rotation;
   struct BodyAssociatedData *data;
 
   OwnedVar tag;

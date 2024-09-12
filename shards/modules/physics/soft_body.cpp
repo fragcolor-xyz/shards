@@ -181,8 +181,16 @@ struct SoftBodyShard {
     outParams.groupMembership = cm.x;
     outParams.collisionMask = cm.y;
 
-    node->location = toJPHVec3(_location.get().payload.float3Value);
-    node->rotation = toJPHQuat(_rotation.get().payload.float4Value);
+    auto &shardsShape = varAsObjectChecked<SHSoftBodyShape>(_shape.get(), SHSoftBodyShape::Type);
+    shassert(shardsShape.settings && "Invalid shape");
+    node->shape = shardsShape.settings;
+    node->shapeUid = shardsShape.uid;
+
+    memcpy(&node->location.payload, &_location.get().payload, sizeof(SHVarPayload));
+    memcpy(&node->rotation.payload, &_rotation.get().payload, sizeof(SHVarPayload));
+    node->prevLocation = node->location;
+    node->prevRotation = node->rotation;
+
     node->updateParamHash0();
     node->updateParamHash1();
   }
@@ -238,8 +246,23 @@ struct SoftBodyShard {
     instNode->shape = shardsShape.settings;
     instNode->shapeUid = shardsShape.uid;
 
-    assignVariableValue(_location.get(), toVar(instNode->location));
-    assignVariableValue(_rotation.get(), toVar(instNode->rotation));
+    bool updatePose{};
+    if (memcmp(&instNode->prevLocation.payload, &_location.get().payload.float3Value, sizeof(SHFloat3)) != 0) {
+      memcpy(&instNode->location.payload, &_location.get().payload, sizeof(SHVarPayload));
+      updatePose = true;
+    }
+    if (memcmp(&instNode->prevRotation.payload, &_rotation.get().payload.float4Value, sizeof(SHFloat4)) != 0) {
+      memcpy(&instNode->rotation.payload, &_rotation.get().payload, sizeof(SHVarPayload));
+      updatePose = true;
+    }
+
+    if (updatePose) {
+      instNode->data->getPhysicsObject()->SetPositionAndRotationInternal(toJPHVec3(instNode->location),
+                                                                         toJPHQuat(instNode->rotation));
+    } else {
+      assignVariableValue(_location.get(), toVar(instNode->location));
+      assignVariableValue(_rotation.get(), toVar(instNode->rotation));
+    }
 
     return _instance.var;
   }
@@ -405,7 +428,7 @@ struct SoftBodyShape {
     attrib.mCompliance = _compliance.get().payload.floatValue;
     attrib.mShearCompliance = _shearCompliance.get().payload.floatValue;
     attrib.mBendCompliance = _bendCompliance.get().payload.floatValue;
-    
+
     settings->CreateConstraints(&attrib, 1, JPH::SoftBodySharedSettings::EBendType::None, JPH::DegreesToRadians(8.0f));
     settings->Optimize();
     shape.settings = settings;

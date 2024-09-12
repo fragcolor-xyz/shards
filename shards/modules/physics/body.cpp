@@ -220,17 +220,26 @@ struct BodyShard {
     outParams.motionType = (JPH::EMotionType)_motionType.get().payload.enumValue;
 
     outParams.mass = _mass.get().payload.floatValue;
-  
+
     auto cm = toUInt2(_collisionGroup.get());
     outParams.groupMembership = cm.x;
     outParams.collisionMask = cm.y;
 
     outParams.sensor = _sensor->payload.boolValue;
 
-    node->location = toJPHVec3(_location.get().payload.float3Value);
-    node->rotation = toJPHQuat(_rotation.get().payload.float4Value);
+    memcpy(&node->location.payload, &_location.get().payload, sizeof(SHVarPayload));
+    memcpy(&node->rotation.payload, &_rotation.get().payload, sizeof(SHVarPayload));
+    node->prevLocation = node->location;
+    node->prevRotation = node->rotation;
     node->updateParamHash0();
     node->updateParamHash1();
+
+    auto &shardsShape = varAsObjectChecked<SHShape>(_shape.get(), SHShape::Type);
+    node->shape = shardsShape.shape;
+    node->shapeUid = shardsShape.uid;
+
+    _requiredContext->core->touchNode(_instance->node);
+    _requiredContext->core->initializeBodyImmediate(_instance->node);
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -265,6 +274,7 @@ struct BodyShard {
       }
       instNode->updateParamHash0();
     }
+
     if ((_dynamicParameterMask & 0b11111110000) != 0) {
       if (_dynamicParameterMask & PTM_MaxLinearVelocity) {
         outParams.maxLinearVelocity = _maxLinearVelocity.get().payload.floatValue;
@@ -296,8 +306,27 @@ struct BodyShard {
     instNode->shape = shardsShape.shape;
     instNode->shapeUid = shardsShape.uid;
 
-    assignVariableValue(_location.get(), toVar(instNode->location));
-    assignVariableValue(_rotation.get(), toVar(instNode->rotation));
+    bool updatePose{};
+    if (instNode->data->getPhysicsObject()) {
+      if (memcmp(&instNode->prevLocation.payload, &_location.get().payload, sizeof(SHFloat3)) != 0) {
+        memcpy(&instNode->location.payload, &_location.get().payload, sizeof(SHVarPayload));
+        updatePose = true;
+      }
+      if (memcmp(&instNode->prevRotation.payload, &_rotation.get().payload, sizeof(SHFloat4)) != 0) {
+        memcpy(&instNode->rotation.payload, &_rotation.get().payload, sizeof(SHVarPayload));
+        updatePose = true;
+      }
+      if (updatePose) {
+        auto &bi = _requiredContext->core->getPhysicsSystem().GetBodyInterface();
+        bi.SetPositionAndRotation(instNode->data->body->GetID(), toJPHVec3(instNode->location), toJPHQuat(instNode->rotation),
+                                  JPH::EActivation::Activate);
+      }
+    }
+
+    if (!updatePose) {
+      assignVariableValue(_location.get(), toVar(instNode->location));
+      assignVariableValue(_rotation.get(), toVar(instNode->rotation));
+    }
 
     return _instance.var;
   }
