@@ -9,6 +9,37 @@ use pest::iterators::Pair;
 
 pub type Rule = crate::ast::Rule;
 
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum NewlineStyle {
+  LF,
+  CRLF,
+}
+
+impl NewlineStyle {
+  pub fn from_index(idx: usize) -> Self {
+    match idx {
+      0 => Self::LF,
+      1 => Self::CRLF,
+      _ => Self::LF,
+    }
+  }
+  pub fn to_str(&self) -> &str {
+    match self {
+      Self::LF => "\n",
+      Self::CRLF => "\r\n",
+    }
+  }
+  pub fn push_to_str(&self, s: &mut String) {
+    match self {
+      Self::LF => s.push('\n'),
+      Self::CRLF => {
+        s.push('\r');
+        s.push('\n');
+      }
+    }
+  }
+}
+
 // Identifies the last written value type
 #[derive(PartialEq, Debug)]
 enum FormatterTop {
@@ -56,6 +87,7 @@ pub struct FormatterVisitor<'a> {
   depth: usize,
   last_char: usize,
   context_stack: Vec<Context>,
+  pub newline_style: NewlineStyle,
 
   input: String,
 }
@@ -87,6 +119,7 @@ impl<'a> FormatterVisitor<'a> {
       input: input.into(),
       last_char: 0,
       context_stack: vec![Context::Unknown],
+      newline_style: NewlineStyle::LF,
     }
   }
 
@@ -142,7 +175,10 @@ impl<'a> FormatterVisitor<'a> {
         comment_start = Some(i + from + 1);
       } else if c == '\n' {
         if let Some(start) = comment_start {
-          let comment = &self.input[start..i+from];
+          let mut comment = &self.input[start..i + from];
+          if comment.ends_with('\r') {
+            comment = &comment[..comment.len() - 1];
+          }
           let comment_str = comment.to_string();
           us.lines.push(UserLine::Comment(comment_str));
           comment_start = None;
@@ -211,7 +247,8 @@ impl<'a> FormatterVisitor<'a> {
   }
 
   fn newline(&mut self) {
-    self.write_raw("\n");
+    let nls = self.newline_style;
+    self.write_raw(nls.to_str());
     self.line_length = 0;
     self.line_counter += 1;
     for _ in 0..self.get_indent_opts() {
@@ -677,27 +714,64 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
 
     // Make sure to append final newline
     if !has_final_newline {
-      self.write_raw("\n");
+      let nls = self.newline_style;
+      self.write_raw(nls.to_str());
     }
   }
+}
+
+pub fn detect_newline_style(input: &str) -> NewlineStyle {
+  // Find at least a few lines to determine newline style
+  let mut weights: [u32; 2] = [0, 0];
+  let mut total = 0;
+  let mut chars = input.chars().peekable();
+
+  while let Some(c) = chars.next() {
+    if c == '\n' {
+      weights[0] += 1;
+      total += 1;
+    } else if c == '\r' {
+      if chars.peek() == Some(&'\n') {
+        weights[1] += 1;
+        chars.next(); // consume the '\n'
+        total += 1;
+      } else {
+        weights[0] += 1; // treat lone '\r' as LF
+        total += 1;
+      }
+    }
+
+    if total >= 3 {
+      break;
+    }
+  }
+
+  // Sort weights
+  let mut weight_idx = [0, 1];
+  weight_idx.sort_by_key(|&i| weights[i]);
+  NewlineStyle::from_index(weight_idx[1])
 }
 
 pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
   let mut buf = std::io::BufWriter::new(Vec::new());
 
+  let newline_style = detect_newline_style(input);
+  // eprintln!("newline_style: {:?}", newline_style);
+
   // Fix ending newline
   let mut in_str_buf: String;
-  let input_ref = if input.ends_with('\n') {
+  let input_ref = if input.ends_with('\n') || input.ends_with('\r') {
     input
   } else {
     in_str_buf = String::new();
     in_str_buf.reserve(input.len() + 4);
     in_str_buf.push_str(input);
-    in_str_buf.push('\n');
+    newline_style.push_to_str(&mut in_str_buf);
     &in_str_buf
   };
 
   let mut v = FormatterVisitor::new(&mut buf, &input_ref);
+  v.newline_style = newline_style;
   crate::rule_visitor::process(&input_ref, &mut v)?;
 
   Ok(String::from_utf8(buf.into_inner()?)?)
@@ -709,24 +783,29 @@ fn strequal_ignore_line_endings(a: &str, b: &str) -> bool {
   a == b
 }
 
+fn strequal(a: &str, b: &str) -> bool {
+  a == b
+}
+
 fn format_file_validate(input_path: &Path) -> Result<(), crate::error::Error> {
-  let input_str = fs::read_to_string(input_path)?;
+  let input_str = String::from_utf8(fs::read(input_path)?)?;
   let expected = input_path.with_extension("expected.shs");
 
   if let Ok(f) = File::open(expected.clone()) {
     eprintln!("Validating test {:?} against {:?}", input_path, expected);
 
     let mut f = f;
-    let mut expected_str = String::new();
-    f.read_to_string(&mut expected_str)?;
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf)?;
+    let mut expected_str = String::from_utf8(buf)?;
 
     let formatted = format_str(&input_str)?;
-    if !strequal_ignore_line_endings(&formatted, &expected_str) {
+    if !strequal(&formatted, &expected_str) {
       return Err(format!("Test output does not match, was: {}", formatted).into());
     }
 
     let reformatted = format_str(&formatted)?;
-    if !strequal_ignore_line_endings(&reformatted, &formatted) {
+    if !strequal(&reformatted, &formatted) {
       return Err(
         format!(
           "Formatted output changes after formatting twice: {}",

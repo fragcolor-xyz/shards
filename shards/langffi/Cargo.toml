@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 crate-type = ["rlib", "staticlib"]
 
-[dependencies]
+[dependencies] 
 shards = { path = "../rust" }
 shards-lang = { path = "../lang" }
 flexbuffers = "2.0.0"

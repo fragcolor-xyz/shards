@@ -1,0 +1,4 @@
+# Don't let git touch line endings here
+*.shs text eol=crlf
+test14-lf.shs text eol=lf
+test14-lf.expected.shs text eol=lf
