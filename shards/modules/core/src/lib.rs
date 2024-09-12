@@ -6,6 +6,7 @@ extern crate lazy_static;
 
 pub mod casting;
 pub mod date;
+pub mod env;
 pub mod uuid;
 
 #[cfg(feature = "ffi")]
@@ -20,6 +21,7 @@ pub extern "C" fn shardsRegister_core_rust(core: *mut shards::shardsc::SHCore) {
   date::register_shards();
   casting::register_shards();
   uuid::register_shards();
+  env::register_shards();
 
   #[cfg(feature = "ffi")]
   {
