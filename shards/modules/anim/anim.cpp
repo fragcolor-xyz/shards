@@ -42,20 +42,27 @@ static float getAnimationDuration(const SHVar &animation) {
 }
 
 struct TimerShard {
-  static SHOptionalString help() { return SHCCSTR(R"(Keeps track of an animation timer, based on the given animation)"); }
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard sets a duration (either taken form the animation object in the Animation Parameter or specified in the "
+        "Duration parameter) and executes the shards specified in the Action parameter whenever that duration is reached.");
+  }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the current time of the animation timer"); }
 
-  PARAM_PARAMVAR(_animation, "Animation", "The to take the duration from",
+  PARAM_PARAMVAR(_animation, "Animation", "The Animation object to take the duration from.",
                  {ShardsTypes::AnimationOrAnimationVar, {CoreInfo::NoneType}});
-  PARAM_PARAMVAR(_duration, "Duration", "The duration of the timer, the timer will loop or stop after reaching this value",
+  PARAM_PARAMVAR(_duration, "Duration", "The duration of the timer, the timer will loop or stop after reaching this value.",
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_looped, "Looped", "Loop the timer after reaching the target time",
+  PARAM_PARAMVAR(_looped, "Looped", "If set to true, the timer will loop after reaching the target time",
                  {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_rate, "Rate", "The playback rate", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_offset, "Offset", "Timer offset", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_variable, "Variable", "The variable to store the result in", {CoreInfo::NoneType, CoreInfo::FloatVarType});
-  PARAM(ShardsVar, _action, "Action", "The action to evaluate after the given Duration",
+  PARAM_PARAMVAR(_variable, "Variable", "The variable to store the current time of the timer in.",
+                 {CoreInfo::NoneType, CoreInfo::FloatVarType});
+  PARAM(ShardsVar, _action, "Action", "The shards to execute whenever the shard reached the specified duration.",
         {CoreInfo::Shards, {CoreInfo::NoneType}});
   PARAM_IMPL(PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
              PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_variable));
@@ -173,17 +180,17 @@ struct TimerShard {
 };
 
 struct PlayShard {
-  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
+  static SHOptionalString help() { return SHCCSTR("Plays the animation of the glTF model specified in the Animation parameter."); }
 
   static inline shards::Types OutputTypes{{Type::SeqOf(ShardsTypes::ValueTable)}};
 
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return SHTypesInfo(OutputTypes); }
 
-  static SHOptionalString inputHelp() { return SHCCSTR(R"(The position in the animation to play)"); }
-  static SHOptionalString outputHelp() { return SHCCSTR(R"(The interpolated frame data)"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The current time of the animation (in seconds) to play"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The interpolated data at each frame of the animation"); }
 
-  PARAM_PARAMVAR(_animation, "Animation", "The animation to play", ShardsTypes::AnimationOrAnimationVar);
+  PARAM_PARAMVAR(_animation, "Animation", "The animation to play.", ShardsTypes::AnimationOrAnimationVar);
   PARAM_IMPL(PARAM_IMPL_FOR(_animation));
 
   SeqVar _output;
@@ -270,9 +277,11 @@ struct PlayShard {
 };
 
 struct DurationShard {
-  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
+  static SHOptionalString help() { return SHCCSTR("Outputs the total duration of the animation in seconds."); }
   static SHTypesInfo inputTypes() { return ShardsTypes::Animation; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The animation to get the duration of."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The total length of the animation in seconds."); }
 
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -290,9 +299,11 @@ struct DurationShard {
 struct InterpolateShard {
   static inline shards::Types FloatTypes{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type};
 
-  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
+  static SHOptionalString help() { return SHCCSTR("Whenever the input value is changed, this shard will interpolate between the old value and the new value over the duration of the animation and output the result."); }
   static SHTypesInfo inputTypes() { return FloatTypes; }
   static SHTypesInfo outputTypes() { return FloatTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to interpolate."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The interpolated value."); }
 
   DeltaTimer _deltaTimer;
   std::optional<Var> _lastValue;

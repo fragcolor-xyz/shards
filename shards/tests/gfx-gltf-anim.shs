@@ -28,6 +28,7 @@
 
             Animation.Timer(animation Offset: 1.0) |
             Animation.Play(animation) |
+            Log("animation Play result")
             {Take(1)}
            }) | GFX.Draw(queue)
 } Looped: true)
