@@ -81,10 +81,13 @@
       0 >= processed
       Sequence(tensors Type: @type([Tensor]))
       Repeat({
+        ; compute the end index for the current chunk
+        processed | Add(@ml/embeddings/max-tokens) | Min(num-tokens) = slice-end
+        slice-end | WhenNot(IsMore(processed) Return) ; early exit if we've processed all tokens here
         tokens | Tensor.Slice(
           Dim: 1
           Start: processed
-          End: (processed | Add(@ml/embeddings/max-tokens))
+          End: slice-end
         ) = tokens-chunk
         ; notice we advance by chunk-size, not max-tokens, to leave an overlap
         processed | Add(@ml/embeddings/chunk-size) > processed
