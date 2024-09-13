@@ -296,7 +296,7 @@ spdlog::level::level_enum getSinkLevel() { return globalSinks().distSink->level(
 
 void setSinkLevel(spdlog::level::level_enum level) { globalSinks().distSink->set_level(level); }
 
-static void setupDefaultLogger(const std::string &fileName = "shards.log") {
+static void setupDefaultLogger(const std::string &fileName) {
   auto &sinks = globalSinks();
 
   {

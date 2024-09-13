@@ -1086,9 +1086,12 @@ struct WireNotFound : public ActivationError {
 template <class T> struct BaseLoader : public BaseRunner {
   SHTypeInfo _inputTypeCopy{};
   IterableExposedInfo _sharedCopy;
+  bool _onWorkerThread = false;
 
   SHTypeInfo compose(const SHInstanceData &data) {
     WireBase::compose(data); // notice we skip BaseRunner::compose
+
+    _onWorkerThread = data.onWorkerThread;
 
     _inputTypeCopy = data.inputType;
     IterableExposedInfo sharedStb(data.shared);
@@ -1243,6 +1246,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
       return input;
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
+      if(!_onWorkerThread) {
       // Compose and hash in a thread
       await(
           context,
@@ -1251,6 +1255,10 @@ struct WireRunner : public BaseLoader<WireRunner> {
             wire->composedHash = shards::hash(wireVar);
           },
           [] {});
+      } else {
+        deferredCompose(context);
+        wire->composedHash = shards::hash(wireVar);
+      }
 
       _wireHash = wire->composedHash;
       _wirePtr = wire.get();

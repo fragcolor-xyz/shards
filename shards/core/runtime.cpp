@@ -286,16 +286,7 @@ Shard *createShard(std::string_view name) {
   return shard;
 }
 
-inline void setupRegisterLogging() {
-#if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_TRACE
-  logging::setupDefaultLoggerConditional();
-#endif
-}
-
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName) {
-  // setupRegisterLogging();
-  // SHLOG_TRACE("registerBlock({})", name);
-
   auto findIt = GetGlobals().ShardsRegister.find(name);
   if (findIt == GetGlobals().ShardsRegister.end()) {
     GetGlobals().ShardsRegister.emplace(name, constructor);
@@ -2515,7 +2506,13 @@ void shInit() {
     return;
   globalInitDone = true;
 
-  logging::setupDefaultLoggerConditional();
+  // read env var for log file
+  auto logFile = std::getenv("SHARDS_LOG_FILE");
+  if (logFile) {
+    logging::setupDefaultLoggerConditional(logFile);
+  } else {
+    logging::setupDefaultLoggerConditional("shards.log");
+  }
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory

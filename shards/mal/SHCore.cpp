@@ -378,7 +378,13 @@ private:
 
 void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
   // Setup logging first
-  logging::setupDefaultLoggerConditional();
+  // read env var for log file
+  auto logFile = std::getenv("SHARDS_LOG_FILE");
+  if (logFile) {
+    logging::setupDefaultLoggerConditional(logFile);
+  } else {
+    logging::setupDefaultLoggerConditional("shards.log");
+  }
 
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);

@@ -23,7 +23,7 @@ spdlog::level::level_enum getSinkLevel();
 void setSinkLevel(spdlog::level::level_enum level);
 
 // Setup the default logger if it's not setup already
-void setupDefaultLoggerConditional(std::string fileName = "shards.log");
+void setupDefaultLoggerConditional(std::string fileName);
 
 // Set default log level and redirect to main logger
 // !! Do not call directly since this registers the logger
