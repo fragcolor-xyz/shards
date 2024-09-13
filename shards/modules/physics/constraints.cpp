@@ -271,14 +271,14 @@ struct MotorSettings {
 struct DistanceConstraint final : public ConstraintBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR(""); }
+  static SHOptionalString help() { return SHCCSTR("This shard creates a tether between two bodies, keeping the distance between them within the range specified in the MinDistance and MaxDistance parameters."); }
 
   PARAM_VAR(_space, "Space",
             "This determines in which space the constraint is setup, all other properties should be in the specified space",
             {ConstraintSpaceEnumInfo::Type});
-  PARAM_PARAMVAR(_refA, "FirstPoint", "Body 1 constraint reference frame (space determined by Space)",
+  PARAM_PARAMVAR(_refA, "FirstPoint", "The position of the connection point for the first body.",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_refB, "SecondPoint", "Body 2 constraint reference frame (space determined by Space)",
+  PARAM_PARAMVAR(_refB, "SecondPoint", "The position of the connection point for the second body.",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
 
   PARAM_PARAMVAR(_minDistance, "MinDistance",
@@ -384,7 +384,7 @@ struct SliderConstraint final : public ConstraintBase {
     _limitsMax = Var(std::numeric_limits<float>::max());
     _limitSpring = SpringSettings::Default;
     _maxFrictionForce = Var(0.0f);
-    _motorSettings = MotorSettings::Default;
+    _motorSettings = SpringSettings::Default;
     _motorSpringSettings = SpringSettings::Default;
   }
 
