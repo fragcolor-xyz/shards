@@ -3,7 +3,7 @@
 
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::types::{AutoSeqVar, ClonedVar, STRINGS_TYPES, STRING_TYPES};
+use shards::types::{common_type, AutoSeqVar, ClonedVar, ParamVar, STRINGS_TYPES, STRING_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 use pulldown_cmark::{
@@ -15,6 +15,9 @@ use pulldown_cmark::{
 struct MarkdownParseShard {
   #[shard_required]
   required: ExposedTypes,
+
+  #[shard_param("Reset", "Reset the parser", [common_type::bool, common_type::bool_var])]
+  reset: ParamVar,
 
   input: ClonedVar,
   parser: Option<Parser<'static>>,
@@ -28,6 +31,7 @@ impl Default for MarkdownParseShard {
       input: ClonedVar::default(),
       parser: None,
       output: AutoSeqVar::new(),
+      reset: ParamVar::new(false.into()),
     }
   }
 }
@@ -61,7 +65,8 @@ impl Shard for MarkdownParseShard {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    if self.parser.is_none() {
+    let reset: bool = self.reset.get().as_ref().try_into()?;
+    if self.parser.is_none() || reset {
       self.input = input.into();
       let input: &str = self.input.as_ref().try_into()?;
       self.parser = Some(Parser::new_ext(input, Options::all()));

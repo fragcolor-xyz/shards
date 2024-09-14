@@ -109,7 +109,7 @@ struct OnPeerDisconnected {
 };
 
 Peer &getConnectedPeer(ParamVar &peerParam);
-static inline void setDefaultPeerParam(ParamVar &peerParam);
+void setDefaultPeerParam(ParamVar &peerParam);
 
 Peer &getServer(ParamVar &serverParam);
 void setDefaultServerParam(ParamVar &peerParam);
