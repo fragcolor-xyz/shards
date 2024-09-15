@@ -22,7 +22,6 @@ use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
-use shards::types::ANYS_TYPES;
 use shards::types::ANY_TYPES;
 
 use shards::types::SHARDS_OR_NONE_TYPES;
@@ -102,7 +101,7 @@ impl LegacyShard for ListBox {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &ANYS_TYPES
+    &ANY_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {

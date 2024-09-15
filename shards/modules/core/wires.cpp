@@ -504,7 +504,7 @@ struct Peek : public WireBase {
       return Var::Empty;
     } else {
       // Make sure to actually wait only if the wire is running on another context.
-      if (wire->context != context && isRunning(wire.get())) {
+      if (wire->context == context || isRunning(wire.get())) {
         return Var::Empty;
       }
 

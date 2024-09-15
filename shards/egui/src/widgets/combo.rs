@@ -23,7 +23,6 @@ use shards::types::Seq;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
-use shards::types::ANYS_TYPES;
 use shards::types::ANY_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::util::from_raw_parts_allow_null;
@@ -96,7 +95,7 @@ impl LegacyShard for Combo {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &ANYS_TYPES
+    &ANY_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {

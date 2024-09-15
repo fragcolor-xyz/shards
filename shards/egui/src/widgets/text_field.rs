@@ -22,7 +22,7 @@ use shards::types::ParamVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
-use shards::types::ANYS_TYPES;
+use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 use std::cmp::Ordering;
@@ -104,7 +104,7 @@ impl Shard for TextField {
   }
 
   fn output_types(&mut self) -> &Types {
-    &ANYS_TYPES
+    &ANY_TYPES
   }
 
   fn output_help(&mut self) -> OptionalString {
