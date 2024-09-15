@@ -116,6 +116,34 @@ struct WireBase {
       }
     }
   }
+
+  void checkObjectReferenceCounting(const SHVar &output) {
+    if (output.valueType == SHType::Object) {
+      bool hasSharedVoidObject = (output.flags & SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) == SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
+      bool hasObjInfo = (wire->finishedOutput.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO;
+      bool hasValidObjectInfo = output.objectInfo && output.objectInfo->reference;
+
+      if (!hasSharedVoidObject && !hasValidObjectInfo) {
+        std::string errorMsg = fmt::format("Object returned by wire '{}' has improper reference counting setup. ", wire->name);
+        if (!hasSharedVoidObject)
+          errorMsg += "SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT flag is not set. ";
+        if (!hasValidObjectInfo)
+          errorMsg += "Object info or reference is missing. ";
+        errorMsg += "This may lead to premature destruction.";
+
+        SHLOG_ERROR(errorMsg);
+        throw ActivationError(errorMsg);
+      }
+
+      if (hasObjInfo != hasValidObjectInfo) {
+        std::string errorMsg = fmt::format("Object returned by wire '{}' has mismatched object info setup. ", wire->name);
+        errorMsg += "SHVAR_FLAGS_USES_OBJINFO flag and object info presence do not match.";
+
+        SHLOG_ERROR(errorMsg);
+        throw ActivationError(errorMsg);
+      }
+    }
+  }
 };
 
 struct BaseRunner : public WireBase {

@@ -1070,23 +1070,21 @@ typedef TParamVar<InternalCore> ParamVar;
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
-  struct _NAME_##EnumInfoWrapper {                                            \
-    static inline const char Name[] = #_NAME_;                                \
-    static inline const SHOptionalString Help = SHCCSTR(_HELP_);              \
-  };                                                                          \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,    \
-    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,             \
-    _VENDOR_CC_, _CC_, false>
+#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_)                             \
+  struct _NAME_##EnumInfoWrapper {                                                                        \
+    static inline const char Name[] = #_NAME_;                                                            \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                                          \
+  };                                                                                                      \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##EnumInfoWrapper::Name, \
+                                             _NAME_##EnumInfoWrapper::Help, _VENDOR_CC_, _CC_, false>
 
-#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
-  struct _NAME_##EnumInfoWrapper {                                                  \
-    static inline const char Name[] = #_NAME_;                                      \
-    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                    \
-  };                                                                                \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,          \
-    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,                   \
-    _VENDOR_CC_, _CC_, true>
+#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_)                       \
+  struct _NAME_##EnumInfoWrapper {                                                                        \
+    static inline const char Name[] = #_NAME_;                                                            \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                                          \
+  };                                                                                                      \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##EnumInfoWrapper::Name, \
+                                             _NAME_##EnumInfoWrapper::Help, _VENDOR_CC_, _CC_, true>
 
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 #define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
@@ -1536,7 +1534,12 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
     throw std::runtime_error(fmt::format("Invalid object type id, expected: {} got: {}", type,
                                          Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
-  return *reinterpret_cast<T *>(var.payload.objectValue);
+  if ((var.flags & SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) == SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) {
+    auto void_sp = static_cast<std::shared_ptr<void> *>(var.payload.objectValue);
+    return *std::static_pointer_cast<T>(*void_sp);
+  } else {
+    return *reinterpret_cast<T *>(var.payload.objectValue);
+  }
 }
 
 inline const SHExposedTypeInfo *findExposedVariablePtr(const SHExposedTypesInfo &exposed, std::string_view variableName) {

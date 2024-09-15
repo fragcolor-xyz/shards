@@ -340,20 +340,7 @@ struct Wait : public WireBase {
       if (passthrough) {
         return input;
       } else {
-        // Check for potential issues with object types returned by the wire
-        if (wire->finishedOutput.valueType == SHType::Object) {
-          if ((wire->finishedOutput.flags & SHVAR_FLAGS_USES_OBJINFO) != SHVAR_FLAGS_USES_OBJINFO) {
-            SHLOG_ERROR("Object returned by wire '{}' does not have SHVAR_FLAGS_USES_OBJINFO flag set. This may lead to "
-                        "premature destruction.",
-                        wire->name);
-            throw ActivationError(fmt::format("Object returned by wire '{}' lacks reference counting", wire->name));
-          }
-          if (!wire->finishedOutput.objectInfo || !wire->finishedOutput.objectInfo->reference) {
-            SHLOG_ERROR("Object returned by wire '{}' has no reference counting. This will lead to premature destruction.",
-                        wire->name);
-            throw ActivationError(fmt::format("Object returned by wire '{}' lacks reference counting", wire->name));
-          }
-        }
+        checkObjectReferenceCounting(wire->finishedOutput);
         return wire->finishedOutput;
       }
     }
@@ -528,20 +515,7 @@ struct Peek : public WireBase {
         throw ActivationError(wire->finishedError);
       }
 
-      // Check for potential issues with object types returned by the wire
-      if (wire->finishedOutput.valueType == SHType::Object) {
-        if ((wire->finishedOutput.flags & SHVAR_FLAGS_USES_OBJINFO) != SHVAR_FLAGS_USES_OBJINFO) {
-          SHLOG_ERROR("Object returned by wire '{}' does not have SHVAR_FLAGS_USES_OBJINFO flag set. This may lead to premature "
-                      "destruction.",
-                      wire->name);
-          throw ActivationError(fmt::format("Object returned by wire '{}' lacks reference counting", wire->name));
-        }
-        if (!wire->finishedOutput.objectInfo || !wire->finishedOutput.objectInfo->reference) {
-          SHLOG_ERROR("Object returned by wire '{}' has no reference counting. This will lead to premature destruction.",
-                      wire->name);
-          throw ActivationError(fmt::format("Object returned by wire '{}' lacks reference counting", wire->name));
-        }
-      }
+      checkObjectReferenceCounting(wire->finishedOutput);
       return wire->finishedOutput;
     }
   }

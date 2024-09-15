@@ -54,7 +54,11 @@ struct TextureShard {
   static SHOptionalString help() { return SHCCSTR("Creates a texture from an image. Or as a render target"); }
 
   TexturePtr texture;
-  OwnedVar textureVar;
+
+  // Used to keep the texture object alive when the Var is cloned
+  std::shared_ptr<void> textureObj;
+  Var textureVar;
+
   bool _createFromImage{};
 
   PARAM_VAR(_interpretAs, "InterpretAs",
@@ -82,6 +86,7 @@ struct TextureShard {
     PARAM_WARMUP(context);
 
     texture = std::make_shared<Texture>();
+    textureObj = texture;
 
     // Set TypeId based on texture dimension so we can check bindings at compose time
     gfx::TextureDimension dim = getTextureDimension();
@@ -89,10 +94,12 @@ struct TextureShard {
     case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
     case gfx::TextureDimension::D2:
-      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
+      textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureTypeId);
+      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
       break;
     case gfx::TextureDimension::Cube:
-      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
+      textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
+      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
       break;
     }
   }
@@ -100,6 +107,7 @@ struct TextureShard {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     texture.reset();
+    textureObj.reset();
   }
 
   gfx::TextureDimension getTextureDimension() const {
@@ -263,8 +271,8 @@ struct TextureShard {
     if (format.pixelFormat == WGPUTextureFormat_Undefined)
       throw TextureFormatException(componentType, asType);
 
-    auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
-    size_t imageSize = inputFormat.pixelSize * image.width * image.height;
+    // auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
+    // size_t imageSize = inputFormat.pixelSize * image.width * image.height;
 
     // Copy the data since we can't keep a reference to the image variable
     ImmutableSharedBuffer isb(std::make_shared<ImageRefTextureBuffer>(const_cast<SHImage *>(&image)));
@@ -401,7 +409,9 @@ struct RenderTargetTextureShard {
   PARAM_IMPL(PARAM_IMPL_FOR(_nameVar));
 
   TexturePtr texture;
-  OwnedVar textureVar;
+
+  std::shared_ptr<void> textureObj;
+  Var textureVar;
 
   std::string _name;
   bool isNameStatic = false;
@@ -420,7 +430,11 @@ struct RenderTargetTextureShard {
     }
   }
 
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    texture.reset();
+    textureObj.reset();
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, ShardsTypes::RenderTarget);
@@ -431,8 +445,9 @@ struct RenderTargetTextureShard {
     }
 
     texture = renderTarget->getAttachment(_name);
-    textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
-
+    textureObj = texture;
+    textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureTypeId);
+    textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
     return textureVar;
   }
 };
