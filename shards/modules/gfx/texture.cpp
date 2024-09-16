@@ -103,6 +103,7 @@ struct TextureShard {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
+    textureVar.reset();
     texture.reset();
   }
 
@@ -377,7 +378,11 @@ struct RenderTargetShard {
     _renderTarget.renderTarget = std::make_shared<RenderTarget>();
     _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, ShardsTypes::RenderTargetTypeId);
   }
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _renderTarget = SHRenderTarget{};
+    _renderTargetVar.reset();
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &rt = _renderTarget.renderTarget;
@@ -424,7 +429,11 @@ struct RenderTargetTextureShard {
     }
   }
 
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    texture.reset();
+    textureVar.reset();
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, ShardsTypes::RenderTarget);
@@ -476,6 +485,7 @@ struct ReadTextureShard {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup(context);
+    _image.reset();
   }
 
   bool isSupportedFormat(WGPUTextureFormat format) const {
