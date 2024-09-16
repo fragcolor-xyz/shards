@@ -90,11 +90,11 @@ struct TextureShard {
     case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
     case gfx::TextureDimension::D2:
-      textureVar = Var::Object(texture, gfx::VendorId, ShardsTypes::TextureTypeId);
+      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
       textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
       break;
     case gfx::TextureDimension::Cube:
-      textureVar = Var::Object(texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
+      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
       textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
       break;
     }
