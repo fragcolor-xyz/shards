@@ -346,12 +346,18 @@ impl RequestBase {
 
           if !full_response && !response.status().is_success() {
             shlog_error!("Request failed with status {}", response.status());
+            let err_text = response.text().await.map_err(|e| {
+              shlog!("Failure details: {}", e);
+              "Failed to decode the failure response"
+            })?;
+            let err_text = if err_text.len() > 128 {
+              format!("{}...", err_text.chars().take(128).collect::<String>())
+            } else {
+              err_text
+            };
             shlog_error!(
               "Request failed with body {}",
-              response.text().await.map_err(|e| {
-                shlog!("Failure details: {}", e);
-                "Failed to decode the failure response"
-              })?
+              err_text
             );
             return Err("Request failed");
           }
