@@ -2073,12 +2073,23 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.payload.wireValue = SHWire::addRef(src.payload.wireValue);
     break;
   case SHType::ShardRef:
+    if (dst.valueType == SHType::ShardRef) {
+      if (dst.payload.shardValue == src.payload.shardValue)
+        return;
+    }
+
     destroyVar(dst);
     dst.valueType = SHType::ShardRef;
     dst.payload.shardValue = src.payload.shardValue;
     incRef(dst.payload.shardValue);
     break;
   case SHType::Object:
+    if (dst.valueType == SHType::Object) {
+      if (dst.payload.objectValue == src.payload.objectValue && dst.payload.objectVendorId == src.payload.objectVendorId &&
+          dst.payload.objectTypeId == src.payload.objectTypeId)
+        return;
+    }
+
     destroyVar(dst);
 
     dst.valueType = SHType::Object;
@@ -2111,11 +2122,21 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
     break;
   case SHType::Type:
+    if (dst.valueType == SHType::Type) {
+      if (dst.payload.typeValue == src.payload.typeValue)
+        return;
+    }
+
     destroyVar(dst);
     dst.payload.typeValue = new SHTypeInfo(cloneTypeInfo(*src.payload.typeValue));
     dst.valueType = SHType::Type;
     break;
   case SHType::Trait:
+    if (dst.valueType == SHType::Trait) {
+      if (dst.payload.traitValue == src.payload.traitValue)
+        return;
+    }
+
     destroyVar(dst);
     dst.payload.traitValue = new SHTrait(cloneTrait(*src.payload.traitValue));
     dst.valueType = SHType::Trait;
