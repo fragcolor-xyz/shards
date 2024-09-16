@@ -1534,12 +1534,7 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
     throw std::runtime_error(fmt::format("Invalid object type id, expected: {} got: {}", type,
                                          Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
-  if ((var.flags & SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) == SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) {
-    auto void_sp = static_cast<std::shared_ptr<void> *>(var.payload.objectValue);
-    return *std::static_pointer_cast<T>(*void_sp);
-  } else {
-    return *reinterpret_cast<T *>(var.payload.objectValue);
-  }
+  return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
 inline const SHExposedTypeInfo *findExposedVariablePtr(const SHExposedTypesInfo &exposed, std::string_view variableName) {

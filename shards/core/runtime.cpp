@@ -1819,7 +1819,7 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
         // in this case the custom object needs actual destruction
         var.objectInfo->release(var.payload.objectValue);
       }
-    } else if ((var.flags & SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) == SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) {
+    } else if ((var.flags & SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) == SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) {
       auto void_sp = static_cast<std::shared_ptr<void> *>(var.payload.objectValue);
       delete void_sp;
     }
@@ -2104,10 +2104,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       } else if (src.objectInfo->reference) {
         dst.objectInfo->reference(dst.payload.objectValue);
       }
-    } else if ((src.flags & SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) == SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT) {
+    } else if ((src.flags & SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) == SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) {
       auto void_sp = static_cast<std::shared_ptr<void> *>(src.payload.objectValue);
       dst.payload.objectValue = new std::shared_ptr<void>(*void_sp);
-      dst.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
+      dst.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
     }
     break;
   case SHType::Type:

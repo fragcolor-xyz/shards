@@ -657,8 +657,12 @@ struct SHVarPayload {
 #define SHVAR_FLAGS_ABORT (1 << 5) // 6
 // this marks a weak object reference
 #define SHVAR_FLAGS_WEAK_OBJECT (1 << 6) // 7
-// this marks an object as a C++ shared_ptr<void>
-#define SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT (1 << 7) // 8
+// this marks an object as a C++ shared_ptr<T>
+// The std::shared_ptr template class is designed such that its size and layout are independent of the type T it manages. This
+// means that std::shared_ptr<T> and std::shared_ptr<void> have the same memory layout. The type parameter T does not affect the
+// size of the std::shared_ptr itself; instead, it affects the type of the managed object it points to. Therefore, when we have a
+// void* that actually points to a std::shared_ptr<T>, we can safely use reinterpret_cast to cast it back to std::shared_ptr<T>*.
+#define SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT (1 << 7) // 8
 
 // Additional flags available
 // #define SHVAR_FLAGS_RESERVED_1 (1 << 8) // 9

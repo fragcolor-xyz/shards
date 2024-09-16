@@ -54,9 +54,6 @@ struct TextureShard {
   static SHOptionalString help() { return SHCCSTR("Creates a texture from an image. Or as a render target"); }
 
   TexturePtr texture;
-
-  // Used to keep the texture object alive when the Var is cloned
-  std::shared_ptr<void> textureObj;
   Var textureVar;
 
   bool _createFromImage{};
@@ -86,7 +83,6 @@ struct TextureShard {
     PARAM_WARMUP(context);
 
     texture = std::make_shared<Texture>();
-    textureObj = texture;
 
     // Set TypeId based on texture dimension so we can check bindings at compose time
     gfx::TextureDimension dim = getTextureDimension();
@@ -94,12 +90,12 @@ struct TextureShard {
     case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
     case gfx::TextureDimension::D2:
-      textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureTypeId);
-      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
+      textureVar = Var::Object(texture, gfx::VendorId, ShardsTypes::TextureTypeId);
+      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
       break;
     case gfx::TextureDimension::Cube:
-      textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
-      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
+      textureVar = Var::Object(texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
+      textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
       break;
     }
   }
@@ -107,7 +103,6 @@ struct TextureShard {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     texture.reset();
-    textureObj.reset();
   }
 
   gfx::TextureDimension getTextureDimension() const {
@@ -409,8 +404,6 @@ struct RenderTargetTextureShard {
   PARAM_IMPL(PARAM_IMPL_FOR(_nameVar));
 
   TexturePtr texture;
-
-  std::shared_ptr<void> textureObj;
   Var textureVar;
 
   std::string _name;
@@ -433,7 +426,6 @@ struct RenderTargetTextureShard {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     texture.reset();
-    textureObj.reset();
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -445,9 +437,8 @@ struct RenderTargetTextureShard {
     }
 
     texture = renderTarget->getAttachment(_name);
-    textureObj = texture;
-    textureVar = Var::Object(&textureObj, gfx::VendorId, ShardsTypes::TextureTypeId);
-    textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_VOID_OBJECT;
+    textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
+    textureVar.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;
     return textureVar;
   }
 };
