@@ -18,7 +18,7 @@
 
 using namespace shards;
 
-namespace gfx {
+namespace gfx { 
 
 Context &GraphicsContext::getContext() { return *context.get(); }
 Window &GraphicsContext::getWindow() { return *window.get(); }

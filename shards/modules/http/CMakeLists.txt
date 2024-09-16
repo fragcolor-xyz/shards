@@ -36,6 +36,11 @@ if(HTTP_SUPPORTED)
     target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
   endif()
 
+  if(WIN32)
+    # Indirect rust windows dependency
+    target_link_libraries(shards-http-rust INTERFACE RuntimeObject)
+  endif()
+
   if(EMSCRIPTEN)
     em_link_js_library(shards-module-http http.js)
     target_link_options(shards-module-http PUBLIC

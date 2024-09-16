@@ -13,7 +13,7 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, optional = true}
+rfd = { version = "0.14.1", git = "https://github.com/shards-lang/rfd.git", branch = 'shards-objc2', default-features = false, optional = true}
 notify = { version = "6.1.1" }
 
 [features]
