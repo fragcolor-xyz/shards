@@ -94,7 +94,7 @@ struct TextureShard {
       tex = texture;
     } break;
     case gfx::TextureDimension::Cube: {
-      auto [tex, var] = ShardsTypes::TextureObjectVar.NewOwnedVar();
+      auto [tex, var] = ShardsTypes::TextureCubeObjectVar.NewOwnedVar();
       textureVar = var;
       tex = texture;
     } break;
