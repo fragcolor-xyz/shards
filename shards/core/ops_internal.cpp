@@ -25,7 +25,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     if (!objectInfo)
       objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
     if (objectInfo) {
-      os << objectInfo->name;
+      os << objectInfo->name << " 0x" << std::hex << var.payload.objectValue << std::dec;
     } else {
       os << "Object: 0x" << std::hex << var.payload.objectValue << " vendor: 0x" << var.payload.objectVendorId << " type: 0x"
          << var.payload.objectTypeId << std::dec;

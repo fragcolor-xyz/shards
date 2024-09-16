@@ -102,7 +102,7 @@ struct WireBase {
   }
 
   void ensureWire() {
-    if (unlikely(!wire && wireref.isVariable())) {
+    if (unlikely(wireref.isVariable())) {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
