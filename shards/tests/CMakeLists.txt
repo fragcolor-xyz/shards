@@ -3,12 +3,14 @@ if(SHARDS_BUILD_TESTS)
   add_executable(test-runtime
     ${TESTS_SRC}/test_runtime.cpp)
 
+  target_link_libraries(test-runtime shards-cpp-union Catch2::Catch2WithMain)
+
   if(APPLE)
-    target_link_libraries(test-runtime shards-union shards_core_swift Catch2 Catch2Main)
-  else()
-    target_link_libraries(test-runtime shards-union Catch2 Catch2Main)
+    target_link_libraries(test-runtime shards_core_swift)
   endif()
+
   set_target_properties(test-runtime PROPERTIES LINKER_LANGUAGE CXX)
+  target_include_directories(test-runtime PRIVATE ${SHARDS_DIR})
 
   if(EMSCRIPTEN)
     target_link_options(test-runtime PUBLIC

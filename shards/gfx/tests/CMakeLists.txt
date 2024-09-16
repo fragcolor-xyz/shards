@@ -31,10 +31,10 @@ add_library(gfx-test-utils
   context.cpp
   renderer.cpp
   data.cpp)
-target_link_libraries(gfx-test-utils gfx gfx-texture-file Catch2)
+target_link_libraries(gfx-test-utils gfx-rust gfx-core gfx-texture-file Catch2::Catch2)
 add_asset_path_definition(gfx-test-utils PRIVATE GFX_TEST_DATA_PATH ${GFX_TEST_DATA_PATH})
 
-target_link_libraries(test-gfx gfx gfx-test-utils gfx-texture-file gfx-gltf Catch2Main Catch2)
+target_link_libraries(test-gfx gfx gfx-test-utils gfx-texture-file gfx-gltf Catch2::Catch2WithMain)
 if(WIN32)
   target_link_libraries(test-gfx ntdll)
 endif()

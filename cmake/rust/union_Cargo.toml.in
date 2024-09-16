@@ -2,11 +2,15 @@
 
 [package]
 name = "${CARGO_CRATE_NAME}"
-version = "0.1.0"
+version = "${CARGO_CRATE_VERSION}"
 edition = "2021"
+
+[features]
+tracy = ["tracy-client"]
 
 [dependencies]
 ${CARGO_CRATE_DEPS}
+tracy-client = { version = "0.15.0", optional = true }
 
 [patch.crates-io]
 chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }
@@ -18,7 +22,10 @@ getrandom = { git = "https://github.com/shards-lang/getrandom.git", version = "=
 socket2 = { git = "https://github.com/shards-lang/socket2.git", version = "=0.5.7", rev = "17a4d72eb2f3b2311bc724cfb4a43a28cc6c70de" }
 security-framework = { git = "https://github.com/shards-lang/rust-security-framework.git", version = "=2.11.0", rev = "ea683f291bb8dff51d3239e556c3236e09274c16" }
 sysctl = { git = "https://github.com/shards-lang/sysctl-rs.git", version = "=0.5.5", rev = "859c91707dfaa11d8adff35b65b1b88bb98680bd" }
-${CARGO_OBJC_DEP}
+
+# Graphics patches
+objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
+metal = { git = "https://github.com/shards-lang/metal-rs.git", branch = "shards-0.28.0" }
 
 [profile.dev.package]
 tiny-skia = { opt-level = 3 }

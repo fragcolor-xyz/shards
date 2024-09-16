@@ -26,10 +26,22 @@ set(SOURCES
   gizmos/shapes.cpp
 )
 
-add_shards_module(gfx SOURCES ${SOURCES}
-  REGISTER_SHARDS gfx gizmos buffer)
+if(HAS_WGPU_NATIVE)
+  message(STATUS "Building gfx crate with wgpu-native enabled")
+  set(RUST_TARGETS gfx-rust)
+else()
+  unset(RUST_TARGETS)
+endif()
 
-target_link_libraries(shards-module-gfx
-  stb gfx gfx-gltf)
+add_shards_module(gfx SOURCES ${SOURCES}
+  REGISTER_SHARDS gfx gizmos buffer
+  RUST_TARGETS ${RUST_TARGETS}
+)
+
+target_link_libraries(shards-module-gfx stb)
+
+# Link object libraries since they depend on rust code
+# and will be combined into the union lib
+target_link_libraries(shards-module-gfx gfx-core gfx-gltf)
 
 target_precompile_headers(shards-module-gfx PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")

@@ -13,7 +13,7 @@ add_shards_module(physics
 
 target_link_libraries(shards-module-physics
   Jolt
-  gfx # For glTF interface
+  gfx-core # For glTF interface
 )
 
 target_include_directories(shards-module-physics

@@ -1,6 +1,29 @@
 option(SHARDS_WITH_EVERYTHING "Enables all modules, disabling this will only build common modules and exclude experimental ones" ON)
 option(SHARDS_NO_RUST_UNION "Disables rust union build" OFF)
 
+# NOTES ABOUT MODULE UNIONS
+# Modules are built as OBJECT libraries, and then linked together at the end into a single static lib
+# The same happens for the rust modules
+#
+# If you have any dependencies between the two, you should link both targets against each other in a ciruclar fashion
+# on the final executable target, e.g.: 
+#   target_link_libraries(shards-rust_union shards-cpp-union)
+#   target_link_libraries(shards-cpp-union shards-rust-union)
+#
+# If any of the cpp modules for example has a dependency that needs any rust code (for example, gfx, gfx-core)
+# you need to link in that dependency as an OBJECT library as well, so it will be in the same static union lib
+#
+# Since you can not chain OBJECT libraries in cmake (it will miss the lowest level objects)
+# you can set up an intermediate interface target like this:
+#   add_library(gfx-texture-file-obj OBJECT texture_file/texture_file.cpp)
+#
+#   add_library(gfx-texture-file INTERFACE)
+#   target_sources(gfx-texture-file PUBLIC $<TARGET_OBJECTS:gfx-texture-file-obj>)
+#   target_link_libraries(gfx-texture-file INTERFACE gfx-texture-file-obj)
+#
+# gfx-texture-file can then be linked into a module as usual, e.g.:
+#   target_link_libraries(shards-module-gfx gfx-texture-file)
+
 function(is_module_enabled OUTPUT_VARIABLE MODULE_ID)
   if(${SHARDS_WITH_EVERYTHING})
     set(${OUTPUT_VARIABLE} TRUE PARENT_SCOPE)
@@ -10,6 +33,8 @@ function(is_module_enabled OUTPUT_VARIABLE MODULE_ID)
   endif()
 endfunction()
 
+# This will define an INTERFACE library named shards-module-${MODULE_NAME}
+# To specify compile parameters, etc., add them to the shards-module-${MODULE_NAME} target
 function(add_shards_module MODULE_NAME)
   set(OPTS
     EXPERIMENTAL # This disables the module by default when not building with SHARDS_WITH_EVERYTHING=ON
@@ -32,13 +57,15 @@ function(add_shards_module MODULE_NAME)
 
   if(NOT MODULE_SOURCES)
     set(DUMMY_SOURCE_PATH ${CMAKE_CURRENT_BINARY_DIR}/dummy.cpp)
+
     if(NOT EXISTS ${DUMMY_SOURCE_PATH})
       file(WRITE ${DUMMY_SOURCE_PATH} "// Intentionally empty\n")
     endif()
+
     set(MODULE_SOURCES ${DUMMY_SOURCE_PATH})
   endif()
 
-  add_library(${MODULE_TARGET} STATIC ${MODULE_SOURCES})
+  add_library(${MODULE_TARGET} OBJECT ${MODULE_SOURCES})
 
   # Generate registration function
   set_property(GLOBAL APPEND PROPERTY SHARDS_MODULE_TARGETS ${MODULE_TARGET})
@@ -109,9 +136,12 @@ function(shards_generate_rust_union TARGET_NAME)
   message(STATUS "Generating rust union target ${TARGET_NAME}")
 
   set(OPTS)
-  set(ARGS)
+  set(ARGS
+    VERSION # Set the version
+  )
   set(MULTI_ARGS
     RUST_TARGETS # Extra dependencies to add
+    ENABLED_MODULES # When set, can use to specify which modules to include
   )
   cmake_parse_arguments(UNION_EXTRA "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -119,15 +149,27 @@ function(shards_generate_rust_union TARGET_NAME)
 
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
     get_property(MODULE_ID TARGET ${TARGET_NAME} PROPERTY SHARDS_MODULE_ID)
-    is_module_enabled(MODULE_ENABLED ${MODULE_ID})
 
-    if(${MODULE_ENABLED})
-      get_property(MODULE_RUST_TARGETS TARGET ${TARGET_NAME} PROPERTY SHARDS_RUST_TARGETS)
-
-      if(MODULE_RUST_TARGETS)
-        # message(STATUS "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
-        list(APPEND RUST_TARGETS ${MODULE_RUST_TARGETS})
+    if(UNION_EXTRA_ENABLED_MODULES)
+      if(NOT "${MODULE_ID}" IN_LIST UNION_EXTRA_ENABLED_MODULES)
+        message(DEBUG "Skipping module ${MODULE_ID}")
+        continue()
+      else()
+        message(DEBUG "Including module ${MODULE_ID}")
       endif()
+    else()
+      is_module_enabled(MODULE_ENABLED ${MODULE_ID})
+
+      if(NOT ${MODULE_ENABLED})
+        continue()
+      endif()
+    endif()
+
+    get_property(MODULE_RUST_TARGETS TARGET ${TARGET_NAME} PROPERTY SHARDS_RUST_TARGETS)
+
+    if(MODULE_RUST_TARGETS)
+      message(DEBUG "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
+      list(APPEND RUST_TARGETS ${MODULE_RUST_TARGETS})
     endif()
   endforeach()
 
@@ -136,6 +178,7 @@ function(shards_generate_rust_union TARGET_NAME)
   # Disable union
   if(SHARDS_NO_RUST_UNION)
     add_library(${TARGET_NAME} INTERFACE)
+
     foreach(RUST_TARGET ${RUST_TARGETS})
       message(STATUS "RUST TARGET: ${RUST_TARGET}")
       target_link_libraries(${TARGET_NAME} INTERFACE ${RUST_TARGET})
@@ -144,14 +187,19 @@ function(shards_generate_rust_union TARGET_NAME)
     set(GEN_RUST_PATH ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
     set(GEN_RUST_SRC_PATH ${GEN_RUST_PATH}/src)
     set(CARGO_TOML ${GEN_RUST_PATH}/Cargo.toml)
-    set(LIB_RS_TMP ${GEN_RUST_SRC_PATH}/lib.rs.tmp)
     set(LIB_RS ${GEN_RUST_SRC_PATH}/lib.rs)
 
     file(MAKE_DIRECTORY ${GEN_RUST_SRC_PATH})
-    file(WRITE ${LIB_RS_TMP} "// This file is generated by CMake\n\n")
+
+    unset(LIB_PUB_USE_STATEMENTS)
 
     # Add all the rust targets to the Cargo.toml
     foreach(RUST_TARGET ${RUST_TARGETS})
+      if(NOT TARGET "${RUST_TARGET}")
+        message(FATAL_ERROR "Rust target ${RUST_TARGET} does not exist")
+        continue()
+      endif()
+
       get_property(RUST_PROJECT_PATH TARGET ${RUST_TARGET} PROPERTY RUST_PROJECT_PATH)
       get_property(RUST_NAME TARGET ${RUST_TARGET} PROPERTY RUST_NAME)
 
@@ -160,9 +208,11 @@ function(shards_generate_rust_union TARGET_NAME)
       unset(RUST_FEATURES_STRING1)
       if(RUST_FEATURES)
         unset(RUST_FEATURES_QUOTED)
+
         foreach(FEATURE ${RUST_FEATURES})
           list(APPEND RUST_FEATURES_QUOTED \"${FEATURE}\")
         endforeach()
+
         list(JOIN RUST_FEATURES_QUOTED "," RUST_FEATURES_STRING)
         set(RUST_FEATURES_STRING1 ", features = [${RUST_FEATURES_STRING}]")
       endif()
@@ -173,9 +223,14 @@ function(shards_generate_rust_union TARGET_NAME)
       string(APPEND CARGO_CRATE_DEPS "${RUST_NAME} = { path = \"${RELATIVE_RUST_PROJECT_PATH}\"${RUST_FEATURES_STRING1} }\n")
 
       string(REPLACE "-" "_" RUST_NAME_ID ${RUST_NAME})
-      file(APPEND ${LIB_RS_TMP} "pub use ${RUST_NAME_ID};\n")
+      string(APPEND LIB_PUB_USE_STATEMENTS "pub use ${RUST_NAME_ID};\n")
 
       get_property(TARGET_INTERFACE_LINK_LIBRARIES TARGET ${RUST_TARGET} PROPERTY INTERFACE_LINK_LIBRARIES)
+
+      if(TARGET_INTERFACE_LINK_LIBRARIES)
+        message(DEBUG "${RUST_TARGET}: Linking against ${TARGET_INTERFACE_LINK_LIBRARIES}")
+      endif()
+
       list(APPEND COMBINED_INTERFACE_LINK_LIBRARIES ${TARGET_INTERFACE_LINK_LIBRARIES})
 
       get_property(RUST_DEPENDS TARGET ${RUST_TARGET} PROPERTY RUST_DEPENDS)
@@ -185,29 +240,41 @@ function(shards_generate_rust_union TARGET_NAME)
       list(APPEND COMBINED_RUST_ENVIRONMENT ${RUST_ENVIRONMENT})
     endforeach()
 
-    # The generated create name
+    # The generated crate name
     set(CARGO_CRATE_NAME ${TARGET_NAME})
 
-    file(COPY_FILE ${LIB_RS_TMP} ${LIB_RS} ONLY_IF_DIFFERENT)
+    # The generated crate version
+    set(CARGO_CRATE_VERSION "0.1.0")
 
-    if(VISIONOS)
-      string(APPEND CARGO_OBJC_DEP "objc = { git = \"https://github.com/shards-lang/rust-objc.git\", rev = \"b2d834c95e38d89c39d42eea3587b584596f0848\" }")
+    if(UNION_EXTRA_VERSION)
+      set(CARGO_CRATE_VERSION ${UNION_EXTRA_VERSION})
     endif()
 
-    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Cargo.toml.in" ${CARGO_TOML})
+    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/rust/union_lib.rs.in" ${LIB_RS}.tmp)
+    file(COPY_FILE ${LIB_RS}.tmp ${LIB_RS} ONLY_IF_DIFFERENT)
+    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/rust/union_Cargo.toml.in" ${CARGO_TOML}.tmp)
+    file(COPY_FILE ${CARGO_TOML}.tmp ${CARGO_TOML} ONLY_IF_DIFFERENT)
+
+    unset(ENABLED_FEATURES)
+
+    if(TRACY_ENABLE)
+      list(APPEND ENABLED_FEATURES "tracy")
+    endif()
 
     # Add the rust library
     add_rust_library(NAME ${TARGET_NAME}
       PROJECT_PATH ${GEN_RUST_PATH}
       DEPENDS ${COMBINED_RUST_DEPENDS}
-      ENVIRONMENT ${COMBINED_RUST_ENVIRONMENT})
+      ENVIRONMENT ${COMBINED_RUST_ENVIRONMENT}
+      FEATURES ${ENABLED_FEATURES}
+    )
     add_library(${TARGET_NAME} ALIAS ${TARGET_NAME}-rust)
 
     list(REMOVE_DUPLICATES COMBINED_INTERFACE_LINK_LIBRARIES)
 
     if(COMBINED_INTERFACE_LINK_LIBRARIES)
       set_property(TARGET ${TARGET_NAME}-rust APPEND PROPERTY INTERFACE_LINK_LIBRARIES ${COMBINED_INTERFACE_LINK_LIBRARIES})
-      message(VERBOSE "${TARGET_NAME}: Linking against ${COMBINED_INTERFACE_LINK_LIBRARIES}")
+      message(DEBUG "${TARGET_NAME}: Linking against ${COMBINED_INTERFACE_LINK_LIBRARIES}")
     endif()
   endif()
 endfunction()
@@ -215,11 +282,19 @@ endfunction()
 # The union libary is responsible for combining all required shards modules
 # into a single library alongside the registration and indexing boilerplate
 function(shards_generate_union UNION_TARGET_NAME)
-  message(STATUS "Generating union target ${UNION_TARGET_NAME}")
+  message(STATUS "Generating C++ union target ${UNION_TARGET_NAME}")
+
+  set(OPTS)
+  set(ARGS)
+  set(MULTI_ARGS
+    ENABLED_MODULES # When set, can use to specify which modules to include
+  )
+  cmake_parse_arguments(UNION_EXTRA "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
   set(GENERATED_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
   set(DUMMY_FILE_PATH "${GENERATED_ROOT_DIR}/dummy.cpp")
   file(MAKE_DIRECTORY ${GENERATED_ROOT_DIR})
+
   if(NOT EXISTS ${DUMMY_FILE_PATH})
     file(WRITE ${DUMMY_FILE_PATH} "// Empty\n")
   endif()
@@ -241,14 +316,26 @@ function(shards_generate_union UNION_TARGET_NAME)
 
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
     get_property(MODULE_ID TARGET ${TARGET_NAME} PROPERTY SHARDS_MODULE_ID)
-    is_module_enabled(MODULE_ENABLED ${MODULE_ID})
 
-    if(${MODULE_ENABLED})
-      # message(STATUS "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
-      target_link_libraries(${UNION_TARGET_NAME} ${TARGET_NAME})
-      list(APPEND ENABLED_MODULE_IDS ${MODULE_ID})
-      list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
+    if(UNION_EXTRA_ENABLED_MODULES)
+      if(NOT "${MODULE_ID}" IN_LIST UNION_EXTRA_ENABLED_MODULES)
+        message(DEBUG "Skipping module ${MODULE_ID}")
+        continue()
+      else()
+        message(DEBUG "Including module ${MODULE_ID}")
+      endif()
+    else()
+      is_module_enabled(MODULE_ENABLED ${MODULE_ID})
+
+      if(NOT ${MODULE_ENABLED})
+        continue()
+      endif()
     endif()
+
+    message(DEBUG "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
+    target_link_libraries(${UNION_TARGET_NAME} ${TARGET_NAME})
+    list(APPEND ENABLED_MODULE_IDS ${MODULE_ID})
+    list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
   endforeach()
 
   # message(STATUS "ENABLED_MODULE_IDS ${ENABLED_MODULE_IDS}")
