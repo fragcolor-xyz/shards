@@ -18,7 +18,7 @@
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
-#define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO)
+#define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO | SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT)
 
 #ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way

@@ -2116,6 +2116,8 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
         dst.objectInfo->reference(dst.payload.objectValue);
       }
     } else if ((src.flags & SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) == SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT) {
+      // static assert that std::shared_ptr of any random type is same size of std::shared_ptr<void>
+      static_assert(sizeof(std::shared_ptr<OwnedVar>) == sizeof(std::shared_ptr<void>), "std::shared_ptr<OwnedVar> must be same size of std::shared_ptr<void>");
       auto void_sp = static_cast<std::shared_ptr<void> *>(src.payload.objectValue);
       dst.payload.objectValue = new std::shared_ptr<void>(*void_sp);
       dst.flags |= SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT;

@@ -662,6 +662,7 @@ struct SHVarPayload {
 // means that std::shared_ptr<T> and std::shared_ptr<void> have the same memory layout. The type parameter T does not affect the
 // size of the std::shared_ptr itself; instead, it affects the type of the managed object it points to. Therefore, when we have a
 // void* that actually points to a std::shared_ptr<T>, we can safely use reinterpret_cast to cast it back to std::shared_ptr<T>*.
+// Moreover the deleter of a shared pointer is type erased so it just works.
 #define SHVAR_FLAGS_CPP_SHARED_PTR_OBJECT (1 << 7) // 8
 
 // Additional flags available
