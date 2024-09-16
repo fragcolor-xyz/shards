@@ -6,6 +6,7 @@ use crate::bindings::make_native_io_output;
 use crate::egui_host::EguiHost;
 use crate::util;
 
+use crate::widgets::image_util::AutoTexturePtr;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
@@ -33,17 +34,7 @@ use std::ffi::CStr;
 struct UIOutput {
   full_output: egui::FullOutput,
   ctx: egui::Context,
-  texture_refs: Vec<bindings::GenericSharedPtr>,
-}
-
-impl Drop for UIOutput {
-  fn drop(&mut self) {
-    for texture_ref in self.texture_refs.iter_mut() {
-      unsafe {
-        bindings::gfx_TexturePtr_unrefAt(texture_ref);
-      }
-    }
-  }
+  texture_refs: Vec<AutoTexturePtr>,
 }
 
 ref_counted_object_type_impl!(UIOutput);
@@ -209,14 +200,11 @@ impl Shard for ContextShard {
       );
     }
 
-    let mut texture_refs = Vec::new();
-    bindings::collect_texture_references(&full_output, &mut texture_refs);
-
     self.last_output.assign(&Var::new_ref_counted(
       UIOutput {
         full_output,
         ctx: self.host.get_context().egui_ctx.clone(),
-        texture_refs,
+        texture_refs: self.host.take_step_textures(),
       },
       &UI_OUTPUT_TYPE,
     ));
@@ -307,7 +295,13 @@ impl RenderShard {
         };
         err = self
           .renderer
-          .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)
+          .render(
+            &ui_output.ctx,
+            &ui_output.full_output,
+            ui_output.texture_refs.as_slice(),
+            queue,
+            draw_scale,
+          )
           .err();
       })) {
         shlog_warn!("UI.Render, ignored panic: {:?}", e);

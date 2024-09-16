@@ -66,15 +66,16 @@ struct MeshDrawablePool : public shards::Pool<std::shared_ptr<MeshDrawable>, Poo
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
 
-  TexturePtr get(const egui::TextureId &id) const {
+  TexturePtr get(const egui::RenderOutput& output, const egui::TextureId &id) const {
     if (id.managed) {
       auto it = textures.find(id.id);
       if (it != textures.end())
         return it->second;
       return TexturePtr();
     } else {
-      TexturePtr texture = *reinterpret_cast<TexturePtr *>(id.id);
-      return texture;
+      if (id.id >= output.numExternalTextures)
+        throw std::logic_error("Invalid texture id");
+      return output.externalTextures[id.id];
     }
   }
 
@@ -241,7 +242,7 @@ struct EguiRendererImpl {
       drawable.transform = rootTransform;
       drawable.features = uiFeatures;
       uint32_t flags = 0;
-      TexturePtr texture = textures.get(prim.textureId);
+      TexturePtr texture = textures.get(output, prim.textureId);
       static FastString fs_color = "color";
       static FastString fs_flags = "flags";
       if (texture) {

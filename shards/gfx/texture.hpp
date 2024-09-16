@@ -134,6 +134,12 @@ public:
   Texture() = default;
   Texture(std::string &&label) : label(label) {}
 
+#if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
+  ~Texture() {
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} ({}) destroyed", label, id);
+  }
+#endif
+
   // Creates a texture
   Texture &init(const TextureDesc &desc);
   Texture &initWithSamplerState(const SamplerState &samplerState);

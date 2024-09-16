@@ -128,16 +128,17 @@ pub fn get_egui_texture_from_gfx(
     return Err("Invalid texture pointer");
   }
 
+  let texture_idx = ctx.step_textures.len();
   ctx.step_textures.push(AutoTexturePtr::new(texture_ptr));
 
   let texture_size = {
-    let mut texture_res = linalg_aliases_int2::default();
+    let mut texture_res: linalg_aliases_int2 = linalg_aliases_int2::default();
     unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr, &mut texture_res) };
     egui::vec2(texture_res.x as f32, texture_res.y as f32)
   };
 
   Ok((
-    egui::epaint::TextureId::User(texture_ptr as u64),
+    egui::epaint::TextureId::User(texture_idx as u64),
     texture_size,
   ))
 }

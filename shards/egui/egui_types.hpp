@@ -8,9 +8,13 @@
 #ifndef RUST_BINDGEN
 #include <vector>
 #include <gfx/mesh.hpp>
+#include <gfx/texture.hpp>
 #endif
 
 extern "C" {
+namespace gfx {
+struct Texture;
+}
 namespace egui {
 struct Pos2 {
   float x, y;
@@ -255,6 +259,8 @@ struct RenderOutput {
   TextureUpdates textureUpdates;
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
+  const std::shared_ptr<gfx::Texture>* externalTextures;
+  size_t numExternalTextures;
 };
 
 struct IOOutput {

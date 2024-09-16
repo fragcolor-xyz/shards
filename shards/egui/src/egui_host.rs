@@ -1,8 +1,11 @@
+use std::mem::swap;
+
 use super::util;
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::PARENTS_UI_NAME;
 use crate::bindings::egui_Input;
+use crate::widgets::image_util::AutoTexturePtr;
 use crate::Context as UIContext;
 use crate::EGUI_UI_TYPE;
 use shards::core::Core;
@@ -81,6 +84,10 @@ impl EguiHost {
 
   pub fn get_context(&self) -> &UIContext {
     self.context.as_ref().expect("UI context not initialized")
+  }
+
+  pub fn take_step_textures(&mut self) -> Vec<AutoTexturePtr> {
+    self.context.as_mut().unwrap().step_textures.drain(..).collect()
   }
 
   fn clear_unused_dnd_state(&mut self) {

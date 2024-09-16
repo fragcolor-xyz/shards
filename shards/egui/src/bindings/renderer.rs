@@ -1,3 +1,5 @@
+use crate::widgets::image_util::AutoTexturePtr;
+
 use super::*;
 use egui::epaint;
 use egui::ClippedPrimitive;
@@ -56,6 +58,7 @@ pub struct NativeRenderOutput<'a> {
   pub clipped_primitives: Vec<egui_ClippedPrimitive>,
   pub vertex_mem: Vec<egui_Vertex>,
   pub index_mem: Vec<u32>,
+  pub user_textures: Vec<GenericSharedPtr>,
 }
 
 impl<'a> NativeRenderOutput<'a> {
@@ -69,6 +72,8 @@ impl<'a> NativeRenderOutput<'a> {
         frees: self.texture_frees.as_ptr(),
         numFrees: self.texture_frees.len(),
       },
+      externalTextures: self.user_textures.as_ptr() as *const u8,
+      numExternalTextures: self.user_textures.len(),
     }
   }
 }
@@ -178,6 +183,7 @@ pub fn make_texture_updates(
 pub fn make_native_render_output<'a>(
   ctx: &Context,
   input: &'a egui::FullOutput,
+  external_textures: &[AutoTexturePtr],
   draw_scale: f32,
 ) -> Result<NativeRenderOutput<'a>, &'static str> {
   // Sad clone here, might be able to remove upstream
@@ -213,22 +219,8 @@ pub fn make_native_render_output<'a>(
     texture_frees,
     vertex_mem,
     index_mem,
+    user_textures: external_textures.iter().map(|tex| tex.0).collect(),
   })
-}
-
-pub fn collect_texture_references(input: &egui::FullOutput, out_refs: &mut Vec<GenericSharedPtr>) {
-  for shape in &input.shapes {
-    let tex_id = shape.shape.texture_id();
-    match tex_id {
-      TextureId::User(id) => unsafe {
-        let texture_ptr = id as *const gfx_TexturePtr;
-        let mut newRef = GenericSharedPtr::default();
-        gfx_TexturePtr_refAt(&mut newRef, texture_ptr);
-        out_refs.push(newRef);
-      },
-      _ => {}
-    }
-  }
 }
 
 pub fn make_native_io_output(
@@ -298,6 +290,7 @@ impl Renderer {
       clipped_primitives: Vec::new(),
       vertex_mem: Vec::new(),
       index_mem: Vec::new(),
+      user_textures: Vec::new(),
     };
     let c_output = render_output.get_c_output();
     unsafe {
@@ -310,10 +303,11 @@ impl Renderer {
     &self,
     ctx: &egui::Context,
     egui_output: &egui::FullOutput,
+    external_textures: &[AutoTexturePtr],
     queue: *const gfx_DrawQueuePtr,
     draw_scale: f32,
   ) -> Result<(), &'static str> {
-    let render_output = make_native_render_output(ctx, egui_output, draw_scale)?;
+    let render_output = make_native_render_output(ctx, egui_output, external_textures, draw_scale)?;
     let c_output = render_output.get_c_output();
     self.render_with_native_render_output(&c_output, queue);
     Ok(())
