@@ -88,12 +88,16 @@ struct TextureShard {
     switch (dim) {
     case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
-    case gfx::TextureDimension::D2:
-      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
-      break;
-    case gfx::TextureDimension::Cube:
-      textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureCubeTypeId);
-      break;
+    case gfx::TextureDimension::D2: {
+      auto [tex, var] = ShardsTypes::TextureObjectVar.NewOwnedVar();
+      textureVar = var;
+      tex = texture;
+    } break;
+    case gfx::TextureDimension::Cube: {
+      auto [tex, var] = ShardsTypes::TextureObjectVar.NewOwnedVar();
+      textureVar = var;
+      tex = texture;
+    } break;
     }
   }
 
@@ -430,8 +434,9 @@ struct RenderTargetTextureShard {
       _name = sv;
     }
 
-    texture = renderTarget->getAttachment(_name);
-    textureVar = Var::Object(&texture, gfx::VendorId, ShardsTypes::TextureTypeId);
+    auto [tex, var] = ShardsTypes::TextureObjectVar.NewOwnedVar();
+    textureVar = var;
+    tex = renderTarget->getAttachment(_name);
 
     return textureVar;
   }
