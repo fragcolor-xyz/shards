@@ -325,7 +325,7 @@ struct InterpolateShard {
     double phase = t / getDuration();
 
     // TODO: better determination
-    bool isQuaternion = false; // va.valueType == SHType::Float4;
+    bool isQuaternion = _a.valueType == SHType::Float4;
     if (isQuaternion) {
       // Quaternion slerp
       float4 a = toVec<float4>(_a);
