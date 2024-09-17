@@ -34,13 +34,6 @@ int sqlite3_vec_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *p
 #endif
 }
 
-static const char *vfs = //
-#if SH_EMSCRIPTEN
-    "shards-memory-locked";
-#else
-    nullptr;
-#endif
-
 #ifndef SH_SQLITE_DEBUG_LOGS
 #define SH_SQLITE_DEBUG_LOGS 0
 #endif
@@ -210,7 +203,11 @@ struct MemoryLockedVfs : sqlite3_vfs {
   }
 
   MemoryLockedVfs() {
+#ifdef __EMSCRIPTEN__
+    sqlite3_vfs_register(this, 1);
+#else
     sqlite3_vfs_register(this, 0);
+#endif
     fallback = sqlite3_vfs_find(backendVfs);
     memcpy(this, fallback, sizeof(sqlite3_vfs));
     this->zName = "shards-memory-locked";
@@ -220,6 +217,7 @@ struct MemoryLockedVfs : sqlite3_vfs {
       return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
     };
   }
+
   static MemoryLockedVfs &instance() {
     static MemoryLockedVfs vfs;
     return vfs;
@@ -237,12 +235,12 @@ struct Connection {
 
     if (readOnly) {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-only {}", path);
-      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, vfs) != SQLITE_OK) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     } else {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-write {}", path);
-      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, vfs) != SQLITE_OK) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     }
@@ -451,7 +449,7 @@ struct Query : public Base {
     auto type = sqlite3_column_type(prepared->get(), index);
     switch (type) {
     case SQLITE_INTEGER:
-      return Var((int64_t)sqlite3_column_int64(prepared->get(), index));
+      return Var(sqlite3_column_int64(prepared->get(), index));
     case SQLITE_FLOAT:
       return Var(sqlite3_column_double(prepared->get(), index));
     case SQLITE_TEXT: {
@@ -945,7 +943,7 @@ struct Backup : public Base {
 
           auto destPath = SHSTRVIEW(_dest.get());
           sqlite3 *pDest;
-          auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, vfs);
+          auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
           if (rc != SQLITE_OK) {
             throw ActivationError(sqlite3_errmsg(pDest));
           }

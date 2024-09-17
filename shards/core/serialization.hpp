@@ -25,6 +25,10 @@ struct BufferRefWriter {
     }
   }
   void operator()(const uint8_t *buf, size_t size) { _buffer.insert(_buffer.end(), buf, buf + size); }
+
+  // expose data and size
+  const uint8_t *data() { return _buffer.data(); }
+  size_t size() { return _buffer.size(); }
 };
 
 struct BufferWriter {
