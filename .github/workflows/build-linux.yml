@@ -234,7 +234,7 @@ jobs:
           retention-days: 1
       
       - name: Fetch and send logs of the previous step on failure
-        if: failure()
+        if: failure() && ${{ steps.setup.outputs.build-type == 'Debug' }}
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           LOG_ACCESS_TOKEN: ${{ secrets.LOG_ACCESS_TOKEN }}
@@ -243,7 +243,7 @@ jobs:
           RUN_ID=${{ github.run_id }}
           
           # Get the current job name directly from the GitHub environment
-          JOB_NAME="${{ github.job }}"  # This gets the current job ID (same as GITHUB_JOB)
+          JOB_NAME="Linux-Debug" # Hardcoded because env has wrong name, courtesy of a convoluted workflow...
       
           # Fetch all jobs for the current run
           JOBS_JSON=$(curl -s -H "Authorization: Bearer $LOG_ACCESS_TOKEN" \
