@@ -58,3 +58,51 @@ jobs:
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/traits.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/help.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/fib.shs
+      
+      - name: Fetch and send GitHub Actions logs on failure
+        if: failure()
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          echo "Fetching full logs from GitHub Actions API."
+          RUN_ID=${{ github.run_id }}
+          JOB_ID=${{ github.job }}
+          
+          # Fetch the logs URL for this specific job
+          LOGS_URL=$(curl -H "Authorization: Bearer ${{ secrets.LOG_ACCESS_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs \
+          | jq -r --arg JOB_ID "$JOB_ID" '.jobs[] | select(.id == ($JOB_ID | tonumber)) | .logs_url')
+          
+          # Fetch the full logs using the logs URL
+          curl -H "Authorization: Bearer ${{ secrets.LOG_ACCESS_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          $LOGS_URL > full_build.log
+          
+          echo "Sending full logs to DeepSeek API for analysis."
+        
+          # Prepare the system prompt and user message
+          SYSTEM_PROMPT="You are a helpful assistant that analyzes CI build logs to find errors, summarize them, and propose solutions if confident."
+          USER_MESSAGE="Here are the CI build logs:\n\n$(cat full_build.log)"
+          
+          # Send logs to DeepSeek API
+          RESPONSE=$(curl -s https://api.deepseek.com/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
+            -d @- <<EOF
+            {
+              "model": "deepseek-chat",
+              "messages": [
+                {"role": "system", "content": "${SYSTEM_PROMPT}"},
+                {"role": "user", "content": "${USER_MESSAGE}"}
+              ],
+              "stream": false
+            }
+          EOF
+          )
+          
+          # Extract the assistant's reply
+          ASSISTANT_REPLY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+          
+          # Print the assistant's reply to the GitHub Actions log
+          echo "## DeepSeek Analysis:\n$ASSISTANT_REPLY"
