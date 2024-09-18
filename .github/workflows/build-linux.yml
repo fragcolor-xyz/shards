@@ -233,7 +233,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       
-      - name: Fetch and send logs of the previous step on failure
+      - name: Analyze failure logs
         if: failure()
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -243,12 +243,17 @@ jobs:
           RUN_ID=${{ github.run_id }}
           JOB_NAME="${{ github.job }}"
           
-          # Fetch all jobs for the current run
+          # Fetch job information
           JOBS_JSON=$(curl -s -H "Authorization: Bearer $LOG_ACCESS_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs)
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs")
 
-          # Get the current job ID based on the current job name
+          if [ $? -ne 0 ]; then
+            echo "Failed to fetch job information from GitHub API"
+            exit 1
+          fi
+
+          # Get the current job ID
           JOB_ID=$(echo "$JOBS_JSON" | jq -r --arg JOB_NAME "$JOB_NAME" '.jobs[] | select(.name == $JOB_NAME) | .id')
 
           if [ -z "$JOB_ID" ]; then
@@ -259,48 +264,58 @@ jobs:
           # Get the steps for the job
           STEPS=$(echo "$JOBS_JSON" | jq -r --arg JOB_ID "$JOB_ID" '.jobs[] | select(.id == ($JOB_ID | tonumber)) | .steps')
 
-          # Get the second-to-last step, assuming the previous step failed
+          # Get the second-to-last step
           PREVIOUS_STEP=$(echo "$STEPS" | jq -r '.[-2].name')
-
-          if [ -z "$PREVIOUS_STEP" ]; then
-            echo "Failed to find the previous step."
-            exit 1
-          fi
-
-          echo "Previous step that likely failed: $PREVIOUS_STEP"
-
-          # Get logs for the previous step
           PREVIOUS_STEP_LOG=$(echo "$STEPS" | jq -r '.[-2].output')
 
-          if [ -z "$PREVIOUS_STEP_LOG" ]; then
-            echo "Logs not found for the previous step."
+          if [ -z "$PREVIOUS_STEP" ] || [ -z "$PREVIOUS_STEP_LOG" ]; then
+            echo "Failed to retrieve information for the previous step."
             exit 1
           fi
 
-          echo "Sending logs of the previous step to DeepSeek API for analysis."
+          echo "Analyzing logs for step: $PREVIOUS_STEP"
 
-          # Prepare the system prompt and user message
+          # Truncate log if it's too long (adjust max_length as needed)
+          max_length=50000
+          truncated_log=$(echo "$PREVIOUS_STEP_LOG" | cut -c 1-$max_length)
+
+          # Prepare the messages for the API
           SYSTEM_PROMPT="You are a helpful assistant that analyzes CI build logs to find errors, summarize them, and propose solutions if confident."
-          USER_MESSAGE="Here are the CI build logs from the previous step '$PREVIOUS_STEP':\n\n$PREVIOUS_STEP_LOG"
+          USER_MESSAGE="Here are the CI build logs from the previous step '$PREVIOUS_STEP' (truncated if too long):\n\n$truncated_log"
           
-          # Send logs to DeepSeek API
-          RESPONSE=$(curl -s https://api.deepseek.com/chat/completions \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
-            -d @- <<EOF
-            {
-              "model": "deepseek-chat",
-              "messages": [
-              {"role": "system", "content": "${SYSTEM_PROMPT}"},
-                {"role": "user", "content": "${USER_MESSAGE}"}
-              ],
-              "stream": false
-            }
-            EOF
-          )
-          
-          # Extract the assistant's reply
-          ASSISTANT_REPLY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
-          
-          # Print the assistant's reply to the GitHub Actions log
-          echo -e "## DeepSeek Analysis:\n$ASSISTANT_REPLY"
+          # Send logs to DeepSeek API with error handling and rate limiting
+          for i in {1..3}; do
+            RESPONSE=$(curl -s -w "%{http_code}" https://api.deepseek.com/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
+              -d @- <<EOF
+              {
+                "model": "deepseek-chat",
+                "messages": [
+                  {"role": "system", "content": "$SYSTEM_PROMPT"},
+                  {"role": "user", "content": "$USER_MESSAGE"}
+                ],
+                "stream": false
+              }
+              EOF
+            )
+            
+            HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$ d')
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              ASSISTANT_REPLY=$(echo "$BODY" | jq -r '.choices[0].message.content')
+              echo -e "## DeepSeek Analysis:\n$ASSISTANT_REPLY"
+              break
+            elif [ "$HTTP_STATUS" -eq 429 ]; then
+              echo "Rate limited. Retrying in 5 seconds..."
+              sleep 5
+            else
+              echo "API request failed with status $HTTP_STATUS. Response: $BODY"
+              if [ $i -eq 3 ]; then
+                echo "Failed to get analysis after 3 attempts."
+                exit 1
+              fi
+              sleep 5
+            fi
+          done
