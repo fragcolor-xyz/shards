@@ -282,8 +282,10 @@ struct Break {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
 
+  bool _breaking = true; // set me to quit breaking while debugging
+
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (isDebuggerPresent())
+    if (isDebuggerPresent() && _breaking)
       DEBUG_BREAK();
     return input;
   }

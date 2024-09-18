@@ -34,13 +34,6 @@ int sqlite3_vec_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *p
 #endif
 }
 
-static const char *vfs = //
-#if SH_EMSCRIPTEN
-    "shards-memory-locked";
-#else
-    nullptr;
-#endif
-
 #ifndef SH_SQLITE_DEBUG_LOGS
 #define SH_SQLITE_DEBUG_LOGS 0
 #endif
@@ -210,16 +203,41 @@ struct MemoryLockedVfs : sqlite3_vfs {
   }
 
   MemoryLockedVfs() {
+#ifdef __EMSCRIPTEN__
+    sqlite3_vfs_register(this, 1);
+#else
     sqlite3_vfs_register(this, 0);
+#endif
     fallback = sqlite3_vfs_find(backendVfs);
-    memcpy(this, fallback, sizeof(sqlite3_vfs));
+    
+    // Manually copy relevant fields from fallback
+    this->iVersion = fallback->iVersion;
+    this->szOsFile = fallback->szOsFile;
+    this->mxPathname = fallback->mxPathname;
+    this->pNext = fallback->pNext;
     this->zName = "shards-memory-locked";
-
-    xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
+    this->pAppData = fallback->pAppData;
+    this->xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
       auto &self = *(MemoryLockedVfs *)pVfs;
       return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
     };
+    this->xDelete = fallback->xDelete;
+    this->xAccess = fallback->xAccess;
+    this->xFullPathname = fallback->xFullPathname;
+    this->xDlOpen = fallback->xDlOpen;
+    this->xDlError = fallback->xDlError;
+    this->xDlSym = fallback->xDlSym;
+    this->xDlClose = fallback->xDlClose;
+    this->xRandomness = fallback->xRandomness;
+    this->xSleep = fallback->xSleep;
+    this->xCurrentTime = fallback->xCurrentTime;
+    this->xGetLastError = fallback->xGetLastError;
+    this->xCurrentTimeInt64 = fallback->xCurrentTimeInt64;
+    this->xSetSystemCall = fallback->xSetSystemCall;
+    this->xGetSystemCall = fallback->xGetSystemCall;
+    this->xNextSystemCall = fallback->xNextSystemCall;
   }
+
   static MemoryLockedVfs &instance() {
     static MemoryLockedVfs vfs;
     return vfs;
@@ -237,12 +255,12 @@ struct Connection {
 
     if (readOnly) {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-only {}", path);
-      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, vfs) != SQLITE_OK) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     } else {
       SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-write {}", path);
-      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, vfs) != SQLITE_OK) {
+      if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     }
@@ -945,7 +963,7 @@ struct Backup : public Base {
 
           auto destPath = SHSTRVIEW(_dest.get());
           sqlite3 *pDest;
-          auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, vfs);
+          auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
           if (rc != SQLITE_OK) {
             throw ActivationError(sqlite3_errmsg(pDest));
           }
