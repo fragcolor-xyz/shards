@@ -241,44 +241,46 @@ jobs:
         run: |
           echo "Fetching logs of the previous step from GitHub Actions API."
           RUN_ID=${{ github.run_id }}
-          JOB_NAME="${{ github.job }}"
+      
+          # Extract the dynamically set job name
+          JOB_NAME="Build (${{ github.event.inputs.build-type || inputs.build-type }})"
           
           # Fetch job information
           JOBS_JSON=$(curl -s -H "Authorization: Bearer $LOG_ACCESS_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs")
-
+      
           if [ $? -ne 0 ]; then
             echo "Failed to fetch job information from GitHub API"
             exit 1
           fi
-
-          # Get the current job ID
+      
+          # Get the current job ID based on the dynamic job name
           JOB_ID=$(echo "$JOBS_JSON" | jq -r --arg JOB_NAME "$JOB_NAME" '.jobs[] | select(.name == $JOB_NAME) | .id')
-
+      
           if [ -z "$JOB_ID" ]; then
             echo "Failed to find job ID for the current job name: $JOB_NAME"
             exit 1
           fi
-
+      
           # Get the steps for the job
           STEPS=$(echo "$JOBS_JSON" | jq -r --arg JOB_ID "$JOB_ID" '.jobs[] | select(.id == ($JOB_ID | tonumber)) | .steps')
-
+      
           # Get the second-to-last step
           PREVIOUS_STEP=$(echo "$STEPS" | jq -r '.[-2].name')
           PREVIOUS_STEP_LOG=$(echo "$STEPS" | jq -r '.[-2].output')
-
+      
           if [ -z "$PREVIOUS_STEP" ] || [ -z "$PREVIOUS_STEP_LOG" ]; then
             echo "Failed to retrieve information for the previous step."
             exit 1
           fi
-
+      
           echo "Analyzing logs for step: $PREVIOUS_STEP"
-
+      
           # Truncate log if it's too long (adjust max_length as needed)
           max_length=50000
           truncated_log=$(echo "$PREVIOUS_STEP_LOG" | cut -c 1-$max_length)
-
+      
           # Prepare the messages for the API
           SYSTEM_PROMPT="You are a helpful assistant that analyzes CI build logs to find errors, summarize them, and propose solutions if confident."
           USER_MESSAGE="Here are the CI build logs from the previous step '$PREVIOUS_STEP' (truncated if too long):\n\n$truncated_log"
@@ -302,7 +304,7 @@ jobs:
             
             HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
             BODY=$(echo "$RESPONSE" | sed '$ d')
-
+      
             if [ "$HTTP_STATUS" -eq 200 ]; then
               ASSISTANT_REPLY=$(echo "$BODY" | jq -r '.choices[0].message.content')
               echo -e "## DeepSeek Analysis:\n$ASSISTANT_REPLY"
