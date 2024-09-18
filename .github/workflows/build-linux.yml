@@ -241,25 +241,34 @@ jobs:
         run: |
           echo "Fetching logs of the previous step from GitHub Actions API."
           RUN_ID=${{ github.run_id }}
-      
-          # Extract the dynamically set job name
+
+          # Use the dynamic job name
           JOB_NAME="Build (${{ github.event.inputs.build-type || inputs.build-type }})"
-          
+          echo "Looking for job: $JOB_NAME"
+
           # Fetch job information
           JOBS_JSON=$(curl -s -H "Authorization: Bearer $LOG_ACCESS_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs")
-      
-          if [ $? -ne 0 ]; then
+
+          if [ $? -ne 0 ] || [ -z "$JOBS_JSON" ]; then
             echo "Failed to fetch job information from GitHub API"
+            echo "API Response:"
+            echo "$JOBS_JSON"
             exit 1
           fi
-      
+
+          # Debug output
+          echo "API Response:"
+          echo "$JOBS_JSON" | jq '.'
+
           # Get the current job ID based on the dynamic job name
           JOB_ID=$(echo "$JOBS_JSON" | jq -r --arg JOB_NAME "$JOB_NAME" '.jobs[] | select(.name == $JOB_NAME) | .id')
-      
+
           if [ -z "$JOB_ID" ]; then
             echo "Failed to find job ID for the current job name: $JOB_NAME"
+            echo "Available job names:"
+            echo "$JOBS_JSON" | jq -r '.jobs[].name'
             exit 1
           fi
       
