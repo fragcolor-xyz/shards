@@ -209,13 +209,33 @@ struct MemoryLockedVfs : sqlite3_vfs {
     sqlite3_vfs_register(this, 0);
 #endif
     fallback = sqlite3_vfs_find(backendVfs);
-    memcpy(this, fallback, sizeof(sqlite3_vfs));
+    
+    // Manually copy relevant fields from fallback
+    this->iVersion = fallback->iVersion;
+    this->szOsFile = fallback->szOsFile;
+    this->mxPathname = fallback->mxPathname;
+    this->pNext = fallback->pNext;
     this->zName = "shards-memory-locked";
-
-    xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
+    this->pAppData = fallback->pAppData;
+    this->xOpen = [](sqlite3_vfs *pVfs, const char *zName, sqlite3_file *pFile, int flags, int *pOutFlags) -> int {
       auto &self = *(MemoryLockedVfs *)pVfs;
       return self.openFile(pVfs, zName, pFile, flags, pOutFlags);
     };
+    this->xDelete = fallback->xDelete;
+    this->xAccess = fallback->xAccess;
+    this->xFullPathname = fallback->xFullPathname;
+    this->xDlOpen = fallback->xDlOpen;
+    this->xDlError = fallback->xDlError;
+    this->xDlSym = fallback->xDlSym;
+    this->xDlClose = fallback->xDlClose;
+    this->xRandomness = fallback->xRandomness;
+    this->xSleep = fallback->xSleep;
+    this->xCurrentTime = fallback->xCurrentTime;
+    this->xGetLastError = fallback->xGetLastError;
+    this->xCurrentTimeInt64 = fallback->xCurrentTimeInt64;
+    this->xSetSystemCall = fallback->xSetSystemCall;
+    this->xGetSystemCall = fallback->xGetSystemCall;
+    this->xNextSystemCall = fallback->xNextSystemCall;
   }
 
   static MemoryLockedVfs &instance() {
@@ -449,7 +469,7 @@ struct Query : public Base {
     auto type = sqlite3_column_type(prepared->get(), index);
     switch (type) {
     case SQLITE_INTEGER:
-      return Var(sqlite3_column_int64(prepared->get(), index));
+      return Var((int64_t)sqlite3_column_int64(prepared->get(), index));
     case SQLITE_FLOAT:
       return Var(sqlite3_column_double(prepared->get(), index));
     case SQLITE_TEXT: {
