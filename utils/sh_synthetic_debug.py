@@ -88,8 +88,11 @@ class SHVarSyntheticProvider:
                 print("[SHVarSyntheticProvider] Invalid valueType member")
                 self.valueType = None
                 return
+
             self.valueType = value_type_sb.GetValueAsUnsigned()
+
             self.payload = self.valobj.GetChildMemberWithName("payload")
+
             print(
                 f"[SHVarSyntheticProvider] valueType: {self.valueType} ({SHType_Name_Map.get(self.valueType, 'Unknown')})"
             )
@@ -109,7 +112,7 @@ class SHVarSyntheticProvider:
                 SHType_Float4: "float4Value",
                 SHType_Color: "colorValue",
                 SHType_Bytes: "bytesValue",
-                SHType_String: "string",
+                SHType_String: "stringValue",
                 SHType_Seq: "seqValue",
                 SHType_Set: "setValue",
                 SHType_Enum: "enumValue",  # Special handling
@@ -162,13 +165,12 @@ class SHVarSyntheticProvider:
 
                 if self.valueType == SHType_String:
                     # Handle SHType_String
-                    string_struct = self.payload.GetChildMemberWithName("string")
-                    string_value = string_struct.GetChildMemberWithName("stringValue")
-                    string_len = string_struct.GetChildMemberWithName(
-                        "len"
+                    string_value = self.payload.GetChildMemberWithName("stringValue")
+                    string_len = self.payload.GetChildMemberWithName(
+                        "stringLen"
                     ).GetValueAsUnsigned()
-                    string_cap = string_struct.GetChildMemberWithName(
-                        "cap"
+                    string_cap = self.payload.GetChildMemberWithName(
+                        "stringCapacity"
                     ).GetValueAsUnsigned()
                     # Create a synthetic child with a detailed description via summary provider
                     # Do not set summary here; rely on summary provider
@@ -227,6 +229,11 @@ class SHVarSyntheticProvider:
                         f"[SHVarSyntheticProvider] get_child_at_index(1): Returning field '{field_name}'"
                     )
                     return value
+            elif index == 2:
+                print(
+                    f"[SHVarSyntheticProvider] get_child_at_index(2): Returning payload"
+                )
+                return self.payload
             else:
                 print(
                     f"[SHVarSyntheticProvider] get_child_at_index({index}): Invalid index"
@@ -248,6 +255,11 @@ class SHVarSyntheticProvider:
                     f"[SHVarSyntheticProvider] get_child_index('{name}'): Returning 1"
                 )
                 return 1
+            elif name == "payload":
+                print(
+                    f"[SHVarSyntheticProvider] get_child_index('{name}'): Returning 2"
+                )
+                return 2
             else:
                 print(
                     f"[SHVarSyntheticProvider] get_child_index('{name}'): Returning -1"
@@ -360,13 +372,22 @@ def SHVarSummaryProvider(valobj, internal_dict):
     Includes debugging statements to trace internal processing.
     """
     try:
+        valobj = valobj.GetNonSyntheticValue()
         value_type_sb = valobj.GetChildMemberWithName("valueType")
         if not value_type_sb.IsValid():
             print("[SHVarSummaryProvider] Invalid valueType member")
             return "Invalid SHVar"
 
         valueType = value_type_sb.GetValueAsUnsigned()
+
+        print(
+            f"[SHVarSummaryProvider] valueType: {valueType} ({SHType_Name_Map.get(valueType, 'Unknown')})"
+        )
+
         payload = valobj.GetChildMemberWithName("payload")
+        if not payload.IsValid():
+            print("[SHVarSummaryProvider] Invalid payload member")
+            return "Invalid SHVar"
 
         # Depending on the valueType, construct the summary
         if valueType == SHType_Bool:
@@ -379,18 +400,15 @@ def SHVarSummaryProvider(valobj, internal_dict):
             float_val = payload.GetChildMemberWithName("floatValue").GetValue()
             summary = f"Float: {float_val}"
         elif valueType == SHType_String:
-            string_struct = payload.GetChildMemberWithName("string")
-            string_value = string_struct.GetChildMemberWithName(
-                "stringValue"
-            ).GetSummary()
+            string_value = payload.GetChildMemberWithName("stringValue").GetSummary()
             # Remove the surrounding quotes from GetSummary()
             if string_value.startswith('"') and string_value.endswith('"'):
                 string_value = string_value[1:-1]
-            string_len = string_struct.GetChildMemberWithName(
-                "len"
+            string_len = payload.GetChildMemberWithName(
+                "stringLen"
             ).GetValueAsUnsigned()
-            string_cap = string_struct.GetChildMemberWithName(
-                "cap"
+            string_cap = payload.GetChildMemberWithName(
+                "stringCapacity"
             ).GetValueAsUnsigned()
             summary = f'String: "{string_value}" (len={string_len}, cap={string_cap})'
         elif valueType == SHType_Seq:
@@ -433,6 +451,7 @@ def SHSeqSummaryProvider(valobj, internal_dict):
     Includes debugging statements to trace internal processing.
     """
     try:
+        valobj = valobj.GetNonSyntheticValue()
         len_val = valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
         summary = f"Seq with {len_val} elements"
         print(f"[SHSeqSummaryProvider] Summary: {summary}")
