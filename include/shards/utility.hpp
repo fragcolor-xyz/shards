@@ -193,7 +193,8 @@ template <typename E, E Value> struct TEnumHelp {
   static inline SHOptionalString help = SHOptionalString{""};
 };
 
-template <class SH_CORE_, typename E_, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+template <class SH_CORE_, typename E_, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_,
+          bool IsFlags_ = false>
 struct TEnumInfo {
   using Enum = E_;
   using SHCore = SH_CORE_;
@@ -550,6 +551,11 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
 template <class SH_CORE> struct TSeqVar : public SHVar {
   TSeqVar() : SHVar() { valueType = SHType::Seq; }
+
+  TSeqVar(size_t size) : SHVar() {
+    valueType = SHType::Seq;
+    resize(size);
+  }
 
   TSeqVar(const TSeqVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
