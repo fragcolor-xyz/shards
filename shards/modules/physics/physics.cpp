@@ -330,6 +330,66 @@ struct DumpShard {
   }
 };
 
+struct PositionShard {
+  static SHTypesInfo inputTypes() { return SHBody::Type; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Float3Type; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the position of the physics body"); }
+
+  PARAM_IMPL();
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
+    return toVar(shBody.node->location);
+    // auto &associatedData = shBody.node->data;
+    // if (associatedData && associatedData->body) { 
+    //   auto &body = associatedData->body;
+    //   auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
+
+    //   return toVar(bodyInterface.GetPosition(body->GetID()));
+    // } else {
+    //   return shards::toVar(float3(0.0f));
+    // }
+  }
+};
+
+struct RotationShard {
+  static SHTypesInfo inputTypes() { return SHBody::Type; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Float4Type; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the rotation of the physics body"); }
+
+  PARAM_IMPL();
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  PARAM_REQUIRED_VARIABLES(); 
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
+    return toVar(shBody.node->rotation);
+    // auto &associatedData = shBody.node->data;
+    // if (associatedData && associatedData->body) { 
+    //   auto &body = associatedData->body;
+    //   auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
+
+    //   return toVar(bodyInterface.GetRotation(body->GetID()));
+    // } else {
+    //   return shards::toVar(float4(0.0f));
+    // }
+  }
+};
+
 struct LinearVelocityShard {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Float3Type; }
@@ -699,6 +759,8 @@ SHARDS_REGISTER_FN(physics) {
   REGISTER_SHARD("Physics.Collisions", CollisionsShard);
   REGISTER_SHARD("Physics.Dump", DumpShard);
 
+  REGISTER_SHARD("Physics.Location", PositionShard);
+  REGISTER_SHARD("Physics.Rotation", RotationShard);
   REGISTER_SHARD("Physics.LinearVelocity", LinearVelocityShard);
   REGISTER_SHARD("Physics.AngularVelocity", AngularVelocityShard);
   REGISTER_SHARD("Physics.InverseMass", InverseMassShard);
