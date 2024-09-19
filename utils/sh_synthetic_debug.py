@@ -213,7 +213,7 @@ class SHVarSyntheticProvider:
                     r = color.GetChildMemberWithName("r").GetValueAsUnsigned()
                     g = color.GetChildMemberWithName("g").GetValueAsUnsigned()
                     b = color.GetChildMemberWithName("b").GetValueAsUnsigned()
-                    a = color.GetChildMemberWithName("a").GetValueAs_unsigned()
+                    a = color.GetChildMemberWithName("a").GetValueAsUnsigned()
                     summary = f"Color(r={r}, g={g}, b={b}, a={a})"
                     # Instead of setting a summary, rely on summary provider
                     print(
@@ -353,105 +353,93 @@ class SHSeqSyntheticProvider:
             return -1
 
 
-class SHVarSummaryProvider:
+def SHVarSummaryProvider(valobj, internal_dict):
     """
     Summary provider for SHVar.
     Provides a concise string representation based on valueType.
     Includes debugging statements to trace internal processing.
     """
+    try:
+        value_type_sb = valobj.GetChildMemberWithName("valueType")
+        if not value_type_sb.IsValid():
+            print("[SHVarSummaryProvider] Invalid valueType member")
+            return "Invalid SHVar"
 
-    def __init__(self, valobj, internal_dict):
-        self.valobj = valobj
-        print("[SHVarSummaryProvider] Initializing SHVarSummaryProvider")
+        valueType = value_type_sb.GetValueAsUnsigned()
+        payload = valobj.GetChildMemberWithName("payload")
 
-    def summary(self):
-        try:
-            value_type_sb = self.valobj.GetChildMemberWithName("valueType")
-            if not value_type_sb.IsValid():
-                print("[SHVarSummaryProvider] Invalid valueType member")
-                return "Invalid SHVar"
+        # Depending on the valueType, construct the summary
+        if valueType == SHType_Bool:
+            bool_val = payload.GetChildMemberWithName("boolValue").GetValue()
+            summary = f"Bool: {bool_val}"
+        elif valueType == SHType_Int:
+            int_val = payload.GetChildMemberWithName("intValue").GetValue()
+            summary = f"Int: {int_val}"
+        elif valueType == SHType_Float:
+            float_val = payload.GetChildMemberWithName("floatValue").GetValue()
+            summary = f"Float: {float_val}"
+        elif valueType == SHType_String:
+            string_struct = payload.GetChildMemberWithName("string")
+            string_value = string_struct.GetChildMemberWithName(
+                "stringValue"
+            ).GetSummary()
+            # Remove the surrounding quotes from GetSummary()
+            if string_value.startswith('"') and string_value.endswith('"'):
+                string_value = string_value[1:-1]
+            string_len = string_struct.GetChildMemberWithName(
+                "len"
+            ).GetValueAsUnsigned()
+            string_cap = string_struct.GetChildMemberWithName(
+                "cap"
+            ).GetValueAsUnsigned()
+            summary = f'String: "{string_value}" (len={string_len}, cap={string_cap})'
+        elif valueType == SHType_Seq:
+            seq_val = payload.GetChildMemberWithName("seqValue")
+            len_val = seq_val.GetChildMemberWithName("len").GetValueAsUnsigned()
+            summary = f"Seq: {len_val} elements"
+        elif valueType == SHType_Color:
+            color = payload.GetChildMemberWithName("colorValue")
+            r = color.GetChildMemberWithName("r").GetValueAsUnsigned()
+            g = color.GetChildMemberWithName("g").GetValueAsUnsigned()
+            b = color.GetChildMemberWithName("b").GetValueAsUnsigned()
+            a = color.GetChildMemberWithName("a").GetValueAsUnsigned()
+            summary = f"Color(r={r}, g={g}, b={b}, a={a})"
+        elif valueType == SHType_Enum:
+            enum_val_obj = payload.GetChildMemberWithName("enumValue")
+            enum_vendor_id = payload.GetChildMemberWithName(
+                "enumVendorId"
+            ).GetValueAsSigned()
+            enum_type_id = payload.GetChildMemberWithName(
+                "enumTypeId"
+            ).GetValueAsSigned()
+            enum_value = enum_val_obj.GetValueAsUnsigned()
+            summary = (
+                f"Enum({enum_value}), VendorID={enum_vendor_id}, TypeID={enum_type_id}"
+            )
+        else:
+            summary = f"SHVar (type: {SHType_Name_Map.get(valueType, 'Unknown')})"
 
-            valueType = value_type_sb.GetValueAsUnsigned()
-            payload = self.valobj.GetChildMemberWithName("payload")
-
-            # Depending on the valueType, construct the summary
-            if valueType == SHType_Bool:
-                bool_val = payload.GetChildMemberWithName("boolValue").GetValue()
-                summary = f"Bool: {bool_val}"
-            elif valueType == SHType_Int:
-                int_val = payload.GetChildMemberWithName("intValue").GetValue()
-                summary = f"Int: {int_val}"
-            elif valueType == SHType_Float:
-                float_val = payload.GetChildMemberWithName("floatValue").GetValue()
-                summary = f"Float: {float_val}"
-            elif valueType == SHType_String:
-                string_struct = payload.GetChildMemberWithName("string")
-                string_value = string_struct.GetChildMemberWithName(
-                    "stringValue"
-                ).GetSummary()
-                # Remove the surrounding quotes from GetSummary()
-                if string_value.startswith('"') and string_value.endswith('"'):
-                    string_value = string_value[1:-1]
-                string_len = string_struct.GetChildMemberWithName(
-                    "len"
-                ).GetValueAsUnsigned()
-                string_cap = string_struct.GetChildMemberWithName(
-                    "cap"
-                ).GetValueAs_unsigned()
-                summary = (
-                    f'String: "{string_value}" (len={string_len}, cap={string_cap})'
-                )
-            elif valueType == SHType_Seq:
-                seq_val = payload.GetChildMemberWithName("seqValue")
-                len_val = seq_val.GetChildMemberWithName("len").GetValueAsUnsigned()
-                summary = f"Seq: {len_val} elements"
-            elif valueType == SHType_Color:
-                color = payload.GetChildMemberWithName("colorValue")
-                r = color.GetChildMemberWithName("r").GetValueAsUnsigned()
-                g = color.GetChildMemberWithName("g").GetValueAs_unsigned()
-                b = color.GetChildMember_withName("b").GetValueAs_unsigned()
-                a = color.GetChildMemberWithName("a").GetValueAs_unsigned()
-                summary = f"Color(r={r}, g={g}, b={b}, a={a})"
-            elif valueType == SHType_Enum:
-                enum_val_obj = payload.GetChildMemberWithName("enumValue")
-                enum_vendor_id = payload.GetChildMember_withName(
-                    "enumVendorId"
-                ).GetValueAs_signed()
-                enum_type_id = payload.GetChildMember_withName(
-                    "enumTypeId"
-                ).GetValueAs_signed()
-                enum_value = enum_val_obj.GetValueAs_unsigned()
-                summary = f"Enum({enum_value}), VendorID={enum_vendor_id}, TypeID={enum_type_id}"
-            else:
-                summary = f"SHVar (type: {SHType_Name_Map.get(valueType, 'Unknown')})"
-
-            print(f"[SHVarSummaryProvider] Summary: {summary}")
-            return summary
-        except Exception as e:
-            print(f"[SHVarSummaryProvider] Error in summary(): {e}")
-            return "Error generating summary"
+        print(f"[SHVarSummaryProvider] Summary: {summary}")
+        return summary
+    except Exception as e:
+        print(f"[SHVarSummaryProvider] Error in summary(): {e}")
+        return "Error generating summary"
 
 
-class SHSeqSummaryProvider:
+def SHSeqSummaryProvider(valobj, internal_dict):
     """
     Summary provider for SHSeq.
     Provides a concise string representation based on the sequence length.
     Includes debugging statements to trace internal processing.
     """
-
-    def __init__(self, valobj, internal_dict):
-        self.valobj = valobj
-        print("[SHSeqSummaryProvider] Initializing SHSeqSummaryProvider")
-
-    def summary(self):
-        try:
-            len_val = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
-            summary = f"Seq with {len_val} elements"
-            print(f"[SHSeqSummaryProvider] Summary: {summary}")
-            return summary
-        except Exception as e:
-            print(f"[SHSeqSummaryProvider] Error in summary(): {e}")
-            return "Error generating summary"
+    try:
+        len_val = valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
+        summary = f"Seq with {len_val} elements"
+        print(f"[SHSeqSummaryProvider] Summary: {summary}")
+        return summary
+    except Exception as e:
+        print(f"[SHSeqSummaryProvider] Error in summary(): {e}")
+        return "Error generating summary"
 
 
 def __lldb_init_module(debugger, internal_dict):
@@ -468,7 +456,7 @@ def __lldb_init_module(debugger, internal_dict):
             "type synthetic add -l sh_synthetic_debug.SHSeqSyntheticProvider SHSeq"
         )
 
-        # Register the summary providers
+        # Register the summary providers as functions
         debugger.HandleCommand(
             "type summary add -F sh_synthetic_debug.SHVarSummaryProvider SHVar"
         )
