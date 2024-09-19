@@ -56,13 +56,21 @@ jobs:
         env:
           GH_PAT: ${{ secrets.LOG_ACCESS_TOKEN }}
         run: |
+          # Re-extract repository owner and name
+          REPO_OWNER=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f1)
+          REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2)
+
           # Read failed jobs from previous step
           FAILED_JOBS=$(cat failed_jobs.txt)
 
+          # Initialize log files
           > full_build_log.txt
           > failed_jobs_summary.txt
 
           while read -r job_id job_name; do
+            # Sanitize job name by removing or replacing special characters
+            SANITIZED_JOB_NAME=$(echo "$job_name" | tr -cd '[:alnum:]_')
+
             echo "- $job_name (Job ID: $job_id)" >> failed_jobs_summary.txt
             echo "--- Logs for $job_name ---" >> full_build_log.txt
 
@@ -71,32 +79,44 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/jobs/$job_id" | jq -r '.logs_url')
 
+            echo "Job ID: $job_id"
+            echo "Job Name: $job_name"
+            echo "Log URL: $LOG_URL"
+
             if [ "$LOG_URL" == "null" ] || [ -z "$LOG_URL" ]; then
               echo "Failed to get logs URL for job $job_name (ID: $job_id)" >> full_build_log.txt
               continue
             fi
 
-            echo "Downloading logs for job $job_name from $LOG_URL"
-            # Download the job logs
-            curl -s -L -H "Authorization: token $GH_PAT" "$LOG_URL" -o "$job_name.log"
+            echo "Downloading logs for job '$job_name' from $LOG_URL"
+            # Download the job logs using job ID to ensure filename uniqueness
+            LOG_FILENAME="${job_id}.log"
+            curl -s -L -H "Authorization: token $GH_PAT" "$LOG_URL" -o "$LOG_FILENAME"
 
-            if [ -f "$job_name.log" ]; then
-              echo "Logs downloaded for job $job_name."
-              echo "Contents of $job_name.log:" >> full_build_log.txt
-              cat "$job_name.log" >> full_build_log.txt
+            if [ -f "$LOG_FILENAME" ]; then
+              echo "Logs downloaded for job '$job_name' as $LOG_FILENAME."
+              echo "Contents of $LOG_FILENAME:" >> full_build_log.txt
+              cat "$LOG_FILENAME" >> full_build_log.txt
               echo "--- End of logs for $job_name ---" >> full_build_log.txt
               # Clean up the individual log file
-              rm "$job_name.log"
+              rm "$LOG_FILENAME"
             else
-              echo "Failed to download logs for job $job_name." >> full_build_log.txt
+              echo "Failed to download logs for job '$job_name'." >> full_build_log.txt
             fi
           done <<< "$FAILED_JOBS"
 
-          # Check if any logs were downloaded
-          if [ ! -s full_build_log.txt ]; then
+          # Check if any logs were downloaded (excluding headers)
+          if grep -q "Contents of" full_build_log.txt; then
+            echo "Logs were successfully downloaded."
+          else
             echo "No logs were downloaded for failed jobs."
             exit 1
           fi
+
+          # For debugging: Output the contents of full_build_log.txt
+          echo "----- Full Build Log -----"
+          cat full_build_log.txt
+          echo "----- End of Full Build Log -----"
 
       - name: Send Logs to DeepSeek API
         env:
@@ -116,6 +136,11 @@ jobs:
           # Prepare the payload for DeepSeek
           SYSTEM_PROMPT="You are a helpful assistant that analyzes CI build logs to find errors, summarize them, and propose solutions if confident. Focus on the failed jobs and their specific errors."
           USER_MESSAGE="Here's a summary of failed jobs:\n\n$FAILED_JOBS_SUMMARY\n\nHere are the CI build logs from the failed jobs (truncated if too long):\n\n$BUILD_LOG"
+
+          # Debugging: Output the messages being sent to DeepSeek
+          echo "## DeepSeek Payload"
+          echo "System Prompt: $SYSTEM_PROMPT"
+          echo "User Message: $USER_MESSAGE"
 
           # Send the logs to DeepSeek API
           RESPONSE=$(curl -s https://api.deepseek.com/chat/completions \
@@ -139,3 +164,19 @@ jobs:
           # Output the analysis to the step summary
           echo "## DeepSeek Analysis" >> $GITHUB_STEP_SUMMARY
           echo "$ASSISTANT_REPLY" >> $GITHUB_STEP_SUMMARY
+
+          # Fallback: Also output the analysis to the standard log
+          echo "## DeepSeek Analysis"
+          echo "$ASSISTANT_REPLY"
+
+          # For debugging: Output the full response from DeepSeek
+          echo "## DeepSeek API Response"
+          echo "$RESPONSE"
+
+      # Optional: Upload the full_build_log.txt as an artifact for further inspection
+      - name: Upload Full Build Log
+        if: failure()  # Upload only if previous steps failed
+        uses: actions/upload-artifact@v3
+        with:
+          name: full_build_log
+          path: full_build_log.txt
