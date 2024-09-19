@@ -1250,472 +1250,516 @@ fn as_var(
   resolve_var(value, line_info, shard, e).map(|v| v.into_var())
 }
 
+struct VariableResolver<'e> {
+  e: &'e mut EvalEnv,
+  resolved_identifiers: HashSet<Identifier>,
+}
+
+impl<'e> VariableResolver<'e> {
+  fn new(e: &'e mut EvalEnv) -> Self {
+    Self {
+      e,
+      resolved_identifiers: HashSet::new(),
+    }
+  }
+
+  fn resolve(
+    &mut self,
+    value: &Value,
+    line_info: LineInfo,
+    shard: Option<ShardRef>,
+  ) -> Result<ResolvedVar, ShardsError> {
+    self.resolve_var(value, line_info, shard)
+  }
+
+  fn visit_once(&mut self, name: &Identifier) -> bool {
+    if self.resolved_identifiers.contains(name) {
+      false
+    } else {
+      self.resolved_identifiers.insert(name.clone());
+      true
+    }
+  }
+
+  fn resolve_var(
+    &mut self,
+    value: &Value,
+    line_info: LineInfo,
+    shard: Option<ShardRef>,
+  ) -> Result<ResolvedVar, ShardsError> {
+    match value {
+      Value::None(_) => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
+      Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
+      Value::Identifier(ref name) => {
+        if !self.visit_once(name) {
+          return Err(("Recursive variable definition", line_info).into());
+        }
+
+        // could be wire, trait or mesh as "special" cases
+        if let Some(trait_) = find_trait(name, self.e) {
+          Ok(ResolvedVar::new_const(SVar::Cloned(trait_.into())))
+        } else if let Some((wire, _finalized)) = find_wire(name, self.e) {
+          Ok(ResolvedVar::new_const(SVar::Cloned(wire.into())))
+        } else if let Some(mesh) = find_mesh(name, self.e) {
+          Ok(ResolvedVar::new_const(SVar::NotCloned(mesh.0 .0)))
+        } else if let Some(replacement) = find_replacement(name, self.e) {
+          if let Value::Identifier(current) = replacement {
+            if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
+              // prevent infinite recursion
+              return qualify_variable(name, line_info, self.e).map(ResolvedVar::new_variable);
+            }
+          }
+          self.resolve_var(&replacement.clone(), line_info, shard) // cloned to make borrow checker happy...
+        } else {
+          qualify_variable(name, line_info, self.e).map(ResolvedVar::new_variable)
+        }
+      }
+      Value::Enum(prefix, value) => {
+        let id = findEnumId(prefix.as_str());
+        if let Some(id) = id {
+          // decompose bits to split id into vendor and type
+          // consider this is how id is composed: int64_t id = (int64_t)vendorId << 32 | typeId;
+          let vendor_id = (id >> 32) as i32;
+          let type_id = id as i32;
+          let info = findEnumInfo(vendor_id, type_id)
+            .ok_or((format!("Enum {} not found", prefix), line_info).into())?; // should be valid enum
+          for i in 0..info.labels.len {
+            let c_str = unsafe { CStr::from_ptr(*info.labels.elements.offset(i as isize)) };
+            if value == c_str.to_str().unwrap() {
+              // should be valid utf8
+              // we found the enum value
+              let mut enum_var = Var::default();
+              enum_var.valueType = SHType_Enum;
+              let value = unsafe { *info.values.elements.offset(i as isize) };
+              enum_var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
+              enum_var
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_3
+                .enumVendorId = vendor_id;
+              enum_var
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_3
+                .enumTypeId = type_id;
+              return Ok(ResolvedVar::new_const(SVar::NotCloned(enum_var)));
+            }
+          }
+          Err(
+            (
+              format!("Enum value {}.{} not found", prefix, value),
+              line_info,
+            )
+              .into(),
+          )
+        } else {
+          Err((format!("Enum {} not found", prefix), line_info).into())
+        }
+      }
+      Value::Number(num) => match num {
+        Number::Integer(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
+        Number::Float(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
+        Number::Hexadecimal(s) => {
+          let s = s.as_str();
+          let s = &s[2..]; // remove 0x
+          let z = i64::from_str_radix(s, 16).expect("Invalid hexadecimal number"); // read should have caught this
+          Ok(ResolvedVar::new_const(SVar::NotCloned(z.into())))
+        }
+      },
+      Value::String(ref s) => {
+        let s = Var::ephemeral_string(s.as_str());
+        Ok(ResolvedVar::new_const(SVar::NotCloned(s)))
+      }
+      Value::Bytes(ref b) => {
+        let bytes = b.0.as_ref();
+        let bytes = Var::ephemeral_slice(bytes);
+        Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
+      }
+      Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Float3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Float4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Int2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Int3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Int4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Int8(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Int16(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
+      Value::Seq(vec) => {
+        let mut seq = AutoSeqVar::new();
+        for value in vec {
+          let value = as_var(value, line_info, shard, self.e)?;
+          seq.0.push(value.as_ref());
+        }
+        Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
+      }
+      Value::Table(value) => {
+        let mut table = AutoTableVar::new();
+        for (key, value) in value {
+          let mut key = as_var(key, line_info, shard, self.e)?;
+          if key.as_ref().is_context_var() {
+            // if the key is a context var, we need to convert it to a string
+            // this allows us to have nice keys without quotes
+            key.as_mut().valueType = SHType_String;
+          }
+          let value = as_var(value, line_info, shard, self.e)?;
+          let key_ref = key.as_ref();
+          let value_ref = value.as_ref();
+          table.0.insert_fast(*key_ref, value_ref);
+        }
+        Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(
+          table.leak(),
+        ))))
+      }
+      Value::Shards(seq) => {
+        let mut sub_env = eval_sequence(&seq, Some(self.e), new_cancellation_token())?;
+
+        // ok if we have any suffixed assigned in the above environment, we need to leak them to the current
+        for (name, suffix) in sub_env.suffix_assigned.drain() {
+          self.e.suffix_assigned.insert(name, suffix);
+        }
+
+        finalize_env(&mut sub_env)?;
+
+        let mut seq = AutoSeqVar::new();
+        for shard in sub_env.shards.drain(..) {
+          let s = shard.0 .0;
+          let s: Var = s.into();
+          debug_assert!(s.valueType == SHType_ShardRef);
+          seq.0.push(&s);
+        }
+        Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
+      }
+      Value::Shard(shard) => {
+        let s = create_shard(shard, line_info, self.e)?;
+        let s: Var = s.0 .0.into();
+        debug_assert!(s.valueType == SHType_ShardRef);
+        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
+      }
+      Value::EvalExpr(seq) => {
+        let value = eval_eval_expr(&seq, self.e)?;
+        Ok(ResolvedVar::new_const(SVar::Cloned(value.0)))
+      }
+      Value::Expr(seq) => {
+        let start_idx = self.e.shards.len();
+        let mut sub_env = eval_sequence(&seq, Some(self.e), new_cancellation_token())?;
+        if !sub_env.shards.is_empty() {
+          // create a temporary variable to hold the result of the expression
+          let tmp_name = nanoid!(16);
+          // ensure name starts with a letter
+          let tmp_name = format!("t{}", tmp_name);
+          // debug info
+          let line_info = sub_env.shards[0].0.get_line_info();
+          let line_info = LineInfo {
+            line: line_info.0,
+            column: line_info.1,
+          };
+          add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+            .map_err(|e| (format!("{:?}", e), line_info).into())?;
+          // wrap into a Sub Shard
+          finalize_env(&mut sub_env)?;
+          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
+          // add this sub shard before the start of this pipeline!
+          self.e.shards.insert(start_idx, sub);
+          // now add a get shard to get the temporary at the end of the pipeline
+          let mut s = Var::ephemeral_string(&tmp_name);
+          s.valueType = SHType_ContextVar;
+          Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
+        } else {
+          Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
+        }
+      }
+      Value::TakeTable(var_name, path) => {
+        let start_idx = self.e.shards.len();
+        let mut sub_env = EvalEnv::new(None, Some(self.e), None);
+        create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
+        if !sub_env.shards.is_empty() {
+          // create a temporary variable to hold the result of the expression
+          let tmp_name = nanoid!(16);
+          // ensure name starts with a letter
+          let tmp_name = format!("t{}", tmp_name);
+          add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+            .map_err(|e| (format!("{:?}", e), line_info).into())?;
+          // wrap into a Sub Shard
+          finalize_env(&mut sub_env)?;
+          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
+          // add this sub shard before the start of this pipeline!
+          self.e.shards.insert(start_idx, sub);
+
+          // simply return the temporary variable
+          let mut s = Var::ephemeral_string(tmp_name.as_str());
+          s.valueType = SHType_ContextVar;
+          Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
+        } else {
+          panic!("TakeTable should always return a shard")
+        }
+      }
+      Value::TakeSeq(var_name, path) => {
+        let start_idx = self.e.shards.len();
+        let mut sub_env = EvalEnv::new(None, Some(self.e), None);
+        create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
+        if !sub_env.shards.is_empty() {
+          // create a temporary variable to hold the result of the expression
+          let tmp_name = nanoid!(16);
+          // ensure name starts with a letter
+          let tmp_name = format!("t{}", tmp_name);
+          add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+            .map_err(|e| (format!("{:?}", e), line_info).into())?;
+          // wrap into a Sub Shard
+          finalize_env(&mut sub_env)?;
+          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
+          // add this sub shard before the start of this pipeline!
+          self.e.shards.insert(start_idx, sub);
+
+          // simply return the temporary variable
+          let mut s = Var::ephemeral_string(tmp_name.as_str());
+          s.valueType = SHType_ContextVar;
+          Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
+        } else {
+          panic!("TakeTable should always return a shard")
+        }
+      }
+      Value::Func(func) => {
+        // Either evaluates the builtin directly or as an expression whenever it contains expressions
+        fn eval_as_const_or_expr<F>(
+          f: &Function,
+          f_const: F,
+          line_info: LineInfo,
+          e: &mut EvalEnv,
+        ) -> Result<SVar, ShardsError>
+        where
+          F: FnOnce(&mut EvalEnv) -> Result<SVar, ShardsError>,
+        {
+          let has_variables = if let Some(params) = &f.params {
+            params.iter().any(|x| {
+              return !is_compile_time_constant(&x.value, e);
+            })
+          } else {
+            false
+          };
+          if has_variables {
+            let value2 = Value::Expr {
+              0: Sequence {
+                statements: vec![Statement::Pipeline {
+                  0: Pipeline {
+                    blocks: vec![Block {
+                      content: BlockContent::Func(f.clone()),
+                      line_info: Some(line_info),
+                      custom_state: CustomStateContainer::new(),
+                    }],
+                  },
+                }],
+                custom_state: CustomStateContainer::new(),
+              },
+            };
+            as_var(&value2, line_info, None, e)
+          } else {
+            f_const(e)
+          }
+        }
+
+        match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
+          ("color", true) => eval_as_const_or_expr(
+            func,
+            |_e| Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("i2", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("i3", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("i4", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("i8", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("i16", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("f2", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("f3", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("f4", true) => eval_as_const_or_expr(
+            func,
+            |e| {
+              Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
+                func, line_info, e,
+              )?))
+            },
+            line_info,
+            self.e,
+          )
+          .map(ResolvedVar::new_const),
+          ("platform", true) => Ok(ResolvedVar::new_const(SVar::NotCloned(
+            process_platform_built_in(),
+          ))),
+          ("type", true) => process_type(func, line_info, self.e).map(ResolvedVar::new_const),
+          ("ast", true) => process_ast(func, line_info, self.e).map(ResolvedVar::new_const),
+          _ => {
+            if let Some(defined_value) = find_defined(&func.name, self.e).map(|x| x.clone()) {
+              match defined_value {
+                Definition::Value(value) => {
+                  let replacement = unsafe { &*value };
+                  self.resolve_var(replacement, line_info, shard)
+                }
+                Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
+              }
+            } else if let Some(mut shards_env) = process_template(func, line_info, self.e)? {
+              // @template
+              finalize_env(&mut shards_env)?; // finalize the env
+
+              let mut seq = AutoSeqVar::new();
+
+              // shards
+              for shard in shards_env.shards.drain(..) {
+                let s: Var = shard.0 .0.into();
+                seq.0.push(&s);
+              }
+
+              // also move possible other possible things we defined!
+              for (name, value) in shards_env.definitions.drain() {
+                self.e.definitions.insert(name, value);
+              }
+              assert_eq!(shards_env.deferred_wires.len(), 0);
+              for (name, value) in shards_env.finalized_wires.drain() {
+                self.e.finalized_wires.insert(name, value);
+              }
+              for (name, value) in shards_env.shards_groups.drain() {
+                self.e.shards_groups.insert(name, value);
+              }
+              for (name, value) in shards_env.macro_groups.drain() {
+                self.e.macro_groups.insert(name, value);
+              }
+              for (id, mesh) in shards_env.meshes.drain() {
+                self.e.meshes.insert(id, mesh);
+              }
+              for (id, t) in shards_env.traits.drain() {
+                self.e.traits.insert(id, t);
+              }
+
+              Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
+            } else if let Some(ast_json) = process_macro(func, line_info, self.e)? {
+              let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
+                (
+                  "macro built-in function Shards should output a Json string",
+                  line_info,
+                )
+                  .into()
+              })?;
+
+              thread_local! {
+                pub static TMP_VALUE: RefCell<Option<Value>> = RefCell::new(None);
+              }
+
+              // in this case we expect the ast to be a value
+              let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
+                (
+                  format!(
+                    "macro built-in function Shards should return a valid Json string: {}",
+                    e
+                  ),
+                  line_info,
+                )
+                  .into()
+              })?;
+
+              TMP_VALUE.with(|f| {
+                let mut v = f.borrow_mut();
+                *v = Some(decoded_json.clone());
+                self.resolve_var(
+                  v.as_ref().unwrap(), // should be valid
+                  line_info,
+                  shard,
+                )
+              })
+            } else if let Some(extension) = find_extension(&func.name, self.e) {
+              let v = extension.process_to_var(func, line_info)?;
+              Ok(ResolvedVar::new_const(SVar::Cloned(v)))
+            } else {
+              Err(
+                (
+                  format!("Undefined function or definition {}", func.name),
+                  line_info,
+                )
+                  .into(),
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 fn resolve_var(
   value: &Value,
   line_info: LineInfo,
   shard: Option<ShardRef>,
   e: &mut EvalEnv,
 ) -> Result<ResolvedVar, ShardsError> {
-  match value {
-    Value::None(_) => Ok(ResolvedVar::new_const(SVar::NotCloned(Var::default()))),
-    Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
-    Value::Identifier(ref name) => {
-      // could be wire, trait or mesh as "special" cases
-      if let Some(trait_) = find_trait(name, e) {
-        Ok(ResolvedVar::new_const(SVar::Cloned(trait_.into())))
-      } else if let Some((wire, _finalized)) = find_wire(name, e) {
-        Ok(ResolvedVar::new_const(SVar::Cloned(wire.into())))
-      } else if let Some(mesh) = find_mesh(name, e) {
-        Ok(ResolvedVar::new_const(SVar::NotCloned(mesh.0 .0)))
-      } else if let Some(replacement) = find_replacement(name, e) {
-        if let Value::Identifier(current) = replacement {
-          if current.namespaces.is_empty() && current.name.as_str() == name.name.as_str() {
-            // prevent infinite recursion
-            return qualify_variable(name, line_info, e).map(ResolvedVar::new_variable);
-          }
-        }
-        resolve_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
-      } else {
-        qualify_variable(name, line_info, e).map(ResolvedVar::new_variable)
-      }
-    }
-    Value::Enum(prefix, value) => {
-      let id = findEnumId(prefix.as_str());
-      if let Some(id) = id {
-        // decompose bits to split id into vendor and type
-        // consider this is how id is composed: int64_t id = (int64_t)vendorId << 32 | typeId;
-        let vendor_id = (id >> 32) as i32;
-        let type_id = id as i32;
-        let info = findEnumInfo(vendor_id, type_id)
-          .ok_or((format!("Enum {} not found", prefix), line_info).into())?; // should be valid enum
-        for i in 0..info.labels.len {
-          let c_str = unsafe { CStr::from_ptr(*info.labels.elements.offset(i as isize)) };
-          if value == c_str.to_str().unwrap() {
-            // should be valid utf8
-            // we found the enum value
-            let mut enum_var = Var::default();
-            enum_var.valueType = SHType_Enum;
-            let value = unsafe { *info.values.elements.offset(i as isize) };
-            enum_var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
-            enum_var
-              .payload
-              .__bindgen_anon_1
-              .__bindgen_anon_3
-              .enumVendorId = vendor_id;
-            enum_var
-              .payload
-              .__bindgen_anon_1
-              .__bindgen_anon_3
-              .enumTypeId = type_id;
-            return Ok(ResolvedVar::new_const(SVar::NotCloned(enum_var)));
-          }
-        }
-        Err(
-          (
-            format!("Enum value {}.{} not found", prefix, value),
-            line_info,
-          )
-            .into(),
-        )
-      } else {
-        Err((format!("Enum {} not found", prefix), line_info).into())
-      }
-    }
-    Value::Number(num) => match num {
-      Number::Integer(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
-      Number::Float(n) => Ok(ResolvedVar::new_const(SVar::NotCloned((*n).into()))),
-      Number::Hexadecimal(s) => {
-        let s = s.as_str();
-        let s = &s[2..]; // remove 0x
-        let z = i64::from_str_radix(s, 16).expect("Invalid hexadecimal number"); // read should have caught this
-        Ok(ResolvedVar::new_const(SVar::NotCloned(z.into())))
-      }
-    },
-    Value::String(ref s) => {
-      let s = Var::ephemeral_string(s.as_str());
-      Ok(ResolvedVar::new_const(SVar::NotCloned(s)))
-    }
-    Value::Bytes(ref b) => {
-      let bytes = b.0.as_ref();
-      let bytes = Var::ephemeral_slice(bytes);
-      Ok(ResolvedVar::new_const(SVar::NotCloned(bytes.into())))
-    }
-    Value::Float2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Float3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Float4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Int2(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Int3(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Int4(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Int8(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Int16(ref val) => Ok(ResolvedVar::new_const(SVar::NotCloned(val.into()))),
-    Value::Seq(vec) => {
-      let mut seq = AutoSeqVar::new();
-      for value in vec {
-        let value = as_var(value, line_info, shard, e)?;
-        seq.0.push(value.as_ref());
-      }
-      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
-    }
-    Value::Table(value) => {
-      let mut table = AutoTableVar::new();
-      for (key, value) in value {
-        let mut key = as_var(key, line_info, shard, e)?;
-        if key.as_ref().is_context_var() {
-          // if the key is a context var, we need to convert it to a string
-          // this allows us to have nice keys without quotes
-          key.as_mut().valueType = SHType_String;
-        }
-        let value = as_var(value, line_info, shard, e)?;
-        let key_ref = key.as_ref();
-        let value_ref = value.as_ref();
-        table.0.insert_fast(*key_ref, value_ref);
-      }
-      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(
-        table.leak(),
-      ))))
-    }
-    Value::Shards(seq) => {
-      let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
-
-      // ok if we have any suffixed assigned in the above environment, we need to leak them to the current
-      for (name, suffix) in sub_env.suffix_assigned.drain() {
-        e.suffix_assigned.insert(name, suffix);
-      }
-
-      finalize_env(&mut sub_env)?;
-
-      let mut seq = AutoSeqVar::new();
-      for shard in sub_env.shards.drain(..) {
-        let s = shard.0 .0;
-        let s: Var = s.into();
-        debug_assert!(s.valueType == SHType_ShardRef);
-        seq.0.push(&s);
-      }
-      Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
-    }
-    Value::Shard(shard) => {
-      let s = create_shard(shard, line_info, e)?;
-      let s: Var = s.0 .0.into();
-      debug_assert!(s.valueType == SHType_ShardRef);
-      Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-    }
-    Value::EvalExpr(seq) => {
-      let value = eval_eval_expr(&seq, e)?;
-      Ok(ResolvedVar::new_const(SVar::Cloned(value.0)))
-    }
-    Value::Expr(seq) => {
-      let start_idx = e.shards.len();
-      let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
-      if !sub_env.shards.is_empty() {
-        // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!(16);
-        // ensure name starts with a letter
-        let tmp_name = format!("t{}", tmp_name);
-        // debug info
-        let line_info = sub_env.shards[0].0.get_line_info();
-        let line_info = LineInfo {
-          line: line_info.0,
-          column: line_info.1,
-        };
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|e| (format!("{:?}", e), line_info).into())?;
-        // wrap into a Sub Shard
-        finalize_env(&mut sub_env)?;
-        let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
-        // add this sub shard before the start of this pipeline!
-        e.shards.insert(start_idx, sub);
-        // now add a get shard to get the temporary at the end of the pipeline
-        let mut s = Var::ephemeral_string(&tmp_name);
-        s.valueType = SHType_ContextVar;
-        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-      } else {
-        Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
-      }
-    }
-    Value::TakeTable(var_name, path) => {
-      let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e), None);
-      create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
-      if !sub_env.shards.is_empty() {
-        // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!(16);
-        // ensure name starts with a letter
-        let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|e| (format!("{:?}", e), line_info).into())?;
-        // wrap into a Sub Shard
-        finalize_env(&mut sub_env)?;
-        let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
-        // add this sub shard before the start of this pipeline!
-        e.shards.insert(start_idx, sub);
-
-        // simply return the temporary variable
-        let mut s = Var::ephemeral_string(tmp_name.as_str());
-        s.valueType = SHType_ContextVar;
-        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-      } else {
-        panic!("TakeTable should always return a shard")
-      }
-    }
-    Value::TakeSeq(var_name, path) => {
-      let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, Some(e), None);
-      create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
-      if !sub_env.shards.is_empty() {
-        // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!(16);
-        // ensure name starts with a letter
-        let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|e| (format!("{:?}", e), line_info).into())?;
-        // wrap into a Sub Shard
-        finalize_env(&mut sub_env)?;
-        let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
-        // add this sub shard before the start of this pipeline!
-        e.shards.insert(start_idx, sub);
-
-        // simply return the temporary variable
-        let mut s = Var::ephemeral_string(tmp_name.as_str());
-        s.valueType = SHType_ContextVar;
-        Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-      } else {
-        panic!("TakeTable should always return a shard")
-      }
-    }
-    Value::Func(func) => {
-      // Either evaluates the builtin directly or as an expression whenever it contains expressions
-      fn eval_as_const_or_expr<F>(
-        f: &Function,
-        f_const: F,
-        line_info: LineInfo,
-        e: &mut EvalEnv,
-      ) -> Result<SVar, ShardsError>
-      where
-        F: FnOnce(&mut EvalEnv) -> Result<SVar, ShardsError>,
-      {
-        let has_variables = if let Some(params) = &f.params {
-          params.iter().any(|x| {
-            return !is_compile_time_constant(&x.value, e);
-          })
-        } else {
-          false
-        };
-        if has_variables {
-          let value2 = Value::Expr {
-            0: Sequence {
-              statements: vec![Statement::Pipeline {
-                0: Pipeline {
-                  blocks: vec![Block {
-                    content: BlockContent::Func(f.clone()),
-                    line_info: Some(line_info),
-                    custom_state: CustomStateContainer::new(),
-                  }],
-                },
-              }],
-              custom_state: CustomStateContainer::new(),
-            },
-          };
-          as_var(&value2, line_info, None, e)
-        } else {
-          f_const(e)
-        }
-      }
-
-      match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
-        ("color", true) => eval_as_const_or_expr(
-          func,
-          |_e| Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("i2", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("i3", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("i4", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("i8", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("i16", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("f2", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("f3", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("f4", true) => eval_as_const_or_expr(
-          func,
-          |e| {
-            Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
-              func, line_info, e,
-            )?))
-          },
-          line_info,
-          e,
-        )
-        .map(ResolvedVar::new_const),
-        ("platform", true) => Ok(ResolvedVar::new_const(SVar::NotCloned(
-          process_platform_built_in(),
-        ))),
-        ("type", true) => process_type(func, line_info, e).map(ResolvedVar::new_const),
-        ("ast", true) => process_ast(func, line_info, e).map(ResolvedVar::new_const),
-        _ => {
-          if let Some(defined_value) = find_defined(&func.name, e).map(|x| x.clone()) {
-            match defined_value {
-              Definition::Value(value) => {
-                let replacement = unsafe { &*value };
-                resolve_var(replacement, line_info, shard, e)
-              }
-              Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
-            }
-          } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
-            // @template
-            finalize_env(&mut shards_env)?; // finalize the env
-
-            let mut seq = AutoSeqVar::new();
-
-            // shards
-            for shard in shards_env.shards.drain(..) {
-              let s: Var = shard.0 .0.into();
-              seq.0.push(&s);
-            }
-
-            // also move possible other possible things we defined!
-            for (name, value) in shards_env.definitions.drain() {
-              e.definitions.insert(name, value);
-            }
-            assert_eq!(shards_env.deferred_wires.len(), 0);
-            for (name, value) in shards_env.finalized_wires.drain() {
-              e.finalized_wires.insert(name, value);
-            }
-            for (name, value) in shards_env.shards_groups.drain() {
-              e.shards_groups.insert(name, value);
-            }
-            for (name, value) in shards_env.macro_groups.drain() {
-              e.macro_groups.insert(name, value);
-            }
-            for (id, mesh) in shards_env.meshes.drain() {
-              e.meshes.insert(id, mesh);
-            }
-            for (id, t) in shards_env.traits.drain() {
-              e.traits.insert(id, t);
-            }
-
-            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
-          } else if let Some(ast_json) = process_macro(func, line_info, e)? {
-            let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
-              (
-                "macro built-in function Shards should output a Json string",
-                line_info,
-              )
-                .into()
-            })?;
-
-            thread_local! {
-              pub static TMP_VALUE: RefCell<Option<Value>> = RefCell::new(None);
-            }
-
-            // in this case we expect the ast to be a value
-            let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
-              (
-                format!(
-                  "macro built-in function Shards should return a valid Json string: {}",
-                  e
-                ),
-                line_info,
-              )
-                .into()
-            })?;
-
-            TMP_VALUE.with(|f| {
-              let mut v = f.borrow_mut();
-              *v = Some(decoded_json.clone());
-              resolve_var(
-                v.as_ref().unwrap(), // should be valid
-                line_info,
-                shard,
-                e,
-              )
-            })
-          } else if let Some(extension) = find_extension(&func.name, e) {
-            let v = extension.process_to_var(func, line_info)?;
-            Ok(ResolvedVar::new_const(SVar::Cloned(v)))
-          } else {
-            Err(
-              (
-                format!("Undefined function or definition {}", func.name),
-                line_info,
-              )
-                .into(),
-            )
-          }
-        }
-      }
-    }
-  }
+  VariableResolver::new(e).resolve(value, line_info, shard)
 }
 
 fn qualify_variable(
