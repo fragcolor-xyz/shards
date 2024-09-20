@@ -27,7 +27,7 @@ struct SubContextDataStorage {
           continue;
         }
       }
-      if (cd.lastTouched != frameCounter) {
+      if ((cd.lastTouched + frameThreshold) < frameCounter) {
         it = map.erase(it);
       } else {
         ++it;
@@ -52,6 +52,12 @@ struct SubContextDataStorage {
 
     if (cd.lastTouched != frameCounter) {
       if (v->getVersion() != cd.version) {
+#if SH_GFX_CONTEXT_DATA_LABELS
+        std::string_view l = v->getLabel();
+        if (!(l.starts_with("gizmo_") || l.starts_with("egui_"))) {
+          int j = 0; // Debug break
+        }
+#endif
         v->updateContextData(context, cd);
         cd.version = v->getVersion();
       }
