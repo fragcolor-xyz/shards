@@ -12,7 +12,7 @@ namespace gfx {
 struct Context;
 
 #define SH_GFX_CONTEXT_DATA_LABELS 1
-#define SH_GFX_CONTEXT_DATA_LOG_LIFETIME 0
+#define SH_GFX_CONTEXT_DATA_LOG_LIFETIME 1
 struct ContextData {
   size_t version = ~0;
   size_t lastTouched = ~0;

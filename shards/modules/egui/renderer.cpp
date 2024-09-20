@@ -66,7 +66,7 @@ struct MeshDrawablePool : public shards::Pool<std::shared_ptr<MeshDrawable>, Poo
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
 
-  TexturePtr get(const egui::RenderOutput& output, const egui::TextureId &id) const {
+  TexturePtr get(const egui::RenderOutput &output, const egui::TextureId &id) const {
     if (id.managed) {
       auto it = textures.find(id.id);
       if (it != textures.end())
@@ -167,7 +167,11 @@ struct TextureManager {
             .resolution = size,
             .source = TextureSource{.data = std::move(imageData)},
         })
-        .initWithSamplerState(sampler);
+        .initWithSamplerState(sampler)
+#if SH_GFX_CONTEXT_DATA_LABELS
+        .initWithLabel(fmt::format("egui_texture_{}", set.id.id))
+#endif
+        ;
   }
 
   void free(egui::TextureId id) { textures.erase(id.id); }
@@ -237,6 +241,11 @@ struct EguiRendererImpl {
       auto &mesh = drawablePtr->mesh;
       mesh->update(meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                    prim.numIndices * sizeof(uint32_t));
+#if SH_GFX_CONTEXT_DATA_LABELS
+      char buffer[128];
+      snprintf(buffer, sizeof(buffer), "egui_%zu/%zu", i, output.numPrimitives);
+      mesh->setLabel(buffer);
+#endif
 
       drawable.mesh = mesh;
       drawable.transform = rootTransform;

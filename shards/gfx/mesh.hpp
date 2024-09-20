@@ -105,11 +105,30 @@ private:
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
   size_t version{};
+#if SH_GFX_CONTEXT_DATA_LABELS
+  std::string label;
+#endif
 
   friend struct gfx::UpdateUniqueId<Mesh>;
 
 public:
   const MeshFormat &getFormat() const { return format; }
+
+#if SH_GFX_CONTEXT_DATA_LABELS
+  void setLabel(std::string_view label) {
+    this->label = label;
+  }
+  
+  std::string_view getLabel() const {
+    return label;
+  }
+#else
+  void setLabel(std::string_view) {}
+  
+  std::string_view getLabel() const {
+    return "<unknown>";
+  }
+#endif
 
   size_t getNumVertices() const { return numVertices; }
   size_t getNumIndices() const { return numIndices; }
@@ -127,8 +146,6 @@ public:
 
   UniqueId getId() const { return id; }
   MeshPtr clone() const;
-
-  std::string_view getLabel() const { return "<unknown>"; }
 
   void pipelineHashCollect(detail::PipelineHashCollector &) const;
 

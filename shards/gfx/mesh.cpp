@@ -89,6 +89,10 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
   WGPUDevice device = context.wgpuDevice;
   shassert(device);
 
+#if SH_GFX_CONTEXT_DATA_LABELS
+  contextData.label = getLabel();
+#endif
+
   contextData.format = format;
   contextData.numIndices = numIndices;
   contextData.numVertices = numVertices;

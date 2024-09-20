@@ -384,6 +384,9 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
         .vertexAttributes = LineVertex::getAttributes(),
     };
     lineMesh->update(fmt, lineVertices.data(), lineVertices.size() * sizeof(LineVertex), nullptr, 0);
+#if SH_GFX_CONTEXT_DATA_LABELS
+    lineMesh->setLabel("gizmo_line");
+#endif
 
     auto drawable = std::make_shared<MeshDrawable>(lineMesh);
     drawable->features.push_back(screenSpaceSizeFeature);
@@ -399,6 +402,9 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
         .vertexAttributes = SolidVertex::getAttributes(),
     };
     solidMesh->update(fmt, solidVertices.data(), solidVertices.size() * sizeof(SolidVertex), nullptr, 0);
+#if SH_GFX_CONTEXT_DATA_LABELS
+    solidMesh->setLabel("gizmo_solid");
+#endif
 
     auto drawable = std::make_shared<MeshDrawable>(solidMesh);
     queue->add(drawable);
@@ -413,6 +419,9 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
         .vertexAttributes = SolidVertex::getAttributes(),
     };
     unculledSolidMesh->update(fmt, unculledSolidVertices.data(), unculledSolidVertices.size() * sizeof(SolidVertex), nullptr, 0);
+#if SH_GFX_CONTEXT_DATA_LABELS
+    unculledSolidMesh->setLabel("gizmo_solid_unculled");
+#endif
 
     auto drawable = std::make_shared<MeshDrawable>(unculledSolidMesh);
     drawable->features.push_back(noCullingFeature);
@@ -433,6 +442,9 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
         .vertexAttributes = TextVertex::getAttributes(),
     };
     textMesh->update(fmt, textVertices.data(), textVertices.size() * sizeof(TextVertex), nullptr, 0);
+#if SH_GFX_CONTEXT_DATA_LABELS
+    textMesh->setLabel("gizmo_text");
+#endif
     auto drawable = std::make_shared<MeshDrawable>(textMesh);
     drawable->features.push_back(blendFeature);
     drawable->parameters.set("baseColorTexture", gizmos::FontMap::getDefault()->image);
@@ -580,16 +592,19 @@ void GizmoRenderer::loadGeometry() {
     gen.radialSegments = 12;
     gen.generate();
     arrowMesh = createMesh(gen.vertices, gen.indices);
+    arrowMesh->setLabel("gizmo_arrow");
   }
   {
     geom::CubeGenerator gen;
     gen.generate();
     cubeMesh = createMesh(gen.vertices, gen.indices);
+    cubeMesh->setLabel("gizmo_cube");
   }
   {
     geom::SphereGenerator gen;
     gen.generate();
     sphereMesh = createMesh(gen.vertices, gen.indices);
+    sphereMesh->setLabel("gizmo_sphere");
   }
 
   float4x4 cylinderRotOffset = linalg::rotation_matrix(linalg::rotation_quat(float3(0, 0, 1), -pi * 0.5f));

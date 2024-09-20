@@ -248,6 +248,9 @@ inline MeshPtr generateMesh(std::optional<AttribBuffer> indexBuffer,
   } else {
     newMesh->update(format, std::move(vertexBuffer));
   }
+#if SH_GFX_CONTEXT_DATA_LABELS
+  newMesh->setLabel(fmt::format("wireframe"));
+#endif
 
   return newMesh;
 }
