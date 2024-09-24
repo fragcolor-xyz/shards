@@ -40,3 +40,24 @@ tokenizers = { opt-level = 3 }
 candle-core = { opt-level = 3 }
 candle-transformers = { opt-level = 3 }
 candle-nn = { opt-level = 3 }
+
+# The profile settings are required to get reasonable performance
+# some validations are enabled by default based on debug-assertions
+# including synchronization validation which adds about 60ms every frame
+[profile.rel-with-deb-info.package."wgpu-hal"]
+debug-assertions = false
+[profile.rel-with-deb-info.package."wgpu-core"]
+debug-assertions = false
+[profile.rel-with-deb-info.package."wgpu-types"]
+debug-assertions = false
+
+# For debug mode too, disable to actually debug
+[profile.rel-with-deb-info.package."wgpu-hal"]
+debug-assertions = false
+opt-level = 3
+[profile.rel-with-deb-info.package."wgpu-core"]
+debug-assertions = false
+opt-level = 3
+[profile.rel-with-deb-info.package."wgpu-types"]
+debug-assertions = false
+opt-level = 3
