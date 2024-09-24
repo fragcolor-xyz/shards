@@ -95,46 +95,131 @@ struct BindGroupBuilder {
 };
 
 // Defines a range of drawable
-struct DrawGroup {
+struct GroupRange {
   typedef std::vector<UniqueId> ContainerType;
 
   size_t startIndex;
   size_t numInstances;
 
-  DrawGroup(size_t startIndex, size_t numInstances) : startIndex(startIndex), numInstances(numInstances) {}
+  GroupRange(size_t startIndex, size_t numInstances) : startIndex(startIndex), numInstances(numInstances) {}
 
-  ContainerType::const_iterator getBegin(const ContainerType &drawables) const {
-    return std::next(drawables.begin(), startIndex);
+  // Get span over the source data
+  template <typename T, typename TAlloc> boost::span<T> sourceSpan(std::vector<T, TAlloc> &data) {
+    return {data.data() + startIndex, numInstances};
   }
-  ContainerType::const_iterator getEnd(const ContainerType &drawables) const {
-    return std::next(drawables.begin(), startIndex + numInstances);
+  template <typename T, typename TAlloc> boost::span<const T> sourceSpan(const std::vector<T, TAlloc> &data) const {
+    return {data.data() + startIndex, numInstances};
+  }
+};
+
+struct DividedGroupRange {
+  size_t startIndex;
+  size_t numInstances;
+  // Index of first metadata entry
+  size_t metaDataOffset;
+  // Number of metadata entry divisions in this group
+  size_t metaNumDivisions;
+
+  // Get span over the range metadata
+  template <typename T, typename TAlloc> boost::span<T> metaSpan(std::vector<T, TAlloc> &data) const {
+    return {data.data() + metaDataOffset, metaNumDivisions};
+  }
+
+  // Get span over the source data
+  template <typename T, typename TAlloc> boost::span<T> sourceSpan(std::vector<T, TAlloc> &data) const {
+    return {data.data() + startIndex, numInstances};
   }
 };
 
 // Creates draw groups ranges based on DrawGroupKey
 // contiguous elements with matching keys will be grouped into the same draw group
 template <typename TKeygen, typename TAlloc>
-inline void groupDrawables(size_t numDrawables, std::vector<detail::DrawGroup, TAlloc> &groups, TKeygen &&keyGenerator) {
+inline void groupDrawables(size_t numDrawables, std::vector<detail::GroupRange, TAlloc> &outRanges, TKeygen &&keyGenerator) {
   if (numDrawables > 0) {
     size_t groupStart = 0;
-    auto currentDrawGroupKey = keyGenerator(0);
+    auto currentKey = keyGenerator(0);
 
     auto finishGroup = [&](size_t currentIndex) {
       size_t groupLength = currentIndex - groupStart;
       if (groupLength > 0) {
-        groups.emplace_back(groupStart, groupLength);
+        outRanges.emplace_back(groupStart, groupLength);
       }
     };
     for (size_t i = 1; i < numDrawables; i++) {
-      auto drawGroupKey = keyGenerator(i);
-      if (drawGroupKey != currentDrawGroupKey) {
+      auto key = keyGenerator(i);
+      if (key != currentKey) {
         finishGroup(i);
         groupStart = i;
-        currentDrawGroupKey = drawGroupKey;
+        currentKey = key;
       }
     }
     finishGroup(numDrawables);
   }
+}
+
+// Takes an existing grouping and subdivide it based on a finer grouping
+// resulting in a new flat set
+// outSubdivisions will contain the index of the parent group for each new group
+template <typename TKeygen, typename TAlloc>
+inline void subdivideGroupedDrawables(const std::vector<detail::GroupRange, TAlloc> &inRanges,
+                                      std::vector<detail::GroupRange, TAlloc> &outRanges, TKeygen &&keyGenerator) {
+  for (size_t g = 0; g < inRanges.size(); g++) {
+    auto &baseRange = inRanges[g];
+    size_t groupStart = baseRange.startIndex;
+    auto currentKey = keyGenerator(groupStart);
+
+    auto finishGroup = [&](size_t currentIndex) {
+      size_t groupLength = currentIndex - groupStart;
+      if (groupLength > 0) {
+        outRanges.emplace_back(groupStart, groupLength);
+      }
+    };
+
+    for (size_t i = 1; i < baseRange.numInstances; i++) {
+      auto key = keyGenerator(baseRange.startIndex + i);
+      if (key != currentKey) {
+        finishGroup(baseRange.startIndex + i);
+        groupStart = baseRange.startIndex + i;
+        currentKey = key;
+      }
+    }
+    finishGroup(baseRange.startIndex + baseRange.numInstances);
+  }
+}
+
+// Takes an outer range and an inner range and annotate the outer range with the information
+// needed to iterate over it's members
+template <typename TAlloc, typename TAlloc1>
+inline void groupRangeToDividedGroupRange(const std::vector<GroupRange, TAlloc> &outerRanges,
+                                          const std::vector<GroupRange, TAlloc> &innerRanges,
+                                          std::vector<DividedGroupRange, TAlloc1> &outRanges) {
+  shassert(innerRanges.size() >= outerRanges.size());
+  size_t outerIdx = 0;
+  size_t startInnerIdx = 0;
+  size_t instanceOffset = 0;
+  auto finishGroup = [&](size_t endInnerIdx) {
+    size_t numDivs = endInnerIdx - startInnerIdx;
+    if (numDivs > 0) {
+      DividedGroupRange &outRange = outRanges.emplace_back();
+      outRange.startIndex = outerRanges[outerIdx].startIndex;
+      outRange.numInstances = outerRanges[outerIdx].numInstances;
+      outRange.metaDataOffset = startInnerIdx;
+      outRange.metaNumDivisions = numDivs;
+      outerIdx++;
+    }
+  };
+
+  for (size_t innerIdx = 0; innerIdx < innerRanges.size(); innerIdx++) {
+    const GroupRange &outerRange = outerRanges[outerIdx];
+    const GroupRange &innerRange = innerRanges[innerIdx];
+    instanceOffset += innerRange.numInstances;
+
+    if (instanceOffset >= outerRange.startIndex + outerRange.numInstances) {
+      finishGroup(innerIdx + 1);
+      startInnerIdx = innerIdx + 1;
+    }
+  }
+  finishGroup(innerRanges.size());
 }
 
 inline void packDrawData(uint8_t *outData, size_t outSize, const StructLayout &layout, const ParameterStorage &parameterStorage) {
