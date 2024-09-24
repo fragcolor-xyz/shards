@@ -11,10 +11,10 @@ default = []
 tracy = ["profiling/profile-with-tracy", "tracy-client"]
 
 [dependencies]
-wgpu-native = { path = "../wgpu-native", features = [] }
+wgpu-native = { path = "../wgpu-native", default-features = false, features = ["wgsl", "spirv", "dx12", "metal"] }
 wgpu-core = { path = "../wgpu/wgpu-core" }
 wgpu-types = { path = "../wgpu/wgpu-types" }
-naga-native = { path = "../naga-native" }
+naga-native = { path = "../naga-native"}
 profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.15.0", optional = true }
 

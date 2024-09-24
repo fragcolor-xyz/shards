@@ -3,6 +3,7 @@
 
 #ifdef WEBGPU_NATIVE
 extern "C" {
+#include <webgpu.h>
 #include <wgpu.h>
 }
 #else

@@ -57,7 +57,7 @@ struct AdapterRequest {
 
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
-    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
+    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPUInstanceRequestAdapterCallback)&Self::callback,
                                new std::shared_ptr<Self>(result));
     return result;
   };
@@ -82,7 +82,7 @@ struct DeviceRequest {
 
   static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
     auto result = std::make_shared<Self>();
-    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
+    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPUAdapterRequestDeviceCallback)&Self::callback,
                              new std::shared_ptr<Self>(result));
     return result;
   };
@@ -204,7 +204,17 @@ struct ContextMainOutput {
       return;
     }
 
-    WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, adapter);
+    WGPUTextureFormat preferredFormat = WGPUTextureFormat_Undefined;
+    WGPUSurfaceCapabilities capabilities{};
+    wgpuSurfaceGetCapabilities(wgpuSurface, adapter, &capabilities);
+
+    for (size_t i = 0; i < capabilities.formatCount; i++) {
+      auto format = capabilities.formats[i];
+      if (preferredFormat == WGPUTextureFormat_Undefined) {
+        preferredFormat = format;
+      }
+      SPDLOG_LOGGER_DEBUG(logger, "Surface format: {}", magic_enum::enum_name(format));
+    }
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
       throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
@@ -284,7 +294,13 @@ struct ContextMainOutput {
         .initWithFlags(textureFormatFlags);
   }
 
-  void releaseSurface() { WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface); }
+  void releaseSurface() {
+    // Force flush all texture references before releasing
+    // this should cause all references to the surface texture to be released
+    onFlushTextureReferences->forEach([](ContextFlushTextureReferencesHandler &target) { target.flushTextureReferences(); });
+
+    WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface);
+  }
 #ifndef WEBGPU_NATIVE
   void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapChain); }
 #endif
@@ -519,15 +535,6 @@ void Context::deviceObtained() {
   state = ContextState::Ok;
   SPDLOG_LOGGER_DEBUG(logger, "wgpuDevice obtained");
 
-  auto errorCallback = [](WGPUErrorType type, char const *message, void *userdata) {
-    Context &context = *(Context *)userdata;
-    std::string msgString(message);
-    SPDLOG_LOGGER_ERROR(wgpuLogger, "{} ({})", message, type);
-    if (type == WGPUErrorType_DeviceLost) {
-      context.deviceLost();
-    }
-  };
-  wgpuDeviceSetUncapturedErrorCallback(wgpuDevice, errorCallback, this);
   wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
   if (mainOutput) {
@@ -556,6 +563,8 @@ void Context::requestDevice() {
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
     SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
+    Context *context = static_cast<Context *>(userdata);
+    context->deviceLost();
   };
   deviceDesc.deviceLostCallback = deviceLostCallback;
   deviceDesc.deviceLostUserdata = this;
@@ -683,22 +692,20 @@ void Context::requestAdapter() {
   }
   for (size_t i = 0; i < adapters.size(); i++) {
     auto &adapter = adapters[i];
-    WGPUAdapterProperties props;
-    wgpuAdapterGetProperties(adapter, &props);
+    WGPUAdapterInfo props;
+    wgpuAdapterGetInfo(adapter, &props);
 
     SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
     SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{
   vendorID: {}
-  vendorName: {}
   architecture: {}
   deviceID: {}
-  name: {}
-  driverDescription: {}
+  description: {}
   adapterType: {}
   backendType: {}
 }})",
-                        props.vendorID, props.vendorName, props.architecture, props.deviceID, props.name, props.driverDescription,
-                        props.adapterType, props.backendType);
+                        props.vendorID, props.architecture, props.deviceID, props.description, props.adapterType,
+                        props.backendType);
     if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
       adapterToUse = adapter;
       backendType = props.backendType;
