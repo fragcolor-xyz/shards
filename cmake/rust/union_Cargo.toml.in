@@ -52,12 +52,12 @@ debug-assertions = false
 debug-assertions = false
 
 # For debug mode too, disable to actually debug
-[profile.rel-with-deb-info.package."wgpu-hal"]
+[profile.dev.package."wgpu-hal"]
 debug-assertions = false
 opt-level = 3
-[profile.rel-with-deb-info.package."wgpu-core"]
+[profile.dev.package."wgpu-core"]
 debug-assertions = false
 opt-level = 3
-[profile.rel-with-deb-info.package."wgpu-types"]
+[profile.dev.package."wgpu-types"]
 debug-assertions = false
 opt-level = 3
