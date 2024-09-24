@@ -1,7 +1,5 @@
 use std::ffi::{c_char, c_void, CStr, CString};
 
-use native::convert_string;
-
 // Regex helpers
 // Fixup attributes (manually fix enum flags):
 //  \s*#\[derive.*\n(\s*#\[cfg_attr.*\n)+
@@ -18,7 +16,6 @@ pub mod native {
   use std::{
     ffi::{c_char, CStr},
     marker::PhantomData,
-    num::NonZeroU32,
     ptr::slice_from_raw_parts,
   };
 
@@ -1419,6 +1416,7 @@ pub mod native {
       ///
       /// [`AtomicResult`]: crate::Expression::AtomicResult
       result: Handle<Expression>,
+      has_result: bool,
     },
     /// Load uniformly from a uniform pointer in the workgroup address space.
     ///
@@ -1560,8 +1558,8 @@ pub mod native {
     fn from(h: Range<U>) -> naga::Range<T> {
       let (first, last) = unsafe {
         (
-          naga::Handle::<T>::new(NonZeroU32::new_unchecked(h.start)),
-          naga::Handle::<T>::new(NonZeroU32::new_unchecked(h.end)),
+          naga::Handle::new(naga::Index::new(h.start).unwrap()),
+          naga::Handle::new(naga::Index::new(h.start).unwrap()),
         )
       };
       naga::Range::<T>::new_from_bounds(first, last)
@@ -1959,7 +1957,6 @@ pub mod native {
         name: convert_string(c.name),
         init: c.init.into(),
         ty: c.ty.into(),
-        r#override: naga::Override::None,
       })
     }
   }
@@ -2285,16 +2282,23 @@ pub mod native {
           fun,
           value,
           result,
+          has_result,
         } => naga::Statement::Atomic {
           pointer: pointer.into(),
           fun: fun.try_into()?,
           value: value.into(),
-          result: result.into(),
+          result: if has_result {
+            Some(result.into())
+          } else {
+            None
+          },
         },
-        Statement::WorkGroupUniformLoad { pointer, result } => naga::Statement::WorkGroupUniformLoad {
-          pointer: pointer.into(),
-          result: result.into(),
-        },
+        Statement::WorkGroupUniformLoad { pointer, result } => {
+          naga::Statement::WorkGroupUniformLoad {
+            pointer: pointer.into(),
+            result: result.into(),
+          }
+        }
         Statement::Call {
           function,
           arguments,
@@ -2804,7 +2808,7 @@ pub unsafe extern "C" fn nagaStoreConstant(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn nagaStoreConstExpression(
+pub unsafe extern "C" fn nagaStoreGlobalExpression(
   writer_: *mut NagaWriter,
   expr: native::Expression,
 ) -> native::Handle<native::Expression> {
@@ -2813,7 +2817,7 @@ pub unsafe extern "C" fn nagaStoreConstExpression(
 
   let handle = writer
     .module
-    .const_expressions
+    .global_expressions
     .append(expr, naga::Span::default());
   return handle.into();
 }

@@ -38,7 +38,7 @@ struct TextureViewDesc {
   }
 };
 
-// Automatically determinal what format the texture should be viewed as
+// Automatically determine what format the texture should be viewed as
 template <typename T>
 inline WGPUTextureFormat deriveTextureViewFormat(WGPUTextureFormat pixelFormat, TextureFormatFlags flags, const T &logId = T()) {
   if (textureFormatFlagsContains(flags, TextureFormatFlags ::IsSecretlySrgb)) {
