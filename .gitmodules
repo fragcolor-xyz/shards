@@ -99,3 +99,6 @@
 [submodule "deps/JoltPhysics"]
 	path = deps/JoltPhysics
 	url = https://github.com/shards-lang/JoltPhysics.git
+[submodule "deps/crdt-lite"]
+	path = deps/crdt-lite
+	url = https://github.com/sinkingsugar/crdt-lite.git
