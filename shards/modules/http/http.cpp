@@ -2,6 +2,7 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include <boost/core/detail/string_view.hpp>
+#include <shards/core/params.hpp>
 #include <shards/core/platform.hpp>
 #include <shards/log/log.hpp>
 
@@ -844,44 +845,18 @@ struct Response {
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
 
-  static inline Parameters params{
-      {"Status", SHCCSTR("The HTTP status code to return."), {CoreInfo::IntType}},
-      {"Headers",
-       SHCCSTR("The headers to attach to this response."),
-       {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}},
-  };
+  PARAM_PARAMVAR(_status, "Status", "The HTTP status code to return.", {CoreInfo::IntType, CoreInfo::IntVarType})
+  PARAM_PARAMVAR(_headers, "Headers", "The headers to attach to this response.", {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType})
+  PARAM_PARAMVAR(_contentType, "ContentType", "The content type of the response.", {CoreInfo::StringType, CoreInfo::StringVarType})
+  PARAM_IMPL(PARAM_IMPL_FOR(_status), PARAM_IMPL_FOR(_headers), PARAM_IMPL_FOR(_contentType))
 
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _status = http::status(value.payload.intValue);
-      break;
-    case 1:
-      _headers = value;
-      break;
-    default:
-      break;
-    }
+  Response() {
+    _status = Var(200);
+    _contentType = Var("application/json");
   }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(int64_t(_status));
-    case 1:
-      return _headers;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  // compose to fixup output type purely based on input type
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
 
   void warmup(SHContext *context) {
-    _headers.warmup(context);
+    PARAM_WARMUP(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
     if (_peerVar->valueType == SHType::None) {
       throw WarmupError("Socket variable not found in wire");
@@ -889,9 +864,15 @@ struct Response {
   }
 
   void cleanup(SHContext *context) {
-    _headers.cleanup();
+    PARAM_CLEANUP(context);
     releaseVariable(_peerVar);
     _peerVar = nullptr;
+  }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -900,8 +881,8 @@ struct Response {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
 
-    _response.result(_status);
-    _response.set(http::field::content_type, "application/json");
+    _response.result(http::status(_status.get().payload.intValue));
+    _response.set(http::field::content_type, SHSTRVIEW(_contentType.get()));
     auto input_view = SHSTRVIEW(input); // this also supports bytes cos POD layout
     _response.body() = input_view;
 
@@ -938,9 +919,7 @@ struct Response {
     return input;
   }
 
-  http::status _status{200};
   SHVar *_peerVar{nullptr};
-  ParamVar _headers{};
   http::response<http::string_body> _response;
 };
 
@@ -1104,18 +1083,11 @@ struct SendFile {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline Parameters params{{"Headers",
-                                   SHCCSTR("The headers to attach to this response."),
-                                   {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) { _headers = value; }
-
-  SHVar getParam(int index) { return _headers; }
+  PARAM_PARAMVAR(_headers, "Headers", "The headers to attach to this response.", {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType})
+  PARAM_IMPL(PARAM_IMPL_FOR(_headers))
 
   void warmup(SHContext *context) {
-    _headers.warmup(context);
+    PARAM_WARMUP(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
     if (_peerVar->valueType == SHType::None) {
       throw WarmupError("Socket variable not found in wire");
@@ -1123,9 +1095,15 @@ struct SendFile {
   }
 
   void cleanup(SHContext *context) {
-    _headers.cleanup();
+    PARAM_CLEANUP(context);
     releaseVariable(_peerVar);
     _peerVar = nullptr;
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
   static boost::beast::string_view mime_type(boost::beast::string_view path) {
@@ -1189,7 +1167,7 @@ struct SendFile {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     fs::path p{GetGlobals().RootPath.c_str()};
-    p += SHSTRING_PREFER_SHSTRVIEW(input);
+    p /= SHSTRING_PREFER_SHSTRVIEW(input);
 
     http::file_body::value_type file;
     boost::beast::error_code ec;
@@ -1251,7 +1229,6 @@ struct SendFile {
   }
 
   SHVar *_peerVar{nullptr};
-  ParamVar _headers{};
   http::response<http::file_body> _response;
   http::response<http::string_body> _404_response;
 };
