@@ -188,6 +188,7 @@ struct TidePool {
     flow.emplace([=]() { work->call(); });
     TaskFlowInstance::instance().run(std::move(flow));
   }
+  void terminate() {}
 #endif
 };
 
