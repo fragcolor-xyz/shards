@@ -186,7 +186,7 @@ struct Writer {
     static T dummy{};
     return makeDerivedType(dummy);
   }
-
+  
   template <typename T> inline Handle<Expression> makeConstExpr(T value) {
     Expression e{
         .tag = Expression::Tag::Literal,
@@ -243,7 +243,7 @@ struct Writer {
     }
     e.compose.components = storage.data();
     e.compose.components_len = storage.size();
-    return nagaStoreConstExpression(ctx, e);
+    return nagaStoreGlobalExpression(ctx, e);
   }
 
   template <typename T> inline Handle<Constant> makeConstant(T value, const char *name = nullptr) {

@@ -39,33 +39,3 @@ cbindgen = "0.24.0"
 
 [workspace]
 members = []
-
-# The profile settings are required to get reasonable performance
-# some validations are enabled by default based on debug-assertions
-# including synchronization validation which adds about 60ms every frame
-[profile.rel-with-deb-info]
-debug-assertions = false
-debug = true
-opt-level = 0
-
-[profile.rel-with-deb-info.package."*"]
-debug-assertions = false
-debug = true
-opt-level = 0
-
-# [profile.rel-with-deb-info.package."wgpu-hal"]
-# debug-assertions = false
-# debug = true
-# opt-level = 0
-
-# [profile.rel-with-deb-info.package."wgpu-types"]
-# debug-assertions = false
-# debug = true
-# opt-level = 0
-
-[profile.dev]
-debug-assertions = false
-opt-level = 3
-[profile.dev.package."*"]
-debug-assertions = false
-opt-level = 3
