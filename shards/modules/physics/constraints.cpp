@@ -365,8 +365,8 @@ struct SliderConstraint final : public ConstraintBase {
                  "Maximum amount of friction force to apply (in Newtons) on the slider.",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
 
-  PARAM_PARAMVAR(_motorSettings, "MotorSettings", "Defines the maximum and minimum amount of force applied to the slider as it slides along the axis.", {MotorSettings::TypesVarOrNone});
-  PARAM_PARAMVAR(_motorSpringSettings, "MotorSpringSettings", "Motor settings around the sliding axis",
+  PARAM_PARAMVAR(_motorSettings, "MotorSettings", "Defines the maximum and minimum amount of force of the motor applied to the slider.", {MotorSettings::TypesVarOrNone});
+  PARAM_PARAMVAR(_motorSpringSettings, "MotorSpringSettings", "Defines the Motor spring settings applied on the slider",
                  {SpringSettings::TypesVarOrNone});
 
   PARAM_IMPL_DERIVED(ConstraintBase, PARAM_IMPL_FOR(_space), PARAM_IMPL_FOR(_refA), PARAM_IMPL_FOR(_refB),
@@ -384,7 +384,7 @@ struct SliderConstraint final : public ConstraintBase {
     _limitsMax = Var(std::numeric_limits<float>::max());
     _limitSpring = SpringSettings::Default;
     _maxFrictionForce = Var(0.0f);
-    _motorSettings = SpringSettings::Default;
+    _motorSettings = MotorSettings::Default;
     _motorSpringSettings = SpringSettings::Default;
   }
 

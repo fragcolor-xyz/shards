@@ -180,7 +180,7 @@ struct TimerShard {
 };
 
 struct PlayShard {
-  static SHOptionalString help() { return SHCCSTR("Plays the animation of the glTF model specified in the Animation parameter."); }
+  static SHOptionalString help() { return SHCCSTR("Evaluates and interpolates the animation of the glTF model specified in the Animation parameter. The output of this shard is applied to the glTF model to play animations."); }
 
   static inline shards::Types OutputTypes{{Type::SeqOf(ShardsTypes::ValueTable)}};
 
@@ -188,7 +188,7 @@ struct PlayShard {
   static SHTypesInfo outputTypes() { return SHTypesInfo(OutputTypes); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The current time of the animation (in seconds) to play"); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The interpolated data at each frame of the animation"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The interpolated animation data at each frame of the animation"); }
 
   PARAM_PARAMVAR(_animation, "Animation", "The animation to play.", ShardsTypes::AnimationOrAnimationVar);
   PARAM_IMPL(PARAM_IMPL_FOR(_animation));

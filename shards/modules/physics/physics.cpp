@@ -479,10 +479,10 @@ struct MotionTypeShard {
 struct SetPoses {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
-  static SHOptionalString help() { return SHCCSTR("Overwrites the position and rotation of the input physics body"); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the position and rotation of."); }
+  static SHOptionalString help() { return SHCCSTR("Overwrites the position and/or rotation of the input physics body."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the position and/or rotation of."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the input physics body with the overwritten position and rotation.");
+    return SHCCSTR("Outputs the input physics body with the overwritten position and/or rotation.");
   }
 
   PARAM_PARAMVAR(_position, "Linear", "The position to set",
@@ -519,10 +519,10 @@ struct SetPoses {
 struct SetVelocities {
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return SHBody::Type; }
-  static SHOptionalString help() { return SHCCSTR("Overwrites the linear and angular velocity of the input physics body"); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the linear and angular velocity of."); }
+  static SHOptionalString help() { return SHCCSTR("Overwrites the linear and/or angular velocity of the input physics body"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to overwrite the linear and/or angular velocity of."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the input physics body with the overwritten linear and angular velocity.");
+    return SHCCSTR("Outputs the input physics body with the overwritten linear and/or angular velocity.");
   }
 
   PARAM_PARAMVAR(_linearVel, "Linear", "The linear velocity to set",
@@ -564,16 +564,16 @@ template <int Mode> struct ApplyVelocity {
 
   static SHOptionalString help() {
     if constexpr (Mode == 0) {
-      return SHCCSTR("This shard applies a continuous force linear or angular force to the input physics body.");
+      return SHCCSTR("This shard applies a continuous linear and/or angular force to the input physics body.");
     } else {
-      return SHCCSTR("This shard applies a short instantaneous force to the input physics body.");
+      return SHCCSTR("This shard applies a short instantaneous linear and/or angular force to the input physics body.");
     }
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to apply the linear or angular force to."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The physics body to apply the linear and/or angular force to."); }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the input physics body with the applied linear or angular force.");
+    return SHCCSTR("Outputs the input physics body with the applied linear and/or angular force.");
   }
 
   PARAM_PARAMVAR(_linearForce, "Linear", "The linear force to apply", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});

@@ -50,9 +50,9 @@ struct BodyShard {
   static inline Type PhysicsDOFSeqType = Type::SeqOf(PhysicsDOFEnumInfo::Type);
   static inline Types PhysicsDOFTypes{PhysicsDOFEnumInfo::Type, PhysicsDOFSeqType, Type::VariableOf(PhysicsDOFSeqType)};
 
-  PARAM_PARAMVAR(_location, "Location", "The initial location of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body.", {shards::CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_rotation, "Rotation", "The initial rotation of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body.", {shards::CoreInfo::Float4VarType});
-  PARAM_VAR(_static, "Static", "If false, the physics body will be destroyed when the shard is not called. If true, the body will persist and be included in the physics simulation even if the shard is not called.", {shards::CoreInfo::BoolType});
+  PARAM_PARAMVAR(_location, "Location", "The initial location of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body. Vice versa, the body's location is also updated if the variable's value is changed.", {shards::CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_rotation, "Rotation", "The initial rotation of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body. Vice versa, the body's rotation is also updated if the variable's value is changed.", {shards::CoreInfo::Float4VarType});
+  PARAM_VAR(_static, "Static", "If false, the physics body will be destroyed when the shard is not activated. If true, the body will persist and be included in the physics simulation even if the shard is not activated.", {shards::CoreInfo::BoolType});
   PARAM_PARAMVAR(_enabled, "Enabled", "Can be used to toggle the body on or off if it is a persistent body. If false, the body is temporarily removed from the simulation without destroying it.",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_shape, "Shape", "The shape of the body.", {SHShape::VarType});
