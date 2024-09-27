@@ -582,8 +582,12 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
   TOwnedVar<SH_CORE> &operator[](int index) { return (TOwnedVar<SH_CORE> &)payload.seqValue.elements[index]; }
   const TOwnedVar<SH_CORE> &operator[](int index) const { return (TOwnedVar<SH_CORE> &)payload.seqValue.elements[index]; }
 
-  SHVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
-  const SHVar *data() const { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
+  TOwnedVar<SH_CORE> *data() {
+    return (TOwnedVar<SH_CORE> *)(payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]);
+  }
+  const TOwnedVar<SH_CORE> *data() const {
+    return (TOwnedVar<SH_CORE> *)(payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]);
+  }
 
   size_t size() const { return payload.seqValue.len; }
 
@@ -594,10 +598,10 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     return (TOwnedVar<SH_CORE> &)data()[size() - 1];
   }
 
-  SHVar *begin() { return data(); }
-  SHVar *end() { return data() + size(); }
-  const SHVar *begin() const { return data(); }
-  const SHVar *end() const { return data() + size(); }
+  TOwnedVar<SH_CORE> *begin() { return (TOwnedVar<SH_CORE> *)data(); }
+  TOwnedVar<SH_CORE> *end() { return (TOwnedVar<SH_CORE> *)data() + size(); }
+  const TOwnedVar<SH_CORE> *begin() const { return (TOwnedVar<SH_CORE> *)data(); }
+  const TOwnedVar<SH_CORE> *end() const { return (TOwnedVar<SH_CORE> *)data() + size(); }
 
   void resize(size_t nsize) { SH_CORE::seqResize(&payload.seqValue, uint32_t(nsize)); }
 
