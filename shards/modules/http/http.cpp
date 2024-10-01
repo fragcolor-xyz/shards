@@ -1124,6 +1124,7 @@ struct SendFile {
 
   void cleanup(SHContext *context) {
     _headers.cleanup();
+    _response.clear();
     releaseVariable(_peerVar);
     _peerVar = nullptr;
   }
