@@ -117,7 +117,7 @@ template <typename TOp> struct BigIntBinaryOperation {
     cpp_int bia = from_var(a);
     cpp_int bib = from_var(b);
 
-    cpp_int bres = op.template apply(bia, bib);
+    cpp_int bres = op.template apply<cpp_int>(bia, bib);
 
     auto &output = _outputs.getOutput();
     outputVar = to_var(bres, output.data);
