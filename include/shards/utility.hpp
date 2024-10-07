@@ -529,7 +529,15 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (T &)*vp;
   }
 
+  template <typename T> const T &get(const SHVar &key) const {
+    static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
+    return (const T &)*vp;
+  }
+
   template <typename T> T &get(std::string_view key) { return get<T>(Var(key)); }
+
+  template <typename T> const T &get(std::string_view key) const { return get<T>(Var(key)); }
 
   bool hasKey(const SHVar &key) const { return payload.tableValue.api->tableContains(payload.tableValue, key); }
 
