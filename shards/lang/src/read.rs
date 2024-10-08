@@ -225,7 +225,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
         let name = identifier.name.as_str().to_owned();
         match name.as_str() {
           "include" => {
-            let params = params.ok_or(("Expected 2 parameters", pos).into())?;
+            let params = params.ok_or(("Expected 2-3 parameters", pos).into())?;
             let n_params = params.len();
 
             let file_name = if n_params > 0 && params[0].name.is_none() {
@@ -256,7 +256,34 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               })
               .unwrap_or(Ok(false))?;
 
-            let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
+            let fallback = if n_params > 2
+              && params[0].name.is_none()
+              && params[1].name.is_none()
+              && params[2].name.is_none()
+            {
+              Some(&params[2])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("Fallback"))
+            };
+
+            let fallback = fallback
+              .map(|param| match &param.value {
+                Value::String(s) => Ok(s.as_str()),
+                _ => Err(("Expected a string value for Fallback", pos).into()),
+              })
+              .transpose()?;
+
+            let file_path = env
+              .resolve_file(file_name)
+              .or_else(|_| {
+                fallback
+                  .map(|fb| env.resolve_file(fb))
+                  .unwrap_or(Err("File not found and no fallback provided".to_string()))
+              })
+              .map_err(|x| (x, pos).into())?;
+
             let file_path_str = file_path
               .to_str()
               .ok_or(("Failed to convert file path to string", pos).into())?
@@ -876,7 +903,7 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
 
 pub fn parse(code: &str) -> Result<pest::iterators::Pairs<'_, Rule>, ShardsError> {
   profiling::scope!("parse");
-  
+
   ShardsParser::parse(Rule::Program, code).map_err(|e| {
     (
       format!("Failed to parse file: {}", e),
