@@ -20,10 +20,15 @@ struct LoggingBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 };
 
-#define SHLOG_LEVEL(_level_, ...) \
-  { SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::level_enum(_level_), __VA_ARGS__); }
+#define SHLOG_LEVEL(_level_, ...)                                                                      \
+  {                                                                                                    \
+    SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::level_enum(_level_), __VA_ARGS__); \
+  }
 
 struct Log : public LoggingBase {
+  shards::logging::Logger _logger;
+  std::string _name = "shards";
+
   static SHOptionalString inputHelp() { return SHCCSTR("The value to be logged to the console."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The same value that was inputted, unmodified."); }
@@ -43,6 +48,9 @@ struct Log : public LoggingBase {
     case 1:
       _level = Enums::LogLevel(inValue.payload.enumValue);
       break;
+    case 2:
+      _name = std::string(SHSTRVIEW(inValue));
+      break;
     default:
       break;
     }
@@ -54,25 +62,29 @@ struct Log : public LoggingBase {
       return Var(_prefix);
     case 1:
       return Var::Enum(_level, CoreCC, Enums::LogLevelEnumInfo::TypeId);
+    case 2:
+      return Var(_name);
     default:
       return Var::Empty;
     }
   }
+
+  void warmup(SHContext *context) { _logger = shards::logging::getOrCreate(_name); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
     auto id = findId(context);
     if (_prefix.size() > 0) {
       if (id != entt::null) {
-        SHLOG_LEVEL((int)_level, "[{} {}] {}: {}", current->name, id, _prefix, input);
+        SPDLOG_LOGGER_CALL(_logger, spdlog::level::level_enum(_level), "[{} {}] {}: {}", current->name, id, _prefix, input);
       } else {
-        SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _prefix, input);
+        SPDLOG_LOGGER_CALL(_logger, spdlog::level::level_enum(_level), "[{}] {}: {}", current->name, _prefix, input);
       }
     } else {
       if (id != entt::null) {
-        SHLOG_LEVEL((int)_level, "[{} {}] {}", current->name, id, input);
+        SPDLOG_LOGGER_CALL(_logger, spdlog::level::level_enum(_level), "[{} {}] {}", current->name, id, input);
       } else {
-        SHLOG_LEVEL((int)_level, "[{}] {}", current->name, input);
+        SPDLOG_LOGGER_CALL(_logger, spdlog::level::level_enum(_level), "[{}] {}", current->name, input);
       }
     }
     return input;
@@ -82,7 +94,8 @@ struct Log : public LoggingBase {
       {"Prefix",
        SHCCSTR("The message to prefix to the logged output. Note: the prefix will include a colon ':' before the value."),
        {CoreInfo::StringType}},
-      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
+      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}},
+      {"Name", SHCCSTR("The name of the logger to use, the default is 'shards'."), {CoreInfo::StringType}}};
 
   std::string _prefix;
   Enums::LogLevel _level{Enums::LogLevel::Info};
@@ -378,16 +391,13 @@ SHARDS_REGISTER_FN(logging) {
 
   struct LogFlush : public LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
     static SHOptionalString help() {
-      return SHCCSTR("This shard flushes the log buffer to the console. This ensures that any pending log messages are immediately written to the console.");
+      return SHCCSTR("This shard flushes the log buffer to the console. This ensures that any pending log messages are "
+                     "immediately written to the console.");
     }
 
-    static SHOptionalString inputHelp() {
-      return DefaultHelpText::InputHelpPass;
-    }
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
-    static SHOptionalString outputHelp() {
-      return DefaultHelpText::OutputHelpPass;
-    }
+    static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
   };
 
   struct LogChangeLevel : public LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType> {
@@ -396,12 +406,10 @@ SHARDS_REGISTER_FN(logging) {
     }
 
     static SHOptionalString inputHelp() {
-    return SHCCSTR("A string representing the new log level (e.g., 'debug', 'info', 'warn', 'error', 'critical').");
+      return SHCCSTR("A string representing the new log level (e.g., 'debug', 'info', 'warn', 'error', 'critical').");
     }
 
-    static SHOptionalString outputHelp() {
-      return DefaultHelpText::OutputHelpPass;
-    }
+    static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
   };
 
   REGISTER_SHARD("FlushLog", LogFlush);
