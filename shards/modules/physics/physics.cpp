@@ -348,15 +348,6 @@ struct PositionShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
     return toVar(shBody.node->location);
-    // auto &associatedData = shBody.node->data;
-    // if (associatedData && associatedData->body) { 
-    //   auto &body = associatedData->body;
-    //   auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
-
-    //   return toVar(bodyInterface.GetPosition(body->GetID()));
-    // } else {
-    //   return shards::toVar(float3(0.0f));
-    // }
   }
 };
 
@@ -378,15 +369,6 @@ struct RotationShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHBody &shBody = varAsObjectChecked<SHBody>(input, SHBody::Type);
     return toVar(shBody.node->rotation);
-    // auto &associatedData = shBody.node->data;
-    // if (associatedData && associatedData->body) { 
-    //   auto &body = associatedData->body;
-    //   auto &bodyInterface = shBody.core->getPhysicsSystem().GetBodyInterface();
-
-    //   return toVar(bodyInterface.GetRotation(body->GetID()));
-    // } else {
-    //   return shards::toVar(float4(0.0f));
-    // }
   }
 };
 
