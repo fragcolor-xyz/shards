@@ -2,8 +2,8 @@
 "network.shs" | FS.Read = base-script
 Regex.Replace("Network.Client\\(\".*\" [0-9]+" "Network.WS.Client(\"ws://127.0.0.1:9191\"")
 Regex.Replace("Network.Server\\(" "Network.WS.Server(") = new-script
-; Shards.Read | Shards.Distill("runner") = runner
-; WireRunner(runner)
+Shards.Read | Shards.Distill("runner") = runner
+WireRunner(runner)
 
 @mesh(root)
 
