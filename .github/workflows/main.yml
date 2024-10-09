@@ -21,24 +21,8 @@ jobs:
     steps:
       - run: exit 0
 
-  # cancel-previous-workflows:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Cancel Previous Runs
-  #       uses: shards-lang/cancel-workflow-action@0.7.0
-  #       with:
-  #         access_token: ${{ secrets.TOKEN }}
-
-  #
   # Build shards for emscripten
   #
-  # wasm32-emscripten-st:
-  #   needs: Setup
-  #   uses: ./.github/workflows/build-wasm.yml
-  #   secrets: inherit
-  #   with:
-  #     threading: st
-  #     run-tests: true
   wasm32-emscripten-mt:
     needs: Setup
     uses: ./.github/workflows/build-wasm.yml

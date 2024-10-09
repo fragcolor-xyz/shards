@@ -47,8 +47,8 @@ TEST_CASE("Naga Basic", "[naga]") {
               .struct_ =
                   TypeInner::Struct_Body{
                       .members = outStructMembers.data(),
-                      .members_len = uint32_t(outStructMembers.size()),
                       .span = sizeof(float) * 4 * 2,
+                      .members_len = uint32_t(outStructMembers.size()),
                   },
           },
   };
@@ -97,12 +97,12 @@ TEST_CASE("Naga Basic", "[naga]") {
         compose.components = outStructValues.data();
         compose.components_len = uint32_t(outStructValues.size());
         compose.ty = structType;
-        auto makeResult = fn.makeExpr("result", compose);
 
         auto gv = fn.makeExpr(Expression::GlobalVariable_Body{._0 = globalOut});
+        auto makeResult = fn.makeExpr("result", compose);
 
         return std::vector<Statement>{
-            makeStmt(Statement::Emit_Body{._0 = Range<Expression>{.start = gv.index, .end = gv.index}}),
+            makeStmt(Statement::Emit_Body{._0 = {.start = makeResult.index, .end = makeResult.index}}),
             makeStmt(Statement::Store_Body{.pointer = gv, .value = makeResult}),
             makeStmt(Statement::Return_Body{.value = e0, .has_value = true}),
         };

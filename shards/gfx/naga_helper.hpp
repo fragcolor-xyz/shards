@@ -186,7 +186,7 @@ struct Writer {
     static T dummy{};
     return makeDerivedType(dummy);
   }
-
+  
   template <typename T> inline Handle<Expression> makeConstExpr(T value) {
     Expression e{
         .tag = Expression::Tag::Literal,
@@ -212,7 +212,7 @@ struct Writer {
     } else {
       throw std::runtime_error("Unsupported constant type");
     }
-    return nagaStoreConstExpression(ctx, e);
+    return nagaStoreGlobalExpression(ctx, e);
   }
 
   template <typename T, int M> inline Handle<Expression> makeConstExpr(linalg::vec<T, M> value) {
@@ -226,7 +226,7 @@ struct Writer {
     }
     e.compose.components = storage.data();
     e.compose.components_len = storage.size();
-    return nagaStoreConstExpression(ctx, e);
+    return nagaStoreGlobalExpression(ctx, e);
   }
 
   template <typename T, int M, int N>
@@ -243,7 +243,7 @@ struct Writer {
     }
     e.compose.components = storage.data();
     e.compose.components_len = storage.size();
-    return nagaStoreConstExpression(ctx, e);
+    return nagaStoreGlobalExpression(ctx, e);
   }
 
   template <typename T> inline Handle<Constant> makeConstant(T value, const char *name = nullptr) {

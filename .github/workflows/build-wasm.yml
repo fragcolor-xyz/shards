@@ -52,17 +52,26 @@ jobs:
           echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
           echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       - name: Checkout emsdk
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: emscripten-core/emsdk
           path: emsdk
           fetch-depth: 1
+      - name: Checkout emscripten fork
+        uses: actions/checkout@v4
+        with:
+          repository: guusw/emscripten
+          path: emscripten
+          fetch-depth: 1
+          # Custom branch with fix based on top of 3.1.67
+          # Can remove when 3.1.68 is released (See https://github.com/emscripten-core/emscripten/pull/22623)
+          ref: guus/transfer-canvas-fix
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
@@ -72,9 +81,25 @@ jobs:
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
           rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
-          cd emsdk
-          ./emsdk install 3.1.59
-          ./emsdk activate 3.1.59
+
+          # Use the prebuilt SDK tools/binaries (MAKE SURE VERSION IS COMPATIBLE)
+          pushd emsdk
+          ./emsdk install 3.1.67
+          ./emsdk activate 3.1.67
+          source ./emsdk_env.sh
+          cat ./.emscripten
+          export EM_CONFIG=$PWD/.emscripten
+          echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
+          popd
+
+          # Use custom fork for js/scripts (this is picked up by the cmake script)
+          pushd emscripten
+          echo "EMSCRIPTEN_ROOT=$PWD" >> $GITHUB_ENV
+          # Needed for rust-cc
+          echo "AR=$PWD/emar" >> $GITHUB_ENV
+          echo "CC=$PWD/emcc" >> $GITHUB_ENV
+          ./bootstrap
+          popd
       - name: Set up rust (mt)
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |
@@ -85,10 +110,9 @@ jobs:
           key: ${{ steps.setup.outputs.threading }}
       - name: Build
         run: |
-          source emsdk/emsdk_env.sh
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=0 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ steps.setup.outputs.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=0 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ steps.setup.outputs.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake ..
           ninja shards && ninja test-runtime
       # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
       - uses: actions/setup-node@v3
@@ -113,7 +137,6 @@ jobs:
           mkdir shards
           cp shards-mt.wasm shards/
           cp shards-mt.js shards/
-          cp shards-mt.worker.js shards/
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
