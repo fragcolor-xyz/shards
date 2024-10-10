@@ -53,11 +53,11 @@ endif()
 
 add_library(gfx-core-obj OBJECT ${GFX_SOURCES})
 
-target_bundle_files(gfx-core-obj 
+target_bundle_files(gfx-core-obj
   PREFIX bundled
   NAMESPACE bundled
-  FILES 
-    "gizmos/BigBlue_TerminalPlus.bin"
+  FILES
+  "gizmos/BigBlue_TerminalPlus.bin"
 )
 
 # Always optimize files with hot-paths
@@ -72,12 +72,16 @@ set_source_files_properties(
 
 target_compile_features(gfx-core-obj PUBLIC cxx_std_20)
 
+set(GFX_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/gfx-generated)
+file(MAKE_DIRECTORY ${GFX_GENERATED_DIR})
+
 target_include_directories(gfx-core-obj
   PUBLIC
   ${SHARDS_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${GFX_GENERATED_DIR}
 )
 target_link_libraries(gfx-core-obj
   tinygltf draco-wrapper
@@ -154,6 +158,14 @@ target_link_libraries(gfx-core INTERFACE gfx-core-obj)
 add_library(gfx INTERFACE)
 
 if(HAS_WGPU_NATIVE)
+  # Set GFX_WGPU_TRACE_PATH to the trace path to enable
+  if(GFX_WGPU_TRACE_PATH)
+    message(STATUS "Tracing WebGPU to: ${GFX_WGPU_TRACE_PATH}")
+    string(REPLACE "\\" "\\\\" GFX_WGPU_TRACE_PATH_1 "${GFX_WGPU_TRACE_PATH}")
+    file(WRITE ${GFX_GENERATED_DIR}/wgpu_trace_config.h "const char* wgpuTracePath = \"${GFX_WGPU_TRACE_PATH_1}\";")
+    target_compile_definitions(gfx-core-obj PUBLIC WEBGPU_TRACE=1)
+  endif()
+
   add_subdirectory(rust)
 
   # Loose dependency for bindings header

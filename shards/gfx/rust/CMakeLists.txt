@@ -15,6 +15,10 @@ if(TRACY_ENABLE)
     TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>)
 endif()
 
+if(GFX_WGPU_TRACE_PATH)
+  list(APPEND FEATURES trace)
+endif()
+
 set(GFX_BINDINGS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/gfx/bindings.hpp)
 set_source_files_properties(${GFX_BINDINGS_FILE} PROPERTIES GENERATED TRUE)
 

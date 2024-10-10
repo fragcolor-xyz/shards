@@ -9,6 +9,7 @@
 #include "window.hpp"
 #include "log.hpp"
 #include "texture.hpp"
+#include "filesystem.hpp"
 #include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -589,6 +590,15 @@ void Context::requestDevice() {
           },
   };
   requiredLimits.nextInChain = &extraLimits.chain;
+
+#if WEBGPU_TRACE
+  // This defines `const char* wgpuTracePath`, as specified by the CMakeLists.txt
+#include "wgpu_trace_config.h"
+  // Setup tracing
+  WGPUDeviceExtras deviceExtras{.chain = {.sType = (WGPUSType)WGPUSType_DeviceExtras}};
+  deviceExtras.tracePath = wgpuTracePath;
+  deviceDesc.nextInChain = &deviceExtras.chain;
+#endif
 #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
