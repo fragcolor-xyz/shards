@@ -4294,7 +4294,7 @@ macro_rules! include_shards {
   ($file:expr) => {{
     let code = include_str!($file);
     let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-    let mut env = read::ReadEnv::new("", ".", ".");
+    let mut env = read::ReadEnv::new_cwd("");
     let prog =
       read::process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
     let defines = std::collections::HashMap::new();

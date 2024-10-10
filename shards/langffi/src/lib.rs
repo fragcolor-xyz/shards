@@ -43,11 +43,27 @@ pub extern "C" fn shards_read(
   name: SHStringWithLen,
   code: SHStringWithLen,
   base_path: SHStringWithLen,
+  include_dirs: *const SHStringWithLen,
+  num_include_dirs: u32,
 ) -> SHLAst {
   let name: &str = name.into();
   let code = code.into();
   let base_path: &str = base_path.into();
-  let result = read::read(code, name, base_path);
+  let include_dirs = unsafe {
+    if num_include_dirs > 0 {
+      std::slice::from_raw_parts(include_dirs, num_include_dirs as usize)
+    } else {
+      &[]
+    }
+  };
+  let include_dirs: Vec<std::string::String> = include_dirs
+    .iter()
+    .map(|x| {
+      let str: &str = (*x).into();
+      str.to_string()
+    })
+    .collect();
+  let result = read::read(code, name, base_path.to_string(), include_dirs);
 
   match result {
     Ok(p) => SHLAst {

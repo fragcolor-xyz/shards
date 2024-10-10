@@ -31,7 +31,7 @@ metal = { git = "https://github.com/shards-lang/metal-rs.git", branch = "shards-
 tiny-skia = { opt-level = 3 }
 resvg = { opt-level = 3 }
 usvg = { opt-level = 3 }
-shards-lang = { opt-level = 3 }
+# shards-lang = { opt-level = 3 }
 syntect = { opt-level = 3 }
 flate2 = { opt-level = 3 }
 bincode = { opt-level = 3 }

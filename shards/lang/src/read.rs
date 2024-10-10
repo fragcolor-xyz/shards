@@ -18,19 +18,25 @@ use std::path::{Path, PathBuf};
 
 pub struct ReadEnv {
   name: RcStrWrapper,
-  root_directory: String,
   script_directory: String,
+  include_directories: Vec<String>,
   included: RefCell<HashSet<RcStrWrapper>>,
   dependencies: RefCell<Vec<String>>,
   parent: Option<*const ReadEnv>,
 }
 
 impl ReadEnv {
-  pub fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
+  pub fn new_cwd(name: &str) -> Self {
+    Self::new(name, ".".to_string(), vec![".".to_string()])
+  }
+  pub fn new_root(name: &str, script_directory: String) -> Self {
+    Self::new(name, script_directory.clone(), vec![script_directory])
+  }
+  pub fn new(name: &str, script_directory: String, include_directories: Vec<String>) -> Self {
     Self {
       name: name.to_owned().into(),
-      root_directory: root_directory.to_string(),
-      script_directory: script_directory.to_string(),
+      script_directory: script_directory,
+      include_directories: include_directories,
       included: RefCell::new(HashSet::new()),
       dependencies: RefCell::new(Vec::new()),
       parent: None,
@@ -40,21 +46,33 @@ impl ReadEnv {
   pub fn resolve_file(&self, name: &str) -> Result<PathBuf, String> {
     let script_dir = Path::new(&self.script_directory);
     let file_path = script_dir.join(name);
-    shlog_debug!("Trying include {:?}", file_path);
-    let mut file_path_r = std::fs::canonicalize(&file_path);
-
-    // Try from root
-    if file_path_r.is_err() {
-      let root_dir = Path::new(&self.root_directory);
-      let file_path = root_dir.join(name);
-      shlog_debug!("Trying include {:?}", file_path);
-      file_path_r = std::fs::canonicalize(&file_path);
+    if let Ok(canonical) = std::fs::canonicalize(&file_path) {
+      shlog_debug!("Found include {:?}", file_path);
+      return Ok(canonical);
     }
 
-    Ok(
-      file_path_r
-        .map_err(|e| return format!("Failed to canonicalize file {:?}: {}", name, e).to_string())?,
-    )
+    shlog_debug!("Tried include {:?} (not found)", file_path);
+
+    self.resolve_include_path(name)
+  }
+
+  fn resolve_include_path(&self, name: &str) -> Result<PathBuf, String> {
+    for dir in &self.include_directories {
+      let script_dir = Path::new(&dir);
+      let file_path = script_dir.join(name);
+      let canonical = std::fs::canonicalize(&file_path);
+      if let Ok(canonical) = canonical {
+        shlog_debug!("Found include {:?}", file_path);
+        return Ok(canonical);
+      }
+      shlog_debug!("Tried include {:?} (not found)", file_path);
+    }
+    if let Some(parent) = self.parent {
+      unsafe {
+        return (*parent).resolve_include_path(name);
+      }
+    }
+    return Err(format!("File not found: {}", name).to_string());
   }
 }
 
@@ -280,7 +298,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .or_else(|_| {
                 fallback
                   .map(|fb| env.resolve_file(fb))
-                  .unwrap_or(Err("File not found and no fallback provided".to_string()))
+                  .unwrap_or(Err(format!("File {} not found and no fallback provided", file_name).to_string()))
               })
               .map_err(|x| (x, pos).into())?;
 
@@ -314,7 +332,6 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
             let mut sub_env: ReadEnv = ReadEnv::new(
               file_path.to_str().unwrap(), // should be qed...
-              &env.root_directory,
               parent
                 .to_str()
                 .ok_or(
@@ -325,6 +342,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                     .into(),
                 )?
                 .into(),
+              Vec::new(),
             );
             sub_env.parent = Some(env);
             let program = process_program(
@@ -931,8 +949,17 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsErr
   )
 }
 
-pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> {
-  let mut env = ReadEnv::new(name, "", path);
+pub fn read(
+  code: &str,
+  name: &str,
+  path: String,
+  include_dirs: Vec<String>,
+) -> Result<Program, ShardsError> {
+  let mut env = ReadEnv::new(
+    name,
+    path,
+    include_dirs,
+  );
   read_with_env(&code, &mut env)
 }
 
@@ -1049,7 +1076,7 @@ impl Shard for ReadShard {
 
     let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
-      &mut ReadEnv::new("", "", base_path),
+      &mut ReadEnv::new_root("", base_path.to_string()),
     )
     .map_err(|e| {
       shlog_error!("Failed to process shards code: {:?}", e);
@@ -1267,7 +1294,7 @@ fn test_parsing1() {
   // let code = include_str!("nested.shs");
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new("", ".", ".");
+  let mut env = ReadEnv::new_cwd("");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
@@ -1295,7 +1322,7 @@ fn test_parsing1() {
 fn test_parsing2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new("", ".", ".");
+  let mut env = ReadEnv::new_cwd("");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let seq = seq.sequence;
 
