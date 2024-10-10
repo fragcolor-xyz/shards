@@ -596,7 +596,7 @@ struct RendererImpl final : public ContextData {
 
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
     TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
-
+    
     WGPUGlobalReport report{};
     wgpuGenerateReport(context.wgpuInstance, &report);
 
