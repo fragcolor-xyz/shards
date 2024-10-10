@@ -67,7 +67,7 @@ struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
 
   TexturePtr get(const egui::RenderOutput &output, const egui::TextureId &id) const {
-    if (id.managed) {
+    if (id.managed) { 
       auto it = textures.find(id.id);
       if (it != textures.end())
         return it->second;

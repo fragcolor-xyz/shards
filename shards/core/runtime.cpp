@@ -1466,6 +1466,9 @@ bool isDebuggerPresent() { return false; }
 
 // pub extern "C" fn setup_panic_hook()
 extern "C" void setup_panic_hook();
+extern "C" void shards_flush_logs () {
+  spdlog::default_logger()->flush();
+}
 
 void installSignalHandlers() {
   if (!isDebuggerPresent()) {

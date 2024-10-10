@@ -9,6 +9,7 @@
 #include "window.hpp"
 #include "log.hpp"
 #include "texture.hpp"
+#include "filesystem.hpp"
 #include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -272,7 +273,28 @@ struct ContextMainOutput {
 #endif
 
     surfaceConf.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
-    surfaceConf.presentMode = WGPUPresentMode_Fifo;
+
+    std::optional<WGPUPresentMode> presentMode;
+    auto trySetPresentMode = [&](WGPUPresentMode mode) {
+      if (presentMode)
+        return;
+      for (int i = 0; i < capabilities.presentModeCount; i++) {
+        if (capabilities.presentModes[i] == mode) {
+          presentMode = mode;
+          break;
+        }
+      }
+    };
+    trySetPresentMode(WGPUPresentMode_Mailbox);
+    trySetPresentMode(WGPUPresentMode_Immediate);
+    trySetPresentMode(WGPUPresentMode_Fifo);
+    if (!presentMode) {
+      if (capabilities.presentModeCount == 0)
+        throw formatException("Failed to set present mode, nothing is supported");
+      presentMode = capabilities.presentModes[0];
+    }
+
+    surfaceConf.presentMode = *presentMode;
     wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
 #else
     WGPUSwapChainDescriptor desc{
@@ -295,6 +317,12 @@ struct ContextMainOutput {
   }
 
   void releaseSurface() {
+    if (wgpuCurrentTexture) {
+      // Frame was possibly interupted, free texture here
+      wgpuTextureRelease(wgpuCurrentTexture);
+      wgpuCurrentTexture = nullptr;
+    }
+
     // Force flush all texture references before releasing
     // this should cause all references to the surface texture to be released
     onFlushTextureReferences->forEach([](ContextFlushTextureReferencesHandler &target) { target.flushTextureReferences(); });
@@ -589,6 +617,15 @@ void Context::requestDevice() {
           },
   };
   requiredLimits.nextInChain = &extraLimits.chain;
+
+#if WEBGPU_TRACE
+  // This defines `const char* wgpuTracePath`, as specified by the CMakeLists.txt
+#include "wgpu_trace_config.h"
+  // Setup tracing
+  WGPUDeviceExtras deviceExtras{.chain = {.sType = (WGPUSType)WGPUSType_DeviceExtras}};
+  deviceExtras.tracePath = wgpuTracePath;
+  deviceDesc.nextInChain = &deviceExtras.chain;
+#endif
 #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");

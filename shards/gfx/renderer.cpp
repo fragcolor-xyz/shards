@@ -455,9 +455,13 @@ struct RendererImpl final : public ContextData {
   void queueTextureCopies() {
     boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
     WGPUCommandEncoderDescriptor encDesc{};
-    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+    WgpuHandle<WGPUCommandEncoder> encoder;
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
+        if (!encoder) {
+          // Lazy create encoder
+          encoder.reset(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+        }
         if (queueTextureReadCommand(encoder, *it)) {
           buffersToMap.push_back(&*it);
         } else {
@@ -468,10 +472,12 @@ struct RendererImpl final : public ContextData {
       ++it;
     }
 
-    // Queue read commands for next frame
-    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture"};
-    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+    if (encoder) {
+      // Queue read commands for next frame
+      WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture"};
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+    }
 
     // Need to map buffers after submitting the texture copies
     for (auto &cmd : buffersToMap) {
@@ -482,9 +488,14 @@ struct RendererImpl final : public ContextData {
   void queueBufferCopies() {
     boost::container::small_vector<DeferredBufferReadCommand *, 16> buffersToMap;
     WGPUCommandEncoderDescriptor encDesc{};
-    WgpuHandle<WGPUCommandEncoder> encoder(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+    WgpuHandle<WGPUCommandEncoder> encoder;
     for (auto it = deferredBufferReadCommands.begin(); it != deferredBufferReadCommands.end();) {
       if (!it->isQueued()) {
+        if (!encoder) {
+          // Lazy create encoder
+          encoder.reset(wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc));
+        }
+
         if (queueBufferReadCommand(encoder, *it)) {
           buffersToMap.push_back(&*it);
         } else {
@@ -495,10 +506,12 @@ struct RendererImpl final : public ContextData {
       ++it;
     }
 
-    // Queue read commands for next frame
-    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyBuffer"};
-    WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+    if (encoder) {
+      // Queue read commands for next frame
+      WGPUCommandBufferDescriptor desc{.label = "Renderer::copyBuffer"};
+      WgpuHandle<WGPUCommandBuffer> cmdBuffer(wgpuCommandEncoderFinish(encoder, &desc));
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer.handle);
+    }
 
     // Need to map buffers after submitting the texture copies
     for (auto &cmd : buffersToMap) {
@@ -583,7 +596,7 @@ struct RendererImpl final : public ContextData {
 
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
     TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
-
+    
     WGPUGlobalReport report{};
     wgpuGenerateReport(context.wgpuInstance, &report);
 
