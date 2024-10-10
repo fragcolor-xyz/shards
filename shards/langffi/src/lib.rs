@@ -383,6 +383,9 @@ pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mu
 extern "C" {
   pub fn DebugBreak();
 }
+extern "C" {
+  pub fn shards_flush_logs();
+}
 
 #[no_mangle]
 pub extern "C" fn setup_panic_hook() {
@@ -396,6 +399,10 @@ pub extern "C" fn setup_panic_hook() {
     std::panic::set_hook(Box::new(move |info| {
       // Print the panic info to standard error.
       eprintln!("Panic occurred: {:?}", info);
+
+      // Flush the logs
+      unsafe { shards_flush_logs() };
+
       // Trigger a breakpoint.
       #[cfg(unix)]
       unsafe {
