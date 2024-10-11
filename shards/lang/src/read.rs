@@ -5,8 +5,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
-  Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types, Var, FRAG_CC, SEQ_OF_STRINGS, SEQ_OF_STRINGS_TYPES, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -296,9 +295,9 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let file_path = env
               .resolve_file(file_name)
               .or_else(|_| {
-                fallback
-                  .map(|fb| env.resolve_file(fb))
-                  .unwrap_or(Err(format!("File {} not found and no fallback provided", file_name).to_string()))
+                fallback.map(|fb| env.resolve_file(fb)).unwrap_or(Err(
+                  format!("File {} not found and no fallback provided", file_name).to_string(),
+                ))
               })
               .map_err(|x| (x, pos).into())?;
 
@@ -955,11 +954,7 @@ pub fn read(
   path: String,
   include_dirs: Vec<String>,
 ) -> Result<Program, ShardsError> {
-  let mut env = ReadEnv::new(
-    name,
-    path,
-    include_dirs,
-  );
+  let mut env = ReadEnv::new(name, path, include_dirs);
   read_with_env(&code, &mut env)
 }
 
@@ -987,6 +982,10 @@ pub enum AstType {
   Object = 0x2,
 }
 
+lazy_static! {
+  pub static ref STRINGS_VAR: Type = Type::context_variable(&STRING_TYPES);
+}
+
 #[derive(shard)]
 #[shard_info(
   "Shards.Read",
@@ -1006,6 +1005,12 @@ pub struct ReadShard {
     STRING_VAR_OR_NONE_SLICE
   )]
   base_path: ParamVar,
+  #[shard_param(
+    "Include",
+    "The list of include paths.",
+    [common_type::strings, *STRINGS_VAR]
+  )]
+  include: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
 }
@@ -1016,6 +1021,7 @@ impl Default for ReadShard {
       output: ClonedVar::default(),
       output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
+      include: ParamVar::new(SeqVar::leaking_new().0),
       required_variables: ExposedTypes::default(),
     }
   }
@@ -1074,9 +1080,14 @@ impl Shard for ReadShard {
       bp_var.try_into()?
     };
 
+    let mut includes: Vec<String> = Vec::new();
+    for inc in self.include.get().as_seq()? {
+      includes.push((&inc).try_into()?);
+    }
+
     let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
-      &mut ReadEnv::new_root("", base_path.to_string()),
+      &mut ReadEnv::new("", base_path.to_string(), includes),
     )
     .map_err(|e| {
       shlog_error!("Failed to process shards code: {:?}", e);
