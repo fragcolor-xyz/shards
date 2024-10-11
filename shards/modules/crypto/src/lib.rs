@@ -21,6 +21,7 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
+pub mod argon;
 pub mod chachapoly;
 pub mod ecdsa;
 pub mod hash;
@@ -162,4 +163,5 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
   chachapoly::register_shards();
   register_shard::<MnemonicGenerate>();
   register_shard::<MnemonicToSeed>();
+  argon::register_shards();
 }

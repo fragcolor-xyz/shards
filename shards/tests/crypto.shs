@@ -65,6 +65,10 @@
   Snowflake(31 31) | Log("snowflake")
 
   15 | Mnemonic.Generate | Log
+
+  "password" | Argon2id.Hash | Log = hashed-password
+  "password" | Argon2id.Verify(hashed-password) | Log | Assert.Is(true true)
+  "wrong" | Argon2id.Verify(hashed-password) | Log | Assert.Is(false true)
 })
 
 @schedule(root main)
