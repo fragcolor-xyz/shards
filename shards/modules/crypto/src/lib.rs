@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
+
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
 use sha2::Sha512;
