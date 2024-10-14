@@ -222,6 +222,8 @@ struct Consumers : public Base {
       return Var(_name);
     case 1:
       return _outType;
+    case 2:
+      return Var(_bufferSize);
     default:
       throw std::out_of_range("Invalid parameter index.");
     }
