@@ -42,7 +42,7 @@ struct MPMCChannel : public ChannelShared {
 
   void recycle(OwnedVar &&value) { _recycle.push(std::move(value)); }
 
-  void push(SHVar &value) {
+  void push_clone(const SHVar &value) {
     // in this case try check recycle bin
     OwnedVar valueClone{};
     _recycle.try_pop(valueClone);

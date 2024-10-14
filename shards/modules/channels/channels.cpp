@@ -93,7 +93,7 @@ struct Produce : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_mpChannel);
 
-    _mpChannel->push(input);
+    _mpChannel->push_clone(input);
 
     return input;
   }
@@ -136,7 +136,7 @@ struct Broadcast : public Base {
       if (it->closed) {
         it = _bChannel->subscribers.erase(it);
       } else {
-        it->push(input);
+        it->push_clone(input);
 
         ++it;
       }
