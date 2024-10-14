@@ -36,19 +36,19 @@ struct MPMCChannel : public ChannelShared {
     }
   }
 
-  void push(OwnedVar &&value) { _data.push(std::move(value)); }
+  bool try_unrecycle(OwnedVar &value) { return _recycle.try_pop(value); }
+  // must call try_unrecycle before pushing here, otherwise recycle will grow !!
+  void push_unsafe(OwnedVar &&value) { _data.push(std::move(value)); }
 
   void recycle(OwnedVar &&value) { _recycle.push(std::move(value)); }
 
-  void push(const SHVar &value) {
+  void push(SHVar &value) {
     // in this case try check recycle bin
     OwnedVar valueClone{};
     _recycle.try_pop(valueClone);
     valueClone = value;
     _data.push(std::move(valueClone));
   }
-
-  bool try_unrecycle(OwnedVar &value) { return _recycle.try_pop(value); }
 
   template <bool Recycle = true, typename Func> bool try_pop(Func &&func) {
     OwnedVar value{};
