@@ -47,11 +47,12 @@ enum Commands {
     /// Decompress help strings before running the script
     #[arg(long, short = 'd', default_value = "false", action)]
     decompress_strings: bool,
-
     /// Change the current path to the scripts's path
     #[arg(long, short = 'c', action)]
     skip_cwd: bool,
-
+    /// List of include directories
+    #[arg(long, short = 'I')]
+    include: Vec<String>,
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
@@ -66,6 +67,9 @@ enum Commands {
     /// Output as JSON ast
     #[arg(long, short = 'j', action)]
     json: bool,
+    /// List of include directories
+    #[arg(long, short = 'I')]
+    include: Vec<String>,
     /// The depfile to write, in makefile readable format
     #[arg(long, short = 'd')]
     depfile: Option<String>,
@@ -77,6 +81,9 @@ enum Commands {
     /// The output file to write to
     #[arg(long, short = 'o', default_value = "out.sho")]
     output: String,
+    /// List of include directories
+    #[arg(long, short = 'I')]
+    include: Vec<String>,
   },
   /// Loads and executes a binary Shards file
   Load {
@@ -144,10 +151,15 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     Commands::Build {
       file,
       output,
+      include,
       depfile,
       json,
-    } => build(file, &output, depfile.as_deref(), *json),
-    Commands::AST { file, output } => build(file, &output, None, true),
+    } => build(file, &output, include.to_vec(), depfile.as_deref(), *json),
+    Commands::AST {
+      file,
+      output,
+      include,
+    } => build(file, &output, include.to_vec(), None, true),
     Commands::Load {
       file,
       decompress_strings,
@@ -158,9 +170,11 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
       decompress_strings,
       args,
       skip_cwd,
+      include,
     } => execute(
       file,
       *decompress_strings,
+      include,
       args,
       cancellation_token,
       !*skip_cwd,
@@ -180,7 +194,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     shlog_error!("Error: {}", e);
     1
   } else {
-    0 
+    0
   }
 }
 
@@ -193,13 +207,12 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     std::io::read_to_string(std::io::stdin()).unwrap()
   } else {
     fs::read_to_string(file)?
-  }; 
+  };
 
   let newline_style = formatter::detect_newline_style(&in_str);
 
   // add new line at the end of the file to be able to parse it correctly
-  newline_style.push_to_str(&mut in_str);;
-  
+  newline_style.push_to_str(&mut in_str);
 
   if inline {
     let mut buf = std::io::BufWriter::new(Vec::new());
@@ -330,7 +343,13 @@ fn execute_seq(
   }
 }
 
-fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Result<(), Error> {
+fn build(
+  file: &str,
+  output: &str,
+  include: Vec<String>,
+  depfile: Option<&str>,
+  as_json: bool,
+) -> Result<(), Error> {
   shlog!("Parsing file: {}", file);
 
   let (deps, ast) = {
@@ -343,7 +362,11 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
     // get absolute parent path of the file
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
-    let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path, parent_path);
+    let mut env = ReadEnv::new(
+      file_path.to_str().unwrap(),
+      parent_path.to_string(),
+      include,
+    );
     let ast = read_with_env(&file_content, &mut env).map_err(|e| {
       shlog!("Error: {:?}", e);
       "Failed to parse file"
@@ -403,6 +426,7 @@ fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Resu
 fn execute(
   file: &str,
   decompress_strings: bool,
+  include_paths_: &Vec<String>,
   args: &Vec<String>,
   cancellation_token: Arc<AtomicBool>,
   change_current_path: bool,
@@ -424,6 +448,15 @@ fn execute(
 
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
+    let mut include_paths = Vec::new();
+    for path in include_paths_ {
+      let path = std::path::PathBuf::from(path);
+      let path = path
+        .canonicalize()
+        .map_err(|x| format!("Failed to canonicalize path: {} ({:?})", x, path))?;
+      include_paths.push(path.to_string_lossy().to_string());
+    }
+
     if change_current_path {
       // get absolute parent path of the file
       let c_parent_path = std::ffi::CString::new(parent_path).unwrap();
@@ -431,7 +464,13 @@ fn execute(
       unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
     }
 
-    read(&file_content, file_path.to_str().unwrap(), parent_path).map_err(|e| {
+    read(
+      &file_content,
+      file_path.to_str().unwrap(),
+      parent_path.to_string(),
+      include_paths,
+    )
+    .map_err(|e| {
       shlog!("Error: {:?}", e);
       "Failed to parse file"
     })?

@@ -1,0 +1,9 @@
+; Run with:
+; $shards new -Ishards/tests/include/a -Ishards/tests/include/b include-paths.shs
+
+@include("inside-include-a.shs")
+@include("inside-include-b.shs")
+@include("b2/inside-include-b2.shs")
+
+a | Math.Add(b) | Math.Add(b2)
+Assert.Is(34)
