@@ -17,13 +17,13 @@ template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const 
   }
 }
 
-template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SHTypeInfo type, bool noCopy, const char *name) {
+template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SHTypeInfo type, const char *name) {
   // we call this sporadically so we can lock the whole thing
   static std::mutex mutex;
   std::scoped_lock lock(mutex);
 
   if (channel->index() == 0) {
-    T &impl = channel->emplace<T>(noCopy);
+    T &impl = channel->emplace<T>();
     // no cloning here, this is potentially dangerous if the type is dynamic
     impl.type = type;
     return impl;
@@ -41,17 +41,12 @@ template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SH
 
 struct Base {
   std::string _name;
-  bool _noCopy = false;
   OwnedVar _inType{};
 
   static inline Parameters producerParams{{"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
                                           {"Type",
                                            SHCCSTR("The optional explicit (and unsafe because of that) we produce."),
-                                           {CoreInfo::NoneType, CoreInfo::TypeType}},
-                                          {"NoCopy!!",
-                                           SHCCSTR("Unsafe flag that will improve performance by not copying "
-                                                   "values when sending them thru the channel."),
-                                           {CoreInfo::BoolType}}};
+                                           {CoreInfo::NoneType, CoreInfo::TypeType}}};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -62,9 +57,6 @@ struct Base {
     case 1:
       _inType = value;
       break;
-    case 2: {
-      _noCopy = value.payload.boolValue;
-    } break;
     default:
       break;
     }
@@ -76,8 +68,6 @@ struct Base {
       return Var(_name);
     case 1:
       return _inType;
-    case 2:
-      return Var(_noCopy);
     }
     return SHVar();
   }
@@ -96,30 +86,14 @@ struct Produce : public Base {
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
     auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
-    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, receiverType, _noCopy, _name.c_str());
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, receiverType, _name.c_str());
     return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_mpChannel);
 
-    SHVar tmp;
-    // try to get from recycle bin
-    // this might fail but we don't care
-    // if it fails will just initialize a new variable
-    if (!_mpChannel->recycle.pop(tmp)) // might modify tmp if fails
-      tmp = SHVar();
-
-    if (_noCopy) {
-      tmp = input;
-    } else {
-      // this internally will reuse memory
-      // yet it can be still slow for big vars
-      cloneVar(tmp, input);
-    }
-
-    // enqueue for the stealing
-    _mpChannel->data.push(tmp);
+    _mpChannel->push(input);
 
     return input;
   }
@@ -138,7 +112,7 @@ struct Broadcast : public Base {
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
     auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
-    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, receiverType, _noCopy, _name.c_str());
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, receiverType, _name.c_str());
     return data.inputType;
   }
 
@@ -162,22 +136,7 @@ struct Broadcast : public Base {
       if (it->closed) {
         it = _bChannel->subscribers.erase(it);
       } else {
-        SHVar tmp;
-        // try to get from recycle bin
-        // this might fail but we don't care//
-        // if it fails will just allocate a brand new
-        if (!it->recycle.pop(tmp)) // might modify tmp if fails
-          tmp = SHVar();
-
-        if (_noCopy) {
-          tmp = input;
-        } else {
-          // this internally will reuse memory
-          cloneVar(tmp, input);
-        }
-
-        // enqueue for the stealing
-        it->data.push(tmp);
+        it->push(input);
 
         ++it;
       }
@@ -192,19 +151,19 @@ struct Broadcast : public Base {
 struct BufferedConsumer {
   // utility to recycle memory and buffer
   // recycling is only for non blittable types basically
-  std::vector<SHVar> buffer;
+  std::vector<OwnedVar> buffer;
 
   void recycle(MPMCChannel *channel) {
     // send previous values to recycle
     for (auto &var : buffer) {
-      channel->recycle.push(var);
+      channel->recycle(std::move(var));
     }
     buffer.clear();
   }
 
-  void add(SHVar &var) { buffer.push_back(var); }
+  void add(OwnedVar &&var) { buffer.emplace_back(std::move(var)); }
 
-  bool empty() { return buffer.size() == 0; }
+  bool empty() { return buffer.empty(); }
 
   operator SHVar() {
     auto len = buffer.size();
@@ -263,8 +222,6 @@ struct Consumers : public Base {
       return Var(_name);
     case 1:
       return _outType;
-    case 2:
-      return Var(_noCopy);
     default:
       throw std::out_of_range("Invalid parameter index.");
     }
@@ -286,7 +243,7 @@ struct Consume : public Consumers {
     }
 
     _channel = get(_name);
-    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, *outTypePtr, _noCopy, _name.c_str());
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, *outTypePtr, _name.c_str());
 
     if (_bufferSize == 1) {
       return *outTypePtr;
@@ -310,8 +267,8 @@ struct Consume : public Consumers {
     // blocking; and
     // everytime we are resumed we try to pop a value
     while (_current--) {
-      SHVar output{};
-      while (!_mpChannel->data.pop(output)) {
+      OwnedVar output{};
+      while (!_mpChannel->try_pop<false>([&](OwnedVar &&value) { output = std::move(value); })) {
         // check also for channel completion
         if (_mpChannel->closed) {
           if (!_storage.empty()) {
@@ -325,7 +282,7 @@ struct Consume : public Consumers {
       }
 
       // keep for recycling
-      _storage.add(output);
+      _storage.add(std::move(output));
     }
 
     return _storage;
@@ -361,7 +318,7 @@ struct Listen : public Consumers {
     }
 
     _channel = get(_name);
-    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, *outTypePtr, _noCopy, _name.c_str());
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, *outTypePtr, _name.c_str());
     _subscriptionChannel = &_bChannel->subscribe();
 
     if (_bufferSize == 1) {
@@ -387,8 +344,8 @@ struct Listen : public Consumers {
     // suspending; and
     // everytime we are resumed we try to pop a value
     while (_current--) {
-      SHVar output{};
-      while (!_subscriptionChannel->data.pop(output)) {
+      OwnedVar output{};
+      while (!_subscriptionChannel->try_pop<false>([&](OwnedVar &&value) { output = std::move(value); })) {
         // check also for channel completion
         if (_bChannel->closed) {
           if (!_storage.empty()) {
@@ -402,7 +359,7 @@ struct Listen : public Consumers {
       }
 
       // keep for recycling
-      _storage.add(output);
+      _storage.add(std::move(output));
     }
 
     return _storage;
@@ -534,13 +491,13 @@ struct Flush : public Base {
     // Lazily acquire channel to flush
     if (!_mpChannel) {
       _mpChannel = std::visit(
-          [&](auto &arg) -> MPMCChannel* {
+          [&](auto &arg) -> MPMCChannel * {
             using T = std::decay_t<decltype(arg)>;
-          if (std::is_same_v<T, MPMCChannel>) {
-            return (MPMCChannel *)&arg;
-          } else {
-            return nullptr;
-          }
+            if (std::is_same_v<T, MPMCChannel>) {
+              return (MPMCChannel *)&arg;
+            } else {
+              return nullptr;
+            }
           },
           *_channel.get());
       if (!_mpChannel)

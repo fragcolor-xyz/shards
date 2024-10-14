@@ -30,7 +30,7 @@
 @wire(producer-2 {
   Repeat({
     "A message" |
-    Broadcast("b"  NoCopy!!: true) |
+    Broadcast("b") |
     Log("Broadcasted: ")
     Pause(0.1)
   } 10)
