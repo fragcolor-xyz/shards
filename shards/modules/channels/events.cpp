@@ -19,11 +19,6 @@ struct Base {
                  {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType});
   PARAM_IMPL(PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id));
 
-  static inline Parameters params{{"Name", SHCCSTR("The name of the event dispatcher to use."), {CoreInfo::StringType}},
-                                  {"ID",
-                                   SHCCSTR("The optional ID to use to differentiate events with the same name."),
-                                   {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}}};
-
   PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(const SHInstanceData &data) {
