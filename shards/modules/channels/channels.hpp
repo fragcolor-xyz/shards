@@ -3,8 +3,7 @@
 
 #include <shards/core/shared.hpp>
 #include <atomic>
-#include <boost/lockfree/queue.hpp>
-#include <boost/lockfree/stack.hpp>
+#include <oneapi/tbb/concurrent_queue.h>
 #include <memory>
 #include <mutex>
 #include <variant>
@@ -25,55 +24,61 @@ struct DummyChannel : public ChannelShared {
 };
 
 struct MPMCChannel : public ChannelShared {
-  MPMCChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
+  MPMCChannel() : ChannelShared() {}
 
-  // no real cleanups happens in Produce/Consume to keep things simple
-  // and without locks
-  virtual ~MPMCChannel() {
-    if (!_noCopy) {
-      SHVar tmp{};
-      while (data.pop(tmp)) {
-        destroyVar(tmp);
-      }
-      while (recycle.pop(tmp)) {
-        destroyVar(tmp);
-      }
-    }
-  }
+  virtual ~MPMCChannel() {}
 
   virtual void clear() override {
-    SHVar tmp{};
-    while (data.pop(tmp)) {
-      destroyVar(tmp);
-    }
-    while (recycle.pop(tmp)) {
-      destroyVar(tmp);
+    // move all to recycle
+    OwnedVar value{};
+    while (_data.try_pop(value)) {
+      _recycle.push(std::move(value));
     }
   }
 
-  // A single source to steal data from
-  boost::lockfree::queue<SHVar> data{16};
-  boost::lockfree::stack<SHVar> recycle{16};
+  bool try_unrecycle(OwnedVar &value) { return _recycle.try_pop(value); }
+  // must call try_unrecycle before pushing here, otherwise recycle will grow !!
+  void push_unsafe(OwnedVar &&value) { _data.push(std::move(value)); }
+
+  void recycle(OwnedVar &&value) { _recycle.push(std::move(value)); }
+
+  void push_clone(const SHVar &value) {
+    // in this case try check recycle bin
+    OwnedVar valueClone{};
+    _recycle.try_pop(valueClone);
+    valueClone = value;
+    _data.push(std::move(valueClone));
+  }
+
+  template <bool Recycle = true, typename Func> bool try_pop(Func &&func) {
+    OwnedVar value{};
+    if (_data.try_pop(value)) {
+      func(std::forward<OwnedVar>(value));
+      if constexpr (Recycle) {
+        _recycle.push(std::move(value));
+      }
+      return true;
+    }
+    return false;
+  }
 
 private:
-  bool _noCopy;
+  // A single source to steal data from
+  oneapi::tbb::concurrent_queue<OwnedVar> _data;
+  oneapi::tbb::concurrent_queue<OwnedVar> _recycle;
 };
 
 struct Broadcast;
 class BroadcastChannel : public ChannelShared {
 public:
-  BroadcastChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
+  BroadcastChannel() : ChannelShared() {}
 
-  virtual ~BroadcastChannel() {
-    if (!_noCopy) {
-      clear();
-    }
-  }
+  virtual ~BroadcastChannel() {}
 
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
     std::unique_lock<std::mutex> lock(subMutex);
-    return subscribers.emplace_back(_noCopy);
+    return subscribers.emplace_back();
   }
 
   virtual void clear() override {
@@ -88,7 +93,6 @@ protected:
   friend struct Broadcast;
   std::mutex subMutex;
   std::list<MPMCChannel> subscribers;
-  bool _noCopy = false;
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
