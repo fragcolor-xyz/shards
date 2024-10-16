@@ -21,15 +21,15 @@ struct Flatten {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard will take a sequence with nested values (eg. a sequence of sequences or a sequence of tables) and create a single sequence with all of values, nested values and keys as elements.");
+    return SHCCSTR("This shard will take a sequence with nested values (eg. a sequence of sequences or a sequence of tables) and "
+                   "create a single sequence with all of values, nested values and keys as elements.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard will take a sequence or a table with nested values.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("This shard will take a sequence or a table with nested values."); }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard will return a single sequence with all of values, nested values and keys of the input as elements.");
+    return SHCCSTR(
+        "This shard will return a single sequence with all of values, nested values and keys of the input as elements.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -233,16 +233,13 @@ struct IndexOf {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard will search the input sequence for the index of an item or a pattern of items (specified in the Item parameter) and return its index(or a sequence of indices).");
+    return SHCCSTR("This shard will search the input sequence for the index of an item or a pattern of items (specified in the "
+                   "Item parameter) and return its index(or a sequence of indices).");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence to search through.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence to search through."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The index of the item or a sequence of indices.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The index of the item or a sequence of indices."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   SHTypesInfo outputTypes() { return OutputTypes; }
@@ -375,16 +372,13 @@ struct Join {
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard will concatenate a sequence of strings or bytes into a single string or byte array and output it as a byte array.");
+    return SHCCSTR("This shard will concatenate a sequence of strings or bytes into a single string or byte array and output it "
+                   "as a byte array.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence of strings or byte array to concatenate.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence of strings or byte array to concatenate."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The concatenated string or bytes represented as a byte array.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The concatenated string or bytes represented as a byte array."); }
 
   static SHTypesInfo inputTypes() { return InputType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
@@ -649,11 +643,78 @@ struct Zip {
   }
 };
 
+struct Extend {
+  static SHOptionalString help() {
+    return SHCCSTR("Extends the mutable sequence parameter with the elements of the input sequence.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence to be appended to the target sequence."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input sequence (pass-through)."); }
+
+  PARAM_PARAMVAR(_target, "Target", "The mutable sequence to extend.", {CoreInfo::AnyVarSeqType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_target));
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (!_target.isVariable()) {
+      throw ComposeError("Target must be a variable");
+    }
+
+    for (auto &shared : data.shared) {
+      if (strcmp(shared.name, _target.variableName()) == 0) {
+        if (!shared.isMutable || shared.isProtected) {
+          throw ComposeError("Target must be a mutable variable");
+        }
+        if (shared.exposedType.basicType != SHType::Seq) {
+          throw ComposeError("Target must be a sequence");
+        }
+        break;
+      }
+    }
+
+    return data.inputType;
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType != SHType::Seq) {
+      throw ActivationError("Extend: Input must be a sequence.");
+    }
+
+    auto &target = _target.get();
+    if (target.valueType != SHType::Seq) {
+      throw ActivationError("Extend: Target must be a sequence.");
+    }
+
+    auto &targetSeq = target.payload.seqValue;
+    const auto &inputSeq = input.payload.seqValue;
+
+    const auto originalSize = targetSeq.len;
+    shards::arrayResize(targetSeq, originalSize + inputSeq.len);
+
+    for (uint32_t i = 0; i < inputSeq.len; ++i) {
+      cloneVar(targetSeq.elements[originalSize + i], inputSeq.elements[i]);
+    }
+
+    return input; // Pass-through the input
+  }
+};
+
 SHARDS_REGISTER_FN(seqs) {
   REGISTER_SHARD("Flatten", Flatten);
   REGISTER_SHARD("IndexOf", IndexOf);
   REGISTER_SHARD("Bytes.Join", Join);
   REGISTER_SHARD("Merge", Merge);
   REGISTER_SHARD("Zip", Zip);
+  REGISTER_SHARD("Extend", Extend);
 }
 }; // namespace shards
