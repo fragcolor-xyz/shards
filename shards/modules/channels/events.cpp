@@ -151,7 +151,7 @@ struct Receive : Base {
         _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
     }
 
-    std::swap(_eventsOut, _eventsIn);
+    std::swap<SHVar>(_eventsOut, _eventsIn); // shallow swap is ok, since both are seqs of owned vars
     _eventsIn.clear();
     return Var(_eventsOut);
   }
