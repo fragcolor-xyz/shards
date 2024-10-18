@@ -691,8 +691,6 @@ impl core::fmt::Debug for SHVarPayloadDebugView<'_> {
             &self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId,
           )
           .finish(),
-        SHType_Array => write!(f, "{:?}", self.payload.__bindgen_anon_1.arrayValue),
-        SHType_Set => write!(f, "{:?}", self.payload.__bindgen_anon_1.setValue),
         SHType_Audio => write!(f, "{:?}", self.payload.__bindgen_anon_1.audioValue),
         _ => f.write_str("???"),
       }

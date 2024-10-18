@@ -43,10 +43,6 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
   case SHType::Bytes:
     os << "<" << var.payload.bytesSize << " SHType::Bytes>" << std::dec;
     break;
-  case SHType::Array:
-    os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
-       << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
-    break;
   case SHType::Enum: {
     const SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);
     if (enumInfo) {
@@ -210,23 +206,6 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     }
     os << "}";
   } break;
-  case SHType::Set: {
-    os << "{";
-    auto &s = var.payload.setValue;
-    bool first = true;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      if (first) {
-        os << v;
-        first = false;
-      } else {
-        os << " " << v;
-      }
-    }
-    os << "}";
-  } break;
   case SHType::Trait: {
     auto &t = *var.payload.traitValue;
     os << t;
@@ -262,20 +241,6 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
     if (t.fixedSize != 0) {
       os << "(" << t.fixedSize << ")";
     }
-  } else if (t.basicType == SHType::Set) {
-    os << "<";
-    for (uint32_t i = 0; i < t.setTypes.len; i++) {
-      // avoid recursive types
-      if (t.setTypes.elements[i].recursiveSelf) {
-        os << "Self";
-      } else {
-        os << t.setTypes.elements[i];
-      }
-      if (i < (t.setTypes.len - 1)) {
-        os << " ";
-      }
-    }
-    os << ">";
   } else if (t.basicType == SHType::Table) {
     if (t.table.types.len == t.table.keys.len) {
       os << "{";
@@ -363,174 +328,64 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHStringWith
 }
 } // namespace shards
 
-bool _seqEq(const SHVar &a, const SHVar &b) {
-  if (a.payload.seqValue.elements == b.payload.seqValue.elements)
-    return true;
-
-  if (a.payload.seqValue.len != b.payload.seqValue.len)
-    return false;
-
-  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    const auto &suba = a.payload.seqValue.elements[i];
-    const auto &subb = b.payload.seqValue.elements[i];
-    if (suba != subb)
-      return false;
-  }
-
-  return true;
+inline int compareKeys(const SHVar &a, const SHVar &b) {
+  // Implement key comparison logic
+  return cmp(a, b);
 }
 
-bool _setEq(const SHVar &a, const SHVar &b) {
-  auto &ta = a.payload.setValue;
-  auto &tb = b.payload.setValue;
-  if (ta.opaque == tb.opaque)
-    return true;
+int _tableCompare(const SHVar &a, const SHVar &b) {
+  const shards::SHMap &map_a = *reinterpret_cast<shards::SHMap *>(a.payload.tableValue.opaque);
+  const shards::SHMap &map_b = *reinterpret_cast<shards::SHMap *>(b.payload.tableValue.opaque);
 
-  if (ta.api->setSize(ta) != ta.api->setSize(tb))
-    return false;
+  auto it_a = map_a.cbegin();
+  auto it_b = map_b.cbegin();
 
-  SHSetIterator it;
-  ta.api->setGetIterator(ta, &it);
-  SHVar v;
-  while (ta.api->setNext(ta, &it, &v)) {
-    if (!tb.api->setContains(tb, v)) {
-      return false;
+  while (it_a != map_a.cend() && it_b != map_b.cend()) {
+    // Compare keys
+    int keyCmp = compareKeys(it_a->first, it_b->first);
+    if (keyCmp != 0) {
+      return (keyCmp < 0) ? -1 : 1;
     }
+
+    // Keys are equal, compare values
+    if (it_a->second != it_b->second) {
+      // Implement value comparison logic
+      int valCmp = cmp(it_a->second, it_b->second);
+      if (valCmp != 0) {
+        return (valCmp < 0) ? -1 : 1;
+      }
+    }
+
+    ++it_a;
+    ++it_b;
   }
 
-  return true;
+  // If one table has more elements than the other
+  if (it_a == map_a.cend() && it_b == map_b.cend()) {
+    return 0; // Tables are equal
+  }
+  return (it_a == map_a.cend()) ? -1 : 1;
 }
 
-bool _tableEq(const SHVar &a, const SHVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return true;
+inline int compareElements(const SHVar &a, const SHVar &b) { return cmp(a, b); }
 
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
+int _seqCompare(const SHVar &a, const SHVar &b) {
+  const auto &seq_a = a.payload.seqValue;
+  const auto &seq_b = b.payload.seqValue;
 
-  SHTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  SHVar k;
-  SHVar v;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    const auto bval = tb.api->tableAt(tb, k);
-    if (v != *bval) {
-      return false;
+  uint32_t minLen = std::min(seq_a.len, seq_b.len);
+
+  for (uint32_t i = 0; i < minLen; ++i) {
+    int cmpResult = compareElements(seq_a.elements[i], seq_b.elements[i]);
+    if (cmpResult != 0) {
+      return cmpResult;
     }
   }
 
-  return true;
-}
-
-bool _seqLess(const SHVar &a, const SHVar &b) {
-  auto alen = a.payload.seqValue.len;
-  auto blen = b.payload.seqValue.len;
-  auto len = std::min(alen, blen);
-
-  for (uint32_t i = 0; i < len; i++) {
-    auto c = cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
+  if (seq_a.len == seq_b.len) {
+    return 0;
   }
-
-  if (alen < blen)
-    return true;
-  else
-    return false;
-}
-
-bool _tableLess(const SHVar &a, const SHVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return false;
-
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
-
-  SHTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  SHVar k;
-  SHVar v;
-  size_t len = 0;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    const auto bval = tb.api->tableAt(tb, k);
-    auto c = cmp(v, *bval);
-    if (c < 0) {
-      return true;
-    } else if (c > 0) {
-      return false;
-    }
-    len++;
-  }
-
-  if (ta.api->tableSize(ta) < len)
-    return true;
-  else
-    return false;
-}
-
-bool _seqLessEq(const SHVar &a, const SHVar &b) {
-  auto alen = a.payload.seqValue.len;
-  auto blen = b.payload.seqValue.len;
-  auto len = std::min(alen, blen);
-
-  for (uint32_t i = 0; i < len; i++) {
-    auto c = cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
-
-  if (alen <= blen)
-    return true;
-  else
-    return false;
-}
-
-bool _tableLessEq(const SHVar &a, const SHVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return false;
-
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
-
-  SHTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  SHVar k;
-  SHVar v;
-  size_t len = 0;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    const auto bval = tb.api->tableAt(tb, k);
-    auto c = cmp(v, *bval);
-    if (c < 0) {
-      return true;
-    } else if (c > 0) {
-      return false;
-    }
-    len++;
-  }
-
-  if (ta.api->tableSize(ta) <= len)
-    return true;
-  else
-    return false;
+  return (seq_a.len < seq_b.len) ? -1 : 1;
 }
 
 bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
@@ -564,32 +419,6 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
         }
         return false;
       matched_seq:
-        continue;
-      }
-    } else {
-      return false;
-    }
-
-    return true;
-  }
-  case SHType::Set: {
-    if (a.setTypes.elements == nullptr && b.setTypes.elements == nullptr)
-      return true;
-
-    if (a.setTypes.elements && b.setTypes.elements) {
-      if (a.setTypes.len != b.setTypes.len)
-        return false;
-      // compare but allow different orders of elements
-      for (uint32_t i = 0; i < a.setTypes.len; i++) {
-        for (uint32_t j = 0; j < b.setTypes.len; j++) {
-          // consider recursive self a match
-          if (a.setTypes.elements[i].recursiveSelf == b.setTypes.elements[j].recursiveSelf)
-            goto matched_set;
-          if (a.setTypes.elements[i] == b.setTypes.elements[j])
-            goto matched_set;
-        }
-        return false;
-      matched_set:
         continue;
       }
     } else {

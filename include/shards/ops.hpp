@@ -69,10 +69,6 @@ inline const char *type2Name_raw(SHType type) {
     return "Seq";
   case SHType::Table:
     return "Table";
-  case SHType::Set:
-    return "Set";
-  case SHType::Array:
-    return "Array";
   case SHType::Trait:
     return "Trait";
   }
@@ -99,11 +95,8 @@ inline int cmp(const SHVar &a, const SHVar &b) {
     return 1;
 }
 
-bool _seqEq(const SHVar &a, const SHVar &b);
-
-bool _setEq(const SHVar &a, const SHVar &b);
-
-bool _tableEq(const SHVar &a, const SHVar &b);
+int _tableCompare(const SHVar &a, const SHVar &b);
+int _seqCompare(const SHVar &a, const SHVar &b);
 
 ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
@@ -251,30 +244,19 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
                     a.payload.audioValue.channels * a.payload.audioValue.nsamples * sizeof(float)) == 0));
   }
   case SHType::Seq:
-    return _seqEq(a, b);
+    return _seqCompare(a, b) == 0;
   case SHType::Table:
-    return _tableEq(a, b);
-  case SHType::Set:
-    return _setEq(a, b);
+    return _tableCompare(a, b) == 0;
   case SHType::Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
            (a.payload.bytesValue == b.payload.bytesValue ||
             memcmp(a.payload.bytesValue, b.payload.bytesValue, a.payload.bytesSize) == 0);
-  case SHType::Array:
-    return a.payload.arrayValue.len == b.payload.arrayValue.len && a.innerType == b.innerType &&
-           (a.payload.arrayValue.elements == b.payload.arrayValue.elements ||
-            memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                   a.payload.arrayValue.len * sizeof(SHVarPayload)) == 0);
   case SHType::Trait:
     return memcmp(a.payload.traitValue->id, b.payload.traitValue->id, sizeof(SHTrait::id)) == 0;
   }
 
   return false;
 }
-
-bool _seqLess(const SHVar &a, const SHVar &b);
-
-bool _tableLess(const SHVar &a, const SHVar &b);
 
 // avoid trying to be smart with SIMDs here
 // compiler will outsmart us likely anyway.
@@ -359,9 +341,9 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   case SHType::Image:
     return a.payload.imageValue->data < b.payload.imageValue->data;
   case SHType::Seq:
-    return _seqLess(a, b);
+    return _seqCompare(a, b) < 0;
   case SHType::Table:
-    return _tableLess(a, b);
+    return _tableCompare(a, b) < 0;
   case SHType::Wire:
     return a.payload.wireValue < b.payload.wireValue;
   case SHType::ShardRef:
@@ -372,13 +354,6 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     if (a.payload.objectTypeId != b.payload.objectTypeId)
       return a.payload.objectTypeId < b.payload.objectTypeId;
     return a.payload.objectValue < b.payload.objectValue;
-  case SHType::Array: {
-    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
-      return false;
-    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
-    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
-    return abuf < bbuf;
-  }
   case SHType::Audio:
     return a.payload.audioValue.samples < b.payload.audioValue.samples;
   case SHType::Type:
@@ -390,7 +365,6 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
       return id0[1] < id1[1];
     return id0[0] < id1[0];
   }
-  case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
     return false;
@@ -398,10 +372,6 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
 
   return false;
 }
-
-bool _seqLessEq(const SHVar &a, const SHVar &b);
-
-bool _tableLessEq(const SHVar &a, const SHVar &b);
 
 ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
@@ -472,9 +442,9 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Image:
     return a.payload.imageValue->data <= b.payload.imageValue->data;
   case SHType::Seq:
-    return _seqLessEq(a, b);
+    return _seqCompare(a, b) <= 0;
   case SHType::Table:
-    return _tableLessEq(a, b);
+    return _tableCompare(a, b) <= 0;
   case SHType::Wire:
     return a.payload.wireValue <= b.payload.wireValue;
   case SHType::ShardRef:
@@ -485,13 +455,6 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     if (a.payload.objectTypeId != b.payload.objectTypeId)
       return a.payload.objectTypeId < b.payload.objectTypeId;
     return a.payload.objectValue <= b.payload.objectValue;
-  case SHType::Array: {
-    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
-      return true;
-    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
-    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
-    return abuf <= bbuf;
-  }
   case SHType::Audio:
     return a.payload.audioValue.samples <= b.payload.audioValue.samples;
   case SHType::Type:
@@ -503,7 +466,6 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
       return id0[1] <= id1[1];
     return id0[0] <= id1[0];
   }
-  case SHType::Set:
   case SHType::EndOfBlittableTypes:
     shassert("Invalid type");
     return false;
@@ -591,14 +553,6 @@ template <> struct hash<SHTypeInfo> {
           res = res ^ hash<int>()(INT32_MAX);
         } else {
           res = res ^ hash<SHTypeInfo>()(typeInfo.seqTypes.elements[i]);
-        }
-      }
-    } else if (typeInfo.basicType == SHType::Set) {
-      for (uint32_t i = 0; i < typeInfo.setTypes.len; i++) {
-        if (typeInfo.setTypes.elements[i].recursiveSelf) {
-          res = res ^ hash<int>()(INT32_MAX);
-        } else {
-          res = res ^ hash<SHTypeInfo>()(typeInfo.setTypes.elements[i]);
         }
       }
     } else if (typeInfo.basicType == SHType::Object) {

@@ -82,8 +82,6 @@ TEST_CASE("SHType-type2Name", "[ops]") {
   REQUIRE(type2Name(SHType::Image) == "Image");
   REQUIRE(type2Name(SHType::Seq) == "Seq");
   REQUIRE(type2Name(SHType::Table) == "Table");
-  REQUIRE(type2Name(SHType::Set) == "Set");
-  REQUIRE(type2Name(SHType::Array) == "Array");
   REQUIRE(type2Name(SHType::Audio) == "Audio");
 }
 
@@ -877,67 +875,6 @@ TEST_CASE("SHMap") {
   REQUIRE(x.count(Var("y")) == 1);
   x.erase(Var("y"));
   REQUIRE(x.count(Var("y")) == 0);
-
-  REQUIRE(vx != vy);
-}
-
-TEST_CASE("SHHashSet") {
-  SHHashSet x;
-  x.insert(Var(10));
-  x.emplace(Var("Hello Set"));
-
-  REQUIRE(x.find(Var("Hello Set")) != x.end());
-  REQUIRE(x.find(Var(10)) != x.end());
-
-  SHVar vx{};
-  vx.valueType = SHType::Set;
-  vx.payload.setValue.opaque = &x;
-  vx.payload.setValue.api = &GetGlobals().SetInterface;
-
-  SHHashSet y;
-  y.emplace(Var("Hello Set"));
-  y.insert(Var(10));
-
-  REQUIRE(y.find(Var("Hello Set")) != y.end());
-  REQUIRE(y.find(Var(10)) != y.end());
-
-  SHVar vy{};
-  vy.valueType = SHType::Set;
-  vy.payload.setValue.opaque = &y;
-  vy.payload.setValue.api = &GetGlobals().SetInterface;
-
-  SHHashSet z;
-  z.emplace(Var("Hello Set"));
-  z.insert(Var(11));
-
-  SHVar vz{};
-  vz.valueType = SHType::Set;
-  vz.payload.setValue.opaque = &z;
-  vz.payload.setValue.api = &GetGlobals().SetInterface;
-
-  REQUIRE(vx == vy);
-  REQUIRE(vx != vz);
-
-  OwnedVar vxx = vx;
-  OwnedVar vyy = vy;
-  REQUIRE(vxx == vyy);
-
-  int items = 0;
-  ForEach(vxx.payload.setValue, [&](auto &v) {
-    REQUIRE(vx.payload.setValue.api->setContains(vx.payload.setValue, v));
-    items++;
-  });
-  REQUIRE(items == 2);
-
-  SET_TABLE_COMMON_TESTS;
-
-  REQUIRE(x.size() == 2);
-  REQUIRE(x.count(Var(10)) == 1);
-  x.erase(Var(10));
-  REQUIRE(x.count(Var(10)) == 0);
-  REQUIRE(x.count(Var("Hello Set")) == 1);
-  x.erase(Var("Hello Set"));
-  REQUIRE(x.count(Var("Hello Set")) == 0);
 
   REQUIRE(vx != vy);
 }

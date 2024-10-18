@@ -4,7 +4,8 @@
 // Core Modules
 use crate::core::{cloneVar, destroyVar, Core};
 use crate::{
-  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHExtendedObjectTypeInfo, SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT
+  fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHExtendedObjectTypeInfo,
+  SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT,
 };
 
 // Shard Constants
@@ -13,16 +14,16 @@ use crate::shardsc::{
   SHExposedTypesInfo, SHImage, SHInstanceData, SHMeshRef, SHObjectTypeInfo, SHOptionalString,
   SHOptionalStrings, SHParameterInfo, SHParametersInfo, SHPointer, SHSeq, SHString, SHStrings,
   SHTable, SHTableIterator, SHTableTypeInfo, SHTraits, SHTypeInfo, SHTypeInfo_Details, SHType_Any,
-  SHType_Array, SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum,
-  SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4, SHType_Image, SHType_Int,
-  SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4, SHType_Int8, SHType_None, SHType_Object,
-  SHType_Path, SHType_Seq, SHType_Set, SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire,
-  SHTypesInfo, SHVar, SHVarPayload, SHVarPayload__bindgen_ty_1,
-  SHVarPayload__bindgen_ty_1__bindgen_ty_1, SHVarPayload__bindgen_ty_1__bindgen_ty_2,
-  SHVarPayload__bindgen_ty_1__bindgen_ty_4, SHWire, SHWireInfo, SHWireRef, SHWireState,
-  SHWireState_Continue, SHWireState_Rebase, SHWireState_Restart, SHWireState_Return,
-  SHWireState_Stop, Shard, ShardPtr, Shards, SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT,
-  SHVAR_FLAGS_EXTERNAL, SHVAR_FLAGS_REF_COUNTED, SHVAR_FLAGS_USES_OBJINFO,
+  SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum, SHType_Float,
+  SHType_Float2, SHType_Float3, SHType_Float4, SHType_Image, SHType_Int, SHType_Int16, SHType_Int2,
+  SHType_Int3, SHType_Int4, SHType_Int8, SHType_None, SHType_Object, SHType_Path, SHType_Seq,
+  SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire, SHTypesInfo, SHVar, SHVarPayload,
+  SHVarPayload__bindgen_ty_1, SHVarPayload__bindgen_ty_1__bindgen_ty_1,
+  SHVarPayload__bindgen_ty_1__bindgen_ty_2, SHVarPayload__bindgen_ty_1__bindgen_ty_4, SHWire,
+  SHWireInfo, SHWireRef, SHWireState, SHWireState_Continue, SHWireState_Rebase,
+  SHWireState_Restart, SHWireState_Return, SHWireState_Stop, Shard, ShardPtr, Shards,
+  SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT, SHVAR_FLAGS_EXTERNAL,
+  SHVAR_FLAGS_REF_COUNTED, SHVAR_FLAGS_USES_OBJINFO,
 };
 
 // Additional Shard Utilities
@@ -93,8 +94,6 @@ pub enum SHType {
   Wire,
   ShardRef,
   Object,
-  Array,
-  Set,
   Audio,
   Type,
   Trait,
@@ -128,8 +127,6 @@ impl From<crate::shardsc::SHType> for SHType {
       crate::shardsc::SHType_Wire => SHType::Wire,
       crate::shardsc::SHType_ShardRef => SHType::ShardRef,
       crate::shardsc::SHType_Object => SHType::Object,
-      crate::shardsc::SHType_Array => SHType::Array,
-      crate::shardsc::SHType_Set => SHType::Set,
       crate::shardsc::SHType_Audio => SHType::Audio,
       crate::shardsc::SHType_Type => SHType::Type,
       crate::shardsc::SHType_Trait => SHType::Trait,
@@ -166,8 +163,6 @@ impl From<SHType> for crate::shardsc::SHType {
       SHType::Wire => crate::shardsc::SHType_Wire,
       SHType::ShardRef => crate::shardsc::SHType_ShardRef,
       SHType::Object => crate::shardsc::SHType_Object,
-      SHType::Array => crate::shardsc::SHType_Array,
-      SHType::Set => crate::shardsc::SHType_Set,
       SHType::Audio => crate::shardsc::SHType_Audio,
       SHType::Type => crate::shardsc::SHType_Type,
       SHType::Trait => crate::shardsc::SHType_Trait,

@@ -38,8 +38,6 @@ inline SHVar getDefaultValue(const SHTypeInfo &type) {
   case SHType::Bytes:
   case SHType::Seq:
   case SHType::Table:
-  case SHType::Array:
-  case SHType::Set:
   case SHType::Float:
     return getZeroVarWithType(type.basicType);
   case SHType::String:

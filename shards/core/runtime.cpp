@@ -1781,12 +1781,6 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     delete map;
     var.version = 0;
   } break;
-  case SHType::Set: {
-    shassert(var.payload.setValue.api == &GetGlobals().SetInterface);
-    shassert(var.payload.setValue.opaque);
-    auto set = (SHHashSet *)var.payload.setValue.opaque;
-    delete set;
-  } break;
   case SHType::Image:
     shassert(var.payload.imageValue);
     imageDecRef(var.payload.imageValue);
@@ -1807,9 +1801,6 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     break;
   case SHType::Audio:
     delete[] var.payload.audioValue.samples;
-    break;
-  case SHType::Array:
-    arrayFree(var.payload.arrayValue);
     break;
   case SHType::Object:
     if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
@@ -1997,28 +1988,6 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
     dst.version++;
   } break;
-  case SHType::Set: {
-    SHHashSet *set;
-    if (dst.valueType == SHType::Set) {
-      shassert(dst.payload.setValue.api == &GetGlobals().SetInterface);
-      set = (SHHashSet *)dst.payload.setValue.opaque;
-      set->clear();
-    } else {
-      destroyVar(dst);
-      dst.valueType = SHType::Set;
-      dst.payload.setValue.api = &GetGlobals().SetInterface;
-      set = new SHHashSet();
-      dst.payload.setValue.opaque = set;
-    }
-
-    auto &s = src.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      (*set).emplace(v);
-    }
-  } break;
   case SHType::Bytes: {
     if (dst.valueType != SHType::Bytes || dst.payload.bytesCapacity < src.payload.bytesSize) {
       destroyVar(dst);
@@ -2041,23 +2010,6 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
     dst.payload.bytesSize = src.payload.bytesSize;
     memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue, src.payload.bytesSize);
-  } break;
-  case SHType::Array: {
-    auto srcLen = src.payload.arrayValue.len;
-
-    // try our best to re-use memory
-    if (dst.valueType != SHType::Array) {
-      destroyVar(dst);
-      dst.valueType = SHType::Array;
-    }
-
-    if (src.payload.arrayValue.elements == dst.payload.arrayValue.elements)
-      return;
-
-    dst.innerType = src.innerType;
-    shards::arrayResize(dst.payload.arrayValue, srcLen);
-    // array holds only blittables and is packed so a single memcpy is enough
-    memcpy(&dst.payload.arrayValue.elements[0], &src.payload.arrayValue.elements[0], sizeof(SHVarPayload) * srcLen);
   } break;
   case SHType::Wire:
     if (dst.valueType == SHType::Wire) {

@@ -238,14 +238,6 @@ struct Serialization {
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
-    case SHType::Array: {
-      read((uint8_t *)&output.innerType, sizeof(output.innerType));
-      uint32_t len;
-      read((uint8_t *)&len, sizeof(uint32_t));
-      shards::arrayResize(output.payload.arrayValue, len);
-      read((uint8_t *)&output.payload.arrayValue.elements[0], len * sizeof(SHVarPayload));
-      break;
-    }
     case SHType::String:
     case SHType::Path:
     case SHType::ContextVar: {
@@ -289,34 +281,6 @@ struct Serialization {
         deserialize(read, keyBuf);
         auto &dst = (*map)[std::move(keyBuf)];
         deserialize(read, dst);
-      }
-      break;
-    }
-    case SHType::Set: {
-      SHHashSet *set = nullptr;
-
-      if (recycle) {
-        if (output.payload.setValue.api && output.payload.setValue.opaque) {
-          set = (SHHashSet *)output.payload.setValue.opaque;
-          set->clear();
-        } else {
-          destroyVar(output);
-          output.valueType = nextType;
-        }
-      }
-
-      if (!set) {
-        set = new SHHashSet();
-        output.payload.setValue.api = &GetGlobals().SetInterface;
-        output.payload.setValue.opaque = set;
-      }
-
-      uint64_t len;
-      read((uint8_t *)&len, sizeof(uint64_t));
-      for (uint64_t i = 0; i < len; i++) {
-        shards::OwnedVar dst{};
-        deserialize(read, dst);
-        (*set).emplace(std::move(dst));
       }
       break;
     }
@@ -604,15 +568,6 @@ struct Serialization {
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
       total += input.payload.bytesSize;
       break;
-    case SHType::Array: {
-      write((const uint8_t *)&input.innerType, sizeof(input.innerType));
-      total += sizeof(input.innerType);
-      write((const uint8_t *)&input.payload.arrayValue.len, sizeof(uint32_t));
-      total += sizeof(uint32_t);
-      auto size = input.payload.arrayValue.len * sizeof(SHVarPayload);
-      write((const uint8_t *)&input.payload.arrayValue.elements[0], size);
-      total += size;
-    } break;
     case SHType::Path:
     case SHType::String:
     case SHType::ContextVar: {
@@ -640,25 +595,6 @@ struct Serialization {
         SHVar v;
         while (t.api->tableNext(t, &tit, &k, &v)) {
           total += serialize(k, write);
-          total += serialize(v, write);
-        }
-      } else {
-        uint64_t none = 0;
-        write((const uint8_t *)&none, sizeof(uint64_t));
-        total += sizeof(uint64_t);
-      }
-      break;
-    }
-    case SHType::Set: {
-      if (input.payload.setValue.api && input.payload.setValue.opaque) {
-        auto &s = input.payload.setValue;
-        uint64_t len = (uint64_t)s.api->setSize(s);
-        write((const uint8_t *)&len, sizeof(uint64_t));
-        total += sizeof(uint64_t);
-        SHSetIterator sit;
-        s.api->setGetIterator(s, &sit);
-        SHVar v;
-        while (s.api->setNext(s, &sit, &v)) {
           total += serialize(v, write);
         }
       } else {
@@ -866,8 +802,6 @@ struct Serialization {
     case SHType::Image:
     case SHType::Wire:
     case SHType::ShardRef:
-    case SHType::Array:
-    case SHType::Set:
     case SHType::Audio:
     case SHType::Type:
       // No extra data
@@ -934,8 +868,6 @@ struct Serialization {
     case SHType::Image:
     case SHType::Wire:
     case SHType::ShardRef:
-    case SHType::Array:
-    case SHType::Set:
     case SHType::Audio:
     case SHType::Type:
       // No extra data

@@ -49,10 +49,10 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Table,
   Wire,
   ShardRef, // a shard, useful for future introspection shards!
-  Object,
-  Array, // Notice: of just blittable types/WIP!
-  Set,
-  Audio,
+  Object = 60,
+  // Array, // Notice: of just blittable types - Reserved for future use - 61
+  // Set, // Reserved for future use - 62
+  Audio = 63,
   Type, // Describes a type
   Trait // A wire trait
 };
