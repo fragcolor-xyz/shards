@@ -333,7 +333,7 @@ inline int compareKeys(const SHVar &a, const SHVar &b) {
   return cmp(a, b);
 }
 
-inline int _tableCompare(const SHVar &a, const SHVar &b) {
+int _tableCompare(const SHVar &a, const SHVar &b) {
   const shards::SHMap &map_a = *reinterpret_cast<shards::SHMap *>(a.payload.tableValue.opaque);
   const shards::SHMap &map_b = *reinterpret_cast<shards::SHMap *>(b.payload.tableValue.opaque);
 
@@ -369,7 +369,7 @@ inline int _tableCompare(const SHVar &a, const SHVar &b) {
 
 inline int compareElements(const SHVar &a, const SHVar &b) { return cmp(a, b); }
 
-inline int _seqCompare(const SHVar &a, const SHVar &b) {
+int _seqCompare(const SHVar &a, const SHVar &b) {
   const auto &seq_a = a.payload.seqValue;
   const auto &seq_b = b.payload.seqValue;
 
