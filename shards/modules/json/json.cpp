@@ -41,10 +41,6 @@ void _releaseMemory(SHVar &var) {
     auto map = (shards::SHMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
-  case SHType::Set: {
-    auto set = (shards::SHHashSet *)var.payload.setValue.opaque;
-    delete set;
-  } break;
   case SHType::Wire: {
     SHWire::deleteRef(var.payload.wireValue);
   } break;
@@ -176,14 +172,6 @@ void to_json(json &j, const SHVar &var) {
     j = json{{"type", valType}, {"data", buffer}};
     break;
   }
-  case SHType::Array: {
-    std::vector<uint8_t> buffer;
-    buffer.resize(var.payload.arrayValue.len * sizeof(SHVarPayload));
-    if (var.payload.arrayValue.len > 0)
-      memcpy(&buffer[0], &var.payload.arrayValue.elements[0], var.payload.arrayValue.len * sizeof(SHVarPayload));
-    j = json{{"type", valType}, {"inner", magic_enum::enum_name(var.innerType)}, {"data", buffer}};
-    break;
-  }
   case SHType::Enum: {
     j = json{{"type", valType},
              {"value", int32_t(var.payload.enumValue)},
@@ -210,18 +198,6 @@ void to_json(json &j, const SHVar &var) {
     while (t.api->tableNext(t, &tit, &k, &v)) {
       json entry{{"key", k}, {"value", v}};
       items.emplace_back(entry);
-    }
-    j = json{{"type", valType}, {"values", items}};
-    break;
-  }
-  case SHType::Set: {
-    std::vector<json> items;
-    auto &s = var.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      items.emplace_back(v);
     }
     j = json{{"type", valType}, {"values", items}};
     break;
@@ -428,20 +404,6 @@ void from_json(const json &j, SHVar &var) {
     memcpy(var.payload.audioValue.samples, &buffer[0], size * sizeof(float));
     break;
   }
-  case SHType::Array: {
-    auto innerName = j.at("inner").get<std::string>();
-    auto innerType = magic_enum::enum_cast<SHType>(innerName);
-    if (!innerType.has_value()) {
-      throw shards::ActivationError("Failed to parse SHVar inner type.");
-    }
-    var.valueType = SHType::Array;
-    var.innerType = innerType.value();
-    auto buffer = j.at("data").get<std::vector<uint8_t>>();
-    auto len = buffer.size() / sizeof(SHVarPayload);
-    shards::arrayResize(var.payload.arrayValue, len);
-    memcpy(&var.payload.arrayValue.elements[0], &buffer[0], buffer.size());
-    break;
-  }
   case SHType::Enum: {
     var.valueType = SHType::Enum;
     var.payload.enumValue = SHEnum(j.at("value").get<int32_t>());
@@ -470,19 +432,6 @@ void from_json(const json &j, SHVar &var) {
       (*map)[key] = value;
       _releaseMemory(key);   // key is copied over
       _releaseMemory(value); // value is copied over
-    }
-    break;
-  }
-  case SHType::Set: {
-    auto set = new shards::SHHashSet();
-    var.valueType = SHType::Set;
-    var.payload.setValue.api = &shards::GetGlobals().SetInterface;
-    var.payload.setValue.opaque = set;
-    auto items = j.at("values").get<std::vector<json>>();
-    for (const auto &item : items) {
-      auto value = item.get<SHVar>();
-      set->emplace(value);
-      _releaseMemory(value);
     }
     break;
   }

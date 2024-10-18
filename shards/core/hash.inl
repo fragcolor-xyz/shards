@@ -73,24 +73,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
     }
 
   } break;
-  case SHType::Set: {
-    // Needed to sort hashes
-    PUSH_TMP_HASH_SET();
-
-    // set is unordered so just collect
-    auto &s = var.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      TMP_HASH_SET.insert(deriveTypeHash(v));
-    }
-    constexpr auto recursive = false;
-    hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const TDigest hash : TMP_HASH_SET) {
-      hashUpdate<TDigest>(state, &hash, sizeof(TDigest));
-    }
-  } break;
   default:
     break;
   };
@@ -166,24 +148,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
       }
     }
   } break;
-  case SHType::Set: {
-    // Needed to sort hashes
-    PUSH_TMP_HASH_SET();
-
-    bool recursive = false;
-    for (uint32_t i = 0; i < t.setTypes.len; i++) {
-      if (t.setTypes.elements[i].recursiveSelf) {
-        recursive = true;
-      } else {
-        auto typeHash = deriveTypeHash(t.setTypes.elements[i]);
-        TMP_HASH_SET.insert(typeHash);
-      }
-    }
-    hashUpdate<TDigest>(state, &recursive, sizeof(recursive));
-    for (const auto hash : TMP_HASH_SET) {
-      hashUpdate<TDigest>(state, &hash, sizeof(hash));
-    }
-  } break;
   default:
     break;
   };
@@ -232,15 +196,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
       updateHash(var.payload.seqValue.elements[i], state);
     }
   } break;
-  case SHType::Array: {
-    for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
-      SHVar tmp{}; // only of blittable types and hash uses just type, so no init
-                   // needed
-      tmp.valueType = var.innerType;
-      tmp.payload = var.payload.arrayValue.elements[i];
-      updateHash(tmp, state);
-    }
-  } break;
   case SHType::Table: {
     // table is sorted, do all in 1 iteration
     auto &t = var.payload.tableValue;
@@ -253,24 +208,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
       hashUpdate<TDigest>(state, &kh, sizeof(TDigest));
       const auto h = hash(key);
       hashUpdate<TDigest>(state, &h, sizeof(TDigest));
-    }
-  } break;
-  case SHType::Set: {
-    // Needed to sort hashes
-    PUSH_TMP_HASH_SET();
-
-    // just store hashes, sort and actually combine later
-    auto &s = var.payload.setValue;
-    SHSetIterator it;
-    s.api->setGetIterator(s, &it);
-    SHVar value;
-    while (s.api->setNext(s, &it, &value)) {
-      const auto h = hash(value);
-      TMP_HASH_SET.insert(h);
-    }
-
-    for (const auto &hash : TMP_HASH_SET) {
-      hashUpdate<TDigest>(state, &hash, sizeof(TDigest));
     }
   } break;
   case SHType::ShardRef: {

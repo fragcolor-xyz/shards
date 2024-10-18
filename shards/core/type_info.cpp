@@ -17,12 +17,6 @@ void freeTypeInfo(SHTypeInfo info) {
     }
     shards::arrayFree(info.contextVarTypes);
   } break;
-  case SHType::Set: {
-    for (uint32_t i = 0; info.setTypes.len > i; i++) {
-      freeTypeInfo(info.setTypes.elements[i]);
-    }
-    shards::arrayFree(info.setTypes);
-  } break;
   case SHType::Seq: {
     for (uint32_t i = 0; info.seqTypes.len > i; i++) {
       freeTypeInfo(info.seqTypes.elements[i]);
@@ -58,14 +52,6 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
     for (uint32_t i = 0; i < other.contextVarTypes.len; i++) {
       auto cloned = cloneTypeInfo(other.contextVarTypes.elements[i]);
       shards::arrayPush(varType.contextVarTypes, cloned);
-    }
-    break;
-  }
-  case SHType::Set: {
-    varType.setTypes = {};
-    for (uint32_t i = 0; i < other.setTypes.len; i++) {
-      auto cloned = cloneTypeInfo(other.setTypes.elements[i]);
-      shards::arrayPush(varType.setTypes, cloned);
     }
     break;
   }
@@ -138,17 +124,6 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       auto idx = varType.table.keys.len;
       shards::arrayResize(varType.table.keys, idx + 1);
       cloneVar(varType.table.keys.elements[idx], k);
-    }
-    break;
-  }
-  case SHType::Set: {
-    auto &s = value.payload.setValue;
-    SHSetIterator sit;
-    s.api->setGetIterator(s, &sit);
-    SHVar v;
-    while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
-      shards::arrayPush(varType.setTypes, derived);
     }
     break;
   }

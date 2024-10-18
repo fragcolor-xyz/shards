@@ -891,8 +891,6 @@ SHType keywordToType(malKeyword *typeKeyword) {
     return SHType::Seq;
   else if (value == ":Table")
     return SHType::Table;
-  else if (value == ":Set")
-    return SHType::Set;
   else
     throw shards::SHException("Could not infer type for special '.' shard. Need to return a proper "
                               "type keyword!");
@@ -956,10 +954,6 @@ malValuePtr typeToKeyword(SHType type) {
     return mal::keyword(":Seq");
   case SHType::Table:
     return mal::keyword(":Table");
-  case SHType::Set:
-    return mal::keyword(":Set");
-  case SHType::Array:
-    return mal::keyword(":Array");
   case SHType::Trait:
     return mal::keyword(":Trait");
   };

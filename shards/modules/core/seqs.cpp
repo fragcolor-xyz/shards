@@ -56,7 +56,6 @@ struct Flatten {
     case SHType::Int:
     case SHType::Float:
     case SHType::Bytes:
-    case SHType::Array:
     case SHType::Bool: {
       types.insert(info);
       break;
@@ -79,11 +78,6 @@ struct Flatten {
     case SHType::Seq:
       for (uint32_t i = 0; i < info.seqTypes.len; i++) {
         addInnerType(info.seqTypes.elements[i], types);
-      }
-      break;
-    case SHType::Set:
-      for (uint32_t i = 0; i < info.setTypes.len; i++) {
-        addInnerType(info.setTypes.elements[i], types);
       }
       break;
     case SHType::Table: {
@@ -129,7 +123,6 @@ struct Flatten {
     case SHType::Int:
     case SHType::Float:
     case SHType::Bytes:
-    case SHType::Array:
     case SHType::Bool:
       shards::arrayPush(outputCache.payload.seqValue, input);
       break;
@@ -185,15 +178,6 @@ struct Flatten {
       SHVar v;
       while (t.api->tableNext(t, &tit, &k, &v)) {
         add(k);
-        add(v);
-      }
-    } break;
-    case SHType::Set: {
-      auto &s = input.payload.setValue;
-      SHSetIterator sit;
-      s.api->setGetIterator(s, &sit);
-      SHVar v;
-      while (s.api->setNext(s, &sit, &v)) {
         add(v);
       }
     } break;
