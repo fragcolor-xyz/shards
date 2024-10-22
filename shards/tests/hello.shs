@@ -230,3 +230,8 @@ false = is-false | IsFalse | Assert.Is(true) | Log
 
 none
 1
+
+[] | IsAll(true) | Assert.Is(true) | Log ; vacuously true
+
+"../../.github/workflows/main.yml" | FS.Read | Yaml.ToJson | FromJson | Log
+ToJson | Yaml.FromJson | Log
