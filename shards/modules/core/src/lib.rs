@@ -12,6 +12,8 @@ pub mod uuid;
 #[cfg(feature = "ffi")]
 pub mod ffi;
 
+pub mod yaml;
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_core_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -27,4 +29,6 @@ pub extern "C" fn shardsRegister_core_rust(core: *mut shards::shardsc::SHCore) {
   {
     ffi::register_shards();
   }
+
+  yaml::register_shards();
 }
