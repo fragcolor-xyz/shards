@@ -35,7 +35,7 @@ int sqlite3_vec_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *p
 }
 
 #ifndef SH_SQLITE_DEBUG_LOGS
-#define SH_SQLITE_DEBUG_LOGS 0
+#define SH_SQLITE_DEBUG_LOGS 1
 #endif
 #if SH_SQLITE_DEBUG_LOGS
 #define SH_SQLITE_DEBUG_LOG(...) SPDLOG_LOGGER_DEBUG(logger, __VA_ARGS__)
@@ -209,7 +209,7 @@ struct MemoryLockedVfs : sqlite3_vfs {
     sqlite3_vfs_register(this, 0);
 #endif
     fallback = sqlite3_vfs_find(backendVfs);
-    
+
     // Manually copy relevant fields from fallback
     this->iVersion = fallback->iVersion;
     this->szOsFile = fallback->szOsFile;
@@ -254,17 +254,17 @@ struct Connection {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
 
     if (readOnly) {
-      SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-only {}", path);
+      SH_SQLITE_DEBUG_LOG("sqlite open read-only {}", path);
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     } else {
-      SH_SQLITE_DEBUG_LOG(logger, "sqlite open read-write {}", path);
+      SH_SQLITE_DEBUG_LOG("sqlite open read-write {}", path);
       if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
         throw ActivationError(sqlite3_errmsg(db));
       }
     }
-    SH_SQLITE_DEBUG_LOG(logger, "sqlite opened {}", (void *)db);
+    SH_SQLITE_DEBUG_LOG("sqlite opened {}", (void *)db);
 
     uint32_t res;
     if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
@@ -283,7 +283,7 @@ struct Connection {
 
   ~Connection() {
     if (db) {
-      SH_SQLITE_DEBUG_LOG(logger, "sqlite close {}", (void *)db);
+      SH_SQLITE_DEBUG_LOG("sqlite close {}", (void *)db);
       std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
       sqlite3_close(db);
     }
@@ -641,8 +641,7 @@ struct Query : public Base {
           // ok if we are not within a transaction, we need to check if transaction lock is locked!
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
-            transactionLock = std::move(lock);
+            transactionLock.emplace(_connection->transactionMutex);
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
@@ -692,7 +691,7 @@ struct Query : public Base {
           if (idx < expectedNumParameters)
             throw ActivationError("Not enough parameters for query");
 
-          SH_SQLITE_DEBUG_LOG(logger, "sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
+          SH_SQLITE_DEBUG_LOG("sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
           return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
         },
         [] {});
@@ -759,7 +758,7 @@ struct Transaction : public Base {
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          SH_SQLITE_DEBUG_LOG(logger, "Transaction begin, db: {}", (void *)_connection->db);
+          SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
           auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
           if (rc != SQLITE_OK) {
             throw ActivationError(sqlite3_errmsg(_connection->get()));
@@ -778,14 +777,14 @@ struct Transaction : public Base {
 
           if (state != SHWireState::Continue) {
             // likely something went wrong! lets rollback.
-            SH_SQLITE_DEBUG_LOG(logger, "Transaction rollback, db: {}", (void *)_connection->db);
+            SH_SQLITE_DEBUG_LOG("Transaction rollback, db: {}", (void *)_connection->db);
             auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
             if (rc != SQLITE_OK) {
               throw ActivationError(sqlite3_errmsg(_connection->get()));
             }
           } else {
             // commit
-            SH_SQLITE_DEBUG_LOG(logger, "Transaction commit, db: {}", (void *)_connection->db);
+            SH_SQLITE_DEBUG_LOG("Transaction commit, db: {}", (void *)_connection->db);
             auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
             if (rc != SQLITE_OK) {
               throw ActivationError(sqlite3_errmsg(_connection->get()));
@@ -837,8 +836,7 @@ struct LoadExtension : public Base {
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
-            transactionLock = std::move(lock);
+            transactionLock.emplace(_connection->transactionMutex);
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
@@ -894,15 +892,14 @@ struct RawQuery : public Base {
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
-            transactionLock = std::move(lock);
+            transactionLock.emplace(_connection->transactionMutex);
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
-          SH_SQLITE_DEBUG_LOG(logger, "Raw query db: {}, {}", (void *)_connection->db, query);
+          SH_SQLITE_DEBUG_LOG("Raw query db: {}, {}", (void *)_connection->db, query);
           int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
 
           if (rc != SQLITE_OK) {
@@ -955,8 +952,7 @@ struct Backup : public Base {
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            std::unique_lock<std::mutex> lock(_connection->transactionMutex);
-            transactionLock = std::move(lock);
+            transactionLock.emplace(_connection->transactionMutex);
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::unique_lock<std::mutex> l2(_connection->mutex);
