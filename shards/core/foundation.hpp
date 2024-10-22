@@ -24,13 +24,11 @@
 #include <atomic>
 #include <cassert>
 #include <deque>
-#include <iomanip>
 #include <list>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <set>
-#include <sstream>
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
@@ -107,6 +105,7 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+SHVar *findVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name);
@@ -1070,23 +1069,21 @@ typedef TParamVar<InternalCore> ParamVar;
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
-  struct _NAME_##EnumInfoWrapper {                                            \
-    static inline const char Name[] = #_NAME_;                                \
-    static inline const SHOptionalString Help = SHCCSTR(_HELP_);              \
-  };                                                                          \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,    \
-    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,             \
-    _VENDOR_CC_, _CC_, false>
+#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_)                             \
+  struct _NAME_##EnumInfoWrapper {                                                                        \
+    static inline const char Name[] = #_NAME_;                                                            \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                                          \
+  };                                                                                                      \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##EnumInfoWrapper::Name, \
+                                             _NAME_##EnumInfoWrapper::Help, _VENDOR_CC_, _CC_, false>
 
-#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_) \
-  struct _NAME_##EnumInfoWrapper {                                                  \
-    static inline const char Name[] = #_NAME_;                                      \
-    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                    \
-  };                                                                                \
-  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_,          \
-    _NAME_##EnumInfoWrapper::Name, _NAME_##EnumInfoWrapper::Help,                   \
-    _VENDOR_CC_, _CC_, true>
+#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, _VENDOR_CC_, _CC_)                       \
+  struct _NAME_##EnumInfoWrapper {                                                                        \
+    static inline const char Name[] = #_NAME_;                                                            \
+    static inline const SHOptionalString Help = SHCCSTR(_HELP_);                                          \
+  };                                                                                                      \
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##EnumInfoWrapper::Name, \
+                                             _NAME_##EnumInfoWrapper::Help, _VENDOR_CC_, _CC_, true>
 
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 #define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
@@ -1291,101 +1288,6 @@ struct ExposedInfo {
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 
   SHExposedTypesInfo _innerInfo{};
-};
-
-struct CachedStreamBuf : std::streambuf {
-  std::vector<char> data;
-
-  void reset() { data.clear(); }
-
-  std::streamsize xsputn(const char *s, std::streamsize n) override {
-    data.insert(data.end(), &s[0], s + n);
-    return n;
-  }
-
-  int overflow(int c) override {
-    if (c != EOF) {
-      data.push_back(static_cast<char>(c));
-      return c; // Return the written character
-    }
-    return EOF;
-  }
-  void done() { data.push_back('\0'); }
-
-  std::string_view str() {
-    if (data.empty())
-      return "";
-    return std::string_view(data.data(), data.size() - 1);
-  }
-};
-
-struct StringStreamBuf : std::streambuf {
-  StringStreamBuf(const std::string_view &s) : data(s) {}
-
-  std::string_view data;
-  uint32_t index{0};
-  bool done{false};
-
-  std::streamsize xsgetn(char *s, std::streamsize n) override {
-    if (n == 0)
-      return 0;
-    if (unlikely(done)) {
-      return 0;
-    } else if ((size_t(index) + n) > data.size()) {
-      const auto len = data.size() - index;
-      memcpy(s, &data[index], len);
-      done = true;  // flag to indicate we are done
-      index += len; // Update index correctly
-      return len;
-    } else {
-      memcpy(s, &data[index], n);
-      index += n;
-      return n;
-    }
-  }
-
-  int underflow() override {
-    if (index >= data.size())
-      return EOF;
-
-    return data[index];
-  }
-};
-
-struct VarStringStream {
-  CachedStreamBuf cache;
-
-  void write(const SHVar &var) {
-    cache.reset();
-    std::ostream stream(&cache);
-    stream << var;
-    cache.done();
-  }
-
-  void tryWriteHex(const SHVar &var) {
-    cache.reset();
-    std::ostream stream(&cache);
-    if (var.valueType == SHType::Int) {
-      stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << var.payload.intValue;
-    } else if (var.valueType == SHType::Bytes) {
-      stream << "0x" << std::hex;
-      for (uint32_t i = 0; i < var.payload.bytesSize; i++)
-        stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
-    } else if (var.valueType == SHType::String) {
-      stream << "0x" << std::hex;
-      auto len = var.payload.stringLen;
-      if (len == 0 && var.payload.stringValue) {
-        len = uint32_t(strlen(var.payload.stringValue));
-      }
-      for (uint32_t i = 0; i < len; i++)
-        stream << std::setw(2) << std::setfill('0') << (int)var.payload.stringValue[i];
-    } else {
-      throw ActivationError("Cannot convert type to hex");
-    }
-    cache.done();
-  }
-
-  const std::string_view str() { return cache.str(); }
 };
 
 using ShardsCollection = std::variant<const SHWire *, ShardPtr, Shards, SHVar>;

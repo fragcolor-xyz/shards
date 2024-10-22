@@ -15,8 +15,12 @@
 #include <optional>
 #include <cstdint>
 
+//entt\meta\meta.hpp:768:10: note: 'meta_prop' has been explicitly marked deprecated here
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
+#pragma GCC diagnostic pop
 
 #define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO)
 

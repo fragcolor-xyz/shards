@@ -517,7 +517,7 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
   return &v;
 }
 
-SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
+inline SHVar *findVariable(SHContext *ctx, std::string_view name) {
   // try find a wire variable
   // from top to bottom of wire stack
   {
@@ -543,7 +543,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
       }
       // if this wire is pure we break here and do not look further
       if (wire->pure) {
-        goto create;
+        return nullptr;
       }
     }
   }
@@ -578,7 +578,14 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
     }
   }
 
-create:
+  return nullptr;
+}
+
+SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
+  SHVar* var = findVariable(ctx, name);
+  if (var) 
+    return var;
+
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
   SHVar &cv = ctx->wireStack.back()->getVariable(toSWL(name));

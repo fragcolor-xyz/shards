@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <boost/algorithm/hex.hpp>
 #include <unordered_map>
+#include <shards/core/stream_buf.hpp>
 
 namespace shards {
 struct FromImage {
@@ -318,7 +319,7 @@ struct ToString {
 
 struct ToHex {
   VarStringStream stream;
-  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
+  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::Int16Type, CoreInfo::BytesType, CoreInfo::StringType};
 
   static SHTypesInfo inputTypes() { return toHexTypes; }
   static SHOptionalString inputHelp() { return SHCCSTR("Takes an integer, byte array, or string value."); }

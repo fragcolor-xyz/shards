@@ -31,6 +31,12 @@ struct DebugNoop {
     } else {
       SHLOG_TRACE("Triggered debug noop");
     }
+    if (input.valueType == SHType::Table) {
+      const TableVar &table = (TableVar &)input;
+      if (table.size() == 0) {
+        int kj = 0;
+      }
+    }
     return input;
   }
 };

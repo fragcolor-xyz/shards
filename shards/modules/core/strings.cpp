@@ -4,6 +4,7 @@
 #include <utf8.h>
 #include <shards/core/shared.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/stream_buf.hpp>
 #include <regex>
 
 namespace shards {

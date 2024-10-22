@@ -3,6 +3,7 @@
 
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
+#include <shards/core/stream_buf.hpp>
 #include <boost/filesystem.hpp>
 #include <cstdio>
 #include <fstream>

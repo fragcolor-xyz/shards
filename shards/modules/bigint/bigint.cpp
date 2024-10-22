@@ -5,6 +5,7 @@
 #include <shards/shards.h>
 #include <shards/core/shared.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/stream_buf.hpp>
 #include "math.hpp"
 #include <math.h>
 #include <deque>

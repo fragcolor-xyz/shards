@@ -32,7 +32,7 @@ void ThreadFiber::init(std::function<void()> fn) {
   // Initial suspend
   boost::thread::attributes attrs;
   attrs.set_stack_size(SH_DEBUG_THREAD_STACK_SIZE);
-  thread.emplace(attrs, [=]() {
+  thread.emplace(attrs, [this, fn]() {
     try {
       fn();
     } catch (std::exception &e) {
