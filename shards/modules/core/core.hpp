@@ -181,35 +181,68 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
   struct NAME : public BaseOpsBin {                                                       \
     const SHVar &activate(SHContext *context, const SHVar &input) {                       \
       const auto &value = _operand.get();                                                 \
+                                                                                          \
       if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {             \
         auto vlen = value.payload.seqValue.len;                                           \
         auto ilen = input.payload.seqValue.len;                                           \
+                                                                                          \
+        /* If both sequences are empty, return False (no elements satisfy ANY) */         \
+        if (ilen == 0 && vlen == 0) {                                                     \
+          _output = shards::Var::False;                                                   \
+          return _output;                                                                 \
+        } else if (ilen == 0 || vlen == 0) {                                              \
+          /* If one is empty and the other is not, there are no pairs to satisfy ANY */   \
+          _output = shards::Var::False;                                                   \
+          return _output;                                                                 \
+        }                                                                                 \
+                                                                                          \
         if (ilen > vlen)                                                                  \
-          throw ActivationError("Failed to compare, input len > value len.");             \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
+          throw ActivationError("Failed to compare, input len > operand len.");           \
+                                                                                          \
+        for (uint32_t i = 0; i < ilen; i++) {                                             \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i]) { \
             _output = shards::Var::True;                                                  \
             return _output;                                                               \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        _output = shards::Var::False;                                                     \
+        return _output;                                                                   \
       } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {      \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
+        auto ilen = input.payload.seqValue.len;                                           \
+                                                                                          \
+        /* If input sequence is empty, return False (no elements satisfy ANY) */          \
+        if (ilen == 0) {                                                                  \
+          _output = shards::Var::False;                                                   \
+          return _output;                                                                 \
+        }                                                                                 \
+                                                                                          \
+        for (uint32_t i = 0; i < ilen; i++) {                                             \
           if (input.payload.seqValue.elements[i] OP value) {                              \
             _output = shards::Var::True;                                                  \
             return _output;                                                               \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        _output = shards::Var::False;                                                     \
+        return _output;                                                                   \
       } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {      \
-        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
+        auto vlen = value.payload.seqValue.len;                                           \
+                                                                                          \
+        /* If operand sequence is empty, return False (no elements satisfy ANY) */        \
+        if (vlen == 0) {                                                                  \
+          _output = shards::Var::False;                                                   \
+          return _output;                                                                 \
+        }                                                                                 \
+                                                                                          \
+        for (uint32_t i = 0; i < vlen; i++) {                                             \
           if (input OP value.payload.seqValue.elements[i]) {                              \
             _output = shards::Var::True;                                                  \
             return _output;                                                               \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        _output = shards::Var::False;                                                     \
+        return _output;                                                                   \
       } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {      \
+        /* Handle non-sequence types */                                                   \
         if (input OP value) {                                                             \
           _output = shards::Var::True;                                                    \
           return _output;                                                                 \
@@ -217,9 +250,12 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
         _output = shards::Var::False;                                                     \
         return _output;                                                                   \
       }                                                                                   \
+                                                                                          \
+      /* Fallback case: if none of the above conditions are met */                        \
       _output = shards::Var::False;                                                       \
       return _output;                                                                     \
     }                                                                                     \
+                                                                                          \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
     static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }  \
     static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
@@ -231,12 +267,24 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
   struct NAME : public BaseOpsBin {                                                          \
     const SHVar &activate(SHContext *context, const SHVar &input) {                          \
       const auto &value = _operand.get();                                                    \
+                                                                                             \
       if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                \
         auto vlen = value.payload.seqValue.len;                                              \
         auto ilen = input.payload.seqValue.len;                                              \
+                                                                                             \
+        /* If both sequences are empty, return True (vacuously true for ALL) */              \
+        if (ilen == 0 && vlen == 0) {                                                        \
+          _output = shards::Var::True;                                                       \
+          return _output;                                                                    \
+        } else if (ilen == 0 || vlen == 0) {                                                 \
+          _output = shards::Var::False;                                                      \
+          return _output;                                                                    \
+        }                                                                                    \
+                                                                                             \
         if (ilen > vlen)                                                                     \
-          throw ActivationError("Failed to compare, input len > value len.");                \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
+          throw ActivationError("Failed to compare, input len > operand len.");              \
+                                                                                             \
+        for (uint32_t i = 0; i < ilen; i++) {                                                \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i])) { \
             _output = shards::Var::False;                                                    \
             return _output;                                                                  \
@@ -245,7 +293,15 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
         _output = shards::Var::True;                                                         \
         return _output;                                                                      \
       } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {         \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
+        auto ilen = input.payload.seqValue.len;                                              \
+                                                                                             \
+        /* If input sequence is empty, return True (vacuously true for ALL) */               \
+        if (ilen == 0) {                                                                     \
+          _output = shards::Var::True;                                                       \
+          return _output;                                                                    \
+        }                                                                                    \
+                                                                                             \
+        for (uint32_t i = 0; i < ilen; i++) {                                                \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
             _output = shards::Var::False;                                                    \
             return _output;                                                                  \
@@ -254,7 +310,15 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
         _output = shards::Var::True;                                                         \
         return _output;                                                                      \
       } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {         \
-        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
+        auto vlen = value.payload.seqValue.len;                                              \
+                                                                                             \
+        /* If operand sequence is empty, return True (vacuously true for ALL) */             \
+        if (vlen == 0) {                                                                     \
+          _output = shards::Var::True;                                                       \
+          return _output;                                                                    \
+        }                                                                                    \
+                                                                                             \
+        for (uint32_t i = 0; i < vlen; i++) {                                                \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
             _output = shards::Var::False;                                                    \
             return _output;                                                                  \
@@ -263,6 +327,7 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
         _output = shards::Var::True;                                                         \
         return _output;                                                                      \
       } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {         \
+        /* Handle non-sequence types */                                                      \
         if (!(input OP value)) {                                                             \
           _output = shards::Var::False;                                                      \
           return _output;                                                                    \
@@ -270,9 +335,12 @@ LOGIC_OP(IsLessEqual, <=, "Checks if the input is less than or equal to the oper
         _output = shards::Var::True;                                                         \
         return _output;                                                                      \
       }                                                                                      \
+                                                                                             \
+      /* Fallback case: if none of the above conditions are met */                           \
       _output = shards::Var::False;                                                          \
       return _output;                                                                        \
     }                                                                                        \
+                                                                                             \
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                            \
     static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyButType; }     \
     static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }               \
