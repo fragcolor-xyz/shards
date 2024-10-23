@@ -31,6 +31,8 @@ tiny-skia = { opt-level = 3 }
 resvg = { opt-level = 3 }
 usvg = { opt-level = 3 }
 shards-lang = { opt-level = 3 }
+shards-langffi = { opt-level = 3 }
+pest = { opt-level = 3, debug-assertions = false }  # This will apply to all profiles
 syntect = { opt-level = 3 }
 flate2 = { opt-level = 3 }
 bincode = { opt-level = 3 }
@@ -38,7 +40,7 @@ flexbuffers = { opt-level = 3 }
 tokenizers = { opt-level = 3 }
 candle-core = { opt-level = 3 }
 candle-transformers = { opt-level = 3 }
-candle-nn = { opt-level = 3 }
+candle-nn = { opt-level = 3 } 
 
 # The profile settings are required to get reasonable performance
 # some validations are enabled by default based on debug-assertions
@@ -48,6 +50,8 @@ debug-assertions = false
 [profile.rel-with-deb-info.package."wgpu-core"]
 debug-assertions = false
 [profile.rel-with-deb-info.package."wgpu-types"]
+debug-assertions = false
+[profile.rel-with-deb-info.package."wgpu-native"]
 debug-assertions = false
 
 # For debug mode too, disable to actually debug
@@ -60,3 +64,6 @@ opt-level = 3
 [profile.dev.package."wgpu-types"]
 debug-assertions = false
 opt-level = 3
+[profile.dev.package."wgpu-native"]
+opt-level = 3
+debug-assertions = false
