@@ -649,6 +649,11 @@ struct StopWire : public WireBase {
 };
 
 struct SuspendWire : public WireBase {
+  void setup() {
+    activating = false; // this is needed to pass validation in compose
+    passthrough = true; // also need this to have proper compose output type
+  }
+
   SHOptionalString help() {
     return SHCCSTR("Pauses a specified Wire's execution. If no Wire is specified, pauses the current wire.");
   }
@@ -656,8 +661,6 @@ struct SuspendWire : public WireBase {
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
-
-  void setup() { passthrough = true; }
 
   SHExposedTypeInfo _requiredWire{};
 
@@ -715,13 +718,16 @@ struct SuspendWire : public WireBase {
 };
 
 struct ResumeWire : public WireBase {
+  void setup() {
+    activating = false; // this is needed to pass validation in compose
+    passthrough = true; // also need this to have proper compose output type
+  }
+
   SHOptionalString help() { return SHCCSTR("Resumes another Wire (previously paused using Suspend)."); }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
 
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
-
-  void setup() { passthrough = true; }
 
   SHExposedTypeInfo _requiredWire{};
 
