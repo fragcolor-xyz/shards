@@ -66,7 +66,7 @@
 	url = https://github.com/shards-lang/snappy.git
 [submodule "deps/tracy"]
 	path = deps/tracy
-	url = https://github.com/wolfpld/tracy.git
+	url = https://github.com/shards-lang/tracy.git
 [submodule "deps/entt"]
 	path = deps/entt
 	url = https://github.com/shards-lang/entt.git

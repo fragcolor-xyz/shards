@@ -11,8 +11,10 @@ if(TRACY_ENABLE)
   message(STATUS "Building gfx crate with tracy profiling enabled")
   list(APPEND FEATURES tracy)
   list(APPEND RUST_ENV
-  TRACY_CLIENT_LIB=$<TARGET_FILE_NAME:Tracy::TracyClient>
-    TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>)
+    TRACY_CLIENT_LIB=TracyClient # The lib file is called libTracyClient.a but this needs to be and -l compatible arg
+    TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>
+    TRACY_CLIENT_STATIC=1
+  )
 endif()
 
 if(GFX_WGPU_TRACE_PATH)
