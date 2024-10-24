@@ -407,10 +407,11 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
 
-            env
-              .dependencies
-              .borrow_mut()
-              .push(file_path.to_string_lossy().to_string());
+            {
+              // Insert this into the root map so it gets tracked globally
+              let root_env = get_root_env(env);
+              root_env.dependencies.borrow_mut().push(file_path.to_string_lossy().to_string());
+            }
 
             if as_bytes {
               // read bytes from file

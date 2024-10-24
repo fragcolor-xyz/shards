@@ -10,7 +10,7 @@ extern crate compile_time_crc32;
 
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, NONE_TYPES};
+use shards::types::{common_type, NONE_TYPES, SEQ_OF_ANY_TABLE_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
 use std::fs;
@@ -392,7 +392,7 @@ impl Shard for NotifyShard {
   }
 
   fn output_types(&mut self) -> &Types {
-    &STRING_TYPES
+    &SEQ_OF_ANY_TABLE_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
@@ -439,7 +439,8 @@ impl Shard for NotifyShard {
                   let p = Var::ephemeral_string(path);
                   let t = self.output.0.next_mut();
                   let t = t.as_mut_table_creating().unwrap();
-                  t.insert(p, &k);
+                  t.insert_fast_static("path", &p);
+                  t.insert_fast_static("type", &k);
                 }
               }
             } else if let Err(e) = event {
