@@ -3893,7 +3893,7 @@ struct Repeat {
        CoreInfo::ShardsOrNone}};
 
   static SHOptionalString help() {
-    return SHCCSTR("Repeat an action a given number of times or until a condition is no longer `true`.");
+    return SHCCSTR("Repeat an action a given number of times or until the 'Until' parameter returns true.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
