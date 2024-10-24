@@ -1,6 +1,11 @@
 #ifndef F927121D_987F_4BF6_BBC8_DDCE9839EFEE
 #define F927121D_987F_4BF6_BBC8_DDCE9839EFEE
 
+#include <streambuf>
+#include <vector>
+#include <string>
+#include <iomanip>
+
 namespace shards {
   
 struct CachedStreamBuf : std::streambuf {
