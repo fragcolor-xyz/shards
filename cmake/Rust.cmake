@@ -4,6 +4,8 @@ set(RUST_BUILD_SUBDIR_HAS_TARGET ON)
 set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
 find_program(CARGO_EXE NAMES "cargo" REQUIRED)
 
+# set(CARGO_EXE ${CMAKE_CURRENT_LIST_DIR}/test_script.sh)
+
 if(NOT RUST_CARGO_TARGET)
   if(ANDROID)
     if(ANDROID_ABI MATCHES "arm64-v8a")
@@ -100,7 +102,7 @@ endif()
 
 if(EMSCRIPTEN_PTHREADS)
   list(APPEND RUST_FLAGS -Ctarget-feature=+atomics,+bulk-memory)
-  list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std=panic_abort,std)
+  list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std)
   set(RUST_NIGHTLY TRUE)
 endif()
 
@@ -255,6 +257,7 @@ function(add_rust_library)
   if(EMSCRIPTEN_SYSROOT)
     file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
+    list(APPEND EXTRA_CLANG_ARGS "-isystem${TMP_SYSROOT}/include/compat")
   elseif(CMAKE_SYSROOT)
     file(TO_CMAKE_PATH "${CMAKE_SYSROOT}" TMP_SYSROOT)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${CMAKE_SYSROOT}")
@@ -280,6 +283,8 @@ function(add_rust_library)
 
   if(EXTRA_CLANG_ARGS)
     set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
+  else()
+    set(BINDGEN_EXTRA_CLANG_ARGS)
   endif()
 
   set(_RUST_ENVIRONMENT ${RUST_ENVIRONMENT})
@@ -306,6 +311,14 @@ function(add_rust_library)
 
   if(ANDROID)
     list(APPEND RUST_FLAGS -Ctarget-feature=+fp16)
+  endif()
+
+  if(EMSCRIPTEN_ROOT_PATH)
+    list(APPEND _RUST_ENVIRONMENT 
+      "--modify" "PATH=path_list_append:${EMSCRIPTEN_ROOT_PATH}"
+      "TARGET_CC=${CMAKE_C_COMPILER}"
+      "TARGET_AR=${CMAKE_AR}"
+    )
   endif()
 
   list(APPEND _RUST_ENVIRONMENT RUSTFLAGS="${RUST_FLAGS}")

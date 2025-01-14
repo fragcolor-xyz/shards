@@ -74,11 +74,9 @@ jobs:
           key: ${{ steps.setup.outputs.build-type }}
       - name: Build
         run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DWITH_SQLITE_VEC=ON -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DSHARDS_THREAD_FIBER=ON -DUSE_ASAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
-          ninja shards
-          ninja test-runtime
+          cmake -Bbuild -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DWITH_SQLITE_VEC=ON -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
+          cmake --build build --target shards
+          cmake --build build --target test-runtime
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +85,7 @@ jobs:
             build/shards
             build/test-runtime
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   #
   # Test shards on macOS

@@ -894,8 +894,7 @@ std::vector<uint8_t> convertToGlb(const std::string &inputPath) {
   }
 
   // Write to a temporary GLB file
-  // std::filesystem::path tempOutputPath = std::filesystem::temp_directory_path() / "temp_output.glb";
-  auto tempOutputPath = boost::filesystem::unique_path("temp_output_%%%%-%%%%-%%%%-%%%%.glb");
+  auto tempOutputPath = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path("temp_output_%%%%-%%%%-%%%%-%%%%.glb");
   tinygltf::TinyGLTF writer;
   if (!writer.WriteGltfSceneToFile(&model, tempOutputPath.string(), true, true, false, true)) {
     throw std::runtime_error("Failed to write glTF to .glb");

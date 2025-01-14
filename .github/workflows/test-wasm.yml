@@ -1,0 +1,132 @@
+name: Test (Wasm)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  test-wasm:
+    name: Test
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - name: Checkout shards
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Checkout glTF-Sample-Assets
+        uses: actions/checkout@v4
+        with:
+          repository: shards-lang/glTF-Sample-Assets
+          path: external/glTF-Sample-Assets
+          fetch-depth: 1
+
+      - name: Download host artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shards-macos Release
+          path: build_host
+
+      - name: Download shards artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: shards-wasm
+          path: build
+
+      - name: Make shards executable
+        run: |
+          # Shards interpreter
+          chmod +x ./build_host/shards
+          echo "shards=$(pwd)/build_host/shards" >> $GITHUB_ENV
+          echo "SHARDS_BUILD=$(pwd)/build" >> $GITHUB_ENV
+
+      # - name: Download build
+      #   run: |
+      #     SHARDS_BUILD=$(pwd)/build
+      #     mkdir -p $SHARDS_BUILD
+      #     echo "SHARDS_BUILD=$SHARDS_BUILD" >> $GITHUB_ENV
+          
+      #     wget https://bakje.coffee/shards-wasm.zip -O shards-wasm.zip
+      #     unzip shards-wasm.zip -d $SHARDS_BUILD
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.0.0
+
+      - name: Test
+        run: |
+          pushd shards/tests/web
+
+          npm install
+          npx puppeteer browsers install chrome@latest 
+
+          # Spawn the test server
+          ./run_server &
+          SERVER_PID=$!
+
+          source ./shared
+
+          function queue_test() {
+            control action:run data:shards/tests/$1
+          }
+
+          (
+            queue_test gfx-cube.shs
+            queue_test gfx-texture.shs
+            queue_test gfx-gltf.shs
+            queue_test gfx-gltf-pack.shs
+            queue_test gfx-gltf-anim.shs
+            queue_test gfx-shader-translator-0.shs
+            queue_test gfx-shader-translator-1.shs
+            queue_test gfx-shader-translator-2.shs
+            queue_test gfx-shader-translator-3.shs
+            queue_test gfx-shader-translator-4.shs
+            queue_test gfx-queue.shs
+            queue_test gfx-read-texture.shs
+            queue_test gfx-pbr.shs
+            queue_test ui-0.shs
+            queue_test ui-1.shs
+            queue_test ui-2.shs
+            queue_test general.shs@/tmp
+            queue_test zip-map.shs
+            queue_test strings.shs
+            queue_test table-compose.shs
+            queue_test variables.shs
+            queue_test subwires.shs@/tmp
+            queue_test linalg.shs
+            queue_test network-ws.shs
+            queue_test struct.shs
+            queue_test flows.shs
+            queue_test kdtree.shs
+            queue_test channels.shs
+            queue_test imaging.shs
+            queue_test http.shs@/tmp
+            queue_test bigint.shs
+            queue_test brotli.shs
+            queue_test snappy.shs
+            queue_test expect.shs
+            queue_test wasm.shs
+            queue_test rust.shs
+            queue_test crypto.shs
+            queue_test wire-macro.shs
+            queue_test branch.shs
+            queue_test audio.shs
+            queue_test audio2.shs
+            queue_test events.shs
+            queue_test complex-deserialize.shs
+            queue_test db.shs@/tmp
+            queue_test suspend-resume.shs
+            queue_test whendone.shs
+            queue_test return.shs
+            queue_test table-seq-push.shs
+            queue_test failures.shs@/tmp
+            queue_test traits.shs
+            control action:shutdown
+          ) &
+
+          sleep 5
+
+          # Run the browser, it will automatically terminate on success
+          node ./run_browser.js

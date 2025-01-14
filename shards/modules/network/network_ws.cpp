@@ -425,7 +425,7 @@ struct WSClientShard {
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
   PARAM(ShardsVar, _handler, "Handler", ("The shards to execute when a packet is received."), {CoreInfo::ShardsOrNone});
   PARAM_VAR(_raw, "Raw", ("If set to true, the client will receive raw byte packets instead of serialized objects."),
-            {CoreInfo::NoneType, CoreInfo::BoolType});
+            {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw));
 
   std::shared_ptr<WSClient> _client;
@@ -433,6 +433,8 @@ struct WSClientShard {
   SHVar *_peerVarRef{};
 
   std::array<SHExposedTypeInfo, 1> _exposing;
+
+  WSClientShard() { _raw = Var(false); }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
@@ -453,7 +455,7 @@ struct WSClientShard {
     }
   }
 
-  bool useRawData() { return _raw->isNone() ? false : _raw.payload.boolValue; }
+  bool useRawData() { return  _raw.payload.boolValue; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -649,13 +651,17 @@ struct WSClientShard {
 
   PARAM_PARAMVAR(_address, "Address", ("The local bind address or the remote address."), {CoreInfo::StringOrStringVar});
   PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler));
+  PARAM_VAR(_raw, "Raw", ("If set to true, the client will receive raw byte packets instead of serialized objects."),
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw));
 
   std::shared_ptr<WSClient> _client;
   SHVar _peerVar;
   SHVar *_peerVarRef{};
 
   std::array<SHExposedTypeInfo, 1> _exposing;
+
+  WSClientShard() { _raw = Var(false); }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
@@ -676,6 +682,8 @@ struct WSClientShard {
     }
   }
 
+  bool useRawData() { return  _raw.payload.boolValue; }
+
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
@@ -685,7 +693,11 @@ struct WSClientShard {
       ExposedInfo sharedCopy(data.shared);
       sharedCopy.push_back(ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), Types::Peer));
       dataCopy.shared = (SHExposedTypesInfo)sharedCopy;
-      dataCopy.inputType = CoreInfo::AnyType;
+      if (useRawData()) {
+        dataCopy.inputType = CoreInfo::BytesType;
+      } else {
+        dataCopy.inputType = CoreInfo::AnyType;
+      }
       _handler.compose(dataCopy);
     }
 
@@ -704,12 +716,18 @@ struct WSClientShard {
     auto &peer = client.peer;
 
     withObjectVariable(*_peerVarRef, &peer, Types::Peer, [&]() {
-      Reader r((char *)msg.data.data() + 4, msg.data.size() - 4);
-      r.deserializeInto(client.peer.recvBuffer);
+      Var input{};
+      if (useRawData()) {
+        input = Var((uint8_t *)msg.data.data(), msg.data.size());
+      } else {
+        Reader r((char *)msg.data.data() + 4, msg.data.size() - 4);
+        r.deserializeInto(client.peer.recvBuffer);
+        input = client.peer.recvBuffer;
+      }
 
       SHVar output{};
       if (_handler) {
-        _handler.activate(context, client.peer.recvBuffer, output);
+        _handler.activate(context, input, output);
       }
     });
   }

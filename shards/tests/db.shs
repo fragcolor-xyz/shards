@@ -1,6 +1,8 @@
-@include("hello2.shs") ; to use the macro `if`
+@include("defs.shs") ; to use the macro `if`
 
 @mesh(root)
+
+@define(with-sqlite-vec true IgnoreRedefined: true)
 
 @wire(extra-queries {
   Log("AAAAA")

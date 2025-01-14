@@ -3,6 +3,8 @@
 
 @mesh(root)
 
+@include("defs.shs") ; "if" macro
+
 @wire(inner {
   Assert.Is("My input" true)
   "My input 2"
@@ -763,13 +765,15 @@
   Assert.Is([0 1 2 3 4 5] true)
   Log
   
-  "." | FS.Iterate(Recursive: false) | Log
+  #("." | FS.Absolute | Log("jj")) = test-path
+  
+  test-path | FS.Iterate(Recursive: false) | Log
   Take(4) | FS.Extension | Log
   
-  "." | FS.Iterate(Recursive: false) | Log
+  test-path | FS.Iterate(Recursive: false) | Log
   Take(4) | FS.Filename(NoExtension: true) | Log
   
-  "../src"
+  test-path
   When(Predicate: FS.IsDirectory
     Action: {
       FS.Iterate(Recursive: true) | Log
@@ -1321,8 +1325,10 @@
   Get(global1 Global: true Default: "nope")
   Assert.Is("global1" true)
   Log
-  Process.StackTrace
-  Log
+  @if(#(@platform | IsNot("emscripten")) {
+    Process.StackTrace
+    Log
+  } none)
   WireRunner(loadedWire Mode: RunWireMode::Async)
   Wait(loadedWire)
 })

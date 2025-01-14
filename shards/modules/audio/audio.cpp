@@ -33,6 +33,7 @@
 #endif
 
 #if SH_EMSCRIPTEN
+#include <emscripten/threading.h>
 #include <shards/core/em_proxy.hpp>
 #endif
 
@@ -73,7 +74,11 @@ struct ChannelDesc {
 
 template <typename F> void proxyToMainThread(F &&cb) {
 #if SH_EMSCRIPTEN
-  EmMainProxy::getInstance().queue(std::forward<F>(cb)).wait();
+  if (emscripten_is_main_browser_thread()) {
+    cb();
+  } else {
+    EmMainProxy::getInstance().queue(std::forward<F>(cb)).wait();
+  }
 #else
   cb();
 #endif

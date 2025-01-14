@@ -1,0 +1,18 @@
+@define(port #(
+  @env("SHARDS_TEST_PORT")
+  If(Is("") {"3000"} Pass)
+  ToInt
+))
+@define(root-path #(
+  @env("SHARDS_TEST_ROOT")
+  If(Is("") {"../../.."} Pass)
+))
+@define(web-path #(
+  @env("SHARDS_TEST_WEB_PATH") 
+  If(Is("") {"./"} Pass)
+  FS.RelativeTo(".")
+))
+@define(binaries-path #(
+  @env("SHARDS_BUILD")
+  If(Is("") {"../../../build/emscripten-mt/release"} Pass)
+))

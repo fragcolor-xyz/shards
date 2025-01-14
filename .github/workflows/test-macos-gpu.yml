@@ -40,30 +40,36 @@ jobs:
         run: |
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
           echo "GFX_ANY_ADAPTER=1" >> $GITHUB_ENV
+
       - name: Clean workspace
         if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
         run: |
           rm -rf $GITHUB_WORKSPACE
           mkdir $GITHUB_WORKSPACE
+
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 2
           submodules: recursive
+
       - name: Set up dependencies
         run: |
           ./bootstrap
+
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
           cmake --build build --target shards test-gfx
+
       - name: Checkout glTF-Sample-Assets
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: shards-lang/glTF-Sample-Assets
           path: external/glTF-Sample-Assets
           fetch-depth: 1
+
       - name: Test (GPU)
         env:
           RUST_BACKTRACE: full
@@ -130,6 +136,7 @@ jobs:
 
           echo "Running physics"
           build/shards new shards/tests/physics.shs
+
       - name: Test doc samples (GFX)
         env:
           RUST_BACKTRACE: full
@@ -147,6 +154,7 @@ jobs:
             echo "Running sample $i";
             ../../build/shards new run-sample.shs file:"$i" looped:false;
           done
+
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
@@ -165,6 +173,7 @@ jobs:
             --ignore-errors inconsistent,gcov,range
           # convert absolute path to relative path
           sed -i '' -e "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
+
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v4
@@ -174,6 +183,7 @@ jobs:
             coverage/coverage-macos-gpu.info
           if-no-files-found: error
           retention-days: 1
+          
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

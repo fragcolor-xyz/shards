@@ -1,0 +1,37 @@
+@macro(if [cond yes no] {
+  Sequence(pipelines)
+  cond | If(IsAny([true "true" 1]) {
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(yes) | FromJson)]
+        }
+      }
+    } {
+      {
+        sh: {
+          name: "SubFlow"
+          params: [(@ast(no) | FromJson)]
+        }
+      }
+    }
+  ) >> pipelines
+  [pipelines] | ToJson
+})
+
+@macro(tmp-path [path] {
+  Sequence(pipelines)
+  @platform | If(Is("emscripten") {
+      {
+        eExpr: [[
+          {const: {seq: [{str: "/tmp"}, {str: path}]}},
+          {sh: {name: "FS.Join"}}
+        ]]
+      } >> pipelines
+    } {
+      {const: {str: path}} >> pipelines
+    }
+  )
+  
+  [pipelines] | ToJson
+})
