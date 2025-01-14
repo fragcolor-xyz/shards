@@ -1,11 +1,13 @@
+@include("defs.shs")
+
 LoadImage("../../assets/simple1.PNG") >= baseImg
 StripAlpha
-WritePNG("testbase.png")
+WritePNG(@tmp-path("testbase.png"))
 Ref(img)
 Repeat({
   Get(img)
   Convolve(50)
-  WritePNG("test.png")
+  WritePNG(@tmp-path("test.png"))
   Log
   ImageToFloats
   Ref(s)
@@ -13,20 +15,20 @@ Repeat({
   Log
   Get(s)
   FloatsToImage(99 99 3)
-  WritePNG("test2.png")
+  WritePNG(@tmp-path("test2.png"))
   FillAlpha
   ResizeImage(200 200)
-  WritePNG("test2Resized.png")
+  WritePNG(@tmp-path("test2Resized.png"))
 } Times: 30)
 Log
 baseImg
 ResizeImage(Width: 200 Height: 0)
-WritePNG("testResized1.png")
+WritePNG(@tmp-path("testResized1.png"))
 baseImg
 ResizeImage(Width: 0 Height: 200)
-WritePNG("testResized2.png")
+WritePNG(@tmp-path("testResized2.png"))
 StripAlpha
-WriteJPG("testResized2.jpg")
+WriteJPG(@tmp-path("testResized2.jpg"))
 {WritePNG | ExpectBytes
   LoadImage | ImageToBytes | ExpectBytes
 }
@@ -37,4 +39,4 @@ WriteJPG("testResized2.jpg")
 "../../assets/Freesample.svg"
 FS.Read(Bytes: true)
 SVG.ToImage
-WritePNG("svgtest.png")
+WritePNG(@tmp-path("svgtest.png"))

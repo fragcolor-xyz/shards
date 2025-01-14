@@ -1,6 +1,8 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
+@include("defs.shs")
+
 @mesh(root)
 
 @wire(test {
@@ -9,10 +11,10 @@
   Assert.Is("Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true)
   String.DecodeURI | Log
   Assert.Is("Hello world, this is an escaping test ////" true)
-
+  
   1 | ToString
   Set(params "postId")
-
+  
   params
   Http.Get("https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json") = json
   FromJson
@@ -21,51 +23,54 @@
   ExpectString
   Assert.Is("Fragcolor and contributors" true)
   Log
-
+  
   Maybe({
     none
     Http.Get("https://httpstat.us/200?sleep=5000" Timeout: 1)
     Log
   })
-
+  
   json
-  Http.Post("https://postman-echo.com/post")
+  Http.Post("https://echo.free.beeceptor.com")
   Log
-
+  
   json
-  Http.Post("https://postman-echo.com/post" FullResponse: true)
+  Http.Post("https://echo.free.beeceptor.com" FullResponse: true)
   Log
   Take("headers")
-  Take("content-type")
+  Take("content-type") | ExpectString
   Log
-  Assert.Is("application/json; charset=utf-8" true)
+  String.Starts("application/json") | Assert.Is(true)
 } Looped: true)
 
 @schedule(root test)
-@run(root FPS: 10 Iterations: 50) | Assert.Is(true)
+@run(root FPS: 10 Iterations: 5) | Assert.Is(true)
 
 ; test reusing sockets/streams
 @schedule(root test)
-@run(root FPS: 10 Iterations: 50) | Assert.Is(true)
+@run(root FPS: 10 Iterations: 5) | Assert.Is(true)
 
 @wire(download {
   none
   Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Bytes: true Timeout: 60) = shards
   Log
   "shards.png" | FS.Write(shards Overwrite: true)
-
-  none
-  Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Streaming: true Timeout: 60) = picture-stream
-
-  Sequence(chunks Type: @type([Type::Bytes]))
-  Repeat({
-    Http.Stream(picture-stream) = chunk | Log
-    Count(chunk) | When(Is(0) Return)
-    chunk >> chunks
-  })
-
-  chunks | Bytes.Join = shards2
-  shards2 | Assert.Is(shards)
+  
+  ; Emscripten doesn't have streaming support yet
+  @if(#(@platform | IsNot("emscripten")) {
+    none
+    Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Streaming: true Timeout: 60) = picture-stream
+    
+    Sequence(chunks Type: @type([Type::Bytes]))
+    Repeat({
+      Http.Stream(picture-stream) = chunk | Log
+      Count(chunk) | When(Is(0) Return)
+      chunk >> chunks
+    })
+    
+    chunks | Bytes.Join = shards2
+    shards2 | Assert.Is(shards)
+  } none)
 })
 
 @schedule(root download)

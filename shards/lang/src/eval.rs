@@ -1728,7 +1728,7 @@ impl<'e> VariableResolver<'e> {
               }
 
               // in this case we expect the ast to be a value
-              let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
+              let decoded_json: Sequence = serde_json::from_str(ast_json).map_err(|e| {
                 (
                   format!(
                     "macro built-in function Shards should return a valid Json string: {}",
@@ -1739,15 +1739,28 @@ impl<'e> VariableResolver<'e> {
                   .into()
               })?;
 
-              TMP_VALUE.with(|f| {
-                let mut v = f.borrow_mut();
-                *v = Some(decoded_json.clone());
-                self.resolve_var(
-                  v.as_ref().unwrap(), // should be valid
-                  line_info,
-                  shard,
-                )
-              })
+              let value = match decoded_json.statements.first() {
+                Some(Statement::Pipeline(pipeline)) if pipeline.blocks.len() == 1 => {
+                  match &pipeline.blocks[0].content {
+                    BlockContent::EvalExpr(seq) => Value::EvalExpr(seq.clone()),
+                    BlockContent::Expr(seq) => Value::Expr(seq.clone()),
+                    BlockContent::Const(value) => value.clone(),
+                    _ => Value::None(())
+                  }
+                },
+                _ => Value::None(()),
+              };
+              self.resolve_var(&value, line_info, shard)
+
+              // TMP_VALUE.with(|f| {
+              //   let mut v = f.borrow_mut();
+              //   *v = Some(decoded_json.clone());
+              //   self.resolve_var(
+              //     v.as_ref().unwrap(), // should be valid
+              //     line_info,
+              //     shard,
+              //   )
+              // })
             } else if let Some(extension) = find_extension(&func.name, self.e) {
               let v = extension.process_to_var(func, line_info)?;
               Ok(ResolvedVar::new_const(SVar::Cloned(v)))
