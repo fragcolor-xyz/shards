@@ -462,6 +462,17 @@ extension SHVar: CustomStringConvertible {
         return bytes
     }
 
+    public var int2: SIMD2<Int64> {
+        get {
+            assert(type == .Int2, "Int2 variable expected!")
+            return SIMD2<Int64>(payload.int2Value.x, payload.int2Value.y)
+        }
+        set {
+            assert(type == .Int2, "Int2 variable expected!")
+            payload.int2Value = newValue
+        }
+    }
+
     init(value: ShardPtr) {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.Shard.rawValue)
