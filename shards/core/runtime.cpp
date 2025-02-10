@@ -34,6 +34,7 @@
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/algorithm/string.hpp>
 #include <shards/fast_string/fast_string.hpp>
 #include "hash.inl"
 #include "utils.hpp"
@@ -3091,10 +3092,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getRootPath = []() noexcept { return shards::GetGlobals().RootPath.c_str(); };
 
   result->setRootPath = [](const char *p) noexcept {
-    shards::GetGlobals().RootPath = p;
-    shards::loadExternalShards(p);
-    fs::current_path(p);
-    SHLOG_DEBUG("Root path set to: {}", p);
+    auto& p1 = shards::GetGlobals().RootPath = p;
+#ifdef _WIN32
+    if (boost::starts_with(p1, "\\\\?\\")) {
+      p1 = p1.substr(4);
+    }
+#endif
+    shards::loadExternalShards(p1);
+    fs::current_path(p1);
+    SHLOG_DEBUG("Root path set to: {}", p1);
   };
 
   result->asyncActivate = [](SHContext *context, void *userData, SHAsyncActivateProc call, SHAsyncCancelProc cancel_call) {
