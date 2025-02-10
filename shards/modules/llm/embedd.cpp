@@ -37,7 +37,7 @@ struct ModelData {
 };
 
 struct Model {
-  Model() { 
+  Model() {
     _useMmap = Var(true);
     _cpuOnly = Var(false);
   }
@@ -82,9 +82,9 @@ struct Model {
 
     auto params = llama_model_default_params();
     params.use_mmap = _useMmap.get().payload.boolValue;
-    params.n_gpu_layers = _cpuOnly.get().payload.boolValue ? 0 : -1;  // 0 for CPU-only, -1 for auto
+    params.n_gpu_layers = _cpuOnly.get().payload.boolValue ? 0 : -1; // 0 for CPU-only, -1 for auto
 
-    _data->model = std::shared_ptr<llama_model>(llama_load_model_from_file(path.c_str(), params), llama_free_model);
+    _data->model = std::shared_ptr<llama_model>(llama_model_load_from_file(path.c_str(), params), llama_model_free);
 
     return ObjectVar.Get(_data);
   }
@@ -119,11 +119,12 @@ struct Tokenize {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &data = varAsObjectChecked<ModelData>(_model.get(), Model::Type);
     auto model = data.model.get();
+    const llama_vocab *vocab = llama_model_get_vocab(model);
 
     auto text = SHSTRVIEW(input);
 
     _tokensCache.resize(text.size());
-    auto nTokens = llama_tokenize(model, text.data(), text.size(), _tokensCache.data(), _tokensCache.size(), true, true);
+    auto nTokens = llama_tokenize(vocab, text.data(), text.size(), _tokensCache.data(), _tokensCache.size(), true, true);
     if (nTokens < 0) {
       throw ActivationError("Failed to tokenize input");
     }
@@ -162,14 +163,14 @@ struct Detokenize {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &data = varAsObjectChecked<ModelData>(_model.get(), Model::Type);
     auto model = data.model.get();
-
+    const llama_vocab *vocab = llama_model_get_vocab(model);
     std::vector<llama_token> tokens;
     for (const auto &token : input.payload.seqValue) {
       tokens.push_back(token.payload.intValue);
     }
 
     _text.resize(tokens.size() * 4); // Rough estimate for space needed
-    auto result = llama_detokenize(model, tokens.data(), tokens.size(), _text.data(), _text.size(), true, false);
+    auto result = llama_detokenize(vocab, tokens.data(), tokens.size(), _text.data(), _text.size(), true, false);
     if (result < 0) {
       throw ActivationError("Failed to detokenize input");
     }
@@ -230,7 +231,7 @@ struct Context {
     auto ctx_params = llama_context_default_params();
     ctx_params.embeddings = _embeddings.get().payload.boolValue;
 
-    _data->ctx = std::shared_ptr<llama_context>(llama_new_context_with_model(model, ctx_params), llama_free);
+    _data->ctx = std::shared_ptr<llama_context>(llama_init_from_model(model, ctx_params), llama_free);
     if (!_data->ctx) {
       throw ActivationError("Failed to create context");
     }
@@ -310,7 +311,7 @@ struct Embed {
 
     auto nUBatch = llama_n_ubatch(llmContext.ctx.get());
     auto model = llama_get_model(llmContext.ctx.get());
-    auto nEmbd = llama_n_embd(model);
+    auto nEmbd = llama_model_n_embd(model);
     auto batch = llama_batch_init(nUBatch, 0, 1);
     DEFER(llama_batch_free(batch));
 
