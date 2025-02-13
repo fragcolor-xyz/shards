@@ -1890,7 +1890,8 @@ struct Get : public VariableBase {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
           SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-          auto maybeValue = table->find(kv);
+          const auto& optr = *static_cast<const shards::OwnedVar*>(&kv);
+          auto maybeValue = table->find(optr);
           if (maybeValue != table->end()) {
             auto &vRef = maybeValue->second;
             // Has it

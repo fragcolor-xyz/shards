@@ -171,12 +171,8 @@ inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, M
     }
     auto kv = SHSTRVIEW(key);
 
-    shards::ParamVar paramVar{v};
-    paramVar.warmup(shContext);
-    DEFER({ paramVar.cleanup(); });
-    SHVar value = paramVar.get();
-
-    auto param = tryVarToParam(value);
+    ReferencedVar ref(shContext, v);
+    auto param = tryVarToParam(ref);
     if (param) {
       std::visit([&](auto &&arg) { out.set(kv, arg); }, std::move(param.value()));
     }
@@ -192,12 +188,8 @@ inline bool initShaderParamsIfChanged(SHContext *shContext, const SHTable &param
     }
     auto kv = SHSTRVIEW(key);
 
-    shards::ParamVar paramVar{v};
-    paramVar.warmup(shContext);
-    DEFER({ paramVar.cleanup(); });
-    SHVar value = paramVar.get();
-
-    auto param = tryVarToParam(value);
+    ReferencedVar ref(shContext, v);
+    auto param = tryVarToParam(ref);
     if (param) {
       std::visit(
           [&](auto arg) {
