@@ -7,7 +7,7 @@
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::AlphaBlend) >> features
-    GFX.Feature(State: {FlipFrontFace: true DepthWrite: false}) >> features
+    GFX.Feature(State: {FlipFrontFace: false DepthWrite: false}) >> features
     GFX.DrawQueue = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
     
@@ -32,17 +32,30 @@
     "Hello World" | GFX.DynDrawText(
       Output: dmesh
       Font: font
-      Position: @f3(0 0 0)
+      Position: @f3(0 128.0 0)
+      Scale: 1.0
+    )
+    
+    Animation.Timer | Mul(2.0) | Math.Mod(3.0) | ToInt = blink
+    blink | Match([
+      0 {"@"}
+      1 {"☺"}
+      2 {""}
+    ] Passthrough: false)
+    GFX.DynDrawText(
+      Output: dmesh
+      Font: font
+      Position: @f3(#(128.0 | Mul(4.0)) #(128.0 | Mul(2.0)) 0)
       Scale: 1.0
     )
     
     ; Draw the generated mesh
-    dmesh | GFX.DynToMesh | ForEach({
+    dmesh | GFX.DynToMesh | DoMany({
       {Take("mesh") = mesh}
       {Take("texture") = texture}
       ; Log("hello")
       Math.MatIdentity | GFX.Drawable(mesh Params: {baseColorTexture: texture}) | GFX.Draw(queue)
-    })
+    } ComposeSync: true)
     GFX.Render(Steps: render-steps View: view)
     
     ; Log("Helloo")
