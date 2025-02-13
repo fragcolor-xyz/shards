@@ -1,0 +1,54 @@
+@wire(test-wire {
+  Once({
+    "data/fonts/Px437_AMI_EGA_8x8.ttf" | FS.Read(Bytes: true)
+    GFX.FontMap(Size: 128.0) = font
+    
+    ; Create render steps
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::AlphaBlend) >> features
+    GFX.Feature(State: {FlipFrontFace: true DepthWrite: false}) >> features
+    GFX.DrawQueue = queue
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+    
+    ; Create view
+    ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
+  })
+  
+  GFX.MainWindow(Title: "Text Demo" Width: 1280 Height: 720 Contents: {
+    GFX.Viewport = vp
+    vp:2 | Sub((vp:0)) | ToFloat = width
+    vp:3 | Sub((vp:1)) | ToFloat = height
+    @f2(width height) | Mul(-0.5) = view-offset
+    Memoize({
+      Log("View offset")
+      view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
+    })
+    
+    GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
+    
+    ; Render the text into a mesh buffer
+    GFX.DynMesh = dmesh
+    "Hello World" | GFX.DynDrawText(
+      Output: dmesh
+      Font: font
+      Position: @f3(0 0 0)
+      Scale: 1.0
+    )
+    
+    ; Draw the generated mesh
+    dmesh | GFX.DynToMesh | ForEach({
+      {Take("mesh") = mesh}
+      {Take("texture") = texture}
+      ; Log("hello")
+      Math.MatIdentity | GFX.Drawable(mesh Params: {baseColorTexture: texture}) | GFX.Draw(queue)
+    })
+    GFX.Render(Steps: render-steps View: view)
+    
+    ; Log("Helloo")
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 60) | Assert.Is(true)

@@ -32,14 +32,14 @@ float4x4 View::getProjectionMatrix(const float2 &viewSize) const {
         } else if constexpr (std::is_same_v<T, ViewOrthographicProjection>) {
           float2 orthoSize = viewSize;
           if (arg.sizeType == OrthographicSizeType::Vertical) {
-            orthoSize.x = arg.size * aspectRatio;
-            orthoSize.y = arg.size;
+            orthoSize.x = arg.size.x * aspectRatio;
+            orthoSize.y = arg.size.y;
           } else if (arg.sizeType == OrthographicSizeType::Horizontal) {
-            orthoSize.x = arg.size;
-            orthoSize.y = arg.size / aspectRatio;
+            orthoSize.x = arg.size.x;
+            orthoSize.y = arg.size.y / aspectRatio;
           } else if (arg.sizeType == OrthographicSizeType::PixelScale) {
-            orthoSize.x = viewSize.x * arg.size;
-            orthoSize.y = viewSize.y * arg.size;
+            orthoSize.x = viewSize.x * arg.size.x;
+            orthoSize.y = viewSize.y * arg.size.y;
           }
 
           float4x4 mat = linalg::identity;
