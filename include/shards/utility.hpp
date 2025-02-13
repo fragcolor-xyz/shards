@@ -29,9 +29,24 @@
 #ifdef __clang__
 #pragma clang attribute pop
 #endif
+
+template<typename K>
+struct ShardsKeyCompare  {
+  bool operator()(const K &lhs, const K &rhs) const {
+    return std::less<K>()(lhs, rhs);
+  }
+};
+
+template<typename K>
+struct ShardsKeyEqual  {
+  bool operator()(const K &lhs, const K &rhs) const {
+    return std::equal_to<K>()(lhs, rhs);
+  }
+};
+
 template <typename K, typename V>
 using ShardsAlignedMap = boost::container::flat_map<
-    K, V, std::less<K>,
+    K, V, ShardsKeyCompare<K>,
     boost::container::stable_vector<std::pair<const K, V>, boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>>;
 #endif
 
@@ -442,6 +457,29 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     return res;
   }
 };
+}
+
+template<typename T>
+struct ShardsKeyCompare<shards::TOwnedVar<T>> {
+  using is_transparent = void;
+
+  template<typename K>
+  bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
+    return std::less<SHVar>()(lhs, rhs);
+  }
+};
+
+template<typename T>
+struct ShardsKeyEqual<shards::TOwnedVar<T>> {
+  using is_transparent = void;
+
+  template<typename K>
+  bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
+    return std::equal_to<SHVar>()(lhs, rhs);
+  }
+};
+
+namespace shards {
 
 // helper to create structured data tables
 // see XR's GamePadButtonTable for an example
@@ -514,7 +552,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #ifdef HAS_BOOST_CONTAINER
     using MapType = ShardsAlignedMap<TOwnedVar<SH_CORE>, TOwnedVar<SH_CORE>>;
     auto *map = static_cast<MapType *>(payload.tableValue.opaque);
-    return (*map)[key];
+    auto okey = reinterpret_cast<const shards::TOwnedVar<SH_CORE> *>(&key);
+    return (*map)[*okey];
 #else
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     return (TOwnedVar<SH_CORE> &)*vp;
@@ -525,7 +564,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #ifdef HAS_BOOST_CONTAINER
     using MapType = ShardsAlignedMap<TOwnedVar<SH_CORE>, TOwnedVar<SH_CORE>>;
     auto *map = static_cast<MapType *>(payload.tableValue.opaque);
-    return (*map)[key];
+    auto okey = reinterpret_cast<const shards::TOwnedVar<SH_CORE> *>(&key);
+    return (*map)[*okey];
 #else
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     return (const TOwnedVar<SH_CORE> &)*vp;
@@ -540,7 +580,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #ifdef HAS_BOOST_CONTAINER
     using MapType = ShardsAlignedMap<TOwnedVar<SH_CORE>, TOwnedVar<SH_CORE>>;
     auto *map = static_cast<MapType *>(payload.tableValue.opaque);
-    return (*map)[key] = val;
+    auto okey = reinterpret_cast<const shards::TOwnedVar<SH_CORE> *>(&key);
+    return (*map)[*okey] = val;
 #else
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     SH_CORE::cloneVar(*vp, val);
@@ -573,7 +614,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #ifdef HAS_BOOST_CONTAINER
     using MapType = ShardsAlignedMap<TOwnedVar<SH_CORE>, TOwnedVar<SH_CORE>>;
     auto *map = static_cast<MapType *>(payload.tableValue.opaque);
-    auto &rDst = (*map)[key];
+    auto okey = reinterpret_cast<const shards::TOwnedVar<SH_CORE> *>(&key);
+    auto &rDst = (*map)[*okey];
     if (rDst.valueType == SHType::None) {
       // try initialize in this case
       new (&rDst) T();

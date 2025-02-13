@@ -13,6 +13,39 @@
 #include "shards_types.hpp"
 
 namespace gfx {
+
+struct ReferencedVar {
+  const SHVar *ptr;
+  SHVar *owned = nullptr;
+
+  ReferencedVar(SHContext *context, const SHVar &v) : ptr(&v) {
+    if (v.valueType == SHType::ContextVar) {
+      if (auto var = shards::findVariable(context, SHSTRVIEW(v))) {
+        ptr = var;
+        owned = var;
+      }
+    }
+  }
+
+  ~ReferencedVar() {
+    if (owned) {
+      shards::releaseVariable(const_cast<SHVar *>(owned));
+    }
+  }
+
+  ReferencedVar(const ReferencedVar &) = delete;
+  ReferencedVar &operator=(const ReferencedVar &) = delete;
+  ReferencedVar(ReferencedVar &&) = delete;
+  ReferencedVar &operator=(ReferencedVar &&) = delete;
+
+  bool isVariable() const { return owned != nullptr; }
+
+  const SHVar &get() const { return *ptr; }
+  operator const SHVar &() const { return *ptr; }
+  SHVar &get() { return const_cast<SHVar &>(*ptr); }
+  operator SHVar &() { return const_cast<SHVar &>(*ptr); }
+};
+
 // Retrieves a value directly or from a context variable from a table by name
 // returns false if the table does not contain an entry for that key
 inline bool getFromTable(SHContext *shContext, const SHTable &table, const SHVar &key, SHVar &outVar) {

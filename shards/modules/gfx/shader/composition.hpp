@@ -71,8 +71,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
   XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
   for (auto &[k, v] : input.payload.tableValue) {
     if (v.valueType == SHType::ContextVar) {
-      shards::ParamVar pv(v);
-      pv.warmup(context);
+      gfx::ReferencedVar pv(context, v);
       shHashState.updateHash(pv.get(), &hashState);
     } else {
       uint8_t constData = 0xff;
@@ -89,8 +88,7 @@ void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash,
       if (k.valueType != SHType::String)
         throw formatException("ComposeWith key must be a string");
       std::string keyStr(SHSTRVIEW(k));
-      shards::ParamVar pv(v);
-      pv.warmup(context);
+      gfx::ReferencedVar pv(context, v);
       auto &var = composedWith.emplace(std::move(keyStr), pv.get()).first->second;
       if (var.valueType == SHType::None) {
         throw formatException("Required variable {} not found", k);

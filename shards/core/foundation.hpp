@@ -222,13 +222,7 @@ private:
 };
 } // namespace shards
 
-template <typename K, typename V>
-struct SHAlignedMap : public boost::container::flat_map<
-                          K, V, std::less<K>,
-                          boost::container::stable_vector<std::pair<const K, V>,
-                                                          boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
-
-struct SHTableImpl : public SHAlignedMap<shards::OwnedVar, shards::OwnedVar> {
+struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar> {
 #if SHARDS_TRACKING
   SHTableImpl() {}
   ~SHTableImpl() {}
@@ -493,12 +487,12 @@ private:
     regenerateId();
   }
 
-  std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+  std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, ShardsKeyEqual<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
       variables;
 
   // variables with lifetime managed externally
-  std::unordered_map<shards::OwnedVar, SHExternalVariable, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+  std::unordered_map<shards::OwnedVar, SHExternalVariable, std::hash<shards::OwnedVar>, ShardsKeyEqual<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHExternalVariable>, 16>>
       externalVariables;
 
@@ -799,7 +793,7 @@ public:
       .tableAt =
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            // the following is safe cos []] takes a const ref
+            // the following is safe cos [] takes a const ref
             auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             SHVar &vRef = (*map)[*k];
             return &vRef;
@@ -807,7 +801,7 @@ public:
       .tableGet =
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            // the following is safe cos []] takes a const ref
+            // the following is safe cos [] takes a const ref
             auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             auto it = (*map).find(*k);
             if (it != (*map).end()) {

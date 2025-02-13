@@ -3282,18 +3282,22 @@ void incRef(ShardPtr shard) {
 }
 } // namespace shards
 
-#ifdef TRACY_ENABLE
+#if TRACY_ENABLE
 void *operator new(std::size_t count) {
   void *ptr = std::malloc(count);
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
+#endif
   return ptr;
 }
 
 void *operator new[](std::size_t count) {
   void *ptr = std::malloc(count);
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
+#endif
   return ptr;
 }
 
@@ -3305,8 +3309,10 @@ void *operator new(std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
+#endif
   return ptr;
 }
 
@@ -3318,26 +3324,34 @@ void *operator new[](std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
+#endif
   return ptr;
 }
 
 void operator delete(void *ptr) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
   std::free(ptr);
 }
 
 void operator delete[](void *ptr) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
   std::free(ptr);
 }
 
 void operator delete(void *ptr, std::align_val_t alignment) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
 #ifdef WIN32
   _aligned_free(ptr);
 #else
@@ -3346,8 +3360,10 @@ void operator delete(void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
 #ifdef WIN32
   _aligned_free(ptr);
 #else
@@ -3356,14 +3372,18 @@ void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete(void *ptr, std::size_t count) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
   std::free(ptr);
 }
 
 void operator delete[](void *ptr, std::size_t count) noexcept {
+#ifdef TRACY_ENABLE
   if (GetTracy().isInitialized())
     TracyFree(ptr);
+#endif
   std::free(ptr);
 }
 
