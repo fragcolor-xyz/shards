@@ -1,6 +1,6 @@
 
-#define STB_TRUETYPE_IMPLEMENTATION
-#define STB_RECT_PACK_IMPLEMENTATION
+// #define STB_TRUETYPE_IMPLEMENTATION
+// #define STB_RECT_PACK_IMPLEMENTATION
 #include <stb_rect_pack.h>
 #include <stb_truetype.h>
 
@@ -122,8 +122,8 @@ void stbtt_GetPackedQuadScaled(const stbtt_packedchar *chardata, int pw, int ph,
   const stbtt_packedchar *b = chardata + char_index;
 
   if (align_to_integer) {
-    float x = (float)STBTT_ifloor((*xpos + b->xoff * scale) + 0.5f);
-    float y = (float)STBTT_ifloor((*ypos + b->yoff * scale) + 0.5f);
+    float x = (float)std::floor((*xpos + b->xoff * scale) + 0.5f);
+    float y = (float)std::floor((*ypos + b->yoff * scale) + 0.5f);
     q->x0 = x;
     q->y0 = y;
     q->x1 = x + (b->xoff2 - b->xoff) * scale;

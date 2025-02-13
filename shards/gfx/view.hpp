@@ -40,7 +40,7 @@ enum class OrthographicSizeType {
   PixelScale,
 };
 struct ViewOrthographicProjection {
-  float size;
+  float2 size;
   OrthographicSizeType sizeType = OrthographicSizeType::Horizontal;
   float near = 0.0f;
   float far = 1000.0f;

@@ -23,11 +23,8 @@
     6 3 7
   ]})
 
-@define(timestep #(1.0 | Math.Divide(60.0)))
-
 @wire(test-wire {
   Once({
-    0.0 >= time
     @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder::CW) = mesh
 
     ; Create render steps
@@ -42,7 +39,7 @@
   })
 
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
-    time | Math.Add(@timestep) > time ; | Log
+    Animation.Timer time ; | Log
 
     time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
     | Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y

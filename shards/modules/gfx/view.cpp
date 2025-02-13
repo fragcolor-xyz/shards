@@ -87,17 +87,14 @@ struct ViewShard {
                    "rendering pipeline.");
   }
 
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpIgnored;
-  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The view object created.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The view object created."); }
 
   PARAM_PARAMVAR(_viewTransform, "View", "The view matrix.", {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_ortho, "OrthographicSize", "The orthographic size. (Implies orthographic projection)",
-                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
+                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType), CoreInfo::Float2Type,
+                  Type::VariableOf(CoreInfo::Float2Type)});
   PARAM_PARAMVAR(_orthoType, "OrthographicSizeType", "The type of orthographic size. (Implies orthographic projection)",
                  {CoreInfo::NoneType, ShardsTypes::OrthographicSizeTypeEnumInfo::Type});
   PARAM_PARAMVAR(_fov, "Fov", "The vertical field of view. (In radians. Implies perspective projection)",
@@ -158,8 +155,16 @@ struct ViewShard {
       view->view = shards::Mat4(_viewTransform.get());
     }
 
-    float near = 0.1f;
-    float far = 10000.0f;
+    float near;
+    float far;
+
+    if (_isPerspective) {
+      near = 0.1f;
+      far = 10000.0f;
+    } else {
+      near = -1.0f;
+      far = 1.0f;
+    }
 
     Var &nearVar = (Var &)_near.get();
     if (!nearVar.isNone())
@@ -181,8 +186,16 @@ struct ViewShard {
 
       view->proj = proj;
     } else {
+      float2 size;
+      Var &orthoVar = (Var &)_ortho.get();
+      if (orthoVar.valueType == SHType::Float2) {
+        size = toVec<float2>(orthoVar);
+      } else {
+        size = float2((float)orthoVar);
+      }
+
       auto proj = ViewOrthographicProjection{
-          .size = float((Var &)_ortho.get()),
+          .size = size,
           .sizeType = OrthographicSizeType::Horizontal,
           .near = near,
           .far = far,
@@ -191,7 +204,7 @@ struct ViewShard {
 
       Var typeVar = (Var &)_orthoType.get();
       if (!typeVar.isNone()) {
-        proj.sizeType = OrthographicSizeType(int(typeVar));
+        proj.sizeType = OrthographicSizeType(typeVar.payload.enumValue);
       }
 
       view->proj = proj;
@@ -480,9 +493,7 @@ struct ViewRangeShard {
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A view object created by GFX.View."); }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("A float2 representing the view's near and far clipping range.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("A float2 representing the view's near and far clipping range."); }
 
   PARAM_IMPL();
 
