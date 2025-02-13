@@ -108,9 +108,6 @@ struct DynamicDrawTextShard {
     float scale = float((Var &)_scale.get());
     float3 position = toFloat3(_position.get());
 
-    // Use MeshBuffer directly
-    dynMesh.buffer.begin();
-
     // Create temporary TextPlacer to generate quads
     TextPlacer placer;
     placer.appendString(fontMap.fontMap, std::string_view(input.payload.stringValue), scale);
@@ -119,7 +116,7 @@ struct DynamicDrawTextShard {
     dynMesh.buffer.appendText(placer,
                               position,          // Use input position
                               float3(1, 0, 0),   // Right direction
-                              float3(0, 1, 0),   // Up direction
+                              float3(0, -1, 0),   // Up direction
                               float4(1, 1, 1, 1) // White color
     );
 

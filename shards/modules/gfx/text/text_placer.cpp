@@ -2,6 +2,7 @@
 #include <stb_rect_pack.h>
 #include <stb_truetype.h>
 #include <gfx/texture.hpp>
+#include <utf8.h/utf8.h>
 
 namespace gfx::text {
 
@@ -69,8 +70,11 @@ void TextPlacer::appendChar(text::FontMap::Ptr fontMap, uint32_t c, float scale)
 }
 
 void TextPlacer::appendString(FontMap::Ptr fontMap, std::string_view text, float scale) {
-  for (auto c : text) {
-    appendChar(fontMap, c, scale);
+  const char* str = text.data();
+  while (*str) {
+    utf8_int32_t codepoint;
+    str = (const char*)utf8codepoint(str, &codepoint);
+    appendChar(fontMap, codepoint, scale);
   }
 }
 
