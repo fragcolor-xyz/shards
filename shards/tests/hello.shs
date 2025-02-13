@@ -48,7 +48,7 @@ FlushLog
 @f2(1.0 x) | Log
 
 @my-macro(3)
-Msg(@macro1("Ciao")) | Log
+Msg(@macro1("Ciao")) | Log("the log")
 
 @template(base [texture] {
   "TEST" = texture

@@ -11,7 +11,7 @@
 @macro(macro1 [v] {
   v >= hello
   " World!" | AppendTo(hello)
-  {str: hello} | ToJson
+  [[{const: {str: hello}}]] | ToJson
 })
 
 @macro(my-macro [n] {
