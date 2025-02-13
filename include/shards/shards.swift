@@ -814,6 +814,25 @@ class SeqVar: OwnedVar {
     }
 }
 
+extension SeqVar: Sequence {
+    struct Iterator: IteratorProtocol {
+        let seq: SeqVar
+        var currentIndex: Int = 0
+        mutating func next() -> SHVar? {
+            if currentIndex < seq.size() {
+                let element = seq.at(index: currentIndex)
+                currentIndex += 1
+                return element
+            }
+            return nil
+        }
+    }
+
+    func makeIterator() -> Iterator {
+        return Iterator(seq: self, currentIndex: 0)
+    }
+}
+
 public struct Context {
     public var context: OpaquePointer?
 
@@ -1401,10 +1420,13 @@ class WireController {
         return nil
     }
 
-    private func addExternalVar(name: String, varPtr: UnsafeMutablePointer<SHVar>) {
+    private func addExternalVar(name: String, varPtr: UnsafeMutablePointer<SHVar>, varType: UnsafePointer<SHTypeInfo>? = nil) {
         varPtr.pointee.flags |= UInt16(SHVAR_FLAGS_EXTERNAL)
         var ev = SHExternalVariable()
         ev.var = varPtr
+        if let varType = varType {
+            ev.type = varType
+        }
 
         name.withCString { cString in
             var cname = SHStringWithLen()
@@ -1419,16 +1441,32 @@ class WireController {
         addExternalVar(name: name, varPtr: owned.ptr())
     }
 
+    func addExternal(name: String, owned: inout OwnedVar, varType: inout SHTypeInfo) {
+        addExternalVar(name: name, varPtr: owned.ptr(), varType: &varType)
+    }
+
     func addExternal(name: String, sequence: inout SeqVar) {
         addExternalVar(name: name, varPtr: sequence.ptr())
+    }
+
+    func addExternal(name: String, sequence: inout SeqVar, varType: inout SHTypeInfo) {
+        addExternalVar(name: name, varPtr: sequence.ptr(), varType: &varType)
     }
 
     func addExternal(name: String, table: inout TableVar) {
         addExternalVar(name: name, varPtr: table.ptr())
     }
 
+    func addExternal(name: String, table: inout TableVar, varType: inout SHTypeInfo) {
+        addExternalVar(name: name, varPtr: table.ptr(), varType: &varType)
+    }
+
     func addExternal(name: String, raw: inout SHVar) {
         addExternalVar(name: name, varPtr: &raw)
+    }
+
+    func addExternal(name: String, raw: inout SHVar, varType: inout SHTypeInfo) {
+        addExternalVar(name: name, varPtr: &raw, varType: &varType)
     }
 
     func isRunning() -> Bool {
