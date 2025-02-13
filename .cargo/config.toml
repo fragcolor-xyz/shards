@@ -2,3 +2,6 @@
 inherits = "release"
 debug-assertions = true
 debug = "line-tables-only"
+
+[profile.tracy]
+inherits = "release" 
