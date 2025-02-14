@@ -28,6 +28,7 @@ struct FontMap {
 
   FontMapImpl *impl;
   int2 spaceSize;
+  float ascent,descent;
 
   FontMap(int pageSize = 512, float fontSize = 12.0f);
   ~FontMap();

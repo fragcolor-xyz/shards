@@ -132,10 +132,12 @@ FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize, float
   int descent = 0;
   int lineGap = 0;
   stbtt_GetFontVMetrics(&impl.fontInfo, &ascent, &descent, &lineGap);
+  float scale = stbtt_ScaleForPixelHeight(&impl.fontInfo, fontSize);
+  result->ascent = ascent * scale;
+  result->descent = descent * scale;
 
   int spaceNewline = ascent - descent;
 
-  float scale = stbtt_ScaleForPixelHeight(&impl.fontInfo, fontSize);
   result->spaceSize.x = spaceAdvance * scale;
   result->spaceSize.y = spaceNewline * scale;
 

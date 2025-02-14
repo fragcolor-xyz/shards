@@ -294,7 +294,7 @@ struct TextPlacementShard {
 
   PARAM_PARAMVAR(_font, "Font", "Font to use", {SHFontMap::VarType});
   PARAM_PARAMVAR(_scale, "Scale", "Text scale", {CoreInfo::FloatType});
-  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top)",
+  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_valign));
 
