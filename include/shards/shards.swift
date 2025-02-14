@@ -629,6 +629,12 @@ class OwnedVar {
             G.Core.pointee.cloneVar(&v, &tmp)
         }
     }
+
+    func assign(other: SHVar) {
+        withUnsafePointer(to: other) { ptr in
+            G.Core.pointee.cloneVar(&v, UnsafeMutablePointer(mutating: ptr))
+        }
+    }
 }
 
 class TableVar: OwnedVar, Sequence {
@@ -720,6 +726,12 @@ class TableVar: OwnedVar, Sequence {
         for (key, value) in self {
             try body(key, value)
         }
+    }
+
+    // override assign to assign other table
+    override func assign(other: SHVar) {
+        assert(other.valueType == VarType.Table.asSHType())
+        super.assign(other: other)
     }
 }
 
