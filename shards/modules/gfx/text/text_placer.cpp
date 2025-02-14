@@ -33,13 +33,21 @@ void stbtt_GetPackedQuadScaled(const stbtt_packedchar *chardata, int pw, int ph,
   *xpos += b->xadvance * scale;
 }
 
+void TextPlacer::verticalAlignOrigin(text::FontMap::Ptr fontMap, float alignment) {
+  origin.y = alignment * fontMap->spaceSize.y;
+  pos.y = origin.y;
+}
+
 void TextPlacer::appendChar(text::FontMap::Ptr fontMap, uint32_t c, float scale) {
   if (c == U' ') {
     pos.x += fontMap->spaceSize.x * scale;
+    coord.x += 1;
   } else if (c == U'\n') {
     ++numLines;
     pos.x = origin.x;
     pos.y += fontMap->spaceSize.y * scale;
+    coord.y = 1;
+    coord.x = 0;
   } else {
     const FontPage *page = fontMap->getPage(c);
     if (!page)
@@ -60,9 +68,12 @@ void TextPlacer::appendChar(text::FontMap::Ptr fontMap, uint32_t c, float scale)
     TextQuad tq{
         .quad = float4{quad.x0, quad.y0, quad.x1, quad.y1},
         .uv = float4{quad.s0, quad.t0, quad.s1, quad.t1},
-        .texture = page->image // Annotate with texture
+        .texture = page->image, // Annotate with texture
+        .codepoint = c,
+        .coord = coord,
     };
     textQuads.push_back(tq);
+    coord.x += 1;
   }
 
   max.x = std::max(max.x, pos.x);
@@ -70,12 +81,21 @@ void TextPlacer::appendChar(text::FontMap::Ptr fontMap, uint32_t c, float scale)
 }
 
 void TextPlacer::appendString(FontMap::Ptr fontMap, std::string_view text, float scale) {
-  const char* str = text.data();
+  const char *str = text.data();
   while (*str) {
     utf8_int32_t codepoint;
-    str = (const char*)utf8codepoint(str, &codepoint);
+    str = (const char *)utf8codepoint(str, &codepoint);
     appendChar(fontMap, codepoint, scale);
   }
+}
+
+void TextPlacer::clear() {
+  origin = float2(0, 0);
+  pos = float2(0, 0);
+  max = float2(0, 0);
+  numLines = 0;
+  textQuads.clear();
+  coord = int2(0, 0);
 }
 
 } // namespace gfx::text
