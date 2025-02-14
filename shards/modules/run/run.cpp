@@ -27,6 +27,9 @@ struct Schedule {
     auto &sharedMesh = *reinterpret_cast<std::shared_ptr<SHMesh> *>(_mesh->payload.objectValue);
     auto &wire = SHWire::sharedFromRef(_wire->payload.wireValue);
     sharedMesh->schedule(wire, SHVar{});
+
+    // Set here as well in case the wire is scheduled on a running mesh
+    wire->context->parent = context;
     return input;
   }
 };
@@ -62,6 +65,8 @@ struct Run {
     auto &tickTimeVar = (Var &)_tickTime.get();
     auto &mesh = *reinterpret_cast<std::shared_ptr<SHMesh> *>(_mesh->payload.objectValue);
     auto &iterationsVar = (Var &)_iterations.get();
+
+    mesh->setParentContext(context);
 
     size_t numIterations = ~0; // Indefinitely
     if (iterationsVar.valueType == SHType::Int) {
