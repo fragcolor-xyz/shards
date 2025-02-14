@@ -361,11 +361,10 @@ struct RenderTargetShard {
     return SHCCSTR("Groups a collection of textures into a render target that can be rendered into");
   }
 
-  static inline std::array<SHVar, 2> AttachmentTableKeys{Var("Texture"), Var("Name")};
-  static inline shards::Types AttachmentTableTypes{{CoreInfo::StringType}};
-  static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes, AttachmentTableKeys);
+  static inline shards::Types AttachmentTableTypes{{ShardsTypes::Texture}};
+  static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes);
 
-  PARAM_VAR(_attachments, "Attachments", "The list of attachements to create.", {Type::TableOf(AttachmentTable)});
+  PARAM_VAR(_attachments, "Attachments", "The list of attachements to create.", {AttachmentTable});
   PARAM_IMPL(PARAM_IMPL_FOR(_attachments));
 
   SHRenderTarget _renderTarget;
