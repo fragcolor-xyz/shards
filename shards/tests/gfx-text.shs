@@ -1,4 +1,4 @@
-@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap = f | "" | GFX.TextPlacement(f) | Take(0)})))
+@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap(1.0) = f | "" | GFX.TextPlacement(f) | Take(0)})))
 
 @template(adjust-coord [offset] {
   {Take("quad") = quad}
@@ -19,13 +19,14 @@
 @wire(random-thing {
   Once({
     RandomInt >= test-idx
+    RandomInt((Count(char-set))) = char-idx
+    char-set | Take(char-idx) = codepoint
+    [codepoint] | String.FromCodePoints = str
     
-    "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■" = test-str
-    RandomInt((Count(test-str))) = char-idx
-    test-str | Slice(char-idx) = str
+    RandomFloat(0.1) | Add(0.05) = dur
   })
   
-  Animation.Timer(Duration: 0.1 Action: {
+  Animation.Timer(Duration: dur Action: {
     test-idx | Add(1)
     Math.Mod((dim-x | Mul(dim-y))) > test-idx
   })
@@ -33,7 +34,6 @@
   test-idx | Math.Divide(dim-x) = test-y
   test-idx | Math.Mod(dim-x) = test-x
   
-  ; "█"
   str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
 })
 
@@ -50,13 +50,17 @@
     ; Create view
     ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     
-    128.0 >= font-size
+    32.0 >= font-size
     Table(tile-map Type: @type({none: @placement-type}))
+    
+    
+    "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■"
+    String.CodePoints = char-set
   })
   
   font-size | Memoize({
     Once({"data/fonts/Px437_AMI_EGA_8x8.ttf" | FS.Read(Bytes: true) = font-data})
-    font-data | GFX.FontMap(Size: 128.0) = font
+    font-data | GFX.FontMap(Size: font-size) = font
   })
   
   Clear(tile-map)
@@ -78,51 +82,15 @@
     
     ; Render the text into a mesh buffer
     GFX.DynMesh = dmesh
-    ; "Hello World" | GFX.DynDrawText(
-    ;   Output: dmesh
-    ;   Font: font
-    ;   Offset: @f3(0 128.0 0)
-    ;   Scale: 1.0
-    ; )
-    
     Once({
       Sequence(test-seq)
-      ForRange(0 32 {
+      ForRange(0 200 {
         >> test-seq
       })
     })
     test-seq | DoMany(random-thing)
     
-    ; Once({
-    ;   0 >= test-idx
-    ; })
-    
-    ; Animation.Timer(Duration: 0.1 Action: {
-    ;   test-idx | Add(1)
-    ;   Math.Mod((dim-x | Mul(dim-y))) > test-idx
-    ; })
-    
-    ; test-idx | Math.Divide(dim-x) = test-y
-    ; test-idx | Math.Mod(dim-x) = test-x
-    
-    ; "█" | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
-    
-    Animation.Timer | Mul(2.0) | Math.Mod(3.0) | ToInt = blink
-    blink | Match([
-      0 {"@"}
-      1 {"☺"}
-      2 {""}
-    ] Passthrough: false)
-    
-    ; GFX.DynDrawText(
-    ;   Output: dmesh
-    ;   Font: font
-    ;   Offset: @f3(#(128.0 | Mul(4.0)) #(128.0 | Mul(2.0)) 0)
-    ;   Scale: 1.0
-    ; )
-    
     tile-map | ForEach({
-      Log("tile")
       {$0 | ExpectInt2 = coord}
       {$1 = placement}
       coord:0 = coord-x
@@ -134,6 +102,13 @@
       )
     })
     
+    Animation.Timer | Div(0.25) | ToInt | Math.Mod((Count(char-set))) = char-idx
+    char-set | Take(char-idx) = c
+    [c] | String.FromCodePoints | GFX.TextPlacement(font) | GFX.DynDrawText(
+      Output: dmesh
+      Offset: (@i3(1 1 0) | ToFloat3 | Mul(font-size))
+      Scale: 1.0
+    )
     
     ; Draw the generated mesh
     dmesh | GFX.DynToMesh | DoMany({
