@@ -41,7 +41,7 @@ struct FontMapShard {
   static SHTypesInfo outputTypes() { return SHFontMap::Type; }
   static SHOptionalString help() { return SHCCSTR("Creates a font map from font data"); }
 
-  PARAM_PARAMVAR(_size, "Size", "Font size in pixels", {CoreInfo::FloatType});
+  PARAM_PARAMVAR(_size, "Size", "Font size in pixels", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_size));
 
   SHFontMap *_fontMap{};
@@ -69,6 +69,10 @@ struct FontMapShard {
 
   void cleanup(SHContext *ctx) {
     PARAM_CLEANUP(ctx);
+    clear();
+  }
+
+  void clear() {
     if (_fontMap) {
       SHFontMap::ObjectVar.Release(_fontMap);
       _fontMap = nullptr;

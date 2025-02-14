@@ -6,6 +6,7 @@
 #include <shards/core/module.hpp>
 #include <shards/core/stream_buf.hpp>
 #include <regex>
+#include <shards/core/params.hpp>
 
 namespace shards {
 namespace Regex {
@@ -211,7 +212,8 @@ struct Join {
   static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard concatenates all the elements of a string sequence, using the specified separator between each element.");
+    return SHCCSTR(
+        "This shard concatenates all the elements of a string sequence, using the specified separator between each element.");
   }
 
   static SHTypesInfo inputTypes() { return InputType; }
@@ -543,8 +545,7 @@ struct Split {
 
   static inline Parameters params{
       {{"Separator",
-        SHCCSTR(
-            "The separator string to segment the input with. The input is split at each point where this string occurs."),
+        SHCCSTR("The separator string to segment the input with. The input is split at each point where this string occurs."),
         {CoreInfo::StringType, CoreInfo::StringVarType}},
        {"KeepSeparator", SHCCSTR("Whether to keep the separator in the output."), {CoreInfo::BoolType}}}};
 
@@ -607,8 +608,67 @@ struct Split {
     return _lines;
   }
 };
+
+struct CodePointsShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
+  static SHOptionalString help() { return SHCCSTR("Converts a string into a sequence of integer codepoints."); }
+
+  std::vector<int64_t> _codepoints;
+  SeqVar _resultSeq;
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    const char *str = input.payload.stringValue;
+    _codepoints.clear();
+
+    // Iterate over the string and extract codepoints
+    utf8_int32_t codepoint;
+    while (*str) {
+      str = (const char *)utf8codepoint(str, &codepoint);
+      _codepoints.push_back(static_cast<int64_t>(codepoint));
+    }
+
+    // Convert the vector to a sequence
+    _resultSeq.resize(_codepoints.size());
+    for (size_t i = 0; i < _codepoints.size(); ++i) {
+      _resultSeq[i] = Var(_codepoints[i]);
+    }
+
+    return _resultSeq;
+  }
+
+  void warmup(SHContext *ctx) {}
+  void cleanup(SHContext *ctx) {}
+};
+
+struct FromCodePointsShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntSeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString help() { return SHCCSTR("Converts a sequence of integer codepoints into a string."); }
+  std::string _result;
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    const auto &seq = input.payload.seqValue;
+    _result.clear();
+
+    // Iterate over the sequence and convert codepoints to a string
+    for (uint32_t i = 0; i < seq.len; ++i) {
+      utf8_int32_t codepoint = static_cast<utf8_int32_t>(seq.elements[i].payload.intValue);
+      char buffer[5] = {0};
+      utf8catcodepoint(buffer, codepoint, sizeof(buffer));
+      _result.append(buffer);
+    }
+
+    return Var(_result);
+  }
+
+  void warmup(SHContext *ctx) {}
+  void cleanup(SHContext *ctx) {}
+};
+
 } // namespace Regex
 } // namespace shards
+
 SHARDS_REGISTER_FN(strings) {
   using namespace shards::Regex;
 
@@ -626,4 +686,6 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.Split", Split);
   REGISTER_SHARD("String.Starts", StartsWith);
   REGISTER_SHARD("String.Ends", EndsWith);
+  REGISTER_SHARD("String.CodePoints", CodePointsShard);
+  REGISTER_SHARD("String.FromCodePoints", FromCodePointsShard);
 }
