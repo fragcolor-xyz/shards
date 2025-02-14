@@ -1,3 +1,4 @@
+#include "core/foundation.hpp"
 #include "types.hpp"
 #include "../shards_types.hpp"
 #include <shards/core/params.hpp>
@@ -25,12 +26,12 @@ struct TextPlacement {
 struct TextPlacementRef {
   TextPlacementRef(TableVar &tv)
       : quad(tv.get<Vec4>(TextPlacement::quad_str)), uv(tv.get<Vec4>(TextPlacement::uv_str)),
-        texture(tv.get<Var>(TextPlacement::texture_str)), codepoint(tv.get<Var>(TextPlacement::codepoint_str)),
+        texture(tv.get<OwnedVar>(TextPlacement::texture_str)), codepoint(tv.get<Var>(TextPlacement::codepoint_str)),
         coord(tv.get<padded::Int2>(TextPlacement::coord_str)) {}
 
   Vec4 &quad;
   Vec4 &uv;
-  Var &texture;
+  OwnedVar &texture;
   Var &codepoint;
   padded::Int2 &coord;
 };
@@ -237,10 +238,6 @@ struct DynamicToMeshShard {
 
   PARAM_IMPL();
 
-  gfx::MeshPtr *_mesh{};
-
-  std::vector<MeshPtr *> _meshes;
-  std::vector<TexturePtr *> _textures;
   SeqVar _resultSeq;
 
   PARAM_REQUIRED_VARIABLES();
@@ -251,47 +248,31 @@ struct DynamicToMeshShard {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
-    if (_mesh) {
-      gfx::ShardsTypes::MeshObjectVar.Release(_mesh);
-      _mesh = nullptr;
-    }
-    clearObjects();
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _mesh = gfx::ShardsTypes::MeshObjectVar.New();
-    *_mesh = std::make_shared<gfx::Mesh>();
   }
 
-  void clearObjects() {
-    for (auto &mesh : _meshes) {
-      gfx::ShardsTypes::MeshObjectVar.Release(mesh);
-    }
-    for (auto &texture : _textures) {
-      gfx::ShardsTypes::TextureObjectVar.Release(texture);
-    }
-    _meshes.clear();
-    _textures.clear();
-  }
+  static inline std::string_view mesh_str = "mesh";
+  static inline std::string_view texture_str = "texture";
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(input, SHDynamicMesh::Type);
 
     // Get drawable with mesh from buffer
     auto meshTexturePairs = dynMesh.buffer.finalizeMeshes();
 
-    clearObjects();
-
     // Convert to SHVar sequence of tables
     _resultSeq.clear();
     for (const auto &pair : meshTexturePairs) {
       auto &table = _resultSeq.emplace_back_table();
-      auto &mesh = _meshes.emplace_back(gfx::ShardsTypes::MeshObjectVar.New());
-      auto &texture = _textures.emplace_back(gfx::ShardsTypes::TextureObjectVar.New());
-      *mesh = pair.mesh;
-      *texture = pair.texture;
-      table.insert("mesh", gfx::ShardsTypes::MeshObjectVar.Get(mesh));
-      table.insert("texture", gfx::ShardsTypes::TextureObjectVar.Get(texture));
+      auto [mesh, meshVar] = gfx::ShardsTypes::MeshObjectVar.NewOwnedVar();
+      auto [texture, textureVar] = gfx::ShardsTypes::TextureObjectVar.NewOwnedVar();
+      mesh = pair.mesh;
+      texture = pair.texture;
+      table.get<OwnedVar>(mesh_str) = std::move(meshVar);
+      table.get<OwnedVar>(texture_str) = std::move(textureVar);
     }
 
     return _resultSeq;
@@ -306,7 +287,7 @@ struct TextPlacementShard {
 
   TextPlacer _placer;
   SeqVar _resultSeq;
-  std::vector<TexturePtr *> _textures;
+  // std::vector<TexturePtr *> _textures;
 
   PARAM_PARAMVAR(_font, "Font", "Font to use", {SHFontMap::VarType});
   PARAM_PARAMVAR(_scale, "Scale", "Text scale", {CoreInfo::FloatType});
@@ -317,13 +298,6 @@ struct TextPlacementShard {
   TextPlacementShard() {
     _scale = Var(1.0f);
     _valign = Var(1.0f);
-  }
-
-  void clearTextures() {
-    for (auto &texture : _textures) {
-      gfx::ShardsTypes::TextureObjectVar.Release(texture);
-    }
-    _textures.clear();
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -338,7 +312,6 @@ struct TextPlacementShard {
 
     // Clear previous placements and textures
     _placer.clear();
-    clearTextures();
 
     // Append the input string to the placer
     _placer.verticalAlignOrigin(fontMap.fontMap, float((Var &)_valign.get()));
@@ -352,10 +325,9 @@ struct TextPlacementShard {
       placement.quad = quad.quad;
       placement.uv = quad.uv;
 
-      // Cache the texture
-      auto &texture = _textures.emplace_back(gfx::ShardsTypes::TextureObjectVar.New());
-      *texture = quad.texture;
-      placement.texture = gfx::ShardsTypes::TextureObjectVar.Get(texture);
+      auto [tex, texVar] = gfx::ShardsTypes::TextureObjectVar.NewOwnedVar();
+      tex = quad.texture;
+      placement.texture = std::move(texVar);
       placement.codepoint = Var(int64_t(quad.codepoint));
       placement.coord = linalg::vec<int64_t, 2>(quad.coord);
     }
@@ -366,7 +338,6 @@ struct TextPlacementShard {
   void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
   void cleanup(SHContext *ctx) {
     PARAM_CLEANUP(ctx);
-    clearTextures();
   }
 };
 
