@@ -40,7 +40,9 @@ struct TextPlacementRef {
 struct FontMapShard {
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static SHTypesInfo outputTypes() { return SHFontMap::Type; }
-  static SHOptionalString help() { return SHCCSTR("Creates a font map from font data"); }
+  static SHOptionalString help() { return SHCCSTR("Creates a font map from font data."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The font data as a byte array."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The created font map object."); }
 
   PARAM_PARAMVAR(_size, "Size", "Font size in pixels", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_size));
@@ -85,7 +87,8 @@ struct FontMapShard {
 struct DynamicMeshShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return SHDynamicMesh::Type; }
-  static SHOptionalString help() { return SHCCSTR("Creates a dynamic text mesh"); }
+  static SHOptionalString help() { return SHCCSTR("Creates a dynamic text mesh."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The created dynamic text mesh object."); }
 
   PARAM_IMPL();
 
@@ -126,7 +129,9 @@ struct DynamicDrawTextShard {
 
   static SHTypesInfo inputTypes() { return InputTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh"); }
+  static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The text to draw or a sequence of text placements."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("No output, modifies the dynamic mesh in place."); }
 
   TextPlacer placer;
 
@@ -283,7 +288,9 @@ struct DynamicToMeshShard {
 struct TextPlacementShard {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return TextPlacement::SeqType; }
-  static SHOptionalString help() { return SHCCSTR("Places text and returns the placement structure"); }
+  static SHOptionalString help() { return SHCCSTR("Places text and returns the placement structure."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The text to place."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence of text placement structures."); }
 
   TextPlacer _placer;
   SeqVar _resultSeq;

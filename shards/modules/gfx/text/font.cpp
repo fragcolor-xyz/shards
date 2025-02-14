@@ -9,14 +9,15 @@
 
 namespace gfx::text {
 
-
 FontMap::FontMap(int pageSize, float fontSize) {
   impl = new FontMapImpl();
   impl->pageSize = pageSize;
   impl->fontSize = fontSize;
 }
 
-FontMap::~FontMap() { delete impl; }
+FontMap::~FontMap() {
+  delete impl; // Ensure the FontMapImpl is properly deleted
+}
 
 const FontPage *FontMap::getPage(int codepoint) {
   int pageIndex = codepoint / impl->pageSize;
@@ -66,7 +67,7 @@ FontPage FontMap::createPage(int pageOffset, int pageSize) {
     stbtt_pack_context pctx{};
     stbtt_PackBegin(&pctx, singleChanMap.data(), res.x, res.y, res.x, 0, nullptr);
     pctx.skip_missing = true;
-    packed = stbtt_PackFontRanges2(&pctx, impl->fontData.data(), 0, &range, 1) != 0;
+    packed = stbtt_PackFontRanges2(&pctx, &impl->fontInfo, 0, &range, 1) != 0;
     stbtt_PackEnd(&pctx);
 
     if (!packed) {
@@ -117,6 +118,11 @@ FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize, float
 
   impl.fontData.resize(size);
   std::memcpy(impl.fontData.data(), data, size);
+
+  // Initialize the font info once and store it
+  if (!stbtt_InitFont(&impl.fontInfo, impl.fontData.data(), stbtt_GetFontOffsetForIndex(impl.fontData.data(), 0))) {
+    throw std::runtime_error("Failed to initialize font");
+  }
 
   const FontPage *firstPage = result->getPage(0);
 
