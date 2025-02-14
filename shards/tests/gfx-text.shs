@@ -17,7 +17,7 @@
 })
 
 @wire(random-thing {
-  Once({
+  refresh-trigger | Memoize({
     RandomInt >= test-idx
     RandomInt((Count(char-set))) = char-idx
     char-set | Take(char-idx) = codepoint
@@ -26,7 +26,7 @@
     RandomFloat(0.1) | Add(0.05) = dur
   })
   
-  Animation.Timer(Duration: dur Action: {
+  Animation.Timer(Duration: dur Rate: global-anim-rate Action: {
     test-idx | Add(1)
     Math.Mod((dim-x | Mul(dim-y))) > test-idx
   })
@@ -47,38 +47,84 @@
     GFX.DrawQueue = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
     
+    GFX.DrawQueue = ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+    
     ; Create view
     ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     
     32.0 >= font-size
     Table(tile-map Type: @type({none: @placement-type}))
     
+    0 >= refresh-trigger
+    
+    ; List fonts in the data/fonts directory
+    "data/fonts" | FS.Iterate(Recursive: false) | Map({FS.Filename}) = font-list
+    font-list | IndexOf(Predicate: {
+      ; Is("Px437_AMI_EGA_8x8.ttf")
+      Is("Px437_ACM_VGA_8x14.ttf")
+    }) = font-index
     
     "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■"
     String.CodePoints = char-set
+    
+    1.0 >= global-anim-rate
   })
   
-  font-size | Memoize({
-    Once({"data/fonts/Px437_AMI_EGA_8x8.ttf" | FS.Read(Bytes: true) = font-data})
+  [font-size font-index] | Memoize({
+    font-list | Take(font-index) = selected-font
+    Log("Selected font")
+    ["data/fonts/" selected-font] | String.Format | FS.Read(Bytes: true) = font-data
+    font-size | Log("Font size")
     font-data | GFX.FontMap(Size: font-size) = font
+    GFX.FontSpaceSize = space-size
+    Log("Font spacing")
+    {Take(0) = space-size-x}
+    {Take(1) = space-size-y}
+    @f3((space-size-x | ToFloat) (space-size-y | ToFloat) 0.0) = space-size-f3
+    
+    Math.Inc(refresh-trigger)
   })
   
   Clear(tile-map)
   
   GFX.MainWindow(Title: "Text Demo" Width: 1280 Height: 720 Contents: {
     GFX.Viewport = vp
-    vp:2 | Sub((vp:0)) | ToFloat = width
-    vp:3 | Sub((vp:1)) | ToFloat = height
-    @f2(width height) | Mul(-0.5) = view-offset
-    Memoize({
-      Log("View offset")
+    [font-index vp font-size] | Memoize({
+      vp:2 | Sub((vp:0)) | ToFloat = width
+      vp:3 | Sub((vp:1)) | ToFloat = height
+      
+      width | Div((space-size-x | ToFloat)) | ToInt | Max(1) = dim-x
+      Log("Dim X")
+      height | Div((space-size-y | ToFloat)) | ToInt | Max(1) = dim-y
+      Log("Dim Y")
+      
+      @f2(width height) | Mul(-0.5) >= view-offset
+      
+      ; Center the view so there's no gap between the at the bottom-right
+      width | Math.Mod((space-size-x | ToFloat)) | Mul(0.5) = offset-x
+      height | Math.Mod((space-size-y | ToFloat)) | Mul(0.5) = offset-y
+      @f2(offset-x offset-y) | Add(view-offset) > view-offset
+      
       view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
+      
+      Math.Inc(refresh-trigger)
     })
     
-    width | Div(font-size) | ToInt | Max(1) = dim-x
-    height | Div(font-size) | ToInt | Max(1) = dim-y
     
     GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
+    
+    ; UI for font selection and size
+    UI({
+      UI.Window(Contents: {
+        "Font:" | UI.Label
+        font-list | UI.Combo(Label: "Select Font" Index: font-index)
+        "Font Size:" | UI.Label
+        UI.FloatSlider(Variable: font-size Min: 8.0 Max: 72.0)
+        "Anim Rate:" | UI.Label
+        UI.FloatSlider(Variable: global-anim-rate Min: 0.01 Max: 10.0)
+      })
+    }) | UI.Render(ui-draw-queue)
     
     ; Render the text into a mesh buffer
     GFX.DynMesh = dmesh
@@ -97,7 +143,7 @@
       coord:1 = coord-y
       [placement] | GFX.DynDrawText(
         Output: dmesh
-        Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(font-size))
+        Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(space-size-f3))
         Scale: 1.0
       )
     })
@@ -106,7 +152,7 @@
     char-set | Take(char-idx) = c
     [c] | String.FromCodePoints | GFX.TextPlacement(font) | GFX.DynDrawText(
       Output: dmesh
-      Offset: (@i3(1 1 0) | ToFloat3 | Mul(font-size))
+      Offset: (@i3(1 1 0) | ToFloat3 | Mul(space-size-f3))
       Scale: 1.0
     )
     
@@ -114,12 +160,9 @@
     dmesh | GFX.DynToMesh | DoMany({
       {Take("mesh") = mesh}
       {Take("texture") = texture}
-      ; Log("hello")
       Math.MatIdentity | GFX.Drawable(mesh Params: {baseColorTexture: texture}) | GFX.Draw(queue)
     } ComposeSync: true)
     GFX.Render(Steps: render-steps View: view)
-    
-    ; Log("Helloo")
   })
 } Looped: true)
 
