@@ -124,20 +124,20 @@ FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize, float
     throw std::runtime_error("Failed to initialize font");
   }
 
-  const FontPage *firstPage = result->getPage(0);
+  int spaceGlyphIndex = stbtt_FindGlyphIndex(&impl.fontInfo, ' ');
+  int spaceAdvance = 0;
+  stbtt_GetGlyphHMetrics(&impl.fontInfo, spaceGlyphIndex, &spaceAdvance, nullptr);
 
-  for (const auto &cd : firstPage->charData) {
-    if (cd.xadvance != 0) {
-      result->spaceSize.x = cd.xadvance;
-      break;
-    }
-  }
-  for (const auto &cd : firstPage->charData) {
-    if (cd.yoff2 != 0) {
-      result->spaceSize.y = cd.yoff2 - cd.yoff;
-      break;
-    }
-  }
+  int ascent = 0;
+  int descent = 0;
+  int lineGap = 0;
+  stbtt_GetFontVMetrics(&impl.fontInfo, &ascent, &descent, &lineGap);
+
+  int spaceNewline = ascent - descent;
+
+  float scale = stbtt_ScaleForPixelHeight(&impl.fontInfo, fontSize);
+  result->spaceSize.x = spaceAdvance * scale;
+  result->spaceSize.y = spaceNewline * scale;
 
   return result;
 }
@@ -148,4 +148,5 @@ FontMap::Ptr FontMap::getDefault() {
   static FontMap::Ptr instance = loadDefaultFontmap();
   return instance;
 }
+
 } // namespace gfx::text

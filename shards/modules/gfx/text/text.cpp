@@ -251,13 +251,9 @@ struct DynamicToMeshShard {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext *context) {
-    PARAM_CLEANUP(context);
-  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *context) {
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   static inline std::string_view mesh_str = "mesh";
   static inline std::string_view texture_str = "texture";
@@ -343,8 +339,18 @@ struct TextPlacementShard {
   }
 
   void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
-  void cleanup(SHContext *ctx) {
-    PARAM_CLEANUP(ctx);
+  void cleanup(SHContext *ctx) { PARAM_CLEANUP(ctx); }
+};
+struct FontSpaceSizeShard {
+  static SHTypesInfo inputTypes() { return SHFontMap::Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the monospace character spacing size from a FontMap."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The FontMap object."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The monospace character size as a float2."); }
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    auto &fontMap = varAsObjectChecked<SHFontMap>(input, SHFontMap::Type);
+    return toVar(fontMap.fontMap->spaceSize);
   }
 };
 
@@ -354,6 +360,7 @@ void registerTextShards() {
   REGISTER_SHARD("GFX.DynDrawText", DynamicDrawTextShard);
   REGISTER_SHARD("GFX.DynToMesh", DynamicToMeshShard);
   REGISTER_SHARD("GFX.TextPlacement", TextPlacementShard);
+  REGISTER_SHARD("GFX.FontSpaceSize", FontSpaceSizeShard);
 }
 
 } // namespace gfx::text
