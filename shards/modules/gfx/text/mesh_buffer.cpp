@@ -28,7 +28,8 @@ std::vector<MeshTexturePair> MeshBuffer::finalizeMeshes() {
   std::vector<MeshTexturePair> result;
 
   for (auto &[texture, vertices] : pageVertices) {
-    if (vertices.empty()) continue;
+    if (vertices.empty())
+      continue;
 
     auto meshDrawable = meshPool.newValue();
 
@@ -46,20 +47,22 @@ std::vector<MeshTexturePair> MeshBuffer::finalizeMeshes() {
   return result;
 }
 
-void MeshBuffer::appendText(const TextPlacer &placer, float3 position, float3 right, float3 up, float4 color,
-                            bool center) {
+void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) {
+  auto &[offset, right, up, color, scale, center] = params;
+  float3 pos = offset;
+
   // Handle centering if needed
   if (center) {
     float2 alignOffset = placer.getSize() * 0.5f;
-    position += alignOffset.x * right + alignOffset.y * -up;
+    pos += alignOffset.x * right + alignOffset.y * -up;
   }
 
   // Convert each quad into triangles using the same vertex pattern as ShapeRenderer
   for (const auto &quad : placer.textQuads) {
-    float3 a = position + quad.quad.x * right + quad.quad.y * -up;
-    float3 b = position + quad.quad.z * right + quad.quad.y * -up; // +X
-    float3 c = position + quad.quad.z * right + quad.quad.w * -up; // +XY
-    float3 d = position + quad.quad.x * right + quad.quad.w * -up; // +Y
+    float3 a = pos + quad.quad.x * right + quad.quad.y * -up;
+    float3 b = pos + quad.quad.z * right + quad.quad.y * -up; // +X
+    float3 c = pos + quad.quad.z * right + quad.quad.w * -up; // +XY
+    float3 d = pos + quad.quad.x * right + quad.quad.w * -up; // +Y
 
     float2 ta = {quad.uv.x, quad.uv.y};
     float2 tb = {quad.uv.z, quad.uv.y};

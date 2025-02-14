@@ -1,8 +1,44 @@
+@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap = f | "" | GFX.TextPlacement(f) | Take(0)})))
+
+@template(adjust-coord [offset] {
+  {Take("quad") = quad}
+  {Take("uv") = uv}
+  {Take("texture") = tex}
+  {Take("codepoint") = cp}
+  {Take("coord") = coord}
+  {quad: quad uv: uv texture: tex codepoint: cp coord: (
+   coord | Add(offset)
+   )}
+})
+
+@template(insert-tile [tile-map] {
+  {Take("coord") = coord}
+  Update(tile-map coord)
+})
+
+@wire(random-thing {
+  Once({
+    RandomInt >= test-idx
+    
+    "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■" = test-str
+    RandomInt((Count(test-str))) = char-idx
+    test-str | Slice(char-idx) = str
+  })
+  
+  Animation.Timer(Duration: 0.1 Action: {
+    test-idx | Add(1)
+    Math.Mod((dim-x | Mul(dim-y))) > test-idx
+  })
+  
+  test-idx | Math.Divide(dim-x) = test-y
+  test-idx | Math.Mod(dim-x) = test-x
+  
+  ; "█"
+  str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
+})
+
 @wire(test-wire {
   Once({
-    "data/fonts/Px437_AMI_EGA_8x8.ttf" | FS.Read(Bytes: true)
-    GFX.FontMap(Size: 128.0) = font
-    
     ; Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
@@ -13,7 +49,17 @@
     
     ; Create view
     ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
+    
+    128.0 >= font-size
+    Table(tile-map Type: @type({none: @placement-type}))
   })
+  
+  font-size | Memoize({
+    Once({"data/fonts/Px437_AMI_EGA_8x8.ttf" | FS.Read(Bytes: true) = font-data})
+    font-data | GFX.FontMap(Size: 128.0) = font
+  })
+  
+  Clear(tile-map)
   
   GFX.MainWindow(Title: "Text Demo" Width: 1280 Height: 720 Contents: {
     GFX.Viewport = vp
@@ -25,16 +71,41 @@
       view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
     })
     
+    width | Div(font-size) | ToInt | Max(1) = dim-x
+    height | Div(font-size) | ToInt | Max(1) = dim-y
+    
     GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
     
     ; Render the text into a mesh buffer
     GFX.DynMesh = dmesh
-    "Hello World" | GFX.DynDrawText(
-      Output: dmesh
-      Font: font
-      Position: @f3(0 128.0 0)
-      Scale: 1.0
-    )
+    ; "Hello World" | GFX.DynDrawText(
+    ;   Output: dmesh
+    ;   Font: font
+    ;   Offset: @f3(0 128.0 0)
+    ;   Scale: 1.0
+    ; )
+    
+    Once({
+      Sequence(test-seq)
+      ForRange(0 32 {
+        >> test-seq
+      })
+    })
+    test-seq | DoMany(random-thing)
+    
+    ; Once({
+    ;   0 >= test-idx
+    ; })
+    
+    ; Animation.Timer(Duration: 0.1 Action: {
+    ;   test-idx | Add(1)
+    ;   Math.Mod((dim-x | Mul(dim-y))) > test-idx
+    ; })
+    
+    ; test-idx | Math.Divide(dim-x) = test-y
+    ; test-idx | Math.Mod(dim-x) = test-x
+    
+    ; "█" | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
     
     Animation.Timer | Mul(2.0) | Math.Mod(3.0) | ToInt = blink
     blink | Match([
@@ -42,12 +113,27 @@
       1 {"☺"}
       2 {""}
     ] Passthrough: false)
-    GFX.DynDrawText(
-      Output: dmesh
-      Font: font
-      Position: @f3(#(128.0 | Mul(4.0)) #(128.0 | Mul(2.0)) 0)
-      Scale: 1.0
-    )
+    
+    ; GFX.DynDrawText(
+    ;   Output: dmesh
+    ;   Font: font
+    ;   Offset: @f3(#(128.0 | Mul(4.0)) #(128.0 | Mul(2.0)) 0)
+    ;   Scale: 1.0
+    ; )
+    
+    tile-map | ForEach({
+      Log("tile")
+      {$0 | ExpectInt2 = coord}
+      {$1 = placement}
+      coord:0 = coord-x
+      coord:1 = coord-y
+      [placement] | GFX.DynDrawText(
+        Output: dmesh
+        Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(font-size))
+        Scale: 1.0
+      )
+    })
+    
     
     ; Draw the generated mesh
     dmesh | GFX.DynToMesh | DoMany({

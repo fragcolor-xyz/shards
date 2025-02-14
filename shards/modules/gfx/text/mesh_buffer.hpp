@@ -39,7 +39,15 @@ public:
   std::vector<MeshTexturePair> finalizeMeshes();
 
   // Convert TextPlacer quads into mesh data, matching ShapeRenderer::addText behavior
-  void appendText(const TextPlacer &placer, float3 position, float3 right, float3 up, float4 color = float4(1,1,1,1), bool center = false);
+  struct TextParams {
+    float3 offset;
+    float3 right;
+    float3 up;
+    float4 color;
+    float scale;
+    bool center;
+  };
+  void appendText(const TextPlacer &placer, const TextParams &params);
 
 private:
   std::unordered_map<TexturePtr, std::vector<TextVertex>> pageVertices;

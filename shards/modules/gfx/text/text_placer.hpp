@@ -12,6 +12,11 @@ struct TextQuad {
   float4 quad;
   float4 uv;
   TexturePtr texture; // Add texture annotation
+  uint32_t codepoint;
+  // Placement coordinate:
+  //  x increments by 1 every character
+  //  y increments by 1 every line
+  int2 coord;
 };
 
 struct TextPlacer {
@@ -19,11 +24,15 @@ struct TextPlacer {
   float2 pos{};
   float2 max{};
   int numLines{};
+  int2 coord{};
   std::vector<TextQuad> textQuads;
 
+  // Vertically align (0 = bottom-left, 1 = top-left)
+  void verticalAlignOrigin(FontMap::Ptr fontMap, float alignment);
   void appendChar(FontMap::Ptr fontMap, uint32_t c, float scale = 1.0f);
   void appendString(FontMap::Ptr fontMap, std::string_view text, float scale = 1.0f);
 
+  void clear();
   inline float2 getSize() const { return max - origin; }
 };
 
