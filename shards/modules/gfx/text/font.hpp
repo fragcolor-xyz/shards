@@ -20,6 +20,7 @@ struct FontMapImpl {
   std::vector<uint8_t> fontData;
   float fontSize;
   int pageSize;
+  stbtt_fontinfo fontInfo;
 };
 
 struct FontMap {

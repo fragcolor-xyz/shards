@@ -86,12 +86,9 @@ int stbtt_PackFontRangesRenderIntoRects2(stbtt_pack_context *spc, const stbtt_fo
   return 1;
 }
 
-int stbtt_PackFontRanges2(stbtt_pack_context *spc, const unsigned char *fontdata, int font_index, stbtt_pack_range *ranges,
+int stbtt_PackFontRanges2(stbtt_pack_context *spc, const stbtt_fontinfo *info, int font_index, stbtt_pack_range *ranges,
                           int num_ranges) {
-
-  stbtt_fontinfo info;
   int i, j, n, return_value = 1;
-  // stbrp_context *context = (stbrp_context *) spc->pack_info;
   stbrp_rect *rects;
 
   // flag all characters as NOT packed
@@ -108,14 +105,11 @@ int stbtt_PackFontRanges2(stbtt_pack_context *spc, const unsigned char *fontdata
   if (rects == NULL)
     return 0;
 
-  info.userdata = spc->user_allocator_context;
-  stbtt_InitFont(&info, fontdata, stbtt_GetFontOffsetForIndex(fontdata, font_index));
-
-  n = stbtt_PackFontRangesGatherRects(spc, &info, ranges, num_ranges, rects);
+  n = stbtt_PackFontRangesGatherRects(spc, info, ranges, num_ranges, rects);
 
   int packResult = stbrp_pack_rects((stbrp_context *)spc->pack_info, rects, n);
   if (packResult == 1) {
-    return_value = stbtt_PackFontRangesRenderIntoRects2(spc, &info, ranges, num_ranges, rects);
+    return_value = stbtt_PackFontRangesRenderIntoRects2(spc, info, ranges, num_ranges, rects);
   } else {
     return_value = packResult;
   }
