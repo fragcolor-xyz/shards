@@ -103,6 +103,7 @@ class DXGIDesktopCapture {
   ID3D11Buffer *_tonemapParams = nullptr;
   ID3D11UnorderedAccessView *_outputUAV = nullptr;
   ID3D11ShaderResourceView *_inputSRV = nullptr;
+  ID3D11Query *_syncQuery = nullptr; // Add this line
   bool _enableDither = true;
 
   // Reusable textures for HDR processing
@@ -349,6 +350,8 @@ public:
       _sdrTexture->Release();
     if (_stagingTexture)
       _stagingTexture->Release();
+    if (_syncQuery)
+      _syncQuery->Release();
   }
 
   bool CheckHDRSupport(IDXGIOutput6 *output6) {
@@ -451,6 +454,11 @@ public:
     bdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     bdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     _device->CreateBuffer(&bdesc, nullptr, &_tonemapParams);
+
+    // Add synchronization query
+    D3D11_QUERY_DESC syncDesc = {};
+    syncDesc.Query = D3D11_QUERY_EVENT;
+    _device->CreateQuery(&syncDesc, &_syncQuery);
   }
 
   // Modify ToneMapTexture to add proper synchronization
@@ -525,6 +533,12 @@ public:
     }
 
     if (!_outputUAV) {
+      // Release previous UAV if it exists
+      if (_outputUAV) {
+        _outputUAV->Release();
+        _outputUAV = nullptr;
+      }
+
       D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
       uavDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
       uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
@@ -539,8 +553,12 @@ public:
       return;
     }
 
+    // Add automatic exposure calculation
+    float averageLuminance = 1.0f;   // This should be calculated from the HDR texture
+    float exposureMultiplier = 0.5f; // Adjustable value
+
     TonemapParams *params = (TonemapParams *)mapped.pData;
-    params->exposure = 2.0f; // Increased exposure for testing
+    params->exposure = exposureMultiplier / (averageLuminance + 0.001f); // Prevent division by zero
     params->gamma = 2.2f;
     params->dither = _enableDither ? 0.5f : 0.0f;
     _ctx->Unmap(_tonemapParams, 0);
@@ -560,6 +578,24 @@ public:
     UINT dispatchX = (_width + 7) / 8;
     UINT dispatchY = (_height + 7) / 8;
     _ctx->Dispatch(dispatchX, dispatchY, 1);
+
+    // Ensure compute shader completion with better error handling
+    if (_syncQuery) {
+      _ctx->End(_syncQuery);
+      UINT startTime = GetTickCount(); // Declare startTime here
+      while (_ctx->GetData(_syncQuery, nullptr, 0, 0) == S_FALSE) {
+        if (GetTickCount() - startTime > FRAME_TIMEOUT_MS) {
+          SHLOG_ERROR("HDR tonemap timeout - resetting resources");
+          // Reset tonemap resources
+          if (_tonemapCS) {
+            _tonemapCS->Release();
+            _tonemapCS = nullptr;
+          }
+          break;
+        }
+        Sleep(1);
+      }
+    }
 
     // Ensure compute shader completion
     ID3D11Query *query = nullptr;
@@ -592,10 +628,12 @@ public:
 
   State capture() {
     DXGI_OUTDUPL_FRAME_INFO info;
-    IDXGIResource *resource;
+    IDXGIResource *resource = nullptr;
     HRESULT hr = _dup->AcquireNextFrame(0, &info, &resource);
 
     if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
+      if (resource)
+        resource->Release(); // Add safety check
       return Timeout;
     } else if (hr == DXGI_ERROR_ACCESS_LOST) {
       return Lost;
@@ -603,13 +641,13 @@ public:
       return Error;
     }
 
-    ID3D11Texture2D *texture;
+    ID3D11Texture2D *texture = nullptr;
     hr = resource->QueryInterface(__uuidof(texture), (void **)&texture);
+    resource->Release(); // Release resource here
+
     if (!D3D_CHECK(hr, "QueryInterface texture")) {
-      resource->Release();
       return Error;
     }
-    resource->Release();
 
     D3D11_TEXTURE2D_DESC desc, desc2;
     texture->GetDesc(&desc);
@@ -699,6 +737,15 @@ public:
 
     if (_isHDR) {
       if (!EnsureHDRResources()) {
+        // Clean up resources if HDR setup fails
+        if (_inputSRV) {
+          _inputSRV->Release();
+          _inputSRV = nullptr;
+        }
+        if (_outputUAV) {
+          _outputUAV->Release();
+          _outputUAV = nullptr;
+        }
         return;
       }
 
