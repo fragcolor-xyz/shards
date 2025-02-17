@@ -1,4 +1,16 @@
-@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap(1.0) = f | "" | GFX.TextPlacement(f) | Take(0)})))
+@include("../../lib/gfx/colors.shs")
+
+@define(texture-type #(TypeOf({GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb)})))
+@define(placement-type
+  @type({
+    quad: Type::Float4
+    uv: Type::Float4
+    texture: @texture-type
+    codepoint: Type::Int
+    coord: Type::Int2
+    color: Type::Float4
+  })
+)
 
 @template(adjust-coord [offset] {
   {Take("quad") = quad}
@@ -11,9 +23,11 @@
    )}
 })
 
-@template(insert-tile [tile-map] {
-  {Take("coord") = coord}
-  Update(tile-map coord)
+@template(insert-tile [tile-map color] {
+  >= tbl
+  color | Set(tbl "color")
+  tbl | Take("coord") = coord
+  tbl | Update(tile-map coord)
 })
 
 @wire(random-thing {
@@ -23,7 +37,8 @@
     char-set | Take(char-idx) = codepoint
     [codepoint] | String.FromCodePoints = str
     
-    RandomFloat(0.1) | Add(0.05) = dur
+    RandomFloat(0.2) | Add(0.05) = dur
+    ; RandomFloat(1.0) = h
   })
   
   Animation.Timer(Duration: dur Rate: global-anim-rate Action: {
@@ -34,7 +49,16 @@
   test-idx | Math.Divide(dim-x) = test-y
   test-idx | Math.Mod(dim-x) = test-x
   
-  str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
+  test-x | ToFloat | Math.Divide((dim-x | ToFloat))
+  Add(dur) | Math.Mod(1.0) = h
+  
+  @gfx/hsl-to-rgb(h 0.85 0.5) = color
+  @gfx/color-to-float4-with-alpha(color 1.0) = color-4
+  Once({
+    [test-x h color color-4] | Log("Color")
+  })
+  
+  str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map color-4)
 })
 
 @wire(test-wire {
@@ -57,14 +81,18 @@
     Table(tile-map Type: @type({none: @placement-type}))
     
     0 >= refresh-trigger
+    128 >= num-wires
     
     ; List fonts in the data/fonts directory
-    "data/fonts" | FS.Iterate(Recursive: false) | Map({FS.Filename}) = font-list
+    "data/fonts/mono" = base-path
+    base-path | FS.Iterate(Recursive: true) >= raw-fonts
+    Remove(From: raw-fonts Predicate: {
+      FS.IsFile | Not | Or
+      FS.Extension | IsNot(".ttf")
+    }) | Map({FS.RelativeTo(base-path)}) = font-list
     font-list | IndexOf(Predicate: {
-      ; Is("Px437_AMI_EGA_8x8.ttf")
-      ; Is("Px437_ACM_VGA_8x14.ttf")
-      Is("Px437_ApricotPortable.ttf")
-    }) = font-index
+      Is("Px437_Acer710_CGA.ttf")
+    }) | Max(0) = font-index
     
     "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■"
     String.CodePoints = char-set
@@ -75,7 +103,7 @@
   [font-size font-index] | Memoize({
     font-list | Take(font-index) = selected-font
     Log("Selected font")
-    ["data/fonts/" selected-font] | String.Format | FS.Read(Bytes: true) = font-data
+    [base-path selected-font] | FS.Join | FS.Read(Bytes: true) = font-data
     font-size | Log("Font size")
     font-data | GFX.FontMap(Size: font-size) = font
     GFX.FontSpaceSize = space-size
@@ -124,14 +152,16 @@
         UI.FloatSlider(Variable: font-size Min: 8.0 Max: 72.0)
         "Anim Rate:" | UI.Label
         UI.FloatSlider(Variable: global-anim-rate Min: 0.01 Max: 10.0)
-      })
+        "Num Wires:" | UI.Label
+        UI.IntSlider(Variable: num-wires Min: 1 Max: 1024)
+      } Position: @f2(100 300))
     }) | UI.Render(ui-draw-queue)
     
     ; Render the text into a mesh buffer
     GFX.DynMesh = dmesh
-    Once({
+    num-wires | Memoize({
       Sequence(test-seq)
-      ForRange(0 200 {
+      ForRange(0 num-wires {
         >> test-seq
       })
     })
@@ -139,13 +169,16 @@
     
     tile-map | ForEach({
       {$0 | ExpectInt2 = coord}
-      {$1 = placement}
+      {$1 = placement
+        Take("color") = color
+      }
       coord:0 = coord-x
       coord:1 = coord-y
       [placement] | GFX.DynDrawText(
         Output: dmesh
         Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(space-size-f3))
         Scale: 1.0
+        Color: color
       )
     })
     

@@ -17,9 +17,10 @@ struct TextPlacement {
   static inline std::string_view codepoint_str = "codepoint";
   static inline std::string_view coord_str = "coord";
 
-  static inline shards::Types Types{
-      {CoreInfo::Float4Type, CoreInfo::Float4Type, ShardsTypes::Texture, CoreInfo::IntType, CoreInfo::Int2Type}};
-  static inline std::array<SHVar, 5> Keys{Var(quad_str), Var(uv_str), Var(texture_str), Var(codepoint_str), Var(coord_str)};
+  static inline std::array<SHVar, 5> Keys{Var(quad_str),      Var(uv_str),    Var(texture_str),
+                                          Var(codepoint_str), Var(coord_str)};
+  static inline shards::Types Types{{CoreInfo::Float4Type, CoreInfo::Float4Type, ShardsTypes::Texture, CoreInfo::IntType,
+                                     CoreInfo::Int2Type}};
   static inline shards::Type Type = shards::Type::TableOf(Types, Keys);
   static inline shards::Type SeqType = shards::Type::SeqOf(Type);
 };
@@ -142,9 +143,13 @@ struct DynamicDrawTextShard {
   PARAM_PARAMVAR(_color, "Color", "Text color", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_PARAMVAR(_up, "Up", "Up direction", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_right, "Right", "Right direction", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_center, "Center", "Center text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_halign, "HAlign", "Horizontal alignment (0 = left, 0.5 = centered, 1 = right)",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_output), PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_scale),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_up), PARAM_IMPL_FOR(_right), PARAM_IMPL_FOR(_center));
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_up), PARAM_IMPL_FOR(_right), PARAM_IMPL_FOR(_halign),
+             PARAM_IMPL_FOR(_valign));
 
   DynamicDrawTextShard() {
     _color = toVar(float4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -152,7 +157,8 @@ struct DynamicDrawTextShard {
     _scale = Var(1.0f);
     _up = toVar(float3(0.0f, -1.0f, 0.0));
     _right = toVar(float3(1.0f, 0.0f, 0.0f));
-    _center = Var(false);
+    _halign = Var(0.0f);
+    _valign = Var(-0.5f);
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -206,7 +212,7 @@ struct DynamicDrawTextShard {
                                           .up = up,         // Up direction
                                           .color = color,   // White color
                                           .scale = scale,
-                                          .center = _center.get().payload.boolValue,
+                                          .alignment = float2(_halign.get().payload.floatValue, 0.0f),
                                       });
   }
 
@@ -219,6 +225,7 @@ struct DynamicDrawTextShard {
 
     // Create temporary TextPlacer to generate quads
     placer.clear();
+    placer.verticalAlignOrigin(fontMap.fontMap, float((Var &)_valign.get()));
     placer.appendString(fontMap.fontMap, std::string_view(input.payload.stringValue), scale);
 
     // Convert to mesh

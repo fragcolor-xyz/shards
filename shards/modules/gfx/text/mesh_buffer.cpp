@@ -48,13 +48,17 @@ std::vector<MeshTexturePair> MeshBuffer::finalizeMeshes() {
 }
 
 void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) {
-  auto &[offset, right, up, color, scale, center] = params;
+  auto &[offset, right, up, color, scale, alignment] = params;
   float3 pos = offset;
 
   // Handle centering if needed
-  if (center) {
-    float2 alignOffset = placer.getSize() * 0.5f;
-    pos += alignOffset.x * right + alignOffset.y * -up;
+  if (alignment.x != 0.0f) {
+    float alignX = alignment.x * placer.getSize().x;
+    pos += -alignX * right;
+  }
+  if (alignment.y != 0.0f) {
+    float alignY = alignment.y * placer.getSize().y;
+    pos += alignY * up;
   }
 
   // Convert each quad into triangles using the same vertex pattern as ShapeRenderer
