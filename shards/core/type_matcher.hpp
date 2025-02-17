@@ -99,11 +99,12 @@ struct TypeMatcher {
         const auto numInputKeys = inputType.table.keys.len;
         const auto numReceiverKeys = receiverType.table.keys.len;
 
-        // When the input is and empty table {}, and the received has no key constraints
-        // pass
-        if (numReceiverKeys == 0 && numInputKeys == 0 && relaxEmptyTableCheck) {
-          return true;
-        } else if (numReceiverKeys == 0) {
+        // Unkeyed receiver table case
+        if (numReceiverKeys == 0) {
+          // When the input is and empty table {}, and the received has no key constraints
+          // pass
+          if (numInputKeys == 0 && relaxEmptyTableCheck)
+            return true;
           // case 1, consumer is not strict, match types if avail
           // ignore input keys information
           if (numInputTypes == 0) {
@@ -144,36 +145,44 @@ struct TypeMatcher {
             }
           }
         } else {
-          if (!isParameter && numInputKeys == 0 && numInputTypes == 0)
-            return true; // update case {} >= .edit-me {"x" 10} > .edit-me
-
+          // Keyed receiver table case
           // Last element being empty ("") indicates that keys not in the type can match
           // in that case they will be matched against the last type element at the same position
           const auto lastElementEmpty = receiverType.table.keys.elements[numReceiverKeys - 1].valueType == SHType::None;
-          if (!lastElementEmpty && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
-            // we need a 1:1 match in this case, fail early
+
+          bool ignoreExtra = isParameter;
+
+          // If we need a 1:1 match in this case, fail early
+          if (!ignoreExtra && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
             return false;
           }
 
-          auto missingMatches = numInputKeys;
+          auto missingRecvMatches = lastElementEmpty ? numReceiverKeys - 1 : numReceiverKeys;
           for (uint32_t i = 0; i < numInputKeys; i++) {
             auto inputEntryType = inputType.table.types.elements[i];
             auto inputEntryKey = inputType.table.keys.elements[i];
             for (uint32_t y = 0; y < numReceiverKeys; y++) {
               auto receiverEntryType = receiverType.table.types.elements[y];
               auto receiverEntryKey = receiverType.table.keys.elements[y];
-              // Either match the expected key's type or compare against the last type (if it's key is "")
-              if (inputEntryKey == receiverEntryKey || (lastElementEmpty && y == (numReceiverKeys - 1))) {
+              // Try to compare against the wildcard type first
+              if (lastElementEmpty && y == (numReceiverKeys - 1)) {
                 if (match(inputEntryType, receiverEntryType)) {
-                  missingMatches--;
                   y = numReceiverKeys; // break
                 } else
-                  return false; // fail quick in this case
+                  return false;
+              } else if (inputEntryKey == receiverEntryKey) {
+                if (match(inputEntryType, receiverEntryType)) {
+                  missingRecvMatches--;
+                  y = numReceiverKeys; // break
+                } else
+                  return false;
+              } else if (ignoreExtra) {
+                continue;
               }
             }
           }
 
-          if (missingMatches)
+          if (missingRecvMatches)
             return false;
         }
       }
