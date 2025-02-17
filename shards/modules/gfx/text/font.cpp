@@ -66,6 +66,7 @@ FontPage FontMap::createPage(int pageOffset, int pageSize) {
 
     stbtt_pack_context pctx{};
     stbtt_PackBegin(&pctx, singleChanMap.data(), res.x, res.y, res.x, 0, nullptr);
+    pctx.padding = 1;
     pctx.skip_missing = true;
     packed = stbtt_PackFontRanges2(&pctx, &impl->fontInfo, 0, &range, 1) != 0;
     stbtt_PackEnd(&pctx);

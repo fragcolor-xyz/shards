@@ -36,11 +36,11 @@ void stbtt_GetPackedQuadScaled(const stbtt_packedchar *chardata, int pw, int ph,
 void TextPlacer::verticalAlignOrigin(text::FontMap::Ptr fontMap, float alignment) {
   if (alignment < -0.5f) {
     // -1 to -0.5 interpolates from top to baseline
-    float t = (alignment + 1.0f) / 0.5f; // t goes from 0 to 1
-    origin.y = -fontMap->spaceSize.y * (1.0f - t); 
+    float t = (alignment + 0.5f) / 0.5f; // t goes from 0 to 1
+    origin.y = -fontMap->ascent * t;
   } else if (alignment < 0) {
     // -0.5 to 0 is baseline to bottom
-    origin.y = fontMap->descent * (alignment / -0.5f);
+    origin.y = fontMap->descent * (1.0f - alignment / -0.5f);
   } else {
     // 0 to 1 interpolates from bottom to top
     origin.y = fontMap->descent;

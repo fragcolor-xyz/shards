@@ -16,11 +16,11 @@ struct TextVertex {
   float color[4] = {1, 1, 1, 1};
   float uv[2] = {};
 
-  void setPosition(const float3& position) { memcpy(this->position, &position.x, sizeof(float) * 3); }
-  void setColor(const float4& color) { memcpy(this->color, &color.x, sizeof(float) * 4); }
-  void setUV(const float2& uv) { memcpy(this->uv, &uv.x, sizeof(float) * 2); }
+  void setPosition(const float3 &position) { memcpy(this->position, &position.x, sizeof(float) * 3); }
+  void setColor(const float4 &color) { memcpy(this->color, &color.x, sizeof(float) * 4); }
+  void setUV(const float2 &uv) { memcpy(this->uv, &uv.x, sizeof(float) * 2); }
 
-  static const std::vector<MeshVertexAttribute>& getAttributes();
+  static const std::vector<MeshVertexAttribute> &getAttributes();
 };
 
 struct MeshTexturePair {
@@ -45,7 +45,7 @@ public:
     float3 up;
     float4 color;
     float scale;
-    bool center;
+    float2 alignment{};
   };
   void appendText(const TextPlacer &placer, const TextParams &params);
 
