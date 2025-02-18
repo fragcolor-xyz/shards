@@ -714,16 +714,20 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
-#if !defined(NDEBUG) || defined(SH_RELWITHDEBINFO)
+#if SH_USE_UBSAN
+  // Slightly bigger for assertions, etc.
+  const uint32_t padding  = 16*1024;
+#else
+  const uint32_t padding  = 8*1024;
+#endif
   // check for stack overflow
 #if SH_CORO_NEED_STACK_MEM
-  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
+  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
     // we let the top level handle this
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
-#endif
 #endif
 
   // store initial input, as pointer, otherwise we risk corruption if the input changes while we are processing
