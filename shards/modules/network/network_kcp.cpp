@@ -736,7 +736,9 @@ struct ServerShard : public NetworkBase {
                                   if (_socket && _running.load(std::memory_order_acquire)) {
                                     return do_receive();
                                   } else {
-                                    SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
+                                    SPDLOG_LOGGER_TRACE(logger, "Server do_receive loop finished");
+                                    shassert(_receiveLoopRunning);
+                                    _receiveLoopRunning = false;
                                   }
                                 });
   }
@@ -775,11 +777,6 @@ struct ServerShard : public NetworkBase {
         SPDLOG_LOGGER_TRACE(logger, "Server do_receive loop staring");
         shassert(!_receiveLoopRunning);
         _receiveLoopRunning = true;
-        DEFER({
-          SPDLOG_LOGGER_TRACE(logger, "Server do_receive loop finished");
-          shassert(_receiveLoopRunning);
-          _receiveLoopRunning = false;
-        });
         do_receive();
       });
 
@@ -991,6 +988,10 @@ struct ClientShard : public NetworkBase {
                                       SPDLOG_LOGGER_ERROR(logger, "Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
                                     }
+
+                                    SPDLOG_LOGGER_TRACE(logger, "Client do_receive loop finished");
+                                    shassert(_receiveLoopRunning);
+                                    _receiveLoopRunning = false;
                                   } else {
                                     if (bytes_recvd > 0) {
                                       std::scoped_lock lock(_peer.mutex);
@@ -1066,11 +1067,6 @@ struct ClientShard : public NetworkBase {
         SPDLOG_LOGGER_TRACE(logger, "Client do_receive loop staring");
         shassert(!_receiveLoopRunning);
         _receiveLoopRunning = true;
-        DEFER({
-          SPDLOG_LOGGER_TRACE(logger, "Client do_receive loop finished");
-          shassert(_receiveLoopRunning);
-          _receiveLoopRunning = false;
-        });
         do_receive();
       });
     }
