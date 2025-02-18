@@ -52,9 +52,9 @@
   } {Stop})
 } Looped: true)
 
-@define(tick-count 400)
+@define(tick-count 1000)
 @define(tick-count-1 #(@tick-count | Sub(1)))
-@define(tick-dur #(10.0 | Div(1000.0)))
+@define(tick-dur #(10.0 | Div(#(@tick-count ToFloat))))
 @wire(test-assert {
   false | Set(test/client-init-success Global: true) | Log("Client init success Set")
   false | Set(test/client-received-smaller Global: true) | Log("Client received smaller Set")
