@@ -333,6 +333,9 @@ if(USE_ASAN)
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_ASAN>)
 endif()
 
+option(USE_UBSAN "Use undefined behaviour sanitizer" OFF)
+add_compile_definitions(SH_USE_UBSAN)
+
 option(USE_TSAN "Use thread sanitizer" OFF)
 
 if(USE_TSAN)
