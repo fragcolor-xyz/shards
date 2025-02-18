@@ -7216,7 +7216,7 @@ source = "git+https://github.com/shards-lang/chrono?rev=5aaf74235778120b5984b46c
 [[patch.unused]]
 name = "libc"
 version = "0.2.155"
-source = "git+https://github.com/shards-lang/libc.git?rev=7df63bd7f61bf3408344673cf0ba08e7ff0df134#7df63bd7f61bf3408344673cf0ba08e7ff0df134"
+source = "git+https://github.com/shards-lang/libc.git?rev=406373322b93012c21b6567ac5e4b2abd379ae2a#406373322b93012c21b6567ac5e4b2abd379ae2a"
 
 [[patch.unused]]
 name = "tar"
