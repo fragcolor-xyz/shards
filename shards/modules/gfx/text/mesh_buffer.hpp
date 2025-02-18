@@ -30,13 +30,29 @@ struct MeshTexturePair {
 
 class MeshBuffer {
 public:
+  struct PageBuffer {
+    std::vector<TextVertex> vertices;
+    size_t lastUsed{};
+
+    void clear() { vertices.clear(); }
+  };
+
   void begin() {
-    pageVertices.clear();
+    ++version;
+    for (auto it = pageVertices.begin(); it != pageVertices.end();) {
+      if ((version - it->second.lastUsed) > 1000)
+        it = pageVertices.erase(it);
+      else {
+        it->second.clear();
+        ++it;
+      }
+    }
+
     meshTexturePairs.clear();
     meshPool.recycle();
   }
 
-  std::vector<MeshTexturePair> finalizeMeshes();
+  void finalizeMeshes(std::vector<MeshTexturePair> &result);
 
   // Convert TextPlacer quads into mesh data, matching ShapeRenderer::addText behavior
   struct TextParams {
@@ -50,9 +66,10 @@ public:
   void appendText(const TextPlacer &placer, const TextParams &params);
 
 private:
-  std::unordered_map<TexturePtr, std::vector<TextVertex>> pageVertices;
+  std::unordered_map<TexturePtr, PageBuffer> pageVertices;
   std::vector<MeshTexturePair> meshTexturePairs;
   shards::Pool<MeshPtr> meshPool;
+  size_t version{};
 
   // Feature for text rendering (alpha blending etc)
   static FeaturePtr getTextFeature();
