@@ -61,7 +61,7 @@
   false | Set(test/client-received-random1 Global: true) | Log("Client received random1 Set")
   false | Set(test/server-received-end Global: true) | Log("Server received end Set")
   ForRange(1 @tick-count-1 {
-    Pause(@tick-dur)
+    Pause(0.0)
   })
   Log("Checking conditions")
   test/client-init-success | Log("client-init-success") | Assert.Is(true)
