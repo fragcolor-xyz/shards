@@ -17,10 +17,9 @@ struct TextPlacement {
   static inline std::string_view codepoint_str = "codepoint";
   static inline std::string_view coord_str = "coord";
 
-  static inline std::array<SHVar, 5> Keys{Var(quad_str),      Var(uv_str),    Var(texture_str),
-                                          Var(codepoint_str), Var(coord_str)};
-  static inline shards::Types Types{{CoreInfo::Float4Type, CoreInfo::Float4Type, ShardsTypes::Texture, CoreInfo::IntType,
-                                     CoreInfo::Int2Type}};
+  static inline std::array<SHVar, 5> Keys{Var(quad_str), Var(uv_str), Var(texture_str), Var(codepoint_str), Var(coord_str)};
+  static inline shards::Types Types{
+      {CoreInfo::Float4Type, CoreInfo::Float4Type, ShardsTypes::Texture, CoreInfo::IntType, CoreInfo::Int2Type}};
   static inline shards::Type Type = shards::Type::TableOf(Types, Keys);
   static inline shards::Type SeqType = shards::Type::SeqOf(Type);
 };
@@ -251,6 +250,7 @@ struct DynamicToMeshShard {
   PARAM_IMPL();
 
   SeqVar _resultSeq;
+  std::vector<MeshTexturePair> _meshTexturePairs;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -269,11 +269,12 @@ struct DynamicToMeshShard {
     auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(input, SHDynamicMesh::Type);
 
     // Get drawable with mesh from buffer
-    auto meshTexturePairs = dynMesh.buffer.finalizeMeshes();
+    _meshTexturePairs.clear();
+    dynMesh.buffer.finalizeMeshes(_meshTexturePairs);
 
     // Convert to SHVar sequence of tables
     _resultSeq.clear();
-    for (const auto &pair : meshTexturePairs) {
+    for (const auto &pair : _meshTexturePairs) {
       auto &table = _resultSeq.emplace_back_table();
       auto [mesh, meshVar] = gfx::ShardsTypes::MeshObjectVar.NewOwnedVar();
       auto [texture, textureVar] = gfx::ShardsTypes::TextureObjectVar.NewOwnedVar();

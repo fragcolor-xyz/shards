@@ -24,11 +24,9 @@ FeaturePtr MeshBuffer::getTextFeature() {
   return feature;
 }
 
-std::vector<MeshTexturePair> MeshBuffer::finalizeMeshes() {
-  std::vector<MeshTexturePair> result;
-
-  for (auto &[texture, vertices] : pageVertices) {
-    if (vertices.empty())
+void MeshBuffer::finalizeMeshes(std::vector<MeshTexturePair> &result) {
+  for (auto &[texture, pb] : pageVertices) {
+    if (pb.vertices.empty())
       continue;
 
     auto meshDrawable = meshPool.newValue();
@@ -39,12 +37,10 @@ std::vector<MeshTexturePair> MeshBuffer::finalizeMeshes() {
         .vertexAttributes = TextVertex::getAttributes(),
     };
 
-    meshDrawable->update(fmt, vertices.data(), vertices.size() * sizeof(TextVertex), nullptr, 0);
+    meshDrawable->update(fmt, pb.vertices.data(), pb.vertices.size() * sizeof(TextVertex), nullptr, 0);
 
     result.push_back({meshDrawable, texture});
   }
-
-  return result;
 }
 
 void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) {
@@ -60,6 +56,10 @@ void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) 
     float alignY = alignment.y * placer.getSize().y;
     pos += alignY * up;
   }
+
+  // Cache
+  PageBuffer *pb{};
+  Texture *lastTex{};
 
   // Convert each quad into triangles using the same vertex pattern as ShapeRenderer
   for (const auto &quad : placer.textQuads) {
@@ -77,29 +77,36 @@ void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) 
     TextVertex v;
     v.setColor(color);
 
+    if (quad.texture.get() != lastTex) {
+      pb = &pageVertices[quad.texture];
+      lastTex = quad.texture.get();
+    }
+
+    auto &pv = pb->vertices;
+
     v.setPosition(a);
     v.setUV(ta);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
 
     v.setPosition(b);
     v.setUV(tb);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
 
     v.setPosition(c);
     v.setUV(tc);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
 
     v.setPosition(d);
     v.setUV(td);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
 
     v.setPosition(a);
     v.setUV(ta);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
 
     v.setPosition(c);
     v.setUV(tc);
-    pageVertices[quad.texture].push_back(v);
+    pv.push_back(v);
   }
 }
 
