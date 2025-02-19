@@ -270,7 +270,15 @@ struct DynamicDrawTextStringWorldSpaceShard : public DynamicDrawTextShardBase {
     // float autoScale = helper.getConstantScreenSize(offset, 1.0f);
 
     float pixelSpan = helper.getLineSegmentPixelSpan(offset, *up * worldSize);
-    int32_t fontSize = std::min(512, std::max(8, int32_t(std::floor(pixelSpan))));
+
+    // Quantize font size to configurable number of levels with more detail at lower resolutions
+    constexpr int maxSize = 1024;
+    constexpr int numLevels = 128;
+    constexpr float invNumLevels = 1.0f / numLevels;
+    static float logRange = std::log2(float(maxSize));
+    float logScale = std::log2(pixelSpan) / logRange;                                                  // Map range to 0-1
+    float quantized = std::floor(logScale * numLevels) * invNumLevels;                                 // Quantize to levels
+    int32_t fontSize = std::clamp(int32_t(std::pow(2.0f, quantized * logRange)), 4, maxSize); // Map back to range
 
     // Scale to adjust the font to fit in the desired world size, and combined with user size
     float adjustedScale = 1.0f / float(fontSize) * worldSize * scale;

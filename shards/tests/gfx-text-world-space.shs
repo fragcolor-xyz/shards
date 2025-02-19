@@ -42,7 +42,7 @@
     ForRange(0 4 {
       ToFloat
       Mul(8.0) | Add(2.0) = d-mult
-      base-offset-1 | Mul(d-mult) Add(@f3(0 1.5 0.0)) = cam-pos
+      base-offset-1 | Mul(d-mult) | Add(@f3(0 1.5 0.0)) = cam-pos
       Math.Negate | Math.Translation = mat-t
       
       {Position: cam-pos Target: @f3(0 1.5 0.0)} | Math.LookAt >> view-mats
@@ -56,16 +56,23 @@
     Math.MatIdentity | GFX.Drawable(Mesh: cube-mesh) | GFX.Draw(queue)
     
     Animation.Timer | ToInt | Math.Mod((Count(view-mats))) = view-idx
-    view-mats | Take(view-idx) = view-mat
-    Memoize({
+    view-mats | Take(view-idx) >= view-mat
+    
+    ; Optional: free camera    
+    Once({
+      TargetCamera.FromLookAt(Position: @f3(0 5.0 5.0) Target: @f3(0 1.5 0)) >= target-camera
+    })
+    target-camera | TargetCamera > target-camera
+    TargetCamera.Matrix > view-mat
+    
+    GFX.View(view-mat) = view
+    view-mat | Memoize({
       [view-idx view-mat] | Log("View")
       @f3(0.0 1.0 0.0) = billboard-up
       view-mat | Math.Inverse | Take(2) | ToFloat3 >= billboard-forward
       billboard-up | Math.Cross(billboard-forward) = billboard-right
       [billboard-right billboard-up] | Log("billboard")
     })
-    GFX.View(View: view-mat) = view
-    
     
     GFX.Viewport = vp
     vp:2 | Sub((vp:0)) = vp-width
