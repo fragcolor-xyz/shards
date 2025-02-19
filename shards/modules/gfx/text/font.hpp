@@ -5,6 +5,7 @@
 #include <stb_truetype.h>
 #include <gfx/linalg.hpp>
 #include <optional>
+#include <map>
 
 namespace gfx::text {
 
@@ -15,30 +16,52 @@ struct FontPage {
   int numChars;
 };
 
-struct FontMapImpl {
-  std::map<int, FontPage> pages;
+struct FontMapShared;
+struct FontSize {
+  // Pages mapped by starting codepoint
+  std::map<uint32_t, FontPage> pages;
+  // Font metrics
+  float ascent;
+  float descent;
+  int2 spaceSize;
+  uint32_t fontSize;
+  // Shared data
+  FontMapShared *shared;
+
+  const FontPage *getPage(int codepoint) const { return const_cast<FontSize *>(this)->getPage(codepoint); }
+  FontPage *getPage(int codepoint);
+
+private:
+  FontPage createPage(int pageOffset, int pageSize);
+};
+
+struct FontMapShared {
+  // Source data for the font file
   std::vector<uint8_t> fontData;
-  float fontSize;
-  int pageSize;
+  // Loaded stb fontinfo
   stbtt_fontinfo fontInfo;
+  // Pages
+  std::unordered_map<uint32_t, FontSize> fontSizes;
+  // Default size of character pages
+  size_t defaultPageSize;
 };
 
 struct FontMap {
   using Ptr = std::shared_ptr<FontMap>;
 
-  FontMapImpl *impl;
-  int2 spaceSize;
-  float ascent,descent;
-
-  FontMap(int pageSize = 512, float fontSize = 12.0f);
+  FontMap(int defaultPageSize = 512);
   ~FontMap();
 
-  const FontPage *getPage(int codepoint);
+  const FontPage *getPage(int codepoint, uint32_t fontSize);
+  const FontSize &getFontSize(uint32_t fontSize);
+
   static FontMap::Ptr getDefault();
-  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512, float fontSize = 12.0f);
+  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512);
 
 private:
-  FontPage createPage(int pageOffset, int pageSize);
+  FontSize &getOrCreateFontSize(uint32_t fontSize);
+
+  FontMapShared *shared;
 };
 
 } // namespace gfx::text

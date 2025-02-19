@@ -5,6 +5,7 @@
 #include <shards/core/module.hpp>
 #include <shards/modules/gfx/shards_types.hpp>
 #include <shards/linalg_shim.hpp>
+#include <gfx/screen_size.hpp>
 #include "mesh_buffer.hpp"
 
 namespace gfx::text {
@@ -44,8 +45,7 @@ struct FontMapShard {
   static SHOptionalString inputHelp() { return SHCCSTR("The font data as a byte array."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The created font map object."); }
 
-  PARAM_PARAMVAR(_size, "Size", "Font size in pixels", {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_size));
+  PARAM_IMPL();
 
   SHFontMap *_fontMap{};
 
@@ -56,11 +56,10 @@ struct FontMapShard {
   }
 
   SHVar activate(SHContext *ctx, const SHVar &input) {
-    float fontSize = float((Var &)_size.get());
     const uint32_t pageSize = 128;
 
     // Create font map from input bytes
-    _fontMap->fontMap = FontMap::load(input.payload.bytesValue, input.payload.bytesSize, pageSize, fontSize);
+    _fontMap->fontMap = FontMap::load(input.payload.bytesValue, input.payload.bytesSize, pageSize);
 
     return SHFontMap::ObjectVar.Get(_fontMap);
   }
@@ -123,20 +122,14 @@ struct DynamicMeshShard {
   }
 };
 
-// Draw text to dynamic mesh shard
-struct DynamicDrawTextShard {
-  static inline Types InputTypes{{CoreInfo::StringType, TextPlacement::SeqType}};
-
-  static SHTypesInfo inputTypes() { return InputTypes; }
+struct DynamicDrawTextShardBase {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh."); }
-  static SHOptionalString inputHelp() { return SHCCSTR("The text to draw or a sequence of text placements."); }
   static SHOptionalString outputHelp() { return SHCCSTR("No output, modifies the dynamic mesh in place."); }
 
   TextPlacer placer;
 
   PARAM_PARAMVAR(_output, "Output", "Dynamic text mesh to draw to", {SHDynamicMesh::VarType});
-  PARAM_PARAMVAR(_font, "Font", "Font to use", {CoreInfo::NoneType, SHFontMap::VarType});
   PARAM_PARAMVAR(_offset, "Offset", "Text position", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_scale, "Scale", "Text scale", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Text color", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
@@ -144,57 +137,175 @@ struct DynamicDrawTextShard {
   PARAM_PARAMVAR(_right, "Right", "Right direction", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_halign, "HAlign", "Horizontal alignment (0 = left, 0.5 = centered, 1 = right)",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
-                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_output), PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_scale),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_up), PARAM_IMPL_FOR(_right), PARAM_IMPL_FOR(_halign),
-             PARAM_IMPL_FOR(_valign));
+  PARAM_IMPL(PARAM_IMPL_FOR(_output), PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_color),
+             PARAM_IMPL_FOR(_up), PARAM_IMPL_FOR(_right), PARAM_IMPL_FOR(_halign));
 
-  DynamicDrawTextShard() {
+  DynamicDrawTextShardBase() {
     _color = toVar(float4(1.0f, 1.0f, 1.0f, 1.0f));
     _offset = toVar(float3(0.0f, 0.0f, 0.0f));
     _scale = Var(1.0f);
     _up = toVar(float3(0.0f, -1.0f, 0.0));
     _right = toVar(float3(1.0f, 0.0f, 0.0f));
     _halign = Var(0.0f);
-    _valign = Var(-0.5f);
   }
+
+  void placerToMesh(SHDynamicMesh &dynMesh, const TextPlacer &placer, bool applyScale = false) {
+    auto &offset = (Vec3 &)_offset.get();
+    auto &up = (Vec3 &)_up.get();
+    auto &right = (Vec3 &)_right.get();
+    auto &color = (Vec4 &)_color.get();
+    float scale = applyScale ? float((Var &)_scale.get()) : 1.0f;
+
+    // Convert to mesh
+    dynMesh.buffer.appendText(placer, MeshBuffer::TextParams{
+                                          .offset = offset, // Use input position
+                                          .right = right,   // Right direction
+                                          .up = up,         // Up direction
+                                          .color = color,   // White color
+                                          .scale = scale,
+                                          .alignment = float2(_halign.get().payload.floatValue, 0.0f),
+                                      });
+  }
+};
+
+// Draw text to dynamic mesh shard
+struct DynamicDrawTextStringShard : public DynamicDrawTextShardBase {
+  static inline Types InputTypes{{CoreInfo::StringType}};
+
+  static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The text to draw."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("No output, modifies the dynamic mesh in place."); }
+
+  TextPlacer placer;
+
+  PARAM_PARAMVAR(_font, "Font", "Font to use", {SHFontMap::VarType});
+  PARAM_PARAMVAR(_fontSize, "FontSize", "The font size to use", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL_DERIVED(DynamicDrawTextShardBase, PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_fontSize), PARAM_IMPL_FOR(_valign));
+
+  DynamicDrawTextStringShard() { _valign = Var(-0.5f); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-
-    if (data.inputType.basicType == SHType::String) {
-      if (!_font.isVariable()) {
-        throw SHException("Font is required when input is a string");
-      }
-    } else {
-      OVERRIDE_ACTIVATE(data, activatePlacement);
-      if (_font.isVariable()) {
-        SPDLOG_WARN("Font is not used when input is a text placement table");
-      }
-    }
-
     return outputTypes().elements[0];
   }
 
-  SHVar activatePlacement(SHContext *ctx, const SHVar &input) {
-    SeqVar &placement = (SeqVar &)input;
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
+  void cleanup(SHContext *ctx) { PARAM_CLEANUP(ctx); }
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+
     auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(_output.get(), SHDynamicMesh::Type);
+    auto &fontMap = varAsObjectChecked<SHFontMap>(_font.get(), SHFontMap::Type);
 
+    // Scale, applied at placer level to be pixel-correct
+    float scale = float((Var &)_scale.get());
+
+    // Create temporary TextPlacer to generate quads
+    auto &fontSize = fontMap.fontMap->getFontSize(_fontSize.get().payload.intValue);
     placer.clear();
-    for (auto &placement : placement) {
-      auto placementRef = TextPlacementRef((TableVar &)placement);
+    placer.verticalAlignOrigin(fontSize, float((Var &)_valign.get()));
+    placer.appendString(fontSize, std::string_view(input.payload.stringValue), scale);
 
-      // Rebuild placement from input
-      placer.textQuads.emplace_back(TextQuad{placementRef.quad, placementRef.uv,
-                                             varAsObjectChecked<TexturePtr>(placementRef.texture, ShardsTypes::Texture),
-                                             (uint32_t)placementRef.codepoint.payload.intValue});
-    }
-
-    placerToMesh(dynMesh, placer, true);
+    // Convert to mesh
+    placerToMesh(dynMesh, placer, false);
 
     return SHVar{};
+  }
+};
+
+struct DynamicDrawTextStringWorldSpaceShard : public DynamicDrawTextShardBase {
+  static inline Types InputTypes{{CoreInfo::StringType}};
+
+  static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The text to draw."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("No output, modifies the dynamic mesh in place."); }
+
+  TextPlacer placer;
+
+  PARAM_PARAMVAR(_font, "Font", "Font to use", {SHFontMap::VarType});
+  PARAM_PARAMVAR(_worldSize, "WorldSize", "Desired world space height of the font",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_view, "View", "View matrix", {Type::VariableOf(gfx::ShardsTypes::View)});
+  PARAM_PARAMVAR(_viewSize, "ViewSize", "View size", {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+  PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL_DERIVED(DynamicDrawTextShardBase, PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_worldSize), PARAM_IMPL_FOR(_view),
+                     PARAM_IMPL_FOR(_viewSize), PARAM_IMPL_FOR(_valign));
+
+  DynamicDrawTextStringWorldSpaceShard() { _valign = Var(-0.5f); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
+  void cleanup(SHContext *ctx) { PARAM_CLEANUP(ctx); }
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+
+    auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(_output.get(), SHDynamicMesh::Type);
+    auto &fontMap = varAsObjectChecked<SHFontMap>(_font.get(), SHFontMap::Type);
+    auto &view = varAsObjectChecked<SHView>(_view.get(), gfx::ShardsTypes::View);
+
+    // Scale, applied at placer level to be pixel-correct
+    float scale = float((Var &)_scale.get());
+
+    float worldSize = float((Var &)_worldSize.get());
+    auto &up = (Vec3 &)_up.get();
+
+    // Compute scale based on character position
+    auto &offset = (Vec3 &)_offset.get();
+    auto &viewSize = (padded::Int2 &)_viewSize.get();
+
+    gfx::ScreenSizeHelper helper{*view.view.get(), float2(*viewSize), scale};
+    // float autoScale = helper.getConstantScreenSize(offset, 1.0f);
+
+    float pixelSpan = helper.getLineSegmentPixelSpan(offset, *up * worldSize);
+    int32_t fontSize = std::min(512, std::max(8, int32_t(std::floor(pixelSpan))));
+
+    // Scale to adjust the font to fit in the desired world size, and combined with user size
+    float adjustedScale = 1.0f / float(fontSize) * worldSize * scale;
+
+    // Create temporary TextPlacer to generate quads
+    auto &fontSizeObj = fontMap.fontMap->getFontSize(fontSize);
+    placer.clear();
+    placer.verticalAlignOrigin(fontSizeObj, float((Var &)_valign.get()));
+    placer.appendString(fontSizeObj, std::string_view(input.payload.stringValue), adjustedScale);
+
+    // Convert to mesh
+    placerToMesh(dynMesh, placer, false);
+
+    return SHVar{};
+  }
+};
+
+// Draw text to dynamic mesh shard
+struct DynamicDrawTextPlacementShard : public DynamicDrawTextShardBase {
+  static inline Types InputTypes{{TextPlacement::SeqType}};
+
+  static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws text to a dynamic mesh."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of text placements."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("No output, modifies the dynamic mesh in place."); }
+
+  PARAM_IMPL_DERIVED(DynamicDrawTextShardBase);
+
+  DynamicDrawTextPlacementShard() {}
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
   void placerToMesh(SHDynamicMesh &dynMesh, const TextPlacer &placer, bool applyScale = false) {
@@ -216,19 +327,20 @@ struct DynamicDrawTextShard {
   }
 
   SHVar activate(SHContext *ctx, const SHVar &input) {
+    SeqVar &placement = (SeqVar &)input;
     auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(_output.get(), SHDynamicMesh::Type);
-    auto &fontMap = varAsObjectChecked<SHFontMap>(_font.get(), SHFontMap::Type);
 
-    // Scale, applied at placer level to be pixel-correct
-    float scale = float((Var &)_scale.get());
-
-    // Create temporary TextPlacer to generate quads
     placer.clear();
-    placer.verticalAlignOrigin(fontMap.fontMap, float((Var &)_valign.get()));
-    placer.appendString(fontMap.fontMap, std::string_view(input.payload.stringValue), scale);
+    for (auto &placement : placement) {
+      auto placementRef = TextPlacementRef((TableVar &)placement);
 
-    // Convert to mesh
-    placerToMesh(dynMesh, placer, false);
+      // Rebuild placement from input
+      placer.textQuads.emplace_back(TextQuad{placementRef.quad, placementRef.uv,
+                                             varAsObjectChecked<TexturePtr>(placementRef.texture, ShardsTypes::Texture),
+                                             (uint32_t)placementRef.codepoint.payload.intValue});
+    }
+
+    placerToMesh(dynMesh, placer, true);
 
     return SHVar{};
   }
@@ -247,7 +359,12 @@ struct DynamicToMeshShard {
   static SHTypesInfo outputTypes() { return OutSeqType; }
   static SHOptionalString help() { return SHCCSTR("Converts a dynamic text mesh into a static mesh"); }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(
+      _windingOrderParam, "WindingOrder",
+      "Determines which side of the triangle is considered the front face. Typically use CW for UI space (y=down), CCW for "
+      "world space (y=up)",
+      {ShardsTypes::WindingOrderEnumInfo::Type, Type::VariableOf(ShardsTypes::WindingOrderEnumInfo::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_windingOrderParam));
 
   SeqVar _resultSeq;
   std::vector<MeshTexturePair> _meshTexturePairs;
@@ -256,6 +373,11 @@ struct DynamicToMeshShard {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return outputTypes().elements[0];
+  }
+
+  DynamicToMeshShard() {
+    _windingOrderParam =
+        Var::Enum(WindingOrder::CW, ShardsTypes::WindingOrderEnumInfo::VendorId, ShardsTypes::WindingOrderEnumInfo::TypeId);
   }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
@@ -268,9 +390,11 @@ struct DynamicToMeshShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &dynMesh = varAsObjectChecked<SHDynamicMesh>(input, SHDynamicMesh::Type);
 
+    auto windingOrder = (WindingOrder)_windingOrderParam.get().payload.intValue;
+
     // Get drawable with mesh from buffer
     _meshTexturePairs.clear();
-    dynMesh.buffer.finalizeMeshes(_meshTexturePairs);
+    dynMesh.buffer.finalizeMeshes(_meshTexturePairs, windingOrder);
 
     // Convert to SHVar sequence of tables
     _resultSeq.clear();
@@ -301,14 +425,16 @@ struct TextPlacementShard {
   // std::vector<TexturePtr *> _textures;
 
   PARAM_PARAMVAR(_font, "Font", "Font to use", {SHFontMap::VarType});
+  PARAM_PARAMVAR(_fontSize, "FontSize", "The font size to use", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_PARAMVAR(_scale, "Scale", "Text scale", {CoreInfo::FloatType});
   PARAM_PARAMVAR(_valign, "VAlign", "Vertical alignment of baseline (0 = bottom, 1 = top, -0.5 = centered on baseline)",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_valign));
+  PARAM_IMPL(PARAM_IMPL_FOR(_font), PARAM_IMPL_FOR(_fontSize), PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_valign));
 
   TextPlacementShard() {
     _scale = Var(1.0f);
     _valign = Var(1.0f);
+    _fontSize = Var(12);
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -325,8 +451,9 @@ struct TextPlacementShard {
     _placer.clear();
 
     // Append the input string to the placer
-    _placer.verticalAlignOrigin(fontMap.fontMap, float((Var &)_valign.get()));
-    _placer.appendString(fontMap.fontMap, std::string_view(input.payload.stringValue), scale);
+    auto &fontSize = fontMap.fontMap->getFontSize(_fontSize.get().payload.intValue);
+    _placer.verticalAlignOrigin(fontSize, float((Var &)_valign.get()));
+    _placer.appendString(fontSize, std::string_view(input.payload.stringValue), scale);
 
     // Create a sequence to return the placement
     _resultSeq.resize(_placer.textQuads.size());
@@ -356,16 +483,31 @@ struct FontSpaceSizeShard {
   static SHOptionalString inputHelp() { return SHCCSTR("The FontMap object."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The monospace character size as a float2."); }
 
+  PARAM_PARAMVAR(_fontSize, "Font Size", "The font size to use", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_fontSize))
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
+  void cleanup(SHContext *ctx) { PARAM_CLEANUP(ctx); }
+
   SHVar activate(SHContext *ctx, const SHVar &input) {
     auto &fontMap = varAsObjectChecked<SHFontMap>(input, SHFontMap::Type);
-    return toVar(fontMap.fontMap->spaceSize);
+    auto &fontSize = fontMap.fontMap->getFontSize(_fontSize.get().payload.intValue);
+    return toVar(fontSize.spaceSize);
   }
 };
 
 void registerTextShards() {
   REGISTER_SHARD("GFX.FontMap", FontMapShard);
   REGISTER_SHARD("GFX.DynMesh", DynamicMeshShard);
-  REGISTER_SHARD("GFX.DynDrawText", DynamicDrawTextShard);
+  REGISTER_SHARD("GFX.DynDrawText", DynamicDrawTextStringShard);
+  REGISTER_SHARD("GFX.DynDrawTextWorldSpace", DynamicDrawTextStringWorldSpaceShard);
+  REGISTER_SHARD("GFX.DynDrawTextPlacement", DynamicDrawTextPlacementShard);
   REGISTER_SHARD("GFX.DynToMesh", DynamicToMeshShard);
   REGISTER_SHARD("GFX.TextPlacement", TextPlacementShard);
   REGISTER_SHARD("GFX.FontSpaceSize", FontSpaceSizeShard);

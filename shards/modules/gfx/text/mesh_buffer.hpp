@@ -3,6 +3,7 @@
 
 #include <gfx/mesh.hpp>
 #include <gfx/feature.hpp>
+#include <gfx/enums.hpp>
 #include <shards/core/pool.hpp>
 #include <vector>
 #include <unordered_map>
@@ -52,7 +53,7 @@ public:
     meshPool.recycle();
   }
 
-  void finalizeMeshes(std::vector<MeshTexturePair> &result);
+  void finalizeMeshes(std::vector<MeshTexturePair> &result, WindingOrder windingOrder);
 
   // Convert TextPlacer quads into mesh data, matching ShapeRenderer::addText behavior
   struct TextParams {
