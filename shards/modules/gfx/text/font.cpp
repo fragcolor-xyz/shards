@@ -60,7 +60,7 @@ FontSize &FontMap::getOrCreateFontSize(uint32_t fontSize) {
 FontPage *FontSize::getPage(int codepoint) {
   // Guess the page size based on the font size and max dimension of 4096 x 4096
   uint32_t guessedPageSize = (1024 * 1024 * HeurPackingEfficiency) / glyphArea;
-  guessedPageSize = 1 << (32 - std::countl_zero(guessedPageSize - 1) - 1);
+  guessedPageSize = std::max(1, 1 << (32 - std::countl_zero(guessedPageSize - 1) - 1));
 
   int pageIndex = codepoint / guessedPageSize;
   int pageOffset = pageIndex * guessedPageSize;
@@ -108,7 +108,7 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
   uint32_t imageDataRowStride{};
   std::vector<uint8_t> imageData;
 
-  while (!packed && res.x < 4096 && res.y < 4096) {
+  while (!packed && res.x <= 4096 && res.y <= 4096) {
     std::vector<uint8_t> singleChanMap(res.x * res.y);
 
     stbtt_pack_context pctx{};
@@ -122,7 +122,7 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
       res.x *= 2;
       res.y *= 2;
       SPDLOG_LOGGER_DEBUG(getLogger(), "Packing font ({}, size {}) codepoints {}-{} ({} chars) failed, doubling resolution to {}",
-                          (void *)shared, fontSize, pageOffset, pageOffset + pageSize, res);
+                          (void *)shared, fontSize, pageOffset, pageOffset + pageSize, pageSize, res);
       continue;
     }
 
