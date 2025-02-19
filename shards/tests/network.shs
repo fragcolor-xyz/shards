@@ -16,8 +16,8 @@
 
 @wire(network-test-server {
   Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
-  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 0.5)
-  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 0.5)
+  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 4.0)
+  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 4.0)
 } Looped: true Priority: -1)
 
 @wire(client-init {
