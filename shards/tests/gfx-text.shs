@@ -12,22 +12,22 @@
   })
 )
 
-@template(adjust-coord [offset] {
+@template(adjust-tile [offset color] {
   {Take("quad") = quad}
   {Take("uv") = uv}
   {Take("texture") = tex}
   {Take("codepoint") = cp}
   {Take("coord") = coord}
-  {quad: quad uv: uv texture: tex codepoint: cp coord: (
-   coord | Add(offset)
-   )}
+  {
+    quad: quad uv: uv texture: tex codepoint: cp
+    coord: (coord | Add(offset))
+    color: color
+  }
 })
 
-@template(insert-tile [tile-map color] {
-  >= tbl
-  color | Set(tbl "color")
-  tbl | Take("coord") = coord
-  tbl | Update(tile-map coord)
+@template(insert-tile [tile-map] {
+  {Take("coord") = coord}
+  Update(tile-map coord)
 })
 
 @wire(random-thing {
@@ -38,7 +38,6 @@
     [codepoint] | String.FromCodePoints = str
     
     RandomFloat(0.2) | Add(0.05) = dur
-    ; RandomFloat(1.0) = h
   })
   
   Animation.Timer(Duration: dur Rate: global-anim-rate Action: {
@@ -54,11 +53,8 @@
   
   @gfx/hsl-to-rgb(h 0.85 0.5) = color
   @gfx/color-to-float4-with-alpha(color 1.0) = color-4
-  Once({
-    [test-x h color color-4] | Log("Color")
-  })
   
-  str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map color-4)
+  str | GFX.TextPlacement(font) | Take(0) | @adjust-tile(@i2(test-x test-y) color-4) | @insert-tile(tile-map)
 })
 
 @wire(test-wire {
@@ -73,9 +69,6 @@
     
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
-    
-    ; Create view
-    ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     
     32.0 >= font-size
     Table(tile-map Type: @type({none: @placement-type}))
