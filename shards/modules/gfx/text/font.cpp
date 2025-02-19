@@ -9,31 +9,65 @@
 
 namespace gfx::text {
 
-FontMap::FontMap(int pageSize, float fontSize) {
-  impl = new FontMapImpl();
-  impl->pageSize = pageSize;
-  impl->fontSize = fontSize;
+FontMap::FontMap(int defaultPageSize) {
+  shared = new FontMapShared();
+  shared->defaultPageSize = defaultPageSize;
 }
 
-FontMap::~FontMap() {
-  delete impl; // Ensure the FontMapImpl is properly deleted
+FontMap::~FontMap() { delete shared; }
+
+const FontSize &FontMap::getFontSize(uint32_t fontSize) { return getOrCreateFontSize(fontSize); }
+
+FontSize &FontMap::getOrCreateFontSize(uint32_t fontSize) {
+  auto it = shared->fontSizes.find(fontSize);
+  if (it != shared->fontSizes.end()) {
+    return it->second;
+  }
+
+  FontSize newSize;
+  newSize.fontSize = fontSize;
+  newSize.shared = shared;
+
+  // Initialize font data
+  if (!stbtt_InitFont(&shared->fontInfo, shared->fontData.data(), stbtt_GetFontOffsetForIndex(shared->fontData.data(), 0))) {
+    throw std::runtime_error("Failed to initialize font");
+  }
+
+  int spaceGlyphIndex = stbtt_FindGlyphIndex(&shared->fontInfo, ' ');
+  int spaceAdvance = 0;
+  stbtt_GetGlyphHMetrics(&shared->fontInfo, spaceGlyphIndex, &spaceAdvance, nullptr);
+
+  int ascent = 0;
+  int descent = 0;
+  int lineGap = 0;
+  stbtt_GetFontVMetrics(&shared->fontInfo, &ascent, &descent, &lineGap);
+  float scale = stbtt_ScaleForPixelHeight(&shared->fontInfo, static_cast<float>(fontSize));
+  newSize.ascent = ascent * scale;
+  newSize.descent = descent * scale;
+
+  int spaceNewline = ascent - descent;
+
+  newSize.spaceSize.x = spaceAdvance * scale;
+  newSize.spaceSize.y = spaceNewline * scale;
+
+  shared->fontSizes[fontSize] = newSize;
+  return shared->fontSizes[fontSize];
 }
 
-const FontPage *FontMap::getPage(int codepoint) {
-  int pageIndex = codepoint / impl->pageSize;
-  int pageOffset = pageIndex * impl->pageSize;
-  auto it = impl->pages.lower_bound(pageIndex);
-  if (it != impl->pages.end() && it->first == pageIndex && codepoint < it->second.firstChar + it->second.numChars) {
+FontPage *FontSize::getPage(int codepoint) {
+  int pageIndex = codepoint / shared->defaultPageSize;
+  int pageOffset = pageIndex * shared->defaultPageSize;
+  auto it = pages.lower_bound(pageIndex);
+  if (it != pages.end() && it->first == pageIndex && codepoint < it->second.firstChar + it->second.numChars) {
     return &it->second;
   }
 
-  int currentPageSize = impl->pageSize;
+  int currentPageSize = shared->defaultPageSize;
   while (currentPageSize > 0) {
     try {
-      // Adjust pageOffset to ensure codepoint falls within the page
       pageOffset = (codepoint / currentPageSize) * currentPageSize;
       FontPage newPage = createPage(pageOffset, currentPageSize);
-      auto [it2, _] = impl->pages.emplace(pageIndex, std::move(newPage));
+      auto [it2, _] = pages.emplace(pageIndex, std::move(newPage));
       return &it2->second;
     } catch (const std::runtime_error &) {
       currentPageSize /= 2;
@@ -43,7 +77,7 @@ const FontPage *FontMap::getPage(int codepoint) {
   throw std::runtime_error("Failed to pack font - unable to create page with any size");
 }
 
-FontPage FontMap::createPage(int pageOffset, int pageSize) {
+FontPage FontSize::createPage(int pageOffset, int pageSize) {
   FontPage newPage;
   newPage.firstChar = pageOffset;
   newPage.numChars = pageSize;
@@ -54,7 +88,7 @@ FontPage FontMap::createPage(int pageOffset, int pageSize) {
   range.num_chars = newPage.numChars;
   newPage.charData.resize(range.num_chars);
   range.chardata_for_range = newPage.charData.data();
-  range.font_size = impl->fontSize;
+  range.font_size = static_cast<float>(fontSize);
 
   int2 res{256, 256};
   bool packed = false;
@@ -68,7 +102,7 @@ FontPage FontMap::createPage(int pageOffset, int pageSize) {
     stbtt_PackBegin(&pctx, singleChanMap.data(), res.x, res.y, res.x, 0, nullptr);
     pctx.padding = 1;
     pctx.skip_missing = true;
-    packed = stbtt_PackFontRanges2(&pctx, &impl->fontInfo, 0, &range, 1) != 0;
+    packed = stbtt_PackFontRanges2(&pctx, &shared->fontInfo, 0, &range, 1) != 0;
     stbtt_PackEnd(&pctx);
 
     if (!packed) {
@@ -107,40 +141,24 @@ FontPage FontMap::createPage(int pageOffset, int pageSize) {
           .addressModeU = WGPUAddressMode_ClampToEdge,
           .addressModeV = WGPUAddressMode_ClampToEdge,
           .addressModeW = WGPUAddressMode_ClampToEdge,
-          .filterMode = WGPUFilterMode_Nearest,
+          // .filterMode = WGPUFilterMode_Nearest,
+          .filterMode = WGPUFilterMode_Linear,
       });
 
   return newPage;
 }
 
-FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize, float fontSize) {
-  auto result = std::make_shared<FontMap>(pageSize, fontSize);
-  auto &impl = *result->impl;
+const FontPage *FontMap::getPage(int codepoint, uint32_t fontSize) {
+  FontSize &fontSizeData = getOrCreateFontSize(fontSize);
+  return fontSizeData.getPage(codepoint);
+}
 
-  impl.fontData.resize(size);
-  std::memcpy(impl.fontData.data(), data, size);
+FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize) {
+  auto result = std::make_shared<FontMap>(pageSize);
 
-  // Initialize the font info once and store it
-  if (!stbtt_InitFont(&impl.fontInfo, impl.fontData.data(), stbtt_GetFontOffsetForIndex(impl.fontData.data(), 0))) {
-    throw std::runtime_error("Failed to initialize font");
-  }
-
-  int spaceGlyphIndex = stbtt_FindGlyphIndex(&impl.fontInfo, ' ');
-  int spaceAdvance = 0;
-  stbtt_GetGlyphHMetrics(&impl.fontInfo, spaceGlyphIndex, &spaceAdvance, nullptr);
-
-  int ascent = 0;
-  int descent = 0;
-  int lineGap = 0;
-  stbtt_GetFontVMetrics(&impl.fontInfo, &ascent, &descent, &lineGap);
-  float scale = stbtt_ScaleForPixelHeight(&impl.fontInfo, fontSize);
-  result->ascent = ascent * scale;
-  result->descent = descent * scale;
-
-  int spaceNewline = ascent - descent;
-
-  result->spaceSize.x = spaceAdvance * scale;
-  result->spaceSize.y = spaceNewline * scale;
+  // Load the font data into a default size (e.g., 12) for initialization
+  result->shared->fontData.resize(size);
+  std::memcpy(result->shared->fontData.data(), data, size);
 
   return result;
 }

@@ -907,6 +907,15 @@ void validateConnection(InternalCompositionContext &ctx) {
     const auto msg =
         fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
                     ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
+#if _DEBUG
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      if (matchTypes(previousOutput, inputInfo, true, true, true)) {
+        inputMatches = true;
+        break;
+      }
+    }
+#endif
     throw ComposeError(msg);
   }
 
@@ -1102,6 +1111,13 @@ void validateConnection(InternalCompositionContext &ctx) {
     }
 
     if (!matching) {
+#if _DEBUG
+      auto exposedType = found->exposedType;
+      auto requiredType = required_param.exposedType;
+      if (matchTypes(exposedType, requiredType, false, true, false)) {
+        matching = true;
+      }
+#endif
       throw ComposeError(
           fmt::format("Required types do not match currently exposed ones for variable '{}' required type: (\"{}\", {})",
                       required.first, required.second.name, required.second.exposedType));

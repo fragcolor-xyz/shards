@@ -1,6 +1,7 @@
 #include "shapes.hpp"
 #include "linalg.h"
 #include "text.hpp"
+#include <gfx/screen_size.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/mesh_utils.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
@@ -462,19 +463,8 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
 
 float GizmoRenderer::getConstantScreenSize(float3 position, float size) const {
-  float4 projected = linalg::mul(view->view, float4(position, 1.0f));
-  projected /= projected.w;
-
-  float4x4 projMatrix = view->getProjectionMatrix(viewportSize);
-  float minPerspective = projMatrix[1][1];
-
-  // Scaling factor to make object 100% vertical size on screen
-  float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor1 = distanceFromCamera / minPerspective;
-
-  // Adjust for desired size
-  float yRatio = (size * this->scalingFactor) / viewportSize.y;
-  return scalingFactor1 * yRatio * 2.0f;
+  ScreenSizeHelper helper{*view, viewportSize, scalingFactor};
+  return helper.getConstantScreenSize(position, size);
 }
 
 GizmoRenderer::BillboardParams GizmoRenderer::getBillboard(float3 position) const {

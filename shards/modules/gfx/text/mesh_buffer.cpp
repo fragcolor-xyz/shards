@@ -24,7 +24,7 @@ FeaturePtr MeshBuffer::getTextFeature() {
   return feature;
 }
 
-void MeshBuffer::finalizeMeshes(std::vector<MeshTexturePair> &result) {
+void MeshBuffer::finalizeMeshes(std::vector<MeshTexturePair> &result, WindingOrder windingOrder) {
   for (auto &[texture, pb] : pageVertices) {
     if (pb.vertices.empty())
       continue;
@@ -33,7 +33,7 @@ void MeshBuffer::finalizeMeshes(std::vector<MeshTexturePair> &result) {
 
     MeshFormat fmt = {
         .primitiveType = PrimitiveType::TriangleList,
-        .windingOrder = WindingOrder::CW,
+        .windingOrder = windingOrder,
         .vertexAttributes = TextVertex::getAttributes(),
     };
 
