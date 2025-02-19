@@ -24,6 +24,7 @@ struct FontSize {
   float ascent;
   float descent;
   int2 spaceSize;
+  uint32_t glyphArea;
   uint32_t fontSize;
   // Shared data
   FontMapShared *shared;
