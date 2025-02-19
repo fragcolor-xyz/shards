@@ -3,9 +3,9 @@
 #include <gfx/isb.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/linalg.hpp>
+#include <gfx/fmt.hpp>
 #include <shards/core/assert.hpp>
-
-#include <brotli/decode.h>
+#include <bit>
 
 namespace gfx::text {
 
@@ -17,6 +17,8 @@ FontMap::FontMap(int defaultPageSize) {
 FontMap::~FontMap() { delete shared; }
 
 const FontSize &FontMap::getFontSize(uint32_t fontSize) { return getOrCreateFontSize(fontSize); }
+
+const float HeurPackingEfficiency = 0.75f;
 
 FontSize &FontMap::getOrCreateFontSize(uint32_t fontSize) {
   auto it = shared->fontSizes.find(fontSize);
@@ -49,20 +51,25 @@ FontSize &FontMap::getOrCreateFontSize(uint32_t fontSize) {
 
   newSize.spaceSize.x = spaceAdvance * scale;
   newSize.spaceSize.y = spaceNewline * scale;
+  newSize.glyphArea = newSize.spaceSize.x * newSize.spaceSize.y;
 
   shared->fontSizes[fontSize] = newSize;
   return shared->fontSizes[fontSize];
 }
 
 FontPage *FontSize::getPage(int codepoint) {
-  int pageIndex = codepoint / shared->defaultPageSize;
-  int pageOffset = pageIndex * shared->defaultPageSize;
+  // Guess the page size based on the font size and max dimension of 4096 x 4096
+  uint32_t guessedPageSize = (1024 * 1024 * HeurPackingEfficiency) / glyphArea;
+  guessedPageSize = 1 << (32 - std::countl_zero(guessedPageSize - 1) - 1);
+
+  int pageIndex = codepoint / guessedPageSize;
+  int pageOffset = pageIndex * guessedPageSize;
   auto it = pages.lower_bound(pageIndex);
   if (it != pages.end() && it->first == pageIndex && codepoint < it->second.firstChar + it->second.numChars) {
     return &it->second;
   }
 
-  int currentPageSize = shared->defaultPageSize;
+  int currentPageSize = guessedPageSize;
   while (currentPageSize > 0) {
     try {
       pageOffset = (codepoint / currentPageSize) * currentPageSize;
@@ -70,6 +77,8 @@ FontPage *FontSize::getPage(int codepoint) {
       auto [it2, _] = pages.emplace(pageIndex, std::move(newPage));
       return &it2->second;
     } catch (const std::runtime_error &) {
+      SPDLOG_LOGGER_DEBUG(getLogger(), "Packing font ({}, size {}) codepoints {}-{} ({} chars) failed", (void *)shared, fontSize,
+                          pageOffset, pageOffset + currentPageSize, currentPageSize);
       currentPageSize /= 2;
       continue;
     }
@@ -90,7 +99,11 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
   range.chardata_for_range = newPage.charData.data();
   range.font_size = static_cast<float>(fontSize);
 
-  int2 res{256, 256};
+  // Check how big one side of the image needs to be to fit all the glypths
+  uint32_t guessedSide = std::ceil(std::sqrt(glyphArea * pageSize / HeurPackingEfficiency));
+  guessedSide = std::min(4096u, 1u << (32 - std::countl_zero(guessedSide - 1)));
+
+  int2 res{int32_t(guessedSide), int32_t(guessedSide)};
   bool packed = false;
   uint32_t imageDataRowStride{};
   std::vector<uint8_t> imageData;
@@ -108,6 +121,8 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
     if (!packed) {
       res.x *= 2;
       res.y *= 2;
+      SPDLOG_LOGGER_DEBUG(getLogger(), "Packing font ({}, size {}) codepoints {}-{} ({} chars) failed, doubling resolution to {}",
+                          (void *)shared, fontSize, pageOffset, pageOffset + pageSize, res);
       continue;
     }
 
@@ -126,6 +141,9 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
   if (!packed) {
     throw std::runtime_error("Failed to pack font - texture too large");
   }
+
+  SPDLOG_LOGGER_DEBUG(getLogger(), "Packed font ({}, size {}) codepoints {}-{} ({} chars) into {} texture", (void *)shared,
+                      fontSize, pageOffset, pageOffset + pageSize, pageSize, res);
 
   newPage.image = std::make_shared<Texture>();
   TextureDesc textureDesc{.format = TextureFormat{.pixelFormat = WGPUTextureFormat_RGBA8Unorm},
