@@ -684,6 +684,21 @@ struct Server {
     if (_pool)
       _pool->stopAll();
 
+    // Close acceptor first to stop accepting new connections
+    if (_acceptor) {
+      beast::error_code ec;
+      if (_acceptor->close(ec)) {
+        SHLOG_ERROR("Error closing acceptor: {}", ec.message());
+      }
+      _acceptor.reset();
+    }
+
+    // Stop and reset io_context
+    if (_ioc) {
+      _ioc->stop();
+      _ioc.reset();
+    }
+
     _port.cleanup(context);
     _is_running = false;
   }
