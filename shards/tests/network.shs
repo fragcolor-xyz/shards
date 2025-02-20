@@ -52,9 +52,9 @@
   } {Stop})
 } Looped: true)
 
-@define(tick-count 1000)
+@define(tick-count 2000)
 @define(tick-count-1 #(@tick-count | Sub(1)))
-@define(tick-dur #(10.0 | Div(#(@tick-count ToFloat))))
+@define(tick-dur #(25.0 | Div(#(@tick-count ToFloat))))
 @wire(test-assert {
   false | Set(test/client-init-success Global: true) | Log("Client init success Set")
   false | Set(test/client-received-smaller Global: true) | Log("Client received smaller Set")
@@ -63,7 +63,7 @@
   ForRange(1 @tick-count-1 {
     Pause(0.0)
   })
-  Log("Checking conditions")
+  Msg("Checking conditions")
   test/client-init-success | Log("client-init-success") | Assert.Is(true)
   test/server-received-end | Log("server-received-end") | Assert.Is(true)
   test/client-received-smaller | Log("client-received-smaller") | Assert.Is(true)
