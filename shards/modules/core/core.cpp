@@ -3049,6 +3049,92 @@ struct Once {
   }
 };
 
+struct GlobalOnce {
+  ShardsVar _blks;
+  ExposedInfo _requiredInfo{};
+  SHComposeResult _validation{};
+  Shard *self{nullptr};
+
+  void cleanup(SHContext *context) {
+    _blks.cleanup(context);
+    if (self)
+      self->inlineShardId = InlineShard::NotInline;
+  }
+
+  void warmup(SHContext *ctx) { _blks.warmup(ctx); }
+
+  static inline Parameters params{
+      {"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
+  };
+
+  static SHOptionalString help() {
+    return SHCCSTR("Executes the shard or sequence of shards only once per mesh global execution.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _blks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blks;
+    default:
+      break;
+    }
+    throw SHException("Parameter out of range.");
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredInfo.clear();
+
+    self = data.shard;
+
+    _validation = _blks.compose(data);
+
+    return data.inputType;
+  }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
+  SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  struct OnceFlag {
+    bool done = false;
+  };
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto mesh = context->main->mesh.lock();
+    auto actionHash = shards::hash(_blks);
+    auto storageKey = fmt::format("GlobalOnce_{}", actionHash);
+    auto action = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return OnceFlag(); });
+    SHVar output{};
+
+    if (action->done) {
+      goto global_once_done;
+    }
+
+    _blks.activate(context, input, output);
+
+  global_once_done:
+    action->done = true;
+    // let's cheat in this case and stop triggering this call
+    shassert(self != nullptr && "self is null");
+    self->inlineShardId = InlineShard::NoopShard;
+  }
+};
+
 struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
   static SHOptionalString help() {
     return SHCCSTR("This shard is a \"no operation\" shard. It simply passes through the input without modifying it.");
@@ -3136,6 +3222,7 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Reduce", Reduce);
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
+  REGISTER_SHARD("GlobalOnce", GlobalOnce);
   REGISTER_SHARD("Table", TableDecl);
 
   REGISTER_SHARD("Pause", Pause);

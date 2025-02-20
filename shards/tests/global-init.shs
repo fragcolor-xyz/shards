@@ -1,0 +1,23 @@
+; global cache script
+
+@define(cache/setup {
+  GlobalOnce({
+    "This is my cached variable" | Set(cache/var1 Global: true)
+    Msg("cache/setup done")
+  })
+})
+
+; another script that references the cache
+
+@wire(whatever-behavior {
+  @cache/setup
+  cache/var1 | Log
+} Looped: true)
+
+@wire(test {
+  Repeat({none | Spawn(whatever-behavior) | Log("spawn")} Times: 5)
+})
+
+@mesh(root)
+@schedule(root test)
+@run(root 0.01 10)
