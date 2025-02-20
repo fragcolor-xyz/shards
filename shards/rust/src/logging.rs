@@ -1,6 +1,7 @@
 use crate::SHStringWithLen;
 use std::os::raw::{c_char, c_int};
 
+#[cfg(not(feature = "dllshard"))]
 extern "C" {
   fn shards_log(
     level: c_int,
@@ -11,6 +12,7 @@ extern "C" {
   );
 }
 
+#[cfg(not(feature = "dllshard"))]
 #[inline(always)]
 pub fn log(s: &str, file: &str, function: &str, line: u32) {
   unsafe {
@@ -28,6 +30,13 @@ pub fn log(s: &str, file: &str, function: &str, line: u32) {
   }
 }
 
+#[cfg(feature = "dllshard")]
+#[inline(always)]
+pub fn log(s: &str, _file: &str, _function: &str, _line: u32) {
+  crate::core::logRaw(s);
+}
+
+#[cfg(not(feature = "dllshard"))]
 #[inline(always)]
 pub fn log_level(level: i32, s: &str, file: &str, function: &str, line: u32) {
   unsafe {
@@ -43,6 +52,12 @@ pub fn log_level(level: i32, s: &str, file: &str, function: &str, line: u32) {
       line as c_int,
     );
   }
+}
+
+#[cfg(feature = "dllshard")]
+#[inline(always)]
+pub fn log_level(level: i32, s: &str, _file: &str, _function: &str, _line: u32) {
+  crate::core::logRawLevel(level, s);
 }
 
 #[macro_export]

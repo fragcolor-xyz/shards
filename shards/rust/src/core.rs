@@ -279,6 +279,28 @@ pub fn destroyVar(v: &mut Var) {
   }
 }
 
+#[inline(always)]
+pub fn logRaw(msg: &str) {
+  let msg = SHStringWithLen {
+    string: msg.as_ptr() as *const c_char,
+    len: msg.len() as u64,
+  };
+  unsafe {
+    (*Core).log.unwrap_unchecked()(msg);
+  }
+}
+
+#[inline(always)]
+pub fn logRawLevel(level: i32, msg: &str) {
+  let msg = SHStringWithLen {
+    string: msg.as_ptr() as *const c_char,
+    len: msg.len() as u64,
+  };
+  unsafe {
+    (*Core).logLevel.unwrap_unchecked()(level, msg);
+  }
+}
+
 pub fn readCachedString(id: u32) -> &'static str {
   unsafe {
     let s = (*Core).readCachedString.unwrap_unchecked()(id);
