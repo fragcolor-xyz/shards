@@ -6,7 +6,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn generate_shardsc() {
-  let shards_dir = "../..";
+  let shards_dir = env::var("SHARDS_SRC_PATH").unwrap_or("../..".to_string());
   let shards_include_dir = format!("{}/include", shards_dir);
   let main_header_path = format!("{}/shards/shards.h", shards_include_dir);
 
