@@ -63,10 +63,9 @@ struct ShardsRenderer {
     _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
   }
 
-
-  void initRenderer(void* nativeSurfaceHandle) {
+  void initRenderer(void *nativeSurfaceHandle) {
     ContextCreationOptions contextOptions = {
-      .overrideNativeWindowHandle = nativeSurfaceHandle,
+        .overrideNativeWindowHandle = nativeSurfaceHandle,
     };
     _graphicsContext.context = std::make_shared<Context>();
     _graphicsContext.context->init(contextOptions);
@@ -129,7 +128,7 @@ struct ShardsRenderer {
 private:
   bool begin(SHContext *shContext) {
     auto &window = _graphicsContext.window;
-    if (!window->isInitialized()) {
+    if (window && !window->isInitialized()) {
       SHLOG_WARNING("Failed to render to surface, window is closed. Frame skipped.");
       return false;
     }
@@ -137,12 +136,14 @@ private:
     auto &renderer = _graphicsRendererContext.renderer;
     auto &context = _graphicsContext.context;
 
-    gfx::int2 windowSize = window->getDrawableSize();
-    try {
-      shards::callOnMeshThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
-    } catch (std::exception &err) {
-      SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
-      return false;
+    if (!context->isHeadless()) {
+      int2 mainOutputSize = context->getRequestedMainOutputSize();
+      try {
+        shards::callOnMeshThread(shContext, [&] { context->resizeMainOutputConditional(mainOutputSize); });
+      } catch (std::exception &err) {
+        SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
+        return false;
+      }
     }
 
     double deltaTime = 0.0;
@@ -159,8 +160,8 @@ private:
 
     return false;
   }
-  public:
 
+public:
   void end() { endFrame(_graphicsContext); }
 };
 } // namespace gfx

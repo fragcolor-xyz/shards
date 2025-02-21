@@ -367,8 +367,8 @@ void Context::init(Window &window, const ContextCreationOptions &inOptions) {
 
 void Context::init(const ContextCreationOptions &inOptions) {
   options = inOptions;
-  if (inOptions.overrideNativeWindowHandle) {
-    mainOutput = std::make_shared<ContextMainOutput>(nullptr, onFlushTextureReferences);
+  if (inOptions.overrideNativeWindowHandle) { 
+    mainOutput = std::make_shared<ContextMainOutput>(inOptions.overrideNativeWindowHandle, onFlushTextureReferences);
   }
 
   initCommon();
@@ -429,6 +429,11 @@ void Context::release() {
 Window &Context::getWindow() {
   shassert(mainOutput);
   return *mainOutput->window;
+}
+
+int2 Context::getRequestedMainOutputSize() const {
+  shassert(mainOutput);
+  return mainOutput->getDrawableSize();
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {

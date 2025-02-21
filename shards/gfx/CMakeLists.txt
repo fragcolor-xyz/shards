@@ -157,7 +157,7 @@ target_link_libraries(gfx-core INTERFACE gfx-core-obj)
 # Define the gfx library target that combines core and the rust side
 add_library(gfx INTERFACE)
 
-if(APPLE)
+if(IOS)
   # Build swift sources
   add_library(gfx-swift gfx.swift)
   target_link_libraries(gfx-core INTERFACE gfx-swift)
