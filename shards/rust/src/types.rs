@@ -4828,6 +4828,14 @@ impl Drop for ShardsVar {
   }
 }
 
+impl Clone for ShardsVar {
+  fn clone(&self) -> Self {
+    let mut c = ShardsVar::default();
+    c.set_param(&self.param.0).unwrap();
+    c
+  }
+}
+
 unsafe extern "C" fn shardsvar_compose_cb(
   errorShard: *const Shard,
   errorTxt: SHStringWithLen,

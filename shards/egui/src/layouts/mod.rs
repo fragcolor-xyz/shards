@@ -3,6 +3,7 @@
 
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
@@ -306,11 +307,13 @@ mod separator;
 mod sized;
 mod space;
 mod table;
+mod table2;
 mod vertical;
 
 pub fn register_shards() {
   auto_grid::register_shards();
   layout::register_shards();
+  table2::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();
