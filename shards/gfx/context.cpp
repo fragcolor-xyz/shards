@@ -167,7 +167,7 @@ struct ContextMainOutput {
   bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
     shassert(!wgpuCurrentTexture);
 
-    int2 drawableSize = window->getDrawableSize();
+    int2 drawableSize = getDrawableSize();
     if (drawableSize != currentSize) {
       resizeSwapchain(device, adapter, drawableSize);
     }
@@ -217,7 +217,7 @@ struct ContextMainOutput {
   }
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
-    int2 mainOutputSize = window->getDrawableSize();
+    int2 mainOutputSize = getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
