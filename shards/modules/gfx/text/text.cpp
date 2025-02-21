@@ -267,7 +267,6 @@ struct DynamicDrawTextStringWorldSpaceShard : public DynamicDrawTextShardBase {
     auto &viewSize = (padded::Int2 &)_viewSize.get();
 
     gfx::ScreenSizeHelper helper{*view.view.get(), float2(*viewSize), scale};
-    // float autoScale = helper.getConstantScreenSize(offset, 1.0f);
 
     float pixelSpan = helper.getLineSegmentPixelSpan(offset, *up * worldSize);
 
