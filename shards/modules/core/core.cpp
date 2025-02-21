@@ -3059,6 +3059,12 @@ struct GlobalOnce {
     _blks.cleanup(context);
     if (self)
       self->inlineShardId = InlineShard::NotInline;
+
+    if (referenceCount) {
+      (*referenceCount)--;
+      shassert(*referenceCount >= 0 && "reference count is negative");
+      referenceCount.reset();
+    }
   }
 
   void warmup(SHContext *ctx) { _blks.warmup(ctx); }
@@ -3110,25 +3116,25 @@ struct GlobalOnce {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
   SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
-  struct OnceFlag {
-    bool done = false;
-  };
+  std::shared_ptr<uint64_t> referenceCount;
 
   void activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
     auto actionHash = shards::hash(_blks);
     auto storageKey = fmt::format("GlobalOnce_{}", actionHash);
-    auto action = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return OnceFlag(); });
+    auto refCount = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return std::make_shared<uint64_t>(0); });
     SHVar output{};
 
-    if (action->done) {
+    (*refCount->get())++;
+
+    // if we have more than one reference, we don't need to activate
+    if (*(refCount->get()) > 1) {
       goto global_once_done;
     }
 
     _blks.activate(context, input, output);
 
   global_once_done:
-    action->done = true;
     // let's cheat in this case and stop triggering this call
     shassert(self != nullptr && "self is null");
     self->inlineShardId = InlineShard::NoopShard;
