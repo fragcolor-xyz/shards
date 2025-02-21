@@ -6,6 +6,8 @@
 
 namespace shards {
 struct TypeMatcher {
+  // This will automatically allow extra keys in the input table
+  // e.g. Input type {a: Int b: Float} will match against receiver type {a: Int}
   bool isParameter = true;
   bool strict = true;
   bool relaxEmptyTableCheck = true;
@@ -153,7 +155,7 @@ struct TypeMatcher {
           bool ignoreExtra = isParameter;
 
           // If we need a 1:1 match in this case, fail early
-          if (!ignoreExtra && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
+          if (!lastElementEmpty && !ignoreExtra && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
             return false;
           }
 
