@@ -490,7 +490,7 @@ struct FontSpaceSizeShard {
   static SHOptionalString inputHelp() { return SHCCSTR("The FontMap object."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The monospace character size as a float2."); }
 
-  PARAM_PARAMVAR(_fontSize, "Font Size", "The font size to use", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_fontSize, "FontSize", "The font size to use", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_fontSize))
 
   PARAM_REQUIRED_VARIABLES();
