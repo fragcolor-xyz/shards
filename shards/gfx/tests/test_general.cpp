@@ -158,7 +158,7 @@ TEST_CASE("Vertex storage formats", "[General]") {
 
   ViewPtr view = std::make_shared<View>();
   view->proj = ViewOrthographicProjection{
-      .size = spacing * 3.0f + 0.2f,
+      .size = float2(spacing * 3.0f + 0.2f),
       .sizeType = OrthographicSizeType::Vertical,
       .near = -4.0f,
       .far = 4.0f,
@@ -229,7 +229,7 @@ TEST_CASE("Pipeline states", "[General]") {
 
   ViewPtr view = std::make_shared<View>();
   view->proj = ViewOrthographicProjection{
-      .size = 2.0f,
+      .size = float2(2.0f),
       .sizeType = OrthographicSizeType::Horizontal,
       .near = 0.0f,
       .far = 4.0f,
@@ -332,7 +332,7 @@ TEST_CASE("Textures", "[General]") {
 
   ViewPtr view = std::make_shared<View>();
   view->proj = ViewOrthographicProjection{
-      .size = 2.0f,
+      .size = float2(2.0f),
       .near = -10.0f,
       .far = 10.0f,
   };

@@ -1,4 +1,6 @@
 ; Font from: https://int10h.org/blog/2015/12/bigblue-terminal-oldschool-fixed-width-font/
 
-"BigBlue_TerminalPlus.TTF" | FS.Read(Bytes:true) = src
-"BigBlue_TerminalPlus.bin" FS.Write((src Brotli.Compress) Overwrite: true)
+@define(font-name "Px437_IBM_EGA_8x8.ttf" IgnoreRedefined: true)
+
+@font-name | FS.Read(Bytes: true) = src
+[(@font-name | FS.Filename(true)) ".bin"] | String.Format | FS.Write((src | Brotli.Compress) Overwrite: true)

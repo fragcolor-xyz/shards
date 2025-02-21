@@ -25,10 +25,6 @@ set(SOURCES
   gizmos/highlight.cpp
   gizmos/shapes.cpp
   text/text.cpp
-  text/mesh_buffer.cpp
-  text/font.cpp
-  text/text_placer.cpp
-  text/stb_fonts.cpp
 )
 
 if(HAS_WGPU_NATIVE)

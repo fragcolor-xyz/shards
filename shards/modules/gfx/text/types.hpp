@@ -1,8 +1,8 @@
 #ifndef SHARDS_GFX_TEXT_TYPES_HPP
 #define SHARDS_GFX_TEXT_TYPES_HPP
 
-#include "font.hpp"
-#include "mesh_buffer.hpp"
+#include <gfx/text/font.hpp>
+#include <gfx/text/mesh_buffer.hpp>
 #include <gfx/mesh.hpp>
 #include <shards/core/foundation.hpp>
 #include <gfx/linalg.hpp>

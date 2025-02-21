@@ -42,6 +42,10 @@ set(GFX_SOURCES
   pipeline_step.cpp
   pipeline_hashes.cpp
   unique_id.cpp
+  text/font.cpp
+  text/stb_fonts.cpp
+  text/text_placer.cpp  
+  text/mesh_buffer.cpp
 )
 
 if(EMSCRIPTEN)
