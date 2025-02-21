@@ -8,10 +8,13 @@ function(setup_shards_target TARGET)
   endif()
 
   if(APPLE)
-    target_link_libraries(${TARGET} shards-core shards_core_swift)
-  else()
-    target_link_libraries(${TARGET} shards-core)
+    get_property(swift_modules GLOBAL PROPERTY SHARDS_SWIFT_MODULES)
+    foreach(module ${swift_modules})
+      target_link_libraries(${TARGET} ${module})
+    endforeach()
   endif()
+
+  target_link_libraries(${TARGET} shards-core)
 
   set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 
