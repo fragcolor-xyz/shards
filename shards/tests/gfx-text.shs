@@ -54,7 +54,7 @@
   @gfx/hsl-to-rgb(h 0.85 0.5) = color
   @gfx/color-to-float4-with-alpha(color 1.0) = color-4
   
-  str | GFX.TextPlacement(font) | Take(0) | @adjust-tile(@i2(test-x test-y) color-4) | @insert-tile(tile-map)
+  str | GFX.TextPlacement(font FontSize: font-size) | Take(0) | @adjust-tile(@i2(test-x test-y) color-4) | @insert-tile(tile-map)
 })
 
 @wire(test-wire {
@@ -70,7 +70,7 @@
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
     
-    32.0 >= font-size
+    32 >= font-size
     Table(tile-map Type: @type({none: @placement-type}))
     
     0 >= refresh-trigger
@@ -98,8 +98,8 @@
     Log("Selected font")
     [base-path selected-font] | FS.Join | FS.Read(Bytes: true) = font-data
     font-size | Log("Font size")
-    font-data | GFX.FontMap(Size: font-size) = font
-    GFX.FontSpaceSize = space-size
+    font-data | GFX.FontMap = font
+    GFX.FontSpaceSize(font-size) = space-size
     Log("Font spacing")
     {Take(0) = space-size-x}
     {Take(1) = space-size-y}
@@ -142,7 +142,7 @@
         "Font:" | UI.Label
         font-list | UI.Combo(Label: "Select Font" Index: font-index)
         "Font Size:" | UI.Label
-        UI.FloatSlider(Variable: font-size Min: 8.0 Max: 72.0)
+        UI.IntSlider(Variable: font-size Min: 8 Max: 72)
         "Anim Rate:" | UI.Label
         UI.FloatSlider(Variable: global-anim-rate Min: 0.01 Max: 10.0)
         "Num Wires:" | UI.Label
@@ -167,7 +167,7 @@
       }
       coord:0 = coord-x
       coord:1 = coord-y
-      [placement] | GFX.DynDrawText(
+      [placement] | GFX.DynDrawTextPlacement(
         Output: dmesh
         Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(space-size-f3))
         Scale: 1.0
@@ -187,4 +187,4 @@
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 60) | Assert.Is(true)
+@run(root FPS: 60 Iterations: 100) | Assert.Is(true)
