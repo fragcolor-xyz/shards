@@ -1,26 +1,5 @@
-@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap(1.0) = f | "" | GFX.TextPlacement(f) | Take(0)})))
+@define(placement-type #(TypeOf({[] | ToBytes | GFX.FontMap = f | "" | GFX.TextPlacement(f) | Take(0)})))
 @include("../../lib/gfx/pixel.shs")
-
-; @wire(random-thing {
-; refresh-trigger | Memoize({
-;   RandomInt >= test-idx
-;   RandomInt((Count(char-set))) = char-idx
-;   char-set | Take(char-idx) = codepoint
-;   [codepoint] | String.FromCodePoints = str
-
-;   RandomFloat(0.1) | Add(0.05) = dur
-; })
-
-; Animation.Timer(Duration: dur Rate: global-anim-rate Action: {
-;   test-idx | Add(1)
-;   Math.Mod((dim-x | Mul(dim-y))) > test-idx
-; })
-
-; test-idx | Math.Divide(dim-x) = test-y
-; test-idx | Math.Mod(dim-x) = test-x
-
-; str | GFX.TextPlacement(font) | Take(0) | @adjust-coord(@i2(test-x test-y)) | @insert-tile(tile-map)
-; })
 
 @wire(test-wire {
   Once({
@@ -35,10 +14,7 @@
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
     
-    ; Create view
-    ; {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
-    
-    32.0 >= font-size
+    32 >= font-size
     Table(tile-map Type: @type({none: @placement-type}))
     
     0 >= refresh-trigger
@@ -65,8 +41,8 @@
     Log("Selected font")
     ["data/fonts/" selected-font] | String.Format | FS.Read(Bytes: true) = font-data
     font-size | Log("Font size")
-    font-data | GFX.FontMap(Size: font-size) = font
-    GFX.FontSpaceSize = space-size
+    font-data | GFX.FontMap = font
+    GFX.FontSpaceSize(font-size) = space-size
     Log("Font spacing")
     {Take(0) = space-size-x}
     {Take(1) = space-size-y}
@@ -94,7 +70,7 @@
         "Font:" | UI.Label
         font-list | UI.Combo(Label: "Select Font" Index: font-index)
         "Font Size:" | UI.Label
-        UI.FloatSlider(Variable: font-size Min: 8.0 Max: 72.0)
+        UI.IntSlider(Variable: font-size Min: 8 Max: 72)
         "Vertical Align:" | UI.Label
         UI.FloatSlider(Variable: valign Min: -1.0 Max: 1.0)
         "Horizontal Align:" | UI.Label
@@ -116,8 +92,8 @@
     )
     
     GFX.DynMesh = dmesh
-    "Hello world!" | GFX.DynDrawText(Output: dmesh Font: font Offset: @f3(base-x base-y 0.0) VAlign: valign)
-    "Hello world! (w. HAlign)" | GFX.DynDrawText(Output: dmesh Font: font Offset: @f3(base-x-2 base-y-2 0.0) VAlign: valign HAlign: halign)
+    "Hello world!" | GFX.DynDrawText(Output: dmesh Font: font FontSize: font-size Offset: @f3(base-x base-y 0.0) VAlign: valign)
+    "Hello world! (w. HAlign)" | GFX.DynDrawText(Output: dmesh Font: font FontSize: font-size Offset: @f3(base-x-2 base-y-2 0.0) VAlign: valign HAlign: halign)
     
     ; Draw the generated mesh
     dmesh | GFX.DynToMesh | DoMany({
@@ -131,4 +107,4 @@
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 60) | Assert.Is(true)
+@run(root FPS: 60 Iterations: 100) | Assert.Is(true)

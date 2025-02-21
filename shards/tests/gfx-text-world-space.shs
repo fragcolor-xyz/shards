@@ -1,4 +1,5 @@
 @include("../../lib/gfx/fbl-shared.shs")
+@define(free-camera "false" IgnoreRedefined: true)
 
 @wire(test-wire {
   Once({
@@ -59,11 +60,13 @@
     view-mats | Take(view-idx) >= view-mat
     
     ; Optional: free camera    
-    Once({
-      TargetCamera.FromLookAt(Position: @f3(0 5.0 5.0) Target: @f3(0 1.5 0)) >= target-camera
+    When({@free-camera | IsNot("false")} {
+      Once({
+        TargetCamera.FromLookAt(Position: @f3(0 5.0 5.0) Target: @f3(0 1.5 0)) >= target-camera
+      })
+      target-camera | TargetCamera > target-camera
+      TargetCamera.Matrix > view-mat
     })
-    target-camera | TargetCamera > target-camera
-    TargetCamera.Matrix > view-mat
     
     GFX.View(view-mat) = view
     view-mat | Memoize({
@@ -100,4 +103,4 @@
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 60) | Assert.Is(true)
+@run(root FPS: 60 Iterations: 600) | Assert.Is(true)
