@@ -1,5 +1,7 @@
 ; === BEGIN SHARDS COMMON ===
 
+@include("./colors.shs")
+
 @define(pi 3.141592653589)
 @define(pi2 #(@pi | Math.Multiply(2.0)))
 @define(pid2 #(@pi | Math.Divide(2.0)))
