@@ -6,7 +6,7 @@
 #include <shards/modules/gfx/shards_types.hpp>
 #include <shards/linalg_shim.hpp>
 #include <gfx/screen_size.hpp>
-#include "mesh_buffer.hpp"
+#include <gfx/text/mesh_buffer.hpp>
 
 namespace gfx::text {
 using namespace shards;
