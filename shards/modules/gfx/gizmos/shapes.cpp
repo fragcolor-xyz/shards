@@ -635,6 +635,59 @@ struct ScreenScale : public Base {
   }
 };
 
+struct TextShard : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws text"); }
+
+  PARAM_PARAMVAR(_text, "Text", "The text to draw", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_position, "Position", "Position of the text", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_color, "Color", "Color of the text", {CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
+  PARAM_PARAMVAR(_size, "Size", "Size of the text", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_align, "Align", "Alignment of the text (x,y)", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_text), PARAM_IMPL_FOR(_position), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_size),
+             PARAM_IMPL_FOR(_align));
+
+  TextShard() {
+    _align = toVar(float2(0.0f, -0.5f));
+    _size = Var(1.0f);
+    _color = toVar(float4(1.0f, 1.0f, 1.0f, 1.0f));
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
+
+    if (_text->valueType == SHType::None)
+      throw ComposeError("Text is required");
+    if (_position->valueType == SHType::None)
+      throw ComposeError("Position is required");
+
+    return shards::CoreInfo::NoneType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
+    auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
+    auto params = gizmoRenderer.getBillboard(toFloat3(_position.get()));
+
+    shapeRenderer.addText(*(Vec3&)(_position.get()), params.x, params.y, float((Var &)_size.get()), SHSTRVIEW(_text.get()),
+                          *(Vec4&)(_color.get()), float2(*(Vec2&)(_align.get())));
+
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    baseWarmup(context);
+    PARAM_WARMUP(context);
+  }
+
+  void cleanup(SHContext *context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
+  }
+};
+
 void registerShapeShards() {
   REGISTER_SHARD("Gizmos.ScreenScale", ScreenScale);
   REGISTER_SHARD("Gizmos.ScreenXY", ScreenXY);
@@ -647,6 +700,7 @@ void registerShapeShards() {
   REGISTER_SHARD("Gizmos.Disc", DiscShard);
   REGISTER_SHARD("Gizmos.Grid", GridShard);
   REGISTER_SHARD("Gizmos.RefspaceGridOverlay", RefSpaceGridOverlayShard);
+  REGISTER_SHARD("Gizmos.Text", TextShard);
 }
 } // namespace Gizmos
 } // namespace shards

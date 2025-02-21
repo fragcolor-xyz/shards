@@ -4,6 +4,7 @@
 #include <shards/gfx/fwd.hpp>
 #include <stb_truetype.h>
 #include <gfx/linalg.hpp>
+#include <gfx/gfx_wgpu.hpp>
 #include <optional>
 #include <map>
 
@@ -45,19 +46,20 @@ struct FontMapShared {
   std::unordered_map<uint32_t, FontSize> fontSizes;
   // Default size of character pages
   size_t defaultPageSize;
+  WGPUFilterMode filterMode;
 };
 
 struct FontMap {
   using Ptr = std::shared_ptr<FontMap>;
 
-  FontMap(int defaultPageSize = 512);
+  FontMap(int defaultPageSize = 512, WGPUFilterMode filterMode = WGPUFilterMode_Linear);
   ~FontMap();
 
   const FontPage *getPage(int codepoint, uint32_t fontSize);
   const FontSize &getFontSize(uint32_t fontSize);
 
   static FontMap::Ptr getDefault();
-  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512);
+  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512, WGPUFilterMode filterMode = WGPUFilterMode_Linear);
 
 private:
   FontSize &getOrCreateFontSize(uint32_t fontSize);

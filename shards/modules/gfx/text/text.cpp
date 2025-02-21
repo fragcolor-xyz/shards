@@ -45,9 +45,13 @@ struct FontMapShard {
   static SHOptionalString inputHelp() { return SHCCSTR("The font data as a byte array."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The created font map object."); }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_filterMode, "FilterMode", "The filter mode to use for the font map",
+                 {ShardsTypes::TextureFilteringEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFilteringEnumInfo::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filterMode));
 
   SHFontMap *_fontMap{};
+
+  FontMapShard() { _filterMode = Var::Enum(WGPUFilterMode::WGPUFilterMode_Nearest, ShardsTypes::TextureFilteringEnumInfo::Type); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -59,7 +63,8 @@ struct FontMapShard {
     const uint32_t pageSize = 128;
 
     // Create font map from input bytes
-    _fontMap->fontMap = FontMap::load(input.payload.bytesValue, input.payload.bytesSize, pageSize);
+    auto filterMode = (WGPUFilterMode)_filterMode.get().payload.enumValue;
+    _fontMap->fontMap = FontMap::load(input.payload.bytesValue, input.payload.bytesSize, pageSize, filterMode);
 
     return SHFontMap::ObjectVar.Get(_fontMap);
   }
@@ -275,8 +280,8 @@ struct DynamicDrawTextStringWorldSpaceShard : public DynamicDrawTextShardBase {
     constexpr int numLevels = 128;
     constexpr float invNumLevels = 1.0f / numLevels;
     static float logRange = std::log2(float(maxSize));
-    float logScale = std::log2(pixelSpan) / logRange;                                                  // Map range to 0-1
-    float quantized = std::floor(logScale * numLevels) * invNumLevels;                                 // Quantize to levels
+    float logScale = std::log2(pixelSpan) / logRange;                                         // Map range to 0-1
+    float quantized = std::floor(logScale * numLevels) * invNumLevels;                        // Quantize to levels
     int32_t fontSize = std::clamp(int32_t(std::pow(2.0f, quantized * logRange)), 4, maxSize); // Map back to range
 
     // Scale to adjust the font to fit in the desired world size, and combined with user size
