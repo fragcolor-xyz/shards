@@ -161,7 +161,8 @@ if(APPLE)
   # Build swift sources
   add_library(gfx-swift gfx.swift)
   set_property(TARGET gfx-swift PROPERTY Swift_MODULE_NAME gfx_swift)
-  set_property(GLOBAL APPEND PROPERTY SHARDS_SWIFT_MODULES gfx-swift)
+  target_link_libraries(gfx-core INTERFACE $<TARGET_FILE:gfx-swift>)
+  add_dependencies(gfx-core gfx-swift)
 endif()
 
 if(HAS_WGPU_NATIVE)

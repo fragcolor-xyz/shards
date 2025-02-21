@@ -20,6 +20,10 @@ add_executable(test-gfx
   test_leaks.cpp
 )
 
+if(APPLE)
+  set_property(TARGET test-gfx PROPERTY Swift_MODULE_NAME test_gfx)
+endif()
+
 if(EMSCRIPTEN)
   target_link_options(test-gfx PRIVATE --emrun)
 endif()
