@@ -157,6 +157,12 @@ target_link_libraries(gfx-core INTERFACE gfx-core-obj)
 # Define the gfx library target that combines core and the rust side
 add_library(gfx INTERFACE)
 
+if(APPLE)
+  # Build swift sources
+  add_library(gfx-swift gfx.swift)
+  target_link_libraries(gfx-core INTERFACE gfx-swift)
+endif()
+
 if(HAS_WGPU_NATIVE)
   # Set GFX_WGPU_TRACE_PATH to the trace path to enable
   if(GFX_WGPU_TRACE_PATH)

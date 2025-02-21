@@ -337,6 +337,17 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
+    public var wire: SHWireRef {
+        get {
+            assert(type == .Wire, "Wire variable expected!")
+            return payload.wireValue
+        }
+        set {
+            assert(type == .Wire, "Wire variable expected!")
+            payload.wireValue = newValue
+        }
+    }
+
     init(x: Int64, y: Int64) {
         var v = SHVar()
         v.valueType = Int2
@@ -363,6 +374,15 @@ extension SHVar: CustomStringConvertible {
         v.valueType = Float
         v.payload.floatValue = SHFloat(value)
         self = v
+    }
+
+    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer) -> SHVar {
+        var v = SHVar()
+        v.valueType = Object
+        v.payload.objectVendorId = vendorId
+        v.payload.objectTypeId = typeId
+        v.payload.objectValue = value
+        return v
     }
 
     public var float: Float {
