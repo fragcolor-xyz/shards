@@ -52,7 +52,7 @@ struct DebugRenderer : public JPH::DebugRenderer {
   void DrawText3D(JPH::RVec3Arg inPosition, const std::string_view &inString, JPH::ColorArg inColor = JPH::Color::sWhite,
                   float inHeight = 0.5f) override {
     float autoSize = gizmoRenderer->getConstantScreenSize(toLinalg(inPosition), inHeight * 14.0f * 5.0f);
-    gizmoRenderer->addTextBillboard(toLinalg(inPosition), inString, toLinalgLinearColor(inColor), autoSize, true);
+    gizmoRenderer->addTextBillboard(toLinalg(inPosition), inString, toLinalgLinearColor(inColor), autoSize, float2(0.5f, 0.5f));
   }
 
   Batch CreateTriangleBatch(const Triangle *inTriangles, int inTriangleCount) override {

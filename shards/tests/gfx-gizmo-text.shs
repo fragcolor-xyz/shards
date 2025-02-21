@@ -1,0 +1,44 @@
+@mesh(root)
+@wire(test-wire {
+  Once({
+    GFX.DrawQueue >= editor-queue
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::AlphaBlend) >> features
+    
+    GFX.DrawablePass(Features: features Queue: editor-queue) >> render-steps
+    
+    ; Create view
+    {Position: @f3(3 8 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    GFX.View(View: view-transform) >= view
+  })
+  ; End setup
+  GFX.MainWindow(
+    Title: "Shards Window" Width: 1280 Height: 720
+    Contents: {
+      Animation.Timer = time
+      
+      ; Draw helpers (using scene depth)
+      ; Provides a context for rendering gizmos
+      Gizmos.Context(Queue: editor-queue View: view
+        Contents: {
+          Gizmos.Grid(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 1.5)
+          Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
+          
+          @f3(1 0 0) >= xbase
+          @f3(0 1 0) >= ybase
+          
+          Gizmos.Text("Hello World" @f3(0 0 0) Size: 0.2 Color: @f4(1 1 1 1))
+          Gizmos.Text("Hello World" @f3(0 0.5 0) Size: 0.2 Color: @f4(1 1 1 1) Align: @f2(0.5 0.0))
+          Gizmos.Text("@" @f3(3 0.0 0) Size: 0.2 Color: @f4(1 1 1 1) Align: @f2(0.5 0.5))
+          Gizmos.Rect(Center: @f3(3 0 0) XBase: xbase YBase: ybase Color: @f4(0.2 0.2 1 1) Thickness: 4)
+        }
+      )
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+} Looped: true)
+
+@schedule(root test-wire)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+; @run(root FPS: 120) | Assert.Is(true)

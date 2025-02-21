@@ -84,7 +84,7 @@
       FS.Extension | IsNot(".ttf")
     }) | Map({FS.RelativeTo(base-path)}) = font-list
     font-list | IndexOf(Predicate: {
-      Is("Px437_Acer710_CGA.ttf")
+      Is("PxPlus_IBM_EGA_8x8.ttf")
     }) | Max(0) = font-index
     
     "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■"
@@ -188,3 +188,4 @@
 @mesh(root)
 @schedule(root test-wire)
 @run(root FPS: 60 Iterations: 100) | Assert.Is(true)
+; @run(root FPS: 60) | Assert.Is(true)

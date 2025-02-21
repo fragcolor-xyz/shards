@@ -7,6 +7,7 @@
 #include "../mesh.hpp"
 #include "../shader/blocks.hpp"
 #include "../../core/pool.hpp"
+#include <gfx/text/mesh_buffer.hpp>
 
 namespace gfx {
 
@@ -68,12 +69,14 @@ private:
   std::vector<LineVertex> lineVertices;
   std::vector<SolidVertex> solidVertices;
   std::vector<SolidVertex> unculledSolidVertices;
-  std::vector<TextVertex> textVertices;
   shards::Pool<MeshPtr> lineMeshPool;
   shards::Pool<MeshPtr> solidMeshPool;
   shards::Pool<MeshPtr> unculledSolidMeshPool;
-  shards::Pool<MeshPtr> textMeshPool;
   std::vector<DrawablePtr> custom;
+
+  // std::vector<TextVertex> textVertices;
+  text::MeshBuffer textMesh;
+  std::vector<text::MeshTexturePair> textMeshTexturePairs;
 
 public:
   void addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness);
@@ -89,7 +92,8 @@ public:
   void addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color, bool culling = true,
                uint32_t resolution = 64);
 
-  void addText(float3 origin, float3 xBase, float3 yBase, float size, std::string_view text, float4 color, bool center);
+  void addText(float3 origin, float3 xBase, float3 yBase, float size, std::string_view text, float4 color,
+               float2 align = float2(0.0f, -0.5f));
 
   void addSolidTriangle(float3 a, float3 b, float3 c, float4 color, bool culling = true);
 
@@ -138,7 +142,7 @@ public:
   void addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType, float4 capColor);
   void addCubeHandle(float3 center, float size, float4 color);
 
-  void addTextBillboard(float3 origin, std::string_view text, float4 color, float size, bool center);
+  void addTextBillboard(float3 origin, std::string_view text, float4 color, float size, float2 align = float2(0.0f, -0.5f));
 
   void begin(ViewPtr view, float2 viewportSize);
   void end(DrawQueuePtr queue);

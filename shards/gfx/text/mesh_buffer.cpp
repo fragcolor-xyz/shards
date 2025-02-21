@@ -50,23 +50,25 @@ void MeshBuffer::appendText(const TextPlacer &placer, const TextParams &params) 
   // Handle centering if needed
   if (alignment.x != 0.0f) {
     float alignX = alignment.x * placer.getSize().x;
-    pos += -alignX * right;
+    pos += -alignX * right * scale;
   }
   if (alignment.y != 0.0f) {
     float alignY = alignment.y * placer.getSize().y;
-    pos += alignY * up;
+    pos += alignY * up * scale;
   }
 
   // Cache
   PageBuffer *pb{};
   Texture *lastTex{};
 
+  float3 rs = right * scale;
+  float3 us = -up * scale;
   // Convert each quad into triangles using the same vertex pattern as ShapeRenderer
   for (const auto &quad : placer.textQuads) {
-    float3 a = pos + quad.quad.x * right + quad.quad.y * -up;
-    float3 b = pos + quad.quad.z * right + quad.quad.y * -up; // +X
-    float3 c = pos + quad.quad.z * right + quad.quad.w * -up; // +XY
-    float3 d = pos + quad.quad.x * right + quad.quad.w * -up; // +Y
+    float3 a = pos + quad.quad.x * rs + quad.quad.y * us;
+    float3 b = pos + quad.quad.z * rs + quad.quad.y * us; // +X
+    float3 c = pos + quad.quad.z * rs + quad.quad.w * us; // +XY
+    float3 d = pos + quad.quad.x * rs + quad.quad.w * us; // +Y
 
     float2 ta = {quad.uv.x, quad.uv.y};
     float2 tb = {quad.uv.z, quad.uv.y};

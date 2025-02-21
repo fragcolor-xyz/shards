@@ -7,11 +7,16 @@
 #include <shards/core/assert.hpp>
 #include <bit>
 
+// Bundled font
+#include <bundled/Px437_IBM_EGA_8x8.bin.h>
+#include <brotli/decode.h>
+
 namespace gfx::text {
 
-FontMap::FontMap(int defaultPageSize) {
+FontMap::FontMap(int defaultPageSize, WGPUFilterMode filterMode) {
   shared = new FontMapShared();
   shared->defaultPageSize = defaultPageSize;
+  shared->filterMode = filterMode;
 }
 
 FontMap::~FontMap() { delete shared; }
@@ -159,8 +164,7 @@ FontPage FontSize::createPage(int pageOffset, int pageSize) {
           .addressModeU = WGPUAddressMode_ClampToEdge,
           .addressModeV = WGPUAddressMode_ClampToEdge,
           .addressModeW = WGPUAddressMode_ClampToEdge,
-          // .filterMode = WGPUFilterMode_Nearest,
-          .filterMode = WGPUFilterMode_Linear,
+          .filterMode = shared->filterMode,
       });
 
   return newPage;
@@ -171,8 +175,8 @@ const FontPage *FontMap::getPage(int codepoint, uint32_t fontSize) {
   return fontSizeData.getPage(codepoint);
 }
 
-FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize) {
-  auto result = std::make_shared<FontMap>(pageSize);
+FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize, WGPUFilterMode filterMode) {
+  auto result = std::make_shared<FontMap>(pageSize, filterMode);
 
   // Load the font data into a default size (e.g., 12) for initialization
   result->shared->fontData.resize(size);
@@ -181,7 +185,18 @@ FontMap::Ptr FontMap::load(const uint8_t *data, size_t size, int pageSize) {
   return result;
 }
 
-static FontMap::Ptr loadDefaultFontmap() { return nullptr; }
+static FontMap::Ptr loadDefaultFontmap() {
+  static std::vector<uint8_t> decodedBuffer;
+  if (decodedBuffer.size() == 0) {
+    size_t decodedSize = *(uint32_t *)bundled_Px437_IBM_EGA_8x8Θbin_getData();
+    decodedBuffer.resize(decodedSize);
+    auto bres = BrotliDecoderDecompress(bundled_Px437_IBM_EGA_8x8Θbin_getLength() - 4,
+                                        bundled_Px437_IBM_EGA_8x8Θbin_getData() + 4, &decodedSize, decodedBuffer.data());
+    shassert(bres == BROTLI_DECODER_RESULT_SUCCESS);
+  }
+
+  return FontMap::load(decodedBuffer.data(), decodedBuffer.size(), 512, WGPUFilterMode_Nearest);
+}
 
 FontMap::Ptr FontMap::getDefault() {
   static FontMap::Ptr instance = loadDefaultFontmap();
