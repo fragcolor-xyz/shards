@@ -3,6 +3,7 @@
 
 @define(random1 #(RandomBytes(0xFFFF)))
 @define(random2 #(RandomBytes(0xFFFFF)))
+@define(no-big-load "false" IgnoreRedefined: true)
 
 @wire(handler {
   Log("Server's Peer Received")
@@ -27,8 +28,10 @@
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
   
-  @random1 | Network.Send | Log("Big load")
-  @random2 | Network.Send | Log("Even bigger load")
+  If({@no-big-load | IsNot("false")} {
+    @random1 | Network.Send | Log("Big load")
+    @random2 | Network.Send | Log("Even bigger load")
+  })
   true > test/client-init-success | Log("Client init success")
 })
 
