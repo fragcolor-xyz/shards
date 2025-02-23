@@ -1,0 +1,3 @@
+"something.pdf" | FS.Read(Bytes: true)
+PDF.ToText = result
+"something.txt" | FS.Write(result)
