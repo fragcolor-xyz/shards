@@ -1,0 +1,2 @@
+"something.pdf" | FS.Read(Bytes: true)
+PDF.ToText | Log
