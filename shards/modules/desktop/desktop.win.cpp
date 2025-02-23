@@ -590,10 +590,6 @@ struct WaitKeyEvent : public WaitKeyEventBase {
       attached = true;
     }
 
-    // Process any pending Windows messages first
-    MSG msg;
-    PeekMessage(&msg, 0, 0, 0, 0);
-
     // Check for pending events before waiting
     if (!events.empty()) {
       auto event = events.front();
@@ -606,6 +602,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
       // Wait for events
       SH_SUSPEND(context, 0);
       // Process Windows messages to allow the hook to work
+      MSG msg;
       PeekMessage(&msg, 0, 0, 0, 0);
     }
 
