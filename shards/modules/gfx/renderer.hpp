@@ -4,6 +4,7 @@
 #include "shards/core/runtime.hpp"
 #include "gfx.hpp"
 #include "shards/shards.h"
+#include <shards/shards.hpp>
 #include "window.hpp"
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
@@ -18,6 +19,11 @@ inline void endFrame(GraphicsContext &ctx) {
   ctx.renderer->endFrame();
   ctx.context->endFrame();
 }
+
+struct SHSurface {
+  static constexpr uint32_t TypeId = 'surf';
+  static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}};
+};
 
 // This wraps the graphics context variables and renderer instance
 //  it's used either by the main window or by the renderer shard to provide
@@ -57,6 +63,18 @@ struct ShardsRenderer {
     _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
   }
 
+  void initRenderer(void *nativeSurfaceHandle) {
+    ContextCreationOptions contextOptions = {
+        .overrideNativeWindowHandle = nativeSurfaceHandle,
+    };
+    _graphicsContext.context = std::make_shared<Context>();
+    _graphicsContext.context->init(contextOptions);
+
+    _graphicsContext.renderer = std::make_shared<Renderer>(*_graphicsContext.context.get());
+    _graphicsContext.renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
+    _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
+  }
+
   void warmup(SHContext *context) {
     _graphicsContextVar = shards::referenceVariable(context, GraphicsContext::VariableName);
     assignVariableValue(*_graphicsContextVar, shards::Var::Object(&_graphicsContext, GraphicsContext::Type));
@@ -66,7 +84,7 @@ struct ShardsRenderer {
                         shards::Var::Object(&_graphicsRendererContext, GraphicsRendererContext::Type));
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
         SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1,
@@ -89,14 +107,28 @@ struct ShardsRenderer {
     _graphicsRendererContext = GraphicsRendererContext{};
   }
 
-  bool begin(SHContext* shContext, shards::WindowContext &windowContext) {
+  bool begin(SHContext *shContext, void *nativeSurfaceHandle) {
+    // Need to lazily init since we depend on renderer
+    if (!_graphicsContext.context) {
+      shards::callOnMeshThread(shContext, [&] { initRenderer(nativeSurfaceHandle); });
+    }
+
+    return begin(shContext);
+  }
+
+  bool begin(SHContext *shContext, shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
       shards::callOnMeshThread(shContext, [&] { initRenderer(windowContext.window); });
     }
 
+    return begin(shContext);
+  }
+
+private:
+  bool begin(SHContext *shContext) {
     auto &window = _graphicsContext.window;
-    if (!window->isInitialized()) {
+    if (window && !window->isInitialized()) {
       SHLOG_WARNING("Failed to render to surface, window is closed. Frame skipped.");
       return false;
     }
@@ -104,12 +136,14 @@ struct ShardsRenderer {
     auto &renderer = _graphicsRendererContext.renderer;
     auto &context = _graphicsContext.context;
 
-    gfx::int2 windowSize = window->getDrawableSize();
-    try {
-      shards::callOnMeshThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
-    } catch (std::exception &err) {
-      SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
-      return false;
+    if (!context->isHeadless()) {
+      int2 mainOutputSize = context->getRequestedMainOutputSize();
+      try {
+        shards::callOnMeshThread(shContext, [&] { context->resizeMainOutputConditional(mainOutputSize); });
+      } catch (std::exception &err) {
+        SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
+        return false;
+      }
     }
 
     double deltaTime = 0.0;
@@ -127,6 +161,7 @@ struct ShardsRenderer {
     return false;
   }
 
+public:
   void end() { endFrame(_graphicsContext); }
 };
 } // namespace gfx

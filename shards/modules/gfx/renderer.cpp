@@ -14,7 +14,8 @@ namespace gfx {
 struct RendererShard {
   static const inline Type WindowType = WindowContext::Type;
 
-  PARAM_PARAMVAR(_window, "Window", "The window to run the renderer on.", {Type::VariableOf(WindowType)});
+  PARAM_PARAMVAR(_window, "Window", "The window to run the renderer on.", {CoreInfo::NoneType, Type::VariableOf(WindowType)});
+  PARAM_PARAMVAR(_surface, "Surface", "The surface to run the renderer on.", {CoreInfo::NoneType, Type::VariableOf(SHSurface::Type)});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_ignoreCompilationErrors, "IgnoreCompilationErrors",
             "When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
@@ -22,7 +23,7 @@ struct RendererShard {
             {CoreInfo::BoolType});
   PARAM_PARAMVAR(_debug, "Debug", "Enable debug visualization mode.",
                  {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors),
+  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_surface), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors),
              PARAM_IMPL_FOR(_debug));
 
   static inline Type OutputType = Type(WindowContext::Type);
@@ -44,8 +45,8 @@ struct RendererShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     _exposedVariables.clear();
 
-    if (_window.isNone())
-      throw formatException("Window parameter is required but not set");
+    if (_window.isNone() && _surface.isNone())
+      throw formatException("Window or Surface parameter is required but not set");
 
     // Make sure that renderers are UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -88,7 +89,6 @@ struct RendererShard {
   }
 
   void activate(SHContext *shContext, const SHVar &input) {
-    auto &windowContext = varAsObjectChecked<shards::WindowContext>(_window.get(), shards::WindowContext::Type);
 
     SHVar tmpOutput{};
 
@@ -97,7 +97,17 @@ struct RendererShard {
       renderer._graphicsContext.renderer->setDebug(debug.isNone() ? false : (bool)debug);
     }
 
-    if (renderer.begin(shContext, windowContext)) {
+
+    bool begun =false;
+    if(!_window.isNone()) {
+      auto &windowContext = varAsObjectChecked<shards::WindowContext>(_window.get(), shards::WindowContext::Type);
+      begun = renderer.begin(shContext, windowContext);
+    } else if (!_surface.isNone()) {
+      auto &surfaceContext = _surface.get().payload.objectValue;
+      begun = renderer.begin(shContext, surfaceContext);
+    }
+
+    if (begun) {
       _contents.activate(shContext, input, tmpOutput);
       renderer.end();
     }

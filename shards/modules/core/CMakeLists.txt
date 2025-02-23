@@ -77,6 +77,9 @@ endif()
 
 if(APPLE)
   # Build swift sources
-  add_library(shards_core_swift core.swift ${SHARDS_DIR}/include/shards/shards.swift)
-  target_include_directories(shards_core_swift PRIVATE ${SHARDS_DIR}/include)
+  add_library(shards-core-swift core.swift ${SHARDS_DIR}/include/shards/shards.swift)
+  target_include_directories(shards-core-swift PRIVATE ${SHARDS_DIR}/include)
+  set_target_properties(shards-core-swift PROPERTIES Swift_MODULE_NAME shards_core_swift)
+  target_link_libraries(shards-module-core $<TARGET_FILE:shards-core-swift>)
+  add_dependencies(shards-module-core shards-core-swift)
 endif()

@@ -15,7 +15,14 @@
 #include <windows.h>
 #endif
 
+#if SH_APPLE
+extern "C" {
+  void gfx_metal_get_surface_size(void *surface, uint32_t *width, uint32_t *height);
+}
+#endif
+
 namespace gfx {
+
 struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
     WGPUChainedStruct chain;
@@ -30,9 +37,9 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
 #endif
   } platformDesc;
 
-  WGPUPlatformSurfaceDescriptor(gfx::Window &window, void *nativeSurfaceHandle) {
+  WGPUPlatformSurfaceDescriptor(gfx::Window *window, void *nativeSurfaceHandle) {
 #if !SH_EMSCRIPTEN
-    SDL_Window *sdlWindow = window.window;
+    SDL_Window *sdlWindow =window ? window->window : nullptr;
     if (!nativeSurfaceHandle)
       nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow);
 #endif

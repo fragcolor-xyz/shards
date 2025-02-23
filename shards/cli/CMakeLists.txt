@@ -7,11 +7,7 @@ function(setup_shards_target TARGET)
     target_link_libraries(${TARGET} Boost::process)
   endif()
 
-  if(APPLE)
-    target_link_libraries(${TARGET} shards-core shards_core_swift)
-  else()
-    target_link_libraries(${TARGET} shards-core)
-  endif()
+  target_link_libraries(${TARGET} shards-core)
 
   set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 

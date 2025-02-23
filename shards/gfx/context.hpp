@@ -121,6 +121,7 @@ public:
   void tickRequesting();
 
   Window &getWindow();
+  int2 getRequestedMainOutputSize() const;
   void resizeMainOutputConditional(const int2 &newSize);
   TexturePtr getMainOutputTexture();
   bool isHeadless() const;

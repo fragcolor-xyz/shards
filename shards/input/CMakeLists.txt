@@ -20,8 +20,3 @@ target_link_libraries(input INTERFACE input-obj)
 add_executable(test-input tests/tests.cpp)
 target_link_libraries(test-input gfx input Catch2::Catch2WithMain linalg spdlog)
 target_compile_features(test-input PUBLIC cxx_std_20)
-
-add_rust_library(
-  NAME input-debug-ui
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/debug_ui
-  DEPENDS debug_ui.hpp)

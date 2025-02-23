@@ -5,6 +5,7 @@
 #include <boost/container/small_vector.hpp>
 #include "../core/platform.hpp"
 #include "../core/assert.hpp"
+#include "linalg.h"
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
@@ -100,6 +101,7 @@ struct DeviceRequest {
 
 struct ContextMainOutput {
   Window *window{};
+  void *nativeSurfaceHandle{};
   WGPUSurface wgpuSurface{};
   WGPUTextureFormat swapchainFormat = WGPUTextureFormat_Undefined;
   int2 currentSize{};
@@ -117,6 +119,11 @@ struct ContextMainOutput {
     texture = std::make_shared<Texture>();
   }
 
+  ContextMainOutput(void *nativeSurfaceHandle, ContextFlushTextureReferencesRegistry onFlushTextureReferences)
+      : nativeSurfaceHandle(nativeSurfaceHandle), onFlushTextureReferences(onFlushTextureReferences) {
+    texture = std::make_shared<Texture>();
+  }
+
   ~ContextMainOutput() {
 #ifndef WEBGPU_NATIVE
     releaseSwapchain();
@@ -131,22 +138,36 @@ struct ContextMainOutput {
       void *surfaceHandle = overrideNativeWindowHandle;
 
 #if SH_APPLE
-      if (!surfaceHandle) {
+      if (!surfaceHandle && window) {
         surfaceHandle = window->metalView->layer;
       }
 #endif
 
-      WGPUPlatformSurfaceDescriptor surfDesc(*window, surfaceHandle);
+      WGPUPlatformSurfaceDescriptor surfDesc(window, surfaceHandle);
       wgpuSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
     }
 
     return wgpuSurface;
   }
 
+  int2 getDrawableSize() {
+    if (nativeSurfaceHandle) {
+#if SH_APPLE
+      uint32_t x, y;
+      gfx_metal_get_surface_size(nativeSurfaceHandle, &x, &y);
+      return int2(x, y);
+#endif
+    }
+    if (window) {
+      return window->getDrawableSize();
+    }
+    throw std::runtime_error("No window or native surface handle provided");
+  }
+
   bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
     shassert(!wgpuCurrentTexture);
 
-    int2 drawableSize = window->getDrawableSize();
+    int2 drawableSize = getDrawableSize();
     if (drawableSize != currentSize) {
       resizeSwapchain(device, adapter, drawableSize);
     }
@@ -196,7 +217,7 @@ struct ContextMainOutput {
   }
 
   void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
-    int2 mainOutputSize = window->getDrawableSize();
+    int2 mainOutputSize = getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
   }
 
@@ -346,6 +367,9 @@ void Context::init(Window &window, const ContextCreationOptions &inOptions) {
 
 void Context::init(const ContextCreationOptions &inOptions) {
   options = inOptions;
+  if (inOptions.overrideNativeWindowHandle) { 
+    mainOutput = std::make_shared<ContextMainOutput>(inOptions.overrideNativeWindowHandle, onFlushTextureReferences);
+  }
 
   initCommon();
 }
@@ -405,6 +429,11 @@ void Context::release() {
 Window &Context::getWindow() {
   shassert(mainOutput);
   return *mainOutput->window;
+}
+
+int2 Context::getRequestedMainOutputSize() const {
+  shassert(mainOutput);
+  return mainOutput->getDrawableSize();
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {
