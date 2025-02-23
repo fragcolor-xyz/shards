@@ -5483,6 +5483,28 @@ impl SeqVar {
   }
 
   #[inline(always)]
+  pub fn emplace_table(&mut self, value: AutoTableVar) {
+    // we need to clone to own the memory shards side
+    let idx = self.len();
+    self.set_len(idx + 1);
+    let v = &mut self[idx];
+    *v = value.0 .0;
+    // now make sure value is not dropped
+    std::mem::forget(value);
+  }
+
+  #[inline(always)]
+  pub fn emplace_seq(&mut self, value: AutoSeqVar) {
+    // we need to clone to own the memory shards side
+    let idx = self.len();
+    self.set_len(idx + 1);
+    let v = &mut self[idx];
+    *v = value.0 .0;
+    // now make sure value is not dropped
+    std::mem::forget(value);
+  }
+
+  #[inline(always)]
   pub fn insert(&mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
@@ -5879,6 +5901,26 @@ impl TableVar {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
       *p = v.0;
+      std::mem::forget(v);
+    }
+  }
+
+  #[inline(always)]
+  pub fn emplace_table(&mut self, k: Var, v: AutoTableVar) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
+      *p = v.0 .0;
+      std::mem::forget(v);
+    }
+  }
+
+  #[inline(always)]
+  pub fn emplace_seq(&mut self, k: Var, v: AutoSeqVar) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let p = (*t.api).tableAt.unwrap_unchecked()(t, k);
+      *p = v.0 .0;
       std::mem::forget(v);
     }
   }
