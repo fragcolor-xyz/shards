@@ -302,6 +302,7 @@ mod group;
 mod horizontal;
 mod indent;
 mod layout;
+mod layout2;
 mod scroll_area;
 mod separator;
 mod sized;
@@ -313,6 +314,7 @@ mod vertical;
 pub fn register_shards() {
   auto_grid::register_shards();
   layout::register_shards();
+  layout2::register_shards();
   table2::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();

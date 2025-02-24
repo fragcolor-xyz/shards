@@ -72,61 +72,67 @@
             
             ; Count(int-range) ; Number of entries
             int-range
-            UI.Layout({
-              UI.Table2(
-                Striped: true
-                Resizable: true
-                RowHeight: 30.0
-                Reversed: reversed
-                Clicked: {
-                  = i
-                  If({@is-selected(selection-set i)} {
-                      Erase(i selection-set)
-                    } {
-                      true | Update(selection-set i)
+            UI.ScrollArea2(MaxHeight: 300.0 Contents: {
+              UI.Layout2(Contents: {
+                UI.Table2(
+                  Striped: true
+                  Resizable: true
+                  RowHeight: 30.0
+                  Reversed: reversed
+                  Clicked: {
+                    = i
+                    If({@is-selected(selection-set i)} {
+                        Erase(i selection-set)
+                      } {
+                        true | Update(selection-set i)
+                      }
+                    )
+                  }
+                  ContextMenu: {
+                    "Menu" | UI.Label
+                    UI.Button("Close" {Log("Menu") | UI.CloseMenu})
+                  }
+                  IsSelected: {
+                    = i
+                    @is-selected(selection-set i)
+                  }
+                  Columns: [
+                    {
+                      = i
+                      UI.Header({
+                        "Name" | UI.Label
+                        @sort-by-button("name")
+                      })
+                      i | UI.DragAndDrop({
+                        UI.Frame({
+                          "icon" | UI.Label(Selectable: false)
+                        } InnerMargin: @f4(4.0 4.0 0.0 0.0))
+                      })
+                      data-src | Take(i) | Take("name") | UI.Label
                     }
-                  )
-                }
-                IsSelected: {
-                  = i
-                  @is-selected(selection-set i)
-                }
-                Columns: [
-                  {
-                    = i
-                    UI.Header({
-                      "Name" | UI.Label
-                      @sort-by-button("name")
-                    })
-                    i | UI.DragAndDrop({
-                      UI.Frame({
-                        "icon" | UI.Label(Selectable: false)
-                      } InnerMargin: @f4(4.0 4.0 0.0 0.0))
-                    })
-                    data-src | Take(i) | Take("name") | UI.Label
-                  }
-                  {
-                    UI.Header({
-                      "#" | UI.Label
-                      @sort-by-button("id")
-                    })
-                    ToString | UI.Label
-                  }
-                  {
-                    UI.Header({
-                      "Type" | UI.Label
-                      @sort-by-button("type")
-                    })
-                    = i
-                    data-src | Take(i) | Take("type") | ToString | UI.Label
-                  }
-                  {
-                    UI.Header({"Data" | UI.Label})
-                    = i
-                    data-src | Take(i) | Take("data") | UI.Label
-                  }]
-              )
-              
+                    {
+                      UI.Header({
+                        "#" | UI.Label
+                        @sort-by-button("id")
+                      })
+                      ToString | UI.Label
+                    }
+                    {
+                      UI.Header({
+                        "Type" | UI.Label
+                        @sort-by-button("type")
+                      })
+                      = i
+                      data-src | Take(i) | Take("type") | ToString | UI.Label
+                    }
+                    {
+                      UI.Header({"Data" | UI.Label})
+                      = i
+                      data-src | Take(i) | Take("data") | UI.Label
+                    }]
+                )
+                
+              })
             })
             
             ; Add drop box at bottom
