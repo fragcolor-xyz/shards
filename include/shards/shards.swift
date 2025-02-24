@@ -336,6 +336,13 @@ extension SHVar: CustomStringConvertible {
             payload.intValue = SHInt(newValue)
         }
     }
+    
+    public var maybeInt: Int? {
+        if type != .Int {
+            return nil
+        }
+        return Int(payload.intValue)
+    }
 
     public var wire: SHWireRef {
         get {
