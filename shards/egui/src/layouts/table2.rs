@@ -4,9 +4,11 @@
 use crate::util;
 use crate::EguiId;
 use crate::BOOL_VAR_SLICE;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
+use core::slice;
 use shards::core::register_shard;
 use shards::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use shards::shardsc::SHType_Int;
@@ -107,6 +109,9 @@ lazy_static::lazy_static! {
   static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::shard, common_type::shards];
   static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
   static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
+
+  static ref ANY_SEQ: Type = Type::seq(&ANY_TYPES);
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::int, *ANY_SEQ];
 }
 
 #[derive(shards::shard)]
@@ -169,10 +174,17 @@ pub struct Table2 {
     ANY_TYPES
   )]
   drag_data: ShardsVar,
+  #[shard_param(
+    "RowHeight",
+    "Height of each row in pixels. Default is text height.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  row_height: ParamVar,
   // Track last clicked for double-click detection
   last_clicked: [Option<egui::Id>; 2],
   can_interact: bool,
   can_drag: bool,
+  remap_key_seq: bool,
 }
 
 impl Default for Table2 {
@@ -194,9 +206,11 @@ impl Default for Table2 {
       double_clicked_callback: ShardsVar::default(),
       context_menu: ShardsVar::default(),
       drag_data: ShardsVar::default(),
+      row_height: ParamVar::default(),
       last_clicked: [None, None],
       can_interact: false,
       can_drag: false,
+      remap_key_seq: false,
     }
   }
 }
@@ -204,17 +218,17 @@ impl Default for Table2 {
 #[shards::shard_impl]
 impl Shard for Table2 {
   fn input_types(&mut self) -> &Types {
-    &INT_TYPES
+    &INPUT_TYPES
   }
 
   fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The value that will be passed to the Columns and Rows shards of the table."
+      "The values that will be passed to the Columns and Rows shards of the table, or number of items in the sequence."
     ))
   }
 
   fn output_types(&mut self) -> &Types {
-    &INT_TYPES
+    &INPUT_TYPES
   }
 
   fn output_help(&mut self) -> OptionalString {
@@ -257,18 +271,34 @@ impl Shard for Table2 {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
 
-    // Input should be an integer for row count
-    if data.inputType.basicType != SHType_Int {
-      return Err("Table2 requires an integer input for row count");
-    }
-
     TableContext::enter_table_compose();
 
     self.column_shards.clear();
     self.header_shards.clear();
 
-    let mut data_inner = data.clone();
-    data_inner.inputType = common_type::int;
+    self.remap_key_seq = data.inputType.basicType == SHType_Seq;
+    let callback_type = if self.remap_key_seq {
+      unsafe {
+        if data.inputType.details.seqTypes.len != 1 {
+          return Err("Table2 requires a sequence of one type");
+        }
+        *data.inputType.details.seqTypes.elements
+      }
+    } else {
+      common_type::int
+
+    };
+
+    // Compose interaction callbacks with int input type
+    let callback_data = InstanceData {
+      inputType: callback_type,
+      ..*data
+    };
+
+    let header_data = InstanceData {
+      inputType: common_type::int,
+      ..*data
+    };
 
     // Process columns
     if let Ok(columns) = Seq::try_from(&self.columns.0) {
@@ -279,7 +309,7 @@ impl Shard for Table2 {
         column_shard.set_param(&column)?;
 
         // Compose the column shards - this will trigger any UI.Header inside
-        column_shard.compose(&data_inner)?;
+        column_shard.compose(&callback_data)?;
         shards::util::require_shards_contents(&mut self.requiring, &mut column_shard);
 
         // Store the header if one was registered during compose
@@ -294,7 +324,7 @@ impl Shard for Table2 {
     // Need to compose the collected headers
     for hdr in &mut self.header_shards {
       if let Some(hdr) = hdr {
-        hdr.compose(&data_inner)?;
+        hdr.compose(&header_data)?;
         shards::util::require_shards_contents(&mut self.requiring, hdr);
       }
     }
@@ -315,12 +345,6 @@ impl Shard for Table2 {
         self.requiring.extend_from_slice(required);
       }
     }
-
-    // Compose interaction callbacks with int input type
-    let callback_data = InstanceData {
-      inputType: common_type::int,
-      ..*data
-    };
 
     // Compose IsSelected callback
     if !self.is_selected_callback.is_empty() {
@@ -371,8 +395,19 @@ impl Table2 {
     use egui_extras::{Column, TableBuilder};
 
     // Get row count from input
-    let row_count: i64 = input.try_into()?;
+    let row_count: i64 = if self.remap_key_seq {
+      input.as_seq().unwrap().len() as i64
+    } else {
+      input.try_into()?
+    };
+
+    // Get row height - default to text height if not specified
     let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
+    let row_height = if !self.row_height.get().is_none() {
+      self.row_height.get().try_into()?
+    } else {
+      text_height
+    };
 
     let root_id = ui.id();
 
@@ -419,13 +454,17 @@ impl Table2 {
     // Populate rows
     let reverse: bool = self.reversed.get().try_into()?;
     table.body(|body: egui_extras::TableBody<'_>| {
-      body.rows(text_height, row_count as usize, |mut row| {
+      body.rows(row_height, row_count as usize, |mut row| {
         let index = if reverse {
           row_count - 1 - row.index() as i64
         } else {
           row.index() as i64
         };
-        let input = Var::new_int(index);
+        let idx_var: Var = if self.remap_key_seq {
+          input.as_seq().unwrap()[index as usize]
+        } else {
+          Var::new_int(index)
+        };
 
         // Check if row is selected
         let mut is_selected = false;
@@ -433,7 +472,7 @@ impl Table2 {
           let mut is_selected_var = Var::default();
           if self
             .is_selected_callback
-            .activate(context, &input, &mut is_selected_var)
+            .activate(context, &idx_var, &mut is_selected_var)
             == WireState::Error
           {
             return;
@@ -447,7 +486,7 @@ impl Table2 {
         // Render columns
         for column in &mut self.column_shards {
           row.col(|ui| {
-            let _ = util::activate_ui_contents(context, &input, ui, &mut self.parents, column);
+            let _ = util::activate_ui_contents(context, &idx_var, ui, &mut self.parents, column);
           });
         }
 
@@ -455,28 +494,34 @@ impl Table2 {
         let row_id = root_id.with(index);
         let row_response = row.response();
 
-        
-        let inner_response = if can_drag {
-          let mut op = DragOp::new(interact_id, ui, &ui_ctx);
-          if op.is_dragging() {
-            let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
-            let inner = ui.with_layer_id(layer_id, body).inner?;
-            op.update_dragging(layer_id, &interact_response, ui);
-            inner
-          } else {
-            op.update_not_dragging(drag_data, &interact_response, ui, &ui_ctx);
-            ui.scope(body).inner?
-          }
-        } else {
-          body(ui)?
-        };
+        // if row_response.drag_started() {
+
+        // } else if row_response.drag_stopped() {
+        //   eprintln!("drag stopped: {:?}", row_id);
+        // } else if row_response.dragged() {
+        //   eprintln!("dragged {:?}", row_id);
+        // }
+        // let inner_response = if can_drag {
+        //   let mut op = DragOp::new(interact_id, ui, &ui_ctx);
+        //   if op.is_dragging() {
+        //     let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
+        //     let inner = ui.with_layer_id(layer_id, body).inner?;
+        //     op.update_dragging(layer_id, &interact_response, ui);
+        //     inner
+        //   } else {
+        //     op.update_not_dragging(drag_data, &interact_response, ui, &ui_ctx);
+        //     ui.scope(body).inner?
+        //   }
+        // } else {
+        //   body(ui)?
+        // };
 
         // Handle interactions
         if !self.context_menu.is_empty() {
           row_response.context_menu(|ui| {
             let _ = util::activate_ui_contents(
               context,
-              &input,
+              &idx_var,
               ui,
               &mut self.parents,
               &mut self.context_menu,
@@ -495,7 +540,7 @@ impl Table2 {
               let mut _unused = Var::default();
               let _ = self
                 .double_clicked_callback
-                .activate(context, &input, &mut _unused);
+                .activate(context, &idx_var, &mut _unused);
             }
           }
 
@@ -503,7 +548,7 @@ impl Table2 {
             let mut _unused = Var::default();
             let _ = self
               .clicked_callback
-              .activate(context, &input, &mut _unused);
+              .activate(context, &idx_var, &mut _unused);
           }
 
           if primary_clicked {

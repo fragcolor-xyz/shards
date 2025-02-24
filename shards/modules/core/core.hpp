@@ -13,6 +13,7 @@
 #include <shards/core/exposed_type_utils.hpp>
 #include <shards/common_types.hpp>
 #include <shards/inlined.hpp>
+#include <shards/core/params.hpp>
 #include <shards/gfx/moving_average.hpp>
 #include "time.hpp"
 #include <cassert>
@@ -1890,7 +1891,7 @@ struct Get : public VariableBase {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
           SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-          const auto& optr = *static_cast<const shards::OwnedVar*>(&kv);
+          const auto &optr = *static_cast<const shards::OwnedVar *>(&kv);
           auto maybeValue = table->find(optr);
           if (maybeValue != table->end()) {
             auto &vRef = maybeValue->second;
@@ -4035,6 +4036,49 @@ struct ForRangeShard {
           break;
       }
     }
+  }
+};
+struct IntRangeShard {
+  PARAM_PARAMVAR(_start, "Start", "Starting value (inclusive)", {CoreInfo::IntOrIntVar})
+  PARAM_PARAMVAR(_end, "End", "Ending value (exclusive)", {CoreInfo::IntOrIntVar})
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_start), PARAM_IMPL_FOR(_end))
+
+  SeqVar _output{};
+
+  static SHOptionalString help() { return SHCCSTR("Returns a sequence of integers from Start (inclusive) to End (exclusive)"); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored"); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Sequence of integers"); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_start.isNone() || _end.isNone()) {
+      throw ComposeError("IntRange requires both Start and End parameters to be set.");
+    }
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
+
+  void cleanup(SHContext *ctx) { PARAM_CLEANUP(ctx); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto start = _start.get().payload.intValue;
+    auto end = _end.get().payload.intValue;
+
+    int len = end - start;
+    _output.resize(len);
+    if (len > 0) {
+      for (int i = 0; i < len; i++) {
+        _output[i] = Var(start + i);
+      }
+    }
+    return _output;
   }
 };
 

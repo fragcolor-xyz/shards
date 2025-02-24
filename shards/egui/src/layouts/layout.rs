@@ -42,6 +42,8 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 macro_rules! retrieve_layout_class_attribute {
@@ -315,6 +317,20 @@ lazy_static! {
     )
       .into(),
   ];
+}
+
+thread_local! {
+  static DEFAULT_LAYOUT_CLASS: LayoutClass = LayoutClass {
+    parent: std::ptr::null(),
+    layout: None,
+    min_size: None,
+    max_size: None,
+    fill_width: None,
+    fill_height: None,
+    disabled: None,
+    frame: None,
+    scroll_area: None,
+    };
 }
 
 impl Default for LayoutConstructor {
@@ -989,10 +1005,6 @@ impl Shard for LayoutShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
 
-    if !self.layout_class.is_variable() {
-      return Err("Class parameter is required");
-    }
-
     self.inner_exposed.clear();
     if !self.contents.is_empty() {
       let composed = self.contents.compose(data)?;
@@ -1009,156 +1021,184 @@ impl Shard for LayoutShard {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let ui = util::get_parent_ui(self.parents.get())?;
-    let layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
-      self.layout_class.get(),
-      &LAYOUTCLASS_TYPE,
-    )?);
-    let layout_class = unsafe {
-      let layout_ptr = Rc::as_ptr(layout_class.as_ref().unwrap()) as *mut LayoutClass;
-      &*layout_ptr
-    };
-
-    let layout = if let Some(layout) = retrieve_layout_class_attribute!(layout_class, layout) {
-      layout
-    } else {
-      return Err("No layout found in LayoutClass. LayoutClass is invalid/corrupted");
-    };
-
-    let min_size = if !self.min_size.get().is_none() {
-      self.min_size.get().try_into()?
-    } else {
-      if let Some(min_size) = retrieve_layout_class_attribute!(layout_class, min_size) {
-        min_size
+    DEFAULT_LAYOUT_CLASS.with(|default_layout| {
+      let ui = util::get_parent_ui(self.parents.get())?;
+      let lc_var = self.layout_class.get();
+      let layout_class = if !lc_var.is_none() {
+        let r: Option<Rc<LayoutClass>> =
+          Some(Var::from_object_as_clone(lc_var, &LAYOUTCLASS_TYPE)?);
+        unsafe {
+          let layout_ptr = Rc::as_ptr(r.as_ref().unwrap()) as *mut LayoutClass;
+          &*layout_ptr
+        }
       } else {
-        (0.0, 0.0) // default value for min_size
-      }
-    };
-
-    let max_size = if !self.max_size.get().is_none() {
-      Some(self.max_size.get().try_into()?)
-    } else {
-      if let Some(max_size) = retrieve_layout_class_attribute!(layout_class, max_size) {
-        Some(max_size)
-      } else {
-        None // default value for max_size (no max size)
-      }
-    };
-
-    // shard parameters have higher priority and override layout class
-    let fill_width = if !self.fill_width.get().is_none() {
-      self.fill_width.get().try_into()?
-    } else {
-      if let Some(fill_width) = retrieve_layout_class_attribute!(layout_class, fill_width) {
-        fill_width
-      } else {
-        false // default value for fill_width
-      }
-    };
-
-    let fill_height = if !self.fill_height.get().is_none() {
-      self.fill_height.get().try_into()?
-    } else {
-      if let Some(fill_height) = retrieve_layout_class_attribute!(layout_class, fill_height) {
-        fill_height
-      } else {
-        false // default value for fill_height
-      }
-    };
-
-    let mut min_size: egui::Vec2 = min_size.into();
-
-    let mut max_size = if let Some(max_size) = max_size {
-      egui::Vec2::new(max_size.0, max_size.1)
-    } else {
-      ui.available_size_before_wrap() // try to take up all available space (no max)
-    };
-
-    if fill_width {
-      min_size.x = ui.available_size_before_wrap().x;
-      max_size.x = ui.available_size_before_wrap().x;
-    }
-    if fill_height {
-      min_size.y = ui.available_size_before_wrap().y;
-      max_size.y = ui.available_size_before_wrap().y;
-    }
-
-    // If the size is still 0, use only minimum size for an interactive widget
-    if min_size.x == 0.0 {
-      min_size.x = ui.spacing().interact_size.x;
-    }
-    if min_size.y == 0.0 {
-      min_size.y = ui.spacing().interact_size.y;
-    }
-
-    let disabled = if let Some(disabled) = retrieve_layout_class_attribute!(layout_class, disabled)
-    {
-      disabled
-    } else {
-      false // default value for disabled
-    };
-
-    let frame = if let Some(frame) = retrieve_layout_class_attribute!(layout_class, frame) {
-      let style = ui.style();
-      match frame {
-        LayoutFrame::Widgets => Some(egui::Frame::group(style)),
-        LayoutFrame::SideTopPanel => Some(egui::Frame::side_top_panel(style)),
-        LayoutFrame::CentralPanel => Some(egui::Frame::central_panel(style)),
-        LayoutFrame::Window => Some(egui::Frame::window(style)),
-        LayoutFrame::Menu => Some(egui::Frame::menu(style)),
-        LayoutFrame::Popup => Some(egui::Frame::popup(style)),
-        LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
-        LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
-        _ => unreachable!(),
-      }
-    } else {
-      None // default value for frame
-    };
-
-    let scroll_area =
-      if let Some(scroll_area) = retrieve_layout_class_attribute!(layout_class, scroll_area) {
-        Some(scroll_area.to_egui_scrollarea())
-      } else {
-        None // default value for scroll_area
+        default_layout
       };
 
-    let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
+      let layout = if let Some(layout) = retrieve_layout_class_attribute!(layout_class, layout) {
+        layout
+      } else {
+        ui.layout().clone()
+      };
 
-    if self.contents.is_empty() {
-      return Ok(None);
-    }
+      let min_size = if !self.min_size.get().is_none() {
+        self.min_size.get().try_into()?
+      } else {
+        if let Some(min_size) = retrieve_layout_class_attribute!(layout_class, min_size) {
+          min_size
+        } else {
+          (0.0, 0.0) // default value for min_size
+        }
+      };
 
-    with_possible_panic(|| {
-      // if there is a frame, draw it as the outermost ui element
-      if let Some(frame) = frame {
-        frame
-          .show(ui, |ui| {
-            // set whether all widgets in the contents are enabled or disabled
-            ui.add_enabled_ui(!disabled, |ui| {
-              // add the new child_ui created by frame onto the stack of parents
-              // inside of frame
-              // render scroll area and inner layout if there is a scroll area
-              if let Some(scroll_area) = scroll_area {
-                scroll_area
-                  .id_source(scroll_area_id)
-                  .show(ui, |ui| {
-                    // inside of scroll area
-                    ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                      ui.set_min_size(min_size); // set minimum size of entire layout
+      let max_size = if !self.max_size.get().is_none() {
+        Some(self.max_size.get().try_into()?)
+      } else {
+        if let Some(max_size) = retrieve_layout_class_attribute!(layout_class, max_size) {
+          Some(max_size)
+        } else {
+          None // default value for max_size (no max size)
+        }
+      };
 
-                      util::activate_ui_contents(
-                        context,
-                        input,
-                        ui,
-                        &mut self.parents,
-                        &mut self.contents,
-                      )
+      // shard parameters have higher priority and override layout class
+      let fill_width = if !self.fill_width.get().is_none() {
+        self.fill_width.get().try_into()?
+      } else {
+        if let Some(fill_width) = retrieve_layout_class_attribute!(layout_class, fill_width) {
+          fill_width
+        } else {
+          false // default value for fill_width
+        }
+      };
+
+      let fill_height = if !self.fill_height.get().is_none() {
+        self.fill_height.get().try_into()?
+      } else {
+        if let Some(fill_height) = retrieve_layout_class_attribute!(layout_class, fill_height) {
+          fill_height
+        } else {
+          false // default value for fill_height
+        }
+      };
+
+      let mut min_size: egui::Vec2 = min_size.into();
+
+      let mut max_size = if let Some(max_size) = max_size {
+        egui::Vec2::new(max_size.0, max_size.1)
+      } else {
+        ui.available_size_before_wrap() // try to take up all available space (no max)
+      };
+
+      if fill_width {
+        min_size.x = ui.available_size_before_wrap().x;
+        max_size.x = ui.available_size_before_wrap().x;
+      }
+      if fill_height {
+        min_size.y = ui.available_size_before_wrap().y;
+        max_size.y = ui.available_size_before_wrap().y;
+      }
+
+      // If the size is still 0, use only minimum size for an interactive widget
+      if min_size.x == 0.0 {
+        min_size.x = ui.spacing().interact_size.x;
+      }
+      if min_size.y == 0.0 {
+        min_size.y = ui.spacing().interact_size.y;
+      }
+
+      let disabled =
+        if let Some(disabled) = retrieve_layout_class_attribute!(layout_class, disabled) {
+          disabled
+        } else {
+          false // default value for disabled
+        };
+
+      let frame = if let Some(frame) = retrieve_layout_class_attribute!(layout_class, frame) {
+        let style = ui.style();
+        match frame {
+          LayoutFrame::Widgets => Some(egui::Frame::group(style)),
+          LayoutFrame::SideTopPanel => Some(egui::Frame::side_top_panel(style)),
+          LayoutFrame::CentralPanel => Some(egui::Frame::central_panel(style)),
+          LayoutFrame::Window => Some(egui::Frame::window(style)),
+          LayoutFrame::Menu => Some(egui::Frame::menu(style)),
+          LayoutFrame::Popup => Some(egui::Frame::popup(style)),
+          LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
+          LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
+          _ => unreachable!(),
+        }
+      } else {
+        None // default value for frame
+      };
+
+      let scroll_area =
+        if let Some(scroll_area) = retrieve_layout_class_attribute!(layout_class, scroll_area) {
+          Some(scroll_area.to_egui_scrollarea())
+        } else {
+          None // default value for scroll_area
+        };
+
+      let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
+
+      if self.contents.is_empty() {
+        return Ok(None);
+      }
+
+      with_possible_panic(|| {
+        // if there is a frame, draw it as the outermost ui element
+        if let Some(frame) = frame {
+          frame
+            .show(ui, |ui| {
+              // set whether all widgets in the contents are enabled or disabled
+              ui.add_enabled_ui(!disabled, |ui| {
+                // add the new child_ui created by frame onto the stack of parents
+                // inside of frame
+                // render scroll area and inner layout if there is a scroll area
+                if let Some(scroll_area) = scroll_area {
+                  scroll_area
+                    .id_source(scroll_area_id)
+                    .show(ui, |ui| {
+                      // inside of scroll area
+                      ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                        ui.set_min_size(min_size); // set minimum size of entire layout
+
+                        util::activate_ui_contents(
+                          context,
+                          input,
+                          ui,
+                          &mut self.parents,
+                          &mut self.contents,
+                        )
+                      })
+                      .inner
                     })
                     .inner
+                } else {
+                  // inside of frame, no scroll area to render, render inner layout
+                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                    ui.set_min_size(min_size); // set minimum size of entire layout
+
+                    util::activate_ui_contents(
+                      context,
+                      input,
+                      ui,
+                      &mut self.parents,
+                      &mut self.contents,
+                    )
                   })
                   .inner
-              } else {
-                // inside of frame, no scroll area to render, render inner layout
+                }
+              })
+              .inner
+            })
+            .inner
+        } else {
+          // no frame to render, render only the scroll area (if applicable) and inner layout
+          if let Some(scroll_area) = scroll_area {
+            scroll_area
+              .id_source(scroll_area_id)
+              .show(ui, |ui| {
+                // inside of scroll area
                 ui.allocate_ui_with_layout(max_size, layout, |ui| {
                   ui.set_min_size(min_size); // set minimum size of entire layout
 
@@ -1171,46 +1211,23 @@ impl Shard for LayoutShard {
                   )
                 })
                 .inner
-              }
-            })
-            .inner
-          })
-          .inner
-      } else {
-        // no frame to render, render only the scroll area (if applicable) and inner layout
-        if let Some(scroll_area) = scroll_area {
-          scroll_area
-            .id_source(scroll_area_id)
-            .show(ui, |ui| {
-              // inside of scroll area
-              ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                ui.set_min_size(min_size); // set minimum size of entire layout
-
-                util::activate_ui_contents(
-                  context,
-                  input,
-                  ui,
-                  &mut self.parents,
-                  &mut self.contents,
-                )
               })
               .inner
+          } else {
+            // inside of frame, no scroll area to render, render inner layout
+            ui.allocate_ui_with_layout(max_size, layout, |ui| {
+              ui.set_min_size(min_size); // set minimum size of entire layout
+
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
             .inner
-        } else {
-          // inside of frame, no scroll area to render, render inner layout
-          ui.allocate_ui_with_layout(max_size, layout, |ui| {
-            ui.set_min_size(min_size); // set minimum size of entire layout
-
-            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          })
-          .inner
+          }
         }
-      }
-    })??;
+      })??;
 
-    // Always passthrough the input
-    Ok(None)
+      // Always passthrough the input
+      Ok(None)
+    })
   }
 }
 
