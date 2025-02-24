@@ -7,7 +7,6 @@
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include "core.hpp"
-#include "pdqsort.h"
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <shards/core/params.hpp>

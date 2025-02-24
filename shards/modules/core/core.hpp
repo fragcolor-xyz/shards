@@ -1576,7 +1576,7 @@ struct Update : public SetUpdateBase {
       }
 
       bool matched = false;
-      for (int i = 0; i < tableInnerValueTypes.len; i++) {
+      for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
         if (matchTypes(data.inputType, tableInnerValueTypes.elements[i], true, true, true, true)) {
           matched = true;
           break;
@@ -1585,7 +1585,7 @@ struct Update : public SetUpdateBase {
 
       if (!matched) {
         std::string possibleTypes;
-        for (int i = 0; i < tableInnerValueTypes.len; i++) {
+        for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
           if (i > 0) {
             possibleTypes += ", ";
           }
@@ -1890,7 +1890,7 @@ struct Get : public VariableBase {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
           SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-          const auto& optr = *static_cast<const shards::OwnedVar*>(&kv);
+          const auto &optr = *static_cast<const shards::OwnedVar *>(&kv);
           auto maybeValue = table->find(optr);
           if (maybeValue != table->end()) {
             auto &vRef = maybeValue->second;
@@ -2072,9 +2072,6 @@ struct SeqBase : public VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void destroy() {
-    // for (size_t i = 0; i < _tableInfo.table.keys.len; i++) {
-    //   shards::destroyVar(_tableInfo.table.keys.elements[i]);
-    // }
     shards::arrayFree(_tableInfo.table.keys);
     shards::arrayFree(_tableInfo.table.types);
   }
@@ -2120,6 +2117,8 @@ struct Push : public SeqBase {
       return shards::Var(_clear);
     throw SHException("Param index out of range.");
   }
+
+  ExposedInfo _requiredInfo{};
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     shassert(data.privateContext && "Private context should be valid");
@@ -2217,11 +2216,18 @@ struct Push : public SeqBase {
     }
 
     if (_firstPush) {
+      _requiredInfo.clear(); // we don't require anything in this case
       _exposedInfo._innerInfo.elements[0].declared = true;
+    } else {
+      // we require the sequence to push to, as type any is fine here
+      _requiredInfo =
+          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The sequence to push to."), CoreInfo::AnySeqType, true));
     }
 
     return data.inputType;
   }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
 
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) noexcept {
     if (unlikely(_isTable)) {
