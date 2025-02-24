@@ -4,7 +4,11 @@
       Once({
         GFX.DrawQueue >= ui-draw-queue
         GFX.UIPass(ui-draw-queue) >> render-steps
+        
+        ; Add storage for dropped items
+        null | Expect(@type(Type::Any)) >= dropped-item
       })
+
       UI(
         UI.CentralPanel(
           Contents: {
@@ -35,30 +39,81 @@
             ;     {Take("Name") | UI.Label}]
             ; )
             
-            16 ; Number of entries
-            UI.Table2(Columns: [
+            Once({
+              Table(selection-set Type: @type({none: Type::Bool}))
+              Sequence(data-src Type: @type([{data: Type::String}]))
+              ForRange(1 16 {
+                {data: (RandomInt | ToString)} >> data-src
+              })
+              false >= reversed
+            })
+            
+            Count(data-src) ; Number of entries
+            UI.Table2(Reversed: reversed
+              Clicked: {
+                = i
+                Log("Hi clicked")
+                true | Update(selection-set i)
+              }
+              IsSelected: {
+                = i
+                Get(selection-set i Default: false)
+              }
+              Columns: [
                 {
                   UI.Header({
-                    UI.Label("Name")
+                    "Name" | UI.Label
                     UI.Button("v" Action: {Log("Sorting")})
                   })
-                  "dummy"
+                  "dummy" | UI.Label
                 }
                 {
                   UI.Header({
-                    UI.Label("Type")
-                    UI.Button("v" Action: {Log("Sorting")})
+                    "#" | UI.Label
+                    UI.Button("v" Action: {
+                      Log("Sorting")
+                      reversed | Not > reversed
+                    })
                   })
-                  "dummy"
+                  ToString | UI.Label
                 }
                 {
-                  UI.Header({UI.Label("Data")})
-                  RandomInt | ToString
+                  UI.Header({
+                    "Type" | UI.Label
+                  })
+                  "dummy" | UI.Label
+                }
+                {
+                  = i
+                  UI.Header({"Data" | UI.Label})
+                  data-src | Take(i) | Take("data") | UI.Label
                 }]
             )
+
+            ; Add drop box at bottom
+            UI.Space(20.0)
+            UI.DragAndDrop({
+              UI.Frame(
+                InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+                FillColor: @color(40 40 40)
+                StrokeColor: @color(90 90 32) StrokeWidth: 2.0
+                Contents: {
+                  "Drop items here" | UI.Label
+                  dropped-item | WhenNot({IsNone} {
+                    ToString | UI.Label
+                  })
+                }
+              )
+            } Drop: {
+              = item
+              Log("Dropping item")
+              item > dropped-item
+            })
           }
         )
       ) | UI.Render(ui-draw-queue)
+
+      
       
       GFX.Render(Steps: render-steps)
     }
