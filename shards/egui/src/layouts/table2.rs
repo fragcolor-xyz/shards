@@ -6,24 +6,24 @@ use crate::EguiId;
 use crate::BOOL_VAR_SLICE;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use crate::INT_VAR_OR_NONE_SLICE;
+
 use crate::PARENTS_UI_NAME;
-use core::slice;
+
 use shards::core::register_shard;
 use shards::shard::{Shard};
-use shards::shardsc::SHType_Int;
+
 use shards::shardsc::SHType_Seq;
-use shards::shardsc::SHType_ShardRef;
-use shards::shardsc::SHType_String;
+
+
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
+
 use shards::types::Seq;
 use shards::types::ShardsVar;
 use shards::types::Type;
@@ -32,13 +32,13 @@ use shards::types::Var;
 use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
-use shards::types::INT_TYPES;
-use shards::types::NONE_TYPES;
+
+
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use shards::util::from_raw_parts_allow_null;
+
 use std::cell::RefCell;
-use std::cmp::Ordering;
-use std::ffi::CStr;
+
+
 
 // Thread-local context for Table2 composition
 thread_local! {
@@ -66,12 +66,12 @@ impl ColumnSettings {
   }
 
   fn compose(&mut self, data: &InstanceData, out_exp: &mut ExposedTypes) -> Result<Type, &str> {
-    shards::util::collect_required_variables(data, out_exp, &self.width_type);
-    shards::util::collect_required_variables(data, out_exp, &self.width_value);
-    shards::util::collect_required_variables(data, out_exp, &self.min_width);
-    shards::util::collect_required_variables(data, out_exp, &self.max_width);
-    shards::util::collect_required_variables(data, out_exp, &self.clip);
-    shards::util::collect_required_variables(data, out_exp, &self.resizable);
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_type).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_value).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.min_width).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.max_width).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.clip).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.resizable).into());
     Ok(data.inputType)
   }
 
@@ -81,19 +81,6 @@ impl ColumnSettings {
     self.min_width.cleanup(ctx);
     self.max_width.cleanup(ctx);
     self.clip.cleanup(ctx);
-  }
-}
-
-impl Default for ColumnSettings {
-  fn default() -> Self {
-    Self {
-      width_type: None,
-      width_value: None,
-      min_width: None,
-      max_width: None,
-      clip: None,
-      resizable: None,
-    }
   }
 }
 
@@ -468,7 +455,7 @@ impl Table2 {
       text_height
     };
 
-    let root_id = ui.id();
+    let _root_id = ui.id();
 
     // Start building table
     let mut builder =
