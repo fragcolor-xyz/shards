@@ -551,9 +551,14 @@ struct Peer : public std::enable_shared_from_this<Peer> {
   std::shared_ptr<tcp::socket> socket;
   std::optional<entt::connection> onStopConnection;
 
-  ~Peer() {
+  ~Peer() { cleanup(); }
+
+  void cleanup() {
     if (onStopConnection)
       onStopConnection->release();
+
+    socket.reset();
+    onStopConnection.reset();
   }
 };
 

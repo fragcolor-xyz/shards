@@ -21,6 +21,11 @@ concept WireData = requires(TData data) {
 };
 
 template <typename TData>
+concept WireDataCleanup = requires(TData data) {
+  { data.cleanup() };
+};
+
+template <typename TData>
 concept WireDataDeps = requires(TData data) {
   { data.wires.clear() };
   { data.wires.push_back(std::shared_ptr<SHWire>()) };
@@ -209,6 +214,10 @@ template <typename T> struct WireDoppelgangerPool {
     shassert(wire != nullptr && "Releasing a null wire?");
 
     std::unique_lock<LockableBase(std::mutex)> _l(_poolMutex);
+
+    if constexpr (WireDataCleanup<T>) {
+      wire->cleanup();
+    }
 
     _avail.emplace(wire);
   }
