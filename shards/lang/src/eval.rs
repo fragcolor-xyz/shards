@@ -10,6 +10,8 @@ use core::convert::TryInto;
 
 use nanoid::nanoid;
 use shards::cstr;
+use shards::types::SeqVar;
+use shards::types::STRINGS_OR_NONE_SLICE;
 use shards::SHType_Trait;
 
 use shards::shard::LegacyShard;
@@ -4144,6 +4146,12 @@ lazy_static! {
       shccstr!("The optional namespace name."),
       STRING_VAR_OR_NONE_SLICE
     )
+      .into(),
+    (
+      cstr!("Forbid"),
+      shccstr!("The optional forbidden shards and functions."),
+      STRINGS_OR_NONE_SLICE
+    )
       .into()
   ];
 }
@@ -4154,6 +4162,7 @@ pub struct EvalShard {
   namespace: ParamVar,
   name: ParamVar,
   defines: ParamVar,
+  forbidden_shards: ClonedVar,
 }
 
 impl LegacyShard for EvalShard {
@@ -4192,6 +4201,7 @@ impl LegacyShard for EvalShard {
       0 => self.name.set_param(value),
       1 => self.defines.set_param(value),
       2 => self.namespace.set_param(value),
+      3 => Ok(self.forbidden_shards = value.into()),
       _ => Err("invalid parameter index"),
     }
   }
@@ -4201,6 +4211,7 @@ impl LegacyShard for EvalShard {
       0 => self.name.get_param(),
       1 => self.defines.get_param(),
       2 => self.namespace.get_param(),
+      3 => self.forbidden_shards.0,
       _ => Var::default(),
     }
   }
@@ -4281,6 +4292,18 @@ impl LegacyShard for EvalShard {
         },
         Definition::Value(v),
       );
+    }
+
+    if !self.forbidden_shards.0.is_none() {
+      let seq: SeqVar = self.forbidden_shards.0.as_ref().try_into()?;
+      for shard in seq.iter() {
+        let shard_name: &str = shard.as_ref().try_into()?;
+        env.forbidden_funcs.insert(Identifier {
+          name: RcStrWrapper::from(shard_name),
+          namespaces: Vec::new(),
+          custom_state: CustomStateContainer::new(),
+        });
+      }
     }
 
     let mut env = eval_sequence(

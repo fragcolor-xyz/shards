@@ -6338,6 +6338,7 @@ pub static BOOL_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::bool, common_type::bool_var, common_type::none];
 pub static STRING_TYPES_SLICE: &[Type] = &[common_type::string];
 pub static STRING_OR_NONE_SLICE: &[Type] = &[common_type::string, common_type::none];
+pub static STRINGS_OR_NONE_SLICE: &[Type] = &[common_type::strings, common_type::none];
 pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::string,
   common_type::string_var,
