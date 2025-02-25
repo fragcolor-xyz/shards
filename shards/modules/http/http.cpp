@@ -235,6 +235,7 @@ struct Base {
   static void fetchFailed(emscripten_fetch_t *fetch) {
     SPDLOG_LOGGER_DEBUG(logger, "Fetch failed {} (s: {})", (void *)fetch, fetch->status);
     auto self = reinterpret_cast<Base *>(fetch->userData);
+    self->status = fetch->status;
     self->buffer.assign(fetch->statusText);
     emscripten_fetch_close(fetch); // Also free data on failure.
     self->state = -1;
@@ -302,10 +303,6 @@ template <const string_view &METHOD> struct GetLike : public Base {
       SPDLOG_LOGGER_DEBUG(logger, "Sending {} request \"{}\" {}", METHOD, urlBuffer, (void *)fetch);
 
       while (state == 0) {
-#if SH_EMSCRIPTEN
-        // This is to avoid requests getting stuck if the called does not return control to the os thread
-        emscripten_sleep(0);
-#endif
         SH_SUSPEND(context, 0.0);
       }
 
@@ -314,20 +311,24 @@ template <const string_view &METHOD> struct GetLike : public Base {
       }
     }
 
-    if (unlikely(fullResponse)) {
-      outMap["status"] = Var(status);
-      if (asBytes) {
-        outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
+    if (state == 1) {
+      if (unlikely(fullResponse)) {
+        outMap["status"] = Var(status);
+        if (asBytes) {
+          outMap["body"] = Var((uint8_t *)buffer.data(), buffer.size());
+        } else {
+          outMap["body"] = Var(buffer);
+        }
+        return outMap;
       } else {
-        outMap["body"] = Var(buffer);
+        if (asBytes) {
+          return Var((uint8_t *)buffer.data(), buffer.size());
+        } else {
+          return Var(buffer);
+        }
       }
-      return outMap;
     } else {
-      if (asBytes) {
-        return Var((uint8_t *)buffer.data(), buffer.size());
-      } else {
-        return Var(buffer);
-      }
+      throw ActivationError(fmt::format("Http request failed with status {}: \"{}\"", status, buffer));
     }
   }
 };
@@ -439,10 +440,6 @@ template <const string_view &METHOD> struct PostLike : public Base {
       SPDLOG_LOGGER_DEBUG(logger, "Sending {} request \"{}\" {}", METHOD, urlStr, (void *)fetch);
 
       while (state == 0) {
-#if SH_EMSCRIPTEN
-        // This is to avoid requests getting stuck if the called does not return control to the os thread
-        emscripten_sleep(0);
-#endif
         SH_SUSPEND(context, 0.0);
       }
 
@@ -467,8 +464,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
         }
       }
     } else {
-      SHLOG_ERROR("Http request failed with status: {}", buffer);
-      throw ActivationError("Http request failed");
+      throw ActivationError(fmt::format("Http request failed with status {}: \"{}\"", status, buffer));
     }
   }
 };
@@ -1258,14 +1254,20 @@ struct SendFile {
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
-    fs::path p{GetGlobals().RootPath.c_str()};
-    p /= SHSTRING_PREFER_SHSTRVIEW(input);
+    fs::path p = SHSTRING_PREFER_SHSTRVIEW(input);
 
     http::file_body::value_type file;
     boost::beast::error_code ec;
     auto pstr = p.generic_string();
     bool done = false;
     file.open(pstr.c_str(), boost::beast::file_mode::read, ec);
+
+    // Close file when sent (OR WHEN EXCEPTION OCCURS)
+    DEFER({
+      _response.body().close();
+      _response.clear();
+    });
+
     if (unlikely(bool(ec))) {
       _404_response.clear();
       _404_response.result(http::status::not_found);
@@ -1301,7 +1303,6 @@ struct SendFile {
       }
 
       _response.prepare_payload();
-
       http::async_write(*peer->socket, _response, [&, peer](beast::error_code ec, std::size_t nbytes) {
         if (ec) {
           throw PeerError{"SendFile:2", ec, peer};
@@ -1316,10 +1317,6 @@ struct SendFile {
     while (!done) {
       SH_SUSPEND(context, 0.0);
     }
-
-    _response.body().close();
-    _response.clear();
-    _404_response.clear();
 
     return input;
   }

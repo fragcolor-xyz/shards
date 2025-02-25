@@ -7,7 +7,7 @@
   @wire(name1 {
     test
   })
-
+  
   @wire(name2 {
     ; wrapper to catch the failure of wire composition
     Const(name1) | ToBytes | FromBytes | ExpectWire = wire

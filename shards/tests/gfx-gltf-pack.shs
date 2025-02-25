@@ -1,0 +1,57 @@
+@mesh(root)
+@wire(get-view-transform {
+  {@f4(0 0.2 0.2 1.0) >= arm-pos}
+  Math.AxisAngleY | Math.Rotation | Math.MatMul(arm-pos) | ToFloat3 >= arm-pos-3
+  {Position: arm-pos-3 Target: @f3(0 0.025 0)} | Math.LookAt
+} Pure: true)
+
+@define(default-setup {
+  0.0 >= time
+  
+  ; Render steps
+  GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+  GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+  GFX.DrawQueue >= queue
+  GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+  
+  ; Create view
+  0.0 | Do(get-view-transform) >= view-transform
+  GFX.View(View: view-transform) >= view
+})
+
+@define(default-window {
+  GFX.MainWindow(
+    Title: "Shards Window" Width: 1280 Height: 720
+    Contents: {
+      ; Rotate camera
+      Animation.Timer | Do(get-view-transform) > view-transform
+      
+      drawables | GFX.Draw(queue)
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+})
+
+@template(test-pack-x [name file scale] {
+  @wire(name {
+    Once({
+      @default-setup
+      scale | Math.Scaling = s
+      file | GLTF.PackGLB = packed-bytes
+      s | GFX.glTF(Bytes: packed-bytes) >> drawables
+    })
+    @default-window
+  } Looped: true)
+})
+
+@test-pack-x(test-pack-1 "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" @f3(0.5))
+@schedule(root test-pack-1)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+
+@test-pack-x(test-pack-2 "../../external/glTF-Sample-Assets/Models/DamagedHelmet/glTF-Embedded/DamagedHelmet.gltf" @f3(0.1))
+@schedule(root test-pack-2)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+
+@test-pack-x(test-pack-3 "../../external/glTF-Sample-Assets/Models/PotOfCoals/glTF/PotOfCoals.gltf" @f3(0.5))
+@schedule(root test-pack-3)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)

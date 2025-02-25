@@ -1,7 +1,9 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-@include("hello2.shs") ; if macro
+@include("defs.shs") ; if macro
+
+@define(test-device true IgnoreRedefined: true)
 
 @mesh(main)
 
@@ -15,7 +17,7 @@
     AudioToBytes | Log
     BytesToAudio(SampleRate: 16000 Channels: 2) | Log
   } ; FOR COVERAGE
-  Audio.WriteFile("example-resampled.wav" SampleRate: 16000)
+  Audio.WriteFile(@tmp-path("example-resampled.wav") SampleRate: 16000)
 } Looped: true)
 
 @schedule(main play-files)
@@ -27,11 +29,11 @@
   Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0)
   DSP.FFT = freq-domain
   DSP.IFFT(Audio: true)
-  Audio.WriteFile("example-fft.wav" Channels: 1)
+  Audio.WriteFile(@tmp-path("example-fft.wav") Channels: 1)
   freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
   freq-domain | DSP.IFFT(Complex: false)
   Math.Normalize(Positive: true)
-  FloatsToImage(32 32 1) | WritePNG("example.wav.png") ; again, just for coverage
+  FloatsToImage(32 32 1) | WritePNG(@tmp-path("example.wav.png")) ; again, just for coverage
   Log
 } Looped: true)
 

@@ -4,12 +4,12 @@
 @define(base {
   Once({
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
-
+    
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue >= queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
-
+    
     GFX.Texture(Format: TextureFormat::R16Uint) >= u8-tex
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features-1
     GFX.Feature(
@@ -23,7 +23,7 @@
             Shader.WriteOutput("index")
           }}]
     ) >> features-1
-
+    
     ; Second pass to render to index texture
     GFX.DrawablePass(Features: features-1
       Outputs: [
@@ -31,9 +31,9 @@
         {Name: "depth"}]
       Queue: queue
     ) >> render-steps
-
+    
     {Position: @f3(0 1 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
-
+    
     GFX.View(View: view-transform) >= view
   })
 })
@@ -45,24 +45,34 @@
     UseDisplayScaling: false
     Contents: {
       Once({0 >= frame-index})
-
+      
       @f3(-1.0 0.0 0.0) | Math.Translation
       GFX.Drawable(Mesh: mesh Params: {index: frame-index}) | GFX.Draw(queue)
       @f3(1.0 0.0 0.0) | Math.Translation
       GFX.Drawable(Mesh: mesh Params: {index: 0xffff}) | GFX.Draw(queue)
-
+      
       GFX.Render(Steps: render-steps View: view)
-
+      
       u8-tex | GFX.ReadTexture = image
       frame-index | Log("This frame index")
-      @i2(400 400) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel (400, 400)")
-      @i2(800 400) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p1 | Log("Pixel (800, 400)")
-
+      
+      Once({
+        GFX.Viewport = vp
+        vp:2 | Math.Subtract((vp:0)) >= dx
+        vp:3 | Math.Subtract((vp:1)) >= dy
+        dy | ToFloat | Mul(#(400.0 | Div(720.0))) | ToInt = py0 | Log("py0")
+        dx | ToFloat | Mul(#(400.0 | Div(1280.0))) | ToInt = px0 | Log("px0")
+        dx | ToFloat | Mul(#(800.0 | Div(1280.0))) | ToInt = px1 | Log("px1")
+      })
+      
+      @i2(px0 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel 0")
+      @i2(px1 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p1 | Log("Pixel 1")
+      
       ; With two frames delay, check that the values match the expected ones
       Once({
         0 >= fi-max
       })
-      frame-index | When(IsMore(1) {
+      frame-index | When(IsMore(2) {
         p0:0 = p0-x
         p1:0 = p1-x
         frame-index | Math.Subtract(1) = expected-frame-index
@@ -70,12 +80,12 @@
         fi-max | Max(p0-x) > fi-max
         p1-x | Assert.Is(0xffff)
       })
-
+      
       ; Check that at least the frame index is increasing, with some leniency
       frame-index | When(Is(31) {
         fi-max | Log("Check max frame index") | IsMore(26) | Assert.Is(true)
       })
-
+      
       Math.Inc(frame-index)
     }
   )
@@ -90,16 +100,21 @@
     Contents: {
       @f3(-1.0 0.0 0.0) | Math.Translation
       GFX.Drawable(Mesh: mesh Params: {index: 0xffff}) | GFX.Draw(queue)
-
+      
       GFX.Render(Steps: render-steps View: view)
-
+      
       ; This end frame is required when using `Wait: true` with the ReadTexture shard,
       ; since rendering command buffers are queued in EndFrame
       ; and texture copy needs to happen afterwards
       GFX.EndFrame
-
+      
       u8-tex | GFX.ReadTexture(Wait: true) = image
-      @i2(400 400) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel (400, 400)")
+      ImageSize = size
+      
+      size:0 | ToFloat | Mul(#(400.0 | Div(1280.0))) | ToInt = px0
+      size:1 | ToFloat | Mul(#(400.0 | Div(720.0))) | ToInt = py0
+      
+      @i2(px0 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel")
       p0 | Assert.Is(@i4(65535 0 0 0))
     }
   )
@@ -108,5 +123,8 @@
 @schedule(root test-copy-async)
 @run(root FPS: 40 Iterations: 32) | Assert.Is(true)
 
-@schedule(root test-copy-sync)
-@run(root FPS: 40 Iterations: 32) | Assert.Is(true)
+; GFX.EndFrame will not flush the texture read and therefore try to map/unmap in the same frame
+@platform | If(IsNot("emscripten") {
+  @schedule(root test-copy-sync)
+  @run(root FPS: 40 Iterations: 32) | Assert.Is(true)
+})

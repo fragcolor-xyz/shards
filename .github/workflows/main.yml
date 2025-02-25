@@ -21,15 +21,36 @@ jobs:
     steps:
       - run: exit 0
 
-  # Build shards for emscripten
   #
-  wasm32-emscripten-mt:
+  # Build shards for macOS
+  #
+  macOS-Debug:
     needs: Setup
-    uses: ./.github/workflows/build-wasm.yml
+    uses: ./.github/workflows/build-macos.yml
     secrets: inherit
     with:
-      threading: mt
+      build-type: Debug
       run-tests: true
+  macOS-Release:
+    needs: Setup
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+    with:
+      build-type: Release
+      run-tests: true
+
+  #
+  # Build shards for emscripten
+  #
+  wasm32-emscripten:
+    needs: [Setup]
+    uses: ./.github/workflows/build-wasm.yml
+    secrets: inherit
+
+  wasm32-emscripten-test:
+    needs: [Setup, macOS-Release, wasm32-emscripten]
+    uses: ./.github/workflows/test-wasm.yml
+    secrets: inherit
 
   #
   # Build shards for linux
@@ -94,24 +115,6 @@ jobs:
     secrets: inherit
     with:
       publish: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
-
-  #
-  # Build shards for macOS
-  #
-  macOS-Debug:
-    needs: Setup
-    uses: ./.github/workflows/build-macos.yml
-    secrets: inherit
-    with:
-      build-type: Debug
-      run-tests: true
-  macOS-Release:
-    needs: Setup
-    uses: ./.github/workflows/build-macos.yml
-    secrets: inherit
-    with:
-      build-type: Release
-      run-tests: true
 
   #
   # Build shards for iOS

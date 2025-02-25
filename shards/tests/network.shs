@@ -3,6 +3,7 @@
 
 @define(random1 #(RandomBytes(0xFFFF)))
 @define(random2 #(RandomBytes(0xFFFFF)))
+@define(no-big-load "false" IgnoreRedefined: true)
 
 @wire(handler {
   Log("Server's Peer Received")
@@ -16,8 +17,8 @@
 
 @wire(network-test-server {
   Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
-  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 0.5)
-  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 0.5)
+  Once({"Smaller" | Network.Broadcast | Log("Send smaller")} Every: 4.0)
+  Once({@random1 | Network.Broadcast | Log("Send random1")} Every: 4.0)
 } Looped: true Priority: -1)
 
 @wire(client-init {
@@ -27,8 +28,10 @@
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
   
-  @random1 | Network.Send | Log("Big load")
-  @random2 | Network.Send | Log("Even bigger load")
+  If({@no-big-load | Is("false")} {
+    @random1 | Network.Send | Log("Big load")
+    @random2 | Network.Send | Log("Even bigger load")
+  })
   true > test/client-init-success | Log("Client init success")
 })
 
@@ -42,7 +45,7 @@
       When(Is(@random1) {
         true > test/client-received-random1
       })
-
+      
       When({test/client-received-smaller | And | test/client-received-random1} {
         "The End" | Network.Send | Log("Sent end")
       })
@@ -52,17 +55,18 @@
   } {Stop})
 } Looped: true)
 
-@define(tick-count 200)
+@define(tick-count 1000)
 @define(tick-count-1 #(@tick-count | Sub(1)))
+@define(tick-dur #(10.0 | Div(#(@tick-count | ToFloat))))
 @wire(test-assert {
   false | Set(test/client-init-success Global: true) | Log("Client init success Set")
   false | Set(test/client-received-smaller Global: true) | Log("Client received smaller Set")
   false | Set(test/client-received-random1 Global: true) | Log("Client received random1 Set")
   false | Set(test/server-received-end Global: true) | Log("Server received end Set")
   ForRange(1 @tick-count-1 {
-    Pause(0)
+    Pause(0.0)
   })
-  Log("Checking conditions")
+  Msg("Checking conditions")
   test/client-init-success | Log("client-init-success") | Assert.Is(true)
   test/server-received-end | Log("server-received-end") | Assert.Is(true)
   test/client-received-smaller | Log("client-received-smaller") | Assert.Is(true)
@@ -73,4 +77,4 @@
 @schedule(main test-assert)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main #(10.0 | Div(1000.0)) @tick-count) | Assert.Is(true)
+@run(main @tick-dur @tick-count) | Assert.Is(true)

@@ -34,6 +34,7 @@
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/algorithm/string.hpp>
 #include <shards/fast_string/fast_string.hpp>
 #include "hash.inl"
 #include "utils.hpp"
@@ -713,16 +714,20 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
-#if !defined(NDEBUG) || defined(SH_RELWITHDEBINFO)
+#if SH_USE_UBSAN
+  // Slightly bigger for assertions, etc.
+  const uint32_t padding = 16 * 1024;
+#else
+  const uint32_t padding = 8 * 1024;
+#endif
   // check for stack overflow
 #if SH_CORO_NEED_STACK_MEM
-  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, 8 * 1024)) {
+  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
     // we let the top level handle this
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
-#endif
 #endif
 
   // store initial input, as pointer, otherwise we risk corruption if the input changes while we are processing
@@ -1612,8 +1617,6 @@ void run(SHWire *wire, shards::Coroutine *coro) {
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
   bool failed = false;
 
-  std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
-
   // Reset state
   wire->state = SHWire::State::Prepared;
   wire->finishedOutput.reset();
@@ -1718,7 +1721,11 @@ endOfWire:
     auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
     SHLOG_ERROR(msg);
     shards::OwnedVar errVar((Var(context.formatErrorStack())));
-    mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, nullptr, std::move(errVar)});
+    {
+      // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
+      std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
+      mesh->dispatcher.trigger(SHWire::OnErrorEvent{wire, nullptr, std::move(errVar)});
+    }
 
     if (wire->resumer) {
       // also stop the resumer parent in this case
@@ -1739,6 +1746,9 @@ endOfWire:
     wire->resumer = nullptr;
   }
 
+  // NOTE: This is here because cleanup resets the mesh
+  std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
+
   // Set onLastResume so tick keeps processing mesh tasks on cleanup
   context.onLastResume = true;
   wire->cleanup(true);
@@ -1749,8 +1759,11 @@ endOfWire:
   if (wire->state != SHWire::State::Failed)
     wire->state = SHWire::State::Ended;
 
-  mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
-  mesh.reset();
+  // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
+  if (mesh) {
+    mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
+    mesh.reset();
+  }
 
   // Make sure to clear context at the end so it doesn't point to invalid stack memory
   wire->context = nullptr;
@@ -3091,10 +3104,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getRootPath = []() noexcept { return shards::GetGlobals().RootPath.c_str(); };
 
   result->setRootPath = [](const char *p) noexcept {
-    shards::GetGlobals().RootPath = p;
-    shards::loadExternalShards(p);
-    fs::current_path(p);
-    SHLOG_DEBUG("Root path set to: {}", p);
+    auto &p1 = shards::GetGlobals().RootPath = p;
+#ifdef _WIN32
+    if (boost::starts_with(p1, "\\\\?\\")) {
+      p1 = p1.substr(4);
+    }
+#endif
+    shards::loadExternalShards(p1);
+    fs::current_path(p1);
+    SHLOG_DEBUG("Root path set to: {}", p1);
   };
 
   result->asyncActivate = [](SHContext *context, void *userData, SHAsyncActivateProc call, SHAsyncCancelProc cancel_call) {

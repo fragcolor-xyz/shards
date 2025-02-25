@@ -1,7 +1,9 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-@include("hello2.shs") ; if macro
+@include("defs.shs") ; if macro
+
+@define(test-device true IgnoreRedefined: true)
 
 @mesh(main)
 
@@ -10,7 +12,7 @@
     Audio.Engine
 
     Once({
-      "./data/Ode_to_Joy.ogg" | Audio.Sound = game-on
+      "data/Ode_to_Joy.ogg" | Audio.Sound = game-on
     })
 
     game-on | Audio.Start(Looped: true)

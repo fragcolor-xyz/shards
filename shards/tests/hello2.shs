@@ -1,3 +1,4 @@
+
 @template(say [what] {
   what >= hello
   " World!" | AppendTo(hello)
@@ -10,7 +11,7 @@
 @macro(macro1 [v] {
   v >= hello
   " World!" | AppendTo(hello)
-  {str: hello} | ToJson
+  [[{const: {str: hello}}]] | ToJson
 })
 
 @macro(my-macro [n] {
@@ -28,26 +29,7 @@
 
 @define(to-j-from-j {ToJson | ToHex})
 
-@macro(if [cond yes no] {
-  Sequence(pipelines)
-  cond | If(IsAny([true "true" 1]) {
-      {
-        sh: {
-          name: "SubFlow"
-          params: [(@ast(yes) | FromJson)]
-        }
-      }
-    } {
-      {
-        sh: {
-          name: "SubFlow"
-          params: [(@ast(no) | FromJson)]
-        }
-      }
-    }
-  ) >> pipelines
-  [pipelines] | ToJson
-})
+@include("defs.shs") ; if macro
 
 @macro(for [from to code] {
   Sequence(pipelines)

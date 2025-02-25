@@ -407,6 +407,7 @@ struct ServerShard : public NetworkBase {
   OwnedVar _handlerMaster{};
 
   std::atomic<bool> _running{false};
+  std::atomic<bool> _receiveLoopRunning{false};
 
   float _timeoutSecs = 30.0f;
 
@@ -558,11 +559,11 @@ struct ServerShard : public NetworkBase {
 
     setServer(context, &_server);
 
-    _running.store(true, std::memory_order_release);
+    _running = true;
   }
 
   void cleanup(SHContext *context) {
-    _running.store(false, std::memory_order_release);
+    _running = false;
 
     // Stop handlers
     if (_pool) {
@@ -578,6 +579,11 @@ struct ServerShard : public NetworkBase {
 
     // Shut down connection
     NetworkBase::cleanup(context);
+
+    // Wait for receive loop to finish
+    while (_receiveLoopRunning) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 
     if (_serverVar) {
       releaseVariable(_serverVar);
@@ -630,15 +636,23 @@ struct ServerShard : public NetworkBase {
     _stopWireQueue.push(e.wire);
   }
 
+  void receiveLoopFinished() {
+    SPDLOG_LOGGER_TRACE(logger, "Server do_receive loop finished");
+    shassert(_receiveLoopRunning);
+    _receiveLoopRunning = false;
+  }
+
   void do_receive() {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
 
     std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
-
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   TracyMessageL("Network::async_receive_from (udp)");
-                                  if (!ec && bytes_recvd > 0) {
+                                  if (!_running) {
+                                    receiveLoopFinished();
+                                    return;
+                                  } else if (!ec && bytes_recvd > 0) {
                                     KCPPeer *currentPeer = nullptr;
                                     std::shared_lock<std::shared_mutex> lock(peersMutex);
                                     auto it = _server._end2Peer.find(_sender);
@@ -676,7 +690,7 @@ struct ServerShard : public NetworkBase {
                                         SPDLOG_LOGGER_ERROR(logger, "Error acquiring peer: {}", e.what());
 
                                         // keep receiving
-                                        if (_socket && _running.load(std::memory_order_acquire))
+                                        if (_socket && _running)
                                           return do_receive();
                                       }
                                     } else {
@@ -704,17 +718,11 @@ struct ServerShard : public NetworkBase {
 
                                       currentPeer->_lastContact = SHClock::now();
                                     }
-
-                                    // keep receiving
-                                    if (_socket && _running.load(std::memory_order_acquire)) {
-                                      return do_receive();
-                                    } else {
-                                      SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
-                                    }
                                   } else {
                                     if (ec == boost::asio::error::operation_aborted) {
                                       // we likely have invalid data under the hood, let's just ignore it
                                       SPDLOG_LOGGER_DEBUG(logger, "Operation aborted");
+                                      receiveLoopFinished();
                                       return;
                                     } else if (ec == boost::asio::error::no_buffer_space ||
                                                ec == boost::asio::error::would_block || ec == boost::asio::error::try_again) {
@@ -732,13 +740,13 @@ struct ServerShard : public NetworkBase {
                                                           _sender.port());
                                       _stopWireQueue.push(it->second->wire.get());
                                     }
+                                  }
 
-                                    // keep receiving
-                                    if (_socket && _running.load(std::memory_order_acquire)) {
-                                      return do_receive();
-                                    } else {
-                                      SPDLOG_LOGGER_DEBUG(logger, "Socket closed, stopping receive loop");
-                                    }
+                                  // keep receiving
+                                  if (_socket && _running) {
+                                    return do_receive();
+                                  } else {
+                                    receiveLoopFinished();
                                   }
                                 });
   }
@@ -773,7 +781,12 @@ struct ServerShard : public NetworkBase {
       _socket->bind(udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
-      boost::asio::post(io_context, [this]() { do_receive(); });
+      boost::asio::post(io_context, [this]() {
+        SPDLOG_LOGGER_TRACE(logger, "Server do_receive loop staring");
+        shassert(!_receiveLoopRunning);
+        _receiveLoopRunning = true;
+        do_receive();
+      });
 
       SPDLOG_LOGGER_TRACE(logger, "Network.Server listening on port {}", _port.get().payload.intValue);
     }
@@ -891,6 +904,8 @@ struct ClientShard : public NetworkBase {
   KCPPeer _peer;
   ShardsVar _blks{};
   udp::endpoint _server;
+  std::atomic<bool> _receiveLoopRunning{false};
+  std::atomic<bool> _running{false};
 
   SHVar *_peerVarRef{};
 
@@ -962,6 +977,13 @@ struct ClientShard : public NetworkBase {
     _peer.kcp->output = &ClientShard::udp_output;
   }
 
+  void finishReceiveLoop() {
+
+    SPDLOG_LOGGER_TRACE(logger, "Client do_receive loop finished");
+    shassert(_receiveLoopRunning);
+    _receiveLoopRunning = false;
+  }
+
   void do_receive() {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
 
@@ -969,7 +991,9 @@ struct ClientShard : public NetworkBase {
 
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                  if (ec) {
+                                  if (!_running) {
+                                    finishReceiveLoop();
+                                  } else if (ec) {
                                     // certain errors are expected, ignore them
                                     if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
                                         ec == boost::asio::error::try_again) {
@@ -982,6 +1006,8 @@ struct ClientShard : public NetworkBase {
                                       SPDLOG_LOGGER_ERROR(logger, "Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
                                     }
+
+                                    finishReceiveLoop();
                                   } else {
                                     if (bytes_recvd > 0) {
                                       std::scoped_lock lock(_peer.mutex);
@@ -1010,7 +1036,15 @@ struct ClientShard : public NetworkBase {
   }
 
   void cleanup(SHContext *context) {
+    _running = false;
+
     NetworkBase::cleanup(context);
+
+    // Wait for receive loop to finish
+    while (_receiveLoopRunning) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     _blks.cleanup(context);
 
     if (_peerVarRef) {
@@ -1023,6 +1057,7 @@ struct ClientShard : public NetworkBase {
     NetworkBase::warmup(context);
     _blks.warmup(context);
     _peerVarRef = referenceVariable(context, "Network.Peer");
+    _running = true;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1047,7 +1082,12 @@ struct ClientShard : public NetworkBase {
       _peer.endpoint = _server;
 
       // start receiving
-      boost::asio::post(io_context, [this]() { do_receive(); });
+      boost::asio::post(io_context, [this]() {
+        SPDLOG_LOGGER_TRACE(logger, "Client do_receive loop staring");
+        shassert(!_receiveLoopRunning);
+        _receiveLoopRunning = true;
+        do_receive();
+      });
     }
 
     assignVariableValue(*_peerVarRef, Var::Object(&_peer, CoreCC, PeerCC));

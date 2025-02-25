@@ -305,22 +305,14 @@ std::vector<SHWire *> &getCoroWireStack();
 #endif
 
 #ifdef SH_VERBOSE_COROUTINES_LOGGING
-#define SH_CORO_RESUMED_LOG(_wire)                   \
-  {                                                  \
-    SHLOG_TRACE("> Resumed wire {}", (_wire)->name); \
-  }
-#define SH_CORO_SUSPENDED_LOG(_wire)                   \
-  {                                                    \
-    SHLOG_TRACE("> Suspended wire {}", (_wire)->name); \
-  }
-#define SH_CORO_EXT_RESUME_LOG(_wire)               \
-  {                                                 \
-    SHLOG_TRACE("Resuming wire {}", (_wire)->name); \
-  }
-#define SH_CORO_EXT_SUSPEND_LOG(_wire)                \
-  {                                                   \
-    SHLOG_TRACE("Suspending wire {}", (_wire)->name); \
-  }
+#define SH_CORO_RESUMED_LOG(_wire) \
+  { SHLOG_TRACE("> Resumed wire {}", (_wire)->name); }
+#define SH_CORO_SUSPENDED_LOG(_wire) \
+  { SHLOG_TRACE("> Suspended wire {}", (_wire)->name); }
+#define SH_CORO_EXT_RESUME_LOG(_wire) \
+  { SHLOG_TRACE("Resuming wire {}", (_wire)->name); }
+#define SH_CORO_EXT_SUSPEND_LOG(_wire) \
+  { SHLOG_TRACE("Suspending wire {}", (_wire)->name); }
 #else
 #define SH_CORO_RESUMED_LOG(_wire)
 #define SH_CORO_SUSPENDED_LOG(_wire)
@@ -615,6 +607,15 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void schedule(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
     EmptyObserver obs;
     schedule(obs, wire, input, compose);
+  }
+
+  void setParentContext(SHContext *context) {
+    for (auto &wire : _pendingSchedule) {
+      wire->context->parent = context;
+    }
+    for (auto &wire : _scheduled) {
+      wire->context->parent = context;
+    }
   }
 
   template <class Observer> bool tick(Observer &observer) {
