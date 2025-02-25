@@ -5,7 +5,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
+  SeqVar, Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -177,7 +178,11 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
     ">>" => Ok(AssignmentKind::AssignPush),
     _ => Err(("Unexpected assignment operator.", pos).into()),
   }?;
-  Ok(Assignment{ kind: op, identifier, line_info: Some(pos.into()) })
+  Ok(Assignment {
+    kind: op,
+    identifier,
+    line_info: Some(pos.into()),
+  })
 }
 
 enum FunctionValue {
@@ -411,7 +416,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             {
               // Insert this into the root map so it gets tracked globally
               let root_env = get_root_env(env);
-              root_env.dependencies.borrow_mut().push(file_path.to_string_lossy().to_string());
+              root_env
+                .dependencies
+                .borrow_mut()
+                .push(file_path.to_string_lossy().to_string());
             }
 
             if as_bytes {
@@ -450,65 +458,37 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   }
 }
 
-fn process_take_table(
-  pair: Pair<Rule>,
-  _env: &mut ReadEnv,
-) -> Result<(Identifier, Vec<RcStrWrapper>), ShardsError> {
+fn process_take_op(pair: Pair<Rule>, _env: &mut ReadEnv) -> Result<(TakeValue), ShardsError> {
   let pos = pair.as_span().start_pos();
-  // first is the identifier which has to be VarName
-  // followed by N Iden which are the keys
 
-  let mut inner = pair.into_inner();
-  let identity = inner
+  let value = pair
+    .into_inner()
     .next()
-    .ok_or(("Expected an identifier in TakeTable", pos).into())?;
+    .ok_or(("Expected a value in TakeOp", pos).into())?;
 
-  let identifier = extract_identifier(identity)?;
-
-  let mut keys = Vec::new();
-  for pair in inner {
-    let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
-      Rule::Iden => keys.push(pair.as_str().to_owned().into()),
-      _ => return Err(("Expected an identifier in TakeTable", pos).into()),
+  let take_value = match value.as_rule() {
+    Rule::Iden => TakeValue::String(value.as_str().to_owned().into()),
+    Rule::Integer => {
+      let index = value
+        .as_str()
+        .parse()
+        .map_err(|_| ("Failed to parse Integer", pos).into())?;
+      TakeValue::Index(index)
     }
-  }
+    Rule::VarName => {
+      let identifier = extract_identifier(value)?;
+      TakeValue::Var(identifier)
+    }
+    _ => return Err(("Expected an identifier or integer in TakeOp", pos).into()),
+  };
 
-  // wrap the shards into an Expr Sequence
-  Ok((identifier, keys))
+  Ok((take_value))
 }
 
-fn process_take_seq(
-  pair: Pair<Rule>,
-  _env: &mut ReadEnv,
-) -> Result<(Identifier, Vec<u32>), ShardsError> {
-  let pos = pair.as_span().start_pos();
-  // first is the identifier which has to be VarName
-  // followed by N Integer which are the indices
-
-  let mut inner = pair.into_inner();
-  let identity = inner
-    .next()
-    .ok_or(("Expected an identifier in TakeSeq", pos).into())?;
-
-  let identifier = extract_identifier(identity)?;
-
-  let mut indices = Vec::new();
-  for pair in inner {
-    let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
-      Rule::Integer => {
-        let value = pair
-          .as_str()
-          .parse()
-          .map_err(|_| ("Failed to parse Integer", pos).into())?;
-        indices.push(value);
-      }
-      _ => return Err(("Expected an integer in TakeSeq", pos).into()),
-    }
-  }
-
-  Ok((identifier, indices))
+pub enum TakeValue {
+  String(RcStrWrapper),
+  Index(u32),
+  Var(Identifier),
 }
 
 fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
@@ -579,18 +559,14 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           custom_state: CustomStateContainer::new(),
         }),
       },
-      Rule::TakeTable => blocks.push(Block {
+      Rule::TakeOp => blocks.push(Block {
         content: {
-          let pair = process_take_table(pair, env)?;
-          BlockContent::TakeTable(pair.0, pair.1)
-        },
-        line_info: Some(pos.into()),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::TakeSeq => blocks.push(Block {
-        content: {
-          let pair = process_take_seq(pair, env)?;
-          BlockContent::TakeSeq(pair.0, pair.1)
+          let tv = process_take_op(pair, env)?;
+          match tv {
+            TakeValue::String(s) => BlockContent::TakeStr(s),
+            TakeValue::Index(i) => BlockContent::TakeIdx(i),
+            TakeValue::Var(id) => BlockContent::TakeVar(id),
+          }
         },
         line_info: Some(pos.into()),
         custom_state: CustomStateContainer::new(),
@@ -617,19 +593,18 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
         line_info: Some(pos.into()),
         custom_state: CustomStateContainer::new(),
       }),
+      Rule::Assignment => {
+        let assignment = process_assignment(pair, env)?;
+        blocks.push(Block {
+          content: BlockContent::Assignment(assignment),
+          line_info: Some(pos.into()),
+          custom_state: CustomStateContainer::new(),
+        })
+      }
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
   }
   Ok(Pipeline { blocks })
-}
-
-fn process_statement(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Statement, ShardsError> {
-  let pos = pair.as_span().start_pos();
-  match pair.as_rule() {
-    Rule::Assignment => process_assignment(pair, env).map(Statement::Assignment),
-    Rule::Pipeline => process_pipeline(pair, env).map(Statement::Pipeline),
-    _ => Err(("Expected an Assignment or a Pipeline", pos).into()),
-  }
 }
 
 pub(crate) fn process_sequence(
@@ -638,10 +613,10 @@ pub(crate) fn process_sequence(
 ) -> Result<Sequence, ShardsError> {
   let statements = pair
     .into_inner()
-    .map(|x| process_statement(x, env))
+    .map(|x| process_pipeline(x, env))
     .collect::<Result<Vec<_>, _>>()?;
   Ok(Sequence {
-    statements,
+    pipelines: statements,
     custom_state: CustomStateContainer::new(),
   })
 }
@@ -828,14 +803,6 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       env,
     )
     .map(Value::Expr),
-    Rule::TakeTable => {
-      let pair = process_take_table(pair, env)?;
-      Ok(Value::TakeTable(pair.0, pair.1))
-    }
-    Rule::TakeSeq => {
-      let pair = process_take_seq(pair, env)?;
-      Ok(Value::TakeSeq(pair.0, pair.1))
-    }
     Rule::Func => match process_function(pair, env)? {
       FunctionValue::Const(val) => return Ok(val),
       FunctionValue::Function(func) => Ok(Value::Func(func)),
@@ -910,7 +877,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
 
   Ok(Param {
     name: param_name,
-    value: param_value, 
+    value: param_value,
     custom_state: CustomStateContainer::new(),
     is_default: None,
   })
@@ -1185,13 +1152,8 @@ impl Shard for ShardsErrorsShard {
 
 impl ShardsErrorsShard {
   fn process_sequence(&mut self, seq: &Sequence) {
-    for child in seq.statements.iter() {
-      match child {
-        Statement::Pipeline(p) => {
-          self.process_pipeline(p);
-        },
-        _ => (),
-      }
+    for p in seq.pipelines.iter() {
+      self.process_pipeline(p);
     }
     seq.custom_state.with::<ShardsError, _, _>(|e| {
       let mut table = AutoTableVar::new();
@@ -1221,7 +1183,7 @@ impl ShardsErrorsShard {
             table.0.insert_fast_static("line", &e.loc.line.into());
             table.0.insert_fast_static("column", &e.loc.column.into());
             self.output.0.emplace(table.to_cloned());
-          });
+          }); 
         }
         BlockContent::Shards(s) | BlockContent::EvalExpr(s) | BlockContent::Expr(s) => {
           self.process_sequence(s)
@@ -1279,17 +1241,6 @@ impl ShardsErrorsShard {
       }
       Value::Shards(sequence) | Value::EvalExpr(sequence) | Value::Expr(sequence) => {
         self.process_sequence(sequence);
-      }
-      Value::TakeTable(identifier, _) | Value::TakeSeq(identifier, _) => {
-        identifier.custom_state.with::<ShardsError, _, _>(|e| {
-          let mut table = AutoTableVar::new();
-          table
-            .0
-            .insert_fast_static("message", &Var::ephemeral_string(e.message.as_str()));
-          table.0.insert_fast_static("line", &e.loc.line.into());
-          table.0.insert_fast_static("column", &e.loc.column.into());
-          self.output.0.emplace(table.to_cloned());
-        });
       }
     }
   }

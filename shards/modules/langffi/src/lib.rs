@@ -181,8 +181,8 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError
   };
   let env = unsafe { &mut *env };
   env.program = Some(ast as *const Program);
-  for stmt in &ast.sequence.statements {
-    if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
+  for pipeline in &ast.sequence.pipelines {
+    if let Err(error) = eval::eval_pipeline(pipeline, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {

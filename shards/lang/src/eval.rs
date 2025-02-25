@@ -227,7 +227,6 @@ fn is_compile_time_constant(v: &Value, e: &EvalEnv) -> bool {
       }
     }
     Value::Expr(_) | Value::Identifier(_) | Value::Shard(_) | Value::Shards(_) => false,
-    Value::TakeTable(_, _) | Value::TakeSeq(_, _) => false,
     _ => true,
   }
 }
@@ -1057,8 +1056,8 @@ pub(crate) fn eval_sequence_inline(
   env: &mut EvalEnv,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), ShardsError> {
-  for stmt in &seq.statements {
-    eval_statement(stmt, env, cancellation_token.clone())?;
+  for pipeline in &seq.pipelines {
+    eval_pipeline(pipeline, env, cancellation_token.clone())?;
   }
   Ok(())
 }
@@ -1080,31 +1079,27 @@ pub(crate) fn eval_sequence(
   Ok(sub_env)
 }
 
-fn create_take_table_chain(
-  var_name: &Identifier,
-  path: &Vec<RcStrWrapper>,
+fn create_take_str(
+  path: &RcStrWrapper,
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(var_name, line, e)?;
-  for path_part in path {
-    let s = Var::ephemeral_string(path_part.as_str());
-    add_take_shard(var_name, &s, line, e)?;
-  }
+  let s: shards::SHVar = Var::ephemeral_string(path.as_str());
+  add_take_shard(&s, line, e)?;
   Ok(())
 }
 
-fn create_take_seq_chain(
-  var_name: &Identifier,
-  path: &Vec<u32>,
-  line: LineInfo,
-  e: &mut EvalEnv,
-) -> Result<(), ShardsError> {
-  add_get_shard(var_name, line, e)?;
-  for path_part in path {
-    let idx = (*path_part).try_into().unwrap(); // read should have caught this
-    add_take_shard(var_name, &idx, line, e)?;
-  }
+fn create_take_idx(path: &u32, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let s: shards::SHVar = Var::new_int(*path as i64);
+  add_get_shard(&s, line, e)?;
+  Ok(())
+}
+
+fn create_take_var(path: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let q = qualify_variable(path, line, e)?;
+  let mut s: Var = q.as_ref().clone();
+  s.valueType = SHType_ContextVar;
+  add_take_shard(&s, line, e)?;
   Ok(())
 }
 
@@ -1480,56 +1475,6 @@ impl<'e> VariableResolver<'e> {
           Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
         }
       }
-      Value::TakeTable(var_name, path) => {
-        let start_idx = self.e.shards.len();
-        let mut sub_env = EvalEnv::new(None, Some(self.e), None);
-        create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
-        if !sub_env.shards.is_empty() {
-          // create a temporary variable to hold the result of the expression
-          let tmp_name = nanoid!(16);
-          // ensure name starts with a letter
-          let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-            .map_err(|e| (format!("{:?}", e), line_info).into())?;
-          // wrap into a Sub Shard
-          finalize_env(&mut sub_env)?;
-          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
-          // add this sub shard before the start of this pipeline!
-          self.e.shards.insert(start_idx, sub);
-
-          // simply return the temporary variable
-          let mut s = Var::ephemeral_string(tmp_name.as_str());
-          s.valueType = SHType_ContextVar;
-          Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-        } else {
-          panic!("TakeTable should always return a shard")
-        }
-      }
-      Value::TakeSeq(var_name, path) => {
-        let start_idx = self.e.shards.len();
-        let mut sub_env = EvalEnv::new(None, Some(self.e), None);
-        create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
-        if !sub_env.shards.is_empty() {
-          // create a temporary variable to hold the result of the expression
-          let tmp_name = nanoid!(16);
-          // ensure name starts with a letter
-          let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-            .map_err(|e| (format!("{:?}", e), line_info).into())?;
-          // wrap into a Sub Shard
-          finalize_env(&mut sub_env)?;
-          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
-          // add this sub shard before the start of this pipeline!
-          self.e.shards.insert(start_idx, sub);
-
-          // simply return the temporary variable
-          let mut s = Var::ephemeral_string(tmp_name.as_str());
-          s.valueType = SHType_ContextVar;
-          Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
-        } else {
-          panic!("TakeTable should always return a shard")
-        }
-      }
       Value::Func(func) => {
         // Either evaluates the builtin directly or as an expression whenever it contains expressions
         fn eval_as_const_or_expr<F>(
@@ -1551,14 +1496,12 @@ impl<'e> VariableResolver<'e> {
           if has_variables {
             let value2 = Value::Expr {
               0: Sequence {
-                statements: vec![Statement::Pipeline {
-                  0: Pipeline {
-                    blocks: vec![Block {
-                      content: BlockContent::Func(f.clone()),
-                      line_info: Some(line_info),
-                      custom_state: CustomStateContainer::new(),
-                    }],
-                  },
+                pipelines: vec![Pipeline {
+                  blocks: vec![Block {
+                    content: BlockContent::Func(f.clone()),
+                    line_info: Some(line_info),
+                    custom_state: CustomStateContainer::new(),
+                  }],
                 }],
                 custom_state: CustomStateContainer::new(),
               },
@@ -2481,8 +2424,6 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::Seq(_)
           | Value::EvalExpr(_)
           | Value::Expr(_)
-          | Value::TakeTable(_, _)
-          | Value::TakeSeq(_, _)
           | Value::Func(_)
           | Value::Table(_) => {
             let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
@@ -2503,8 +2444,8 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           Value::Shards(seq) => {
             // purely include the ast of the sequence
             let seq = seq.clone(); // todo - avoid clone
-            for stmt in &seq.statements {
-              eval_statement(stmt, e, new_cancellation_token())?;
+            for pipeline in &seq.pipelines {
+              eval_pipeline(pipeline, e, new_cancellation_token())?;
             }
             None
           }
@@ -2552,48 +2493,24 @@ fn make_sub_shard(
   Ok(shard)
 }
 
-fn add_take_shard(
-  name: &Identifier,
-  target: &Var,
-  line_info: LineInfo,
-  e: &mut EvalEnv,
-) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
+fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let shard: ShardRef = ShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
   let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, *target)
     .map_err(|e| (format!("{}", e), line_info).into())?;
-  let shard = shard_with_id_iden(shard, e, name);
   e.shards.push(shard);
   Ok(())
 }
 
-fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn add_get_shard(target: &Var, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let shard = AutoShardRef(shard);
-  let (full_name, is_replacement) = get_full_name(name, e, line, name.namespaces.is_empty())?;
-  let suffix = if !is_replacement {
-    // suffix is only relevant if we are not a replacement
-    find_suffix(&full_name, e)
-  } else {
-    None
-  };
-  if let Some(suffix) = suffix {
-    let name = format!("{}{}", full_name, suffix);
-    let name = Var::ephemeral_string(&name);
-    shard
-      .0
-      .set_parameter(0, name)
-      .map_err(|e| (format!("{}", e), line).into())?;
-  } else {
-    let name = Var::ephemeral_string(full_name.as_str());
-    shard
-      .0
-      .set_parameter(0, name)
-      .map_err(|e| (format!("{}", e), line).into())?;
-  }
-  let shard = shard_with_id_iden(shard, e, name);
+  shard
+    .0
+    .set_parameter(0, *target)
+    .map_err(|e| (format!("{}", e), line).into())?;
   e.shards.push(shard);
   Ok(())
 }
@@ -2903,8 +2820,8 @@ fn process_template(
       sub_env.replacements.insert(arg.to_owned(), value_ptr);
     }
 
-    for stmt in &shards.statements {
-      eval_statement(stmt, &mut sub_env, new_cancellation_token())?;
+    for pipeline in &shards.pipelines {
+      eval_pipeline(pipeline, &mut sub_env, new_cancellation_token())?;
     }
 
     Ok(Some(sub_env))
@@ -2913,7 +2830,7 @@ fn process_template(
   }
 }
 
-fn eval_pipeline(
+pub fn eval_pipeline(
   pipeline: &Pipeline,
   e: &mut EvalEnv,
   cancellation_token: Arc<AtomicBool>,
@@ -2943,13 +2860,16 @@ fn eval_pipeline(
 
         Ok(())
       }
+      BlockContent::Assignment(assign) => {
+        eval_assignment(assign, e, cancellation_token.clone())?;
+        Ok(())
+      }
       BlockContent::Const(value) => add_const_shard(value, block.line_info.unwrap_or_default(), e),
-      BlockContent::TakeTable(name, path) => {
-        create_take_table_chain(name, path, block.line_info.unwrap_or_default(), e)
+      BlockContent::TakeStr(path) => {
+        create_take_str(path, block.line_info.unwrap_or_default(), e)
       }
-      BlockContent::TakeSeq(name, path) => {
-        create_take_seq_chain(name, path, block.line_info.unwrap_or_default(), e)
-      }
+      BlockContent::TakeIdx(path) => create_take_idx(path, block.line_info.unwrap_or_default(), e),
+      BlockContent::TakeVar(id) => create_take_var(id, block.line_info.unwrap_or_default(), e),
       BlockContent::EvalExpr(seq) => {
         let value = eval_eval_expr(&seq, e)?;
         // we cannot use variation 2 here cos we don't have a func we can use, those blocks will be transformed into a pre-runtime constant
@@ -2961,8 +2881,8 @@ fn eval_pipeline(
       }
       BlockContent::Program(p) => {
         // purely include the ast of the sequence
-        for stmt in &p.sequence.statements {
-          eval_statement(stmt, e, cancellation_token.clone())?;
+        for pipeline in &p.sequence.pipelines {
+          eval_pipeline(pipeline, e, cancellation_token.clone())?;
         }
         Ok(())
       }
@@ -3019,7 +2939,7 @@ fn eval_pipeline(
                   types,
                 ) => {
                   let make_trait_shards = Sequence {
-                    statements: vec![Statement::Pipeline(Pipeline {
+                    pipelines: vec![Pipeline {
                       blocks: vec![Block {
                         content: BlockContent::Shard(Function {
                           name: Identifier {
@@ -3041,7 +2961,7 @@ fn eval_pipeline(
                         line_info: block.line_info,
                         custom_state: block.custom_state.clone(),
                       }],
-                    })],
+                    }],
                     custom_state: CustomStateContainer::new(),
                   };
 
@@ -3774,8 +3694,8 @@ fn eval_pipeline(
                 })?;
 
                 // which we directly evaluate
-                for stmt in &decoded_json.statements {
-                  eval_statement(stmt, e, cancellation_token.clone())?;
+                for pipeline in &decoded_json.pipelines {
+                  eval_pipeline(pipeline, e, cancellation_token.clone())?;
                 }
 
                 Ok(())
@@ -3811,15 +3731,13 @@ fn eval_pipeline(
                       | Value::Float4(_)
                       | Value::Seq(_)
                       | Value::Func(_)
-                      | Value::TakeTable(_, _)
-                      | Value::TakeSeq(_, _)
                       | Value::Table(_) => {
                         add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
                       }
                       Value::Shards(seq) => {
                         // purely include the ast of the sequence
-                        for stmt in &seq.statements {
-                          eval_statement(stmt, e, cancellation_token.clone())?;
+                        for pipeline in &seq.pipelines {
+                          eval_pipeline(pipeline, e, cancellation_token.clone())?;
                         }
                       }
                       Value::EvalExpr(seq) => {
@@ -3979,17 +3897,6 @@ fn eval_assignment(
   add_assignment_shard(op, &assignment.identifier, assignment.line_info.unwrap(), e)
     .map_err(|e| (format!("{:?}", e), assignment.line_info.unwrap()).into())?;
   Ok(())
-}
-
-pub fn eval_statement(
-  stmt: &Statement,
-  e: &mut EvalEnv,
-  cancellation_token: Arc<AtomicBool>,
-) -> Result<(), ShardsError> {
-  match stmt {
-    Statement::Assignment(a) => eval_assignment(a, e, cancellation_token),
-    Statement::Pipeline(p) => eval_pipeline(p, e, cancellation_token),
-  }
 }
 
 pub fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>

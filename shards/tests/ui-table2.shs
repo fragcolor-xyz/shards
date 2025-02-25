@@ -47,8 +47,9 @@
                   false > reversed
                 }])
               Sort(int-range
-                Key: {= i
-                  data-src | Take(i) | Take(sorted-by-key)
+                Key: {
+                  = i
+                  data-src:[i]:sorted-by-key
                 }
               )
             })
@@ -114,7 +115,7 @@
                           "icon" | UI.Label(Selectable: false)
                         } InnerMargin: @f4(4.0 4.0 0.0 0.0))
                       })
-                      data-src | Take(i) | Take("name") | UI.Label
+                      data-src:[i]:name | UI.Label
                     }
                     {
                       UI.Header({
@@ -129,12 +130,12 @@
                         @sort-by-button("type")
                       })
                       = i
-                      data-src | Take(i) | Take("type") | ToString | UI.Label
+                      data-src:[i]:type | ToString | UI.Label
                     }
                     {
                       UI.Header({"Data" | UI.Label})
                       = i
-                      data-src | Take(i) | Take("data") | UI.Label
+                      data-src:[i]:data | UI.Label
                     }]
                 )
               })

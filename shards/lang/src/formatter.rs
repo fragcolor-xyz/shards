@@ -678,13 +678,9 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     self.interpolate(&pair);
     inner_val(self);
   }
-  fn v_take_seq(&mut self, pair: Pair<Rule>) {
+  fn v_take_op(&mut self, pair: Pair<Rule>) {
     let str = self.filter(pair.as_str());
-    self.write_atom(&str);
-  }
-  fn v_take_table(&mut self, pair: Pair<Rule>) {
-    let str = self.filter(pair.as_str());
-    self.write_atom(&str);
+    self.write_raw(&str);
   }
   fn v_end(&mut self, pair: Pair<Rule>) {
     // Manually done to measure final newline

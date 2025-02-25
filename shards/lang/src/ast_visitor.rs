@@ -3,7 +3,6 @@ use crate::ast::*;
 pub trait AstVisitor {
   fn visit_program(&mut self, program: &Program);
   fn visit_sequence(&mut self, sequence: &Sequence);
-  fn visit_statement(&mut self, statement: &Statement);
   fn visit_assignment(&mut self, assignment: &Assignment);
   fn visit_pipeline(&mut self, pipeline: &Pipeline);
   fn visit_block(&mut self, block: &Block);
@@ -23,12 +22,6 @@ impl Program {
 impl Sequence {
   pub fn accept<V: AstVisitor>(&self, visitor: &mut V) {
     visitor.visit_sequence(self);
-  }
-}
-
-impl Statement {
-  pub fn accept<V: AstVisitor>(&self, visitor: &mut V) {
-    visitor.visit_statement(self);
   }
 }
 
@@ -90,7 +83,6 @@ pub enum BlockAction {
 pub trait AstMutator<R> {
   fn visit_program(&mut self, program: &mut Program) -> R;
   fn visit_sequence(&mut self, sequence: &mut Sequence) -> R;
-  fn visit_statement(&mut self, statement: &mut Statement) -> R;
   fn visit_assignment(&mut self, assignment: &mut Assignment) -> R;
   fn visit_pipeline(&mut self, pipeline: &mut Pipeline) -> R;
   fn visit_block(&mut self, block: &mut Block) -> (BlockAction, R);
@@ -110,12 +102,6 @@ impl Program {
 impl Sequence {
   pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
     visitor.visit_sequence(self)
-  }
-}
-
-impl Statement {
-  pub fn accept_mut<V: AstMutator<R>, R>(&mut self, visitor: &mut V) -> R {
-    visitor.visit_statement(self)
   }
 }
 

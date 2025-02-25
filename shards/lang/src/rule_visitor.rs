@@ -32,14 +32,8 @@ pub trait RuleVisitor {
   );
   fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner_pair: Pair<Rule>, inner: T);
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
-  fn v_take_table(&mut self, pair: Pair<Rule>);
-  fn v_take_seq(&mut self, pair: Pair<Rule>);
+  fn v_take_op(&mut self, pair: Pair<Rule>);
   fn v_end(&mut self, pair: Pair<Rule>);
-}
-
-fn process_take_seq<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
-  v.v_take_seq(pair);
-  Ok(())
 }
 
 fn process_param<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
@@ -225,7 +219,7 @@ fn process_shards<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Err
 
 fn process_sequence_no_visit<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   for stmt in pair.into_inner() {
-    process_statement(stmt, v)?;
+    process_pipeline(stmt, v)?;
   }
   Ok(())
 }
@@ -264,12 +258,8 @@ fn process_value<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Erro
         process_expr(pair, v)?;
         Ok(true)
       }
-      Rule::TakeTable => {
-        process_take_table(pair, v)?;
-        Ok(true)
-      }
-      Rule::TakeSeq => {
-        process_take_seq(pair, v)?;
+      Rule::TakeOp => {
+        process_take_op(pair, v)?;
         Ok(true)
       }
       Rule::Func => {
@@ -369,8 +359,8 @@ fn process_table<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Erro
   result.expect("Visitor didn't call v_table inner")
 }
 
-fn process_take_table<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
-  v.v_take_table(pair);
+fn process_take_op<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
+  v.v_take_op(pair);
   Ok(())
 }
 
@@ -397,10 +387,7 @@ fn process_pipeline<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), E
           }
           Rule::Shard => process_function(pair, v)?,
           Rule::Func => process_function(pair, v)?,
-          Rule::TakeTable => process_take_table(pair, v)?,
-          Rule::TakeSeq => {
-            let _pair = process_take_seq(pair, v)?;
-          }
+          Rule::TakeOp => process_take_op(pair, v)?,
           Rule::ConstValue => {
             let _v = process_value(pair, v)?;
           }
@@ -409,6 +396,9 @@ fn process_pipeline<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), E
           }
           Rule::Shards => {
             let _inner = process_shards(pair, v)?;
+          }
+          Rule::Assignment => {
+            let _inner = process_assignment(pair, v)?;
           }
           _ => {
             return Err(fmt_err(
@@ -463,22 +453,6 @@ fn process_assignment<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(),
         // } else {
         //   v.v_pipeline(pipeline, |v| {});
         // }
-      }
-      Ok(())
-    })();
-  });
-  result
-}
-
-fn process_statement<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
-  let mut result: Result<(), Error> = Ok(());
-  v.v_stmt(pair.clone(), |v| {
-    result = (|| {
-      let rule = pair.as_rule();
-      match rule {
-        Rule::Assignment => process_assignment(pair, v)?,
-        Rule::Pipeline => process_pipeline(pair, v)?,
-        _ => return Err(fmt_errp("Unexpected rule in Statement.", &pair)),
       }
       Ok(())
     })();

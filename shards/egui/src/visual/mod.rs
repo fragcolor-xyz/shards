@@ -350,30 +350,20 @@ fn chars(s: &str) -> egui::RichText {
 }
 
 fn get_first_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
-  for statement in &mut ast.statements {
-    match statement {
-      Statement::Pipeline(pipeline) => {
-        if let BlockContent::Shard(shard) = &mut pipeline.blocks[0].content {
-          return Some(shard);
-        }
-      },
-      _ => (),
+  for pipeline in &mut ast.pipelines {
+    if let BlockContent::Shard(shard) = &mut pipeline.blocks[0].content {
+      return Some(shard);
     }
   }
   None
 }
 fn get_last_shard_ref<'a>(ast: &'a mut Sequence) -> Option<&'a mut Function> {
-  if ast.statements.len() < 2 {
+  if ast.pipelines.len() < 2 {
     return None;
   }
-  for statement in ast.statements.iter_mut().rev() {
-    match statement {
-      Statement::Pipeline(pipeline) => {
-        if let BlockContent::Shard(shard) = &mut pipeline.blocks.last_mut()?.content {
-          return Some(shard);
-        }
-      }
-      _ => (),
+  for pipeline in ast.pipelines.iter_mut().rev() {
+    if let BlockContent::Shard(shard) = &mut pipeline.blocks.last_mut()?.content {
+      return Some(shard);
     }
   }
   None
@@ -1276,8 +1266,9 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
       }
     }
 
-    for statement in &mut sequence.statements {
-      statement.accept_mut(self);
+    // Now we directly iterate over pipelines instead of statements
+    for pipeline in &mut sequence.pipelines {
+      pipeline.accept_mut(self);
     }
 
     if self.parent_selected {
@@ -1286,10 +1277,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         self
           .ui
           .horizontal(|ui| {
-            let response = ui.button(emoji("➕")).on_hover_text("Add new statement.");
+            let response = ui.button(emoji("➕")).on_hover_text("Add new pipeline.");
             if response.clicked() {
-              // add a new statement
-              sequence.statements.push(Statement::Pipeline(Pipeline {
+              // add a new pipeline directly
+              sequence.pipelines.push(Pipeline {
                 blocks: vec![Block {
                   content: BlockContent::Shard(Function {
                     name: Identifier {
@@ -1303,15 +1294,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   line_info: None,
                   custom_state: CustomStateContainer::new(),
                 }],
-              }));
+              });
 
               // and immediately trigger a swap request
               // switch to shard selection
               let new_block = sequence
-                .statements
+                .pipelines
                 .last_mut()
-                .unwrap()
-                .as_pipeline_mut()
                 .unwrap()
                 .blocks
                 .last_mut()
@@ -1347,35 +1336,57 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
     }
   }
 
-  fn visit_statement(&mut self, statement: &mut Statement) -> Option<Response> {
+  fn visit_assignment(&mut self, assignment: &mut Assignment) -> Option<Response> {
+    let resp = match assignment.kind {
+      AssignmentKind::AssignRef => {
+        self.ui.label(chars("="));
+        assignment.identifier.accept_mut(self)
+      }
+      AssignmentKind::AssignSet => {
+        self.ui.label(chars(">="));
+        assignment.identifier.accept_mut(self)
+      }
+      AssignmentKind::AssignUpd => {
+        self.ui.label(chars(">"));
+        assignment.identifier.accept_mut(self)
+      }
+      AssignmentKind::AssignPush => {
+        self.ui.label(chars(">>"));
+        assignment.identifier.accept_mut(self)
+      }
+    };
+    resp.map(|x| {
+      if x.clicked() {
+        self.context.has_changed = true;
+      }
+      x
+    })
+  }
+
+  fn visit_pipeline(&mut self, pipeline: &mut Pipeline) -> Option<Response> {
     self
       .ui
       .with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
         let mut mutator = VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-        let is_expanded = match statement {
-          Statement::Assignment(assignment) => {
-            assignment.accept_mut(&mut mutator);
-            false
-          }
-          Statement::Pipeline(pipeline) => {
-            pipeline.accept_mut(&mut mutator);
-            pipeline
-              .blocks
-              .last()
-              .and_then(|x| x.custom_state.with::<BlockState, _, _>(|x| x.selected))
-              .unwrap_or(false)
-          }
-        };
+
+        // Process each block in the pipeline
+        for block in &mut pipeline.blocks {
+          block.accept_mut(&mut mutator);
+        }
+
+        // Check if the last block is selected
+        let is_expanded = pipeline
+          .blocks
+          .last()
+          .and_then(|x| x.custom_state.with::<BlockState, _, _>(|x| x.selected))
+          .unwrap_or(false);
+
         if self.parent_selected && is_expanded {
           Some(
             ui.horizontal(|ui| {
-              let response = ui.button(emoji("➕")).on_hover_text("Add new statement.");
+              let response = ui.button(emoji("➕")).on_hover_text("Add new block.");
               if response.clicked() {
-                // add a new statement
-                let pipeline = match statement {
-                  Statement::Pipeline(pipeline) => pipeline,
-                  _ => unreachable!(),
-                };
+                // Add a new block to the pipeline
                 pipeline.blocks.push(Block {
                   content: BlockContent::Shard(Function {
                     name: Identifier {
@@ -1390,8 +1401,8 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   custom_state: CustomStateContainer::new(),
                 });
 
-                // and immediately trigger a swap request
-                // switch to shard selection
+                // And immediately trigger a swap request
+                // Switch to shard selection
                 let new_block = pipeline.blocks.last_mut().unwrap();
                 let window_pos = ui
                   .ctx()
@@ -1419,105 +1430,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
         }
       })
       .inner
-  }
-
-  fn visit_assignment(&mut self, assignment: &mut Assignment) -> Option<Response> {
-    let resp = match assignment.kind {
-      AssignmentKind::AssignRef => {
-        self.ui.label(chars("="));
-        assignment.identifier.accept_mut(self)
-      },
-      AssignmentKind::AssignSet => {
-        self.ui.label(chars(">="));
-        assignment.identifier.accept_mut(self)
-      },
-      AssignmentKind::AssignUpd => {
-        self.ui.label(chars(">"));
-        assignment.identifier.accept_mut(self)
-      },
-      AssignmentKind::AssignPush => {
-        self.ui.label(chars(">>"));
-        assignment.identifier.accept_mut(self)
-      },
-    };
-    resp.map(|x| {
-      if x.clicked() {
-        self.context.has_changed = true;
-      }
-      x
-    })
-  }
-
-  fn visit_pipeline(&mut self, pipeline: &mut Pipeline) -> Option<Response> {
-    let mut final_response: Option<Response> = None;
-    let mut i = 0;
-    while i < pipeline.blocks.len() {
-      final_response = match self.visit_block(&mut pipeline.blocks[i]) {
-        (BlockAction::Remove, r) => {
-          self.context.has_changed = true;
-          pipeline.blocks.remove(i);
-          // if the blocks are empty, we should remove the pipeline
-          if pipeline.blocks.is_empty() {
-            let parent_sequence = self.context.seqs_stack.last().unwrap();
-            let parent_sequence = unsafe { &mut **parent_sequence };
-            // find pipeline index and remove it
-            let pipeline_index = parent_sequence
-              .statements
-              .iter()
-              .position(|x| match x {
-                Statement::Pipeline(x) => x as *const Pipeline == pipeline as *const Pipeline,
-                _ => false,
-              })
-              .unwrap();
-            parent_sequence.statements.remove(pipeline_index);
-          }
-          r
-        }
-        (BlockAction::Keep, r) => {
-          i += 1;
-          r
-        }
-        (BlockAction::Duplicate, r) => {
-          self.context.has_changed = true;
-          let block = pipeline.blocks[i].clone();
-          block.custom_state.with_mut::<BlockState, _, _>(|x| {
-            x.id = Id::new(nanoid!(16));
-          });
-          pipeline.blocks.insert(i, block);
-          i += 2;
-          r
-        }
-        (BlockAction::Swap(block), r) => {
-          self.context.has_changed = true;
-          pipeline.blocks.get_mut(i).map(|x| {
-            let selected = x
-              .custom_state
-              .with_mut::<BlockState, _, _>(|x| x.selected)
-              .unwrap_or(false);
-            *x = block;
-            x.custom_state.with_or_insert_with(
-              || BlockState {
-                selected,
-                id: Id::new(nanoid!(16)),
-              },
-              |x| x.selected = selected,
-            )
-          });
-          i += 1;
-          r
-        }
-      };
-
-      // if let Some(response) = &response {
-      //   draw_arrow_head(
-      //     self.ui,
-      //     response.rect,
-      //     response.rect.translate(Vec2::new(10.0, 0.0)),
-      //   );
-      // }
-    }
-
-    final_response
   }
 
   fn visit_block(&mut self, block: &mut Block) -> (BlockAction, Option<Response>) {
@@ -1607,14 +1519,20 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                   let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   x.accept_mut(&mut mutator)
                 }
-                BlockContent::TakeTable(x, y) => {
-                  let new_value = transform_take_table(x, y);
+                BlockContent::TakeStr(x) => {
+                  let new_value = transform_take_str(x);
                   block.content = BlockContent::Expr(new_value);
                   let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   block.accept_mut(&mut mutator).1
                 }
-                BlockContent::TakeSeq(x, y) => {
-                  let new_value = transform_take_seq(x, y);
+                BlockContent::TakeIdx(x) => {
+                  let new_value = transform_take_idx(*x);
+                  block.content = BlockContent::Expr(new_value);
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                  block.accept_mut(&mut mutator).1
+                }
+                BlockContent::TakeVar(x) => {
+                  let new_value = transform_take_var(x);
                   block.content = BlockContent::Expr(new_value);
                   let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
                   block.accept_mut(&mut mutator).1
@@ -1687,6 +1605,10 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
                     x.accept_mut(&mut mutator)
                   })
                   .inner
+                }
+                BlockContent::Assignment(x) => {
+                  let mut mutator = VisualAst::with_parent_selected(self.context, ui, selected);
+                  x.accept_mut(&mut mutator)
                 }
               }
             })
@@ -2208,7 +2130,7 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
           Value::Shard(x) => {
             /*
 
-            ### Don’t try too hard to satisfy TEXT version.
+            ### Don't try too hard to satisfy TEXT version.
             Such as eliding `{}` when single shard or Omitting params which are at default value, etc
             We can have a pass when we turn AST into text to apply such EYE CANDY.
 
@@ -2216,13 +2138,13 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
             */
             let shard = x.clone();
             *value = Value::Shards(Sequence {
-              statements: vec![Statement::Pipeline(Pipeline {
+              pipelines: vec![Pipeline {
                 blocks: vec![Block {
                   content: BlockContent::Shard(shard),
                   line_info: None,
                   custom_state: CustomStateContainer::new(),
                 }],
-              })],
+              }],
               custom_state: CustomStateContainer::new(),
             });
             let mut mutator =
@@ -2256,20 +2178,6 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
               x.accept_mut(&mut mutator)
             })
             .inner
-          }
-          Value::TakeTable(x, y) => {
-            let new_value = transform_take_table(x, y);
-            *value = Value::Expr(new_value);
-            let mut mutator =
-              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            mutator.visit_value(value)
-          }
-          Value::TakeSeq(x, y) => {
-            let new_value = transform_take_seq(x, y);
-            *value = Value::Expr(new_value);
-            let mut mutator =
-              VisualAst::with_parent_selected(self.context, ui, self.parent_selected);
-            mutator.visit_value(value)
           }
           Value::Func(x) => match x.name.name.as_str() {
             "color" => {
@@ -2393,18 +2301,18 @@ where
   func_to_numbers(x)
 }
 
-fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequence {
-  // substitute with a Expr sequence
+fn transform_take_str(str: &RcStrWrapper) -> Sequence {
+  // Add single Take shard for string key
   let mut blocks = vec![Block {
     content: BlockContent::Shard(Function {
       name: Identifier {
-        name: "Get".into(),
+        name: "Take".into(),
         namespaces: Vec::new(),
         custom_state: CustomStateContainer::new(),
       },
       params: Some(vec![Param {
         name: None,
-        value: Value::Identifier(x.clone()),
+        value: Value::String(str.clone()),
         custom_state: CustomStateContainer::new(),
         is_default: Some(false),
       }]),
@@ -2413,47 +2321,24 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
     line_info: None,
     custom_state: CustomStateContainer::new(),
   }];
-  for y in y.iter() {
-    // add Take shard for each
-    blocks.push(Block {
-      content: BlockContent::Shard(Function {
-        name: Identifier {
-          name: "Take".into(),
-          namespaces: Vec::new(),
-          custom_state: CustomStateContainer::new(),
-        },
-        params: Some(vec![Param {
-          name: None,
-          value: Value::String(y.clone()),
-          custom_state: CustomStateContainer::new(),
-          is_default: Some(false),
-        }]),
-        custom_state: CustomStateContainer::new(),
-      }),
-      line_info: None,
-      custom_state: CustomStateContainer::new(),
-    });
-  }
-  let new_value = Sequence {
-    statements: vec![Statement::Pipeline(Pipeline { blocks })],
+
+  Sequence {
+    pipelines: vec![Pipeline { blocks }],
     custom_state: CustomStateContainer::new(),
-  };
-  new_value
+  }
 }
 
-fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
-  // same as take table but integer keys
-  // substitute with a Expr sequence
+fn transform_take_idx(idx: u32) -> Sequence {
   let mut blocks = vec![Block {
     content: BlockContent::Shard(Function {
       name: Identifier {
-        name: "Get".into(),
+        name: "Take".into(),
         namespaces: Vec::new(),
         custom_state: CustomStateContainer::new(),
       },
       params: Some(vec![Param {
         name: None,
-        value: Value::Identifier(x.clone()),
+        value: Value::Number(Number::Integer(idx as i64)),
         custom_state: CustomStateContainer::new(),
         is_default: Some(false),
       }]),
@@ -2462,32 +2347,37 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
     line_info: None,
     custom_state: CustomStateContainer::new(),
   }];
-  for y in y.iter() {
-    // add Take shard for each
-    blocks.push(Block {
-      content: BlockContent::Shard(Function {
-        name: Identifier {
-          name: "Take".into(),
-          namespaces: Vec::new(),
-          custom_state: CustomStateContainer::new(),
-        },
-        params: Some(vec![Param {
-          name: None,
-          value: Value::Number(Number::Integer(*y as i64)),
-          custom_state: CustomStateContainer::new(),
-          is_default: Some(false),
-        }]),
-        custom_state: CustomStateContainer::new(),
-      }),
-      line_info: None,
-      custom_state: CustomStateContainer::new(),
-    });
-  }
-  let new_value = Sequence {
-    statements: vec![Statement::Pipeline(Pipeline { blocks })],
+
+  Sequence {
+    pipelines: vec![Pipeline { blocks }],
     custom_state: CustomStateContainer::new(),
-  };
-  new_value
+  }
+}
+
+fn transform_take_var(id: &Identifier) -> Sequence {
+  let mut blocks = vec![Block {
+    content: BlockContent::Shard(Function {
+      name: Identifier {
+        name: "Take".into(),
+        namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
+      },
+      params: Some(vec![Param {
+        name: None,
+        value: Value::Identifier(id.clone()),
+        custom_state: CustomStateContainer::new(),
+        is_default: Some(false),
+      }]),
+      custom_state: CustomStateContainer::new(),
+    }),
+    line_info: None,
+    custom_state: CustomStateContainer::new(),
+  }];
+
+  Sequence {
+    pipelines: vec![Pipeline { blocks }],
+    custom_state: CustomStateContainer::new(),
+  }
 }
 
 fn render_shards_group(

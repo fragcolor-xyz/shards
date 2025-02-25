@@ -90,17 +90,10 @@ impl AstVisitor for PrintVisitor {
   }
 
   fn visit_sequence(&mut self, sequence: &Sequence) {
-    for statement in &sequence.statements {
+    for statement in &sequence.pipelines {
       statement.accept(self);
+      self.write("\n")
     }
-  }
-
-  fn visit_statement(&mut self, statement: &Statement) {
-    match statement {
-      Statement::Assignment(assignment) => assignment.accept(self),
-      Statement::Pipeline(pipeline) => pipeline.accept(self),
-    }
-    self.write("\n")
   }
 
   fn visit_assignment(&mut self, assignment: &Assignment) {
@@ -143,20 +136,14 @@ impl AstVisitor for PrintVisitor {
         self.write("}");
       }
       BlockContent::Const(value) => value.accept(self),
-      BlockContent::TakeTable(identifier, path) => {
-        let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
-        self.write(&format!("{}:{}", identifier.to_string(), path.join(":")));
+      BlockContent::TakeIdx(v) => {
+        self.write(&format!(":{}", v));
       }
-      BlockContent::TakeSeq(identifier, path) => {
-        self.write(&format!(
-          "{}:{}",
-          identifier.to_string(),
-          path
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>()
-            .join(":")
-        ));
+      BlockContent::TakeStr(str) => {
+        self.write(&format!(":{}", str));
+      }
+      BlockContent::TakeVar(id) => {
+        self.write(&format!(":[{}]", id.to_string()));
       }
       BlockContent::EvalExpr(sequence) => {
         self.write("#(");
@@ -171,6 +158,7 @@ impl AstVisitor for PrintVisitor {
       BlockContent::Program(program) => {
         program.sequence.accept(self);
       }
+      BlockContent::Assignment(assignment) => assignment.accept(self),
     }
   }
 
@@ -259,19 +247,6 @@ impl AstVisitor for PrintVisitor {
           .collect::<Vec<String>>()
           .join(" ");
         self.write(&format!("[{}]", values_str));
-      }
-      Value::TakeTable(identifier, path) => {
-        let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
-        let path = path.join(":");
-        self.write(&format!("{}:{}", identifier.to_string(), path));
-      }
-      Value::TakeSeq(identifier, path) => {
-        let path_str = path
-          .iter()
-          .map(|p| p.to_string())
-          .collect::<Vec<String>>()
-          .join(":");
-        self.write(&format!("{}:{}", identifier.to_string(), path_str));
       }
       Value::Int8(arr) => self.write(&format!(
         "@i8({} {} {} {} {} {} {} {})",
