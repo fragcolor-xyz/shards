@@ -12,7 +12,7 @@ use crate::PARENTS_UI_NAME;
 use shards::core::register_shard;
 use shards::shard::{Shard};
 
-use shards::shardsc::SHType_Seq;
+use shards::shardsc::{SHType_Seq as SHTYPE_SEQ};
 
 
 use shards::types::common_type;
@@ -66,12 +66,12 @@ impl ColumnSettings {
   }
 
   fn compose(&mut self, data: &InstanceData, out_exp: &mut ExposedTypes) -> Result<Type, &str> {
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_type).into());
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_value).into());
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.min_width).into());
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.max_width).into());
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.clip).into());
-    shards::util::collect_required_variables(&data.shared, out_exp, (&self.resizable).into());
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_type).into())?;
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.width_value).into())?;
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.min_width).into())?;
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.max_width).into())?;
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.clip).into())?;
+    shards::util::collect_required_variables(&data.shared, out_exp, (&self.resizable).into())?;
     Ok(data.inputType)
   }
 
@@ -308,6 +308,12 @@ impl Shard for Table2 {
       s.cleanup(ctx);
     }
 
+    for s in &mut self.column_settings {
+      if let Some(s) = s {
+        s.cleanup(ctx);
+      }
+    }
+
     self.cleanup_helper(ctx)?;
     Ok(())
   }
@@ -320,7 +326,7 @@ impl Shard for Table2 {
     self.column_shards.clear();
     self.header_shards.clear();
 
-    self.remap_key_seq = data.inputType.basicType == SHType_Seq;
+    self.remap_key_seq = data.inputType.basicType == SHTYPE_SEQ;
     let callback_type = if self.remap_key_seq {
       unsafe {
         if data.inputType.details.seqTypes.len != 1 {
