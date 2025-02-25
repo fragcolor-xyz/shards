@@ -3580,7 +3580,7 @@ impl Var {
 
 impl TryFrom<&Var> for SHString {
   type Error = &'static str;
-
+ 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_String

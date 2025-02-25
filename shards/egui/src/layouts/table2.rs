@@ -10,10 +10,9 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 
 use shards::core::register_shard;
-use shards::shard::{Shard};
+use shards::shard::Shard;
 
-use shards::shardsc::{SHType_Seq as SHTYPE_SEQ};
-
+use shards::shardsc::SHType_Seq as SHTYPE_SEQ;
 
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -33,12 +32,9 @@ use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 
-
 use shards::types::STRING_VAR_OR_NONE_SLICE;
 
 use std::cell::RefCell;
-
-
 
 // Thread-local context for Table2 composition
 thread_local! {
@@ -482,46 +478,54 @@ impl Table2 {
       // Create column based on settings
       let column = if let Some(settings) = &self.column_settings[i] {
         // Configure column based on settings
-        let mut col = match settings.width_type.get().try_into()? {
-          "auto" => {
-            if !settings.width_value.get().is_none() {
-              Column::auto_with_initial_suggestion(settings.width_value.get().try_into()?)
-            } else {
-              Column::auto()
+        let mut col = unsafe {
+          if let Ok(col) = settings.width_type.get().try_into() {
+            match col {
+              "auto" => {
+                if !settings.width_value.get().is_none() {
+                  Column::auto_with_initial_suggestion(settings.width_value.get().try_into().unwrap_unchecked())
+                } else {
+                  Column::auto()
+                }
+              }
+              "initial" => {
+                if !settings.width_value.get().is_none() {
+                  Column::initial(settings.width_value.get().try_into().unwrap_unchecked())
+                } else {
+                  Column::initial(100.0) // Default width
+                }
+              }
+              "exact" => {
+                if !settings.width_value.get().is_none() {
+                  Column::exact(settings.width_value.get().try_into().unwrap_unchecked())
+                } else {
+                  Column::exact(100.0) // Default width
+                }
+              }
+              _ => Column::remainder(),
             }
+          } else {
+            Column::remainder()
           }
-          "initial" => {
-            if !settings.width_value.get().is_none() {
-              Column::initial(settings.width_value.get().try_into()?)
-            } else {
-              Column::initial(100.0) // Default width
-            }
-          }
-          "exact" => {
-            if !settings.width_value.get().is_none() {
-              Column::exact(settings.width_value.get().try_into()?)
-            } else {
-              Column::exact(100.0) // Default width
-            }
-          }
-          _ => Column::remainder(),
         };
 
-        // Apply additional settings
-        if !settings.min_width.get().is_none() {
-          col = col.at_least(settings.min_width.get().try_into()?);
-        }
+        unsafe {
+          // Apply additional settings
+          if !settings.min_width.get().is_none() {
+            col = col.at_least(settings.min_width.get().try_into().unwrap_unchecked());
+          }
 
-        if !settings.max_width.get().is_none() {
-          col = col.at_most(settings.max_width.get().try_into()?);
-        }
+          if !settings.max_width.get().is_none() {
+            col = col.at_most(settings.max_width.get().try_into().unwrap_unchecked());
+          }
 
-        if !settings.clip.get().is_none() {
-          col = col.clip(settings.clip.get().try_into()?);
-        }
+          if !settings.clip.get().is_none() {
+            col = col.clip(settings.clip.get().try_into().unwrap_unchecked());
+          }
 
-        if !settings.resizable.get().is_none() {
-          col = col.resizable(settings.resizable.get().try_into()?);
+          if !settings.resizable.get().is_none() {
+            col = col.resizable(settings.resizable.get().try_into().unwrap_unchecked());
+          }
         }
 
         col

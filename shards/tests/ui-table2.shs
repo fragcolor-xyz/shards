@@ -137,9 +137,60 @@
                       data-src | Take(i) | Take("data") | UI.Label
                     }]
                 )
-                
               })
             })
+            
+            
+            
+            ; Test table with all column settings
+            UI.Space(20.0)
+            4 | UI.Table2(
+              Resizable: true
+              Striped: true
+              Columns: [
+                {
+                  UI.Header({
+                    "Auto Width" | UI.Label
+                  } WidthType: "auto")
+                  ToString | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Initial Width" | UI.Label
+                  } WidthType: "initial" Width: 150.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Exact Width" | UI.Label
+                  } WidthType: "exact" Width: 100.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Remainder" | UI.Label
+                  } WidthType: "remainder")
+                  ToString | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Min/Max Width" | UI.Label
+                  } MinWidth: 100.0 MaxWidth: 200.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Clipped Long Content" | UI.Label
+                  } Clip: true Width: 100.0)
+                  "This is some very long content that should be clipped" | UI.Label
+                }
+                {
+                  UI.Header({
+                    "Not Resizable" | UI.Label
+                  } Resizable: false Width: 100.0)
+                  ToString | UI.Label
+                }]
+            )
             
             ; Add drop box at bottom
             UI.Space(20.0)

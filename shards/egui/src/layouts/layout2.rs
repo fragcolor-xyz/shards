@@ -295,7 +295,7 @@ impl Shard for ScrollArea2 {
     Ok(Some(input.clone()))
   }
 }
-
+ 
 pub(crate) fn register_shards() {
   register_shard::<Layout2>();
   register_shard::<ScrollArea2>();
