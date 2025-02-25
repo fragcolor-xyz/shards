@@ -1052,6 +1052,11 @@ typedef struct SHImage *(__cdecl *SHImageNewProc)(uint32_t dataLen);
 typedef struct SHImage *(__cdecl *SHImageCloneProc)(struct SHImage *);
 typedef uint32_t(__cdecl *SHImageDeriveDataLengthProc)(struct SHImage *);
 
+typedef void(__cdecl *SHRegisterErrorEvent)(SHMeshRef mesh, void *userData,
+                                            void (*callback)(void *userData, SHStringWithLen message, uint32_t line,
+                                                             uint32_t column));
+typedef void(__cdecl *SHUnregisterErrorEvent)(SHMeshRef mesh, void *userData);
+
 struct SHLError {
   char *message;
   uint32_t line;
@@ -1083,6 +1088,8 @@ typedef struct SHLWire(__cdecl *SHTransformEnv)(struct SHLEvalEnv *env, struct S
 typedef void(__cdecl *SHFreeWire)(struct SHLWire wire);
 
 typedef struct _SHCore {
+  //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
+
   // Aligned allocator
   SHAlloc alloc;
   SHFree free;
@@ -1253,6 +1260,12 @@ typedef struct _SHCore {
 
   // Utility to deal with SHTraits
   SH_ARRAY_PROCS(SHTraits, traits);
+
+  // Error event handling
+  SHRegisterErrorEvent registerErrorEvent;
+  SHUnregisterErrorEvent unregisterErrorEvent;
+
+  //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
 
 typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);

@@ -3178,6 +3178,17 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->freeWire = [](SHLWire wire) { shards_free_wire(wire); };
 
+  result->registerErrorEvent = [](SHMeshRef mesh, void *userData,
+                                  void (*callback)(void *userData, SHStringWithLen message, uint32_t line, uint32_t column)) {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->registerErrorEvent(userData, callback);
+  };
+
+  result->unregisterErrorEvent = [](SHMeshRef mesh, void *userData) {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->unregisterErrorEvent(userData);
+  };
+
   return result;
 }
 
