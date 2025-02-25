@@ -2335,6 +2335,7 @@ RUNTIME_SHARD_outputHelp(Push);
 RUNTIME_SHARD_parameters(Push);
 RUNTIME_SHARD_composeV2(Push);
 RUNTIME_SHARD_exposedVariables(Push);
+RUNTIME_SHARD_requiredVariables(Push);
 RUNTIME_SHARD_setParam(Push);
 RUNTIME_SHARD_getParam(Push);
 RUNTIME_SHARD_activate(Push);
