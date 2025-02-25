@@ -235,7 +235,7 @@ impl LegacyShard for Variable {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let inner_id = ui.id().with(EguiId::new(self, 0));
       let label: &str = self.name.as_ref().try_into()?;
