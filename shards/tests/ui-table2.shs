@@ -79,8 +79,12 @@
                   Resizable: true
                   RowHeight: 30.0
                   Reversed: reversed
+                  DoubleClicked: {
+                    Log("Double clicked")
+                  }
                   Clicked: {
                     = i
+                    Log("Row clicked")
                     If({@is-selected(selection-set i)} {
                         Erase(i selection-set)
                       } {
@@ -89,6 +93,8 @@
                     )
                   }
                   ContextMenu: {
+                    = i
+                    ["Item: " i] | String.Format | UI.Label
                     "Menu" | UI.Label
                     UI.Button("Close" {Log("Menu") | UI.CloseMenu})
                   }

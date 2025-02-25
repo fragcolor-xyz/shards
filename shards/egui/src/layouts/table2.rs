@@ -10,7 +10,7 @@ use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use core::slice;
 use shards::core::register_shard;
-use shards::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
+use shards::shard::{Shard};
 use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;
@@ -34,6 +34,7 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::INT_TYPES;
 use shards::types::NONE_TYPES;
+use shards::types::STRING_VAR_OR_NONE_SLICE;
 use shards::util::from_raw_parts_allow_null;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -44,8 +45,61 @@ thread_local! {
     static TABLE_CONTEXT: RefCell<TableContext> = RefCell::new(TableContext::default());
 }
 
+// Struct to hold column settings
+struct ColumnSettings {
+  pub width_type: ParamVar,  // "auto", "initial", "exact", "remainder"
+  pub width_value: ParamVar, // Value for initial/exact
+  pub min_width: ParamVar,   // Minimum width
+  pub max_width: ParamVar,   // Maximum width
+  pub clip: ParamVar,        // Whether to clip content
+  pub resizable: ParamVar,   // Whether column is resizable
+}
+
+impl ColumnSettings {
+  fn warmup(&mut self, ctx: &Context) {
+    self.width_type.warmup(ctx);
+    self.width_value.warmup(ctx);
+    self.min_width.warmup(ctx);
+    self.max_width.warmup(ctx);
+    self.clip.warmup(ctx);
+    self.resizable.warmup(ctx);
+  }
+
+  fn compose(&mut self, data: &InstanceData, out_exp: &mut ExposedTypes) -> Result<Type, &str> {
+    shards::util::collect_required_variables(data, out_exp, &self.width_type);
+    shards::util::collect_required_variables(data, out_exp, &self.width_value);
+    shards::util::collect_required_variables(data, out_exp, &self.min_width);
+    shards::util::collect_required_variables(data, out_exp, &self.max_width);
+    shards::util::collect_required_variables(data, out_exp, &self.clip);
+    shards::util::collect_required_variables(data, out_exp, &self.resizable);
+    Ok(data.inputType)
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) {
+    self.width_type.cleanup(ctx);
+    self.width_value.cleanup(ctx);
+    self.min_width.cleanup(ctx);
+    self.max_width.cleanup(ctx);
+    self.clip.cleanup(ctx);
+  }
+}
+
+impl Default for ColumnSettings {
+  fn default() -> Self {
+    Self {
+      width_type: None,
+      width_value: None,
+      min_width: None,
+      max_width: None,
+      clip: None,
+      resizable: None,
+    }
+  }
+}
+
 struct TableContext {
   current_header: Option<ShardsVar>,
+  current_column_settings: Option<ColumnSettings>,
   in_table_compose: bool,
 }
 
@@ -53,6 +107,7 @@ impl Default for TableContext {
   fn default() -> Self {
     Self {
       current_header: None,
+      current_column_settings: None,
       in_table_compose: false,
     }
   }
@@ -65,6 +120,7 @@ impl TableContext {
       let mut ctx = ctx.borrow_mut();
       ctx.in_table_compose = true;
       ctx.current_header = None;
+      ctx.current_column_settings = None;
     });
   }
 
@@ -73,10 +129,11 @@ impl TableContext {
       let mut ctx = ctx.borrow_mut();
       ctx.in_table_compose = false;
       ctx.current_header = None;
+      ctx.current_column_settings = None;
     });
   }
 
-  fn set_header(header: ShardsVar) -> Result<(), &'static str> {
+  fn set_header(header: ShardsVar, settings: Option<ColumnSettings>) -> Result<(), &'static str> {
     TABLE_CONTEXT.with(|ctx| {
       let mut ctx = ctx.borrow_mut();
       if !ctx.in_table_compose {
@@ -86,14 +143,18 @@ impl TableContext {
         return Err("Only one UI.Header allowed per column");
       }
       ctx.current_header = Some(header);
+      ctx.current_column_settings = settings;
       Ok(())
     })
   }
 
-  fn take_header() -> Option<ShardsVar> {
+  fn take_header() -> (Option<ShardsVar>, Option<ColumnSettings>) {
     TABLE_CONTEXT.with(|ctx| {
       let mut ctx = ctx.borrow_mut();
-      ctx.current_header.take()
+      (
+        ctx.current_header.take(),
+        ctx.current_column_settings.take(),
+      )
     })
   }
 
@@ -169,22 +230,14 @@ pub struct Table2 {
   )]
   context_menu: ShardsVar,
   #[shard_param(
-    "DragData",
-    "Enables dragging and sets the data for drag operations",
-    ANY_TYPES
-  )]
-  drag_data: ShardsVar,
-  #[shard_param(
     "RowHeight",
     "Height of each row in pixels. Default is text height.",
     FLOAT_VAR_OR_NONE_SLICE
   )]
   row_height: ParamVar,
-  // Track last clicked for double-click detection
-  last_clicked: [Option<egui::Id>; 2],
   can_interact: bool,
-  can_drag: bool,
   remap_key_seq: bool,
+  column_settings: Vec<Option<ColumnSettings>>,
 }
 
 impl Default for Table2 {
@@ -205,12 +258,10 @@ impl Default for Table2 {
       clicked_callback: ShardsVar::default(),
       double_clicked_callback: ShardsVar::default(),
       context_menu: ShardsVar::default(),
-      drag_data: ShardsVar::default(),
       row_height: ParamVar::default(),
-      last_clicked: [None, None],
       can_interact: false,
-      can_drag: false,
       remap_key_seq: false,
+      column_settings: Vec::new(),
     }
   }
 }
@@ -241,6 +292,12 @@ impl Shard for Table2 {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
+
+    for s in &mut self.column_settings {
+      if let Some(s) = s {
+        s.warmup(ctx);
+      }
+    }
 
     for s in &mut self.column_shards {
       s.warmup(ctx)?;
@@ -286,7 +343,6 @@ impl Shard for Table2 {
       }
     } else {
       common_type::int
-
     };
 
     // Compose interaction callbacks with int input type
@@ -313,9 +369,18 @@ impl Shard for Table2 {
         shards::util::require_shards_contents(&mut self.requiring, &mut column_shard);
 
         // Store the header if one was registered during compose
-        self.header_shards.push(TableContext::take_header());
-
+        let (header, column_settings) = TableContext::take_header();
+        self.header_shards.push(header);
         self.column_shards.push(column_shard);
+
+        self.column_settings.push(column_settings);
+      }
+    }
+
+    // Compose the column settings
+    for settings in &mut self.column_settings {
+      if let Some(settings) = settings {
+        settings.compose(data, &mut self.requiring)?;
       }
     }
 
@@ -370,12 +435,6 @@ impl Shard for Table2 {
       || !self.double_clicked_callback.is_empty()
       || !self.context_menu.is_empty();
 
-    self.can_drag = !self.drag_data.is_empty();
-    if self.can_drag {
-      self.drag_data.compose(&callback_data)?;
-      shards::util::require_shards_contents(&mut self.requiring, &self.drag_data);
-    }
-
     Ok(data.inputType)
   }
 
@@ -411,12 +470,6 @@ impl Table2 {
 
     let root_id = ui.id();
 
-    let primary_clicked = ui.input(|i| i.pointer.primary_clicked());
-    let double_clicked = ui.input(|i| {
-      i.pointer
-        .button_double_clicked(egui::PointerButton::Primary)
-    });
-
     // Start building table
     let mut builder =
       TableBuilder::new(ui).cell_layout(egui::Layout::left_to_right(egui::Align::Center));
@@ -427,15 +480,64 @@ impl Table2 {
     let resizable = self.resizable.get();
     builder = builder.resizable(resizable.try_into()?);
 
-    if self.can_drag {
-      builder = builder.sense(egui::Sense::click_and_drag());
-    } else if self.can_interact {
+    if self.can_interact {
       builder = builder.sense(egui::Sense::click());
     }
 
     // Configure columns
-    for _ in 0..self.column_shards.len() {
-      builder = builder.column(Column::remainder());
+    for i in 0..self.column_shards.len() {
+      // Create column based on settings
+      let column = if let Some(settings) = &self.column_settings[i] {
+        // Configure column based on settings
+        let mut col = match settings.width_type.get().try_into()? {
+          "auto" => {
+            if !settings.width_value.get().is_none() {
+              Column::auto_with_initial_suggestion(settings.width_value.get().try_into()?)
+            } else {
+              Column::auto()
+            }
+          }
+          "initial" => {
+            if !settings.width_value.get().is_none() {
+              Column::initial(settings.width_value.get().try_into()?)
+            } else {
+              Column::initial(100.0) // Default width
+            }
+          }
+          "exact" => {
+            if !settings.width_value.get().is_none() {
+              Column::exact(settings.width_value.get().try_into()?)
+            } else {
+              Column::exact(100.0) // Default width
+            }
+          }
+          _ => Column::remainder(),
+        };
+
+        // Apply additional settings
+        if !settings.min_width.get().is_none() {
+          col = col.at_least(settings.min_width.get().try_into()?);
+        }
+
+        if !settings.max_width.get().is_none() {
+          col = col.at_most(settings.max_width.get().try_into()?);
+        }
+
+        if !settings.clip.get().is_none() {
+          col = col.clip(settings.clip.get().try_into()?);
+        }
+
+        if !settings.resizable.get().is_none() {
+          col = col.resizable(settings.resizable.get().try_into()?);
+        }
+
+        col
+      } else {
+        // Default column type
+        Column::remainder()
+      };
+
+      builder = builder.column(column);
     }
 
     // Build table with headers and content
@@ -491,30 +593,7 @@ impl Table2 {
         }
 
         // Create row response for interaction
-        let row_id = root_id.with(index);
         let row_response = row.response();
-
-        // if row_response.drag_started() {
-
-        // } else if row_response.drag_stopped() {
-        //   eprintln!("drag stopped: {:?}", row_id);
-        // } else if row_response.dragged() {
-        //   eprintln!("dragged {:?}", row_id);
-        // }
-        // let inner_response = if can_drag {
-        //   let mut op = DragOp::new(interact_id, ui, &ui_ctx);
-        //   if op.is_dragging() {
-        //     let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
-        //     let inner = ui.with_layer_id(layer_id, body).inner?;
-        //     op.update_dragging(layer_id, &interact_response, ui);
-        //     inner
-        //   } else {
-        //     op.update_not_dragging(drag_data, &interact_response, ui, &ui_ctx);
-        //     ui.scope(body).inner?
-        //   }
-        // } else {
-        //   body(ui)?
-        // };
 
         // Handle interactions
         if !self.context_menu.is_empty() {
@@ -529,32 +608,18 @@ impl Table2 {
           });
         }
 
-        if row_response.hovered() {
-          let mut elem_double_clicked = false;
-          if double_clicked {
-            if self.last_clicked[0] == self.last_clicked[1]
-              && self.last_clicked[0].is_some()
-              && self.last_clicked[0].unwrap() == row_id
-            {
-              elem_double_clicked = true;
-              let mut _unused = Var::default();
-              let _ = self
-                .double_clicked_callback
-                .activate(context, &idx_var, &mut _unused);
-            }
-          }
+        if row_response.double_clicked() {
+          let mut _unused = Var::default();
+          let _ = self
+            .double_clicked_callback
+            .activate(context, &idx_var, &mut _unused);
+        }
 
-          if !elem_double_clicked && row_response.clicked() {
-            let mut _unused = Var::default();
-            let _ = self
-              .clicked_callback
-              .activate(context, &idx_var, &mut _unused);
-          }
-
-          if primary_clicked {
-            self.last_clicked[1] = self.last_clicked[0];
-            self.last_clicked[0] = Some(row_id);
-          }
+        if row_response.clicked() {
+          let mut _unused = Var::default();
+          let _ = self
+            .clicked_callback
+            .activate(context, &idx_var, &mut _unused);
         }
       });
     });
@@ -568,12 +633,52 @@ impl Table2 {
 pub struct Header {
   #[shard_param("Contents", "The UI contents for the header.", SEQ_OF_SHARDS_TYPES)]
   contents: ShardsVar,
+
+  #[shard_param(
+    "WidthType",
+    "Column width type: auto, initial, exact, or remainder.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  width_type: ParamVar,
+
+  #[shard_param(
+    "Width",
+    "Width value for initial or exact width types.",
+    FLOAT_VAR_OR_NONE_SLICE
+  )]
+  width_value: ParamVar,
+
+  #[shard_param("MinWidth", "Minimum width of the column.", FLOAT_VAR_OR_NONE_SLICE)]
+  min_width: ParamVar,
+
+  #[shard_param("MaxWidth", "Maximum width of the column.", FLOAT_VAR_OR_NONE_SLICE)]
+  max_width: ParamVar,
+
+  #[shard_param(
+    "Clip",
+    "Whether to clip content that doesn't fit in the column.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  clip: ParamVar,
+
+  #[shard_param(
+    "Resizable",
+    "Whether this column can be resized.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  resizable: ParamVar,
 }
 
 impl Default for Header {
   fn default() -> Self {
     Self {
       contents: ShardsVar::default(),
+      width_type: ParamVar::default(),
+      width_value: ParamVar::default(),
+      min_width: ParamVar::default(),
+      max_width: ParamVar::default(),
+      clip: ParamVar::default(),
+      resizable: ParamVar::default(),
     }
   }
 }
@@ -593,8 +698,29 @@ impl Shard for Header {
       return Err("UI.Header can only be used within UI.Table2 columns");
     }
 
-    // Store header contents in context during compose
-    TableContext::set_header(self.contents.clone())?;
+    // Create column settings from parameters
+
+    let have_settings = !self.width_type.is_none()
+      || !self.width_value.is_none()
+      || !self.min_width.is_none()
+      || !self.max_width.is_none()
+      || !self.clip.is_none()
+      || !self.resizable.is_none();
+    let settings = if have_settings {
+      Some(ColumnSettings {
+        width_type: ParamVar::new(self.width_type.parameter.0),
+        width_value: ParamVar::new(self.width_value.parameter.0),
+        min_width: ParamVar::new(self.min_width.parameter.0),
+        max_width: ParamVar::new(self.max_width.parameter.0),
+        clip: ParamVar::new(self.clip.parameter.0),
+        resizable: ParamVar::new(self.resizable.parameter.0),
+      })
+    } else {
+      None
+    };
+
+    // Store header contents and settings in context
+    TableContext::set_header(self.contents.clone(), settings)?;
 
     unsafe {
       // TODO: Make external function for this
