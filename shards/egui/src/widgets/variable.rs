@@ -1,5 +1,5 @@
 use super::Variable;
-use super::WireVariable;
+
 use crate::util;
 use crate::EguiId;
 use crate::UIRenderer;
@@ -14,8 +14,8 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::RawString;
-use shards::types::Table;
+
+
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;

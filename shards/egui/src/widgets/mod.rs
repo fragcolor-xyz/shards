@@ -2,7 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use egui_memory_editor::MemoryEditor;
-use image_util::AutoTexturePtr;
+
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;

@@ -3,7 +3,7 @@
 
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
-use shards::core::register_shard;
+
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;

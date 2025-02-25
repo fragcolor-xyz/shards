@@ -42,8 +42,8 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use std::borrow::Borrow;
-use std::cell::RefCell;
+
+
 use std::rc::Rc;
 
 macro_rules! retrieve_layout_class_attribute {

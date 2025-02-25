@@ -10,7 +10,7 @@ use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
 
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::OptionalString;
 use shards::types::ParamVar;

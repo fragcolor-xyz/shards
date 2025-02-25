@@ -1422,22 +1422,22 @@ impl<'a> AstMutator<Option<Response>> for VisualAst<'a> {
 
   fn visit_assignment(&mut self, assignment: &mut Assignment) -> Option<Response> {
     let resp = match assignment.kind {
-      AssignmentKind::AssignRef => ({
+      AssignmentKind::AssignRef => {
         self.ui.label(chars("="));
         assignment.identifier.accept_mut(self)
-      }),
-      AssignmentKind::AssignSet => ( {
+      },
+      AssignmentKind::AssignSet => {
         self.ui.label(chars(">="));
         assignment.identifier.accept_mut(self)
-      }),
-      AssignmentKind::AssignUpd => ( {
+      },
+      AssignmentKind::AssignUpd => {
         self.ui.label(chars(">"));
         assignment.identifier.accept_mut(self)
-      }),
-      AssignmentKind::AssignPush => ( {
+      },
+      AssignmentKind::AssignPush => {
         self.ui.label(chars(">>"));
         assignment.identifier.accept_mut(self)
-      }),
+      },
     };
     resp.map(|x| {
       if x.clicked() {
