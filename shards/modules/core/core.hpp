@@ -2221,7 +2221,7 @@ struct Push : public SeqBase {
     } else {
       // we require the sequence to push to, as type any is fine here
       _requiredInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The sequence to push to."), CoreInfo::AnySeqType, true));
+          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The sequence to push to."), CoreInfo::AnyType, true));
     }
 
     return data.inputType;
