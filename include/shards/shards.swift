@@ -336,7 +336,7 @@ extension SHVar: CustomStringConvertible {
             payload.intValue = SHInt(newValue)
         }
     }
-    
+
     public var maybeInt: Int? {
         if type != .Int {
             return nil
@@ -1538,8 +1538,22 @@ class MeshController {
         nativeRef = G.Core.pointee.createMesh()
     }
 
+    init(borrowing: SHMeshRef) {
+        nativeRef = borrowing
+        self.borrowing = true
+    }
+
     deinit {
-        G.Core.pointee.destroyMesh(nativeRef)
+        if !errorCallbacks.isEmpty {
+            for (userData, _) in errorCallbacks {
+                // Unregister with Shards
+                G.Core.pointee.unregisterErrorEvent(nativeRef, userData)
+            }
+        }
+        
+        if !borrowing {
+            G.Core.pointee.destroyMesh(nativeRef)
+        }
     }
 
     func schedule(wire: WireController) {
@@ -1568,7 +1582,46 @@ class MeshController {
         }
     }
 
+    // Store callbacks to prevent deallocation while in use
+    private var errorCallbacks: [UnsafeMutableRawPointer: (String, UInt32, UInt32) -> Void] = [:]
+
+    // C function that will be called by Shards when an error occurs
+    private let errorCallbackBridge: @convention(c) (UnsafeMutableRawPointer?, SHStringWithLen, UInt32, UInt32) -> Void = { userData, message, line, column in
+        guard let userData = userData else { return }
+        // Get the Swift closure from context
+        let callbackHolder = Unmanaged<MeshController>.fromOpaque(userData).takeUnretainedValue()
+
+        if let callback = callbackHolder.errorCallbacks[userData] {
+            let messageStr = message.toString() ?? "Unknown error"
+            callback(messageStr, line, column)
+        }
+    }
+
+    // Register a callback that will be called when an error occurs
+    func registerErrorEvent(callback: @escaping (String, UInt32, UInt32) -> Void) -> UnsafeMutableRawPointer {
+        // Create a context pointer to pass to the C function
+        let context = Unmanaged.passUnretained(self).toOpaque()
+
+        // Store the callback using the context pointer as the key
+        errorCallbacks[context] = callback
+
+        // Register with Shards
+        G.Core.pointee.registerErrorEvent(nativeRef, context, errorCallbackBridge)
+
+        return context
+    }
+
+    // Unregister a previously registered error callback
+    func unregisterErrorEvent(userData: UnsafeMutableRawPointer) {
+        // Remove from our map
+        errorCallbacks.removeValue(forKey: userData)
+
+        // Unregister with Shards
+        G.Core.pointee.unregisterErrorEvent(nativeRef, userData)
+    }
+
     var nativeRef = SHMeshRef(bitPattern: 0)
+    private var borrowing: Bool = false
 }
 
 extension SHStringWithLen {

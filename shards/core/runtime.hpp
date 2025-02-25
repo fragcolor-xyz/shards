@@ -830,7 +830,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void onErrorEvent(SHWire::OnErrorEvent &err) {
     for (auto &[userData, callBack] : _errorEventCallbacks) {
       SHStringWithLen message{err.error.payload.stringValue, err.error.payload.stringLen};
-      callBack(userData, message, err.shard->line, err.shard->column);
+      callBack(userData, message, err.shard ? err.shard->line : 0, err.shard ? err.shard->column : 0);
     }
   }
 
