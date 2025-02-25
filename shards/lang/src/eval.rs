@@ -1751,16 +1751,6 @@ impl<'e> VariableResolver<'e> {
                 _ => Value::None(()),
               };
               self.resolve_var(&value, line_info, shard)
-
-              // TMP_VALUE.with(|f| {
-              //   let mut v = f.borrow_mut();
-              //   *v = Some(decoded_json.clone());
-              //   self.resolve_var(
-              //     v.as_ref().unwrap(), // should be valid
-              //     line_info,
-              //     shard,
-              //   )
-              // })
             } else if let Some(extension) = find_extension(&func.name, self.e) {
               let v = extension.process_to_var(func, line_info)?;
               Ok(ResolvedVar::new_const(SVar::Cloned(v)))
