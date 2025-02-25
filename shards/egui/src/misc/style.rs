@@ -616,7 +616,7 @@ impl Shard for StyleShard {
     // Visuals stuff
     let visuals = &mut style.visuals;
 
-    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = dark_mode))?;
+    when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = v.try_into()?))?;
 
     when_set(&self.override_text_color, |v| {
       Ok(visuals.override_text_color = Some(into_color(v)?))

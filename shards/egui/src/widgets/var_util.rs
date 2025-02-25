@@ -31,7 +31,7 @@ fn get_default_value(value_type: SHType) -> Var {
 }
 
 unsafe fn render_enum(
-  id: egui::Id,
+  _id: egui::Id,
   var: &mut Var,
   ui: &mut Ui,
 ) -> Result<Response, Box<dyn std::error::Error>> {
@@ -54,12 +54,6 @@ unsafe fn render_enum(
   let labels = enum_info.get_fast_static("labels").as_seq().unwrap();
   let values = enum_info.get_fast_static("values").as_seq().unwrap();
   let mut index: usize = values.iter().position(|x| x == enum_value.into()).unwrap();
-  let name: &str = enum_info
-    .get_fast_static("name")
-    .as_ref()
-    .try_into()
-    .unwrap();
-  let label: &str = labels[index].as_ref().try_into().unwrap();
 
   let r = ComboBox::new(id, "").show_index(ui, &mut index, values.len(), |i| {
     let r: &str = (&labels[i]).try_into().unwrap();

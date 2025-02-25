@@ -1125,7 +1125,6 @@ impl Shard for LayoutShard {
           LayoutFrame::Popup => Some(egui::Frame::popup(style)),
           LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
           LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
-          _ => unreachable!(),
         }
       } else {
         None // default value for frame

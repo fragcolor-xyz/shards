@@ -240,8 +240,6 @@ pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
 
 pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let spread: f32 =
-    get_or_var(tbl.get_static("Spread").ok_or("Spread missing")?, ctx).try_into()?;
   let blur: f32 = get_or_var(tbl.get_static("Blur").ok_or("Blur missing")?, ctx).try_into()?;
   let spread: f32 =
     get_or_var(tbl.get_static("Spread").ok_or("Spread missing")?, ctx).try_into()?;
