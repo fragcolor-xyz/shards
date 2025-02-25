@@ -1746,6 +1746,9 @@ endOfWire:
     wire->resumer = nullptr;
   }
 
+  // NOTE: This is here because cleanup resets the mesh
+  std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
+
   // Set onLastResume so tick keeps processing mesh tasks on cleanup
   context.onLastResume = true;
   wire->cleanup(true);
@@ -1757,7 +1760,7 @@ endOfWire:
     wire->state = SHWire::State::Ended;
 
   // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
-  if (std::shared_ptr<SHMesh> mesh = wire->mesh.lock()) {
+  if (mesh) {
     mesh->dispatcher.trigger(SHWire::OnStopEvent{wire});
     mesh.reset();
   }
