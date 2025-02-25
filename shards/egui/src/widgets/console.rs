@@ -219,20 +219,6 @@ impl Console {
     code: &str,
     filters: (bool, bool, bool, bool, bool),
   ) -> egui::text::LayoutJob {
-    impl
-      egui::util::cache::ComputerMut<
-        (&LogTheme, &str, (bool, bool, bool, bool, bool)),
-        egui::text::LayoutJob,
-      > for Highlighter
-    {
-      fn compute(
-        &mut self,
-        (theme, code, filters): (&LogTheme, &str, (bool, bool, bool, bool, bool)),
-      ) -> egui::text::LayoutJob {
-        self.highlight(theme, code, filters)
-      }
-    }
-
     type HighlightCache = egui::util::cache::FrameCache<egui::text::LayoutJob, Highlighter>;
 
     ctx.memory_mut(|mem| {
@@ -244,6 +230,20 @@ impl Console {
 
 #[derive(Default)]
 struct Highlighter {}
+
+impl
+  egui::util::cache::ComputerMut<
+    (&LogTheme, &str, (bool, bool, bool, bool, bool)),
+    egui::text::LayoutJob,
+  > for Highlighter
+{
+  fn compute(
+    &mut self,
+    (theme, code, filters): (&LogTheme, &str, (bool, bool, bool, bool, bool)),
+  ) -> egui::text::LayoutJob {
+    self.highlight(theme, code, filters)
+  }
+}
 
 impl Highlighter {
   fn highlight(
