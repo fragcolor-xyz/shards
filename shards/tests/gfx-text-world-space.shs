@@ -50,7 +50,7 @@
     })
     
     ; TODO: rename to GFX.Font
-    "data/fonts/_robotto/Roboto-Regular.ttf" | FS.Read(Bytes: true) | GFX.FontMap = font
+    "data/fonts/robotto/Roboto-Regular.ttf" | FS.Read(Bytes: true) | GFX.FontMap = font
   })
   
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
