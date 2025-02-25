@@ -8,10 +8,12 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
-use shards::shardsc::SHType_Int;
-use shards::shardsc::SHType_Seq;
-use shards::shardsc::SHType_ShardRef;
-use shards::shardsc::SHType_String;
+use shards::shardsc::{
+  SHType_Int as SHTYPE_INT,
+  SHType_Seq as SHTYPE_SEQ,
+  SHType_ShardRef as SHTYPE_SHARD_REF,
+  SHType_String as SHTYPE_STRING
+};
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -158,10 +160,10 @@ impl LegacyShard for Table {
             let column: shards::types::Table = column.as_ref().try_into()?;
             if let Some(header) = column.get_static("Header") {
               match header.valueType {
-                SHType_String => {
+                SHTYPE_STRING => {
                   self.header_shards.push(None);
                 }
-                SHType_ShardRef | SHType_Seq => {
+                SHTYPE_SHARD_REF | SHTYPE_SEQ => {
                   let mut s = ShardsVar::default();
                   s.set_param(&header)?;
                   self.header_shards.push(Some(s));
@@ -258,7 +260,7 @@ impl LegacyShard for Table {
         };
         if CStr::cmp(a, b) == Ordering::Equal {
           should_expose = false;
-          if var.exposedType.basicType != SHType_Int {
+          if var.exposedType.basicType != SHTYPE_INT {
             return Err("Table: int variable required.");
           }
           break;
@@ -397,13 +399,13 @@ impl LegacyShard for Table {
               let column: shards::types::Table = columns[i].as_ref().try_into().unwrap(); // iterated successfully above, qed
               if let Some(header) = column.get_static("Header") {
                 match header.valueType {
-                  SHType_String => {
+                  SHTYPE_STRING => {
                     header_row.col(|ui| {
                       let text: &str = header.try_into().unwrap_or("");
                       ui.heading(text);
                     });
                   }
-                  SHType_ShardRef | SHType_Seq => {
+                  SHTYPE_SHARD_REF | SHTYPE_SEQ => {
                     if let Some(header_shard) = &mut self.header_shards[i] {
                       header_row.col(|ui| {
                         let _ = util::activate_ui_contents(

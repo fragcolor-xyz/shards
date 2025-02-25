@@ -14,12 +14,9 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-
-
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
-use shards::types::WireRef;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::{ExposedInfo, ExposedTypes};
@@ -27,11 +24,8 @@ use shards::util::from_raw_parts_allow_null;
 use shards::SHType_Seq;
 use std::cmp::Ordering;
 use std::ffi::CStr;
-use std::os::raw::c_char;
 
 static ANY_VAR_ONLY_SLICE: &[Type] = &[common_type::any_var];
-
-static WIRE_VAR_TYPES: &[Type] = &[common_type::wire, common_type::string];
 
 lazy_static! {
   static ref VARIABLE_PARAMETERS: Parameters = vec![
@@ -50,14 +44,7 @@ lazy_static! {
   ];
 }
 
-static HEADERS_TYPES: &[Type] = &[
-  common_type::none,
-  common_type::string_table,
-  common_type::string_table_var,
-];
-
 extern "C" {
-  fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
   fn triggerVarValueChange(
     context: *mut Context,
     name: *const Var,
@@ -65,7 +52,6 @@ extern "C" {
     is_global: bool,
     var: *const Var,
   );
-  fn getWireContext(wire: WireRef) -> *mut Context;
 }
 
 impl Default for Variable {

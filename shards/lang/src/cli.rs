@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{arg, Parser};
 use shards::core::{sleep, Core};
 use shards::types::Mesh;
 use shards::util::from_raw_parts_allow_null;
@@ -183,7 +183,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     // Try to support a simple "shards script.shs" command line in case none of the above matched
     Err(orig_err) => match SimpleCLI::try_parse_from(args) {
       Ok(cli) => execute(&cli.run_args, cancellation_token),
-      Err(e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
+      Err(_e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
     },
   };
 

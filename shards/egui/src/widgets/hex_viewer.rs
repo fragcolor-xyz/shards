@@ -6,19 +6,21 @@ use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
-use shards::shardsc::SHType_Bytes;
-use shards::shardsc::SHType_Enum;
-use shards::shardsc::SHType_Float;
-use shards::shardsc::SHType_Float2;
-use shards::shardsc::SHType_Float3;
-use shards::shardsc::SHType_Float4;
-use shards::shardsc::SHType_Int;
-use shards::shardsc::SHType_Int16;
-use shards::shardsc::SHType_Int2;
-use shards::shardsc::SHType_Int3;
-use shards::shardsc::SHType_Int4;
-use shards::shardsc::SHType_Int8;
-use shards::shardsc::SHType_String;
+use shards::shardsc::{
+  SHType_Bytes as SHTYPE_BYTES,
+  SHType_Enum as SHTYPE_ENUM,
+  SHType_Float as SHTYPE_FLOAT,
+  SHType_Float2 as SHTYPE_FLOAT2,
+  SHType_Float3 as SHTYPE_FLOAT3,
+  SHType_Float4 as SHTYPE_FLOAT4,
+  SHType_Int as SHTYPE_INT,
+  SHType_Int16 as SHTYPE_INT16,
+  SHType_Int2 as SHTYPE_INT2,
+  SHType_Int3 as SHTYPE_INT3,
+  SHType_Int4 as SHTYPE_INT4,
+  SHType_Int8 as SHTYPE_INT8,
+  SHType_String as SHTYPE_STRING
+};
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -135,55 +137,55 @@ impl LegacyShard for HexViewer {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let mem = unsafe {
         let (data, len) = match input.valueType {
-          SHType_Bytes => (
+          SHTYPE_BYTES => (
             input.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
             input.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
           ),
-          SHType_Enum => (
+          SHTYPE_ENUM => (
             &input.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue as *const i32 as *mut u8,
             4,
           ),
-          SHType_Float => (
+          SHTYPE_FLOAT => (
             &input.payload.__bindgen_anon_1.floatValue as *const f64 as *mut u8,
             8,
           ),
-          SHType_Float2 => (
+          SHTYPE_FLOAT2 => (
             &input.payload.__bindgen_anon_1.float2Value as *const f64 as *mut u8,
             16,
           ),
-          SHType_Float3 => (
+          SHTYPE_FLOAT3 => (
             &input.payload.__bindgen_anon_1.float3Value as *const f32 as *mut u8,
             12,
           ),
-          SHType_Float4 => (
+          SHTYPE_FLOAT4 => (
             &input.payload.__bindgen_anon_1.float4Value as *const f32 as *mut u8,
             16,
           ),
-          SHType_Int => (
+          SHTYPE_INT => (
             &input.payload.__bindgen_anon_1.intValue as *const i64 as *mut u8,
             8,
           ),
-          SHType_Int2 => (
+          SHTYPE_INT2 => (
             &input.payload.__bindgen_anon_1.int2Value as *const i64 as *mut u8,
             16,
           ),
-          SHType_Int3 => (
+          SHTYPE_INT3 => (
             &input.payload.__bindgen_anon_1.int3Value as *const i32 as *mut u8,
             12,
           ),
-          SHType_Int4 => (
+          SHTYPE_INT4 => (
             &input.payload.__bindgen_anon_1.int4Value as *const i32 as *mut u8,
             16,
           ),
-          SHType_Int8 => (
+          SHTYPE_INT8 => (
             &input.payload.__bindgen_anon_1.int8Value as *const i16 as *mut u8,
             16,
           ),
-          SHType_Int16 => (
+          SHTYPE_INT16 => (
             &input.payload.__bindgen_anon_1.int16Value as *const i8 as *mut u8,
             16,
           ),
-          SHType_String => (
+          SHTYPE_STRING => (
             input.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut u8,
             input.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
           ),

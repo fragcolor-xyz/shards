@@ -105,7 +105,7 @@ impl Shard for CanvasShard {
       &mut ui,
       &mut self.parents,
       &mut self.contents,
-    );
+    )?;
 
     Ok(None)
   }

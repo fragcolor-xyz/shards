@@ -186,7 +186,9 @@ impl LegacyShard for Disable {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.scope(|ui| {
         let disabled: bool = self.disable.get().try_into()?;
-        ui.set_enabled(!disabled);
+        if disabled {
+          ui.disable();
+        }
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
       .inner?;

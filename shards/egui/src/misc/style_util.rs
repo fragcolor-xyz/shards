@@ -4,13 +4,13 @@
 use shards::shardsc::SHColor;
 use shards::types::Table;
 
-pub(crate) fn get_color(color: SHColor) -> Result<egui::Color32, &'static str> {
+pub fn get_color(color: SHColor) -> Result<egui::Color32, &'static str> {
   Ok(egui::Color32::from_rgba_unmultiplied(
     color.r, color.g, color.b, color.a,
   ))
 }
 
-pub(crate) fn get_font_family(family: &str) -> Result<egui::FontFamily, &'static str> {
+pub fn get_font_family(family: &str) -> Result<egui::FontFamily, &'static str> {
   match family {
     "Proportional" => Ok(egui::FontFamily::Proportional),
     "Monospace" => Ok(egui::FontFamily::Monospace),
@@ -20,7 +20,7 @@ pub(crate) fn get_font_family(family: &str) -> Result<egui::FontFamily, &'static
   }
 }
 
-pub(crate) fn get_font_id(font_id: Table) -> Result<egui::FontId, &'static str> {
+pub fn get_font_id(font_id: Table) -> Result<egui::FontId, &'static str> {
   if let (Some(size), Some(family)) = (font_id.get_static("size"), font_id.get_static("family")) {
     let size: f32 = size.try_into().map_err(|e| {
       shlog!("{}: {}", "size", e);
@@ -39,7 +39,7 @@ pub(crate) fn get_font_id(font_id: Table) -> Result<egui::FontId, &'static str> 
   }
 }
 
-pub(crate) fn get_margin(
+pub fn get_margin(
   margin: (f32, f32, f32, f32),
 ) -> Result<egui::Margin, &'static str> {
   Ok(egui::Margin {
@@ -50,7 +50,7 @@ pub(crate) fn get_margin(
   })
 }
 
-pub(crate) fn get_rounding(rounding: (f32, f32, f32, f32)) -> Result<egui::Rounding, &'static str> {
+pub fn get_rounding(rounding: (f32, f32, f32, f32)) -> Result<egui::Rounding, &'static str> {
   Ok(egui::Rounding {
     nw: rounding.0,
     ne: rounding.1,
@@ -59,7 +59,7 @@ pub(crate) fn get_rounding(rounding: (f32, f32, f32, f32)) -> Result<egui::Round
   })
 }
 
-pub(crate) fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static str> {
+pub fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static str> {
   if let (Some(extrusion), Some(color)) =
     (shadow.get_static("extrusion"), shadow.get_static("color"))
   {
@@ -80,7 +80,7 @@ pub(crate) fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static
   }
 }
 
-pub(crate) fn get_stroke(stroke: Table) -> Result<egui::Stroke, &'static str> {
+pub fn get_stroke(stroke: Table) -> Result<egui::Stroke, &'static str> {
   if let (Some(width), Some(color)) = (stroke.get_static("width"), stroke.get_static("color")) {
     Ok(egui::Stroke {
       width: width.try_into().map_err(|e| {
@@ -97,13 +97,13 @@ pub(crate) fn get_stroke(stroke: Table) -> Result<egui::Stroke, &'static str> {
   }
 }
 
-pub(crate) fn get_text_format(format: Table) -> Result<egui::TextFormat, &'static str> {
+pub fn get_text_format(format: Table) -> Result<egui::TextFormat, &'static str> {
   let mut text_format = egui::TextFormat::default();
   update_text_format(&mut text_format, format)?;
   Ok(text_format)
 }
 
-pub(crate) fn get_text_style(name: &str) -> Result<egui::TextStyle, &'static str> {
+pub fn get_text_style(name: &str) -> Result<egui::TextStyle, &'static str> {
   match name {
     "Small" => Ok(egui::TextStyle::Small),
     "Body" => Ok(egui::TextStyle::Body),
@@ -115,7 +115,7 @@ pub(crate) fn get_text_style(name: &str) -> Result<egui::TextStyle, &'static str
   }
 }
 
-pub(crate) fn update_text_format(
+pub fn update_text_format(
   text_format: &mut egui::TextFormat,
   format: Table,
 ) -> Result<(), &'static str> {

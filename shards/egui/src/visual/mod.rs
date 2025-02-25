@@ -1,5 +1,6 @@
 // prevent upper case globals
 #![allow(non_upper_case_globals)]
+#![allow(dead_code)]
 
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;

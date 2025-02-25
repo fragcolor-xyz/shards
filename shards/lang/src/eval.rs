@@ -3967,7 +3967,7 @@ fn add_assignment_shard_no_suffix(
 fn eval_assignment(
   assignment: &Assignment,
   e: &mut EvalEnv,
-  cancellation_token: Arc<AtomicBool>,
+  _cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), ShardsError> {
   let op = match assignment.kind {
     AssignmentKind::AssignRef => "Ref",

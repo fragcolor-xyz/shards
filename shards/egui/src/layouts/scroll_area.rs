@@ -61,7 +61,7 @@ impl Default for ScrollArea {
       contents: ShardsVar::default(),
       horizontal: ParamVar::new(false.into()),
       vertical: ParamVar::new(true.into()),
-      alwaysShow: ParamVar::new(false.into()),
+      always_show: ParamVar::new(false.into()),
       exposing: Vec::new(),
     }
   }
@@ -119,7 +119,7 @@ impl LegacyShard for ScrollArea {
       0 => self.contents.set_param(value),
       1 => self.horizontal.set_param(value),
       2 => self.vertical.set_param(value),
-      3 => self.alwaysShow.set_param(value),
+      3 => self.always_show.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -129,7 +129,7 @@ impl LegacyShard for ScrollArea {
       0 => self.contents.get_param(),
       1 => self.horizontal.get_param(),
       2 => self.vertical.get_param(),
-      3 => self.alwaysShow.get_param(),
+      3 => self.always_show.get_param(),
       _ => Var::default(),
     }
   }
@@ -173,13 +173,13 @@ impl LegacyShard for ScrollArea {
     }
     self.horizontal.warmup(ctx);
     self.vertical.warmup(ctx);
-    self.alwaysShow.warmup(ctx);
+    self.always_show.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.alwaysShow.cleanup(ctx);
+    self.always_show.cleanup(ctx);
     self.vertical.cleanup(ctx);
     self.horizontal.cleanup(ctx);
     if !self.contents.is_empty() {
@@ -197,7 +197,7 @@ impl LegacyShard for ScrollArea {
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       with_possible_panic(|| {
-        let visibility = if self.alwaysShow.get().try_into()? {
+        let visibility = if self.always_show.get().try_into()? {
           egui::scroll_area::ScrollBarVisibility::AlwaysVisible
         } else {
           egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded

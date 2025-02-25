@@ -40,12 +40,12 @@ struct Disable {
 struct Frame {
   parents: ParamVar,
   requiring: ExposedTypes,
-  innerMargin: ParamVar,
-  outerMargin: ParamVar,
+  inner_margin: ParamVar,
+  outer_margin: ParamVar,
   rounding: ParamVar,
-  fillColor: ParamVar,
-  strokeColor: ParamVar,
-  strokeWidth: ParamVar,
+  fill_color: ParamVar,
+  stroke_color: ParamVar,
+  stroke_width: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
 }
@@ -245,7 +245,7 @@ struct ScrollArea {
   contents: ShardsVar,
   horizontal: ParamVar,
   vertical: ParamVar,
-  alwaysShow: ParamVar,
+  always_show: ParamVar,
   exposing: ExposedTypes,
 }
 
