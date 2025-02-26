@@ -25,7 +25,6 @@ set(GFX_SOURCES
   gizmos/shapes.cpp
   gizmos/gizmo_input.cpp
   gizmos/gizmos.cpp
-  gizmos/text.cpp
   shader/generator.cpp
   shader/generator_context.cpp
   shader/blocks.cpp
@@ -42,6 +41,10 @@ set(GFX_SOURCES
   pipeline_step.cpp
   pipeline_hashes.cpp
   unique_id.cpp
+  text/font.cpp
+  text/stb_fonts.cpp
+  text/text_placer.cpp  
+  text/mesh_buffer.cpp
 )
 
 if(EMSCRIPTEN)
@@ -57,7 +60,7 @@ target_bundle_files(gfx-core-obj
   PREFIX bundled
   NAMESPACE bundled
   FILES
-  "gizmos/BigBlue_TerminalPlus.bin"
+  "text/Px437_IBM_EGA_8x8.bin"
 )
 
 # Always optimize files with hot-paths

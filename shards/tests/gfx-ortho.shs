@@ -1,0 +1,90 @@
+@include("../../lib/gfx/pixel.shs")
+
+@wire(test-wire {
+  Once({
+    ; Create render steps
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    GFX.DrawQueue = queue
+    
+    features >= features-default
+    GFX.Feature(State: {FlipFrontFace: true}) >> features
+    features >= features-flipped
+    
+    ; Load avocado model
+    ; "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
+    ; "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
+    "data/unit-avocado.glb" >= avocado-path
+    avocado-path | FS.Read(Bytes: true) = avocado-bytes
+  })
+  
+  GFX.MainWindow(Title: "Orthographic Demo" Width: 1280 Height: 720 Contents: {
+    ;   GFX.Viewport = vp
+    ;   [vp] | Memoize({
+    ;     vp:2 | Sub((vp:0)) | ToFloat = width
+    ;     vp:3 | Sub((vp:1)) | ToFloat = height
+    
+    ;     ; Center the view so top-left is 0,0, bottom-right is (width, height)
+    ;     @f2(width height) | Mul(-0.5) >= view-offset
+    ;     view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
+    ;   })
+    
+    ; GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
+    Once({0 >= idx})
+    Animation.Timer(Duration: 1.0 Action: {
+      Inc(idx)
+    })
+    false >= flip
+    idx | Match([
+      0 {
+        GFX.View(View: (Math.MatIdentity) OrthographicSize: @f2(1.0 1.0) Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::PixelScale)
+      }
+      1 {
+        true > flip
+        GFX.View(View: (Math.MatIdentity) OrthographicSize: @f2(1.0 -1.0) Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::PixelScale)
+      }
+      2 {
+        @gfx/align-pixel-viewport(@f2(0.0 0.0)) = view-transform
+        GFX.View(View: view-transform OrthographicSize: @f2(1.0 1.0) Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::PixelScale)
+      }
+      3 {
+        true > flip
+        @gfx/align-pixel-viewport(@f2(0.0 0.0)) = view-transform
+        GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::PixelScale)
+      }
+      4 {
+        GFX.View(View: (Math.MatIdentity) OrthographicSize: 400.0 Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::Horizontal)
+      }
+      5 {
+        GFX.View(View: (Math.MatIdentity) OrthographicSize: 400.0 Near: -1000.0 Far: 1000.0 OrthographicSizeType: OrthographicSizeType::Vertical)
+      }
+      none {
+        none | Stop
+        GFX.View
+      }
+    ] Passthrough: false) = view
+    
+    If({flip} {
+        GFX.DrawablePass(Features: features-flipped Queue: queue)
+      } {
+        GFX.DrawablePass(Features: features-default Queue: queue)
+      }
+      Passthrough: false
+    ) >> render-steps
+    
+    ; Draw avocado in orthographic view
+    @f3(200.0) | Math.Scaling = s
+    ; @f3(16.0 16.0 0.0)
+    @f3(0.0)
+    Math.Translation = t
+    t | Math.MatMul(s) | GFX.glTF(Bytes: avocado-bytes)
+    GFX.Draw(queue)
+    
+    GFX.Render(Steps: render-steps View: view)
+  })
+  none
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 60) | Assert.Is(true)

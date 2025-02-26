@@ -1,40 +1,42 @@
 @mesh(root)
 
 @template(get-view-transform [eye target] {
-  { eye {Take(0) = ex} {Take(1) = ey} {Take(2) = ez}
-    @f4(ex ey ez 1.0) >= arm-pos }
+  {eye {Take(0) = ex} {Take(1) = ey} {Take(2) = ez}
+    @f4(ex ey ez 1.0) >= arm-pos
+  }
   Math.AxisAngleY | Math.Rotation | Math.MatMul(arm-pos) | ToFloat3 >= arm-pos-3
   {Position: arm-pos-3 Target: target} | Math.LookAt
 })
 
 @define(default-setup {
   0.0 >= time
-
+  
   ;; Render steps
   GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
   GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
-  GFX.DrawQueue() >= queue
+  GFX.DrawQueue >= queue
   GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 })
 
 @template(default-window [eye target] {
   GFX.MainWindow(
-   Title: "Shards Window" Width: 1280 Height: 720
-   Contents: {
-    Animation.Timer = time
-    @get-view-transform(eye target) = view-transform
-    GFX.View(View: view-transform) = view
-
-    drawables | GFX.Draw(queue)
-    GFX.Render(Steps: render-steps View: view)
-  })
+    Title: "Shards Window" Width: 1280 Height: 720
+    Contents: {
+      Animation.Timer = time
+      @get-view-transform(eye target) = view-transform
+      GFX.View(View: view-transform) = view
+      
+      drawables | GFX.Draw(queue)
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
 })
 
 @wire(test-params {
   Once({
     @default-setup
-
-    @f3(0 0 0) Math.Translation >= t1
+    
+    @f3(0 0 0) | Math.Translation >= t1
     {
       transform: t1
       materials: {
@@ -44,10 +46,10 @@
           }
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
+    } | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
     avocado-a >> drawables
   })
-
+  
   @default-window(@f3(0.2 0.2 0.2) @f3(0 0.025 0))
 } Looped: true)
 @schedule(root test-params)
@@ -56,11 +58,12 @@
 @wire(test-transform-override {
   Once({
     @default-setup
-
-    @f3(0 0 0) Math.Translation >= t1
-    @f3(0 0 0) Math.Translation >= tzero
+    
+    @f3(0 0 0) | Math.Translation >= t1
+    @f3(0 0 0) | Math.Translation >= tzero
     0.7 | Math.AxisAngleX = rx
     {
+      transform: tzero
       ["Armature" "Bone" "Bone.001"]: {
         rotation: rx
         scale: @f3(1.3 1.3 0.8)
@@ -73,9 +76,9 @@
           }
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
-
-    @f3(1 0 0) Math.Translation >= t2
+    } | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
+    
+    @f3(1 0 0) | Math.Translation >= t2
     {
       transform: t2
       ["Armature" "Bone" "Bone.001"]: {
@@ -86,9 +89,9 @@
           baseColor: @f4(1.0 0.0 1.0 1.0)
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
+    } | GFX.glTF(Path: "../../external/glTF-Sample-Assets/Models/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
   })
-
+  
   @default-window(@f3(20.0 3.0 0.0) @f3(0 0 0))
 } Looped: true)
 @schedule(root test-transform-override)

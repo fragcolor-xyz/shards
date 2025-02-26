@@ -96,7 +96,7 @@ struct GLTFShard {
   static inline Type AnimationTable = Type::TableOf(Animations::ShardsTypes::Animation);
 
   static inline shards::Types InputTableTypes{CoreInfo::Float4x4Type, CoreInfo::AnyType};
-  static inline std::array<SHVar, 2> InputTableKeys{Var("transform"), Var()};
+  static inline std::array<SHVar, 2> InputTableKeys{Var("transform"), Var::Empty};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static inline shards::Types InputTypes{CoreInfo::Float4x4Type, InputTable};

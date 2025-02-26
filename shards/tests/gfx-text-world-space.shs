@@ -1,0 +1,106 @@
+@include("../../lib/gfx/fbl-shared.shs")
+@define(free-camera "false" IgnoreRedefined: true)
+
+@wire(test-wire {
+  Once({
+    GFX.BuiltinMesh(BuiltinMeshType::Cube) = cube-mesh
+    
+    ; Create render steps
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+    features >= features-text
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::AlphaBlend) >> features-text
+    GFX.Feature(
+      Shaders: [
+        @fbl/init-lighting-shader
+        @fbl/shader-dir-light
+        @fbl/shader-ambient-light
+        @fbl/apply-lighting-shader]
+      Params: {
+        "lightDirection": (@f3(-1 -0.5 -1) | Math.Normalize)
+        "lightColor": @f3(1 1 1)
+        "ambientLightColor": @f3(0.1 0.1 0.1)
+      }
+    ) >> features
+    GFX.DrawQueue = queue
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+    GFX.DrawQueue = text-queue
+    GFX.DrawablePass(Features: features-text Queue: text-queue) >> render-steps
+    
+    Sequence(view-mats Type: @type([@type(Math.MatIdentity)]))
+    
+    @f3(0 0.5 1.0) | Math.Normalize = base-offset
+    ForRange(0 4 {
+      ToFloat
+      Mul(8.0) | Add(2.0) = d-mult
+      base-offset | Mul(d-mult) = cam-pos
+      Math.Negate | Math.Translation = mat-t
+      
+      {Position: cam-pos Target: @f3(0)} | Math.LookAt >> view-mats
+    })
+    
+    @f3(0.5 0.5 0.5) | Math.Normalize = base-offset-1
+    ForRange(0 4 {
+      ToFloat
+      Mul(8.0) | Add(2.0) = d-mult
+      base-offset-1 | Mul(d-mult) | Add(@f3(0 1.5 0.0)) = cam-pos
+      Math.Negate | Math.Translation = mat-t
+      
+      {Position: cam-pos Target: @f3(0 1.5 0.0)} | Math.LookAt >> view-mats
+    })
+    
+    ; TODO: rename to GFX.Font
+    "data/fonts/robotto/Roboto-Regular.ttf" | FS.Read(Bytes: true) | GFX.FontMap = font
+  })
+  
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
+    Math.MatIdentity | GFX.Drawable(Mesh: cube-mesh) | GFX.Draw(queue)
+    
+    Animation.Timer | ToInt | Math.Mod((Count(view-mats))) = view-idx
+    view-mats | Take(view-idx) >= view-mat
+    
+    ; Optional: free camera    
+    When({@free-camera | IsNot("false")} {
+      Once({
+        TargetCamera.FromLookAt(Position: @f3(0 5.0 5.0) Target: @f3(0 1.5 0)) >= target-camera
+      })
+      target-camera | TargetCamera > target-camera
+      TargetCamera.Matrix > view-mat
+    })
+    
+    GFX.View(view-mat) = view
+    view-mat | Memoize({
+      [view-idx view-mat] | Log("View")
+      @f3(0.0 1.0 0.0) = billboard-up
+      view-mat | Math.Inverse | Take(2) | ToFloat3 >= billboard-forward
+      billboard-up | Math.Cross(billboard-forward) = billboard-right
+      [billboard-right billboard-up] | Log("billboard")
+    })
+    
+    GFX.Viewport = vp
+    vp:2 | Sub((vp:0)) = vp-width
+    vp:3 | Sub((vp:1)) = vp-height
+    
+    GFX.DynMesh = dmesh
+    "Hello cube!" | GFX.DynDrawText(
+      Output: dmesh Font: font FontSize: 128 Offset: @f3(0.0 1.5 0.0) HAlign: 0.5
+      Scale: (1.0 | Div(128.0)) Up: billboard-up Right: billboard-right
+    )
+    
+    "Hello cube!" | GFX.DynDrawTextWorldSpace(
+      Output: dmesh Font: font WorldSize: 1.0 Offset: @f3(0.0 2.5 0.0) HAlign: 0.5
+      View: view ViewSize: @i2(vp-width vp-height) Up: billboard-up Right: billboard-right
+    )
+    
+    dmesh | GFX.DynToMesh(WindingOrder: WindingOrder::CW) | DoMany({
+      = pair
+      Math.MatIdentity | GFX.Drawable((pair:mesh) Params: {baseColorTexture: (pair:texture)}) | GFX.Draw(text-queue)
+    } ComposeSync: true)
+    
+    GFX.Render(Steps: render-steps View: view)
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 60 Iterations: 600) | Assert.Is(true)

@@ -24,6 +24,7 @@ set(SOURCES
   gizmos/gizmos.cpp
   gizmos/highlight.cpp
   gizmos/shapes.cpp
+  text/text.cpp
 )
 
 if(HAS_WGPU_NATIVE)
@@ -34,7 +35,7 @@ else()
 endif()
 
 add_shards_module(gfx SOURCES ${SOURCES}
-  REGISTER_SHARDS gfx gizmos buffer
+  REGISTER_SHARDS gfx gizmos buffer text
   RUST_TARGETS ${RUST_TARGETS}
 )
 
