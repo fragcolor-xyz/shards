@@ -397,7 +397,7 @@ impl LegacyShard for DockArea {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if self.tabs.surfaces_count() == 0 {
       return Ok(None);
     }

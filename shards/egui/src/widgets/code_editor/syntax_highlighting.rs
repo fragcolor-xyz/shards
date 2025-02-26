@@ -97,7 +97,6 @@ impl CodeTheme {
 
 struct Highlighter<const FULL_LOAD: bool> {
   syntaxes: SyntaxSet,
-  themes: ThemeSet,
 }
 
 impl<const FULL_LOAD: bool> Default for Highlighter<FULL_LOAD> {
@@ -118,7 +117,6 @@ impl<const FULL_LOAD: bool> Default for Highlighter<FULL_LOAD> {
 
     Highlighter {
       syntaxes,
-      themes: ThemeSet::load_defaults(),
     }
   }
 }

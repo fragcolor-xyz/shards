@@ -2246,7 +2246,8 @@ fn create_shard_inner(
 
   let mut replacement_storage = None;
   let shard = if let Some(replacement) = get_replacement(shard, e) {
-    &replacement_storage.insert(replacement)
+    let stored = replacement_storage.insert(replacement);
+    stored
   } else {
     shard
   };
@@ -2984,7 +2985,8 @@ fn eval_pipeline(
 
         let mut replacement_storage = None;
         let func = if let Some(replacement) = get_replacement(func, e) {
-          &replacement_storage.insert(replacement)
+          let stored = replacement_storage.insert(replacement);
+          stored
         } else {
           func
         };
@@ -3761,7 +3763,7 @@ fn add_assignment_shard_no_suffix(
 fn eval_assignment(
   assignment: &Assignment,
   e: &mut EvalEnv,
-  cancellation_token: Arc<AtomicBool>,
+  _cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), ShardsError> {
   let op = match assignment.kind {
     AssignmentKind::AssignRef => "Ref",

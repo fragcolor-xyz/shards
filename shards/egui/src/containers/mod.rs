@@ -48,7 +48,6 @@ impl From<Order> for egui::Order {
       Order::Foreground => egui::Order::Foreground,
       Order::Tooltip => egui::Order::Tooltip,
       Order::Debug => egui::Order::Debug,
-      _ => unreachable!(),
     }
   }
 }

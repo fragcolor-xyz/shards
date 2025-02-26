@@ -88,7 +88,7 @@ impl LegacyShard for Separator {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.separator();
 

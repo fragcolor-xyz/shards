@@ -5,8 +5,8 @@ use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::vec2;
-use egui::Align;
-use egui::Layout;
+
+
 use egui::Ui;
 use egui::Vec2;
 use shards::shard::LegacyShard;

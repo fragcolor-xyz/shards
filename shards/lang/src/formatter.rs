@@ -777,12 +777,6 @@ pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
   Ok(String::from_utf8(buf.into_inner()?)?)
 }
 
-fn strequal_ignore_line_endings(a: &str, b: &str) -> bool {
-  let a = a.replace("\r\n", "\n");
-  let b = b.replace("\r\n", "\n");
-  a == b
-}
-
 fn strequal(a: &str, b: &str) -> bool {
   a == b
 }
