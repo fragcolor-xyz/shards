@@ -828,8 +828,33 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     _scheduledSet.erase(wire.get());
   }
 
+  void onErrorEvent(SHWire::OnErrorEvent &err) {
+    for (auto &[userData, callBack] : _errorEventCallbacks) {
+      SHStringWithLen message{err.error.payload.stringValue, err.error.payload.stringLen};
+      callBack(userData, message, err.shard ? err.shard->line : 0, err.shard ? err.shard->column : 0);
+    }
+  }
+
+  void registerErrorEvent(void *userData,
+                          void (*callback)(void *userData, SHStringWithLen message, uint32_t line, uint32_t column)) {
+    _errorEventCallbacks[userData] = callback;
+    if (_errorEventCallbacks.size() == 1) {
+      dispatcher.sink<SHWire::OnErrorEvent>().connect<&SHMesh::onErrorEvent>(this);
+    }
+  }
+
+  void unregisterErrorEvent(void *userData) {
+    _errorEventCallbacks.erase(userData);
+    if (_errorEventCallbacks.empty()) {
+      dispatcher.sink<SHWire::OnErrorEvent>().disconnect<&SHMesh::onErrorEvent>(this);
+    }
+  }
+
 private:
   SHMesh(std::string_view label) : label(label) {}
+
+  std::unordered_map<void *, std::function<void(void *userData, SHStringWithLen message, uint32_t line, uint32_t column)>>
+      _errorEventCallbacks;
 
   std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>

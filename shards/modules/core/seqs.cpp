@@ -201,6 +201,16 @@ struct IndexOf {
   SHSeq _results = {};
   bool _all = false;
 
+  ExposedInfo _requiredInfo{};
+
+  SHExposedTypesInfo requiredVariables() {
+    if (_item.isVariable()) {
+      _requiredInfo =
+          ExposedInfo(ExposedInfo::Variable(_item.variableName(), SHCCSTR("The required variable."), CoreInfo::AnyType));
+    }
+    return SHExposedTypesInfo(_requiredInfo);
+  }
+
   void destroy() {
     if (_results.elements) {
       shards::arrayFree(_results);
@@ -261,6 +271,8 @@ struct IndexOf {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredInfo.clear();
+
     if (_predicate) {
       SHInstanceData predicateData = data;
       predicateData.inputType = data.inputType.seqTypes.elements[0];

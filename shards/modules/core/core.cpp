@@ -7,7 +7,6 @@
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include "core.hpp"
-#include "pdqsort.h"
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <shards/core/params.hpp>
@@ -2336,6 +2335,7 @@ RUNTIME_SHARD_outputHelp(Push);
 RUNTIME_SHARD_parameters(Push);
 RUNTIME_SHARD_composeV2(Push);
 RUNTIME_SHARD_exposedVariables(Push);
+RUNTIME_SHARD_requiredVariables(Push);
 RUNTIME_SHARD_setParam(Push);
 RUNTIME_SHARD_getParam(Push);
 RUNTIME_SHARD_activate(Push);
