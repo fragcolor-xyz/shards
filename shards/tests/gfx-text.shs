@@ -77,7 +77,7 @@
     128 >= num-wires
     
     ; List fonts in the data/fonts directory
-    "data/fonts/mono" = base-path
+    "data/fonts/pixel" = base-path
     base-path | FS.Iterate(Recursive: true) >= raw-fonts
     Remove(From: raw-fonts Predicate: {
       FS.IsFile | Not | Or
