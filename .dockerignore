@@ -1,7 +1,0 @@
-.lsp
-.cache
-.clj-kondo
-.vscode
-external
-target
-*.log
