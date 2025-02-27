@@ -459,6 +459,7 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
 };
 }
 
+#ifdef HAS_BOOST_CONTAINER
 template<typename T>
 struct ShardsKeyCompare<shards::TOwnedVar<T>> {
   using is_transparent = void;
@@ -478,6 +479,7 @@ struct ShardsKeyEqual<shards::TOwnedVar<T>> {
     return std::equal_to<SHVar>()(lhs, rhs);
   }
 };
+#endif
 
 namespace shards {
 
