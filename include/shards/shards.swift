@@ -1882,6 +1882,106 @@ class Shards {
             }
         }
     }
+    
+    class ObservableOwnedVar: ObservableObject {
+        @Published private var valueChanged: Bool = false
+        public var v: OwnedVar
+        
+        init() {
+            v = OwnedVar()
+        }
+        
+        init(cloning: SHVar) {
+            v = OwnedVar(cloning: cloning)
+        }
+        
+        init(borrowing: SHVar) {
+            v = OwnedVar(borrowing: borrowing)
+        }
+        
+        init(string: String) {
+            v = OwnedVar(string: string)
+        }
+        
+        init(bytes: ContiguousArray<UInt8>) {
+            v = OwnedVar(bytes: bytes)
+        }
+        
+        init(bool: Bool) {
+            v = OwnedVar(bool: bool)
+        }
+        
+        init(int: Int) {
+            v = OwnedVar(int: int)
+        }
+        
+        // Getter for accessing the underlying SHVar
+        var value: SHVar {
+            get { v.v }
+        }
+        
+        // Wrap OwnedVar methods with notification
+        func set(string: String) {
+            v.set(string: string)
+            notifyChange()
+        }
+        
+        func set(bool: Bool) {
+            v.set(bool: bool)
+            notifyChange()
+        }
+        
+        func set(int: Int) {
+            v.set(int: int)
+            notifyChange()
+        }
+        
+        func set(int: Int64) {
+            v.set(int: int)
+            notifyChange()
+        }
+        
+        func set(bytes: ContiguousArray<UInt8>) {
+            v.set(bytes: bytes)
+            notifyChange()
+        }
+        
+        func assign(other: SHVar) {
+            v.assign(other: other)
+            notifyChange()
+        }
+        
+        // Get value helpers that match OwnedVar properties
+        var string: String? {
+            v.v.maybeString
+        }
+        
+        var bool: Bool? {
+            v.v.maybeBool
+        }
+        
+        var int: Int? {
+            v.v.maybeInt
+        }
+        
+        var bytes: ContiguousArray<UInt8>? {
+            v.v.maybeBytes
+        }
+        
+        // Helper method to trigger UI updates 
+        func notifyChange() {
+            // Ensure UI updates happen on main thread
+            DispatchQueue.main.async {
+                self.valueChanged.toggle() // Toggle to ensure notification happens
+                self.objectWillChange.send()
+            }
+        }
+        
+        // Same pointer access as OwnedVar
+        func ptr() -> UnsafeMutablePointer<SHVar> {
+            return v.ptr()
+        }
+    }
 #endif
 
 #if canImport(UIKit)
