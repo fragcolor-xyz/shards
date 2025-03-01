@@ -2,8 +2,8 @@ use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
-use shards::core::{sleep, Core};
+use clap::Parser;
+use shards::core::Core;
 use shards::types::Mesh;
 use shards::util::from_raw_parts_allow_null;
 use shards::{
@@ -319,9 +319,6 @@ fn execute_seq(
     if !mesh.tick() || mesh.is_empty() {
       break;
     }
-
-    // still yield to other threads
-    sleep(0.0);
   }
 
   let info = wire.get_info();
