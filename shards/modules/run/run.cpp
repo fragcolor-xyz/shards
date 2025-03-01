@@ -68,6 +68,8 @@ struct Run {
 
     mesh->setParentContext(context);
 
+    bool hasParentMesh = mesh->parent != nullptr;
+
     size_t numIterations = ~0; // Indefinitely
     if (iterationsVar.valueType == SHType::Int) {
       numIterations = iterationsVar.payload.intValue;
@@ -81,10 +83,16 @@ struct Run {
         if (!mesh->tick()) {
           noErrors = false;
         }
-        SH_SUSPEND(context, sleepDuration);
+
+        if (hasParentMesh) {
+          SH_SUSPEND(context, sleepDuration);
+        } else {
+          shards::sleep(sleepDuration);
+        }
+
         if (mesh->empty())
           break;
-        if (numIterations != ~0 && ++iteration >= numIterations) {
+        if (numIterations != size_t(~0) && ++iteration >= numIterations) {
           break;
         }
       }
@@ -95,10 +103,16 @@ struct Run {
         if (!mesh->tick()) {
           noErrors = false;
         }
-        SH_SUSPEND(context, sleepDuration);
+
+        if (hasParentMesh) {
+          SH_SUSPEND(context, sleepDuration);
+        } else {
+          shards::sleep(sleepDuration);
+        }
+
         if (mesh->empty())
           break;
-        if (numIterations != ~0 && ++iteration >= numIterations) {
+        if (numIterations != size_t(~0) && ++iteration >= numIterations) {
           break;
         }
       }
@@ -108,10 +122,16 @@ struct Run {
         if (!mesh->tick()) {
           noErrors = false;
         }
-        SH_SUSPEND(context, sleepDuration);
+
+        if (hasParentMesh) {
+          SH_SUSPEND(context, sleepDuration);
+        } else {
+          shards::sleep(sleepDuration);
+        }
+
         if (mesh->empty())
           break;
-        if (numIterations != ~0 && ++iteration >= numIterations) {
+        if (numIterations != size_t(~0) && ++iteration >= numIterations) {
           break;
         }
       }
@@ -120,10 +140,16 @@ struct Run {
         if (!mesh->tick()) {
           noErrors = false;
         }
-        SH_SUSPEND(context, 0);
+
+        if (hasParentMesh) {
+          SH_SUSPEND(context, 0);
+        } else {
+          shards::sleep(0);
+        }
+
         if (mesh->empty())
           break;
-        if (numIterations != ~0 && ++iteration >= numIterations) {
+        if (numIterations != size_t(~0) && ++iteration >= numIterations) {
           break;
         }
       }
