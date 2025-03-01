@@ -68,7 +68,12 @@ struct Run {
 
     mesh->setParentContext(context);
 
+    // always use SH_SUSPEND on emscripten
+#ifdef __EMSCRIPTEN__
+    bool hasParentMesh = true;
+#else
     bool hasParentMesh = mesh->parent != nullptr;
+#endif
 
     size_t numIterations = ~0; // Indefinitely
     if (iterationsVar.valueType == SHType::Int) {
