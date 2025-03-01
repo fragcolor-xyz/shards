@@ -1592,7 +1592,8 @@ struct ParallelBase : public CapturingSpawners {
 #if SH_DEBUG_THREAD_NAMES
       static thread_local shards::NativeString debugThreadName;
       debugThreadName.name.clear();
-      fmt::format_to(std::back_inserter(debugThreadName.name), "tf::Executor \"{}\" ({} idx: {})", cref->wire->name, context->currentWire()->name, idx);
+      fmt::format_to(std::back_inserter(debugThreadName.name), "tf::Executor \"{}\" ({} idx: {})", cref->wire->name,
+                     context->currentWire()->name, idx);
       pushThreadName(debugThreadName);
       DEFER({ popThreadName(); });
 #endif
@@ -2035,9 +2036,11 @@ struct WhenDone : Spawn {
         c->_onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
       }
 
+      auto idx = 0;
       for (auto &v : _vars) {
         SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
-        cloneVar(*refVar, v.get());
+        cloneVar(*refVar, _cache[idx]); // use cached value instead of the original variable
+        idx++;
       }
 
       SHLOG_TRACE("WhenDone: scheduling {}, ptr: {}", c->wire->name, (void *)c->wire.get());
@@ -2053,6 +2056,8 @@ struct WhenDone : Spawn {
     for (auto &v : _vars) {
       v.cleanup();
     }
+
+    _cache.clear();
 
     _composer.context = nullptr;
 
