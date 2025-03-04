@@ -3,18 +3,24 @@
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
+use serde_json::Value;
 use sha2::Sha512;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::ExposedTypes;
+use shards::types::InstanceData;
 use shards::types::ParamVar;
+use shards::types::SeqVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::BOOL_TYPES;
 use shards::types::BYTES_TYPES;
+use shards::types::SEQ_OF_STRINGS_OR_SEQ_OF_BYTES_TYPES;
+use shards::types::SEQ_OF_STRING_OR_BYTE_TYPES;
 use shards::types::STRING_TYPES;
 use std::convert::TryInto;
 
@@ -23,7 +29,6 @@ use {
   jsonwebtoken::jwk::Jwk,
   jsonwebtoken::jwk::KeyAlgorithm,
   jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation},
-  serde::{Deserialize, Serialize},
 };
 
 #[macro_use]
@@ -162,15 +167,7 @@ impl Shard for MnemonicToSeed {
   }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-  aud: String, // Optional. Audience
-  exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-  sub: String, // Optional. Subject (whom token refers to)
-}
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 #[derive(shards::shard)]
 #[shard_info("Jwt.Decode", "Decodes a JWT token")]
 struct JwtDecode {
@@ -183,7 +180,7 @@ struct JwtDecode {
   audience: ParamVar,
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 impl Default for JwtDecode {
   fn default() -> Self {
     Self {
@@ -194,7 +191,7 @@ impl Default for JwtDecode {
   }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 #[shards::shard_impl]
 impl Shard for JwtDecode {
   fn input_types(&mut self) -> &Types {
@@ -237,17 +234,23 @@ impl Shard for JwtDecode {
 
     // Decode and verify the token
     let token: &str = input.try_into().unwrap();
-    let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
+    let token_data = decode::<Value>(token, &decoding_key, &validation).map_err(|e| {
       shlog_error!("Invalid token: {}", e);
       "Invalid token"
     })?;
 
-    self.output = Var::ephemeral_string(token_data.claims.sub.as_str()).into();
+    let json_string = serde_json::to_string(&token_data.claims).map_err(|e| {
+      shlog_error!("Failed to convert token data to JSON: {}", e);
+      "Failed to convert token data to JSON"
+    })?;
+
+    self.output = Var::ephemeral_string(&json_string).into();
+
     Ok(Some(self.output.0))
   }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 #[derive(shards::shard)]
 #[shard_info(
   "Jwt.Verify",
@@ -262,7 +265,7 @@ struct JwtVerify {
   pem_rsa: ParamVar,
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 impl Default for JwtVerify {
   fn default() -> Self {
     Self {
@@ -273,7 +276,7 @@ impl Default for JwtVerify {
   }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 #[shards::shard_impl]
 impl Shard for JwtVerify {
   fn input_types(&mut self) -> &Types {
@@ -336,8 +339,9 @@ impl Shard for JwtVerify {
     let mut validation = validation;
     validation.validate_exp = false;
     validation.validate_aud = false;
+    validation.required_spec_claims.clear(); // Remove all required claims
 
-    let result = decode::<Claims>(token, &decoding_key, &validation);
+    let result = decode::<Value>(token, &decoding_key, &validation);
 
     // Check if signature validation succeeded
     match result {
@@ -362,6 +366,204 @@ impl Shard for JwtVerify {
   }
 }
 
+use openssl::x509::X509;
+
+#[derive(shards::shard)]
+#[shard_info(
+  "X509.Verify",
+  "Verifies a certificate chain against a root certificate"
+)]
+struct X509Verify {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("RootCert", "The X509 root certificate in PEM format to use for verification.", [common_type::none, common_type::bytes, common_type::bytes_var, common_type::string, common_type::string_var])]
+  root_cert: ParamVar,
+}
+
+impl Default for X509Verify {
+  fn default() -> Self {
+    Self {
+      root_cert: ParamVar::default(),
+      required: ExposedTypes::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for X509Verify {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_STRINGS_OR_SEQ_OF_BYTES_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BOOL_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.root_cert.warmup(ctx);
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.root_cert.cleanup(ctx);
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(common_type::bool)
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    // Get the certificate chain from input
+    let chain_pems: SeqVar = input.try_into().unwrap();
+
+    let root_cert = if self.root_cert.get().is_string() {
+      let root_cert_pem: &str = self.root_cert.get().try_into().unwrap();
+      X509::from_pem(root_cert_pem.as_bytes()).map_err(|e| {
+        shlog_error!("Failed to parse root certificate: {}", e);
+        "Failed to parse root certificate"
+      })?
+    } else if self.root_cert.get().is_bytes() {
+      let root_cert_pem: &[u8] = self.root_cert.get().try_into().unwrap();
+      X509::from_der(root_cert_pem).map_err(|e| {
+        shlog_error!("Failed to parse root certificate: {}", e);
+        "Failed to parse root certificate"
+      })?
+    } else {
+      return Err("Root certificate parameter is required");
+    };
+
+    let chain_certs = chain_pems
+      .iter()
+      .map(|pem| {
+        if pem.is_string() {
+          let pem_str: &str = pem.as_ref().try_into().unwrap();
+          X509::from_pem(pem_str.as_bytes()).map_err(|e| {
+            shlog_error!("Failed to parse certificate in chain: {}", e);
+            "Failed to parse certificate in chain"
+          })
+        } else if pem.is_bytes() {
+          let pem_bytes: &[u8] = pem.as_ref().try_into().unwrap();
+          X509::from_der(pem_bytes).map_err(|e| {
+            shlog_error!("Failed to parse certificate in chain: {}", e);
+            "Failed to parse certificate in chain"
+          })
+        } else {
+          Err("Certificate must be either string or bytes")
+        }
+      })
+      .collect::<Vec<_>>();
+
+    // make sure last is equal to root_cert
+    match chain_certs.last() {
+      Some(Ok(cert)) if *cert == root_cert => (),
+      _ => return Err("Invalid certificate chain"),
+    }
+
+    for (i, cert) in chain_certs.iter().enumerate().take(chain_certs.len() - 1) {
+      let cert = cert.as_ref().map_err(|e| {
+        shlog_error!("Failed to get certificate: {}", e);
+        "Failed to get certificate"
+      })?;
+      let next_cert = chain_certs[i + 1].as_ref().map_err(|e| {
+        shlog_error!("Failed to get next certificate: {}", e);
+        "Failed to get next certificate"
+      })?;
+      let pub_key = next_cert.public_key().map_err(|e| {
+        shlog_error!("Failed to get public key: {}", e);
+        "Failed to get public key"
+      })?;
+      let valid = cert.verify(&pub_key).map_err(|e| {
+        shlog_error!("Failed to verify certificate: {}", e);
+        "Failed to verify certificate"
+      })?;
+      if !valid {
+        return Err("Invalid certificate chain");
+      }
+    }
+
+    Ok(Some(true.into()))
+  }
+}
+
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+#[derive(shards::shard)]
+#[shard_info(
+  "X509.PublicKey",
+  "Extracts a public key from an X509 certificate and outputs it as a PEM string"
+)]
+struct X509PublicKey {
+  output: ClonedVar,
+}
+
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+impl Default for X509PublicKey {
+  fn default() -> Self {
+    Self {
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+// #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+#[shards::shard_impl]
+impl Shard for X509PublicKey {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_STRING_OR_BYTE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, _ctx: &Context) -> Result<(), &str> {
+    Ok(())
+  }
+
+  fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
+    Ok(())
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    // Get the certificate from input
+    let cert_data = if input.is_string() {
+      let cert_pem: &str = input.try_into().unwrap();
+      X509::from_pem(cert_pem.as_bytes()).map_err(|e| {
+        shlog_error!("Failed to parse certificate: {}", e);
+        "Failed to parse certificate"
+      })?
+    } else if input.is_bytes() {
+      let cert_bytes: &[u8] = input.try_into().unwrap();
+      X509::from_der(cert_bytes).map_err(|e| {
+        shlog_error!("Failed to parse certificate: {}", e);
+        "Failed to parse certificate"
+      })?
+    } else {
+      return Err("Certificate must be either string or bytes");
+    };
+
+    // Extract the public key
+    let public_key = cert_data.public_key().map_err(|e| {
+      shlog_error!("Failed to extract public key: {}", e);
+      "Failed to extract public key"
+    })?;
+
+    // Convert to PEM
+    let pem = public_key.public_key_to_pem().map_err(|e| {
+      shlog_error!("Failed to convert public key to PEM: {}", e);
+      "Failed to convert public key to PEM"
+    })?;
+
+    // Convert to string and return
+    let pem_string = String::from_utf8(pem).map_err(|_| "Failed to convert PEM to UTF-8 string")?;
+
+    self.output = Var::ephemeral_string(&pem_string).into();
+    Ok(Some(self.output.0))
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -372,11 +574,17 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
   hash::register_shards();
   signatures::register_shards();
   chachapoly::register_shards();
+
   register_shard::<MnemonicGenerate>();
   register_shard::<MnemonicToSeed>();
+
   argon::register_shards();
-  #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+
+  // #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
   register_shard::<JwtDecode>();
-  #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+  // #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
   register_shard::<JwtVerify>();
+
+  register_shard::<X509Verify>();
+  register_shard::<X509PublicKey>();
 }
