@@ -75,7 +75,7 @@ jobs:
 
       - name: Set up rust
         run: |
-          rustup +nightly component add rust-src
+          rustup +$RUSTUP_TOOLCHAIN component add rust-src
 
       - name: Build
         run: |
