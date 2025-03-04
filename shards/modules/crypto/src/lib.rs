@@ -26,7 +26,10 @@ pub mod argon;
 pub mod chachapoly;
 pub mod ecdsa;
 pub mod hash;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod jwt;
+
 pub mod signatures;
 pub mod x509;
 
@@ -170,6 +173,7 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
 
   argon::register_shards();
 
+  #[cfg(not(target_arch = "wasm32"))]
   jwt::register_shards();
 
   x509::register_shards();
