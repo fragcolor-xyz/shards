@@ -15,6 +15,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::BYTES_TYPES;
 use shards::types::STRING_TYPES;
+use shards::types::BOOL_TYPES;
 use std::convert::TryInto;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
@@ -246,6 +247,96 @@ impl Shard for JwtDecode {
   }
 }
 
+#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+#[derive(shards::shard)]
+#[shard_info("Jwt.Verify", "Verifies a JWT token signature without fully decoding it")]
+struct JwtVerify {
+  #[shard_param("Jwk", "The Key in JWK format to use for verifying the token signature.", [common_type::string, common_type::string_var])]
+  jwk: ParamVar,
+}
+
+#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+impl Default for JwtVerify {
+  fn default() -> Self {
+    Self {
+      jwk: ParamVar::default(),
+    }
+  }
+}
+
+#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+#[shards::shard_impl]
+impl Shard for JwtVerify {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BOOL_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    use jsonwebtoken::errors::ErrorKind;
+    
+    let jwk: &str = self.jwk.get().try_into().unwrap();
+    let jwk = serde_json::from_str::<Jwk>(jwk).unwrap();
+    let decoding_key = DecodingKey::from_jwk(&jwk).map_err(|e| {
+      shlog_error!("Invalid JWK: {}", e);
+      "Invalid JWK"
+    })?;
+
+    // Set up validation
+    let algo = jwk.common.key_algorithm.ok_or("Unsupported key type")?;
+    let validation = Validation::new(match algo {
+      KeyAlgorithm::ES256 => Algorithm::ES256,
+      KeyAlgorithm::ES384 => Algorithm::ES384,
+      KeyAlgorithm::RS256 => Algorithm::RS256,
+      KeyAlgorithm::RS384 => Algorithm::RS384,
+      _ => return Err("Unsupported key type"),
+    });
+    
+    // Only verify the signature without validating claims
+    let token: &str = input.try_into().unwrap();
+    
+    // Use decode with a dummy Claims struct but enable validate_exp=false
+    // to only validate the signature
+    let mut validation = validation;
+    validation.validate_exp = false;
+    validation.validate_aud = false;
+    
+    let result = decode::<Claims>(token, &decoding_key, &validation);
+    
+    // Check if signature validation succeeded
+    match result {
+      Ok(_) => Ok(Some(true.into())),
+      Err(err) => {
+        match err.kind() {
+          // These errors are related to signature verification
+          ErrorKind::InvalidSignature | ErrorKind::InvalidAlgorithm | ErrorKind::InvalidKeyFormat => {
+            shlog_error!("Signature verification failed: {}", err);
+            Ok(Some(false.into()))
+          },
+          // Other errors might be related to token format or parsing
+          _ => {
+            shlog_error!("JWT parsing error: {}", err);
+            Err("Invalid token format")
+          }
+        }
+      }
+    }
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -261,4 +352,6 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
   argon::register_shards();
   #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
   register_shard::<JwtDecode>();
+  #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
+  register_shard::<JwtVerify>();
 }
