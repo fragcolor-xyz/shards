@@ -34,7 +34,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt -y update
-          sudo apt -y install build-essential git cmake wget ninja-build
+          sudo apt -y install build-essential git cmake wget ninja-build clang
           
           ./bootstrap
           export RUSTUP_TOOLCHAIN=`cat rust.version`
