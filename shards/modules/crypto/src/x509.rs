@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2025 Fragcolor Pte. Ltd. */
 
+use base64::Engine;
 use der::Decode;
 use der::Encode;
 use hmac::Hmac;
@@ -309,7 +310,9 @@ fn pem_to_der(pem_str: &str) -> Result<CertificateDer, &'static str> {
     .collect();
 
   let base64_data = pem_lines.join("");
-  let der_data = base64::decode(&base64_data).map_err(|_| "Failed to decode base64 PEM data")?;
+  let der_data = base64::engine::general_purpose::STANDARD
+    .decode(&base64_data)
+    .map_err(|_| "Failed to decode base64 PEM data")?;
 
   Ok(CertificateDer::from(der_data))
 }
@@ -319,7 +322,7 @@ fn der_to_pem(der_data: &[u8], pem_type: &str) -> String {
   let mut result = format!("-----BEGIN {}-----\n", pem_type);
 
   // Convert to base64 with line wrapping at 64 characters
-  let base64_data = base64::encode(der_data);
+  let base64_data = base64::engine::general_purpose::STANDARD.encode(der_data);
   for chunk in base64_data.as_bytes().chunks(64) {
     if let Ok(line) = std::str::from_utf8(chunk) {
       result.push_str(line);

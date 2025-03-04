@@ -10,21 +10,14 @@ use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
 use shards::types::ParamVar;
-use shards::types::SeqVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::BOOL_TYPES;
 use shards::types::BYTES_TYPES;
-use shards::types::SEQ_OF_STRINGS_OR_SEQ_OF_BYTES_TYPES;
-use shards::types::SEQ_OF_STRING_OR_BYTE_TYPES;
 use shards::types::STRING_TYPES;
 use std::convert::TryInto;
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
 use {
   jsonwebtoken::jwk::Jwk,
   jsonwebtoken::jwk::KeyAlgorithm,
