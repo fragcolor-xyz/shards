@@ -7,7 +7,7 @@ on:
 jobs:
   wasm32-emscripten:
     name: Build
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-latest
     steps:
       - name: Checkout shards
         uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
 
       - name: Set up rust
         run: |
-          rustup +nightly component add rust-src
+          rustup +$RUSTUP_TOOLCHAIN component add rust-src
 
       - name: Build
         run: |
@@ -100,4 +100,3 @@ jobs:
             build/dist/
           if-no-files-found: error
           retention-days: 7
-
