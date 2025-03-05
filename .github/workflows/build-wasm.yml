@@ -7,7 +7,7 @@ on:
 jobs:
   wasm32-emscripten:
     name: Build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout shards
         uses: actions/checkout@v4
