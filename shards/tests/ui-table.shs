@@ -1,0 +1,223 @@
+@wire(main {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+        
+        ; Add storage for dropped items
+        null | Expect(@type(Type::Any)) >= dropped-item
+      })
+      
+      UI(
+        UI.CentralPanel(
+          Contents: {
+            Once({
+              Table(selection-set Type: @type({none: Type::Bool}))
+              Sequence(data-src Type: @type([{data: Type::String name: Type::String type: Type::Int id: Type::Int}]))
+              ForRange(1 16 {
+                = i
+                {
+                  id: (i | Sub(1))
+                  data: (RandomInt | ToString)
+                  type: (RandomInt(4))
+                  name: (Random.Name(2 "_") | String.ToLower)
+                } >> data-src
+              })
+              false >= reversed
+              "" >= sorted-by-key
+              Count(data-src) | Memoize({= int-range-len | IntRange(0 int-range-len)}) >= int-range
+            })
+            
+            
+            @template(toggle-sort-by [key] {
+              Cond([
+                {sorted-by-key | Is(key) | And | reversed | Not} {
+                  ; Switch to reversed
+                  true > reversed
+                }
+                {sorted-by-key | Is(key) | And | reversed} {
+                  ; Reset to default
+                  "id" > sorted-by-key
+                  false > reversed
+                }
+                {true} {
+                  ; Sort by this key
+                  key > sorted-by-key
+                  false > reversed
+                }])
+              Sort(int-range
+                Key: {= i
+                  data-src | Take(i) | Take(sorted-by-key)
+                }
+              )
+            })
+            
+            @template(sort-by-button [key] {
+              Cond([
+                {sorted-by-key | Is(key) | And | reversed | Not} {
+                  UI.Button("⏷" {@toggle-sort-by(key)})
+                }
+                {sorted-by-key | Is(key) | And | reversed} {
+                  UI.Button("⏶" {@toggle-sort-by(key)})
+                }
+                {true} {
+                  UI.Button("➖" {@toggle-sort-by(key)})
+                }])
+            })
+            
+            @template(is-selected [ss id] {
+              Get(ss id Default: false)
+            })
+            
+            ; Count(int-range) ; Number of entries
+            UI.ScrollArea(MaxHeight: 300.0 Contents: {
+              int-range
+              UI.Table(
+                Striped: true
+                Resizable: true
+                RowHeight: 30.0
+                Reversed: reversed
+                DoubleClicked: {
+                  Log("Double clicked")
+                }
+                Clicked: {
+                  = i
+                  Log("Row clicked")
+                  If({@is-selected(selection-set i)} {
+                      Erase(i selection-set)
+                    } {
+                      true | Update(selection-set i)
+                    }
+                  )
+                }
+                ContextMenu: {
+                  = i
+                  ["Item: " i] | String.Format | UI.Label
+                  "Menu" | UI.Label
+                  UI.Button("Close" {Log("Menu") | UI.CloseMenu})
+                }
+                IsSelected: {
+                  = i
+                  @is-selected(selection-set i)
+                }
+                Columns: [
+                  {
+                    = i
+                    UI.TableHeader({
+                      "Name" | UI.Label
+                      @sort-by-button("name")
+                    })
+                    i | UI.DragAndDrop({
+                      UI.Frame({
+                        "icon" | UI.Label(Selectable: false)
+                      } InnerMargin: @f4(4.0 4.0 0.0 0.0))
+                    })
+                    data-src | Take(i) | Take("name") | UI.Label
+                  }
+                  {
+                    UI.TableHeader({
+                      "#" | UI.Label
+                      @sort-by-button("id")
+                    })
+                    ToString | UI.Label
+                  }
+                  {
+                    UI.TableHeader({
+                      "Type" | UI.Label
+                      @sort-by-button("type")
+                    })
+                    = i
+                    data-src | Take(i) | Take("type") | ToString | UI.Label
+                  }
+                  {
+                    UI.TableHeader({"Data" | UI.Label})
+                    = i
+                    data-src | Take(i) | Take("data") | UI.Label
+                  }]
+              )
+            })
+            
+            
+            
+            ; Test table with all column settings
+            UI.Space(20.0)
+            4 | UI.Table(
+              Resizable: true
+              Striped: true
+              Columns: [
+                {
+                  UI.TableHeader({
+                    "Auto Width" | UI.Label
+                  } WidthType: "auto")
+                  ToString | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Initial Width" | UI.Label
+                  } WidthType: "initial" Width: 150.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Exact Width" | UI.Label
+                  } WidthType: "exact" Width: 100.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Remainder" | UI.Label
+                  } WidthType: "remainder")
+                  ToString | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Min/Max Width" | UI.Label
+                  } MinWidth: 100.0 MaxWidth: 200.0)
+                  ToString | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Clipped Long Content" | UI.Label
+                  } Clip: true Width: 100.0)
+                  "This is some very long content that should be clipped" | UI.Label
+                }
+                {
+                  UI.TableHeader({
+                    "Not Resizable" | UI.Label
+                  } Resizable: false Width: 100.0)
+                  ToString | UI.Label
+                }]
+            )
+            
+            ; Add drop box at bottom
+            UI.Space(20.0)
+            UI.DragAndDrop({
+                UI.Frame(
+                  InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+                  FillColor: @color(40 40 40)
+                  StrokeColor: @color(90 90 32) StrokeWidth: 2.0
+                  Contents: {
+                    "Drop items here" | UI.Label
+                    dropped-item | WhenNot({IsNone} {
+                      ToString | UI.Label
+                    })
+                  }
+                )
+              } Drop: {
+                = item
+                Log("Dropping item")
+                item > dropped-item
+              }
+            )
+          }
+        )
+      ) | UI.Render(ui-draw-queue)
+      
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+@mesh(root)
+@schedule(root main)
+@run(root FPS: 60)

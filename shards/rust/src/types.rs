@@ -3580,7 +3580,7 @@ impl Var {
 
 impl TryFrom<&Var> for SHString {
   type Error = &'static str;
-
+ 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_String
@@ -4825,6 +4825,14 @@ pub struct ShardsVar {
 impl Drop for ShardsVar {
   fn drop(&mut self) {
     self.destroy();
+  }
+}
+
+impl Clone for ShardsVar {
+  fn clone(&self) -> Self {
+    let mut c = ShardsVar::default();
+    c.set_param(&self.param.0).unwrap();
+    c
   }
 }
 

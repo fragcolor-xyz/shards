@@ -85,12 +85,12 @@ impl Default for Frame {
       parents,
       requiring: Vec::new(),
       contents: ShardsVar::default(),
-      innerMargin: ParamVar::default(),
-      outerMargin: ParamVar::default(),
+      inner_margin: ParamVar::default(),
+      outer_margin: ParamVar::default(),
       rounding: ParamVar::default(),
-      fillColor: ParamVar::default(),
-      strokeColor: ParamVar::default(),
-      strokeWidth: ParamVar::default(),
+      fill_color: ParamVar::default(),
+      stroke_color: ParamVar::default(),
+      stroke_width: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -144,12 +144,12 @@ impl LegacyShard for Frame {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => self.innerMargin.set_param(value),
-      2 => self.outerMargin.set_param(value),
+      1 => self.inner_margin.set_param(value),
+      2 => self.outer_margin.set_param(value),
       3 => self.rounding.set_param(value),
-      4 => self.fillColor.set_param(value),
-      5 => self.strokeColor.set_param(value),
-      6 => self.strokeWidth.set_param(value),
+      4 => self.fill_color.set_param(value),
+      5 => self.stroke_color.set_param(value),
+      6 => self.stroke_width.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -157,12 +157,12 @@ impl LegacyShard for Frame {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.contents.get_param(),
-      1 => self.innerMargin.get_param(),
-      2 => self.outerMargin.get_param(),
+      1 => self.inner_margin.get_param(),
+      2 => self.outer_margin.get_param(),
       3 => self.rounding.get_param(),
-      4 => self.fillColor.get_param(),
-      5 => self.strokeColor.get_param(),
-      6 => self.strokeWidth.get_param(),
+      4 => self.fill_color.get_param(),
+      5 => self.stroke_color.get_param(),
+      6 => self.stroke_width.get_param(),
       _ => Var::default(),
     }
   }
@@ -195,8 +195,8 @@ impl LegacyShard for Frame {
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
 
-    if self.fillColor.is_variable() {
-      collect_required_variables(&data.shared, &mut self.requiring, (&self.fillColor).into());
+    if self.fill_color.is_variable() {
+      collect_required_variables(&data.shared, &mut self.requiring, (&self.fill_color).into())?;
     }
 
     // Always passthrough the input
@@ -208,23 +208,23 @@ impl LegacyShard for Frame {
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
-    self.innerMargin.warmup(ctx);
-    self.outerMargin.warmup(ctx);
+    self.inner_margin.warmup(ctx);
+    self.outer_margin.warmup(ctx);
     self.rounding.warmup(ctx);
-    self.fillColor.warmup(ctx);
-    self.strokeColor.warmup(ctx);
-    self.strokeWidth.warmup(ctx);
+    self.fill_color.warmup(ctx);
+    self.stroke_color.warmup(ctx);
+    self.stroke_width.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.strokeWidth.cleanup(ctx);
-    self.strokeColor.cleanup(ctx);
-    self.fillColor.cleanup(ctx);
+    self.stroke_width.cleanup(ctx);
+    self.stroke_color.cleanup(ctx);
+    self.fill_color.cleanup(ctx);
     self.rounding.cleanup(ctx);
-    self.outerMargin.cleanup(ctx);
-    self.innerMargin.cleanup(ctx);
+    self.outer_margin.cleanup(ctx);
+    self.inner_margin.cleanup(ctx);
     if !self.contents.is_empty() {
       self.contents.cleanup(ctx);
     }
@@ -239,7 +239,7 @@ impl LegacyShard for Frame {
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let inner_margin = self.innerMargin.get();
+      let inner_margin = self.inner_margin.get();
       let inner_margin = if inner_margin.is_none() {
         egui::Margin::default()
       } else {
@@ -251,7 +251,7 @@ impl LegacyShard for Frame {
           bottom,
         }
       };
-      let outer_margin = self.outerMargin.get();
+      let outer_margin = self.outer_margin.get();
       let outer_margin = if outer_margin.is_none() {
         egui::Margin::default()
       } else {
@@ -270,7 +270,7 @@ impl LegacyShard for Frame {
         let (nw, ne, sw, se) = rounding.try_into()?;
         egui::epaint::Rounding { nw, ne, sw, se }
       };
-      let fill: &shards::SHVar = self.fillColor.get();
+      let fill: &shards::SHVar = self.fill_color.get();
       let fill = if fill.is_none() {
         ui.style().visuals.widgets.noninteractive.bg_fill
       } else {
@@ -278,13 +278,13 @@ impl LegacyShard for Frame {
         egui::Color32::from_rgba_unmultiplied(color.r, color.g, color.b, color.a)
       };
       let stroke = {
-        let width = self.strokeWidth.get();
+        let width = self.stroke_width.get();
         let width = if width.is_none() {
           ui.style().visuals.widgets.noninteractive.bg_stroke.width
         } else {
           width.try_into()?
         };
-        let color = self.strokeColor.get();
+        let color = self.stroke_color.get();
         let color = if color.is_none() {
           ui.style().visuals.widgets.noninteractive.bg_stroke.color
         } else {

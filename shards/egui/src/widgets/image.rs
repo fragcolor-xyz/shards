@@ -10,8 +10,10 @@ use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::shardsc::SHType_Image;
-use shards::shardsc::SHType_Object;
+use shards::shardsc::{
+  SHType_Image as SHTYPE_IMAGE,
+  SHType_Object as SHTYPE_OBJECT
+};
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -81,10 +83,10 @@ impl Shard for Image {
     util::require_parents(&mut self.requiring);
 
     match data.inputType.basicType {
-      SHType_Image => decl_override_activate! {
+      SHTYPE_IMAGE => decl_override_activate! {
         data.activate = Image::activate_image_override;
       },
-      SHType_Object
+      SHTYPE_OBJECT
         if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
       {
         decl_override_activate! {

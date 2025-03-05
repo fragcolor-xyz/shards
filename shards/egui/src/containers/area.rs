@@ -2,7 +2,7 @@ use crate::{
   util::{self, with_possible_panic},
   Anchor, EguiId, Order, CONTEXTS_NAME, PARENTS_UI_NAME,
 };
-use egui::{AreaState, Pos2, Rect, Vec2};
+use egui::{Pos2, Rect, Vec2};
 use shards::{
   core::register_shard,
   shard::Shard,

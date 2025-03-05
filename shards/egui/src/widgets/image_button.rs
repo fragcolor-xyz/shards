@@ -9,9 +9,11 @@ use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::shardsc::SHType_Bool;
-use shards::shardsc::SHType_Image;
-use shards::shardsc::SHType_Object;
+use shards::shardsc::{
+    SHType_Bool as SHTYPE_BOOL,
+    SHType_Image as SHTYPE_IMAGE,
+    SHType_Object as SHTYPE_OBJECT,
+};
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -141,7 +143,7 @@ impl Shard for ImageButton {
         };
         if CStr::cmp(a, b) == Ordering::Equal {
           self.should_expose = false;
-          if var.exposedType.basicType != SHType_Bool {
+          if var.exposedType.basicType != SHTYPE_BOOL {
             return Err("ImageButton: bool variable required.");
           }
           break;
@@ -154,10 +156,10 @@ impl Shard for ImageButton {
     }
 
     match data.inputType.basicType {
-      SHType_Image => decl_override_activate! {
+      SHTYPE_IMAGE => decl_override_activate! {
         data.activate = ImageButton::image_activate;
       },
-      SHType_Object
+      SHTYPE_OBJECT
         if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
       {
         decl_override_activate! {

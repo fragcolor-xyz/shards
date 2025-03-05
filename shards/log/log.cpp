@@ -15,6 +15,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "../core/platform.hpp"
+#include "process_time.hpp"
 
 #if SH_ANDROID
 #include <spdlog/sinks/android_sink.h>
@@ -182,6 +183,8 @@ struct Sinks {
   std::unique_lock<std::shared_mutex> lockUnique() { return std::unique_lock<std::shared_mutex>(lock); }
   std::shared_lock<std::shared_mutex> lockShared() { return std::shared_lock<std::shared_mutex>(lock); }
 
+  void initCustomFormatters() {}
+
   void initStdErrSink() {
 #if !SH_EMSCRIPTEN
     if (stdErrSink)
@@ -198,11 +201,8 @@ struct Sinks {
       distSink->remove_sink(logFileSink);
 
 #if defined(SHARDS_LOG_ROTATING_MAX_FILE_SIZE) && defined(SHARDS_LOG_ROTATING_MAX_FILES)
-    logFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-        logFilePath.c_str(), 
-        SHARDS_LOG_ROTATING_MAX_FILE_SIZE,
-        SHARDS_LOG_ROTATING_MAX_FILES,
-        true);
+    logFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath.c_str(), SHARDS_LOG_ROTATING_MAX_FILE_SIZE,
+                                                                         SHARDS_LOG_ROTATING_MAX_FILES, true);
 #else
     logFileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
 #endif
@@ -229,13 +229,9 @@ Sinks &globalSinks() {
   return sinks;
 }
 
-void flush() {
-  globalSinks().distSink->flush();
-}
+void flush() { globalSinks().distSink->flush(); }
 
-std::shared_ptr<spdlog::sinks::dist_sink_mt> getDistSink() {
-  return globalSinks().distSink;
-}
+std::shared_ptr<spdlog::sinks::dist_sink_mt> getDistSink() { return globalSinks().distSink; }
 
 void __init(Logger logger) {
   spdlog::register_logger(logger);
@@ -274,11 +270,20 @@ void initFlush(Logger logger) {
   }
 }
 
+static std::shared_ptr<TimeKeeper> getTimeKeeper() {
+  static auto t = std::make_shared<TimeKeeper>();
+  return t;
+}
+
 void initLogFormat(Logger logger) {
   std::string varName = fmt::format("LOG_{}_FORMAT", logger->name());
+
+  auto formatter = std::make_unique<spdlog::pattern_formatter>();
+  formatter->add_flag<ProcessTimeFlag>('P', getTimeKeeper());
+
 #if SHARDS_LOG_SDL
   if (const char *val = SDL_getenv(varName.c_str())) {
-    logger->set_pattern(val);
+    formatter->set_pattern(val);
   } else
 #endif
   {
@@ -298,8 +303,10 @@ void initLogFormat(Logger logger) {
 #endif
     }
 
-    logger->set_pattern(logPattern);
+    formatter->set_pattern(logPattern);
   }
+
+  logger->set_formatter(std::move(formatter));
 }
 
 void initSinks(Logger logger) {

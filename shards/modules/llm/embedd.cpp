@@ -4,6 +4,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/utility.hpp>
 #include <shards/core/params.hpp>
+#include <shards/log/log.hpp>
 
 #include <llama.h>
 
@@ -404,9 +405,41 @@ struct Embed {
     return _embeddings;
   }
 };
+void log_callback(ggml_log_level level, const char *text, void *user_data) {
+  static auto logger = shards::logging::getOrCreate("llama");
+  spdlog::level::level_enum spdlog_level{};
+  switch (level) {
+  case GGML_LOG_LEVEL_DEBUG:
+    spdlog_level = spdlog::level::debug;
+    break;
+  case GGML_LOG_LEVEL_INFO:
+    spdlog_level = spdlog::level::info;
+    break;
+  case GGML_LOG_LEVEL_WARN:
+    spdlog_level = spdlog::level::warn;
+    break;
+  case GGML_LOG_LEVEL_ERROR:
+    spdlog_level = spdlog::level::err;
+    break;
+  default:
+    spdlog_level = spdlog::level::info;
+    break;
+  }
+  std::string_view text_view{text};
+  while (text_view.size() > 0) {
+    if (text_view.back() == '\n') {
+      text_view.remove_suffix(1);
+    } else {
+      break;
+    }
+  }
+  logger->log(spdlog_level, "{}", text_view);
+}
+
 } // namespace llm
 
 SHARDS_REGISTER_FN(llm) {
+  llama_log_set(&llm::log_callback, nullptr);
   REGISTER_SHARD("LLM.Model", llm::Model);
   REGISTER_SHARD("LLM.Context", llm::Context);
   REGISTER_SHARD("LLM.Tokenize", llm::Tokenize);

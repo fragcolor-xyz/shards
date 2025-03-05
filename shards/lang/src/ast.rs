@@ -5,7 +5,7 @@ use core::{fmt, hash::Hash};
 use pest::Position;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
-  shlog_debug, types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None,
+  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None,
   SHType_String,
 };
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
@@ -403,7 +403,6 @@ impl Serialize for Program {
   where
     S: serde::Serializer,
   {
-    use serde::ser::SerializeStruct;
     let mut state = serializer.serialize_struct("Program", 2)?;
     state.serialize_field("metadata", &self.metadata)?;
     state.serialize_field("sequence", &self.sequence.statements)?;
@@ -511,7 +510,6 @@ impl Serialize for Block {
   where
     S: serde::Serializer,
   {
-    use serde::ser::SerializeStruct;
     let mut state = serializer.serialize_struct("Block", 2)?;
 
     // Flatten the content

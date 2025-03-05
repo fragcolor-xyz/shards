@@ -2,7 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use egui_memory_editor::MemoryEditor;
-use image_util::AutoTexturePtr;
+
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
@@ -99,14 +99,6 @@ struct RenderTarget {
   scale: ParamVar,
 }
 
-/// Displays text.
-struct Label {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  wrap: ParamVar,
-  style: ParamVar,
-}
-
 struct Link {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -171,11 +163,6 @@ struct Variable {
   mutable: bool,
   global: bool,
   inner_type: Option<Type>,
-}
-
-struct WireVariable {
-  parents: ParamVar,
-  requiring: ExposedTypes,
 }
 
 macro_rules! decl_ui_input {

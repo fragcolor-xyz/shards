@@ -1,16 +1,16 @@
 use crate::util::{self, try_into_color};
-use egui::{Color32, LayerId, Pos2, Rect, Rgba, Rounding, Stroke, Ui, UiStackInfo, Vec2};
+use egui::{LayerId, Pos2, Rect, Rgba, Stroke, Ui, UiStackInfo, Vec2};
 use shards::core::register_shard;
 use shards::types::{
   common_type, Context, ExposedTypes, InstanceData, OptionalString, ParamVar, ShardsVar, Type,
-  Types, Var, ANY_TYPES, FLOAT_TYPES, SHARDS_OR_NONE_TYPES,
+  Types, Var, ANY_TYPES, SHARDS_OR_NONE_TYPES,
 };
 
 use crate::shards::shard;
 use crate::shards::shard::Shard;
 use crate::{EguiId, Order, CONTEXTS_NAME, HELP_VALUE_IGNORED, PARENTS_UI_NAME};
-use shards::types::COLOR_TYPES;
-use shards::types::FLOAT2_TYPES;
+
+
 
 lazy_static! {
   pub static ref COLOR_VAR_TYPES: Types = vec![common_type::color, common_type::color_var];
@@ -105,7 +105,7 @@ impl Shard for CanvasShard {
       &mut ui,
       &mut self.parents,
       &mut self.contents,
-    );
+    )?;
 
     Ok(None)
   }

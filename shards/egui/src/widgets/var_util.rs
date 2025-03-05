@@ -4,7 +4,29 @@
 use crate::MutVarTextBuffer;
 use crate::UIRenderer;
 use egui::*;
-use shards::shardsc::*;
+use shards::shardsc::{
+  // Import the type
+  SHType,
+  SHType_Bool as SHTYPE_BOOL,
+  SHType_Color as SHTYPE_COLOR,
+  SHType_Enum as SHTYPE_ENUM,
+  SHType_Float as SHTYPE_FLOAT,
+  SHType_Float2 as SHTYPE_FLOAT2,
+  SHType_Float3 as SHTYPE_FLOAT3,
+  SHType_Float4 as SHTYPE_FLOAT4,
+  SHType_Int as SHTYPE_INT,
+  SHType_Int16 as SHTYPE_INT16,
+  SHType_Int2 as SHTYPE_INT2,
+  SHType_Int3 as SHTYPE_INT3,
+  SHType_Int4 as SHTYPE_INT4,
+  SHType_Int8 as SHTYPE_INT8,
+  // Import with aliases
+  SHType_None as SHTYPE_NONE,
+  SHType_Path as SHTYPE_PATH,
+  SHType_Seq as SHTYPE_SEQ,
+  SHType_String as SHTYPE_STRING,
+  SHType_Table as SHTYPE_TABLE,
+};
 
 use shards::types::Table;
 use shards::types::Type;
@@ -15,23 +37,23 @@ use super::drag_value::CustomDragValue;
 
 fn get_default_value(value_type: SHType) -> Var {
   match value_type {
-    SHType_None => Var::default(),
-    SHType_Bool => false.into(),
-    SHType_Int => 0.into(),
-    SHType_Int2 => (0, 0).into(),
-    SHType_Int3 => (0, 0, 0).into(),
-    SHType_Int4 => (0, 0, 0, 0).into(),
-    SHType_Float => 0.0.into(),
-    SHType_Float2 => (0.0, 0.0).into(),
-    SHType_Float3 => (0.0, 0.0, 0.0).into(),
-    SHType_Float4 => (0.0, 0.0, 0.0, 0.0).into(),
-    SHType_String => Var::ephemeral_string(""),
+    SHTYPE_NONE => Var::default(),
+    SHTYPE_BOOL => false.into(),
+    SHTYPE_INT => 0.into(),
+    SHTYPE_INT2 => (0, 0).into(),
+    SHTYPE_INT3 => (0, 0, 0).into(),
+    SHTYPE_INT4 => (0, 0, 0, 0).into(),
+    SHTYPE_FLOAT => 0.0.into(),
+    SHTYPE_FLOAT2 => (0.0, 0.0).into(),
+    SHTYPE_FLOAT3 => (0.0, 0.0, 0.0).into(),
+    SHTYPE_FLOAT4 => (0.0, 0.0, 0.0, 0.0).into(),
+    SHTYPE_STRING => Var::ephemeral_string(""),
     _ => Var::default(),
   }
 }
 
 unsafe fn render_enum(
-  id: egui::Id,
+  _id: egui::Id,
   var: &mut Var,
   ui: &mut Ui,
 ) -> Result<Response, Box<dyn std::error::Error>> {
@@ -54,12 +76,6 @@ unsafe fn render_enum(
   let labels = enum_info.get_fast_static("labels").as_seq().unwrap();
   let values = enum_info.get_fast_static("values").as_seq().unwrap();
   let mut index: usize = values.iter().position(|x| x == enum_value.into()).unwrap();
-  let name: &str = enum_info
-    .get_fast_static("name")
-    .as_ref()
-    .try_into()
-    .unwrap();
-  let label: &str = labels[index].as_ref().try_into().unwrap();
 
   let r = ComboBox::new(id, "").show_index(ui, &mut index, values.len(), |i| {
     let r: &str = (&labels[i]).try_into().unwrap();
@@ -82,20 +98,20 @@ impl UIRenderer for Var {
     inner_type: Option<&Type>,
     ui: &mut Ui,
   ) -> Response {
-    if read_only && !matches!(self.valueType, SHType_Seq | SHType_Table) {
-      ui.set_enabled(false);
+    if read_only && !matches!(self.valueType, SHTYPE_SEQ | SHTYPE_TABLE) {
+      ui.disable();
     }
     unsafe {
       match self.valueType {
-        SHType_None => ui.label(""),
-        SHType_Enum => {
+        SHTYPE_NONE => ui.label(""),
+        SHTYPE_ENUM => {
           render_enum(id, self, ui).unwrap_or_else(|_| ui.label("<failed to render enum>"))
         }
-        SHType_Bool => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
-        SHType_Int => ui.add(CustomDragValue::new(
+        SHTYPE_BOOL => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
+        SHTYPE_INT => ui.add(CustomDragValue::new(
           &mut self.payload.__bindgen_anon_1.intValue,
         )),
-        SHType_Int2 => {
+        SHTYPE_INT2 => {
           let values = &mut self.payload.__bindgen_anon_1.int2Value;
           let mut ir = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -104,7 +120,7 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Int3 => {
+        SHTYPE_INT3 => {
           let values = &mut self.payload.__bindgen_anon_1.int3Value;
           let mut ir = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -114,7 +130,7 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Int4 => {
+        SHTYPE_INT4 => {
           let values = &mut self.payload.__bindgen_anon_1.int4Value;
           let mut ir = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -125,7 +141,7 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Int8 => {
+        SHTYPE_INT8 => {
           let values = &mut self.payload.__bindgen_anon_1.int8Value;
           let mut ir = ui.vertical(|ui| {
             ui.horizontal(|ui| {
@@ -147,7 +163,7 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Int16 => {
+        SHTYPE_INT16 => {
           let values = &mut self.payload.__bindgen_anon_1.int16Value;
           let mut ir = ui.vertical(|ui| {
             ui.horizontal(|ui| {
@@ -185,10 +201,10 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Float => ui.add(CustomDragValue::new(
+        SHTYPE_FLOAT => ui.add(CustomDragValue::new(
           &mut self.payload.__bindgen_anon_1.floatValue,
         )),
-        SHType_Float2 => {
+        SHTYPE_FLOAT2 => {
           let values = &mut self.payload.__bindgen_anon_1.float2Value;
           let mut ir = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -197,7 +213,7 @@ impl UIRenderer for Var {
           ir.response.changed = ir.inner;
           ir.response
         }
-        SHType_Float3 => {
+        SHTYPE_FLOAT3 => {
           let values = &mut self.payload.__bindgen_anon_1.float3Value;
           let mut it = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -207,7 +223,7 @@ impl UIRenderer for Var {
           it.response.changed = it.inner;
           it.response
         }
-        SHType_Float4 => {
+        SHTYPE_FLOAT4 => {
           let values = &mut self.payload.__bindgen_anon_1.float4Value;
           let mut it = ui.horizontal(|ui| {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
@@ -218,7 +234,7 @@ impl UIRenderer for Var {
           it.response.changed = it.inner;
           it.response
         }
-        SHType_Color => {
+        SHTYPE_COLOR => {
           let color = &mut self.payload.__bindgen_anon_1.colorValue;
           let mut srgba = [color.r, color.g, color.b, color.a];
           let response = ui.color_edit_button_srgba_unmultiplied(&mut srgba);
@@ -228,11 +244,11 @@ impl UIRenderer for Var {
           color.a = srgba[3];
           response
         }
-        SHType_String | SHType_Path => {
+        SHTYPE_STRING | SHTYPE_PATH => {
           let mut buffer = MutVarTextBuffer(self);
           ui.text_edit_singleline(&mut buffer)
         }
-        SHType_Seq => {
+        SHTYPE_SEQ => {
           let seq = self
             .as_mut_seq()
             .expect("SHType was Seq, but failed to convert to Seq");
@@ -265,7 +281,9 @@ impl UIRenderer for Var {
             ir.header_response.changed = changed;
             ir.header_response
           } else {
-            ui.set_enabled(!read_only);
+            if read_only {
+              ui.disable();
+            }
             if let Some(inner_type) = inner_type {
               if !read_only && ui.button("+").clicked() {
                 let default_value = get_default_value(inner_type.basicType);
@@ -275,7 +293,7 @@ impl UIRenderer for Var {
             ui.colored_label(Color32::YELLOW, "Seq: 0 items")
           }
         }
-        SHType_Table => {
+        SHTYPE_TABLE => {
           let mut table: Table = self
             .try_into()
             .expect("SHType was Table, but failed to convert to Table");
@@ -303,7 +321,9 @@ impl UIRenderer for Var {
             ir.header_response.changed = changed;
             ir.header_response
           } else {
-            ui.set_enabled(!read_only);
+            if read_only {
+              ui.disable();
+            }
             ui.colored_label(Color32::YELLOW, "Empty table")
           }
         }

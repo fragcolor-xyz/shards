@@ -1,54 +1,55 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::ScrollArea;
 use crate::util;
-use crate::util::with_possible_panic;
 use crate::EguiId;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
+use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
+use shards::core::register_shard;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
-use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::BOOL_TYPES;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
-lazy_static! {
-  static ref AREA_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Contents"),
-      shccstr!("The UI contents."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Horizontal"),
-      shccstr!("Enable horizontal scrolling."),
-      &BOOL_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Vertical"),
-      shccstr!("Enable vertical scrolling."),
-      &BOOL_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("AlwaysShow"),
-      shccstr!("Always show the enabled scroll bars even if not needed."),
-      &BOOL_TYPES[..],
-    )
-      .into(),
-  ];
+#[derive(shards::shard)]
+#[shard_info("UI.ScrollArea", "Add scrolling to contained UI elements.")]
+pub struct ScrollArea {
+  #[shard_required]
+  requiring: ExposedTypes,
+  inner_exposed: ExposedTypes, 
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_param("Contents", "The UI contents to scroll.", SHARDS_OR_NONE_TYPES)]
+  contents: ShardsVar,
+  #[shard_param("Horizontal", "Enable horizontal scrolling.", BOOL_VAR_OR_NONE_SLICE)]
+  horizontal: ParamVar,
+  #[shard_param("Vertical", "Enable vertical scrolling.", BOOL_VAR_OR_NONE_SLICE)]
+  vertical: ParamVar,
+  #[shard_param(
+    "AlwaysShow",
+    "Always show the enabled scroll bars even if not needed.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  always_show: ParamVar,
+  #[shard_param(
+    "AutoShrink",
+    "Whether to automatically shrink the scroll area.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  auto_shrink: ParamVar,
+  #[shard_param("MaxHeight", "Maximum height of scroll area.", FLOAT_VAR_OR_NONE_SLICE)]
+  max_height: ParamVar,
+  #[shard_param("MaxWidth", "Maximum width of scroll area.", FLOAT_VAR_OR_NONE_SLICE)]
+  max_width: ParamVar,
 }
 
 impl Default for ScrollArea {
@@ -56,168 +57,96 @@ impl Default for ScrollArea {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
+      requiring: ExposedTypes::new(),
+      inner_exposed: ExposedTypes::new(),
       parents,
-      requiring: Vec::new(),
       contents: ShardsVar::default(),
-      horizontal: ParamVar::new(false.into()),
-      vertical: ParamVar::new(true.into()),
-      alwaysShow: ParamVar::new(false.into()),
-      exposing: Vec::new(),
+      horizontal: ParamVar::new(Var::new_bool(false)),
+      vertical: ParamVar::new(Var::new_bool(true)),
+      always_show: ParamVar::new(Var::new_bool(false)),
+      auto_shrink: ParamVar::new(Var::new_bool(false)),
+      max_height: ParamVar::default(),
+      max_width: ParamVar::default(),
     }
   }
 }
 
-impl LegacyShard for ScrollArea {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.ScrollArea")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.ScrollArea-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.ScrollArea"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Add vertical and/or horizontal scrolling to a contained UI."
-    ))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shards::shard_impl]
+impl Shard for ScrollArea {
+  fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "The value that will be passed to the Contents shards of the scroll area."
-    ))
-  }
-
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
-    *HELP_OUTPUT_EQUAL_INPUT
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&AREA_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.contents.set_param(value),
-      1 => self.horizontal.set_param(value),
-      2 => self.vertical.set_param(value),
-      3 => self.alwaysShow.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.contents.get_param(),
-      1 => self.horizontal.get_param(),
-      2 => self.vertical.get_param(),
-      3 => self.alwaysShow.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
-    Some(&self.requiring)
-  }
-
-  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    self.exposing.clear();
-
-    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
-      Some(&self.exposing)
-    } else {
-      None
-    }
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.contents.is_empty() {
-      self.contents.compose(data)?;
-    }
-
-    // Always passthrough the input
-    Ok(data.inputType)
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-    if !self.contents.is_empty() {
-      self.contents.warmup(ctx)?;
-    }
-    self.horizontal.warmup(ctx);
-    self.vertical.warmup(ctx);
-    self.alwaysShow.warmup(ctx);
-
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.warmup_helper(context)?;
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.alwaysShow.cleanup(ctx);
-    self.vertical.cleanup(ctx);
-    self.horizontal.cleanup(ctx);
-    if !self.contents.is_empty() {
-      self.contents.cleanup(ctx);
-    }
-    self.parents.cleanup(ctx);
-
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    if self.contents.is_empty() {
-      return Ok(None);
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    util::require_parents(&mut self.requiring);
+
+    if !self.contents.is_empty() {
+      let composed = self.contents.compose(data)?;
+      shards::util::merge_exposed_types(&mut self.inner_exposed, &composed.exposedInfo);
+      shards::util::merge_exposed_types(&mut self.requiring, &composed.requiredInfo);
     }
 
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      with_possible_panic(|| {
-        let visibility = if self.alwaysShow.get().try_into()? {
-          egui::scroll_area::ScrollBarVisibility::AlwaysVisible
-        } else {
-          egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
-        };
-        egui::ScrollArea::new([
-          self.horizontal.get().try_into()?,
-          self.vertical.get().try_into()?,
-        ])
-        .id_source(EguiId::new(self, 0))
-        .scroll_bar_visibility(visibility)
-        .show(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .inner
-      })??;
-
-      // Always passthrough the input
-      Ok(None)
-    } else {
-      Err("No UI parent")
-    }
+    Ok(data.inputType)
   }
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let ui = util::get_parent_ui(self.parents.get())?;
+
+    let mut scroll_area = egui::ScrollArea::new([
+      self.horizontal.get().try_into()?,
+      self.vertical.get().try_into()?,
+    ]);
+
+    // Configure scroll area
+    scroll_area = scroll_area.id_source(EguiId::new(self, 0));
+
+    if !self.max_width.get().is_none() {
+      scroll_area = scroll_area.max_width(self.max_width.get().try_into()?);
+    }
+    if !self.max_height.get().is_none() {
+      scroll_area = scroll_area.max_height(self.max_height.get().try_into()?);
+    }
+
+    let auto_shrink: bool = if !self.auto_shrink.get().is_none() {
+      self.auto_shrink.get().try_into()?
+    } else {
+      false
+    };
+    scroll_area = scroll_area.auto_shrink([auto_shrink; 2]);
+
+    let visibility = if self.always_show.get().try_into()? {
+      egui::scroll_area::ScrollBarVisibility::AlwaysVisible
+    } else {
+      egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
+    };
+    scroll_area = scroll_area.scroll_bar_visibility(visibility);
+
+    // Show scroll area with contents
+    scroll_area
+      .show(ui, |ui| {
+        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      })
+      .inner?;
+
+    Ok(Some(input.clone()))
+  }
+}
+
+pub(crate) fn register_shards() {
+  register_shard::<ScrollArea>();
 }
