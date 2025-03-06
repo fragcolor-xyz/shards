@@ -1,0 +1,14 @@
+; Previous
+{a: {}} >= v
+v:a >= inner
+"q" | Set(inner "J")
+inner | Update(v "a")
+
+; new
+{a: {}} >= v
+v:a = inner
+"q" | Set(inner "J")
+
+; New v2
+{a: {}} >= v
+"q" | Set(v ["a" "J"])

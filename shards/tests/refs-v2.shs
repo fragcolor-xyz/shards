@@ -1,0 +1,53 @@
+; {
+;   config: {
+;     title: ""
+;     value: 3
+;   }
+;   elements: []
+; } >= tbl
+
+; tbl:config = cfg
+; cfg:title = title
+; ; {title: "test" value: 100} > cfg
+
+Once({
+  2 >= v
+})
+v | Assert.Is(2)
+
+; @wire(a {
+;   v | Log("v 0")
+; })
+; Do(a)
+
+; Test forwarding levels deep
+; @wire(q0 {
+;   @wire(q1 {
+;     v | Log("v value")
+;   })
+;   Do(q1)
+; })
+; Do(q0)
+
+{a: {b: ""}} >= var
+
+var:a = ref
+"second" | Update(ref "b")
+var | Log("var")
+"third" | Update(ref "b")
+var | Log("var")
+
+@wire(b {
+  "hello" >= v
+  v | Log("v 1")
+  s0 | ForEach({
+    ["hello " $0] | String.Format | Log("f0")
+  })
+  ForEach({
+    [$0 $i] | String.Format | Log("f1")
+  })
+})
+[1 2 3 4] >= s0
+Do(b) | Log("b out")
+
+v | Log("v 2")

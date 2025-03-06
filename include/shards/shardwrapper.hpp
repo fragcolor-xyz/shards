@@ -223,6 +223,7 @@ template <class T> struct ShardWrapper {
     // warmup
     if constexpr (has_warmup<T>::value) {
       result->warmup = static_cast<SHWarmupProc>([](Shard *b, SHContext *ctx) {
+        shassert(reinterpret_cast<SHContextInternal*>(ctx)->currentShard == b);
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.warmup(ctx);
           return SHError::Success;

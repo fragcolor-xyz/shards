@@ -17,6 +17,7 @@
 #include <shards/inlined.hpp>
 #include <shards/core/params.hpp>
 #include <shards/gfx/moving_average.hpp>
+#include <shards/core/compose.hpp>
 #include "time.hpp"
 #include <cassert>
 #include <cmath>
@@ -73,6 +74,10 @@ struct Const {
     _dependencies.clear();
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
     if (!_dependencies.empty()) {
+      // we copy
+      // if (_value.valueType == SHType::ContextVar) {
+      //   CompositionContext::get(data).anno(_value.payload.stringValue, _innerInfo);
+      // }
       _clone = _value;
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::NotInline;
     } else {
@@ -600,27 +605,23 @@ struct And {
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow continues; otherwise, it stops."); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
-  }
-
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreAnd;
-    return CoreInfo::BoolType;
   }
 
   const SHVar &activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
       context->rebaseFlow();
-      return input;
     } else {
       // Stop the flow
       context->returnFlow(input);
-      return input;
     }
+    return context->currentWire()->currentInput;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct Or {
@@ -634,27 +635,23 @@ struct Or {
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow stops and succeeds; otherwise, the flow continues."); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
-  }
-
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreOr;
-    return CoreInfo::BoolType;
   }
 
   const SHVar &activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Stop the flow and succeed
       context->returnFlow(input);
-      return input;
     } else {
       // Continue the flow with the initial input
       context->rebaseFlow();
-      return input;
     }
+    return context->currentWire()->currentInput;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct Not {
@@ -668,15 +665,12 @@ struct Not {
 
   shards::Var output;
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreNot;
-    return CoreInfo::BoolType;
-  }
-
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(!input.payload.boolValue);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsNone {
@@ -690,15 +684,12 @@ struct IsNone {
 
   shards::Var output;
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreIsNone;
-    return CoreInfo::BoolType;
-  }
-
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(input.valueType == SHType::None);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsNotNone {
@@ -714,15 +705,12 @@ struct IsNotNone {
 
   shards::Var output;
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreIsNotNone;
-    return CoreInfo::BoolType;
-  }
-
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(input.valueType != SHType::None);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsTrue {
@@ -982,7 +970,7 @@ struct NaNTo0 {
 };
 
 struct VariableBase {
-  SHVar *_target{nullptr};
+  SHVar **_target{nullptr};
   SHVar *_cell{nullptr};
   std::string _name;
   ParamVar _key{};
@@ -1014,7 +1002,7 @@ struct VariableBase {
 
   void cleanup(SHContext *context) {
     if (_target) {
-      releaseVariable(_target);
+      releaseVariableSlot(_target);
     }
     _key.cleanup();
     _target = nullptr;
@@ -1054,11 +1042,12 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-    if (table && (_tableId != table->id || _tableVersion != _target->version)) {
+    auto &v = **_target;
+    SHMap *table = static_cast<SHMap *>(v.payload.tableValue.opaque);
+    if (table && (_tableId != table->id || _tableVersion != v.version)) {
       _tableId = table->id;
       _cell = nullptr;
-      _tableVersion = _target->version;
+      _tableVersion = v.version;
     }
   }
 };
@@ -1157,24 +1146,18 @@ struct SetBase : public VariableBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input value is passed through as the output."); }
 
   // Runs sanity checks on the target variable, returns the existing exposed type if any
-  const SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool failIfExists, bool overwrite) {
+  compose::VariableRef setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool failIfExists, bool overwrite) {
     shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _name);
-    if (existingExposedType) {
-      auto &reference = *existingExposedType;
+    auto &ctx = CompositionContext::get(data);
+    auto existingExposedVariable = ctx.findVariable(_name);
+    if (existingExposedVariable) {
+      auto &existingExposed = existingExposedVariable->exposed;
+      auto &existingType = existingExposed.exposedType;
       if (_isTable) {
-        if (reference.exposedType.basicType != SHType::Table) {
+        if (existingType.basicType != SHType::Table) {
           throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
         }
       } else {
-        if (
-            // need to check if this was just a any table definition {}
-            !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
-            !matchTypes(data.inputType, reference.exposedType, true, true, true)) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
-                                         reference.exposedType, data.inputType));
-        }
         if (failIfExists && !overwrite) {
           throw ComposeError(fmt::format("Ref, variable \"{}\" already exists", _name));
         } else if (warnIfExists && !overwrite) {
@@ -1182,26 +1165,31 @@ struct SetBase : public VariableBase {
         }
       }
 
-      if (!overwrite && !reference.isMutable) {
-        SHLOG_ERROR("Error with variable: {}", _name);
-        throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
+      if (!existingExposed.isMutable) {
+        throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected or immutable variable \"{}\".", _name));
       }
-      if (reference.isProtected) {
+
+      // if (!overwrite && !existingExposedVariable->isMutable) {
+      //   SHLOG_ERROR("Error with variable: {}", _name);
+      //   throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
+      // }
+      if (existingExposed.isProtected) {
         SHLOG_ERROR("Error with variable: {}", _name);
         throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
       _trackingMaskInternal = reference.trackingMask;
+      if (existingExposed.tracked) {
+        _isExposed = true;
+      } else {
+        _isExposed = false;
+      }
     }
-
-    return existingExposedType;
+    return existingExposedVariable;
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 };
@@ -1220,20 +1208,21 @@ struct SetUpdateBase : public SetBase {
       return *_cell;
     }
 
+    auto &v = **_target;
     SHMap *table = nullptr;
-    if (_target->valueType != SHType::Table) {
-      if (_target->valueType != SHType::None)
-        destroyVar(*_target);
+    if (v.valueType != SHType::Table) {
+      if (v.valueType != SHType::None)
+        destroyVar(**_target);
 
       // Not initialized yet
-      _target->valueType = SHType::Table;
-      _target->payload.tableValue.api = &GetGlobals().TableInterface;
-      table = _target->payload.tableValue.opaque = new SHMap();
+      v.valueType = SHType::Table;
+      v.payload.tableValue.api = &GetGlobals().TableInterface;
+      table = v.payload.tableValue.opaque = new SHMap();
     } else {
-      table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+      table = static_cast<SHMap *>(v.payload.tableValue.opaque);
     }
 
-    if (input.valueType == SHType::Table && input.payload.tableValue.opaque == _target->payload.tableValue.opaque) {
+    if (input.valueType == SHType::Table && input.payload.tableValue.opaque == v.payload.tableValue.opaque) {
       context->cancelFlow("Set/Update, attempted to set a variable to itself");
       return input;
     }
@@ -1253,8 +1242,8 @@ struct SetUpdateBase : public SetBase {
 
   ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
     // Clone will try to recycle memory and such
-    cloneVar(*_target, input);
-    return *_target;
+    cloneVar(**_target, input);
+    return **_target;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { SHLOG_FATAL("Invalid code path, this should never be called"); }
@@ -1305,10 +1294,10 @@ struct Set : public SetUpdateBase {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     _self = data.shard;
 
-    const SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false, false);
+    auto existingExposedVariable = setBaseCompose(data, false, false, true);
 
     bool global = _global;
-    if (existingExposedType && existingExposedType->global) {
+    if (existingExposedVariable && existingExposedVariable->exposed.global) {
       global = true;
     }
 
@@ -1321,7 +1310,7 @@ struct Set : public SetUpdateBase {
 
       // we are a table!
       _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar &)_key : &Var::Empty, data.inputType,
-                                       existingExposedType ? &existingExposedType->exposedType : nullptr);
+                                       existingExposedVariable ? &existingExposedVariable->exposed.exposedType : nullptr);
 
       if (global) {
         _exposedInfo =
@@ -1363,7 +1352,7 @@ struct Set : public SetUpdateBase {
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void onStart(const SHWire::OnStartEvent &e) {
-    if (_target->valueType != SHType::None) {
+    if ((**_target).valueType != SHType::None) {
       // Ok so, at this point if we are exposed we might be also be Set!
       // if that is true we can disable this Shard completely from the graph !
       SHLOG_TRACE("Variable {} is exposed and already initialized, disabling shard", _name);
@@ -1380,7 +1369,7 @@ struct Set : public SetUpdateBase {
     if (_trackingMask != 0) {
       SHLOG_DEBUG("Warmup Set: {} tracking mask: {}", _name, _trackingMaskInternal);
 
-      _target->trackingMask |= _trackingMask;
+      (**_target).trackingMask |= _trackingMask;
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -1394,10 +1383,10 @@ struct Set : public SetUpdateBase {
       _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {
-        if (_target->trackingMask & _trackingMask) {
+        if ((**_target).trackingMask & _trackingMask) {
           // something changed, we are no longer tracked
           // fixup activations and variable flags
-          _target->flags &= ~_trackingMask;
+          (**_target).flags &= ~_trackingMask;
         }
       }
 
@@ -1415,7 +1404,7 @@ struct Set : public SetUpdateBase {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
         throw WarmupError("Cannot add metadata to global variable because mesh is not available");
       } else {
-        mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+        mesh->setMetadata((*_target), SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
       }
     }
   }
@@ -1442,9 +1431,9 @@ struct Set : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
+    shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _global, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, _key, (**_target), _global, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
@@ -1481,7 +1470,7 @@ struct Ref : public SetBase {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    setBaseCompose(data, false, true, _overwrite);
+    setBaseCompose(data, false, false, true);
 
     // bake exposed types
     if (_isTable) {
@@ -1506,7 +1495,20 @@ struct Ref : public SetBase {
     }
 
     // We declared this variable in this shard
-    _exposedInfo._innerInfo.elements[0].declared = true;
+    auto &exposedElem = _exposedInfo._innerInfo.elements[0];
+    exposedElem.declared = true;
+
+    auto &ctx = CompositionContext::get(data);
+    auto referenceTarget = ctx.currentAccess();
+    auto variable = ctx.insertRefVariable(_name, referenceTarget, true);
+
+    // Set exposed info to the created reference exposed info
+    exposedElem = variable->exposed;
+
+    // ctx.annotateRef(variable);
+    // if (!_key.isNone()) {
+    //   ctx.annotateSubPath(_key);
+    // }
 
     return data.inputType;
   }
@@ -1514,29 +1516,14 @@ struct Ref : public SetBase {
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void cleanup(SHContext *context) {
-    if (_target) {
-      // this is a special case
-      // Ref will reference previous shard result..
-      // Let's cleanup our storage so that release, if calls destroy
-      // won't mangle the shard's variable memory
-      const auto rc = _target->refcount;
-      const auto flags = _target->flags;
-      memset(_target, 0x0, sizeof(SHVar));
-      _target->refcount = rc;
-      _target->flags = flags;
-      releaseVariable(_target);
-    }
+    releaseVariableSlot(_target);
     _target = nullptr;
-
     _cell = nullptr;
     _key.cleanup();
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceWireVariable(context->currentWire(), _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1551,15 +1538,16 @@ struct Ref : public SetBase {
       memcpy(_cell, &input, sizeof(SHVar));
       return input;
     } else {
-      if (_target->valueType != SHType::Table) {
+      auto &v = **_target;
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       auto &kv = _key.get();
-      SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+      SHVar *vptr = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
       // Notice, NO Cloning!
       memcpy(vptr, &input, sizeof(SHVar));
@@ -1573,8 +1561,7 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
-    // must keep flags!
-    assignVariableValue(*_target, input);
+    *_target = const_cast<SHVar *>(&input);
     return input;
   }
 };
@@ -1600,11 +1587,17 @@ struct Update : public SetUpdateBase {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
     _self = data.shard;
 
-    setBaseCompose(data, false, false, false);
+    auto &ctx = CompositionContext::get(data);
+
+    _exposedInfo.clear();
+    auto existingVariable = setBaseCompose(data, false, false, false);
+    if (!existingVariable) {
+      throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
+    }
+
+    auto invalidationPath = ctx.getPathToVariable(existingVariable);
 
     SHTypeInfo *originalTableType{};
 
@@ -1615,12 +1608,12 @@ struct Update : public SetUpdateBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      auto type = findExposedVariablePtr(inherited->inherited, _name);
-      if (type && type->exposedType.basicType == SHType::Table) {
-        originalTableType = const_cast<SHTypeInfo *>(&type->exposedType);
+      auto &exposed = existingVariable->exposed;
+      if (exposed.exposedType.basicType == SHType::Table) {
+        originalTableType = const_cast<SHTypeInfo *>(&exposed.exposedType);
 
-        auto &tableKeys = type->exposedType.table.keys;
-        auto &tableTypes = type->exposedType.table.types;
+        auto &tableKeys = exposed.exposedType.table.keys;
+        auto &tableTypes = exposed.exposedType.table.types;
         if (_key.isVariable()) {
           tableInnerValueTypes = findTableNoneEntry(originalTableType);
         } else {
@@ -1637,8 +1630,8 @@ struct Update : public SetUpdateBase {
             tableInnerValueTypes = findTableNoneEntry(originalTableType);
           }
         }
-        _isGlobal = type->global;
-        _trackingMaskInternal = type->trackingMask;
+        _isGlobal = exposed.global;
+        _trackingMaskInternal = exposed.trackingMask;
       }
 
       if (!originalTableType) {
@@ -1682,6 +1675,10 @@ struct Update : public SetUpdateBase {
       // we are a table!
       _tableTypeInfo = *originalTableType;
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
+
+      if (!_key.isVariable()) {
+        invalidationPath.append(compose::VariableAccessor::key(_key));
+      } // Otherwise invalidate the entire table
     } else {
       auto type = findExposedVariablePtr(inherited->inherited, _name);
       if (type) {
@@ -1697,11 +1694,16 @@ struct Update : public SetUpdateBase {
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
 
       // just a variable, keep unchanged!
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), type->exposedType, true));
+      _exposedInfo.push_back(existingVariable->exposed);
     }
 
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
+    _exposedInfo._innerInfo.elements[0].declared = false;
+    _exposedInfo._innerInfo.elements[0].internalId = existingVariable->id;
+
+    // Invalidate the target reference
+    ctx.invalidateReferencePath(invalidationPath);
 
     return data.inputType;
   }
@@ -1744,7 +1746,7 @@ struct Update : public SetUpdateBase {
       _dispatcherPtr->trigger(ev);
     } else {
       output = activateRegular(context, input);
-      OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
+      OnTrackedVarSet ev{context->main->id, _name, _key, (**_target), _isGlobal, context->currentWire()};
       _dispatcherPtr->trigger(ev);
     }
 
@@ -1758,6 +1760,7 @@ struct Get : public VariableBase {
   std::vector<SHTypeInfo> _tableTypes{};
   std::vector<SHVar> _tableKeys{}; // should be fine not to be OwnedVar
   Shard *_shard{nullptr};
+  const SHExposedTypeInfo *_required{};
 
   static inline Parameters getParamsInfo{
       getterParams,
@@ -1795,7 +1798,7 @@ struct Get : public VariableBase {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    auto &ctx = CompositionContext::get(data);
 
     _shard = const_cast<Shard *>(data.shard);
 
@@ -1804,15 +1807,27 @@ struct Get : public VariableBase {
       _defaultType = deriveTypeInfo(_defaultValue, data);
     }
 
-    auto type = findExposedVariablePtr(inherited->inherited, _name);
+    // auto type = findExposedVariablePtr(inherited->inherited, _name);
+    auto existingVariable = ctx.findVariable(_name);
+
+    if (existingVariable) {
+      _required = &existingVariable->exposed;
+    } else {
+      _required = nullptr;
+    }
 
     if (_isTable) {
-      if (type) {
-        if (type->exposedType.basicType != SHType::Table)
+      if (existingVariable) {
+        auto &exposed = existingVariable->exposed;
+        auto &exposedType = exposed.exposedType;
+        if (exposedType.basicType != SHType::Table)
           throw ComposeError(fmt::format("Get: error, variable {} was not a table", _name));
 
-        auto &tableKeys = type->exposedType.table.keys;
-        auto &tableTypes = type->exposedType.table.types;
+        ctx.annotateRef(existingVariable);
+        ctx.annotateSubPath(_key);
+
+        auto &tableKeys = exposedType.table.keys;
+        auto &tableTypes = exposedType.table.types;
         if (tableKeys.len == tableTypes.len) {
           // if we have a name use it
           bool hasMagicNone = false; // we use none for any key such as @type({none: Type::String})
@@ -1857,7 +1872,7 @@ struct Get : public VariableBase {
           }
         }
 
-        if (type->isProtected) {
+        if (exposed.isProtected) {
           throw ComposeError("Get (" + _name + "): Cannot Get, variable is protected.");
         }
       }
@@ -1880,19 +1895,15 @@ struct Get : public VariableBase {
       _tableTypes.clear();
       _tableKeys.clear();
 
-      if (type) {
-        if (type->isProtected) {
+      if (existingVariable) {
+        auto &exposed = existingVariable->exposed;
+        if (exposed.isProtected) {
           throw ComposeError("Get (" + _name + "): Cannot Get, variable is protected.");
         }
-        return type->exposedType;
-      }
 
-      // check if we can compose a table type
-      if (_tableTypes.size() > 0) {
-        auto outputTableType = SHTypeInfo(CoreInfo::AnyTableType);
-        outputTableType.table.types = {&_tableTypes[0], uint32_t(_tableTypes.size()), 0};
-        outputTableType.table.keys = {&_tableKeys[0], uint32_t(_tableKeys.size()), 0};
-        return outputTableType;
+        ctx.annotateRef(existingVariable);
+
+        return exposed.exposedType;
       }
     }
 
@@ -1907,15 +1918,11 @@ struct Get : public VariableBase {
     if (_defaultValue.valueType != SHType::None) {
       return {};
     } else {
-      if (_isTable) {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required table."), CoreInfo::AnyTableType));
-        if (_key.isVariable()) {
-          _exposedInfo.push_back(ExposedInfo::Variable(_key.variableName(), SHCCSTR("The required key."), CoreInfo::AnyType));
-        }
-      } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType));
-      }
-      return SHExposedTypesInfo(_exposedInfo);
+      shassert(_required);
+      return SHExposedTypesInfo{
+          .elements = const_cast<SHExposedTypeInfo *>(_required),
+          .len = 1,
+      };
     }
   }
 
@@ -1936,11 +1943,7 @@ struct Get : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
-
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1952,20 +1955,21 @@ struct Get : public VariableBase {
     VariableBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar &activate(SHContext *context, const SHVar &input) {
     if (_isTable) {
       checkIfTableChanged();
     }
 
     if (unlikely(_cell != nullptr)) {
-      assert(_isTable);
+      shassert(_isTable);
       // This is used in the table case still
       return *_cell;
     } else {
+      auto &v = **_target;
       if (_isTable) {
-        if (_target->valueType == SHType::Table) {
+        if (v.valueType == SHType::Table) {
           auto &kv = _key.get();
-          SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+          SHMap *table = static_cast<SHMap *>(v.payload.tableValue.opaque);
           const auto &optr = *static_cast<const shards::OwnedVar *>(&kv);
           auto maybeValue = table->find(optr);
           if (maybeValue != table->end()) {
@@ -1997,15 +2001,14 @@ struct Get : public VariableBase {
           }
         }
       } else {
-        auto &value = *_target;
-        if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(value))) {
+        if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(v))) {
           return _defaultValue;
         } else {
           // Pin fast cell
-          _cell = _target;
+          _cell = &v;
           // override shard internal id
           _shard->inlineShardId = InlineShard::CoreGet;
-          return value;
+          return v;
         }
       }
     }
@@ -2090,13 +2093,14 @@ struct SeqBase : public VariableBase {
   void initSeq() {
     if (_isTable) {
       SHMap *table = nullptr;
-      if (_target->valueType != SHType::Table) {
+      auto &v = **_target;
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        table = _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        table = v.payload.tableValue.opaque = new SHMap();
       } else {
-        table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+        table = static_cast<SHMap *>(v.payload.tableValue.opaque);
       }
 
       if (!_key.isVariable()) {
@@ -2113,19 +2117,20 @@ struct SeqBase : public VariableBase {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != SHType::Seq) {
-        _target->valueType = SHType::Seq;
-        _target->payload.seqValue = {};
+      auto &v = **_target;
+      if (v.valueType != SHType::Seq) {
+        v.valueType = SHType::Seq;
+        v.payload.seqValue = {};
       }
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillVariableCell() {
-    assert(_target->valueType == SHType::Table && "Expected a table");
-    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+    shassert((**_target).valueType == SHType::Table && "Expected a table");
+    SHMap *table = static_cast<SHMap *>((**_target).payload.tableValue.opaque);
     auto &kv = _key.get();
     auto fk = shards::OwnedVar::Foreign(kv);
     _cell = &(*table)[fk];
@@ -2138,10 +2143,7 @@ struct SeqBase : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initSeq();
   }
@@ -2205,13 +2207,14 @@ struct Push : public SeqBase {
     data.shard->inlineShardId = InlineShard::CorePush;
 
     shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    // auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    auto &ctx = compose::CompositionContext::get(data);
 
     // check if this type is already exposed
-    auto type = findExposedVariablePtr(inherited->inherited, _name);
-    auto global = _global || (type && type->global);
+    auto existingVariable = ctx.findVariable(_name);
+    auto global = _global || (existingVariable && existingVariable->exposed.global);
 
-    const auto updateSeqInfo = [this, &data, global](const SHTypeInfo *existingSeqType = nullptr) {
+    const auto updateSeqInfo = [this, &data, global, existingVariable](const SHTypeInfo *existingSeqType = nullptr) {
       updateSeqType(_seqInfo, data.inputType, existingSeqType);
 
       if (global) {
@@ -2219,9 +2222,14 @@ struct Push : public SeqBase {
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed sequence."), _seqInfo, true));
       }
+      if (existingVariable) {
+        _exposedInfo._innerInfo.elements[0].internalId = existingVariable->exposed.internalId;
+        _exposedInfo._innerInfo.elements[0].declared = true;
+      }
     };
 
-    const auto updateTableInfo = [this, &data, global](bool firstPush, const SHTypeInfo *existingTableType = nullptr) {
+    const auto updateTableInfo = [this, &data, global, existingVariable](bool firstPush,
+                                                                         const SHTypeInfo *existingTableType = nullptr) {
       SHTypeInfo *existingSeqType{};
       if (existingTableType) {
         for (size_t i = 0; i < existingTableType->table.keys.len; i++) {
@@ -2241,26 +2249,31 @@ struct Push : public SeqBase {
         _exposedInfo =
             ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
       }
+      if (existingVariable) {
+        _exposedInfo._innerInfo.elements[0].internalId = existingVariable->exposed.internalId;
+        _exposedInfo._innerInfo.elements[0].declared = true;
+      }
     };
 
     if (_isTable) {
-      if (type) {
-        if (type->exposedType.basicType != SHType::Table) {
+      if (existingVariable) {
+        auto &exposed = existingVariable->exposed;
+        if (exposed.exposedType.basicType != SHType::Table) {
           throw ComposeError("Expected a table variable.");
         }
 
-        if (type->trackingMask != 0) {
+        if (exposed.trackingMask != 0) {
           // cannot push into exposed variables
           throw ComposeError("Cannot push into exposed variables");
         }
 
-        if (type->exposedType.table.types.elements) {
-          auto &tableKeys = type->exposedType.table.keys;
-          auto &tableTypes = type->exposedType.table.types;
+        if (exposed.exposedType.table.types.elements) {
+          auto &tableKeys = exposed.exposedType.table.keys;
+          auto &tableTypes = exposed.exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
             if (_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
-              updateTableInfo(false, &type->exposedType);
+              updateTableInfo(false, &exposed.exposedType);
               return data.inputType; // found lets escape
             }
           }
@@ -2272,23 +2285,24 @@ struct Push : public SeqBase {
         _firstPush = true;
       }
     } else {
-      if (type) {
-        if (type->exposedType.basicType != SHType::Seq)
+      if (existingVariable) {
+        auto &exposed = existingVariable->exposed;
+        if (exposed.exposedType.basicType != SHType::Seq)
           throw ComposeError(fmt::format("Push: error, variable {} is not a sequence.", _name));
         // found, can we mutate it?
-        if (!type->isMutable) {
+        if (!exposed.isMutable) {
           throw ComposeError(fmt::format("Cannot mutate a non-mutable variable: {}", _name));
-        } else if (type->isProtected) {
+        } else if (exposed.isProtected) {
           throw ComposeError(fmt::format("Cannot mutate a protected variable: {}", _name));
         }
 
-        if (type->trackingMask != 0) {
+        if (exposed.trackingMask != 0) {
           // cannot push into exposed variables
           throw ComposeError(fmt::format("Cannot push into exposed variables: {}", _name));
         }
 
         // ok now update into
-        updateSeqInfo(&type->exposedType);
+        updateSeqInfo(&exposed.exposedType);
         return data.inputType; // found lets escape
       } else {
         // not found
@@ -2421,7 +2435,7 @@ struct Sequence : public SeqBase {
     if (_typeDesc.valueType == SHType::None) {
       _weakType = CoreInfo::AnySeqType;
     } else {
-      assert(_typeDesc.valueType == SHType::Type);
+      shassert(_typeDesc.valueType == SHType::Type);
       auto typeDesc = _typeDesc.payload.typeValue;
       _weakType = *typeDesc;
     }
@@ -2467,17 +2481,18 @@ struct TableDecl : public VariableBase {
   SHTypeInfo _tableInfo{};
 
   void initTable() {
+    auto &v = **_target;
     if (_isTable) {
-      if (_target->valueType != SHType::Table) {
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       if (!_key.isVariable()) {
         auto &kv = _key.get();
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+        _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
         auto table = _cell;
         if (table->valueType != SHType::Table) {
@@ -2491,21 +2506,22 @@ struct TableDecl : public VariableBase {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != SHType::Table) {
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
-        fillDefaultValues(asTable(*_target), _weakType.table);
+      if (v.valueType != SHType::Table) {
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
+        fillDefaultValues(asTable(v), _weakType.table);
       }
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillTableCell() {
+    auto &v = **_target;
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+    _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
     auto table = _cell;
     if (table->valueType != SHType::Table) {
@@ -2518,10 +2534,7 @@ struct TableDecl : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initTable();
   }
@@ -2656,7 +2669,7 @@ struct TableDecl : public VariableBase {
     if (_typeDesc.valueType == SHType::None) {
       _weakType = CoreInfo::AnyTableType;
     } else {
-      assert(_typeDesc.valueType == SHType::Type);
+      shassert(_typeDesc.valueType == SHType::Type);
       auto typeDesc = _typeDesc.payload.typeValue;
       _weakType = *typeDesc;
     }
@@ -2818,36 +2831,36 @@ struct SeqUser : VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void initSeq() {
+    auto &v = **_target;
     if (_isTable) {
-      if (_target->valueType != SHType::Table) {
+      if (v.valueType != SHType::Table) {
         // We need to init this in order to fetch cell addr
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       if (!_key.isVariable()) {
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, *_key);
+        _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, *_key);
       } else {
         return; // checked during activate
       }
     } else {
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillVariableCell() {
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+    auto &v = **_target;
+    _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     if (!info) {
       throw ComposeError(fmt::format("Variable {} not found.", _name));
@@ -2861,10 +2874,7 @@ struct SeqUser : VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initSeq();
   }
@@ -2958,9 +2968,7 @@ struct Clear : SeqUser {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SeqUser::composeV2(data);
 
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
 
@@ -3149,9 +3157,7 @@ struct Pop : SeqUser {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SeqUser::composeV2(data);
 
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
 
@@ -3226,9 +3232,7 @@ struct PopFront : SeqUser {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SeqUser::composeV2(data);
 
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
 
@@ -3426,6 +3430,8 @@ struct Take {
     if (!valid)
       throw SHException(
           fmt::format("Take, invalid indices or malformed input. input: {}, indices: {}", data.inputType, _indices));
+
+    CompositionContext::get(data).annotateSubPath(_indices);
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);

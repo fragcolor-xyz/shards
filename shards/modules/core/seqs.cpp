@@ -492,7 +492,7 @@ struct Zip {
     if (_keys->isNone()) {
       for (auto &v : _seqs) {
         if (v.valueType == SHType::ContextVar) {
-          auto et = findContextVarExposedType(data, v);
+          auto et = findExposedVariable(data, v);
           if (!et)
             throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
           auto innerType = seqInnerType(et->exposedType);
@@ -522,7 +522,7 @@ struct Zip {
           _elementKeys.emplace_back(Var(fmt::format("${}", keyIdx)));
 
         if (v.valueType == SHType::ContextVar) {
-          auto et = findContextVarExposedType(data, v);
+          auto et = findExposedVariablePtr(data, v);
           if (!et)
             throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
           _elementTypes._types.push_back(seqInnerType(et->exposedType));

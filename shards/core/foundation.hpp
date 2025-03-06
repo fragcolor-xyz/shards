@@ -100,16 +100,23 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-SHVar *findVariable(SHContext *ctx, std::string_view name);
-SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
-SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name);
+SHVar *referenceWireVariable(SHWireRef wire, std::string_view name);
+SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
+SHVar *findVariable(SHContext *ctx, std::string_view name);
+SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 void releaseVariable(SHVar *variable);
+void releaseVariableRef(SHVar *&variable);
 void setSharedVariable(std::string_view name, const SHVar &value);
 void unsetSharedVariable(std::string_view name);
 SHVar getSharedVariable(std::string_view name);
 SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker = false);
 entt::id_type findId(SHContext *ctx) noexcept;
+
+SHVar **referenceVariableSlot(SHContext *ctx, std::string_view name);
+void releaseVariableSlot(SHVar **slot);
+void variableAddReference(SHVar *v);
+void variableReleaseReference(SHVar *v);
 
 Shard *createShard(std::string_view name);
 void registerShards();
@@ -458,6 +465,7 @@ struct ExposedInfo {
   SHExposedTypesInfo _innerInfo{};
 };
 
+struct WireRuntimeVariableInfo;
 } // namespace shards
 
 struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar> {
@@ -525,6 +533,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool pure{false};
 
   std::string name{"unnamed"};
+  uint64_t composeId{};
   entt::id_type id{entt::null};
   uint64_t debugId{0}; // used for debugging
 
@@ -566,10 +575,10 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable shards::TypeInfo inputType{};
   mutable shards::TypeInfo outputType{};
 
+  std::shared_ptr<shards::WireRuntimeVariableInfo> runtimeVariableInfo;
+
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;
-  // used sometimes in wires.cpp and .hpp when capturing variables is needed
-  mutable std::unordered_map<std::string, shards::ExposedTypeInfo> requirements;
 
   SHContext *context{nullptr};
 
@@ -665,6 +674,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   constexpr auto &getExternalVariables() { return externalVariables; }
 
   std::optional<std::reference_wrapper<SHVar>> getVariableIfExists(const SHStringWithLen name) {
+    // runtimeVariableInfo->findReference(name);
     auto key = shards::OwnedVar::Foreign(name);
     auto it = variables.find(key);
     if (it != variables.end()) {
@@ -1395,6 +1405,16 @@ struct InternalCore {
 
   static uint32_t getSourceFileId(SHStringWithLen path);
   static SHStringWithLen getSourceFileName(uint32_t file_id);
+  
+  static SHVar **referenceVariableSlot(SHContext *ctx, SHStringWithLen name) {
+    return shards::referenceVariableSlot(ctx, toStringView(name));
+  }
+
+  static void releaseVariableSlot(SHVar **slot) { shards::releaseVariableSlot(slot); }
+
+  static void variableAddReference(SHVar *v) { shards::variableAddReference(v); }
+
+  static void variableReleaseReference(SHVar *v) { shards::variableReleaseReference(v); }
 };
 
 inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<InternalCore>(blk); }
@@ -1700,46 +1720,6 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
                                          Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
   return *reinterpret_cast<T *>(var.payload.objectValue);
-}
-
-inline const SHExposedTypeInfo *findExposedVariablePtr(const SHExposedTypesInfo &exposed, std::string_view variableName) {
-  for (const auto &entry : exposed) {
-    if (variableName == entry.name) {
-      return &entry;
-    }
-  }
-  return nullptr;
-}
-
-inline const SHExposedTypeInfo *findExposedVariablePtr(const shards::LayeredMap<std::string_view, SHExposedTypeInfo> &exposed,
-                                                       std::string_view variableName) {
-  auto it = exposed.find(variableName);
-  if (it != exposed.end()) {
-    return &it->second;
-  }
-  return nullptr;
-}
-
-inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, std::string_view variableName) {
-  auto ptr = findExposedVariablePtr(exposed, variableName);
-  if (ptr) {
-    return *ptr;
-  }
-  return std::nullopt;
-}
-
-inline std::optional<SHExposedTypeInfo>
-findExposedVariable(const shards::LayeredMap<std::string_view, SHExposedTypeInfo> &exposed, std::string_view variableName) {
-  auto it = exposed.find(variableName);
-  if (it != exposed.end()) {
-    return it->second;
-  }
-  return std::nullopt;
-}
-
-inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
-  shassert(var.valueType == SHType::ContextVar);
-  return findExposedVariable(exposed, SHSTRVIEW(var));
 }
 
 // Collects all ContextVar references

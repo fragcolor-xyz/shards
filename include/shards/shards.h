@@ -398,6 +398,9 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
+  // Internally used to tag specific instances of types
+  // For example to detect if a composed shard returns the same type as it's input
+  uint32_t tag;
 };
 
 typedef struct SHTraitVariable {
@@ -514,6 +517,9 @@ struct SHExposedTypeInfo {
   // If the variable is market as tracked, apps building on top will can use this feature
   // to track the variable and its changes, 8bits mask, so up to 8 kinds of tracking
   uint8_t trackingMask;
+  
+  // Internally used to distinguish similarly named variables
+  uint32_t internalId;
 };
 
 typedef struct SHStringPayload {
@@ -718,8 +724,12 @@ struct SHInstanceData {
   struct SHTypesInfo outputTypes;
 
   // Internally used
-  void *requiredVariables;
-  void *privateContext;
+  void *_unused;
+  struct SHPrivateContext *privateContext;
+};
+
+struct SHContextInternal {
+  ShardPtr currentShard;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();
@@ -793,11 +803,11 @@ struct Shard {
   uint32_t column;
   uint32_t file;
 
-  // internal use only, to optionally identify the shard within a single program
+  // internal use only, to identify the shard uniquely
   uint64_t id;
 
-  // internal use only, to uniquely identify the shard
-  uint64_t debuggerId;
+  // internal use only, to optionally identify the shard sequence inside a wire
+  uint64_t seqId;
 
   // Optional compile time defined metadata
   struct ShardMetadata *metadata;
@@ -901,6 +911,12 @@ typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, 
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
 typedef bool(__cdecl *SHInit)();
+
+typedef struct SHVar **(__cdecl *SHReferenceVariableSlot)(struct SHContext *context, struct SHStringWithLen name);
+typedef void(__cdecl *SHReleaseVariableSlot)(struct SHVar **slot);
+
+typedef void(__cdecl *SHVariableAddReference)(struct SHVar *value);
+typedef void(__cdecl *SHVariableReleaseReference)(struct SHVar *value);
 
 typedef struct SHExternalVariable {
   struct SHVar *var;
@@ -1355,6 +1371,18 @@ typedef struct _SHCore {
 
   // Can be called before or after init to setup the logging system and potential log callbacks
   SHSetupLogger setupLogger;
+
+  // Used to reference wire runtime variables
+  // The result is of type SHVar** to support reference values:
+  //  Since regular variables store SHVar directly
+  //  And reference variables will store SHVar* instead
+  // Therefore this allows both
+  SHReferenceVariableSlot referenceVariableSlot;
+  SHReleaseVariableSlot releaseVariableSlot;
+
+  // Add/release reference from ref counted variables
+  SHVariableAddReference variableAddReference;
+  SHVariableReleaseReference variableReleaseReference;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

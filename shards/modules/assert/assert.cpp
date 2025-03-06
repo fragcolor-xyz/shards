@@ -216,7 +216,7 @@ struct IsAlmost {
     collectRequiredVariables(data, _requiredVariables, _value);
 
     if (_value.isVariable()) {
-      auto exposed = findExposedVariable(data.shared, _value);
+      auto exposed = findExposedVariable(data, _value);
       if (!exposed) {
         throw SHException(fmt::format("Could not find exposed variable: {}", _value.variableName()));
       }

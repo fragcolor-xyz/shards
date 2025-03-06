@@ -592,7 +592,7 @@ struct Channel {
     // Wire needs to capture all it needs, so we need to copy it!
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    dataCopy.requiredVariables = &data.wire->requirements; // this ensures we get the right requirements deep
+    // dataCopy.requiredVariables = &data.wire->requirements; // this ensures we get the right requirements deep
     dataCopy.inputType = CoreInfo::AudioType;
 
     _vars.clear();

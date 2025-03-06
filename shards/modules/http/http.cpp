@@ -633,7 +633,6 @@ struct Server {
 
     // Wire needs to capture all it needs, so we need deeper information
     auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
     for (auto &req : dataCopy.shared) {
       if (!req.global)
         req.trackingMask = 0;
@@ -651,23 +650,25 @@ struct Server {
     _vars.clear();
     arrayResize(_mergedReqs, 0);
 
-    for (auto &avail : data.shared) {
-      auto it = wire->requirements.find(avail.name);
-      if (it != wire->requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Http.Server: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = SHType::ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          ctxVar.payload.stringLen = strlen(avail.name);
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
+    // TODO
+    // TODO: dedup shards/modules/core/wires.hpp@154
+    // for (auto &avail : data.shared) {
+    //   auto it = wire->requirements.find(avail.name);
+    //   if (it != wire->requirements.end()) {
+    //     if (!avail.global) {
+    //       // Capture if not global as we need to copy it!
+    //       SHLOG_TRACE("Http.Server: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+    //       SHVar ctxVar{};
+    //       ctxVar.valueType = SHType::ContextVar;
+    //       ctxVar.payload.stringValue = avail.name;
+    //       ctxVar.payload.stringLen = strlen(avail.name);
+    //       auto &p = _vars.emplace_back();
+    //       p = ctxVar;
+    //     }
 
-        arrayPush(_mergedReqs, it->second);
-      }
-    }
+    //     arrayPush(_mergedReqs, it->second);
+    //   }
+    // }
 
     _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
 

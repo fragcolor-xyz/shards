@@ -29,7 +29,7 @@ public:
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
 
 private:
-  decltype(SHWire::requirements) _collectedRequirements;
+  // decltype(SHWire::requirements) _collectedRequirements;
   std::unordered_set<std::string_view> _copyBySerialize;
   ExposedInfo _mergedRequirements;
   ExposedInfo _shared;
@@ -83,10 +83,10 @@ public:
 
   void compose(const SHInstanceData &data, const ExposedInfo &shared_ = ExposedInfo{}, const IgnoredVariables &ignored = {},
                bool shareObjectVariables = true) {
-    _collectedRequirements.clear();
+    // _collectedRequirements.clear();
     _copyBySerialize.clear();
 
-    decltype(SHWire::requirements) required;
+    // decltype(SHWire::requirements) required;
     SHInstanceData tmpData = data;
     tmpData.privateContext = nullptr; // null this, in order to create a new context!
     ExposedInfo shared{shared_};
@@ -116,11 +116,12 @@ public:
       }
     } else {
       for (auto &avail : data.shared) {
-        auto it = _collectedRequirements.find(avail.name);
-        if (it != _collectedRequirements.end()) {
-          SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
-          _mergedRequirements.push_back(it->second);
-        }
+        // TODO
+        // auto it = _collectedRequirements.find(avail.name);
+        // if (it != _collectedRequirements.end()) {
+        //   SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
+        //   _mergedRequirements.push_back(it->second);
+        // }
       }
     }
 
@@ -215,7 +216,7 @@ private:
 
     // Branch needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
-    dataCopy.requiredVariables = &_collectedRequirements;
+    // dataCopy.requiredVariables = &_collectedRequirements;
 
     wire->composeResult = composeWire(wire.get(), dataCopy);
   }

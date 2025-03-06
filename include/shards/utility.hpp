@@ -130,10 +130,17 @@ template <class SH_CORE_> inline std::string formatShardSourceLocationWithCore(S
     enum { value = sizeof(test<T>(0)) == sizeof(char) };         \
   }
 
+#if SH_DEBUG || SH_RELWITHDEBINFO
+#define SH_PARAM_VAR_CHECKS 1
+#endif
+
 template <class SH_CORE> class TParamVar {
 private:
   SHVar _v{};
-  SHVar *_cp = nullptr;
+  SHVar **_cp = nullptr;
+#if SH_PARAM_VAR_CHECKS
+  bool warmedUp{};
+#endif
 
 public:
   TParamVar() {}
@@ -161,24 +168,24 @@ public:
   }
 
   void warmup(SHContext *ctx) {
-    assert(!_cp);
-    if (_v.valueType == SHType::ContextVar) {
-      assert(!_cp);
-      auto sv = SHSTRVIEW(_v);
-      _cp = SH_CORE::referenceVariable(ctx, SHStringWithLen{sv.data(), sv.size()});
-    } else {
-      _cp = &_v;
+#if SH_PARAM_VAR_CHECKS
+    shassert(!warmedUp);
+    warmedUp = true;
+#endif
+    if (isVariable()) {
+      shassert(!_cp);
+      _cp = SH_CORE::referenceVariableSlot(ctx, toSWL(SHSTRVIEW(_v)));
     }
-    assert(_cp);
   }
 
   void cleanup(SHContext *context = nullptr) {
     if (_cp) {
-      if (_v.valueType == SHType::ContextVar) {
-        SH_CORE::releaseVariable(_cp);
-      }
+      SH_CORE::releaseVariableSlot(_cp);
       _cp = nullptr;
     }
+#if SH_PARAM_VAR_CHECKS
+    warmedUp = false;
+#endif
   }
 
   SHVar &operator=(const SHVar &value) {
@@ -193,8 +200,12 @@ public:
   const SHVar &operator*() const { return _v; }
 
   SHVar &get() {
-    assert(_cp);
-    return *_cp;
+    if (!isVariable())
+      return _v;
+    shassert(_cp);
+    SHVar *ptr = *_cp;
+    shassert(ptr);
+    return *ptr;
   }
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
@@ -335,8 +346,12 @@ public:
   }
 
   void warmup(SHContext *context) {
+    SHContextInternal *intContext = reinterpret_cast<SHContextInternal *>(context);
+    ShardPtr parentBlk = intContext->currentShard;
+    std::swap(parentBlk, intContext->currentShard);
     for (auto &blk : _shardsArray) {
       if (blk->warmup) {
+        intContext->currentShard = blk;
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
           std::string msg =
@@ -345,6 +360,7 @@ public:
         }
       }
     }
+    std::swap(parentBlk, intContext->currentShard);
   }
 
   SHVar &operator=(const SHVar &value) {

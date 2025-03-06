@@ -4,6 +4,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/hash.inl>
+#include <shards/core/compose.hpp>
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include <shards/inlined.hpp>
@@ -769,7 +770,8 @@ struct ForEachShard {
       arrayPush(dataCopy.shared, _tmpInfo0);
     }
     // $1 always any type as it's always for table case
-    if (data.inputType.basicType == SHType::Table) {
+    _isTable = data.inputType.basicType == SHType::Table;
+    if (_isTable) {
       auto &tableType = data.inputType.table;
       // Wildcard table type
       if (tableType.types.len == 1 && tableType.keys.len == 1 && tableType.keys.elements[0].valueType == SHType::None) {
@@ -787,7 +789,7 @@ struct ForEachShard {
 
     _shards.compose(dataCopy);
 
-    if (data.inputType.basicType == SHType::Table) {
+    if (_isTable) {
       OVERRIDE_ACTIVATE1(data, activateTable);
     } else {
       OVERRIDE_ACTIVATE1(data, activateSeq);
@@ -798,7 +800,8 @@ struct ForEachShard {
 
   void warmup(SHContext *ctx) {
     _tmp0 = referenceVariable(ctx, "$0");
-    _tmp1 = referenceVariable(ctx, "$1");
+    if (_isTable)
+      _tmp1 = referenceVariable(ctx, "$1");
     _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
@@ -807,30 +810,18 @@ struct ForEachShard {
     _shards.cleanup(context);
     if (_tmp0) {
       // _tmp0 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp0->refcount;
-      const auto flags = _tmp0->flags;
-      memset(_tmp0, 0x0, sizeof(SHVar));
-      _tmp0->refcount = rc;
-      _tmp0->flags = flags;
+      assignVariableValue(*_tmp0, Var::Empty);
       releaseVariable(_tmp0);
       _tmp0 = nullptr;
     }
     if (_tmp1) {
       // _tmp1 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp1->refcount;
-      const auto flags = _tmp1->flags;
-      memset(_tmp1, 0x0, sizeof(SHVar));
-      _tmp1->refcount = rc;
-      _tmp1->flags = flags;
+      assignVariableValue(*_tmp1, Var::Empty);
       releaseVariable(_tmp1);
       _tmp1 = nullptr;
     }
     if (_tmpIndex) {
-      const auto rc = _tmpIndex->refcount;
-      const auto flags = _tmpIndex->flags;
-      memset(_tmpIndex, 0x0, sizeof(SHVar));
-      _tmpIndex->refcount = rc;
-      _tmpIndex->flags = flags;
+      assignVariableValue(*_tmpIndex, Var::Empty);
       releaseVariable(_tmpIndex);
       _tmpIndex = nullptr;
     }
@@ -878,6 +869,7 @@ private:
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
   SHVar *_tmpIndex = nullptr; // New member for index reference
+  bool _isTable{};
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
   SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
@@ -1124,9 +1116,7 @@ struct Fold {
     }
     _outputSingleType = {};
     if (_initial.isVariable()) {
-      shassert(data.privateContext && "Private context should be valid");
-      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _initial.variableNameView());
+      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(data, _initial.variableNameView());
       _outputSingleType = existingExposedType->exposedType;
       _ownedTypeInfo = false;
     } else {
@@ -1267,9 +1257,7 @@ struct Erase : SeqUser {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SeqUser::composeV2(data);
 
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
 
@@ -1308,7 +1296,7 @@ struct Erase : SeqUser {
     } else if (_indices->valueType == SHType::Int) {
       valid = true;
     } else { // SHType::ContextVar && !isTable
-      auto info = findExposedVariable(inherited->inherited, SHSTRVIEW((*_indices)));
+      auto info = findExposedVariable(data, SHSTRVIEW((*_indices)));
       if (info) {
         if (info->exposedType.basicType == SHType::Seq && info->exposedType.seqTypes.len == 1 &&
             info->exposedType.seqTypes.elements[0].basicType == SHType::Int) {
@@ -1434,10 +1422,7 @@ struct Assoc : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1481,11 +1466,11 @@ struct Assoc : public VariableBase {
       return input;
     } else {
       if (_isTable) {
-        if (_target->valueType == SHType::Table) {
+        if ((**_target).valueType == SHType::Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv)) {
+          if ((**_target).payload.tableValue.api->tableContains((**_target).payload.tableValue, kv)) {
             // Has it
-            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+            SHVar *vptr = (**_target).payload.tableValue.api->tableAt((**_target).payload.tableValue, kv);
             // Pin fast cell
             _cell = vptr;
           } else {
@@ -1495,9 +1480,9 @@ struct Assoc : public VariableBase {
           throw ActivationError("Table is empty or does not exist yet.");
         }
       } else {
-        if (_target->valueType == SHType::Seq || _target->valueType == SHType::Table) {
+        if ((**_target).valueType == SHType::Seq || (**_target).valueType == SHType::Table) {
           // Pin fast cell
-          _cell = _target;
+          _cell = *_target;
         } else {
           throw ActivationError("Variable is empty or does not exist yet.");
         }
@@ -1575,7 +1560,7 @@ struct Replace {
     if (data.inputType.basicType == SHType::String) {
       // we need to make sure that the parameters are all strings
       if (_patterns.isVariable()) {
-        auto expInfo = findExposedVariable(data.shared, _patterns);
+        auto expInfo = findExposedVariable(data, _patterns);
         if (expInfo.has_value()) {
           if (expInfo->exposedType.basicType != SHType::String &&             // must be a string
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true) // or a sequence of strings
@@ -1597,7 +1582,7 @@ struct Replace {
       }
 
       if (_replacements.isVariable()) {
-        auto expInfo = findExposedVariable(data.shared, _replacements);
+        auto expInfo = findExposedVariable(data, _replacements);
         if (expInfo.has_value()) {
           if (expInfo->exposedType.basicType != SHType::String &&
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true)) {
@@ -2266,6 +2251,33 @@ struct Last {
   }
 };
 
+SHTypeInfo And::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreAnd;
+  CompositionContext::get(data).annotateRebaseFlow();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Or::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreOr;
+  CompositionContext::get(data).annotateRebaseFlow();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Not::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreNot;
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNone::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreIsNone;
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNotNone::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreIsNotNone;
+  return outputTypes().elements[0];
+}
+
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
 RUNTIME_SHARD_help(And);
@@ -2274,6 +2286,7 @@ RUNTIME_SHARD_inputHelp(And);
 RUNTIME_SHARD_outputTypes(And);
 RUNTIME_SHARD_outputHelp(And);
 RUNTIME_SHARD_activate(And);
+RUNTIME_SHARD_composeV2(And);
 RUNTIME_SHARD_END(And);
 
 // Register Or
@@ -2284,6 +2297,7 @@ RUNTIME_SHARD_inputHelp(Or);
 RUNTIME_SHARD_outputTypes(Or);
 RUNTIME_SHARD_outputHelp(Or);
 RUNTIME_SHARD_activate(Or);
+RUNTIME_SHARD_composeV2(Or);
 RUNTIME_SHARD_END(Or);
 
 // Register Not
@@ -2294,6 +2308,7 @@ RUNTIME_SHARD_inputHelp(Not);
 RUNTIME_SHARD_outputTypes(Not);
 RUNTIME_SHARD_outputHelp(Not);
 RUNTIME_SHARD_activate(Not);
+RUNTIME_SHARD_composeV2(Not);
 RUNTIME_SHARD_END(Not);
 
 // Register IsNan
@@ -2944,6 +2959,11 @@ struct Once {
     self = data.shard;
     _validation = _blks.compose(data);
 
+    auto &ctx = CompositionContext::get(data);
+
+    // Don't allow references to escape the Once block
+    ctx.invalidateExposedReferences(_blks.composeResult().exposedInfo);
+
     collectRequiredVariables(data, _requiredInfo, _repeat);
 
     return data.inputType;
@@ -3065,6 +3085,11 @@ struct GlobalOnce {
     self = data.shard;
 
     _validation = _blks.compose(data);
+
+    auto &ctx = CompositionContext::get(data);
+
+    // Don't allow references to escape the Once block
+    ctx.invalidateExposedReferences(_blks.composeResult().exposedInfo);
 
     return data.inputType;
   }

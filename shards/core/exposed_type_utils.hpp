@@ -2,6 +2,7 @@
 #define A16CC8A4_FBC4_4500_BE1D_F565963C9C16
 
 #include "foundation.hpp"
+#include "compose.hpp"
 #include "runtime.hpp"
 #include <array>
 
@@ -13,6 +14,54 @@ template <> struct RequiredFlags<false> {
   bool found;
 };
 } // namespace detail
+
+inline const SHExposedTypeInfo *findExposedVariablePtr(const SHInstanceData &data, std::string_view variableName) {
+  auto &ctx = CompositionContext::get(data);
+  if (auto var = ctx.findVariable(variableName)) {
+    return &var->exposed;
+  }
+  return nullptr;
+}
+
+inline const SHExposedTypeInfo *findExposedVariablePtr(const SHInstanceData &data, const SHVar &var) {
+  shassert(var.valueType == SHType::ContextVar);
+  return findExposedVariablePtr(data, SHSTRVIEW(var));
+}
+
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHInstanceData &data, std::string_view variableName) {
+  auto ptr = findExposedVariablePtr(data, variableName);
+  return ptr ? *ptr : std::optional<SHExposedTypeInfo>();
+}
+
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHInstanceData &data, const SHVar &var) {
+  auto ptr = findExposedVariablePtr(data, var);
+  return ptr ? *ptr : std::optional<SHExposedTypeInfo>();
+}
+
+inline SHExposedTypeInfo *findExposedVariablePtr(const SHExposedTypesInfo &exposedTypes, std::string_view variableName) {
+  for (size_t i = 0; i < exposedTypes.len; i++) {
+    if (exposedTypes.elements[i].name == variableName) {
+      return &exposedTypes.elements[i];
+    }
+  }
+  return nullptr;
+}
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposedTypes,
+                                                            std::string_view variableName) {
+  auto v = findExposedVariablePtr(exposedTypes, variableName);
+  return v ? *v : std::optional<SHExposedTypeInfo>();
+}
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  return findExposedVariablePtr(data, var);
+}
+template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
+  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
+  if (!ti)
+    throw ComposeError(
+        fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
+  return *ti;
+}
 
 // Defines a reference to a required variable
 // Warmup references the variable, cleanup releases the reference
@@ -44,11 +93,11 @@ public:
   void compose(const SHInstanceData &data, ExposedInfo &outRequired, ParamVar *paramOverride = nullptr) {
     std::optional<SHExposedTypeInfo> exposed;
     if (paramOverride && paramOverride->isVariable()) {
-      exposed = findExposedVariable(data.shared, *paramOverride);
+      exposed = findExposedVariable(data, *paramOverride);
     }
 
     if (!exposed) {
-      exposed = findExposedVariable(data.shared, VariableName);
+      exposed = findExposedVariable(data, VariableName);
       if constexpr (!Required) {
         requiredFlags.found = exposed.has_value();
       } else {
@@ -162,35 +211,6 @@ inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const ShardsVar &shardsVa
 inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const SHExposedTypesInfo &otherTypes) {
   for (size_t i = 0; i < otherTypes.len; i++)
     outInfo.push_back(otherTypes.elements[i]);
-}
-
-inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
-  if (var.valueType != SHType::ContextVar)
-    return nullptr;
-
-  auto& ctx = CompositionContext::get(data);
-  auto varI = ctx.inherited.find(SHSTRVIEW(var));
-  if(varI != ctx.inherited.end()) {
-    return &varI->second;
-  }
-
-  return nullptr;
-}
-
-template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
-  return findContextVarExposedType(data, var);
-}
-template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
-  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
-  if (!ti)
-    throw ComposeError(
-        fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
-  return *ti;
-}
-
-inline const SHExposedTypeInfo *findExposedVariablePtr(const SHInstanceData &data, std::string_view variableName) {
-  auto& ctx = shards::CompositionContext::get(data);
-  return findExposedVariablePtr(ctx.inherited, variableName);
 }
 
 inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type) {

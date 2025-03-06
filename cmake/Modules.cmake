@@ -307,11 +307,13 @@ function(shards_generate_union UNION_TARGET_NAME)
 
   get_property(SHARDS_MODULE_TARGETS GLOBAL PROPERTY SHARDS_MODULE_TARGETS)
 
+  # Property retrieved and defined in shards shards/core/CMakeLists.txt
+  get_property(SHARDS_INLINE_SOURCES GLOBAL PROPERTY SHARDS_INLINE_SOURCES)
+
+  # Compile normally inlined sources separately
   if(NOT SHARDS_INLINE_EVERYTHING)
-    # Compile normally inlined sources separately
-    # NOTE: You should make sure the source files listed here are included inside core_inlined.cpp as well
     target_sources(${UNION_TARGET_NAME} PRIVATE
-      ${SHARDS_DIR}/shards/core/runtime.cpp
+      ${SHARDS_INLINE_SOURCES}
     )
   endif()
 
@@ -423,9 +425,14 @@ function(shards_generate_union UNION_TARGET_NAME)
       )
       message(STATUS "Shards: Inlining ${REL_INLINE_SRC}")
     endforeach()
+  endif()
 
-    # Include the core inline source file here
-    file(APPEND ${GENERATED_TEMP} "#include <shards/core/core_inlined.cpp>\n")
+  # Join all the SHARDS_INLINE_SOURCES
+  if(SHARDS_INLINE_EVERYTHING)
+    foreach(ABS_SRC_PATH ${SHARDS_INLINE_SOURCES})
+      file(RELATIVE_PATH REL_INLINE_SRC_PATH "${GENERATED_INCLUDE_DIR}" "${ABS_SRC_PATH}")
+      file(APPEND ${GENERATED_TEMP} "#include \"${REL_INLINE_SRC_PATH}\"\n")
+    endforeach()
   endif()
 
   file(APPEND ${GENERATED_TEMP} "\n"

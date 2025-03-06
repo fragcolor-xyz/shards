@@ -1,9 +1,7 @@
 set(core_SOURCES
   async.cpp
-  ops_internal.cpp
   number_types.cpp
   utils.cpp
-  coro.cpp
   wire_dsl.cpp
   trait.cpp
   type_info.cpp
@@ -11,7 +9,18 @@ set(core_SOURCES
   taskflow.cpp
   pmr/shared_temp_allocator.cpp
   log_api.cpp
-  wires.cpp
+  compose.cpp
+  variable_accessor.cpp
+)
+
+# The list of sources that are inlined into a single compilation unit
+# make sure the paths are absolute
+set_property(GLOBAL APPEND PROPERTY SHARDS_INLINE_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/variables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/coro.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ops_internal.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wires.cpp
 )
 
 if(EMSCRIPTEN)

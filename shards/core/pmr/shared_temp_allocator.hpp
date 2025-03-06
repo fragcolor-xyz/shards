@@ -16,6 +16,7 @@ private:
 
 public:
   shards::pmr::memory_resource *getAllocator() const;
+  PolymorphicAllocator<> getPolymorphicAllocator() const { return getAllocator(); }
   operator shards::pmr::memory_resource *() const { return getAllocator(); }
 
   SharedTempAllocator();

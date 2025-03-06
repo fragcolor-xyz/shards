@@ -90,26 +90,32 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
   case InlineShard::CorePush: {
     auto shard = reinterpret_cast<shards::PushRuntime *>(blk);
     return &shard->core.activate(context, input);
+    // return nullptr;
   }
   case InlineShard::CoreGet: {
     auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
     return shard->core._cell;
+    // return nullptr;
   }
   case InlineShard::CoreRefRegular: {
     auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
     return &shard->core.activateRegular(context, input);
+    // return nullptr;
   }
   case InlineShard::CoreRefTable: {
     auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
     return &shard->core.activateTable(context, input);
+    // return nullptr;
   }
   case InlineShard::CoreSetUpdateRegular: {
     auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
     return &shard->core.activateRegular(context, input);
+    // return nullptr;
   }
   case InlineShard::CoreSetUpdateTable: {
     auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
     return &shard->core.activateTable(context, input);
+    // return nullptr;
   }
   case InlineShard::CoreRepeat: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Repeat> *>(blk);

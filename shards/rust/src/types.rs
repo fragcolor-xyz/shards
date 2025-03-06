@@ -1013,6 +1013,7 @@ impl ExposedInfo {
       global: false,
       declared: false,
       trackingMask: 0,
+      internalId: 0,
     }
   }
 
@@ -1029,6 +1030,7 @@ impl ExposedInfo {
       global: false,
       declared: false,
       trackingMask: 0,
+      internalId: 0,
     }
   }
 
@@ -1042,6 +1044,7 @@ impl ExposedInfo {
       global: false,
       declared: false,
       trackingMask: 0,
+      internalId: 0,
     }
   }
 
@@ -1060,6 +1063,7 @@ impl ExposedInfo {
       global: false,
       declared: false,
       trackingMask: 0,
+      internalId: 0,
     }
   }
 
@@ -1078,6 +1082,7 @@ impl ExposedInfo {
       global: false,
       declared: false,
       trackingMask: 0,
+      internalId: 0,
     }
   }
 }
@@ -1279,6 +1284,7 @@ pub mod common_type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 
@@ -1313,6 +1319,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         recursiveSelf: false,
+        tag: 0,
       };
 
       pub static $name_table: SHTypeInfo = SHTypeInfo {
@@ -1339,6 +1346,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         recursiveSelf: false,
+        tag: 0,
       };
 
       pub static $name_var: SHTypeInfo = SHTypeInfo {
@@ -1352,6 +1360,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         recursiveSelf: false,
+        tag: 0,
       };
 
       pub static $names_var: SHTypeInfo = SHTypeInfo {
@@ -1365,6 +1374,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         recursiveSelf: false,
+        tag: 0,
       };
 
       pub static $name_table_var: SHTypeInfo = SHTypeInfo {
@@ -1378,6 +1388,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         recursiveSelf: false,
+        tag: 0,
       };
     };
   }
@@ -1617,6 +1628,7 @@ impl Type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 
@@ -1628,6 +1640,7 @@ impl Type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 
@@ -1644,6 +1657,7 @@ impl Type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 
@@ -1672,6 +1686,7 @@ impl Type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 
@@ -1687,6 +1702,7 @@ impl Type {
       },
       fixedSize: 0,
       recursiveSelf: false,
+      tag: 0,
     }
   }
 }

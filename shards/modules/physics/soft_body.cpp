@@ -121,13 +121,13 @@ struct SoftBodyShard {
 
     if (!_location.isVariable())
       throw std::runtime_error("Location must be a variable");
-    auto lv = findExposedVariable(data.shared, _location);
+    auto lv = findExposedVariable(data, _location);
     if (!lv || !lv->isMutable)
       throw std::runtime_error("Location must be mutable");
 
     if (!_rotation.isVariable())
       throw std::runtime_error("Rotation must be a variable");
-    auto rv = findExposedVariable(data.shared, _rotation);
+    auto rv = findExposedVariable(data, _rotation);
     if (!rv || !rv->isMutable)
       throw std::runtime_error("Rotation must be mutable");
 

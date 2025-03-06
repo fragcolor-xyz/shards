@@ -274,7 +274,7 @@ struct RenderIntoShard {
 
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
-    if (findExposedVariable(data.shared, decltype(_inputContext)::getExposedTypeInfo().name)) {
+    if (findExposedVariable(data, decltype(_inputContext)::getExposedTypeInfo().name)) {
       _requiredVariables.push_back(decltype(_inputContext)::getExposedTypeInfo());
     }
 

@@ -4,6 +4,7 @@
 #if SHARDS_DEBUGGER
 #include <shards/modules/debugger/interface.hpp>
 #endif
+#include "wire_runtime.hpp"
 
 using namespace shards;
 
@@ -54,6 +55,17 @@ void SHWire::destroy() {
 #endif
 }
 
+SHWire *getParentWire(SHContext *context, SHWire *wire) {
+  auto it = context->wireStack.rbegin();
+  while (it != context->wireStack.rend()) {
+    if (*it != wire) {
+      return *it;
+    }
+    ++it;
+  }
+  return nullptr;
+}
+
 void SHWire::warmup(SHContext *context) {
   if (!warmedUp) {
     SHLOG_TRACE("Running warmup on wire: {}", name);
@@ -62,9 +74,28 @@ void SHWire::warmup(SHContext *context) {
     mesh = context->main->mesh;
     warmedUp = true;
 
+    auto inherited = runtimeVariableInfo->inheritedVariables();
+    size_t inheritedOffset = runtimeVariableInfo->subspanOffset(inherited);
+    if (inherited.size() > 0) {
+      auto ownedShard = context->internal.currentShard;
+      shassert(ownedShard);
+      auto parentWire = getParentWire(context, this);
+      shassert(parentWire);
+      for (size_t i = 0; i < inherited.size(); i++) {
+        auto &v = inherited[i];
+        auto linkedVar = parentWire->runtimeVariableInfo->findReference(ownedShard, v.name);
+        if (!linkedVar.isAssigned()) {
+          throw WarmupError(fmt::format("Failed to find required variable: {} in wire: {}, shard: {}", v.name, parentWire->name,
+                                        ownedShard->name(ownedShard)));
+        }
+        runtimeVariableInfo->variableSlots[inheritedOffset + i] = linkedVar.get();
+      }
+    }
+
     context->wireStack.push_back(this);
     DEFER({ context->wireStack.pop_back(); });
     for (auto blk : shards) {
+      context->internal.currentShard = blk;
       try {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);

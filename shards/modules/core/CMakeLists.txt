@@ -42,7 +42,7 @@ add_shards_module(core SOURCES ${SOURCES}
   strings wires logging serialization time
   rust memoize exposed trait
   RUST_TARGETS shards-core-rust
-  INLINE_SOURCES core.cpp math.cpp inlined.cpp
+  INLINE_SOURCES core.cpp math.cpp inlined.cpp variables.cpp
   INLINE_SHARDS
   NotInline
   NoopShard

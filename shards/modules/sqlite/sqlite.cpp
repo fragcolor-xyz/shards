@@ -379,7 +379,7 @@ struct Base {
   void compose(SHInstanceData &data, ParamVar &dbParamVar) {
     // If dbParamVar is empty, use either "shards.db" (default) or sqlite/db-path (exposed variable) if it exists
     if (dbParamVar.isNone()) {
-      auto var = findExposedVariable(data.shared, defaultDbVarName);
+      auto var = findExposedVariable(data, defaultDbVarName);
       if (var) {
         dbParamVar = Var::ContextVar(defaultDbVarName);
       } else {
@@ -387,7 +387,7 @@ struct Base {
       }
     }
 
-    _withinTransaction = findExposedVariable(data.shared, "DB.Transaction.Cookie").has_value();
+    _withinTransaction = findExposedVariable(data, "DB.Transaction.Cookie").has_value();
   }
 
   void _ensureDb(SHContext *context, bool readOnly) {

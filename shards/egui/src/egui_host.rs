@@ -31,6 +31,7 @@ impl Default for EguiHost {
 
     let exposed = vec![
       ExposedInfo {
+        internalId: 0,
         exposedType: EGUI_CTX_TYPE,
         name: instance.get_name(),
         help: shccstr!("The UI context."),
@@ -41,6 +42,7 @@ impl Default for EguiHost {
         trackingMask: 0,
       },
       ExposedInfo {
+        internalId: 0,
         exposedType: EGUI_UI_TYPE,
         name: parents.get_name(),
         help: shccstr!("The parent UI objects."),
