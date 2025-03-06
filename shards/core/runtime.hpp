@@ -305,14 +305,22 @@ std::vector<SHWire *> &getCoroWireStack();
 #endif
 
 #ifdef SH_VERBOSE_COROUTINES_LOGGING
-#define SH_CORO_RESUMED_LOG(_wire) \
-  { SHLOG_TRACE("> Resumed wire {}", (_wire)->name); }
-#define SH_CORO_SUSPENDED_LOG(_wire) \
-  { SHLOG_TRACE("> Suspended wire {}", (_wire)->name); }
-#define SH_CORO_EXT_RESUME_LOG(_wire) \
-  { SHLOG_TRACE("Resuming wire {}", (_wire)->name); }
-#define SH_CORO_EXT_SUSPEND_LOG(_wire) \
-  { SHLOG_TRACE("Suspending wire {}", (_wire)->name); }
+#define SH_CORO_RESUMED_LOG(_wire)                   \
+  {                                                  \
+    SHLOG_TRACE("> Resumed wire {}", (_wire)->name); \
+  }
+#define SH_CORO_SUSPENDED_LOG(_wire)                   \
+  {                                                    \
+    SHLOG_TRACE("> Suspended wire {}", (_wire)->name); \
+  }
+#define SH_CORO_EXT_RESUME_LOG(_wire)               \
+  {                                                 \
+    SHLOG_TRACE("Resuming wire {}", (_wire)->name); \
+  }
+#define SH_CORO_EXT_SUSPEND_LOG(_wire)                \
+  {                                                   \
+    SHLOG_TRACE("Suspending wire {}", (_wire)->name); \
+  }
 #else
 #define SH_CORO_RESUMED_LOG(_wire)
 #define SH_CORO_SUSPENDED_LOG(_wire)
@@ -725,6 +733,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // finally clear storage
     anyStorage.clear();
+
+    if (_errorEventCallbacks.size() > 0) {
+      dispatcher.sink<SHWire::OnErrorEvent>().disconnect<&SHMesh::onErrorEvent>(this);
+    }
+    _errorEventCallbacks.clear();
   }
 
   void remove(const std::shared_ptr<SHWire> &wire) {
