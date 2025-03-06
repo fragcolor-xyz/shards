@@ -1,0 +1,39 @@
+@wire(a {
+  ; Test indirect requirements, since Once doesn't forward requirements from it's shards block
+  Once({
+    v = input-ref
+  })
+  ; Without this line, the below would fail
+  v = input-ref
+  Inc(input-ref)
+  input-ref
+})
+
+@wire(s {
+  0 >= v
+  Inc(v) | v
+} Looped: true)
+
+@wire(main {
+  1 >= v
+  
+  Do(a) = ref0 ; Ref to copy of wire output
+  Do(a) = ref1 ; Invalidates ref0
+  
+  Step(s) = ref3 ; Invalidates ref2
+  Step(s) = ref2 ; Transient output (from non owned)
+  Step(s) = ref4 ; Invalidates ref3 (may be finished output?)
+  
+  Pause ; Invalidates all refs
+  
+  v | Log("main")
+})
+
+@wire(not-main {
+  1 >= v
+  Do(a)
+  v | Log("not-main")
+})
+
+Do(main)
+Do(not-main)

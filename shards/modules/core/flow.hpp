@@ -8,6 +8,8 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
 #include <shards/core/exposed_type_utils.hpp>
+#include <shards/core/compose.hpp>
+#include <shards/core/pmr/shared_temp_allocator.hpp>
 #include <atomic>
 
 namespace shards {
@@ -57,14 +59,18 @@ struct Cond {
   void warmup(SHContext *ctx) {
     for (auto &blks : _conditions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
+        if (blk->warmup) {
+          ctx->internal.currentShard = blk;
           blk->warmup(blk, ctx);
+        }
       }
     }
     for (auto &blks : _actions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
+        if (blk->warmup) {
+          ctx->internal.currentShard = blk;
           blk->warmup(blk, ctx);
+        }
       }
     }
   }
@@ -331,6 +337,7 @@ struct BaseSubFlow {
   }
 
   SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+  SHExposedTypesInfo requiredVariables() { return _composition.requiredInfo; }
 
 protected:
   ShardsVar _shards{};
@@ -663,11 +670,16 @@ template <bool COND> struct When {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    auto &fa = CompositionContext::get(data);
+    fa.pushScope(data.inputType);
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
       throw ComposeError("When predicate should output a boolean value!");
     }
+
+    // Analyze the flow
+    fa.popScope();
 
     auto ares = _action.compose(data);
 
@@ -1003,6 +1015,7 @@ struct Sub {
   }
 
   SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+  SHExposedTypesInfo requiredVariables() { return _composition.requiredInfo; }
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 

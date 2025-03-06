@@ -8,6 +8,7 @@
 #include <shards/core/platform.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/compose.hpp>
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>
@@ -179,10 +180,6 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   if (!wire->composeResult) {
     SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
 
-    if (data.requiredVariables) {
-      wire->requirements.clear();
-    }
-
     wire->composeResult = composeWire(wire.get(), dataCopy);
 
     IterableExposedInfo exposing(wire->composeResult->exposedInfo);
@@ -212,13 +209,17 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   auto outputType = data.inputType;
 
+  composeCtx->invalidateWireOutput(wire.get());
   if (!passthrough) {
-    if (mode == Inline)
+    if (mode == Inline) {
       outputType = wireOutput;
-    else if (mode == Stepped)
+      composeCtx->annotateWireOutput(wire.get());
+    } else if (mode == Stepped) {
       outputType = CoreInfo::AnyType; // unpredictable
-    else
+      composeCtx->annotateWireOutput(wire.get());
+    } else {
       outputType = data.inputType;
+    }
   }
 
   return outputType;
@@ -854,7 +855,8 @@ struct SwitchTo : public WireBase {
       }
 
       auto dataCopy = data;
-      dataCopy.requiredVariables = &wire->requirements;
+      // dataCopy.privateContext->currentScope().fullRequired
+      // dataCopy.requiredVariables = &wire->requirements;
       for (auto &req : dataCopy.shared) {
         if (!req.global)
           req.tracked = false;
@@ -865,23 +867,25 @@ struct SwitchTo : public WireBase {
       // build the list of variables to capture and inject into spawned chain
       _vars.clear();
       arrayResize(_mergedReqs, 0);
-      for (auto &avail : data.shared) {
-        auto it = wire->requirements.find(avail.name);
-        if (it != wire->requirements.end()) {
-          if (!avail.global) {
-            // Capture if not global as we need to copy it!
-            SHLOG_TRACE("SwitchTo: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-            SHVar ctxVar{};
-            ctxVar.valueType = SHType::ContextVar;
-            ctxVar.payload.stringValue = avail.name;
-            ctxVar.payload.stringLen = strlen(avail.name);
-            auto &p = _vars.emplace_back();
-            p = ctxVar;
-          }
 
-          arrayPush(_mergedReqs, it->second);
-        }
-      }
+      // TODO
+      // for (auto &avail : data.shared) {
+      //   auto it = wire->requirements.find(avail.name);
+      //   if (it != wire->requirements.end()) {
+      //     if (!avail.global) {
+      //       // Capture if not global as we need to copy it!
+      //       SHLOG_TRACE("SwitchTo: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+      //       SHVar ctxVar{};
+      //       ctxVar.valueType = SHType::ContextVar;
+      //       ctxVar.payload.stringValue = avail.name;
+      //       ctxVar.payload.stringLen = strlen(avail.name);
+      //       auto &p = _vars.emplace_back();
+      //       p = ctxVar;
+      //     }
+
+      //     arrayPush(_mergedReqs, it->second);
+      //   }
+      // }
     } else {
       WireBase::compose(data); // we still need this to have proper state likely
     }
@@ -1253,7 +1257,7 @@ struct CapturingSpawners : public WireBase {
     // Wire needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
+    // dataCopy.requiredVariables = &wire->requirements;
     dataCopy.inputType = inputType;
 
     WireBase::compose(dataCopy); // discard the result, we do our thing here
@@ -1261,23 +1265,26 @@ struct CapturingSpawners : public WireBase {
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
     arrayResize(_mergedReqs, 0);
-    for (auto &avail : data.shared) {
-      auto it = wire->requirements.find(avail.name);
-      if (it != wire->requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = SHType::ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          ctxVar.payload.stringLen = strlen(avail.name);
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
 
-        arrayPush(_mergedReqs, it->second);
-      }
-    }
+    // TODO
+    // TODO: dedup shards/modules/core/wires.hpp@154
+    // for (auto &avail : data.shared) {
+    //   auto it = wire->requirements.find(avail.name);
+    //   if (it != wire->requirements.end()) {
+    //     if (!avail.global) {
+    //       // Capture if not global as we need to copy it!
+    //       SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+    //       SHVar ctxVar{};
+    //       ctxVar.valueType = SHType::ContextVar;
+    //       ctxVar.payload.stringValue = avail.name;
+    //       ctxVar.payload.stringLen = strlen(avail.name);
+    //       auto &p = _vars.emplace_back();
+    //       p = ctxVar;
+    //     }
+
+    //     arrayPush(_mergedReqs, it->second);
+    //   }
+    // }
 
     // copy shared
     const IterableExposedInfo shared(data.shared);

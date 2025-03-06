@@ -5,7 +5,6 @@
 #include "../core/platform.hpp"
 
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
-
 #if SH_WINDOWS
   return SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 #elif SH_ANDROID

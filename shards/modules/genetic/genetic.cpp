@@ -684,13 +684,17 @@ struct Mutant {
       for (auto &mut : _mutations) {
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
-          if (blk->warmup)
+          if (blk->warmup) {
+            ctx->internal.currentShard = blk;
             blk->warmup(blk, ctx);
+          }
         } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
-            if (blk->warmup)
+            if (blk->warmup) {
+              ctx->internal.currentShard = blk;
               blk->warmup(blk, ctx);
+            }
           }
         }
       }
@@ -1100,8 +1104,10 @@ struct DShard {
   }
 
   void warmup(SHContext *context) {
-    if (_wrapped && _wrapped->warmup) // it's optional!
+    if (_wrapped && _wrapped->warmup) { // it's optional! {
+      context->internal.currentShard = _wrapped;
       _wrapped->warmup(_wrapped, context);
+    }
   }
 
   void cleanup(SHContext *context) {

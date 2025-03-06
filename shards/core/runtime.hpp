@@ -13,19 +13,9 @@
 #endif
 
 #include <string.h> // memset
-
-#include "pmr/wrapper.hpp"
-#include "pmr/unordered_map.hpp"
-#include "pmr/shared_temp_allocator.hpp"
+#include <tracy/Wrapper.hpp>
 #include <shards/log/log.hpp>
 #include <shards/object_type.hpp>
-#include "shards_macros.hpp"
-#include "foundation.hpp"
-#include "inline.hpp"
-#include "utils.hpp"
-#include "platform.hpp"
-#include "ops_internal.hpp"
-
 #include <chrono>
 #include <iostream>
 #include <list>
@@ -34,9 +24,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
 #include <boost/container/small_vector.hpp>
 #include <boost/container/flat_set.hpp>
+
+#include "shards_macros.hpp"
+#include "foundation.hpp"
+#include "inline.hpp"
+#include "utils.hpp"
+#include "platform.hpp"
 
 using SHClock = std::chrono::high_resolution_clock;
 using SHTime = decltype(SHClock::now());
@@ -108,7 +103,11 @@ struct SHStateSnapshot {
 struct SHContext {
   SHContext(shards::Coroutine *coro, const SHWire *starter) : main(starter), continuation(coro) {
     wireStack.push_back(const_cast<SHWire *>(starter));
+    internal.currentShard = nullptr;
   }
+
+  // Needs to come first, users can cast SHContext to SHContextShared
+  SHContextInternal internal;
 
   const SHWire *main;
   SHContext *parent{nullptr};
@@ -431,28 +430,6 @@ inline void sleep(double seconds = -1.0) {
     std::this_thread::yield();
   }
 }
-
-struct RuntimeCallbacks {
-  // TODO, turn them into filters maybe?
-  virtual void registerShard(const char *fullName, SHShardConstructor constructor) = 0;
-  virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) = 0;
-  virtual void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) = 0;
-};
-
-struct CompositionContext {
-  pmr::SharedTempAllocator tempAllocator;
-  shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::vector<std::string> errorStack;
-
-  shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
-
-  CompositionContext() : visitedWires(tempAllocator.getAllocator()) {}
-
-  static CompositionContext &get(const SHInstanceData &data) {
-    shassert(data.privateContext != nullptr);
-    return *reinterpret_cast<CompositionContext *>(data.privateContext);
-  }
-};
 }; // namespace shards
 
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
@@ -466,52 +443,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
-  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-    shards::CompositionContext privateContext;
-    data.privateContext = &privateContext;
-    try {
-      auto validation = shards::composeWire(wire.get(), data);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
-    } catch (const std::exception &e) {
-      // build a reverse stack error log from privateContext.errorStack
-      std::string errors;
-      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
-        errors += *it;
-        if (++it == privateContext.errorStack.rend())
-          break;
-        errors += "\n";
-      }
-      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
-      throw;
-    }
-  }
-
-  void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
-    ZoneScoped;
-
-    SHLOG_TRACE("Composing wire {}", wire->name);
-
-    if (wire->warmedUp) {
-      SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
-      throw shards::SHException("Multiple wire Pre-composing");
-    }
-
-    wire->mesh = shared_from_this();
-
-    wire->isRoot = true;
-    // remove when done here
-    DEFER(wire->isRoot = false);
-
-    // compose the wire
-    SHInstanceData data = instanceData;
-    data.wire = wire.get();
-    data.inputType = shards::deriveTypeInfo(input, data);
-    DEFER({ shards::freeDerivedInfo(data.inputType); });
-    prettyCompose(wire, data);
-
-    SHLOG_TRACE("Wire {} composed", wire->name);
-  }
+  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data);
+  void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty);
 
   struct EmptyObserver {
     void before_compose(SHWire *wire) {}

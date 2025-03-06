@@ -5,6 +5,7 @@
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/common_types.hpp>
+#include <shards/core/compose.hpp>
 #include <memory>
 #include <deque>
 
@@ -130,33 +131,46 @@ struct BaseRunner : public WireBase {
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
+    // dataCopy.requiredVariables = &wire->requirements;
 
     auto res = WireBase::compose(dataCopy);
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
     arrayResize(_mergedReqs, 0);
-    // pure wires do not need to capture variables
-    if (!wire->pure && wire->requirements.size() > 0) {
-      for (auto &avail : data.shared) {
-        auto it = wire->requirements.find(avail.name);
-        if (it != wire->requirements.end()) {
-          if (!avail.global) {
-            // Capture if not global as we need to copy it!
-            SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-            SHVar ctxVar{};
-            ctxVar.valueType = SHType::ContextVar;
-            ctxVar.payload.stringValue = avail.name;
-            ctxVar.payload.stringLen = strlen(avail.name);
-            auto &p = _vars.emplace_back();
-            p = ctxVar;
-          }
 
-          arrayPush(_mergedReqs, it->second);
-        }
-      }
-    }
+    // Iterate inherited variables
+    // auto &rtVars = wire->runtimeVariableInfo;
+    // if (!wire->pure) {
+    //   for (size_t i = rtVars->numExternalVariables; i < rtVars->refVariables.size(); i++) {
+    //     auto &v = rtVars->refVariables[i];
+    //     auto &p = _vars.emplace_back();
+
+    //     // arrayPush(_mergedReqs, SHExposedTypeInfo{ v.type);
+    //   }
+    // }
+    // pure wires do not need to capture variables
+
+    // TODO
+    // if (!wire->pure && wire->requirements.size() > 0) {
+    //   for (auto &avail : data.shared) {
+    //     auto it = wire->requirements.find(avail.name);
+    //     if (it != wire->requirements.end()) {
+    //       if (!avail.global) {
+    //         // Capture if not global as we need to copy it!
+    //         SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+    //         SHVar ctxVar{};
+    //         ctxVar.valueType = SHType::ContextVar;
+    //         ctxVar.payload.stringValue = avail.name;
+    //         ctxVar.payload.stringLen = strlen(avail.name);
+    //         auto &p = _vars.emplace_back();
+    //         p = ctxVar;
+    //       }
+
+    //       arrayPush(_mergedReqs, it->second);
+    //     }
+    //   }
+    // }
 
     return res;
   }
@@ -359,15 +373,17 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   }
 
   static inline const SHOptionalString InlineHelpText = SHCCSTR(
-      "Schedules and executes the specified Wire inline of the current Wire. The specified Wire needs to complete its execution "
+      "Schedules and executes the specified Wire inline of the current Wire. The specified Wire needs to complete its "
+      "execution "
       "before the "
       "current "
       "Wire continues its execution. This means that a pause in execution of the child Wire will also pause the parent Wire.");
-  static inline const SHOptionalString AsyncHelpText = SHCCSTR(
-      "Schedules and executes the specified Wire asynchronously. The current Wire will "
-      "continue its execution independently of the specified Wire. Unlike Spawn, only one unique copy of the specified Wire can "
-      "be scheduled using Detach. Future calls of Detach that schedules the same Wire will be ignored unless the "
-      "specified Wire is Stopped or ends naturally.");
+  static inline const SHOptionalString AsyncHelpText =
+      SHCCSTR("Schedules and executes the specified Wire asynchronously. The current Wire will "
+              "continue its execution independently of the specified Wire. Unlike Spawn, only one unique copy of the specified "
+              "Wire can "
+              "be scheduled using Detach. Future calls of Detach that schedules the same Wire will be ignored unless the "
+              "specified Wire is Stopped or ends naturally.");
   static inline const SHOptionalString SteppedHelpText =
       SHCCSTR("The first time Step is called, the specified wire is scheduled. On subsequent calls, the specified Wire's state "
               "is progressed before the current Wire continues its execution. This means that a pause "

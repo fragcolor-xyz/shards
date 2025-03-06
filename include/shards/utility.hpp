@@ -329,8 +329,12 @@ public:
   }
 
   void warmup(SHContext *context) {
+    SHContextInternal *intContext = reinterpret_cast<SHContextInternal *>(context);
+    ShardPtr parentBlk = intContext->currentShard;
+    std::swap(parentBlk, intContext->currentShard);
     for (auto &blk : _shardsArray) {
       if (blk->warmup) {
+        intContext->currentShard = blk;
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
           std::string msg =
@@ -339,6 +343,7 @@ public:
         }
       }
     }
+    std::swap(parentBlk, intContext->currentShard);
   }
 
   SHVar &operator=(const SHVar &value) {

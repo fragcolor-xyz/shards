@@ -1,9 +1,7 @@
 set(core_SOURCES
   async.cpp
-  ops_internal.cpp
   number_types.cpp
   utils.cpp
-  coro.cpp
   wire_dsl.cpp
   trait.cpp
   type_info.cpp
@@ -11,7 +9,18 @@ set(core_SOURCES
   taskflow.cpp
   pmr/shared_temp_allocator.cpp
   log_api.cpp
-  wires.cpp
+  compose.cpp
+  variable_accessor.cpp
+)
+
+# The list of sources that are inlined into a single compilation unit
+# make sure the paths are absolute
+set_property(GLOBAL APPEND PROPERTY SHARDS_INLINE_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/variables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/coro.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ops_internal.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wires.cpp
 )
 
 if(EMSCRIPTEN)
@@ -48,6 +57,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
 else()
   set(SHARDS_DEBUG_THREAD_NAMES_DEFAULT OFF)
 endif()
+
 set(SHARDS_DEBUG_THREAD_NAMES ${SHARDS_DEBUG_THREAD_NAMES_DEFAULT} CACHE BOOL "When enabled, threads are given names based on running wires")
 
 if(SHARDS_DEBUG_THREAD_NAMES)
@@ -61,7 +71,8 @@ if(SHARDS_THREAD_FIBER)
 endif()
 
 set(SHARDS_NO_CONSISTENT_RESUMER OFF CACHE BOOL "When enabled, consistent resumer checks are disabled")
-## Uncomment to enable consistent resumer debugging, this might be useful to debug some specific issues when coroutines cannot be resumed on different threads
+
+# # Uncomment to enable consistent resumer debugging, this might be useful to debug some specific issues when coroutines cannot be resumed on different threads
 if(NOT SHARDS_NO_CONSISTENT_RESUMER AND CMAKE_BUILD_TYPE MATCHES Debug AND NOT SHARDS_THREAD_FIBER AND NOT EMSCRIPTEN)
   # Set to non-zero to enable, Set to 2 to enable more detailed logging
   target_compile_definitions(shards-core PUBLIC SH_DEBUG_CONSISTENT_RESUMER=1)

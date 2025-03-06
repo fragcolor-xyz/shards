@@ -5,6 +5,8 @@
 #include "constraints.hpp"
 #include <shards/core/pmr/vector.hpp>
 #include <shards/core/pmr/temp_allocator.hpp>
+#include <shards/core/pmr/shared_temp_allocator.hpp>
+#include <shards/core/pmr/unordered_map.hpp>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>

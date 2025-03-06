@@ -27,7 +27,7 @@ use widgets::image_util::AutoTexturePtr;
 extern crate shards;
 
 #[macro_use]
-extern crate lazy_static;
+extern crate lazy_static; 
 
 pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
 pub static ANY_TABLE_OR_NONE_SLICE: &[Type] = &[

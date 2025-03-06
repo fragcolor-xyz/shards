@@ -6,24 +6,23 @@ option(SHARDS_NO_RUST_UNION "Disables rust union build" OFF)
 # The same happens for the rust modules
 #
 # If you have any dependencies between the two, you should link both targets against each other in a ciruclar fashion
-# on the final executable target, e.g.: 
-#   target_link_libraries(shards-rust_union shards-cpp-union)
-#   target_link_libraries(shards-cpp-union shards-rust-union)
+# on the final executable target, e.g.:
+# target_link_libraries(shards-rust_union shards-cpp-union)
+# target_link_libraries(shards-cpp-union shards-rust-union)
 #
 # If any of the cpp modules for example has a dependency that needs any rust code (for example, gfx, gfx-core)
 # you need to link in that dependency as an OBJECT library as well, so it will be in the same static union lib
 #
 # Since you can not chain OBJECT libraries in cmake (it will miss the lowest level objects)
 # you can set up an intermediate interface target like this:
-#   add_library(gfx-texture-file-obj OBJECT texture_file/texture_file.cpp)
+# add_library(gfx-texture-file-obj OBJECT texture_file/texture_file.cpp)
 #
-#   add_library(gfx-texture-file INTERFACE)
-#   target_sources(gfx-texture-file PUBLIC $<TARGET_OBJECTS:gfx-texture-file-obj>)
-#   target_link_libraries(gfx-texture-file INTERFACE gfx-texture-file-obj)
+# add_library(gfx-texture-file INTERFACE)
+# target_sources(gfx-texture-file PUBLIC $<TARGET_OBJECTS:gfx-texture-file-obj>)
+# target_link_libraries(gfx-texture-file INTERFACE gfx-texture-file-obj)
 #
 # gfx-texture-file can then be linked into a module as usual, e.g.:
-#   target_link_libraries(shards-module-gfx gfx-texture-file)
-
+# target_link_libraries(shards-module-gfx gfx-texture-file)
 function(is_module_enabled OUTPUT_VARIABLE MODULE_ID)
   if(${SHARDS_WITH_EVERYTHING})
     set(${OUTPUT_VARIABLE} TRUE PARENT_SCOPE)
@@ -206,6 +205,7 @@ function(shards_generate_rust_union TARGET_NAME)
       get_property(RUST_FEATURES TARGET ${RUST_TARGET} PROPERTY RUST_FEATURES)
       unset(RUST_FEATURES_STRING)
       unset(RUST_FEATURES_STRING1)
+
       if(RUST_FEATURES)
         unset(RUST_FEATURES_QUOTED)
 
@@ -302,16 +302,18 @@ function(shards_generate_union UNION_TARGET_NAME)
 
   get_property(SHARDS_MODULE_TARGETS GLOBAL PROPERTY SHARDS_MODULE_TARGETS)
 
+  # Property retrieved and defined in shards shards/core/CMakeLists.txt
+  get_property(SHARDS_INLINE_SOURCES GLOBAL PROPERTY SHARDS_INLINE_SOURCES)
+
+  # Compile normally inlined sources separately
   if(NOT SHARDS_INLINE_EVERYTHING)
-    # Compile normally inlined sources separately
-    # NOTE: You should make sure the source files listed here are included inside core_inlined.cpp as well
     target_sources(${UNION_TARGET_NAME} PRIVATE
-      ${SHARDS_DIR}/shards/core/runtime.cpp
+      ${SHARDS_INLINE_SOURCES}
     )
   endif()
 
-  target_compile_definitions(${UNION_TARGET_NAME} PRIVATE 
-    SHARDS_CORE_DLL=1 
+  target_compile_definitions(${UNION_TARGET_NAME} PRIVATE
+    SHARDS_CORE_DLL=1
     shards_core_EXPORTS=1)
 
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
@@ -410,9 +412,14 @@ function(shards_generate_union UNION_TARGET_NAME)
       )
       message(STATUS "Shards: Inlining ${REL_INLINE_SRC}")
     endforeach()
+  endif()
 
-    # Include the core inline source file here
-    file(APPEND ${GENERATED_TEMP} "#include <shards/core/core_inlined.cpp>\n")
+  # Join all the SHARDS_INLINE_SOURCES
+  if(SHARDS_INLINE_EVERYTHING)
+    foreach(ABS_SRC_PATH ${SHARDS_INLINE_SOURCES})
+      file(RELATIVE_PATH REL_INLINE_SRC_PATH "${GENERATED_INCLUDE_DIR}" "${ABS_SRC_PATH}")
+      file(APPEND ${GENERATED_TEMP} "#include \"${REL_INLINE_SRC_PATH}\"\n")
+    endforeach()
   endif()
 
   file(APPEND ${GENERATED_TEMP} "\n"

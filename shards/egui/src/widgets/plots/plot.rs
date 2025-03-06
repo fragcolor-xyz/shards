@@ -171,6 +171,7 @@ impl LegacyShard for Plot {
     let mut shared: ExposedTypes = data.shared.into();
     // expose UI context
     let ctx_info = ExposedInfo {
+      internalId: 0,
       exposedType: EGUI_PLOT_UI_TYPE,
       name: self.plot_context.get_name(),
       help: shccstr!("The UI plot context."),

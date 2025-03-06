@@ -392,6 +392,9 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
+  // Internally used to tag specific instances of types
+  // For example to detect if a composed shard returns the same type as it's input
+  uint32_t tag;
 };
 
 typedef struct SHTraitVariable {
@@ -498,6 +501,9 @@ struct SHExposedTypeInfo {
 
   // If the variable is declared in this shard (not inherited from an inner shard)
   SHBool declared;
+
+  // Internally used to distinguish similarly named variables
+  uint32_t internalId;
 };
 
 typedef struct SHStringPayload {
@@ -702,8 +708,12 @@ struct SHInstanceData {
   struct SHTypesInfo outputTypes;
 
   // Internally used
-  void *requiredVariables;
-  void *privateContext;
+  void * _unused;
+  struct SHPrivateContext *privateContext;
+};
+
+struct SHContextInternal {
+  ShardPtr currentShard;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();
@@ -778,6 +788,8 @@ struct Shard {
 
   // internal use only, to optionally identify the shard
   uint64_t id;
+  // internal use only, to optionally identify the shard sequence inside a wire
+  uint64_t seqId;
 
   // Optional compile time defined metadata
   struct ShardMetadata *metadata;

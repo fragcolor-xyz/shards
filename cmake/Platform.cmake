@@ -190,9 +190,12 @@ else()
 endif()
 
 if(WIN32)
-  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE=1)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
-  add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
+  add_compile_definitions(
+    _CRT_SECURE_NO_DEPRECATE=1
+    _CRT_SECURE_NO_WARNINGS=1
+    _CRT_NONSTDC_NO_WARNINGS=1
+    _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS=1
+  )
   add_compile_definitions(NOMINMAX=1)
 
   if(X86 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
