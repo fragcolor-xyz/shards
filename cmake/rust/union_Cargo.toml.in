@@ -4,7 +4,10 @@
 name = "${CARGO_CRATE_NAME}"
 version = "${CARGO_CRATE_VERSION}"
 edition = "2021"
- 
+
+[features]
+tracy = []
+
 [dependencies]
 ${CARGO_CRATE_DEPS} 
 

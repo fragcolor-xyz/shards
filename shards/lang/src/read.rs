@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types, Var, FRAG_CC, SEQ_OF_STRINGS, SEQ_OF_STRINGS_TYPES, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -132,7 +132,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
 
   let mut inner = pair.into_inner();
 
-  let pipeline = if let Some(next) = inner.peek() {
+  let _pipeline = if let Some(next) = inner.peek() {
     if next.as_rule() == Rule::Pipeline {
       process_pipeline(
         inner

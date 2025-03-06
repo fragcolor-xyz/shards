@@ -1,7 +1,7 @@
-use egui::CentralPanel;
-use shards::core::{register_enum, register_shard};
+
+use shards::core::{register_shard};
 use shards::shard::Shard;
-use shards::types::{common_type, ANY_TYPES};
+use shards::types::{ANY_TYPES};
 use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
 
 use crate::{util, CONTEXTS_NAME, PARENTS_UI_NAME};

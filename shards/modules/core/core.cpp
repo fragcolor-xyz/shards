@@ -3224,6 +3224,8 @@ SHARDS_REGISTER_FN(core) {
 
   REGISTER_SHARD("ForEach", ForEachShard);
   REGISTER_SHARD("ForRange", ForRangeShard);
+  REGISTER_SHARD("IntRange", IntRangeShard);
+  
   REGISTER_SHARD("Map", Map);
   REGISTER_SHARD("Reduce", Reduce);
   REGISTER_SHARD("Erase", Erase);

@@ -3,6 +3,7 @@ use crate::util;
 use crate::widgets::text_util;
 use crate::widgets::TEXTWRAP_TYPE;
 use crate::ANY_TABLE_OR_NONE_SLICE;
+use crate::BOOL_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
 use egui::TextWrapMode;
 use shards::shard::Shard;
@@ -31,6 +32,13 @@ pub(crate) struct Label {
 
   #[shard_param("Style", "The text style.", ANY_TABLE_OR_NONE_SLICE)]
   style: ClonedVar,
+
+  #[shard_param(
+    "Selectable",
+    "Whether the text can be selected.",
+    BOOL_VAR_SLICE
+  )]
+  selectable: ParamVar,
 }
 
 impl Default for Label {
@@ -40,6 +48,7 @@ impl Default for Label {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       wrap: ClonedVar(TextWrap::Extend.into()),
       style: ClonedVar::default(),
+      selectable: ParamVar::new(Var::new_bool(true)),
     }
   }
 }
@@ -81,6 +90,9 @@ impl Shard for Label {
       }
 
       let mut label = egui::Label::new(text);
+
+      let selectable = self.selectable.get().try_into()?;
+      label = label.selectable(selectable);
 
       let wrap = &self.wrap.0;
       if wrap.is_bool() {

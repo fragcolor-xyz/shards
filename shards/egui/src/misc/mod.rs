@@ -20,7 +20,7 @@ mod reset;
 mod style;
 mod painter;
 mod debug;
-pub(crate) mod style_util;
+pub mod style_util;
 
 pub fn register_shards() {
   register_legacy_shard::<Reset>();

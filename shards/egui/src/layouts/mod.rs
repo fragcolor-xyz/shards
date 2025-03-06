@@ -3,6 +3,7 @@
 
 use shards::core::register_enum;
 use shards::core::register_legacy_shard;
+
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
@@ -39,12 +40,12 @@ struct Disable {
 struct Frame {
   parents: ParamVar,
   requiring: ExposedTypes,
-  innerMargin: ParamVar,
-  outerMargin: ParamVar,
+  inner_margin: ParamVar,
+  outer_margin: ParamVar,
   rounding: ParamVar,
-  fillColor: ParamVar,
-  strokeColor: ParamVar,
-  strokeWidth: ParamVar,
+  fill_color: ParamVar,
+  stroke_color: ParamVar,
+  stroke_width: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
 }
@@ -238,16 +239,6 @@ struct NextRow {
   requiring: ExposedTypes,
 }
 
-struct ScrollArea {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  contents: ShardsVar,
-  horizontal: ParamVar,
-  vertical: ParamVar,
-  alwaysShow: ParamVar,
-  exposing: ExposedTypes,
-}
-
 struct Separator {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -311,6 +302,8 @@ mod vertical;
 pub fn register_shards() {
   auto_grid::register_shards();
   layout::register_shards();
+  table::register_shards();
+  scroll_area::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();
@@ -324,10 +317,8 @@ pub fn register_shards() {
   register_enum::<LayoutAlign>();
   register_legacy_shard::<Indent>();
   register_legacy_shard::<NextRow>();
-  register_legacy_shard::<ScrollArea>();
   register_legacy_shard::<Separator>();
   register_legacy_shard::<Space>();
-  register_legacy_shard::<Table>();
   register_legacy_shard::<Vertical>();
   register_legacy_shard::<Sized>();
 }

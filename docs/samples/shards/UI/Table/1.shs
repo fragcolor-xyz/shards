@@ -7,31 +7,33 @@ GFX.MainWindow(
     UI(
       UI.CentralPanel(
         Contents: {
-          [
-            {Name: "Doe" Surname: "John"}
+          [{Name: "Doe" Surname: "John"}
             {Name: "Dough" Surname: "Jane"}
-            {Name: "Smith" Surname: "Dick"}] | UI.Table(
+            {Name: "Smith" Surname: "Dick"}] = seq
+          Count(seq) | UI.Table(
             Resizable: true
             Striped: true
-            RowIndex: index
             Columns: [
-              {Initial: 20.0}
               {
-                Header: "Surname"
-                Initial: 100.0
-                AtLeast: 60.0
-                AtMost: 160.0
+                UI.TableHeader({
+                  "Index" | UI.Label
+                } WidthType: "exact" Width: 20.0)
+                ToString | UI.Label
               }
               {
-                Header: "Name"
-                Initial: 80.0
-                AtLeast: 60.0
-                AtMost: 160.0
+                UI.TableHeader({
+                  "Surname" | UI.Label
+                } WidthType: "initial" Width: 100.0 MinWidth: 60.0 MaxWidth: 160.0)
+                = i
+                seq | Take(i) | Take("Surname") | UI.Label
+              }
+              {
+                UI.TableHeader({
+                  "Name" | UI.Label
+                } WidthType: "initial" Width: 80.0 MinWidth: 60.0 MaxWidth: 160.0)
+                = i
+                seq | Take(i) | Take("Name") | UI.Label
               }]
-            Builder: [
-              {index | ToString | UI.Label}
-              {Take("Surname") | UI.Label}
-              {Take("Name") | UI.Label}]
           )
         }
       )

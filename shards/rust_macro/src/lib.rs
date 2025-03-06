@@ -74,7 +74,6 @@ struct ParamSingle {
 struct ParamSet {
   type_name: syn::Type,
   var_name: syn::Ident,
-  has_custom_interface: bool,
 }
 
 enum Param {
@@ -473,7 +472,6 @@ fn parse_shard_fields<'a>(
         result.params.push(Param::Set(ParamSet {
           type_name: param_set_ty,
           var_name: fld.ident.clone().expect("Expected field name"),
-          has_custom_interface,
         }));
         result
           .warmables
