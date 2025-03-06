@@ -15,6 +15,7 @@
 #include <shards/inlined.hpp>
 #include <shards/core/params.hpp>
 #include <shards/gfx/moving_average.hpp>
+#include <shards/core/compose.hpp>
 #include "time.hpp"
 #include <cassert>
 #include <cmath>
@@ -67,6 +68,9 @@ struct Const {
     _dependencies.clear();
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
     if (!_dependencies.empty()) {
+      if (_value.valueType == SHType::ContextVar) {
+        CompositionContext::get(data).annotateContextVariable(_value.payload.stringValue, _innerInfo);
+      }
       _clone = _value;
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::NotInline;
     } else {
@@ -561,7 +565,7 @@ struct And {
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow continues; otherwise, it stops."); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
   }
@@ -570,13 +574,14 @@ struct And {
     if (input.payload.boolValue) {
       // Continue the flow
       context->rebaseFlow();
-      return input;
     } else {
       // Stop the flow
       context->returnFlow(input);
-      return input;
     }
+    return context->currentWire()->currentInput;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct Or {
@@ -590,7 +595,7 @@ struct Or {
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString inputHelp() { return SHCCSTR("If true, the flow stops and succeeds; otherwise, the flow continues."); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
   }
@@ -599,13 +604,14 @@ struct Or {
     if (input.payload.boolValue) {
       // Stop the flow and succeed
       context->returnFlow(input);
-      return input;
     } else {
       // Continue the flow with the initial input
       context->rebaseFlow();
-      return input;
     }
+    return context->currentWire()->currentInput;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct Not {
@@ -622,6 +628,8 @@ struct Not {
     output = shards::Var(!input.payload.boolValue);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsNone {
@@ -638,6 +646,8 @@ struct IsNone {
     output = shards::Var(input.valueType == SHType::None);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsNotNone {
@@ -656,6 +666,8 @@ struct IsNotNone {
     output = shards::Var(input.valueType != SHType::None);
     return output;
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data);
 };
 
 struct IsTrue {
@@ -1734,6 +1746,9 @@ struct Get : public VariableBase {
         if (type->exposedType.basicType != SHType::Table)
           throw ComposeError(fmt::format("Get: error, variable {} was not a table", _name));
 
+        CompositionContext::get(data).annotateContextVariable(_name, type ? type->exposedType : std::optional<SHTypeInfo>{});
+        CompositionContext::get(data).annotateSubPath(_key);
+
         auto &tableKeys = type->exposedType.table.keys;
         auto &tableTypes = type->exposedType.table.types;
         if (tableKeys.len == tableTypes.len) {
@@ -1802,6 +1817,8 @@ struct Get : public VariableBase {
     } else {
       _tableTypes.clear();
       _tableKeys.clear();
+
+      CompositionContext::get(data).annotateContextVariable(_name, type ? type->exposedType : std::optional<SHTypeInfo>{});
 
       if (type) {
         if (type->isProtected) {
@@ -3126,6 +3143,8 @@ struct Take {
     if (!valid)
       throw SHException(
           fmt::format("Take, invalid indices or malformed input. input: {}, indices: {}", data.inputType, _indices));
+
+    CompositionContext::get(data).annotateSubPath(_indices);
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);

@@ -8,6 +8,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/hash.hpp>
+#include <shards/core/compose.hpp>
 #include <shards/shards.h>
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
@@ -927,6 +928,39 @@ struct TypeOf {
   }
 };
 
+struct TypeShard {
+  SHTypeInfo _expectedType;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::TypeType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the type of the specified expression's output."); }
+
+  static SHOptionalString help() { return SHCCSTR("Evaluates the type of the input passed to this shard during composition."); }
+
+  PARAM_IMPL();
+
+  TypeShard() {}
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _expectedType = data.inputType;
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHVar out{};
+    out.valueType = SHType::Type;
+    out.payload.typeValue = &_expectedType;
+    return out;
+  }
+};
+
 template <SHType ET> struct IsX {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
@@ -1038,6 +1072,11 @@ template <SHType ET> struct IsX {
       return SHCCSTR("Checks the input value if it is of the type specified. The shard will return true if the input is of the "
                      "appropriate type, and false otherwise.");
     }
+  }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    CompositionContext::get(data).annotateIsOfType(SHTypeInfo{.basicType = ET});
+    return outputTypes().elements[0];
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(input.valueType == ET); }
@@ -1373,6 +1412,7 @@ SHARDS_REGISTER_FN(casting) {
 
   REGISTER_SHARD("ExpectLike", ExpectLike);
   REGISTER_SHARD("TypeOf", TypeOf);
+  REGISTER_SHARD("Type", TypeShard);
 
   // IsNone is implemented in Core
   using IsInt = IsX<SHType::Int>;

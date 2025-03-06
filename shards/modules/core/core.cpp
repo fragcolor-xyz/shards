@@ -4,6 +4,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/hash.inl>
+#include <shards/core/compose.hpp>
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include "core.hpp"
@@ -2318,6 +2319,31 @@ struct Last {
   }
 };
 
+SHTypeInfo And::composeV2(const SHInstanceData &data) {
+  CompositionContext::get(data).annotateAnd();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Or::composeV2(const SHInstanceData &data) {
+  CompositionContext::get(data).annotateOr();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Not::composeV2(const SHInstanceData &data) {
+  CompositionContext::get(data).annotateNot();
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNone::composeV2(const SHInstanceData &data) {
+  CompositionContext::get(data).annotateIsNone();
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNotNone::composeV2(const SHInstanceData &data) {
+  CompositionContext::get(data).annotateIsNotNone();
+  return outputTypes().elements[0];
+}
+
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
 RUNTIME_SHARD_help(And);
@@ -2326,6 +2352,7 @@ RUNTIME_SHARD_inputHelp(And);
 RUNTIME_SHARD_outputTypes(And);
 RUNTIME_SHARD_outputHelp(And);
 RUNTIME_SHARD_activate(And);
+RUNTIME_SHARD_composeV2(And);
 RUNTIME_SHARD_END(And);
 
 // Register Or
@@ -2336,6 +2363,7 @@ RUNTIME_SHARD_inputHelp(Or);
 RUNTIME_SHARD_outputTypes(Or);
 RUNTIME_SHARD_outputHelp(Or);
 RUNTIME_SHARD_activate(Or);
+RUNTIME_SHARD_composeV2(Or);
 RUNTIME_SHARD_END(Or);
 
 // Register Not
@@ -2346,6 +2374,7 @@ RUNTIME_SHARD_inputHelp(Not);
 RUNTIME_SHARD_outputTypes(Not);
 RUNTIME_SHARD_outputHelp(Not);
 RUNTIME_SHARD_activate(Not);
+RUNTIME_SHARD_composeV2(Not);
 RUNTIME_SHARD_END(Not);
 
 // Register IsNan

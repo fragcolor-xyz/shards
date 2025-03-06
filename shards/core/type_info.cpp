@@ -1,6 +1,7 @@
 #include "type_info.hpp"
 #include "foundation.hpp"
 #include "trait.hpp"
+#include "compose.hpp"
 #include <shards/iterator.hpp>
 
 namespace shards {

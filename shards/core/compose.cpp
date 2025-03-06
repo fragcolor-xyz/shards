@@ -1,0 +1,825 @@
+#include "compose.hpp"
+#include "pmr/unordered_set.hpp"
+#include "pmr/vector.hpp"
+#include "type_cache.hpp"
+#include "compose_fmt.hpp"
+#include <functional>
+#include <shards/common_types.hpp>
+#include <tracy/Wrapper.hpp>
+#include <shards/log/log.hpp>
+
+namespace shards {
+
+namespace compose {
+std::shared_ptr<spdlog::logger> logger = logging::getOrCreate("flow_analyzer");
+}
+
+bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
+                bool relaxEmptySeqCheck, bool ignoreFixedSeq) {
+  return TypeMatcher{
+      .isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck, .ignoreFixedSeq = ignoreFixedSeq}
+      .match(inputType, receiverType);
+}
+
+void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
+  using namespace std::literals;
+
+  switch (var.valueType) {
+  case SHType::ContextVar: {
+    auto sv = SHSTRVIEW(var);
+    // use context inherited
+    shassert(data.privateContext && "Private context should be valid");
+    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    auto info = findExposedVariable(inherited->inherited, sv);
+    if (info) {
+      out.push_back(*info);
+      break;
+    }
+  } break;
+  case SHType::Seq:
+    shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(data, out, v); });
+    break;
+  case SHType::Table:
+    shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &v) { collectRequiredVariables(data, out, v); });
+    break;
+  default:
+    break;
+  }
+}
+
+namespace compose {
+CompositionContext::CompositionContext() : visitedWires(tempAllocator.getAllocator()), stack(tempAllocator.getAllocator()) {}
+CompositionContext::~CompositionContext() {
+  while (stack.size() > 0) {
+    popScope();
+  }
+  for (auto s : scopePool) {
+    std::destroy_at(s);
+  }
+}
+
+Scope::Scope(std::allocator_arg_t, allocator_type a) : exposed(a), required(a) {}
+Scope::Scope(std::allocator_arg_t, allocator_type a, Scope &&other) : exposed(a), required(a) {}
+
+void CompositionContext::step() {
+  Scope *scope = &currentScope();
+  ZoneScopedN("validateConnection");
+  ZoneName(scope->bottom->name(scope->bottom), scope->bottom->nameLength);
+
+  auto previousOutput = scope->previousOutputType;
+
+  auto inputInfos = scope->bottom->inputTypes(scope->bottom);
+  auto inputMatches = false;
+  if (inputInfos.len == 1 && inputInfos.elements[0].basicType == SHType::None) {
+    inputMatches = true;
+  } else {
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      if (matchTypes(previousOutput, inputInfo, true, true, true)) {
+        inputMatches = true;
+        break;
+      }
+    }
+  }
+
+  if (!inputMatches) {
+    const auto msg = fmt::format(
+        "Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
+        scope->bottom->name(scope->bottom), scope->bottom->line, scope->bottom->column, inputInfos, scope->previousOutputType);
+#if SH_DEBUG_TYPE_MATCHING
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      if (matchTypes(previousOutput, inputInfo, true, true, true)) {
+        inputMatches = true;
+        break;
+      }
+    }
+#endif
+    throw ComposeError(msg);
+  }
+
+  auto copyComposeShared = [&](SHInstanceData &data) ALWAYS_INLINE {
+    data.shard = scope->bottom;
+    data.wire = scope->wire;
+    data.inputType = previousOutput;
+    data.requiredVariables = scope->fullRequired;
+    data.privateContext = this;
+    if (scope->next) {
+      data.outputTypes = scope->next->inputTypes(scope->next);
+    }
+    data.onWorkerThread = scope->onWorkerThread;
+  };
+
+  flowAnnotateNextShard(scope->bottom);
+
+  if (scope->bottom->compose) {
+    SHInstanceData data{};
+    {
+      pmr::vector<SHExposedTypeInfo> sharedStorage{getAllocator()};
+      sharedStorage.reserve(scope->exposed.size() + inherited.size());
+
+      copyComposeShared(data);
+
+      for (auto &pair : scope->exposed) {
+        sharedStorage.push_back(pair.second);
+      }
+
+      for (auto &pair : inherited) {
+        if (scope->exposed.find(pair.first) != scope->exposed.end())
+          continue;
+        sharedStorage.push_back(pair.second);
+      }
+
+      data.shared.elements = sharedStorage.data();
+      data.shared.len = sharedStorage.size();
+    }
+
+    auto composeResult = scope->bottom->compose(scope->bottom, &data);
+    scope = &currentScope(); // Refresh scope reference
+    if (composeResult.error.code != SH_ERROR_NONE) {
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
+      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, scope->wire ? scope->wire->name : "(unwired)");
+      throw ComposeError(msg);
+    }
+    scope->previousOutputType = composeResult.result;
+  } else if (scope->bottom->composeV2) {
+    SHInstanceData data{};
+    copyComposeShared(data);
+
+    auto composeResult = scope->bottom->composeV2(scope->bottom, &data);
+    scope = &currentScope(); // Refresh scope reference
+    if (composeResult.error.code != SH_ERROR_NONE) {
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
+      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, scope->wire ? scope->wire->name : "(unwired)");
+      throw ComposeError(msg);
+    }
+    scope->previousOutputType = composeResult.result;
+  } else {
+    auto outputTypes = scope->bottom->outputTypes(scope->bottom);
+    if (outputTypes.len == 1) {
+      if (outputTypes.elements[0].basicType != SHType::Any) {
+        scope->previousOutputType = outputTypes.elements[0];
+      } else {
+        auto inputTypes = scope->bottom->inputTypes(scope->bottom);
+        if (inputTypes.len == 1 && inputTypes.elements[0].basicType != SHType::Any) {
+          scope->previousOutputType = outputTypes.elements[0];
+        }
+      }
+    } else {
+      SHLOG_ERROR("Shard {} needs to implement the compose method", scope->bottom->name(scope->bottom));
+      throw ComposeError("Shard has multiple possible output types and is missing the compose method");
+    }
+  }
+
+#ifndef NDEBUG
+  if (!scope->bottom->compose) {
+    auto outputTypes = scope->bottom->outputTypes(scope->bottom);
+    shards::IterableTypesInfo otypes(outputTypes);
+    auto flowStopper = [&]() {
+      if (strcmp(scope->bottom->name(scope->bottom), "Restart") == 0 || strcmp(scope->bottom->name(scope->bottom), "Stop") == 0 ||
+          strcmp(scope->bottom->name(scope->bottom), "Return") == 0 || strcmp(scope->bottom->name(scope->bottom), "Fail") == 0) {
+        return true;
+      } else {
+        return false;
+      }
+    }();
+
+    auto shardHasValidOutputTypes =
+        flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
+          return t.basicType == SHType::Any ||
+                 (t.basicType == SHType::Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
+                  scope->previousOutputType.basicType == SHType::Seq) ||
+                 (t.basicType == SHType::Table && scope->previousOutputType.basicType == SHType::Table) ||
+                 t == scope->previousOutputType;
+        });
+    if (!shardHasValidOutputTypes) {
+      auto msg = fmt::format("Shard {} doesn't have a valid output type", scope->bottom->name(scope->bottom));
+      throw ComposeError(msg);
+    }
+  }
+#endif
+
+  auto exposedVars = scope->bottom->exposedVariables(scope->bottom);
+  for (uint32_t i = 0; exposedVars.len > i; i++) {
+    auto &exposed_param = exposedVars.elements[i];
+    std::string_view name(exposed_param.name);
+    if (exposed_param.declared && scope->wire) {
+      auto inserted = scope->wire->getComposeData().declaredVariables.emplace(name, exposed_param);
+      SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
+      if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
+        throw ComposeError(
+            fmt::format("Variable {} declared twice with different mutability in wire {}", name, scope->wire->name));
+      }
+      if (!inserted.second && inserted.first->second.isMutable) {
+        if (inserted.first->second.exposedType.basicType == SHType::Table &&
+            exposed_param.exposedType.basicType == SHType::Table) {
+        } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
+          throw ComposeError(
+              fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, scope->wire->name));
+        }
+      }
+      exposed_param.declared = false;
+    }
+
+    scope->exposed[name] = exposed_param;
+    inherited.insert(name, exposed_param);
+  }
+
+  auto requiredVar = scope->bottom->requiredVariables(scope->bottom);
+
+  pmr::unordered_map<std::string, SHExposedTypeInfo> requiredVars{getAllocator()};
+  for (uint32_t i = 0; requiredVar.len > i; i++) {
+    auto &required_param = requiredVar.elements[i];
+    std::string name(required_param.name);
+    requiredVars[name] = required_param;
+  }
+
+  for (const auto &required : requiredVars) {
+    auto matching = false;
+    SHExposedTypeInfo match{};
+
+    const auto &required_param = required.second;
+
+    std::string_view name(required_param.name);
+
+    std::optional<SHExposedTypeInfo> found;
+    const auto foundInherited = inherited.find(name);
+    if (foundInherited != inherited.end()) {
+      found = foundInherited->second;
+    } else {
+      found = std::nullopt;
+    }
+    if (!found) {
+      auto err = fmt::format("Required variable not found: {}", name);
+      SHLOG_TRACE("Required variable not found: {}", name);
+    } else {
+      auto exposedType = found->exposedType;
+      auto requiredType = required_param.exposedType;
+      if (matchTypes(exposedType, requiredType, false, true, false)) {
+        matching = true;
+      }
+    }
+
+    if (matching) {
+      match = required_param;
+    }
+
+    if (!matching) {
+#if SH_DEBUG_TYPE_MATCHING
+      auto exposedType = found->exposedType;
+      auto requiredType = required_param.exposedType;
+      if (matchTypes(exposedType, requiredType, false, true, false)) {
+        matching = true;
+      }
+#endif
+      throw ComposeError(
+          fmt::format("Required types do not match currently exposed ones for variable '{}' required type: (\"{}\", {})",
+                      required.first, required.second.name, required.second.exposedType));
+    } else {
+      if (scope->exposed.find(match.name) == scope->exposed.end())
+        scope->required.emplace(match);
+    }
+  }
+}
+
+compose::Scope &CompositionContext::pushScope(std::optional<SHTypeInfo> inputType) {
+  compose::Scope *e{};
+  if (scopePool.size() > 0) {
+    e = scopePool.back(), scopePool.pop_back();
+  } else {
+    e = getAllocator().new_object<Scope>();
+  }
+
+  if (inputType)
+    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({}) < {}", stack.size(), *inputType);
+  else
+    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({})", stack.size());
+  auto &s = *stack.emplace_back(e);
+  if (inputType) {
+    s.previousOutputType = s.originalInputType = *inputType;
+    s.flow.inputType = *inputType;
+    s.flow.currentVariableType = s.flow.inputType;
+    s.flow.currentAccess.emplace(std::allocator_arg, getAllocator(), flow::VariableAccessor::input());
+  }
+  return s;
+}
+void CompositionContext::popScope() {
+  // Commit rule
+  auto comitted = flowCommitRule();
+  if (comitted) {
+    SPDLOG_LOGGER_DEBUG(logger, "Pop scope({}): Committed rule: {}", stack.size(), *comitted);
+  }
+
+  // Analyze contents
+  auto &rules = current().commitedRules;
+  if (rules.matches.size() > 0) {
+    SPDLOG_LOGGER_DEBUG(logger, "Assertion rules: {}", rules);
+  }
+
+  auto scope = stack.back();
+  stack.pop_back();
+  scopePool.push_back(scope);
+  SPDLOG_LOGGER_DEBUG(logger, "Popped scope ({})", stack.size());
+}
+void CompositionContext::annotateContextVariable(std::string_view name, std::optional<SHTypeInfo> type) {
+  flowAnnotateContextVariable(name, type);
+  flowTagInstrumented();
+}
+void CompositionContext::annotateSubPath(const SHVar &key) {
+  flowAppendVA(flow::VariableAccessor::key(key));
+  SPDLOG_LOGGER_DEBUG(logger, "Annotating sub-path: {}", key);
+  flowTagInstrumented();
+}
+void CompositionContext::annotateClearVariable() {
+  flowTagInstrumented();
+  flowClearVariable();
+}
+void CompositionContext::annotatePassthrough() {
+  flowTagInstrumented();
+  flowTagPassthrough();
+}
+void CompositionContext::annotateIsOfType(SHTypeInfo type) {
+  flowTagInstrumented();
+  auto r = flowAnnotateIsA(type);
+  if (r)
+    SPDLOG_LOGGER_DEBUG(logger, "Rule: {}", *r);
+}
+void CompositionContext::annotateNot() {
+  flowTagInstrumented();
+  auto &r = current().stackRule;
+  if (r) {
+    if (!current().currentVariableType) {
+      throw std::logic_error("Undefined previous variable to negation");
+    }
+    if (current().currentVariableType != shards::CoreInfo::BoolType) {
+      throw std::logic_error(fmt::format("Cannot negate non-boolean variable ({})", *current().currentVariableType));
+    }
+    r = r->inverted();
+    SPDLOG_LOGGER_DEBUG(logger, "Not: Inverted rule: {}", *r);
+  } else {
+    SPDLOG_LOGGER_DEBUG(logger, "Not: No rule to invert");
+  }
+}
+void CompositionContext::annotateAnd() {
+  flowTagInstrumented();
+  // Commit current rule since it will always be true
+  auto comitted = flowCommitRule();
+  if (comitted) {
+    SPDLOG_LOGGER_DEBUG(logger, "And: Committed rule: {}", *comitted);
+  } else {
+    SPDLOG_LOGGER_DEBUG(logger, "And: No rule to commit");
+  }
+
+  // Rebase flow
+  auto &c = current();
+  c.currentVariableType = c.inputType;
+  c.currentAccess.emplace(std::allocator_arg, getAllocator(), flow::VariableAccessor::input());
+}
+void CompositionContext::annotateOr() {
+  flowTagInstrumented();
+  flowClearUndeterministic();
+
+  // Rebase flow
+  auto &c = current();
+  c.currentVariableType = c.inputType;
+  c.currentAccess.emplace(std::allocator_arg, getAllocator(), flow::VariableAccessor::input());
+}
+void CompositionContext::annotateIsNone() {
+  flowTagInstrumented();
+  auto r = flowAnnotateIsA(shards::CoreInfo::NoneType);
+  if (r)
+    SPDLOG_LOGGER_DEBUG(logger, "Rule: {}", *r);
+}
+void CompositionContext::annotateIsNotNone() {
+  flowTagInstrumented();
+  if (flowAnnotateIsA(shards::CoreInfo::NoneType)) {
+    auto &r = current().stackRule;
+    r = r->inverted();
+    SPDLOG_LOGGER_DEBUG(logger, "Rule: {}", *r);
+  }
+}
+
+void CompositionContext::flowAnnotateNextShard(Shard *shard) {
+  auto &c = current();
+  if (c.shardIndex > 0 && !c.annotations.isInstrumented) {
+    SPDLOG_LOGGER_DEBUG(logger, "non-instrumented shard: {} ({})", c.shardName, c.shardIndex);
+    flowClearUndeterministic();
+  }
+  c.shardIndex++;
+  c.shardName = shard->name(shard);
+  c.annotations.reset();
+  SPDLOG_LOGGER_DEBUG(logger, "Annotating next shard: {}", c.shardName);
+}
+
+void CompositionContext::flowAnnotateContextVariable(std::string_view name, std::optional<SHTypeInfo> type) {
+  if (type) {
+    SPDLOG_LOGGER_DEBUG(logger, "Annotating context variable: {} with type: {}", name, *type);
+  } else {
+    SPDLOG_LOGGER_DEBUG(logger, "Annotating context variable: {}", name);
+  }
+  auto &s = current();
+  s.currentVariableType = type;
+  s.currentAccess.emplace(std::allocator_arg, getAllocator(), flow::VariableAccessor::var(name));
+}
+
+void CompositionContext::flowClearVariable() {
+  auto &v = current().currentAccess;
+  if (v) {
+    SPDLOG_LOGGER_DEBUG(logger, "Clearing variable: {}", *v);
+  }
+  v.reset();
+}
+
+void CompositionContext::flowAppendVA(flow::VariableAccessor va) {
+  auto &c = current();
+  if (!c.currentAccess) {
+    SPDLOG_LOGGER_ERROR(logger, "Undefined variable access({}) (input missing)", va);
+    flowClearUndeterministic();
+    return;
+  }
+  c.currentAccess->append(va);
+}
+
+void CompositionContext::flowClearUndeterministic() {
+  auto &c = current();
+  c.currentAccess.reset();
+  c.currentVariableType = std::nullopt;
+  c.stackRule.reset();
+}
+
+AssertionRule *CompositionContext::flowAnnotateIsA(SHTypeInfo type) {
+  auto &c = current();
+  if (!c.currentAccess) {
+    SPDLOG_LOGGER_ERROR(logger, "Undefined variable access of IsXXX");
+    flowClearUndeterministic();
+    return nullptr;
+  }
+
+  std::optional<flow::VariableAccessorChain> va;
+  c.currentAccess.swap(va);
+  c.stackRule = AssertionRule_IsA{*va, TypeInfo(type)};
+  c.currentVariableType = shards::CoreInfo::BoolType;
+  return &*c.stackRule;
+}
+
+AssertionRule *CompositionContext::flowCommitRule() {
+  auto &c = current();
+  if (c.stackRule) {
+    auto p = &c.commitedRules.matches.emplace_back(std::move(*c.stackRule));
+    c.stackRule.reset();
+    return p;
+  }
+  return nullptr;
+}
+
+} // namespace compose
+
+SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
+  ZoneScoped;
+  if (data.wire) {
+    ZoneText(data.wire->name.data(), data.wire->name.size());
+  }
+
+  // Optionally create a context
+  std::optional<CompositionContext> ownedContext{};
+  if (!data.privateContext) {
+    ZoneScopedN("new CompositionContext");
+    ownedContext.emplace();
+    data.privateContext = &ownedContext.value();
+  }
+
+  CompositionContext &ctx = CompositionContext::get(data);
+
+  ctx.inherited.pushLayer(fromWire && data.wire->pure); // if pure, prevent inherited vars from being visible
+  auto &scope = ctx.pushScope(data.inputType);
+  DEFER({
+    ctx.inherited.popLayer();
+    ctx.popScope();
+  });
+  scope.originalInputType = data.inputType;
+  scope.previousOutputType = data.inputType;
+  scope.wire = data.wire;
+  scope.onWorkerThread = data.onWorkerThread;
+  scope.fullRequired = reinterpret_cast<decltype(compose::Scope::fullRequired)>(data.requiredVariables);
+
+  // add externally added variables
+
+  // TODO: Move to compose interface and consume on SHWire::compose()
+  if (scope.wire) {
+    for (const auto &[key, pVar] : scope.wire->getExternalVariables()) {
+      const SHExternalVariable &extVar = pVar;
+      const SHVar &var = *extVar.var;
+      if ((var.flags & SHVAR_FLAGS_EXTERNAL) == 0) {
+        throw std::runtime_error(fmt::format("Variable '{}' must have SHVAR_FLAGS_EXTERNAL flag set", key.payload.stringValue));
+      }
+
+      const SHTypeInfo *type{};
+      if (extVar.type) {
+        type = extVar.type;
+      } else {
+        static TypeCache typeCache;
+        type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
+      }
+
+      SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
+      expInfo.tracked = var.flags & SHVAR_FLAGS_TRACKED;
+      std::string_view sName(key.payload.stringValue, key.payload.stringLen);
+      ctx.inherited.insert(sName, expInfo);
+    }
+
+    // add present mesh variables as well if we have a mesh
+    auto mesh = scope.wire->mesh.lock();
+    if (mesh) {
+      for (auto &v : mesh->getVariables()) {
+        // only add variables with metadata basically
+        auto metadata = mesh->getMetadata(&v.second);
+        if (metadata) {
+          std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
+          ctx.inherited.insert(sName, *metadata);
+        }
+      }
+    }
+  }
+
+  if (data.shared.elements) {
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      auto &info = data.shared.elements[i];
+      std::string_view sName(info.name);
+      ctx.inherited.insert(sName, info);
+    }
+  }
+
+  size_t chsize = wire.size();
+  for (size_t i = 0; i < chsize; i++) {
+    auto &scope = ctx.currentScope();
+    Shard *blk = wire[i];
+    scope.next = nullptr;
+    if (i < chsize - 1)
+      scope.next = wire[i + 1];
+
+    scope.bottom = blk;
+    try {
+      ctx.step();
+      // validateConnection(ctx);
+    } catch (std::exception &ex) {
+      auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+                                    blk->line, blk->column, scope.wire ? scope.wire->name : "(unwired)", ex.what());
+      // error log it
+      SHLOG_ERROR("{}", verboseMsg);
+      // send error if we can
+      if (data.wire) {
+        auto mesh = data.wire->mesh.lock();
+        if (mesh) {
+          std::string_view what{ex.what()};
+          shards::OwnedVar err{Var(what)};
+          mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+        }
+      }
+      // and finally throw it
+      throw ComposeError(verboseMsg);
+    }
+  }
+
+  auto &scope1 = ctx.currentScope();
+  SHComposeResult result = {scope1.previousOutputType};
+
+  for (auto &exposed : scope1.exposed) {
+    shards::arrayPush(result.exposedInfo, exposed.second);
+  }
+
+  if (scope1.fullRequired) {
+    for (auto &req : scope1.required) {
+      shards::arrayPush(result.requiredInfo, req);
+      (*scope1.fullRequired)[req.name] = req;
+    }
+  } else {
+    for (auto &req : scope1.required) {
+      shards::arrayPush(result.requiredInfo, req);
+    }
+  }
+
+  if (wire.size() > 0) {
+    auto &last = wire.back();
+    if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
+        strcmp(last->name(last), "Fail") == 0) {
+      result.flowStopper = true;
+    } else if (strcmp(last->name(last), "Stop") == 0) {
+      // need to check if first param is none
+      auto fp = last->getParam(last, 0);
+      if (fp.valueType == SHType::None)
+        result.flowStopper = true;
+    }
+  }
+
+  return result;
+}
+
+SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+      context->errorStack.push_back(ex.what());
+    }
+    throw;
+  }
+}
+
+void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
+  TraitMatcher tm;
+  for (auto &trait : wire->getTraits()) {
+    if (!tm(cr.exposedInfo, trait)) {
+      throw ComposeError(fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+    }
+  }
+}
+
+SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
+  SHWire *wire = const_cast<SHWire *>(wire_);
+
+  // compare exchange and then shassert we were not composing
+  bool expected = false;
+  if (!wire->composing.compare_exchange_strong(expected, true)) {
+    SHLOG_ERROR("Wire {} is already being composed", wire->name);
+    throw ComposeError("Wire is already being composed");
+  }
+  // defer reset compose state
+  DEFER(wire->composing.store(false));
+
+  // settle input type of wire before compose
+  if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+    // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
+    wire->inputType = SHTypeInfo{SHType::Any};
+    wire->ignoreInputTypeCheck = true;
+  } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
+               return strcmp(shard->name(shard), "Input") == 0;
+             })) {
+    // If first shard is a plain None, mark this wire has None input
+    // But make sure we have no (Input) shards
+    auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
+    if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
+      wire->inputType = SHTypeInfo{};
+      wire->ignoreInputTypeCheck = true;
+    } else {
+      wire->inputType = data.inputType;
+      wire->ignoreInputTypeCheck = false;
+    }
+  } else {
+    wire->inputType = data.inputType;
+    wire->ignoreInputTypeCheck = false;
+  }
+
+  shassert(wire == data.wire); // caller must pass the same wire as data.wire
+
+  auto res = internalComposeWire(wire->shards, data, true);
+  DEFER({
+    shards::arrayFree(res.exposedInfo);
+    shards::arrayFree(res.requiredInfo);
+  });
+
+  validateWireTraits(wire, res);
+
+  // set output type
+  wire->outputType = res.outputType;
+
+  // validate wire output types for additional return paths
+  if (wire->composeData) {
+    auto &cd = *wire->composeData.get();
+    DEFER({ wire->composeData.reset(); });
+    for (auto &type : cd.outputTypes) {
+      if (!matchTypes(type, res.outputType, true, true, true)) {
+        std::string err =
+            fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
+        throw ComposeError(err);
+      }
+    }
+  }
+
+  SHComposeResult result{};
+  // swap to avoid deferred free
+  std::swap(result, res);
+  return result;
+}
+
+SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire_, data);
+  } catch (std::exception &ex) {
+    if (data.privateContext) {
+      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+      context->errorStack.push_back(ex.what());
+
+      // also send error event if possible
+      auto mesh = wire_->mesh.lock();
+      if (mesh) {
+        std::string_view what{ex.what()};
+        shards::OwnedVar err{Var(what)};
+        mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
+      }
+    }
+    throw;
+  }
+}
+
+SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
+  std::vector<Shard *> shards;
+  for (uint32_t i = 0; wire.len > i; i++) {
+    shards.push_back(wire.elements[i]);
+  }
+  return composeWire(shards, data);
+}
+
+SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
+  std::vector<Shard *> shards;
+  for (uint32_t i = 0; wire.len > i; i++) {
+    shards.push_back(wire.elements[i].payload.shardValue);
+  }
+  return composeWire(shards, data);
+}
+
+bool validateSetParam(Shard *shard, int index, const SHVar &value) {
+  auto params = shard->parameters(shard);
+  if (params.len <= (uint32_t)index) {
+    SHLOG_ERROR("Parameter index out of range, shard: {}, line: {}, column: {}", shard->name(shard), shard->line, shard->column);
+    return false;
+  }
+
+  auto param = params.elements[index];
+
+  // Build a SHTypeInfo for the var
+  SHInstanceData data{};
+  auto varType = deriveTypeInfo(value, data);
+  DEFER(freeTypeInfo(varType));
+
+  for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    // This only does a quick check to see if the type is roughly correct
+    // ContextVariable types will be checked in validateConnection based on requiredVariables
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
+      return true; // we are good just exit
+    }
+  }
+
+  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
+                         param.name, value, varType, param.valueTypes, shard->line, shard->column);
+#if SH_DEBUG_TYPE_MATCHING
+  // Put a breakpoint here to debug
+  for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
+      return true;
+    }
+  }
+#endif
+  SHLOG_ERROR("{}", err);
+  return false;
+}
+
+} // namespace shards
+void SHMesh::prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
+  shards::CompositionContext privateContext;
+  data.privateContext = &privateContext;
+  try {
+    auto validation = shards::composeWire(wire.get(), data);
+    shards::arrayFree(validation.exposedInfo);
+    shards::arrayFree(validation.requiredInfo);
+  } catch (const std::exception &e) {
+    // build a reverse stack error log from privateContext.errorStack
+    std::string errors;
+    for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
+      errors += *it;
+      if (++it == privateContext.errorStack.rend())
+        break;
+      errors += "\n";
+    }
+    SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
+    throw;
+  }
+}
+
+void SHMesh::compose(const std::shared_ptr<SHWire> &wire, SHVar input) {
+  ZoneScoped;
+
+  SHLOG_TRACE("Composing wire {}", wire->name);
+
+  if (wire->warmedUp) {
+    SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
+    throw shards::SHException("Multiple wire Pre-composing");
+  }
+
+  wire->mesh = shared_from_this();
+
+  wire->isRoot = true;
+  // remove when done here
+  DEFER(wire->isRoot = false);
+
+  // compose the wire
+  SHInstanceData data = instanceData;
+  data.wire = wire.get();
+  data.inputType = shards::deriveTypeInfo(input, data);
+  DEFER({ shards::freeDerivedInfo(data.inputType); });
+  prettyCompose(wire, data);
+
+  SHLOG_TRACE("Wire {} composed", wire->name);
+}

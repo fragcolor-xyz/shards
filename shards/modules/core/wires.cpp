@@ -8,6 +8,7 @@
 #include <shards/core/platform.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/compose.hpp>
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>

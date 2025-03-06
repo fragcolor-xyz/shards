@@ -22,7 +22,7 @@ if(APPLE)
 
   # Add the deployment target flag to Swift compiler options
   set(CMAKE_Swift_FLAGS "${CMAKE_Swift_FLAGS} ${deployment_target_flag}" CACHE STRING "Swift compiler flags" FORCE)
-  
+
   set(CMAKE_Swift_COMPILER /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc)
   enable_language(Swift)
   set(CMAKE_Swift_LANGUAGE_VERSION 5)
@@ -38,10 +38,12 @@ if(APPLE)
 
   if(XCODE_SDK)
     string(REGEX MATCH "simulator" IS_SIMULATOR ${XCODE_SDK})
+
     if(IS_SIMULATOR)
       message(STATUS "Building for simulator: ${XCODE_SDK}")
+
       # Generic simulator settings here
-      
+
       # Optionally detect specific simulator type
       if(XCODE_SDK MATCHES "iphonesimulator")
         message(STATUS "iOS Simulator detected")
@@ -181,9 +183,12 @@ else()
 endif()
 
 if(WIN32)
-  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE=1)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
-  add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
+  add_compile_definitions(
+    _CRT_SECURE_NO_DEPRECATE=1
+    _CRT_SECURE_NO_WARNINGS=1
+    _CRT_NONSTDC_NO_WARNINGS=1
+    _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS=1
+  )
   add_compile_definitions(NOMINMAX=1)
 
   if(X86 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -362,6 +367,7 @@ if(USE_TSAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
+
   if(USE_TSAN GREATER 1)
     add_compile_options(
       $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
@@ -370,6 +376,7 @@ if(USE_TSAN)
       $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
     )
   endif()
+
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_TSAN>)
 endif()
 

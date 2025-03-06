@@ -1,0 +1,15 @@
+{} >= tbl
+"" >= str
+When({true} {
+  "hello" | Set(tbl "s")
+})
+tbl | Type | Log("Type of table")
+
+tbl:s
+{Type | Log("Type of table entry")}
+When({IsString | And | IsNotNone} {
+  = r
+  Type | Assert.Is(@type(Type::String))
+  ; > str
+  Pass
+})

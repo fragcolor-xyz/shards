@@ -702,7 +702,7 @@ struct SHInstanceData {
   struct SHTypesInfo outputTypes;
 
   // Internally used
-  void *requiredVariables;
+  void *__unused;
   void *privateContext;
 };
 

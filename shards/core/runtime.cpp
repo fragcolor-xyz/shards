@@ -13,10 +13,6 @@
 #include "shared.hpp"
 #include <shards/utility.hpp>
 #include <shards/inlined.hpp>
-#include "pmr/temp_allocator.hpp"
-#include "pmr/unordered_map.hpp"
-#include "pmr/unordered_set.hpp"
-#include "pmr/vector.hpp"
 #include "inline.hpp"
 #include "async.hpp"
 #include <boost/asio/thread_pool.hpp>
@@ -39,7 +35,6 @@
 #include "hash.inl"
 #include "utils.hpp"
 #include "trait.hpp"
-#include "type_cache.hpp"
 #include "platform.hpp"
 #include "serialization.hpp"
 #include "lang_api.hpp"
@@ -837,59 +832,6 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
   return shardsActivation<SHSeq, true>(shards, context, wireInput, output);
 }
 
-bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
-                bool relaxEmptySeqCheck, bool ignoreFixedSeq) {
-  return TypeMatcher{
-      .isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck, .ignoreFixedSeq = ignoreFixedSeq}
-      .match(inputType, receiverType);
-}
-
-struct InternalCompositionContext {
-  pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
-  pmr::unordered_set<SHExposedTypeInfo> required;
-  CompositionContext *sharedContext{};
-
-  SHTypeInfo previousOutputType{};
-  SHTypeInfo originalInputType{};
-
-  Shard *bottom{};
-  Shard *next{};
-  SHWire *wire{};
-
-  bool onWorkerThread{false};
-
-  std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
-
-  InternalCompositionContext() = default;
-  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator) {}
-};
-
-void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
-  using namespace std::literals;
-
-  switch (var.valueType) {
-  case SHType::ContextVar: {
-    auto sv = SHSTRVIEW(var);
-    // use context inherited
-    shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariable(inherited->inherited, sv);
-    if (info) {
-      out.push_back(*info);
-      break;
-    }
-  } break;
-  case SHType::Seq:
-    shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(data, out, v); });
-    break;
-  case SHType::Table:
-    shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &v) { collectRequiredVariables(data, out, v); });
-    break;
-  default:
-    break;
-  }
-}
-
 void coroResumed(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
@@ -977,6 +919,60 @@ void coroExtSuspend(SHWire *wire) {
   SHLOG_TRACE("Suspending wire {}", wire->name);
 #endif
 }
+
+bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
+                bool relaxEmptySeqCheck, bool ignoreFixedSeq) {
+  return TypeMatcher{
+      .isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck, .ignoreFixedSeq = ignoreFixedSeq}
+      .match(inputType, receiverType);
+}
+
+struct InternalCompositionContext {
+  pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
+  pmr::unordered_set<SHExposedTypeInfo> required;
+  CompositionContext *sharedContext{};
+
+  SHTypeInfo previousOutputType{};
+  SHTypeInfo originalInputType{};
+
+  Shard *bottom{};
+  Shard *next{};
+  SHWire *wire{};
+
+  bool onWorkerThread{false};
+
+  std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
+
+  InternalCompositionContext() = default;
+  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator) {}
+};
+
+void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
+  using namespace std::literals;
+
+  switch (var.valueType) {
+  case SHType::ContextVar: {
+    auto sv = SHSTRVIEW(var);
+    // use context inherited
+    shassert(data.privateContext && "Private context should be valid");
+    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    auto info = findExposedVariable(inherited->inherited, sv);
+    if (info) {
+      out.push_back(*info);
+      break;
+    }
+  } break;
+  case SHType::Seq:
+    shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(data, out, v); });
+    break;
+  case SHType::Table:
+    shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &v) { collectRequiredVariables(data, out, v); });
+    break;
+  default:
+    break;
+  }
+}
+
 
 void validateConnection(InternalCompositionContext &ctx) {
   ZoneScopedN("validateConnection");

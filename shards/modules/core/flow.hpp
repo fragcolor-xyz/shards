@@ -7,6 +7,8 @@
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
+#include <shards/core/compose.hpp>
+#include <shards/core/pmr/shared_temp_allocator.hpp>
 #include <atomic>
 
 namespace shards {
@@ -653,11 +655,16 @@ template <bool COND> struct When {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    auto &fa = CompositionContext::get(data);
+    fa.pushScope(data.inputType);
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
       throw ComposeError("When predicate should output a boolean value!");
     }
+
+    // Analyze the flow
+    fa.popScope();
 
     auto ares = _action.compose(data);
 
