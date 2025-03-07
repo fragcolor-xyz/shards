@@ -3102,7 +3102,6 @@ struct Once {
 
 struct GlobalOnce {
   ShardsVar _blks;
-  ExposedInfo _requiredInfo{};
   SHComposeResult _validation{};
   Shard *self{nullptr};
 
@@ -3155,7 +3154,6 @@ struct GlobalOnce {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _requiredInfo.clear();
 
     self = data.shard;
 
@@ -3164,7 +3162,7 @@ struct GlobalOnce {
     return data.inputType;
   }
 
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
+  SHExposedTypesInfo requiredVariables() { return _validation.requiredInfo; }
   SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   std::shared_ptr<uint64_t> referenceCount;
