@@ -198,6 +198,7 @@ struct RequestBase {
   keep_alive: bool,
   required: ExposedTypes,
   streaming: bool,
+  task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
   connection_timeout: u64,
 }
 
@@ -218,6 +219,7 @@ impl Default for RequestBase {
       required: Vec::new(),
       streaming: false,
       connection_timeout: 10,
+      task_cancel: None,
     }
   }
 }
@@ -330,6 +332,16 @@ impl RequestBase {
   }
 
   fn _cleanup(&mut self, ctx: Option<&Context>) {
+    // Cancel any running task
+    if let Some(cancel) = &self.task_cancel {
+      if let Some(tx) = cancel.lock().unwrap().take() {
+        shlog_debug!("Cancelling HTTP task");
+        // Send cancellation signal - ignore error if receiver dropped
+        let _ = tx.send(());
+      }
+    }
+    self.task_cancel = None;
+    
     self.url.cleanup(ctx);
     self.headers.cleanup(ctx);
     self._close_client();
@@ -361,19 +373,30 @@ impl RequestBase {
     let as_bytes = self.as_bytes;
     let full_response = self.full_response;
     let streaming = self.streaming;
+    
+    // Create a cancellation token that we'll store
+    let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
+    self.task_cancel = Some(Arc::new(Mutex::new(Some(cancel_tx))));
 
     let result = run_future(context, async move {
       let runtime = TOKIO_RUNTIME.clone();
       let request = request; // Capture request in the async block
+      
+      // Setup cancellation receiver
+      let cancel_rx = cancel_rx;
 
       // Lock the runtime briefly to spawn the task
       let task = {
         let runtime = runtime.lock().unwrap();
         runtime.spawn(async move {
-          let response = request.send().await.map_err(|e| {
-            print_error(&e);
-            "Failed to send the request"
-          })?;
+          // Use tokio::select! to race between the request and cancellation
+          let response = tokio::select! {
+            resp = request.send() => resp.map_err(|e| {
+              print_error(&e);
+              "Failed to send the request"
+            })?,
+            _ = cancel_rx => return Err("Request cancelled")
+          };
 
           if !full_response && !response.status().is_success() {
             shlog_error!("Request failed with status {}", response.status());
