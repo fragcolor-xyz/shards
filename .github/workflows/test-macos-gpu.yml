@@ -165,12 +165,12 @@ jobs:
             --directory build/src \
             --directory build/modules \
             --output-file coverage/coverage.info \
-            --ignore-errors inconsistent,gcov,range
+            --ignore-errors inconsistent,gcov,range,format
           # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" \
             --output-file coverage/coverage-macos-gpu.info \
-            --ignore-errors inconsistent,gcov,range
+            --ignore-errors inconsistent,gcov,range,format
           # convert absolute path to relative path
           sed -i '' -e "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
 

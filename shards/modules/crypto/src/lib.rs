@@ -9,21 +9,12 @@ use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ParamVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::BYTES_TYPES;
 use shards::types::STRING_TYPES;
 use std::convert::TryInto;
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-use {
-    jsonwebtoken::{decode, Algorithm, DecodingKey, Validation},
-    jsonwebtoken::jwk::Jwk,
-    jsonwebtoken::jwk::KeyAlgorithm,
-    serde::{Deserialize, Serialize},
-};
 
 #[macro_use]
 extern crate shards;
@@ -35,7 +26,12 @@ pub mod argon;
 pub mod chachapoly;
 pub mod ecdsa;
 pub mod hash;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod jwt;
+
 pub mod signatures;
+pub mod x509;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
 
@@ -161,91 +157,6 @@ impl Shard for MnemonicToSeed {
   }
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-  aud: String, // Optional. Audience
-  exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-  sub: String, // Optional. Subject (whom token refers to)
-}
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-#[derive(shards::shard)]
-#[shard_info("Jwt.Decode", "Decodes a JWT token")]
-struct JwtDecode {
-  output: ClonedVar,
-
-  #[shard_param("Jwk", "The Key in JWK format to use for decoding the token.", [common_type::string, common_type::string_var])]
-  jwk: ParamVar,
-
-  #[shard_param("Audience", "The audience to use for decoding the token.", [common_type::string, common_type::string_var])]
-  audience: ParamVar,
-}
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-impl Default for JwtDecode {
-  fn default() -> Self {
-    Self {
-      output: ClonedVar::default(),
-      jwk: ParamVar::default(),
-      audience: ParamVar::default(),
-    }
-  }
-}
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-#[shards::shard_impl]
-impl Shard for JwtDecode {
-  fn input_types(&mut self) -> &Types {
-    &STRING_TYPES
-  }
-
-  fn output_types(&mut self) -> &Types {
-    &STRING_TYPES
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.warmup_helper(ctx)?;
-    Ok(())
-  }
-
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.cleanup_helper(ctx)?;
-    Ok(())
-  }
-
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let jwk: &str = self.jwk.get().try_into().unwrap();
-    let jwk = serde_json::from_str::<Jwk>(jwk).unwrap();
-    let decoding_key = DecodingKey::from_jwk(&jwk).map_err(|e| {
-      shlog_error!("Invalid JWK: {}", e);
-      "Invalid JWK"
-    })?;
-
-    // Set up validation
-    let algo = jwk.common.key_algorithm.ok_or("Unsupported key type")?;
-    let mut validation = Validation::new(match algo {
-      KeyAlgorithm::ES256 => Algorithm::ES256,
-      KeyAlgorithm::ES384 => Algorithm::ES384,
-      KeyAlgorithm::RS256 => Algorithm::RS256,
-      KeyAlgorithm::RS384 => Algorithm::RS384,
-      _ => return Err("Unsupported key type"),
-    });
-    let audience: &str = self.audience.get().try_into().unwrap();
-    validation.set_audience(&[audience]);
-
-    // Decode and verify the token
-    let token: &str = input.try_into().unwrap();
-    let token_data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
-      shlog_error!("Invalid token: {}", e);
-      "Invalid token"
-    })?;
-
-    self.output = Var::ephemeral_string(token_data.claims.sub.as_str()).into();
-    Ok(Some(self.output.0))
-  }
-}
-
 #[no_mangle]
 pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -256,9 +167,14 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
   hash::register_shards();
   signatures::register_shards();
   chachapoly::register_shards();
+
   register_shard::<MnemonicGenerate>();
   register_shard::<MnemonicToSeed>();
+
   argon::register_shards();
-  #[cfg(not(any(target_arch = "wasm32", target_os = "windows")))]
-  register_shard::<JwtDecode>();
+
+  #[cfg(not(target_arch = "wasm32"))]
+  jwt::register_shards();
+
+  x509::register_shards();
 }
