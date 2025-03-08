@@ -335,7 +335,7 @@ impl RequestBase {
     // Cancel any running task
     if let Some(cancel) = &self.task_cancel {
       if let Some(tx) = cancel.lock().unwrap().take() {
-        shlog_debug!("Cancelling HTTP task");
+        shlog_trace!("Cancelling HTTP task");
         // Send cancellation signal - ignore error if receiver dropped
         let _ = tx.send(());
       }
@@ -376,7 +376,8 @@ impl RequestBase {
     
     // Create a cancellation token that we'll store
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
-    self.task_cancel = Some(Arc::new(Mutex::new(Some(cancel_tx))));
+    let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
+    self.task_cancel = Some(cancellation.clone());
 
     let result = run_future(context, async move {
       let runtime = TOKIO_RUNTIME.clone();
@@ -479,7 +480,20 @@ impl RequestBase {
         print_error(&e);
         "Failed to join task"
       })?
+    }, move || {
+      shlog_debug!("Request cancelled");
+      // Cancel any running task
+      if let Some(tx) = cancellation.lock().unwrap().take() {
+        shlog_trace!("Cancelling HTTP task");
+        // Send cancellation signal - ignore error if receiver dropped
+        let _ = tx.send(());
+      }
     })?;
+
+    if !streaming {
+      // We are done here if we are not streaming, might as well clear this up
+      self.task_cancel = None;
+    }
 
     self.output = result;
 
@@ -868,6 +882,9 @@ struct HttpStreamShard {
   stream: ParamVar,
 
   output: ClonedVar,
+  
+  // Add cancellation support
+  task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
 }
 
 impl Default for HttpStreamShard {
@@ -876,6 +893,7 @@ impl Default for HttpStreamShard {
       required: ExposedTypes::new(),
       stream: ParamVar::default(),
       output: ClonedVar::default(),
+      task_cancel: None,
     }
   }
 }
@@ -900,6 +918,16 @@ impl Shard for HttpStreamShard {
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
+    // Cancel any running task
+    if let Some(cancel) = &self.task_cancel {
+      if let Some(tx) = cancel.lock().unwrap().take() {
+        shlog_trace!("Cancelling HTTP stream task");
+        // Send cancellation signal - ignore error if receiver dropped
+        let _ = tx.send(());
+      }
+    }
+    self.task_cancel = None;
+    
     self.cleanup_helper(ctx)?;
     Ok(())
   }
@@ -911,6 +939,12 @@ impl Shard for HttpStreamShard {
 
   fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &'static str> {
     let stream = *self.stream.get();
+    
+    // Create a cancellation token that we'll store
+    let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
+    let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
+    self.task_cancel = Some(cancellation.clone());
+    
     let result = run_future(context, async move {
       let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
       let response = unsafe { &mut (*stream?).0 };
@@ -918,13 +952,16 @@ impl Shard for HttpStreamShard {
       let task = {
         let runtime = runtime.lock().unwrap();
         runtime.spawn(async move {
-          let bytes = response
-            .chunk()
-            .await
-            .map_err(|e| {
+          // Use tokio::select! to race between the request and cancellation
+          let bytes_result = tokio::select! {
+            chunk = response.chunk() => chunk.map_err(|e| {
               print_error(&e);
               "Failed to read from stream"
-            })?;
+            }),
+            _ = cancel_rx => return Err("Stream read cancelled")
+          };
+          
+          let bytes = bytes_result?;
           if let Some(bytes) = bytes {
             Ok(ClonedVar::new_bytes(&bytes))
           } else {
@@ -937,7 +974,18 @@ impl Shard for HttpStreamShard {
         print_error(&e);
         "Failed to join task"
       })?
+    }, || {
+      shlog_debug!("Request cancelled");
+      // Cancel any running task
+      if let Some(tx) = cancellation.lock().unwrap().take() {
+        shlog_trace!("Cancelling HTTP task");
+        // Send cancellation signal - ignore error if receiver dropped
+        let _ = tx.send(());
+      }
     })?;
+    
+    // We're done with this task
+    self.task_cancel = None;
     self.output = result;
     Ok(Some(self.output.0))
   }

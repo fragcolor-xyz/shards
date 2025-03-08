@@ -511,15 +511,40 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
   (*(*data).caller).cancel_activation(&*context);
 }
 
+// First, let's create a struct to hold both the future and cancel callback
+struct FutureCallData<F, C> {
+  future: F,
+  cancel: Option<C>,
+}
+
+// Create a cancel callback handler similar to the one in run_blocking
+unsafe extern "C" fn cancel_future_c_call<
+  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  R: Into<ClonedVar>,
+  C: Fn(),
+>(
+  _context: *mut SHContext,
+  arg2: *mut c_void,
+) {
+  let data = arg2 as *mut FutureCallData<F, C>;
+  if let Some(cancel) = (*data).cancel.take() {
+    cancel();
+  }
+}
+
+// Update the existing activate function to work with our new data structure
 unsafe extern "C" fn activate_future_c_call<
   F: Future<Output = Result<R, &'static str>> + Send + 'static,
   R: Into<ClonedVar>,
+  C: Fn(),
 >(
   _context: *mut SHContext,
   arg2: *mut c_void,
 ) -> SHVar {
-  let f = arg2 as *mut F;
-  let res = futures::executor::block_on(f.read()); // this will consume f
+  let data = arg2 as *mut FutureCallData<F, C>;
+  let f = std::ptr::read(&(*data).future); // Move out the future
+  let res = futures::executor::block_on(f);
+
   match res {
     Ok(value) => {
       // SAFETY: We are unsafely managing memory here on purpose because run_future returns a ClonedVar
@@ -529,7 +554,7 @@ unsafe extern "C" fn activate_future_c_call<
       value
     }
     Err(error) => {
-      shlog_debug!("activate_future failure detected"); // in case error leads to crash
+      shlog_debug!("activate_future failure detected");
       shlog_debug!("activate_future failure: {}", error);
       // we fail on another thread so we cannot call abortWire directly as it would race
       let error = Var::ephemeral_string(error);
@@ -541,27 +566,38 @@ unsafe extern "C" fn activate_future_c_call<
   }
 }
 
+// Update run_future to use our new approach
 pub fn run_future<
   'a,
   F: Future<Output = Result<R, &'static str>> + Send + 'static,
   R: Into<ClonedVar>,
+  C: Fn() + 'a,
 >(
   context: &'a SHContext,
   f: F,
+  onCancel: C,
 ) -> Result<ClonedVar, &'static str> {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    let data_ptr = &f as *const F as *mut F as *mut c_void;
-    // see note in activate_future_c_call
+
+    // Create a data structure to hold both the future and cancel callback
+    let data = FutureCallData {
+      future: f,
+      cancel: Some(onCancel),
+    };
+
+    let data_ptr = &data as *const _ as *mut c_void;
+
+    // Call asyncActivate with appropriate callbacks
     let result = ClonedVar((*Core).asyncActivate.unwrap_unchecked()(
       ctx,
       data_ptr,
-      Some(activate_future_c_call::<F, R>),
-      None,
+      Some(activate_future_c_call::<F, R, C>),
+      Some(cancel_future_c_call::<F, R, C>),
     ));
 
-    // before exiting, we need to forget f, otherwise we double free
-    std::mem::forget(f);
+    // Ensure we don't drop the data since it's now owned by the callbacks
+    std::mem::forget(data);
 
     if result.0.flags & SHVAR_FLAGS_ABORT as u16 != 0 {
       Err("Failed to run future")
