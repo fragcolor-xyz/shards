@@ -18,6 +18,11 @@ struct Schedule {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_mesh->valueType == SHType::None) {
+      throw ComposeError("Schedule: Mesh parameter is required");
+    }
+
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -51,9 +56,15 @@ struct Run {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_mesh->valueType == SHType::None) {
+      throw ComposeError("Schedule: Mesh parameter is required");
+    }
+
     if (!_tickTime.isNone() && !_fps.isNone()) {
       throw std::runtime_error("Run: run requires either a TickTime or FPS parameter");
     }
+
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }

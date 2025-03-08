@@ -619,9 +619,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   void setParentContext(SHContext *context) {
     for (auto &wire : _pendingSchedule) {
+      shassert(wire->context && "Wire has no context!");
       wire->context->parent = context;
     }
     for (auto &wire : _scheduled) {
+      shassert(wire->context && "Wire has no context!");
       wire->context->parent = context;
     }
   }

@@ -319,6 +319,11 @@ fn execute_seq(
     if !mesh.tick() || mesh.is_empty() {
       break;
     }
+
+    // still yield to other threads
+    // consider that this will be basically ignored if there is a @run in the script anyway
+    // this is merely a safety measure when no @run is present
+    std::thread::yield_now();
   }
 
   let info = wire.get_info();
