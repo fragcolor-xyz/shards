@@ -1077,18 +1077,18 @@
   Assert.Is([112 113 102 115 98 100] true)
   RTake([0 1 3 4])
   Assert.Is([100 98 102 113] true) >= s1
-  Reduce(Max($0)) | Log
+  Fold(Max($0) Initial: 0) | Log
   Assert.Is(113 true)
-  s1 | Reduce(Min($0)) | Log
+  s1 | Fold(Min($0) Initial: 0xFFFFFFFF) | Log
   Assert.Is(98 true)
   
   Await({
     Get(seq-a)
-    Reduce({
+    Fold({
       Math.Add($0)
       Log
       {$i | Log("index")}
-    })
+    } Initial: 0)
   })
   Log
   Assert.Is(634 true)
@@ -1098,8 +1098,9 @@
   Assert.Is("在庫なし" true)
   Log
   
+  [0 0 0] = empty-seq-test
   Const([[1 2 3] [2 3 4] [3 4 5]]) = nestedSeq
-  Reduce({Math.Add($0)})
+  Fold({Math.Add($0)} Initial: empty-seq-test)
   Assert.Is([6 9 12] true)
   Log
   

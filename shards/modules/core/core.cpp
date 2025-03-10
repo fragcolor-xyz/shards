@@ -1138,7 +1138,7 @@ struct Fold {
   PARAM(ShardsVar, _shards, "Apply", "The function to apply to each item of the sequence.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_initial, "Initial",
                  "The initial value of the accumulator. If not provided the shard will fail if the input sequence is empty.",
-                 {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType});
+                 {CoreInfo::AnyType, CoreInfo::AnyVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_initial));
 
   static SHOptionalString help() {
@@ -1156,12 +1156,18 @@ struct Fold {
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   PARAM_REQUIRED_VARIABLES()
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo composeV2(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     if (data.inputType.seqTypes.len != 1) {
       throw SHException("Fold: Invalid sequence inner type, must be a single "
                         "defined type.");
     }
+
+    if (_initial.isNone()) {
+      throw SHException("Fold: Initial value is required to establish the starting accumulator.");
+    }
+
     // we need to edit a copy of data
     SHInstanceData dataCopy = data;
     // we need to deep copy it
@@ -1185,6 +1191,24 @@ struct Fold {
 
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
+
+    if (_initial.isVariable()) {
+      shassert(data.privateContext && "Private context should be valid");
+      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _initial.variableNameView());
+      if (!existingExposedType) {
+        throw ComposeError("Fold: Initial value variable not found.");
+      }
+      if (!matchTypes(existingExposedType->exposedType, _outputSingleType, true, true, true, true)) {
+        throw ComposeError("Fold: Initial value type mismatch with the output type.");
+      }
+    } else {
+      auto initialType = TypeInfo(*_initial, data, nullptr, true);
+      if (!matchTypes(initialType, _outputSingleType, true, true, true, true)) {
+        throw ComposeError("Fold: Initial value type mismatch with the output type.");
+      }
+    }
+
     return _outputSingleType;
   }
 
@@ -1193,14 +1217,15 @@ struct Fold {
 
     _tmp = referenceVariable(context, "$0");
     _tmpIndex = referenceVariable(context, "$i"); // New reference for index
-    _shards.warmup(context);
   }
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
-    releaseVariable(_tmp);
-    _tmp = nullptr;
+    if (_tmp) {
+      releaseVariable(_tmp);
+      _tmp = nullptr;
+    }
 
     if (_tmpIndex) {
       const auto rc = _tmpIndex->refcount;
@@ -1216,41 +1241,28 @@ struct Fold {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // Handle empty sequence case
-    uint32_t initialIndex = 0;
     auto &initial = _initial.get();
-    if (initial.valueType == SHType::None) {
-      // we can't do anything if initial is not set and sequence is empty or a single element
-      if (input.payload.seqValue.len <= 1) {
-        throw ActivationError("Fold: Input sequence was empty or has a single element and no Initial value provided! An initial "
-                              "value is required to ensure type consistency when the fold operation transforms types.");
-      }
-      // we can use the first element as the initial value
-      initialIndex = 1;
-    }
 
-    if (initialIndex == 0) {
-      // Start with the provided initial value
-      cloneVar(*_tmp, initial);
-    } else {
-      // Start with the first element of the sequence
-      cloneVar(*_tmp, input.payload.seqValue.elements[0]);
-    }
+    // Start with the provided initial value
+    cloneVar(*_tmp, initial);
+    _output = initial;
 
     // Process all elements starting from the first
-    for (uint32_t i = initialIndex; i < input.payload.seqValue.len; i++) {
+    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
 
       // Set current item and index
       assignVariableValue(*_tmpIndex, Var(int64_t(i)));
 
       // Apply the operation
-      auto state = _shards.activate<true>(context, item, _output);
+      SHVar output;
+      auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
 
       // Update accumulator for next iteration
-      cloneVar(*_tmp, _output);
+      cloneVar(*_tmp, output);
+      _output = output;
     }
 
     return _output;
