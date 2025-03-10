@@ -1212,8 +1212,7 @@ struct Fold {
     _tmpInfoIndex.exposedType = CoreInfo::IntType;
     arrayPush(dataCopy.shared, _tmpInfoIndex);
 
-    auto innerRes = _shards.compose(dataCopy);
-    _outputSingleType = innerRes.outputType;
+    _shards.compose(dataCopy);
 
     return _outputSingleType;
   }
@@ -1229,6 +1228,12 @@ struct Fold {
     PARAM_CLEANUP(context);
 
     if (_tmp) {
+      // _tmp0 is a reference, so we need to cleaning up like we do in Ref
+      const auto rc = _tmp->refcount;
+      const auto flags = _tmp->flags;
+      memset(_tmp, 0x0, sizeof(SHVar));
+      _tmp->refcount = rc;
+      _tmp->flags = flags;
       releaseVariable(_tmp);
       _tmp = nullptr;
     }
@@ -1246,12 +1251,12 @@ struct Fold {
     _output = Var::Empty;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar &activate(SHContext *context, const SHVar &input) {
     auto &initial = _initial.get();
 
     // Start with the provided initial value
-    cloneVar(*_tmp, initial);
-    _output = initial;
+    assignVariableValue(*_tmp, initial);
+    _output = initial; // clones
 
     // Process all elements starting from the first
     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
@@ -1266,9 +1271,9 @@ struct Fold {
       if (state != SHWireState::Continue)
         break;
 
+      _output = output; // this clones
       // Update accumulator for next iteration
-      cloneVar(*_tmp, output);
-      _output = output;
+      assignVariableValue(*_tmp, _output);
     }
 
     return _output;
