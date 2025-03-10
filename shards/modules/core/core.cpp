@@ -1135,6 +1135,12 @@ private:
 };
 
 struct Fold {
+  ~Fold() {
+    if (_ownedTypeInfo) {
+      freeDerivedInfo(_outputSingleType);
+    }
+  }
+
   PARAM(ShardsVar, _shards, "Apply", "The function to apply to each item of the sequence.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_initial, "Initial",
                  "The initial value of the accumulator. If not provided the shard will fail if the input sequence is empty.",
@@ -1182,7 +1188,24 @@ struct Fold {
         arrayPush(dataCopy.shared, item);
       }
     }
-    _tmpInfo.exposedType = dataCopy.inputType;
+
+    if (_ownedTypeInfo) {
+      freeDerivedInfo(_outputSingleType);
+      _ownedTypeInfo = false;
+    }
+    _outputSingleType = {};
+    if (_initial.isVariable()) {
+      shassert(data.privateContext && "Private context should be valid");
+      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _initial.variableNameView());
+      _outputSingleType = existingExposedType->exposedType;
+      _ownedTypeInfo = false;
+    } else {
+      _outputSingleType = deriveTypeInfo(*_initial, data, nullptr, true, false);
+      _ownedTypeInfo = true;
+    }
+
+    _tmpInfo.exposedType = _outputSingleType;
     arrayPush(dataCopy.shared, _tmpInfo);
 
     // Add $i for index
@@ -1191,23 +1214,6 @@ struct Fold {
 
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
-
-    if (_initial.isVariable()) {
-      shassert(data.privateContext && "Private context should be valid");
-      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _initial.variableNameView());
-      if (!existingExposedType) {
-        throw ComposeError("Fold: Initial value variable not found.");
-      }
-      if (!matchTypes(existingExposedType->exposedType, _outputSingleType, true, true, true, true)) {
-        throw ComposeError("Fold: Initial value type mismatch with the output type.");
-      }
-    } else {
-      auto initialType = TypeInfo(*_initial, data, nullptr, true);
-      if (!matchTypes(initialType, _outputSingleType, true, true, true, true)) {
-        throw ComposeError("Fold: Initial value type mismatch with the output type.");
-      }
-    }
 
     return _outputSingleType;
   }
@@ -1279,6 +1285,7 @@ private:
   SHVar *_tmp = nullptr;
   OwnedVar _output{};
   SHTypeInfo _outputSingleType{};
+  bool _ownedTypeInfo = false;
   SHExposedTypeInfo _tmpInfo{"$0"};
   SHVar *_tmpIndex = nullptr;            // New member for index reference
   SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
