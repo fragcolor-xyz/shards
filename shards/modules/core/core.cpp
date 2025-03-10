@@ -1134,34 +1134,32 @@ private:
   std::array<SHVar, 2> _tableItem;
 };
 
-struct Reduce {
+struct Fold {
+  PARAM(ShardsVar, _shards, "Apply", "The function to apply to each item of the sequence.", {CoreInfo::Shards});
+  PARAM_PARAMVAR(_initial, "Initial",
+                 "The initial value of the accumulator. If not provided the shard will fail if the input sequence is empty.",
+                 {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_initial));
+
   static SHOptionalString help() {
-    return SHCCSTR("Reduces a sequence to a single value by applying an operation (specified in the Apply parameter) to each "
-                   "item of the sequence. Note that this shard is able to use the $0 internal variable for the current item "
-                   "and $i for the current index.");
+    return SHCCSTR("Folds a sequence into a single value by applying an operation (specified in the Apply parameter) to each "
+                   "item of the sequence. The operation can transform the type. Note that this shard is able to use the $0 "
+                   "internal variable for the accumulated value, $1 for the current item, and $i for the current index.");
   }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The sequence to reduce."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence to fold."); }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("The resulting value after applying the operation to each item of the sequence.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("The resulting value after folding the sequence."); }
 
   SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  SHParametersInfo parameters() { return _params; }
-
-  void setParam(int index, const SHVar &value) { _shards = value; }
-
-  SHVar getParam(int index) { return _shards; }
-
-  void destroy() { destroyVar(_output); }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (data.inputType.seqTypes.len != 1) {
-      throw SHException("Reduce: Invalid sequence inner type, must be a single "
+      throw SHException("Fold: Invalid sequence inner type, must be a single "
                         "defined type.");
     }
     // we need to edit a copy of data
@@ -1190,14 +1188,17 @@ struct Reduce {
     return _outputSingleType;
   }
 
-  void warmup(SHContext *ctx) {
-    _tmp = referenceVariable(ctx, "$0");
-    _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
-    _shards.warmup(ctx);
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    _tmp = referenceVariable(context, "$0");
+    _tmpIndex = referenceVariable(context, "$i"); // New reference for index
+    _shards.warmup(context);
   }
 
   void cleanup(SHContext *context) {
-    _shards.cleanup(context);
+    PARAM_CLEANUP(context);
+
     releaseVariable(_tmp);
     _tmp = nullptr;
 
@@ -1210,35 +1211,61 @@ struct Reduce {
       releaseVariable(_tmpIndex);
       _tmpIndex = nullptr;
     }
+
+    _output = Var::Empty;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.seqValue.len == 0) {
-      throw ActivationError("Reduce: Input sequence was empty!");
+    // Handle empty sequence case
+    uint32_t initialIndex = 0;
+    auto &initial = _initial.get();
+    if (initial.valueType == SHType::None) {
+      // we can't do anything if initial is not set and sequence is empty or a single element
+      if (input.payload.seqValue.len <= 1) {
+        throw ActivationError("Fold: Input sequence was empty or has a single element and no Initial value provided! An initial "
+                              "value is required to ensure type consistency when the fold operation transforms types.");
+      }
+      // we can use the first element as the initial value
+      initialIndex = 1;
     }
-    cloneVar(*_tmp, input.payload.seqValue.elements[0]);
-    SHVar output{};
-    for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
+
+    if (initialIndex == 0) {
+      // Start with the provided initial value
+      cloneVar(*_tmp, initial);
+    } else {
+      // Start with the first element of the sequence
+      cloneVar(*_tmp, input.payload.seqValue.elements[0]);
+    }
+
+    // Process all elements starting from the first
+    for (uint32_t i = initialIndex; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
 
-      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
+      // Set current item and index
+      assignVariableValue(*_tmpIndex, Var(int64_t(i)));
 
-      // allow short circuit with (Return)
-      auto state = _shards.activate<true>(context, item, output);
+      // Apply the operation
+      auto state = _shards.activate<true>(context, item, _output);
       if (state != SHWireState::Continue)
         break;
-      cloneVar(*_tmp, output);
+
+      // Update accumulator for next iteration
+      cloneVar(*_tmp, _output);
     }
-    cloneVar(_output, *_tmp);
+
     return _output;
   }
 
 private:
-  static inline Parameters _params{{"Apply", SHCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Shards}}};
+  static inline Parameters _params{
+      {"Apply", SHCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Shards}},
+      {"Initial",
+       SHCCSTR("The initial value of the accumulator. If not provided the shard will fail if the input sequence is empty."),
+       {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType}},
+  };
 
   SHVar *_tmp = nullptr;
-  SHVar _output{};
-  ShardsVar _shards{};
+  OwnedVar _output{};
   SHTypeInfo _outputSingleType{};
   SHExposedTypeInfo _tmpInfo{"$0"};
   SHVar *_tmpIndex = nullptr;            // New member for index reference
@@ -3225,9 +3252,10 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("ForEach", ForEachShard);
   REGISTER_SHARD("ForRange", ForRangeShard);
   REGISTER_SHARD("IntRange", IntRangeShard);
-  
+
   REGISTER_SHARD("Map", Map);
-  REGISTER_SHARD("Reduce", Reduce);
+  REGISTER_SHARD("Fold", Fold);
+  REGISTER_SHARD_ALIAS("Reduce", Fold);
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
   REGISTER_SHARD("GlobalOnce", GlobalOnce);
