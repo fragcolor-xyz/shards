@@ -1090,7 +1090,7 @@ struct SetBase : public VariableBase {
         if (
             // need to check if this was just a any table definition {}
             !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
-            data.inputType != reference.exposedType) {
+            !matchTypes(data.inputType, reference.exposedType, true, true, true)) {
           throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
                                          reference.exposedType, data.inputType));
         }
@@ -1597,6 +1597,10 @@ struct Update : public SetUpdateBase {
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
+
+      // we are a table!
+      _tableTypeInfo = *originalTableType;
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
     } else {
       auto type = findExposedVariablePtr(inherited->inherited, _name);
       if (type) {
@@ -1609,17 +1613,10 @@ struct Update : public SetUpdateBase {
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
-    }
-
-    // bake exposed types
-    if (_isTable) {
-      // we are a table!
-      _tableTypeInfo = *originalTableType;
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
-    } else {
-      // just a variable!
+      
+      // just a variable, keep unchanged!
       _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), SHTypeInfo(data.inputType), true));
+          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), type->exposedType, true));
     }
 
     // always lift this limit in a Set/Update
@@ -1759,7 +1756,7 @@ struct Get : public VariableBase {
             }
           }
 
-          if (hasMagicNone && _key.isVariable()) {
+          if (hasMagicNone) {
             // we got a variable key and we got a magic none
             // we can return the magic none type
             if (_defaultValue.valueType != SHType::None) {

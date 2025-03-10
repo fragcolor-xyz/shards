@@ -907,7 +907,8 @@ void validateConnection(InternalCompositionContext &ctx) {
     const auto msg =
         fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
                     ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
-#if _DEBUG
+#if SH_DEBUG_TYPE_MATCHING
+    // Put a breakpoint here to debug
     for (uint32_t i = 0; inputInfos.len > i; i++) {
       auto &inputInfo = inputInfos.elements[i];
       if (matchTypes(previousOutput, inputInfo, true, true, true)) {
@@ -1111,7 +1112,8 @@ void validateConnection(InternalCompositionContext &ctx) {
     }
 
     if (!matching) {
-#if _DEBUG
+#if SH_DEBUG_TYPE_MATCHING
+      // Put a breakpoint here to debug
       auto exposedType = found->exposedType;
       auto requiredType = required_param.exposedType;
       if (matchTypes(exposedType, requiredType, false, true, false)) {
@@ -1445,6 +1447,14 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
 
   auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
                          param.name, value, varType, param.valueTypes, shard->line, shard->column);
+#if SH_DEBUG_TYPE_MATCHING
+  // Put a breakpoint here to debug
+  for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
+      return true;
+    }
+  }
+#endif
   SHLOG_ERROR("{}", err);
   return false;
 }

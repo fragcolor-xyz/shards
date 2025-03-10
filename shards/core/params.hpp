@@ -31,8 +31,8 @@
 //  - If you use PARAM_PARAMVAR, you must also add the compose(), warmup() and cleanup() functions
 
 namespace shards {
-#define PARAM_EXT(_type, _name, _paramInfo)                              \
-  static inline shards::ParameterInfo& _name##ParameterInfo = _paramInfo; \
+#define PARAM_EXT(_type, _name, _paramInfo)                               \
+  static inline shards::ParameterInfo &_name##ParameterInfo = _paramInfo; \
   _type _name{};
 
 #define PARAM(_type, _name, _displayName, _help, ...)                                                     \
@@ -157,7 +157,7 @@ struct IterableParam {
   SELF_MACRO_DEFINE_SELF(Self, public)                                          \
   static const shards::IterableParam *getIterableParams(size_t &outNumParams) { \
     static std::vector<shards::IterableParam> combined = []() {                 \
-      static shards::IterableParam prependParams[] = {__VA_ARGS__};            \
+      static shards::IterableParam prependParams[] = {__VA_ARGS__};             \
       size_t numPrependParams = std::extent<decltype(prependParams)>::value;    \
                                                                                 \
       size_t numBaseParams{};                                                   \
@@ -226,7 +226,7 @@ struct IterableParam {
   void setParam(int index, const SHVar &value) {                              \
     size_t numParams;                                                         \
     const shards::IterableParam *params = getIterableParams(numParams);       \
-    if (index < int(numParams)) {                                             \
+    if (index >= 0 && index < int(numParams)) {                               \
       params[index].setParam(params[index].resolveParamInShard(this), value); \
     } else {                                                                  \
       throw shards::InvalidParameterIndex();                                  \
@@ -235,7 +235,7 @@ struct IterableParam {
   SHVar getParam(int index) {                                                 \
     size_t numParams;                                                         \
     const shards::IterableParam *params = getIterableParams(numParams);       \
-    if (index < int(numParams)) {                                             \
+    if (index >= 0 && index < int(numParams)) {                               \
       return params[index].getParam(params[index].resolveParamInShard(this)); \
     } else {                                                                  \
       throw shards::InvalidParameterIndex();                                  \

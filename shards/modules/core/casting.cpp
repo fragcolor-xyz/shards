@@ -459,7 +459,7 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
       if (it == typeCache.end()) {
         it = typeCache.emplace(inputTypeHash, TypeInfo{input, SHInstanceData{}}).first;
       }
-      if (!matchTypes(it->second, expectedType, false, true, true)) {
+      if (!matchTypes(it->second, expectedType, true, true, true)) {
         throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, expectedType));
       }
     }
