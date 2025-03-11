@@ -1,4 +1,5 @@
 @define(ml/cache-path "" IgnoreRedefined: true)
+@define(ml/gpu-layers 0 IgnoreRedefined: true)
 @define(ml/embeddings/max-tokens 512)
 @define(ml/embeddings/overlap 64)
 @define(ml/embeddings/chunk-size #(512 | Sub(64)))
@@ -18,7 +19,7 @@
 @wire(ml/embeddings/load {
   Do(ml/embeddings/download-deps)
   Await({
-    LLM.Model(UseMmap: false CpuOnly: true) = model ; small model, keep in RAM
+    LLM.Model(UseMmap: false GPULayers: @ml/gpu-layers) = model ; small model, keep in RAM
     LLM.Context(Embeddings: true) = context
   })
   {
