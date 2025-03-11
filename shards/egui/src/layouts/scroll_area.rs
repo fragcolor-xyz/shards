@@ -19,6 +19,7 @@ use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::types::BOOL_OR_VAR_SLICE;
 
 #[derive(shards::shard)]
 #[shard_info("UI.ScrollArea", "Add scrolling to contained UI elements.")]
@@ -43,7 +44,7 @@ pub struct ScrollArea {
   #[shard_param(
     "AutoShrink",
     "Whether to automatically shrink the scroll area.",
-    BOOL_VAR_OR_NONE_SLICE
+    BOOL_OR_VAR_SLICE
   )]
   auto_shrink: ParamVar,
   #[shard_param("MaxHeight", "Maximum height of scroll area.", FLOAT_VAR_OR_NONE_SLICE)]
@@ -110,7 +111,7 @@ impl Shard for ScrollArea {
     let mut scroll_area = egui::ScrollArea::new([
       self.horizontal.get().try_into()?,
       self.vertical.get().try_into()?,
-    ]);
+    ]).id_source(EguiId::new(self, 0));
 
     // Configure scroll area
     scroll_area = scroll_area.id_source(EguiId::new(self, 0));
@@ -122,11 +123,7 @@ impl Shard for ScrollArea {
       scroll_area = scroll_area.max_height(self.max_height.get().try_into()?);
     }
 
-    let auto_shrink: bool = if !self.auto_shrink.get().is_none() {
-      self.auto_shrink.get().try_into()?
-    } else {
-      false
-    };
+    let auto_shrink: bool = self.auto_shrink.get().try_into()?;
     scroll_area = scroll_area.auto_shrink([auto_shrink; 2]);
 
     let visibility = if self.always_show.get().try_into()? {
