@@ -7,7 +7,8 @@ const puppeteer = require('puppeteer');
       args: [
         '--no-sandbox',
         '--disable-web-security',
-        '--autoplay-policy=no-user-gesture-required'
+        '--autoplay-policy=no-user-gesture-required',
+        '--auto-accept-camera-and-microphone-capture'
       ],
       headless: false,
     });

@@ -11,7 +11,7 @@ source $SCRIPT_DIR/shared
 
 function prepare_paths() {
   local paths=("$@")
-  if [[ "$OSTYPE" == "msys" ]]; then
+  if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
     for i in "${!paths[@]}"; do
       paths[$i]=$(cygpath -w "${paths[$i]}")
     done
