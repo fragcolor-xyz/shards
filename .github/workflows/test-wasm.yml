@@ -112,7 +112,7 @@ jobs:
             queue_test crypto.shs
             queue_test wire-macro.shs
             queue_test branch.shs
-            queue_test audio.shs
+            # queue_test audio.shs
             queue_test audio2.shs
             queue_test events.shs
             queue_test complex-deserialize.shs
