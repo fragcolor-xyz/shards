@@ -1,12 +1,6 @@
 #ifndef CB_PYTHON_HPP
 #define CB_PYTHON_HPP
 
-// must be on top
-#ifndef __kernel_entry
-#define __kernel_entry
-#endif
-#include <boost/process.hpp>
-
 #include <shards/core/platform.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/foundation.hpp>
@@ -19,6 +13,10 @@
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
 #endif
+
+// For popen
+#include <cstdio>
+#include <array>
 
 // define ssize_t on windows
 #if _WIN32
@@ -327,24 +325,94 @@ struct Env {
 
   static inline std::vector<std::string> Path;
 
+  static std::string getPythonCommand() {
+#ifdef _WIN32
+    // On Windows, try python.exe first, then py.exe (Python launcher)
+    std::array<char, 1024> buffer;
+    FILE *pipe = _popen("where python.exe", "r");
+    if (pipe) {
+      if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        _pclose(pipe);
+        return "python.exe";
+      }
+      _pclose(pipe);
+    }
+
+    pipe = _popen("where py.exe", "r");
+    if (pipe) {
+      if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        _pclose(pipe);
+        return "py.exe -3";
+      }
+      _pclose(pipe);
+    }
+
+    return "python.exe"; // fallback
+#else
+    // On Unix-like systems, try python3 first, then python
+    std::array<char, 1024> buffer;
+    FILE *pipe = popen("which python3", "r");
+    if (pipe) {
+      if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        pclose(pipe);
+        return "python3";
+      }
+      pclose(pipe);
+    }
+
+    pipe = popen("which python", "r");
+    if (pipe) {
+      if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        pclose(pipe);
+        return "python";
+      }
+      pclose(pipe);
+    }
+
+    return "python3"; // fallback
+#endif
+  }
+
   static void init() {
     try {
-      // let's hack and find python paths...
-      boost::process::ipstream opipe;
-      boost::process::child cmd("python -c \"import sys; print(sys.path)\"", boost::process::std_out > opipe);
-      cmd.join();
-      if (cmd.exit_code() == 0) {
-        std::stringstream ss;
-        auto s = opipe.rdbuf();
-        ss << s;
-        auto paths_str = ss.str();
-        std::replace(paths_str.begin(), paths_str.end(), '\'', '\"');
-        auto jpaths = nlohmann::json::parse(paths_str);
-        std::vector<std::string> paths = jpaths;
-        for (auto &path : paths) {
-          SHLOG_DEBUG("PY PATH: {}", path);
+      // Let's probe python paths using popen instead of Boost.Process
+      std::array<char, 4096> buffer; // Increased buffer size
+      std::string paths_str;
+
+      std::string cmd = getPythonCommand() + " -c \"import sys, json; print(json.dumps(sys.path))\"";
+
+#ifdef _WIN32
+      FILE *pipe = _popen(cmd.c_str(), "r");
+#else
+      FILE *pipe = popen(cmd.c_str(), "r");
+#endif
+
+      if (pipe) {
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+          paths_str += buffer.data();
         }
-        Path = paths;
+
+#ifdef _WIN32
+        _pclose(pipe);
+#else
+        pclose(pipe);
+#endif
+
+        if (!paths_str.empty()) {
+          try {
+            // No need to replace quotes since we're using json.dumps in Python
+            auto jpaths = nlohmann::json::parse(paths_str);
+            std::vector<std::string> paths = jpaths;
+            for (auto &path : paths) {
+              SHLOG_DEBUG("PY PATH: {}", path);
+            }
+            Path = paths;
+          } catch (const nlohmann::json::exception &e) {
+            SHLOG_ERROR("Failed to parse Python paths: {}", e.what());
+          }
+        }
+      } else {
+        SHLOG_ERROR("Failed to execute Python path probe command: {}", cmd);
       }
     } catch (const std::exception &ex) {
       SHLOG_ERROR("Error while probing python: {}", ex.what());
@@ -353,28 +421,79 @@ struct Env {
     static const auto version_patterns = {"3.13", "313", "3.12", "312", "3.11", "311", "3.10", "310",
                                           "3.9",  "39",  "3.8",  "38",  "3.7",  "37",  "3",    ""};
     std::vector<std::string> candidates;
-    // prefer this order
+
+    // Build base filenames first
+    std::vector<std::string> base_names;
 #ifdef _WIN32
     for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("python") + pattern + ".dll");
+      base_names.emplace_back(std::string("python") + pattern + ".dll");
     }
     for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".dll");
-      candidates.emplace_back(std::string("libpython") + pattern + "m.dll");
+      base_names.emplace_back(std::string("libpython") + pattern + ".dll");
+      base_names.emplace_back(std::string("libpython") + pattern + "m.dll");
     }
 #elif defined(__APPLE__)
     for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".dylib");
-      candidates.emplace_back(std::string("libpython") + pattern + "m.dylib");
+      base_names.emplace_back(std::string("libpython") + pattern + ".dylib");
+      base_names.emplace_back(std::string("libpython") + pattern + "m.dylib");
     }
 #else
     for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".so");
-      candidates.emplace_back(std::string("libpython") + pattern + ".so.1");
-      candidates.emplace_back(std::string("libpython") + pattern + "m.so");
-      candidates.emplace_back(std::string("libpython") + pattern + "m.so.1");
+      base_names.emplace_back(std::string("libpython") + pattern + ".so");
+      base_names.emplace_back(std::string("libpython") + pattern + ".so.1");
+      base_names.emplace_back(std::string("libpython") + pattern + "m.so");
+      base_names.emplace_back(std::string("libpython") + pattern + "m.so.1");
     }
 #endif
+
+    // First add system library paths (empty path for system default locations)
+    for (const auto &base_name : base_names) {
+      candidates.push_back(base_name);
+    }
+
+    // Then try all discovered Python paths
+    for (const auto &path : Path) {
+      if (path.empty())
+        continue;
+
+      namespace fs = std::filesystem;
+      fs::path base_path = fs::path(path);
+
+      // Try in the python path directly
+      for (const auto &base_name : base_names) {
+        candidates.push_back((base_path / base_name).string());
+      }
+
+      // Check if this is a python version specific directory (e.g. python3.12)
+      std::string dirname = base_path.filename().string();
+      if (dirname.starts_with("python3")) {
+        // Also check the parent directory (common in conda/mamba environments)
+        if (base_path.has_parent_path()) {
+          fs::path parent_path = base_path.parent_path();
+          for (const auto &base_name : base_names) {
+            candidates.push_back((parent_path / base_name).string());
+          }
+        }
+      }
+
+      // Also try in lib subdirectory if it exists
+      fs::path lib_path = base_path / "lib";
+      if (fs::exists(lib_path) && fs::is_directory(lib_path)) {
+        for (const auto &base_name : base_names) {
+          candidates.push_back((lib_path / base_name).string());
+        }
+      }
+
+#ifdef __APPLE__
+      // On macOS, also check in Frameworks directory
+      fs::path fw_path = base_path / "Frameworks";
+      if (fs::exists(fw_path) && fs::is_directory(fw_path)) {
+        for (const auto &base_name : base_names) {
+          candidates.push_back((fw_path / base_name).string());
+        }
+      }
+#endif
+    }
 
     SHLOG_TRACE("Probing python versions: {}", candidates.size());
 
@@ -515,6 +634,32 @@ struct Env {
       PyObject *result = _buildValue("L", var.payload.intValue);
       assert(result != nullptr);
       return result;
+    }
+    case SHType::Seq: {
+      // Create a new Python list
+      auto size = var.payload.seqValue.len;
+      PyObject *list = _tupleNew(size);
+      if (list == nullptr) {
+        throw SHException("Failed to create Python list for sequence!");
+      }
+
+      // Convert each element in the sequence
+      size_t idx = 0;
+      for (const auto &subVar : var) {
+        PyObject *item = var2Py(subVar);
+        if (item == nullptr) {
+          // Clean up on error
+          list->refcount--;
+          if (list->refcount == 0 && list->type) {
+            list->type->dealloc(list);
+          }
+          throw SHException("Failed to convert sequence element to Python object!");
+        }
+        // PyTuple_SetItem steals the reference, no need to decref item
+        _tupleSetItem(list, idx++, item);
+      }
+
+      return list;
     }
     case SHType::Int2: {
       PyObject *result = _buildValue("(LL)", var.payload.int2Value[0], var.payload.int2Value[1]);
@@ -842,7 +987,7 @@ struct Env {
           auto &str = std::get<0>(tstr);
           if (str.size() > 3 && str.substr(str.size() - 3, 3) == "Seq") {
             auto &inner = innerInfos.emplace_back(SHTypeInfo{Env::toSHType(str.substr(0, str.size() - 3))});
-            auto seqType = types.emplace_back(SHTypeInfo{SHType::Seq});
+            auto &seqType = types.emplace_back(SHTypeInfo{SHType::Seq});
             seqType.seqTypes = {&inner, 1, 0};
           } else {
             types.emplace_back(SHTypeInfo{Env::toSHType(str)});
