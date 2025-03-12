@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <fstream> // Include for std::ifstream
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
@@ -325,6 +326,127 @@ struct Env {
 
   static inline std::vector<std::string> Path;
 
+  // Helper function to detect virtual environments and find base Python paths
+  static std::vector<std::string> detectVenvBasePaths() {
+    std::vector<std::string> venvBasePaths;
+
+    // First, check if we're running from a virtual environment
+    // by checking for pyvenv.cfg in any of the paths
+    for (const auto &path : Path) {
+      if (path.empty())
+        continue;
+
+      namespace fs = std::filesystem;
+      fs::path base_path = fs::path(path);
+
+      // Check if this might be inside a venv by looking for the parent directories
+      fs::path venv_root;
+      fs::path check_path = base_path;
+      bool found_venv = false;
+
+      // Look up the directory tree for a pyvenv.cfg file (up to 3 levels)
+      for (int i = 0; i < 3 && !found_venv; i++) {
+        fs::path cfg_path = check_path / "pyvenv.cfg";
+        if (fs::exists(cfg_path)) {
+          venv_root = check_path;
+          found_venv = true;
+          break;
+        }
+
+        // Also check one level up (common structure: venv/lib/pythonX.Y/site-packages)
+        if (check_path.has_parent_path()) {
+          check_path = check_path.parent_path();
+          cfg_path = check_path / "pyvenv.cfg";
+          if (fs::exists(cfg_path)) {
+            venv_root = check_path;
+            found_venv = true;
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+
+      if (found_venv) {
+        // Found a venv, parse the pyvenv.cfg file to find the base Python
+        fs::path cfg_path = venv_root / "pyvenv.cfg";
+        SHLOG_DEBUG("Found Python venv config: {}", cfg_path.string());
+
+        std::ifstream cfg_file(cfg_path.string());
+        if (cfg_file.is_open()) {
+          std::string line;
+          std::string home_path;
+          std::string base_prefix;
+
+          while (std::getline(cfg_file, line)) {
+            // Parse key = value format
+            auto pos = line.find('=');
+            if (pos != std::string::npos) {
+              std::string key = line.substr(0, pos);
+              std::string value = line.substr(pos + 1);
+
+              // Trim whitespace
+              key.erase(0, key.find_first_not_of(" \t"));
+              key.erase(key.find_last_not_of(" \t") + 1);
+              value.erase(0, value.find_first_not_of(" \t"));
+              value.erase(value.find_last_not_of(" \t") + 1);
+
+              if (key == "home") {
+                home_path = value;
+              } else if (key == "base-prefix") {
+                base_prefix = value;
+              }
+            }
+          }
+
+          // Add the home path if found
+          if (!home_path.empty()) {
+            fs::path home(home_path);
+            venvBasePaths.push_back(home.string());
+            SHLOG_DEBUG("Found Python venv home path: {}", home.string());
+
+            // Also add common library locations relative to home
+            fs::path lib_path = home / "lib";
+            if (fs::exists(lib_path) && fs::is_directory(lib_path)) {
+              venvBasePaths.push_back(lib_path.string());
+            }
+
+#ifdef __APPLE__
+            // On macOS, also check in Frameworks directory
+            fs::path fw_path = home / "Frameworks";
+            if (fs::exists(fw_path) && fs::is_directory(fw_path)) {
+              venvBasePaths.push_back(fw_path.string());
+            }
+#endif
+          }
+
+          // Add base-prefix if found and different from home
+          if (!base_prefix.empty() && base_prefix != home_path) {
+            fs::path base(base_prefix);
+            venvBasePaths.push_back(base.string());
+            SHLOG_DEBUG("Found Python venv base-prefix: {}", base.string());
+
+            // Also add common library locations relative to base prefix
+            fs::path lib_path = base / "lib";
+            if (fs::exists(lib_path) && fs::is_directory(lib_path)) {
+              venvBasePaths.push_back(lib_path.string());
+            }
+
+#ifdef __APPLE__
+            // On macOS, also check in Frameworks directory
+            fs::path fw_path = base / "Frameworks";
+            if (fs::exists(fw_path) && fs::is_directory(fw_path)) {
+              venvBasePaths.push_back(fw_path.string());
+            }
+#endif
+          }
+        }
+      }
+    }
+
+    return venvBasePaths;
+  }
+
   static std::string getPythonCommand() {
 #ifdef _WIN32
     // On Windows, try python.exe first, then py.exe (Python launcher)
@@ -414,6 +536,12 @@ struct Env {
       } else {
         SHLOG_ERROR("Failed to execute Python path probe command: {}", cmd);
       }
+
+      // Get extra paths from venv configuration
+      std::vector<std::string> venvBasePaths = detectVenvBasePaths();
+      for (const auto &path : venvBasePaths) {
+        SHLOG_DEBUG("PY VENV BASE PATH: {}", path);
+      }
     } catch (const std::exception &ex) {
       SHLOG_ERROR("Error while probing python: {}", ex.what());
     }
@@ -449,6 +577,36 @@ struct Env {
     // First add system library paths (empty path for system default locations)
     for (const auto &base_name : base_names) {
       candidates.push_back(base_name);
+    }
+
+    // Check venv paths first (priority)
+    std::vector<std::string> venvBasePaths = detectVenvBasePaths();
+    for (const auto &path : venvBasePaths) {
+      namespace fs = std::filesystem;
+      fs::path base_path = fs::path(path);
+
+      // Try in the path directly
+      for (const auto &base_name : base_names) {
+        candidates.push_back((base_path / base_name).string());
+      }
+
+      // Also try in lib subdirectory if it exists
+      fs::path lib_path = base_path / "lib";
+      if (fs::exists(lib_path) && fs::is_directory(lib_path)) {
+        for (const auto &base_name : base_names) {
+          candidates.push_back((lib_path / base_name).string());
+        }
+      }
+
+#ifdef __APPLE__
+      // On macOS, also check in Frameworks directory
+      fs::path fw_path = base_path / "Frameworks";
+      if (fs::exists(fw_path) && fs::is_directory(fw_path)) {
+        for (const auto &base_name : base_names) {
+          candidates.push_back((fw_path / base_name).string());
+        }
+      }
+#endif
     }
 
     // Then try all discovered Python paths
