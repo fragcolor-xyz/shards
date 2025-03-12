@@ -20,6 +20,12 @@
 #include <dlfcn.h>
 #endif
 
+// define ssize_t on windows
+#if _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 /*
  * This block will always work.. even if no python is present
  * We always try to dyn link and we provide always interface here
@@ -61,7 +67,7 @@ inline void *dynLoad(const char *lib_name, const char *sym_name) {
     }
   }
 
-  return (void *)GetProcAddress(mod, sym_name);
+  return (void *)GetProcAddress((HMODULE)mod, sym_name);
 #elif defined(__linux__) || defined(__APPLE__)
   // has to be global or py modules would fail
   if (mod == nullptr) {
@@ -291,7 +297,7 @@ struct Env {
   static inline PyMethodDef pauseMethod{"pause", &methodPause, (1 << 0), nullptr};
 
   static PyObj make_pyshared(PyObject *p) {
-    std::shared_ptr<PyObject> res(p, [](auto p) {
+    std::shared_ptr<PyObject> res(p, [](PyObject *p) {
       if (!p)
         return;
 
