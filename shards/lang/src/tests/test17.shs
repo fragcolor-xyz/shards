@@ -1,0 +1,32 @@
+{
+  a: {
+    j: 2
+  }
+}
+
+{
+  a: {
+    j: 2
+    j: 2
+    j: 2
+    j: [
+      1 2 3
+    ]
+    j: 2
+    j: 2
+  }
+}
+
+@define(my-define 2)
+
+{
+  ShardParams(A: 1
+    B: {
+      Something({
+        ; Comment
+        Log("Another callback")
+      })
+    }
+    C: 3
+  )
+}

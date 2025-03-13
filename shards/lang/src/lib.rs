@@ -18,7 +18,7 @@ pub mod rule_visitor;
 
  use crate::ast::*;
 
-use core::fmt;
+use core::fmt;  
 
 use std::borrow::Cow;
 use std::ops::Deref;

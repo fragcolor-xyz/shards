@@ -238,6 +238,9 @@ impl<'a> FormatterVisitor<'a> {
       }
     }
     self.out.write_all(s.as_bytes()).unwrap();
+
+    // Enable for testing
+    // self.out.flush().unwrap();
   }
 
   fn write(&mut self, s: &str, top: FormatterTop) {
@@ -597,6 +600,7 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
       self.newline();
     }
     self.write_joined(")");
+    self.set_last_char(pair.as_span().end());
   }
   fn v_eval_expr<T: FnOnce(&mut Self)>(
     &mut self,
@@ -617,6 +621,7 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
       self.newline();
     }
     self.write_joined(")");
+    self.set_last_char(pair.as_span().end());
   }
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.with_context(Context::Pipeline, |_self| {
