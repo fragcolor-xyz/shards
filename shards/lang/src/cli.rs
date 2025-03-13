@@ -626,7 +626,7 @@ fn build(
 
   let (deps, ast) = {
     let file_path = Path::new(&file);
-    let file_path = dunce::canonicalize(file_path).unwrap();
+    let file_path = dunce::canonicalize(file_path).map_err(|_| format!("Input file {} not found", file))?;
     let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
@@ -714,7 +714,7 @@ fn execute(eargs: &RunArgs, cancellation_token: Arc<AtomicBool>) -> Result<(), E
 
   let ast = {
     let file_path = Path::new(&file);
-    let file_path = dunce::canonicalize(file_path).unwrap();
+    let file_path = dunce::canonicalize(file_path).map_err(|_| format!("Input file {} not found", file))?;
     let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
