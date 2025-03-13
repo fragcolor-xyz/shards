@@ -368,24 +368,26 @@ struct Statement {
 };
 
 struct Base {
+  static inline const std::string_view defaultDb = "shards.db";
+  static inline const std::string_view defaultDbVarName = "sqlite/database";
   AnyStorage<Connection> _connection;
-  OwnedVar _dbNameStr{Var("shards.db")};
+  OwnedVar _dbNameStr{Var::Empty};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
   bool _withinTransaction{false};
 
-  void compose(SHInstanceData &data) {
-    _withinTransaction = false;
-    if (data.shared.len > 0) {
-      for (uint32_t i = data.shared.len; i > 0; i--) {
-        auto idx = i - 1;
-        auto &item = data.shared.elements[idx];
-        if (strcmp(item.name, "DB.Transaction.Cookie") == 0) {
-          _withinTransaction = true;
-          break;
-        }
+  void compose(SHInstanceData &data, ParamVar &dbParamVar) {
+    // If dbParamVar is empty, use either "shards.db" (default) or sqlite/db-path (exposed variable) if it exists
+    if (dbParamVar.isNone()) {
+      auto var = findExposedVariable(data.shared, defaultDbVarName);
+      if (var) {
+        dbParamVar = Var::ContextVar(defaultDbVarName);
+      } else {
+        dbParamVar = Var(defaultDb);
       }
     }
+
+    _withinTransaction = findExposedVariable(data.shared, "DB.Transaction.Cookie").has_value();
   }
 
   void _ensureDb(SHContext *context, bool readOnly) {
@@ -424,7 +426,6 @@ struct Query : public Base {
 
   void setup() {
     _query = Var("SELECT * FROM test WHERE id = ?");
-    _dbName = Var("shards.db");
     _asRows = Var(false);
     _retry = Var(false);
     _readOnly = Var(false);
@@ -600,8 +601,8 @@ struct Query : public Base {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data, _dbName);
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    Base::compose(data);
     if (!_asRows->isNone() && (bool)*_asRows) {
       _returnCols = false;
       return CoreInfo::SeqOfAnyTableType;
@@ -704,7 +705,7 @@ struct Transaction : public Base {
 
   SHComposeResult _composeResult{};
 
-  void setup() { _dbName = Var("shards.db"); }
+  void setup() {}
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
@@ -716,8 +717,8 @@ struct Transaction : public Base {
   static inline SHExposedTypeInfo _cookie{"DB.Transaction.Cookie"};
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data, _dbName);
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    Base::compose(data);
 
     // we need to edit a copy of data
     SHInstanceData dataCopy = data;
@@ -803,7 +804,6 @@ struct LoadExtension : public Base {
 
   LoadExtension() {
     _extPath = Var("my-extension");
-    _dbName = Var("shards.db");
     _readOnly = Var(false);
   }
 
@@ -819,8 +819,8 @@ struct LoadExtension : public Base {
   PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data, _dbName);
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    Base::compose(data);
     return data.inputType;
   }
 
@@ -861,10 +861,7 @@ struct RawQuery : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  void setup() {
-    _dbName = Var("shards.db");
-    _readOnly = Var(false);
-  }
+  void setup() { _readOnly = Var(false); }
 
   PARAM_PARAMVAR(_dbName, "Database", "The optional sqlite database filename.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
@@ -875,8 +872,8 @@ struct RawQuery : public Base {
   PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data, _dbName);
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    Base::compose(data);
     return outputTypes().elements[0];
   }
 
@@ -919,7 +916,6 @@ struct Backup : public Base {
 
   void setup() {
     _dest = Var("backup.db");
-    _dbName = Var("shards.db");
     _fast = Var(true);
     _pages = Var(200);
   }
@@ -935,8 +931,8 @@ struct Backup : public Base {
   PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data, _dbName);
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    Base::compose(data);
     return outputTypes().elements[0];
   }
 

@@ -150,6 +150,7 @@ jobs:
           ./shards new ../shards/tests/events.shs
           ./shards new ../shards/tests/complex-deserialize.shs
           ./shards new ../shards/tests/db.shs with-sqlite-vec:true
+          ./shards new ../shards/tests/db-paths.shs
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
           ./shards new ../shards/tests/whendone.shs
