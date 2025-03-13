@@ -19,23 +19,31 @@ struct Globals {
 
 template <typename T> class WindowBase {
 public:
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     // reset to default
     // force finding it again next run
     _window = WindowDefault();
+
+    _winName.cleanup();
+    _winClass.cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    _winName.warmup(context);
+    _winClass.warmup(context);
   }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
 
   static SHParametersInfo parameters() { return SHParametersInfo(windowParams); }
 
-  virtual void setParam(int index, const SHVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _winName = SHSTRVIEW(value);
+      _winName = value;
       break;
     case 1:
-      _winClass = SHSTRVIEW(value);
+      _winClass = value;
       break;
     default:
       break;
@@ -46,9 +54,9 @@ public:
     auto res = SHVar();
     switch (index) {
     case 0:
-      return shards::Var(_winName);
+      return _winName;
     case 1:
-      return shards::Var(_winClass);
+      return _winClass;
     default:
       break;
     }
@@ -57,13 +65,13 @@ public:
 
 protected:
   static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
-      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType),
+      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringOrStringVar),
       shards::ParamsInfo::Param("Class", SHCCSTR("An optional and platform dependent window class."),
-                                shards::CoreInfo::StringType));
+                                shards::CoreInfo::StringOrStringVar));
 
   static T WindowDefault();
-  std::string _winName;
-  std::string _winClass;
+  shards::ParamVar _winName;
+  shards::ParamVar _winClass;
   T _window;
 };
 
@@ -261,7 +269,7 @@ struct MousePosBase {
 
   SHVar getParam(int index) { return _window; }
 
-  void cleanup(SHContext* context) { _window.cleanup(); }
+  void cleanup(SHContext *context) { _window.cleanup(); }
   void warmup(SHContext *context) { _window.warmup(context); }
 };
 

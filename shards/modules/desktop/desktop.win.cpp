@@ -32,22 +32,46 @@ class WindowWindows : public WindowBase<HWND> {
 protected:
   std::vector<wchar_t> _wTitle;
   std::vector<wchar_t> _wClass;
+  shards::OwnedVar _previousTitle;
+  shards::OwnedVar _previousClass;
 
 public:
-  void setParam(int index, const SHVar &value) override {
-    WindowBase<HWND>::setParam(index, value);
+  void cleanup(SHContext *context) {
+    WindowBase::cleanup(context);
+    _wTitle.clear();
+    _wClass.clear();
+    _previousTitle = shards::Var::Empty;
+    _previousClass = shards::Var::Empty;
+  }
 
-    switch (index) {
-    case 0:
-      _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, 0, 0));
-      MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, &_wTitle[0], _wTitle.size());
-      break;
-    case 1:
-      _wClass.resize(MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, 0, 0));
-      MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, &_wClass[0], _wClass.size());
-      break;
-    default:
-      break;
+  void ensureParams() {
+    auto &name = _winName.get();
+    auto &class_ = _winClass.get();
+    bool changed = name != _previousTitle || class_ != _previousClass;
+    if (changed) {
+      SHLOG_TRACE("Window title changed, re-evaluating.");
+      _window = NULL;
+
+      _previousTitle = name;
+      _previousClass = class_;
+      
+      if (name.valueType == SHType::String) {
+        _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, name.payload.stringValue, -1, 0, 0));
+        MultiByteToWideChar(CP_UTF8, 0, name.payload.stringValue, -1, &_wTitle[0], _wTitle.size());
+      } else {
+        _wTitle.clear();
+      }
+
+      if (class_.valueType == SHType::String) {
+        _wClass.resize(MultiByteToWideChar(CP_UTF8, 0, class_.payload.stringValue, -1, 0, 0));
+        MultiByteToWideChar(CP_UTF8, 0, class_.payload.stringValue, -1, &_wClass[0], _wClass.size());
+      } else {
+        _wClass.clear();
+      }
+
+      if (_wTitle.size() == 0) {
+        throw ActivationError("Window title must be set.");
+      }
     }
   }
 };
@@ -57,8 +81,10 @@ public:
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureParams();
+
     if (!_window || !IsWindow(_window)) {
-      if (_winClass.size() > 0) {
+      if (_wClass.size() > 0) {
         _window = FindWindowW(&_wClass[0], &_wTitle[0]);
       } else {
         _window = FindWindowW(NULL, &_wTitle[0]);
@@ -74,8 +100,10 @@ public:
   static SHTypesInfo outputTypes() { return Globals::windowType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureParams();
+
     while (!_window || !IsWindow(_window)) {
-      if (_winClass.size() > 0) {
+      if (_wClass.size() > 0) {
         _window = FindWindowW(&_wClass[0], &_wTitle[0]);
       } else {
         _window = FindWindowW(NULL, &_wTitle[0]);
@@ -1114,6 +1142,7 @@ struct LastInput : public LastInputBase {
 
 RUNTIME_SHARD(Desktop, HasWindow);
 RUNTIME_SHARD_cleanup(HasWindow);
+RUNTIME_SHARD_warmup(HasWindow);
 RUNTIME_SHARD_inputTypes(HasWindow);
 RUNTIME_SHARD_outputTypes(HasWindow);
 RUNTIME_SHARD_parameters(HasWindow);
@@ -1124,6 +1153,7 @@ RUNTIME_SHARD_END(HasWindow);
 
 RUNTIME_SHARD(Desktop, WaitWindow);
 RUNTIME_SHARD_cleanup(WaitWindow);
+RUNTIME_SHARD_warmup(WaitWindow);
 RUNTIME_SHARD_inputTypes(WaitWindow);
 RUNTIME_SHARD_outputTypes(WaitWindow);
 RUNTIME_SHARD_parameters(WaitWindow);
