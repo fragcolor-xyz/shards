@@ -334,7 +334,7 @@ struct Embed {
     }
     batch.n_tokens = tokens.size();
 
-    llama_kv_cache_clear(llmContext.ctx.get());
+    llama_kv_self_clear(llmContext.ctx.get());
 
     if (llama_model_has_encoder(model)) {
       if (llama_encode(llmContext.ctx.get(), batch) < 0) {
