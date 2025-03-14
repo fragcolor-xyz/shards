@@ -8,7 +8,8 @@ use shards::types::{common_type, AutoSeqVar, ClonedVar, ParamVar, STRINGS_TYPES,
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 use pulldown_cmark::{
-  BlockQuoteKind, CodeBlockKind, Event, LinkType, MetadataBlockKind, Options, Parser, Tag, TagEnd,
+  BlockQuoteKind, CodeBlockKind, CowStr, Event, LinkType, MetadataBlockKind, Options, Parser, Tag,
+  TagEnd,
 };
 
 #[derive(shards::shard)]
@@ -73,6 +74,8 @@ impl Shard for MarkdownParseShard {
       self.parser = Some(Parser::new_ext(input, Options::all()));
     }
 
+    let str_base_ptr = unsafe { self.input.0.payload.__bindgen_anon_1.string.elements };
+
     self.output.0.clear();
     let next = self.parser.as_mut().unwrap().next();
     if let Some(event) = next {
@@ -96,6 +99,7 @@ impl Shard for MarkdownParseShard {
             let c = Var::ephemeral_string(&level);
             self.output.0.push(&a);
             self.output.0.push(&b);
+            self.output.0.push(&c);
             self.output.0.push(&c);
             if let Some(id) = id {
               let id = format!("#{}", id);
@@ -547,8 +551,17 @@ impl Shard for MarkdownParseShard {
         Event::Text(text) => {
           let a = Var::ephemeral_string("Text");
           let b = Var::ephemeral_string(&text);
+          // let d = Var::new_int(
           self.output.0.push(&a);
           self.output.0.push(&b);
+          if let CowStr::Borrowed(sv) = text {
+            let p0 = str_base_ptr as usize;
+            let p1 = sv.as_ptr() as usize;
+            if p1 > p0 {
+              let ofs = p1 as usize - p0 as usize;
+              self.output.0.push(&Var::new_int(ofs as i64));
+            }
+          };
         }
         Event::Code(text) => {
           let a = Var::ephemeral_string("Code");
