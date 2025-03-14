@@ -4838,34 +4838,6 @@ impl Clone for ShardsVar {
   }
 }
 
-unsafe extern "C" fn shardsvar_compose_cb(
-  errorShard: *const Shard,
-  errorTxt: SHStringWithLen,
-  nonfatalWarning: SHBool,
-  userData: *mut c_void,
-) {
-  let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
-  let msg = std::str::from_utf8(unsafe {
-    if errorTxt.len == 0 {
-      &[]
-    } else {
-      slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
-    }
-  })
-  .unwrap();
-  if !nonfatalWarning {
-    shlog_error!(
-      "Fatal error: {} shard: {}",
-      msg,
-      shard_name.to_str().unwrap()
-    );
-    let failed = userData as *mut bool;
-    *failed = true;
-  } else {
-    shlog_error!("Error: {} shard: {}", msg, shard_name.to_str().unwrap());
-  }
-}
-
 impl ShardsVar {
   fn destroy(&mut self) {
     for shard in &self.shards {

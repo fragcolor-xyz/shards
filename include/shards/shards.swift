@@ -126,6 +126,7 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case Wire
     case Object
     case Array // Notice: of just blittable types!
+    case ShardRef // A reference to a shard
 
     public var description: String {
         switch self {
@@ -181,6 +182,8 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
             return "Object"
         case .Array:
             return "Array"
+        case .ShardRef:
+            return "ShardRef"
         default:
             fatalError("Type not found!")
         }
@@ -872,6 +875,231 @@ extension SeqVar: Sequence {
     }
 }
 
+class ParamVar {
+    private var parameter: OwnedVar
+    private var pointee: UnsafeMutablePointer<SHVar>?
+
+    init(parameter: OwnedVar) {
+        self.parameter = parameter
+    }
+
+    func cleanup() {
+        if parameter.v.valueType == VarType.ContextVar.asSHType() {
+            G.Core.pointee.releaseVariable(pointee)
+        }
+        pointee = nil
+    }
+
+    func warmup(context: OpaquePointer?) {
+        if parameter.v.valueType == VarType.ContextVar.asSHType() {
+            assert(pointee == nil)
+            var swl = SHStringWithLen()
+            swl.string = parameter.v.payload.stringValue
+            swl.len = UInt64(parameter.v.payload.stringLen)
+            pointee = G.Core.pointee.referenceVariable(context, swl)
+        } else {
+            withUnsafeMutablePointer(to: &parameter.v) {
+                pointee = UnsafeMutablePointer($0)
+            }
+        }
+        assert(pointee != nil)
+    }
+
+    func setFastUnsafe(value: inout SHVar) {
+        assert(pointee != nil)
+        // store flags and rc
+        let rc = pointee!.pointee.refcount
+        let flags = pointee!.pointee.flags
+        // assign
+        pointee!.pointee = value
+        // restore flags and rc
+        pointee!.pointee.flags = flags
+        pointee!.pointee.refcount = rc
+    }
+
+    func setCloning(value: inout SHVar) {
+        assert(pointee != nil)
+        withUnsafeMutablePointer(to: &value) { ptr in
+            G.Core.pointee.cloneVar(pointee, ptr)
+        }
+    }
+
+    func get() -> SHVar {
+        assert(pointee != nil)
+        return pointee!.pointee
+    }
+
+    func assignParam(value: SHVar) {
+        parameter = .init(cloning: value)
+    }
+
+    func getParam() -> SHVar {
+        parameter.v
+    }
+
+    func isVariable() -> Bool {
+        parameter.v.valueType == VarType.ContextVar.asSHType()
+    }
+
+    func isNone() -> Bool {
+        parameter.v.valueType == VarType.NoValue.asSHType()
+    }
+
+    func setName(name: String) {
+        parameter = .init(string: name)
+    }
+
+    func getName() -> String? {
+        if isVariable() {
+            return parameter.v.string
+        }
+        return nil
+    }
+}
+
+class ShardsVar {
+    private var shardsPtrs: ContiguousArray<ShardPtr> = []
+    private var nativeShards = shards.Shards()
+    private var composeResult = SHComposeResult()
+    private var paramValue = OwnedVar()
+
+    private func reset() {
+        // Free all shards
+        for shard in shardsPtrs {
+            shard!.pointee.destroy(shard!)
+        }
+        shardsPtrs.removeAll()
+
+        nativeShards.len = 0
+        nativeShards.elements = nil
+
+        withUnsafeMutablePointer(to: &composeResult.exposedInfo) { ptr in
+            G.Core.pointee.expTypesFree(ptr)
+        }
+        withUnsafeMutablePointer(to: &composeResult.requiredInfo) { ptr in
+            G.Core.pointee.expTypesFree(ptr)
+        }
+
+        composeResult = SHComposeResult()
+    }
+
+    func cleanup(context: OpaquePointer?) -> Result<Void, ShardError> {
+        var error = SHError()
+        for shard in shardsPtrs {
+            error = shard!.pointee.cleanup(shard!, context)
+            if error.code != 0 {
+                return .failure(ShardError(message: error.message.toString()!))
+            }
+        }
+        return .success(())
+    }
+
+    func warmup(context: OpaquePointer?) -> Result<Void, ShardError> {
+        var error = SHError()
+        for shard in shardsPtrs {
+            error = shard!.pointee.warmup(shard!, context)
+            if error.code != 0 {
+                return .failure(ShardError(message: error.message.toString()!))
+            }
+        }
+        return .success(())
+    }
+
+    func setParam(value: SHVar) -> Result<Void, ShardError> {
+        reset()
+
+        if value.valueType == VarType.ShardRef.asSHType() {
+            // Handle single shard reference
+            let shardPtr = value.payload.shardValue
+            if shardPtr != nil {
+                shardsPtrs.append(shardPtr)
+            }
+        } else if value.valueType == VarType.Seq.asSHType() {
+            // Handle sequence of shards
+            let seqLen = value.payload.seqValue.len
+            for i in 0 ..< seqLen {
+                let elemVar = value.payload.seqValue.elements[Int(i)]
+                if elemVar.valueType == VarType.ShardRef.asSHType() {
+                    let shardPtr = elemVar.payload.shardValue
+                    if shardPtr != nil {
+                        shardsPtrs.append(shardPtr)
+                    }
+                }
+            }
+        } else {
+            return .failure(ShardError(message: "Expected ShardRef or Seq<ShardRef>"))
+        }
+
+        paramValue = .init(cloning: value)
+
+        withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
+            nativeShards.elements = ptr
+        }
+        nativeShards.len = UInt32(shardsPtrs.count)
+        nativeShards.cap = UInt32(0)
+
+        return .success(())
+    }
+
+    func getParam() -> SHVar {
+        return paramValue.v
+    }
+
+    func compose(data: SHInstanceData) -> Result<SHComposeResult, ShardError> {
+        if shardsPtrs.isEmpty {
+            return .success(composeResult)
+        }
+
+        // Compose the shards
+        composeResult = G.Core.pointee.composeShards(nativeShards, data)
+        if composeResult.failed {
+            return .failure(ShardError(message: composeResult.failureMessage.string))
+        }
+
+        return .success(composeResult)
+    }
+
+    func activate(context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>) -> SHWireState {
+        if shardsPtrs.isEmpty {
+            return SHWireState(rawValue: 0) // continue
+        }
+
+        var inputCopy = input
+        let state = withUnsafePointer(to: &inputCopy) { input in
+            G.Core.pointee.runShards(nativeShards, context, input, output)
+        }
+        return state
+    }
+
+    func activateHandlingReturn(context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>) -> SHWireState {
+        if shardsPtrs.isEmpty {
+            return SHWireState(rawValue: 0) // continue
+        }
+
+        var inputCopy = input
+        let state = withUnsafePointer(to: &inputCopy) { input in
+            G.Core.pointee.runShards2(nativeShards, context, input, output)
+        }
+        return state
+    }
+
+    func isEmpty() -> Bool {
+        return shardsPtrs.isEmpty
+    }
+
+    func getExposing() -> SHExposedTypesInfo {
+        return composeResult.exposedInfo
+    }
+
+    func getRequiring() -> SHExposedTypesInfo {
+        return composeResult.requiredInfo
+    }
+
+    deinit {
+        reset()
+    }
+}
+
 public struct Context {
     public var context: OpaquePointer?
 
@@ -1181,25 +1409,6 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     return UnsafeMutableRawPointer(cwrapper).assumingMemoryBound(to: Shard.self)
 }
 
-struct ShardParameter {
-    private weak var owner: ShardController?
-    var info: ParameterInfo
-
-    public var value: SHVar {
-        get {
-            owner!.getParam(index: info.index)
-        }
-        set {
-            _ = owner!.setParam(index: info.index, value: newValue)
-        }
-    }
-
-    public init(shard: ShardController, info: ParameterInfo) {
-        owner = shard
-        self.info = info
-    }
-}
-
 class ParameterInfo {
     init(name: String, types: SHTypesInfo, index: Int) {
         self.name = name
@@ -1221,188 +1430,6 @@ class ParameterInfo {
     var index: Int
 }
 
-class ShardController: Equatable, Identifiable {
-    var id: Int {
-        nativeShard.hashValue
-    }
-
-    convenience init(name: String) {
-        let n = name.utf8CString
-        var cname = SHStringWithLen()
-        cname.string = n.withUnsafeBufferPointer {
-            $0.baseAddress
-        }
-        cname.len = UInt64(n.count - 1)
-        self.init(native: G.Core.pointee.createShard(cname)!) // TODO, this code is old, this might leak as its ref count is not managed
-    }
-
-    init(native: ShardPtr) {
-        nativeShard = native
-
-        let blkname = nativeShard?.pointee.name(nativeShard!)
-        let nparams = nativeShard?.pointee.parameters(nativeShard)
-        if (nparams?.len ?? 0) > 0 {
-            for i in 0 ..< nparams!.len {
-                let nparam = nparams!.elements[Int(i)]
-                let nparamId = "\(blkname!)-\(nparam.name!)"
-                if let info = ShardController.infos[nparamId] {
-                    params.append(ShardParameter(shard: self, info: info))
-                } else {
-                    let info = ParameterInfo(
-                        name: .init(cString: nparam.name!),
-                        // help: .init(cString: nparam.help!),
-                        types: nparam.valueTypes,
-                        index: Int(i)
-                    )
-                    ShardController.infos[nparamId] = info
-                    params.append(ShardParameter(shard: self, info: info))
-                }
-            }
-        }
-    }
-
-    deinit {
-        if nativeShard != nil {
-            if !nativeShard!.pointee.owned {
-                nativeShard!.pointee.destroy(nativeShard)
-            }
-        }
-    }
-
-    static func == (lhs: ShardController, rhs: ShardController) -> Bool {
-        return lhs.nativeShard == rhs.nativeShard
-    }
-
-    var inputTypes: UnsafeMutableBufferPointer<SHTypeInfo> {
-        let infos = nativeShard!.pointee.inputTypes(nativeShard!)
-        return .init(start: infos.elements, count: Int(infos.len))
-    }
-
-    var noInput: Bool {
-        inputTypes.allSatisfy { info in
-            info.basicType == None
-        }
-    }
-
-    var outputTypes: UnsafeMutableBufferPointer<SHTypeInfo> {
-        let infos = nativeShard!.pointee.outputTypes(nativeShard!)
-        return .init(start: infos.elements, count: Int(infos.len))
-    }
-
-    var name: String {
-        .init(cString: nativeShard!.pointee.name(nativeShard)!)
-    }
-
-    var parameters: [ShardParameter] {
-        params
-    }
-
-    func getParam(index: Int) -> SHVar {
-        nativeShard!.pointee.getParam(nativeShard, Int32(index))
-    }
-
-    func setParam(index: Int, value: SHVar) -> ShardController {
-        #if DEBUG
-            print("setParam(\(index), \(value))")
-        #endif
-        var mutableValue = value
-        let error = nativeShard!.pointee.setParam(nativeShard, Int32(index), &mutableValue)
-        if error.code != SH_ERROR_NONE {
-            print("Error setting parameter: \(error)")
-        }
-        return self
-    }
-
-    func setParam(name: String, value: SHVar) -> ShardController {
-        for idx in params.indices {
-            if params[idx].info.name == name {
-                params[idx].value = value
-                return self
-            }
-        }
-        fatalError("Parameter not found! \(name)")
-    }
-
-    func setParam(name: String, string: String) -> ShardController {
-        for idx in params.indices {
-            if params[idx].info.name == name {
-                var ustr = string.utf8CString
-                params[idx].value = SHVar(value: &ustr)
-                return self
-            }
-        }
-        fatalError("Parameter not found! \(name)")
-    }
-
-    func setParam(index: Int, string: String) -> ShardController {
-        var ustr = string.utf8CString
-        params[index].value = SHVar(value: &ustr)
-        return self
-    }
-
-    func setParam(name: String, @ShardsBuilder _ contents: () -> [ShardController]) -> ShardController {
-        let shards = contents()
-        for idx in params.indices {
-            if params[idx].info.name == name {
-                var vshards = shards.map {
-                    SHVar(value: $0.nativeShard!)
-                }
-                vshards.withUnsafeMutableBufferPointer {
-                    params[idx].value.seq = $0
-                }
-                return self
-            }
-        }
-        fatalError("Parameter not found! \(name)")
-    }
-
-    var nativeShard: ShardPtr
-    var params = [ShardParameter]()
-    static var infos: [String: ParameterInfo] = [:]
-}
-
-@resultBuilder struct ShardsBuilder {
-    static func buildBlock(_ components: ShardController...) -> [ShardController] {
-        components
-    }
-
-    static func buildBlock(_ component: ShardController) -> [ShardController] {
-        [component]
-    }
-
-    static func buildOptional(_ component: [ShardController]?) -> [ShardController] {
-        component ?? []
-    }
-
-    static func buildEither(first: [ShardController]) -> [ShardController] {
-        first
-    }
-
-    static func buildEither(second: [ShardController]) -> [ShardController] {
-        second
-    }
-
-    static func buildArray(_ components: [[ShardController]]) -> [ShardController] {
-        components.flatMap { $0 }
-    }
-
-    static func buildExpression(_ expression: ShardController) -> [ShardController] {
-        [expression]
-    }
-
-    static func buildExpression(_ expression: [ShardController]) -> [ShardController] {
-        expression
-    }
-
-    static func buildLimitedAvailability(_ component: [ShardController]) -> [ShardController] {
-        component
-    }
-
-    static func buildFinalResult(_ component: [ShardController]) -> [ShardController] {
-        component
-    }
-}
-
 class WireController {
     init() {
         let cname = SHStringWithLen()
@@ -1413,25 +1440,10 @@ class WireController {
         nativeRef = G.Core.pointee.referenceWire(native)
     }
 
-    convenience init(shards: [ShardController]) {
-        self.init()
-        for item in shards {
-            add(shard: item)
-        }
-    }
-
-    convenience init(@ShardsBuilder _ contents: () -> [ShardController]) {
-        self.init(shards: contents())
-    }
-
     deinit {
         if nativeRef != nil {
             G.Core.pointee.destroyWire(nativeRef)
         }
-    }
-
-    func add(shard: ShardController) {
-        G.Core.pointee.addShard(nativeRef, shard.nativeShard)
     }
 
     var looped: Bool = false {
