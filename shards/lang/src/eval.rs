@@ -285,11 +285,11 @@ fn extract_make_ints_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => ShardRef::create("MakeInt2", Some(line_info.into())),
-    3 => ShardRef::create("MakeInt3", Some(line_info.into())),
-    4 => ShardRef::create("MakeInt4", Some(line_info.into())),
-    8 => ShardRef::create("MakeInt8", Some(line_info.into())),
-    16 => ShardRef::create("MakeInt16", Some(line_info.into())),
+    2 => AutoShardRef::create("MakeInt2", Some(line_info.into())),
+    3 => AutoShardRef::create("MakeInt3", Some(line_info.into())),
+    4 => AutoShardRef::create("MakeInt4", Some(line_info.into())),
+    8 => AutoShardRef::create("MakeInt8", Some(line_info.into())),
+    16 => AutoShardRef::create("MakeInt16", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -301,7 +301,6 @@ fn extract_make_ints_shard<const WIDTH: usize>(
     }
   }
   .unwrap(); // qed, those shards must exist!
-  let shard = AutoShardRef(shard);
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -504,9 +503,9 @@ fn extract_make_floats_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => ShardRef::create("MakeFloat2", Some(line_info.into())),
-    3 => ShardRef::create("MakeFloat3", Some(line_info.into())),
-    4 => ShardRef::create("MakeFloat4", Some(line_info.into())),
+    2 => AutoShardRef::create("MakeFloat2", Some(line_info.into())),
+    3 => AutoShardRef::create("MakeFloat3", Some(line_info.into())),
+    4 => AutoShardRef::create("MakeFloat4", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -518,7 +517,6 @@ fn extract_make_floats_shard<const WIDTH: usize>(
     }
   }
   .unwrap(); // qed, those shards must exist!
-  let shard = AutoShardRef(shard);
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -642,7 +640,7 @@ fn extract_make_colors_shard(
     )
   }
 
-  let shard = AutoShardRef(ShardRef::create("MakeColor", Some(line_info.into())).unwrap()); // qed, this shard must exist!
+  let shard = AutoShardRef::create("MakeColor", Some(line_info.into())).unwrap(); // qed, this shard must exist!
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -1747,9 +1745,9 @@ impl<'e> VariableResolver<'e> {
                     BlockContent::EvalExpr(seq) => Value::EvalExpr(seq.clone()),
                     BlockContent::Expr(seq) => Value::Expr(seq.clone()),
                     BlockContent::Const(value) => value.clone(),
-                    _ => Value::None(())
+                    _ => Value::None(()),
                   }
-                },
+                }
                 _ => Value::None(()),
               };
               self.resolve_var(&value, line_info, shard)
@@ -2252,15 +2250,13 @@ fn create_shard_inner(
     shard
   };
 
-  let s = ShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
+  let s = AutoShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
       format!("Shard {} does not exist", shard.name.name.as_str()),
       line_info,
     )
       .into(),
   )?;
-
-  let s = AutoShardRef(s);
 
   let mut idx = 0i32;
   let mut as_idx = true;
@@ -2413,8 +2409,7 @@ fn add_const_shard2(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
   shard
     .0
     .set_parameter(0, value)
@@ -2425,8 +2420,7 @@ fn add_const_shard2(
 }
 
 fn add_const_shard3(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
   shard
     .0
     .set_parameter(0, value)
@@ -2442,8 +2436,7 @@ fn into_get_or_const(
 ) -> Result<AutoShardRef, ShardsError> {
   match resolve_var(&value, line_info, None, e)? {
     ResolvedVar::Constant(var) => {
-      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-      let shard = AutoShardRef(shard);
+      let shard = AutoShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
       shard
         .0
         .set_parameter(0, *var.as_ref())
@@ -2451,9 +2444,8 @@ fn into_get_or_const(
       Ok(shard)
     }
     ResolvedVar::Variable(var) => {
-      let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
-      let shard = AutoShardRef(shard);
-      // todo - avoid clone
+      let shard = AutoShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
+                                                                                // todo - avoid clone
       shard
         .0
         .set_parameter(0, *var.as_ref())
@@ -2491,8 +2483,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::TakeSeq(_, _)
           | Value::Func(_)
           | Value::Table(_) => {
-            let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-            let shard = AutoShardRef(shard);
+            let shard = AutoShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
               .0
@@ -2521,8 +2512,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       .map(|shard| shard_with_id_iden(shard, e, name))
     }
     _ => {
-      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
-      let shard = AutoShardRef(shard);
+      let shard = AutoShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
       let value = as_var(value, line_info, Some(shard.0), e)?;
       shard
         .0
@@ -2542,8 +2532,7 @@ fn make_sub_shard(
   shards: Vec<AutoShardRef>,
   line_info: LineInfo,
 ) -> Result<AutoShardRef, ShardsError> {
-  let shard = ShardRef::create("SubFlow", Some(line_info.into())).unwrap(); // qed, Sub must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("SubFlow", Some(line_info.into())).unwrap(); // qed, Sub must exist
   let mut seq = AutoSeqVar::new();
   for shard in shards {
     let s = shard.0 .0;
@@ -2564,8 +2553,7 @@ fn add_take_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
   shard
     .0
     .set_parameter(0, *target)
@@ -2576,8 +2564,7 @@ fn add_take_shard(
 }
 
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let (full_name, is_replacement) = get_full_name(name, e, line, name.namespaces.is_empty())?;
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
@@ -2605,8 +2592,7 @@ fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(
 }
 
 fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let name = Var::ephemeral_string(name);
   shard
     .0
@@ -3390,7 +3376,7 @@ fn eval_pipeline(
           }
           ("run", true) => {
             if let Some(ref params) = func.params {
-              let mut otherFn = func.clone(); 
+              let mut otherFn = func.clone();
               otherFn.name.name = RcStrWrapper::new("Run");
               add_shard(&otherFn, block.line_info.unwrap_or_default(), e)?;
               Ok(())
@@ -3688,8 +3674,7 @@ fn add_assignment_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let (full_name, is_replacement) = get_full_name(name, e, line_info, name.namespaces.is_empty())?;
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
@@ -3748,8 +3733,7 @@ fn add_assignment_shard_no_suffix(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
-  let shard = AutoShardRef(shard);
+  let shard = AutoShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let name = Var::ephemeral_string(name);
   shard
     .0

@@ -524,6 +524,27 @@ unsafe extern "C" fn error_cb(
   }
 }
 
+impl AutoShardRef {
+  pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
+    unsafe {
+      let ptr = (*Core).createShard.unwrap_unchecked()(SHStringWithLen {
+        string: name.as_ptr() as *const c_char,
+        len: name.len() as u64,
+      });
+      if ptr.is_null() {
+        None
+      } else {
+        if let Some(debug_info) = debug_info {
+          (*ptr).line = debug_info.0;
+          (*ptr).column = debug_info.1;
+        }
+        (*ptr).setup.unwrap_unchecked()(ptr);
+        Some(AutoShardRef(ShardRef(ptr)))
+      }
+    }
+  }
+}
+
 impl ShardRef {
   pub fn output_types(&self) -> &[Type] {
     unsafe {
@@ -542,25 +563,6 @@ impl ShardRef {
         return &[];
       }
       core::slice::from_raw_parts(info.elements, info.len as usize)
-    }
-  }
-
-  pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
-    unsafe {
-      let ptr = (*Core).createShard.unwrap_unchecked()(SHStringWithLen {
-        string: name.as_ptr() as *const c_char,
-        len: name.len() as u64,
-      });
-      if ptr.is_null() {
-        None
-      } else {
-        if let Some(debug_info) = debug_info {
-          (*ptr).line = debug_info.0;
-          (*ptr).column = debug_info.1;
-        }
-        (*ptr).setup.unwrap_unchecked()(ptr);
-        Some(ShardRef(ptr))
-      }
     }
   }
 
@@ -3580,7 +3582,7 @@ impl Var {
 
 impl TryFrom<&Var> for SHString {
   type Error = &'static str;
- 
+
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_String
@@ -6374,8 +6376,10 @@ lazy_static! {
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
-  pub static ref SEQ_OF_STRINGS_OR_SEQ_OF_BYTES_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS, *SEQ_OF_BYTES];
-  pub static ref SEQ_OF_STRING_OR_BYTE_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  pub static ref SEQ_OF_STRINGS_OR_SEQ_OF_BYTES_TYPES: Vec<Type> =
+    vec![*SEQ_OF_STRINGS, *SEQ_OF_BYTES];
+  pub static ref SEQ_OF_STRING_OR_BYTE_TYPES: Vec<Type> =
+    vec![common_type::string, common_type::bytes];
   pub static ref COLOR_TYPES: Vec<Type> = vec![common_type::color];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
   pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
