@@ -1613,10 +1613,9 @@ struct Update : public SetUpdateBase {
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
-      
+
       // just a variable, keep unchanged!
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), type->exposedType, true));
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), type->exposedType, true));
     }
 
     // always lift this limit in a Set/Update
@@ -1675,7 +1674,7 @@ struct Update : public SetUpdateBase {
 };
 
 struct Get : public VariableBase {
-  SHVar _defaultValue{};
+  OwnedVar _defaultValue{};
   SHTypeInfo _defaultType{};
   std::vector<SHTypeInfo> _tableTypes{};
   std::vector<SHVar> _tableKeys{}; // should be fine not to be OwnedVar
@@ -1693,7 +1692,7 @@ struct Get : public VariableBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
-      cloneVar(_defaultValue, value);
+      _defaultValue = value;
     }
   }
 
