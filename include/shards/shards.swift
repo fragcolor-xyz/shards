@@ -1233,7 +1233,7 @@ class ShardController: Equatable, Identifiable {
             $0.baseAddress
         }
         cname.len = UInt64(n.count - 1)
-        self.init(native: G.Core.pointee.createShard(cname)!)
+        self.init(native: G.Core.pointee.createShard(cname)!) // TODO, this code is old, this might leak as its ref count is not managed
     }
 
     init(native: ShardPtr) {
