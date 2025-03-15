@@ -29,8 +29,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 // We build stb in imaging.cpp
-// #define STB_IMAGE_STATIC
-// #define STB_IMAGE_IMPLEMENTATION
+#ifdef FORCE_STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#endif
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_ENABLE_DRACO
@@ -611,7 +613,7 @@ struct Loader {
 
       for (auto &gltfChannel : gltfAnimation.channels) {
         auto track = loadAnimationTrack(gltfAnimation, gltfChannel);
-        if(track.target != animation::BuiltinTarget::None)
+        if (track.target != animation::BuiltinTarget::None)
           animation.tracks.emplace_back(std::move(track));
       }
     }
@@ -895,7 +897,8 @@ std::vector<uint8_t> convertToGlb(const std::string &inputPath) {
   }
 
   // Write to a temporary GLB file
-  auto tempOutputPath = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path("temp_output_%%%%-%%%%-%%%%-%%%%.glb");
+  auto tempOutputPath =
+      boost::filesystem::temp_directory_path() / boost::filesystem::unique_path("temp_output_%%%%-%%%%-%%%%-%%%%.glb");
   tinygltf::TinyGLTF writer;
   if (!writer.WriteGltfSceneToFile(&model, tempOutputPath.string(), true, true, false, true)) {
     throw std::runtime_error("Failed to write glTF to .glb");

@@ -44,3 +44,5 @@ if(WIN32)
 endif()
 target_precompile_headers(test-gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 add_asset_path_definition(test-gfx PUBLIC GFX_TEST_DATA_PATH ${GFX_TEST_DATA_PATH})
+
+target_compile_definitions(test-gfx PRIVATE FORCE_STB_IMAGE_IMPLEMENTATION)

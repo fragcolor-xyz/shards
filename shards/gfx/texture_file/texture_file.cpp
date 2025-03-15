@@ -9,8 +9,10 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wunused-function"
 // We build stb in imaging.cpp
-// #define STB_IMAGE_STATIC
-// #define STB_IMAGE_IMPLEMENTATION
+#ifdef FORCE_STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#endif
 #include "stb_image.h"
 #pragma GCC diagnostic pop
 
