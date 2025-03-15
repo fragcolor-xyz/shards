@@ -15,5 +15,5 @@ if(NOT EMSCRIPTEN)
   
   # Make sure clip.h is in the include path
   target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common)
-  target_compile_definitions(shards-module-llm PRIVATE SKIP_STB_IMAGE_IMPLEMENTATION)
+  target_compile_definitions(shards-module-llm PRIVATE SKIP_STB_IMAGE_IMPLEMENTATION LLAVA_LOG_OFF)
 endif()
