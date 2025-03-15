@@ -1409,25 +1409,120 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     return UnsafeMutableRawPointer(cwrapper).assumingMemoryBound(to: Shard.self)
 }
 
+class TypeInfo {
+    var native = SHTypeInfo()
+
+    init(type: VarType) {
+        native.basicType = type.asSHType()
+    }
+}
+
+class Types {
+    var types: [TypeInfo] // to keep alive
+    var typesStorage: [SHTypeInfo] = []
+
+    init(types: [TypeInfo]) {
+        self.types = types
+        for t in types {
+            typesStorage.append(t.native)
+        }
+    }
+
+    func get() -> [SHTypeInfo] {
+        typesStorage
+    }
+}
+
 class ParameterInfo {
-    init(name: String, types: SHTypesInfo, index: Int) {
-        self.name = name
-        help = ""
+    var name: ContiguousArray<CChar>
+    var help: ContiguousArray<CChar>
+    var types: [TypeInfo] // to keep alive
+    var typesStorage: ContiguousArray<SHTypeInfo> = []
+
+    init(name: String, help: String, types: [TypeInfo]) {
+        self.name = name.utf8CString
+        self.help = help.utf8CString
         self.types = types
-        self.index = index
+        for t in types {
+            typesStorage.append(t.native)
+        }
     }
 
-    init(name: String, help: String, types: SHTypesInfo, index: Int) {
-        self.name = name
-        self.help = help
-        self.types = types
-        self.index = index
+    func toSHParameterInfo() -> SHParameterInfo {
+        var result = SHParameterInfo()
+
+        name.withUnsafeBufferPointer {
+            result.name = $0.baseAddress
+        }
+        help.withUnsafeBufferPointer {
+            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
+        }
+        withUnsafeMutablePointer(to: &typesStorage[0]) { ptr in
+            result.valueTypes.elements = ptr
+        }
+        result.valueTypes.len = UInt32(types.count)
+        result.valueTypes.cap = 0
+
+        return result
+    }
+}
+
+class Parameters {
+    // pod C type, so contiguous array is not needed anyway, this is compatible with the IShard interface
+    private var storage: [SHParameterInfo] = []
+    private var infos: [ParameterInfo] = [] // to keep alive
+
+    func add(name: String, help: String, types: [TypeInfo]) {
+        let info = ParameterInfo(name: name, help: help, types: types)
+        storage.append(info.toSHParameterInfo())
+        infos.append(info)
     }
 
-    var name: String
-    var help: String
-    var types: SHTypesInfo
-    var index: Int
+    func get() -> [SHParameterInfo] {
+        storage
+    }
+}
+
+class ExposedTypeInfo {
+    var name: ContiguousArray<CChar>
+    var help: ContiguousArray<CChar>
+    var exposedType: TypeInfo
+    var isMutable: Bool
+    var isProtected: Bool
+    var global: Bool
+    var tracked: Bool
+    var declared: Bool
+
+    init(name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false, isProtected: Bool = false, global: Bool = false, tracked: Bool = false, declared: Bool = false) {
+        self.name = name.utf8CString
+        self.help = help.utf8CString
+        self.exposedType = exposedType
+        self.isMutable = isMutable
+        self.isProtected = isProtected
+        self.global = global
+        self.tracked = tracked
+        self.declared = declared
+    }
+
+    func toSHExposedTypeInfo() -> SHExposedTypeInfo {
+        var result = SHExposedTypeInfo()
+
+        name.withUnsafeBufferPointer {
+            result.name = $0.baseAddress
+        }
+        help.withUnsafeBufferPointer {
+            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
+        }
+        result.exposedType = exposedType.native
+
+        result.isMutable = isMutable
+        result.isProtected = isProtected
+        result.global = global
+        result.tracked = tracked
+        result.declared = declared
+
+        return result
+    }
 }
 
 class WireController {
