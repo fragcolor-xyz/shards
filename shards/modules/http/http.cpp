@@ -545,17 +545,10 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
-  std::optional<entt::connection> onStopConnection;
 
   ~Peer() { cleanup(); }
 
-  void cleanup() {
-    if (onStopConnection)
-      onStopConnection->release();
-
-    socket.reset();
-    onStopConnection.reset();
-  }
+  void cleanup() { socket.reset(); }
 };
 
 struct PeerError {
@@ -631,6 +624,8 @@ struct Server {
 
   std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
+  entt::scoped_connection _onStopConnection;
+
   void wireOnStop(const SHWire::OnStopEvent &e) {
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
@@ -644,14 +639,6 @@ struct Server {
   void accept_once(SHContext *context) {
     auto peer = _pool->acquire(_composer, context);
     _wireContainers[peer->wire.get()] = peer;
-
-    // Assume that we recycle containers so the connection might already exist!
-    if (!peer->onStopConnection) {
-      auto mesh = context->main->mesh.lock();
-      if (mesh) {
-        peer->onStopConnection = mesh->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
-      }
-    }
 
     peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
@@ -678,12 +665,16 @@ struct Server {
       throw ComposeError("Peer wires pool not valid!");
     }
 
+    _onStopConnection = context->main->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+
     _port.warmup(context);
   }
 
   void cleanup(SHContext *context) {
     if (_pool)
       _pool->stopAll();
+
+    _onStopConnection.release();
 
     // Close acceptor first to stop accepting new connections
     if (_acceptor) {
