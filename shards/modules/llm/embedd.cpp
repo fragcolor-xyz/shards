@@ -1,75 +1,34 @@
-#include <shards/core/module.hpp>
-#include <shards/core/runtime.hpp>
-#include <shards/shards.h>
-#include <shards/core/shared.hpp>
-#include <shards/utility.hpp>
-#include <shards/core/params.hpp>
-#include <shards/log/log.hpp>
-
-#include <llama.h>
+#include "shared.hpp"
 
 namespace shards {
 namespace llm {
-struct ModelData {
-  static inline std::atomic_uint32_t usageCounter;
-
-  ModelData() {
-    uint32_t expected = usageCounter.load(std::memory_order_acquire);
-    uint32_t desired;
-    do {
-      desired = expected + 1;
-    } while (!usageCounter.compare_exchange_weak(expected, desired, std::memory_order_release));
-
-    if (desired == 1) {
-      SHLOG_DEBUG("Initializing llama backend");
-      llama_backend_init();
-    }
-  }
-
-  ~ModelData() {
-    uint32_t prev = usageCounter.fetch_sub(1, std::memory_order_acq_rel);
-    if (prev == 1) {
-      SHLOG_DEBUG("Freeing llama backend");
-      llama_backend_free();
-    }
-  }
-
-  std::shared_ptr<llama_model> model;
-};
-
 struct Model {
   Model() {
     _useMmap = Var(true);
     _gpuLayers = Var(0);
   }
 
-  static inline int32_t ObjectId = 'llam';
-  static inline const char VariableName[] = "LLM.Model";
-  static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
-  static inline SHTypeInfo RawType = Type;
-  static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
-  static inline shards::ObjectVar<ModelData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
-
   ModelData *_data{};
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return Type; }
+  static SHTypesInfo outputTypes() { return ModelData::Type; }
 
   PARAM_PARAMVAR(_useMmap, "UseMmap", "Use mmap to load the model", {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_gpuLayers, "GPULayers", "Number of GPU layers to use", {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_gpuLayers, "GPULayers", "Number of GPU layers to use",
+                 {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_useMmap), PARAM_IMPL_FOR(_gpuLayers));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     if (_data) {
-      ObjectVar.Release(_data);
+      ModelData::ObjectVar.Release(_data);
       _data = nullptr;
     }
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _data = ObjectVar.New();
+    _data = ModelData::ObjectVar.New();
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -87,7 +46,7 @@ struct Model {
 
     _data->model = std::shared_ptr<llama_model>(llama_model_load_from_file(path.c_str(), params), llama_model_free);
 
-    return ObjectVar.Get(_data);
+    return ModelData::ObjectVar.Get(_data);
   }
 };
 
@@ -95,7 +54,7 @@ struct Tokenize {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::IntSeqType; }
 
-  PARAM_PARAMVAR(_model, "Model", "The model to use", {Model::VarType});
+  PARAM_PARAMVAR(_model, "Model", "The model to use", {ModelData::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_model));
 
   void cleanup(SHContext *context) {
@@ -118,7 +77,7 @@ struct Tokenize {
   std::vector<llama_token> _tokensCache;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &data = varAsObjectChecked<ModelData>(_model.get(), Model::Type);
+    auto &data = varAsObjectChecked<ModelData>(_model.get(), ModelData::Type);
     auto model = data.model.get();
     const llama_vocab *vocab = llama_model_get_vocab(model);
 
@@ -143,7 +102,7 @@ struct Detokenize {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::IntSeqType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
 
-  PARAM_PARAMVAR(_model, "Model", "The model to use", {Model::VarType, Model::VarType});
+  PARAM_PARAMVAR(_model, "Model", "The model to use", {ModelData::VarType, ModelData::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_model));
 
   void cleanup(SHContext *context) {
@@ -162,7 +121,7 @@ struct Detokenize {
   std::string _text;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &data = varAsObjectChecked<ModelData>(_model.get(), Model::Type);
+    auto &data = varAsObjectChecked<ModelData>(_model.get(), ModelData::Type);
     auto model = data.model.get();
     const llama_vocab *vocab = llama_model_get_vocab(model);
     std::vector<llama_token> tokens;
@@ -195,7 +154,7 @@ struct Context {
   static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
   static inline shards::ObjectVar<ContextData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
 
-  static SHTypesInfo inputTypes() { return Model::Type; }
+  static SHTypesInfo inputTypes() { return ModelData::Type; }
   static SHTypesInfo outputTypes() { return Type; }
 
   Context() { _embeddings = Var(false); }
@@ -226,7 +185,7 @@ struct Context {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &data = varAsObjectChecked<ModelData>(input, Model::Type);
+    auto &data = varAsObjectChecked<ModelData>(input, ModelData::Type);
     auto model = data.model.get();
 
     auto ctx_params = llama_context_default_params();
@@ -446,4 +405,4 @@ SHARDS_REGISTER_FN(llm) {
   REGISTER_SHARD("LLM.Detokenize", llm::Detokenize);
   REGISTER_SHARD("LLM.Embed", llm::Embed);
 }
-}; // namespace shards
+} // namespace shards
