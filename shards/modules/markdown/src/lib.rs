@@ -100,7 +100,6 @@ impl Shard for MarkdownParseShard {
             self.output.0.push(&a);
             self.output.0.push(&b);
             self.output.0.push(&c);
-            self.output.0.push(&c);
             if let Some(id) = id {
               let id = format!("#{}", id);
               let d = Var::ephemeral_string(&id);
@@ -109,7 +108,7 @@ impl Shard for MarkdownParseShard {
             for class in classes {
               let class = format!(".{}", class);
               let d = Var::ephemeral_string(&class);
-              self.output.0.push(&d);
+               self.output.0.push(&d);
             }
             for (name, value) in attrs {
               if let Some(value) = value {
