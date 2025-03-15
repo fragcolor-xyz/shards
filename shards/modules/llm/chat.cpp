@@ -14,6 +14,11 @@
 #include <vector>
 #include <mutex>
 
+int LLAMA_BUILD_NUMBER = 1;
+char const *LLAMA_COMMIT = "1";
+char const *LLAMA_COMPILER = "shards";
+char const *LLAMA_BUILD_TARGET = "unknown";
+
 namespace shards {
 namespace llm {
 // Data structure for MultiModal Chat

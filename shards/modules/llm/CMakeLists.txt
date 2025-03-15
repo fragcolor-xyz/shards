@@ -4,6 +4,7 @@ if(NOT EMSCRIPTEN)
     chat.cpp
     ${SHARDS_ROOT}/deps/llama.cpp/common/common.cpp
     ${SHARDS_ROOT}/deps/llama.cpp/common/sampling.cpp
+    ${SHARDS_ROOT}/deps/llama.cpp/common/log.cpp
     ${SHARDS_ROOT}/deps/llama.cpp/examples/llava/clip.cpp
   )
 
