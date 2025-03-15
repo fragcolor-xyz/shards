@@ -1604,7 +1604,7 @@ struct Update : public SetUpdateBase {
     } else {
       auto type = findExposedVariablePtr(inherited->inherited, _name);
       if (type) {
-        if (type->exposedType.basicType != SHType::Table && data.inputType != type->exposedType) {
+        if (!matchTypes(data.inputType, type->exposedType, true, true, true)) {
           throw ComposeError("Update: error, update is changing the variable type.");
         }
         _isGlobal = type->global;
