@@ -2,10 +2,10 @@ if(NOT EMSCRIPTEN)
   set(SOURCES
     embedd.cpp
     chat.cpp
-    ${SHARDS_ROOT}/deps/llama.cpp/common/common.cpp
-    ${SHARDS_ROOT}/deps/llama.cpp/common/sampling.cpp
-    ${SHARDS_ROOT}/deps/llama.cpp/common/log.cpp
-    ${SHARDS_ROOT}/deps/llama.cpp/examples/llava/clip.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/common.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/sampling.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/log.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava/clip.cpp
   )
 
   add_shards_module(llm SOURCES ${SOURCES}
@@ -14,5 +14,5 @@ if(NOT EMSCRIPTEN)
   target_link_libraries(shards-module-llm llama)
   
   # Make sure clip.h is in the include path
-  target_include_directories(shards-module-llm PRIVATE ${SHARDS_ROOT}/deps/llama.cpp/examples/llava ${SHARDS_ROOT}/deps/llama.cpp/common)
+  target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common)
 endif()

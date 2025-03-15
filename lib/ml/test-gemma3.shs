@@ -8,7 +8,7 @@ From now on you will be connected with another entity to have a conversation.
 ---
 
 Hello, how are you?""" | LLM.AddText(chat-context IsUser: true)
-chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | LLM.AddText(chat-context IsUser: false)
+chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | LLM.AddText(chat-context IsUser: false) | Log
 "What did I just say?" | LLM.AddText(chat-context IsUser: true)
 chat-context | LLM.Generate(Temperature: 0.1) | String.Trim
 Log
