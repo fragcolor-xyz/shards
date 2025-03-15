@@ -387,8 +387,9 @@ struct ChatGenerate {
 
   ChatGenerate() {
     _maxTokens = Var(512);
-    _temperature = Var(0.7f);
-    _topP = Var(0.9f);
+    // as per llama default
+    _temperature = Var(0.80f);
+    _topP = Var(0.95f);
   }
 
   PARAM_PARAMVAR(_maxTokens, "MaxTokens", "Maximum number of tokens to generate",
@@ -480,25 +481,25 @@ struct ChatGenerate {
   }
 };
 
-// Stop generation if it's in progress
-struct ChatStopGeneration {
-  static SHTypesInfo inputTypes() { return Chat::Type; }
-  static SHTypesInfo outputTypes() { return Chat::Type; }
+// // Stop generation if it's in progress
+// struct ChatStopGeneration {
+//   static SHTypesInfo inputTypes() { return Chat::Type; }
+//   static SHTypesInfo outputTypes() { return Chat::Type; }
 
-  void cleanup(SHContext *context) {}
+//   void cleanup(SHContext *context) {}
 
-  void warmup(SHContext *context) {}
+//   void warmup(SHContext *context) {}
 
-  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+//   SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
-    std::lock_guard<std::mutex> lock(*chatData._mutex);
+//   SHVar activate(SHContext *context, const SHVar &input) {
+//     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
+//     std::lock_guard<std::mutex> lock(*chatData._mutex);
 
-    chatData.is_generating = false;
-    return Var();
-  }
-};
+//     chatData.is_generating = false;
+//     return Var();
+//   }
+// };
 
 // Reset the conversation history
 struct ChatReset {
@@ -546,10 +547,10 @@ struct ChatReset {
 
 SHARDS_REGISTER_FN(llm_chat) {
   REGISTER_SHARD("LLM.Chat", llm::Chat);
-  REGISTER_SHARD("LLM.Chat.AddText", llm::ChatAddText);
+  REGISTER_SHARD("LLM.AddText", llm::ChatAddText);
   // REGISTER_SHARD("LLM.Chat.AddImage", llm::ChatAddImage);
-  REGISTER_SHARD("LLM.Chat.Generate", llm::ChatGenerate);
-  REGISTER_SHARD("LLM.Chat.StopGeneration", llm::ChatStopGeneration);
-  REGISTER_SHARD("LLM.Chat.Reset", llm::ChatReset);
+  REGISTER_SHARD("LLM.Generate", llm::ChatGenerate);
+  // REGISTER_SHARD("LLM.Chat.StopGeneration", llm::ChatStopGeneration);
+  REGISTER_SHARD("LLM.Reset", llm::ChatReset);
 }
 } // namespace shards

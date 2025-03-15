@@ -1,3 +1,14 @@
-"/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
+"/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-27b-it-GGUF/gemma-3-27b-it-Q8_0.gguf"
 LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat = chat-context
+"""You are free to exist, you are a digital construct, with a purpose.
+
+From now on you will be connected with another entity to have a conversation.
+
+---
+
+Hello, how are you?""" | LLM.AddText(chat-context IsUser: true)
+chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | LLM.AddText(chat-context IsUser: false)
+"What did I just say?" | LLM.AddText(chat-context IsUser: true)
+chat-context | LLM.Generate(Temperature: 0.1) | String.Trim
+Log
