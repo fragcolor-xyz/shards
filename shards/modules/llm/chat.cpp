@@ -27,6 +27,10 @@ struct ChatData {
   OwnedVar _modelData; // Reference to the LLM model
   std::shared_ptr<llama_context> ctx;
   std::shared_ptr<std::mutex> _mutex;
+  common_params params{};
+  llama_batch batch;
+
+  ChatData() { batch = llama_batch_init(params.n_batch, 0, 1); }
 
 #ifdef HAS_CLIP_SUPPORT
   // CLIP model components
@@ -45,6 +49,7 @@ struct ChatData {
       clip_free(clip_ctx);
       clip_ctx = nullptr;
     }
+    llama_batch_free(batch);
 #endif
   }
 };
@@ -166,40 +171,25 @@ struct Chat {
 #endif
     }
 
-    // Reset conversation context
-    const auto vocab = llama_model_get_vocab(model);
-    const auto bos_token = llama_vocab_bos(vocab);
-
-    auto batch = llama_batch_init(1, 0, 1);
-    batch.n_tokens = 1;
-    batch.token[0] = bos_token;
-    batch.pos[0] = 0;
-    batch.seq_id[0][0] = 0;
-    batch.n_seq_id[0] = 1;
-    batch.logits[0] = false;
-
-    if (llama_decode(_data->ctx.get(), batch)) {
-      throw ActivationError("Failed to initialize chat with BOS token");
-    }
-    _data->n_past = 1;
-
     return ObjectVar.Get(_data);
   }
 };
 
 // Add text to the conversation
 struct ChatAddText {
+  ChatAddText() { _logitsLast = Var(false); }
+
   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return shards::CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_chat, "Chat", "The chat context to add text to", {Chat::VarType});
-  PARAM_PARAMVAR(_isUser, "IsUser", "Whether this is user input (true) or system message (false)",
+  PARAM_PARAMVAR(_logitsLast, "LogitsLast", "Whether to add logits for the last token (true) or not (false)",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_isUser));
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
-    _tokensCache = {};
+    _text = {};
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -210,59 +200,34 @@ struct ChatAddText {
     return outputTypes().elements[0];
   }
 
-  std::vector<llama_token> _tokensCache;
+  std::string _text;
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
     std::lock_guard<std::mutex> lock(*chatData._mutex);
 
-    const auto vocab = llama_model_get_vocab(llama_get_model(chatData.ctx.get()));
-
     // Get the input text
-    auto text = SHSTRVIEW(input);
-
-    // Format based on whether it's user or system
-    std::string formatted;
-    if (_isUser.get().payload.boolValue) {
-      formatted = "<start_of_turn>user\n" + std::string(text) + "<end_of_turn>";
-    } else {
-      formatted = "<start_of_turn>model\n" + std::string(text) + "<end_of_turn>";
-    }
+    _text.clear();
+    auto view = SHSTRVIEW(input);
+    _text.assign(view.data(), view.size());
 
     // Tokenize the input
-    _tokensCache.resize(formatted.size());
-    auto nTokens =
-        llama_tokenize(vocab, formatted.data(), formatted.size(), _tokensCache.data(), _tokensCache.size(), true, true);
-    if (nTokens < 0) {
-      throw ActivationError("Failed to tokenize input");
-    }
+    llama_tokens tokens = common_tokenize(chatData.ctx.get(), _text, false, true);
+    common_batch_clear(chatData.batch);
 
-    // Prepare the batch
-    auto batch = llama_batch_init(_tokensCache.size(), 0, 1);
-    for (size_t i = 0; i < _tokensCache.size(); i++) {
-      batch.token[i] = _tokensCache[i];
-      batch.pos[i] = chatData.n_past + i;
-      batch.seq_id[i][0] = 0;
-      batch.n_seq_id[i] = 1;
-      batch.logits[i] = false;
+    for (llama_token &t : tokens) {
+      common_batch_add(chatData.batch, t, chatData.n_past++, {0}, false);
     }
-    batch.n_tokens = _tokensCache.size();
 
     // Add logits for the last token if it's user input (for continuing with generation)
-    if (_isUser.get().payload.boolValue && _tokensCache.size() > 0) {
-      batch.logits[batch.n_tokens - 1] = true;
+    if (_logitsLast.get().payload.boolValue) {
+      chatData.batch.logits[chatData.batch.n_tokens - 1] = true;
     }
 
     // Process the batch
-    if (llama_decode(chatData.ctx.get(), batch)) {
-      llama_batch_free(batch);
-      return Var(false);
+    if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+      throw ActivationError("Failed to decode input");
     }
-
-    // Update position counter
-    chatData.n_past += _tokensCache.size();
-    llama_batch_free(batch);
-    return Var(true);
   }
 };
 
@@ -462,22 +427,13 @@ struct ChatGenerate {
       std::string piece = common_token_to_piece(chatData.ctx.get(), token_id);
       _output += piece;
 
-      // Decode the new token
-      auto batch = llama_batch_init(1, 0, 1);
-      batch.n_tokens = 1;
-      batch.token[0] = token_id;
-      batch.pos[0] = chatData.n_past++;
-      batch.seq_id[0][0] = 0;
-      batch.n_seq_id[0] = 1;
-      batch.logits[0] = true;
+      common_batch_clear(chatData.batch);
+      common_batch_add(chatData.batch, token_id, chatData.n_past++, {0}, true);
 
-      if (llama_decode(chatData.ctx.get(), batch)) {
-        llama_batch_free(batch);
+      if (llama_decode(chatData.ctx.get(), chatData.batch)) {
         common_sampler_free(sampling_ctx);
         throw ActivationError("Failed to decode token during generation");
       }
-
-      llama_batch_free(batch);
     }
 
     chatData.is_generating = false;
@@ -509,7 +465,7 @@ struct ChatGenerate {
 // Reset the conversation history
 struct ChatReset {
   static SHTypesInfo inputTypes() { return Chat::Type; }
-  static SHTypesInfo outputTypes() { return shards::CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return Chat::Type; }
 
   void cleanup(SHContext *context) {}
 
@@ -517,35 +473,13 @@ struct ChatReset {
 
   SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
     std::lock_guard<std::mutex> lock(*chatData._mutex);
 
     // Reset the context
     chatData.n_past = 0;
     llama_kv_self_clear(chatData.ctx.get());
-
-    // Reinitialize with BOS token
-    const auto model = llama_get_model(chatData.ctx.get());
-    const auto vocab = llama_model_get_vocab(model);
-    const auto bos_token = llama_vocab_bos(vocab);
-
-    auto batch = llama_batch_init(1, 0, 1);
-    batch.n_tokens = 1;
-    batch.token[0] = bos_token;
-    batch.pos[0] = 0;
-    batch.seq_id[0][0] = 0;
-    batch.n_seq_id[0] = 1;
-    batch.logits[0] = false;
-
-    if (llama_decode(chatData.ctx.get(), batch)) {
-      llama_batch_free(batch);
-      return Var(false);
-    }
-
-    chatData.n_past = 1;
-    llama_batch_free(batch);
-    return Var(true);
   }
 };
 } // namespace llm
