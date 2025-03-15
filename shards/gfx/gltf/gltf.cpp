@@ -28,8 +28,9 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
+// We build stb in imaging.cpp
+// #define STB_IMAGE_STATIC
+// #define STB_IMAGE_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_ENABLE_DRACO
