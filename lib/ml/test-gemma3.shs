@@ -11,7 +11,7 @@ LLM.Chat = chat-context
     text
     "<end_of_turn><start_of_turn>model\n"
   ] | String.Join
-  LLM.AddText(chat-context LogitsLast: true)
+  LLM.AddText(chat-context NeedLogits: true)
 })
 
 @define(add-model-response {

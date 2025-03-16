@@ -11,7 +11,7 @@ LLM.Chat(MMProj: "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-
 ;     text
 ;     "<end_of_turn><start_of_turn>model\n"
 ;   ] | String.Join
-;   LLM.AddText(chat-context LogitsLast: true)
+;   LLM.AddText(chat-context NeedLogits: true)
 ; })
 
 ; @define(add-model-response {
@@ -36,7 +36,7 @@ LoadImage("/Users/sugar/devel/shards/assets/simple1.PNG") | StripAlpha | LLM.Add
 "<end_of_image>" | LLM.AddText(chat-context)
 
 "What is in this image?" | LLM.AddText(chat-context)
-"<end_of_turn><start_of_turn>model\n" | LLM.AddText(chat-context LogitsLast: true)
+"<end_of_turn><start_of_turn>model\n" | LLM.AddText(chat-context NeedLogits: true)
 
 chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("Second response")
 ; @add-model-response

@@ -167,9 +167,14 @@ struct ChatAddText {
   static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_chat, "Chat", "The chat context to add text to", {Chat::VarType});
-  PARAM_PARAMVAR(_logitsLast, "LogitsLast", "Whether to add logits for the last token (true) or not (false)",
+  PARAM_PARAMVAR(_logitsLast, "NeedLogits",
+                 "Whether to add logits for the last token (true) or not (false), this is needed to prepare for generation",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast));
+  PARAM_PARAMVAR(_prefixTokens, "PrefixTokens", "Optional raw tokens to add to the beginning",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
+  PARAM_PARAMVAR(_suffixTokens, "SuffixTokens", "Optional raw tokens to add to the end",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_prefixTokens), PARAM_IMPL_FOR(_suffixTokens));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
@@ -199,8 +204,22 @@ struct ChatAddText {
     llama_tokens tokens = common_tokenize(chatData.ctx.get(), _text, false, true);
     common_batch_clear(chatData.batch);
 
+    if (_prefixTokens.get().valueType != SHType::None) {
+      auto prefixTokens = _prefixTokens.get().payload.seqValue;
+      for (auto &t : prefixTokens) {
+        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      }
+    }
+
     for (llama_token &t : tokens) {
       common_batch_add(chatData.batch, t, chatData.n_past++, {0}, false);
+    }
+
+    if (_suffixTokens.get().valueType != SHType::None) {
+      auto suffixTokens = _suffixTokens.get().payload.seqValue;
+      for (auto &t : suffixTokens) {
+        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      }
     }
 
     // Add logits for the last token if it's user input (for continuing with generation)
@@ -217,15 +236,26 @@ struct ChatAddText {
 
 // Add an image to the conversation
 struct ChatAddImage {
-  ChatAddImage() { _embeddings = Var(256); }
+  ChatAddImage() {
+    _embeddings = Var(256);
+    _logitsLast = Var(false);
+  }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::ImageType; }
 
   PARAM_PARAMVAR(_chat, "Chat", "The chat context to add the image to", {Chat::VarType});
-  PARAM_PARAMVAR(_embeddings, "Embeddings", "The number of embeddings to use for the image",
+  PARAM_PARAMVAR(_logitsLast, "NeedLogits",
+                 "Whether to add logits for the last token (true) or not (false), this is needed to prepare for generation",
+                 {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_embeddings, "ImageTokens", "Number of tokens to allocate for image representation in context window",
                  {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_embeddings));
+  PARAM_PARAMVAR(_prefixTokens, "PrefixTokens", "Optional raw tokens to add to the beginning",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
+  PARAM_PARAMVAR(_suffixTokens, "SuffixTokens", "Optional raw tokens to add to the end",
+                 {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_embeddings), PARAM_IMPL_FOR(_prefixTokens),
+             PARAM_IMPL_FOR(_suffixTokens));
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -255,7 +285,8 @@ struct ChatAddImage {
     // Get the model for embedding dimensions
     auto model = llama_get_model(chatData.ctx.get());
     const int n_embd = llama_model_n_embd(model);
-    const int n_tokens = _embeddings.get().payload.intValue;
+    const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
+    const int n_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
 
     // Allocate space for embeddings
     std::vector<float> image_embd_v;
@@ -267,7 +298,7 @@ struct ChatAddImage {
     clip_build_img_from_pixels(image->data, image->width, image->height, img_u8);
 
     // Preprocess the image
-    clip_image_f32_batch batch_f32;
+    clip_image_f32_batch batch_f32{};
     DEFER({ clip_image_f32_batch_free(&batch_f32); });
     auto ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
     if (!ok) {
@@ -280,14 +311,52 @@ struct ChatAddImage {
       throw ActivationError("Failed to encode image");
     }
 
+    // Prefix tokens if provided
+    if (_prefixTokens.get().valueType != SHType::None) {
+      common_batch_clear(chatData.batch);
+      auto prefixTokens = _prefixTokens.get().payload.seqValue;
+      for (auto &t : prefixTokens) {
+        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      }
+      // Process the batch
+      if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+        throw ActivationError("Failed to decode input");
+      }
+    }
+
     // Process the image embeddings
     llama_set_causal_attn(chatData.ctx.get(), false);
     decode_embd_batch batch_img(image_embd_v.data(), n_tokens, chatData.n_past, 0);
+
+    if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
+      batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
+    }
+
+    // Process the batch
     if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
       throw ActivationError("Failed to decode image");
     }
     chatData.n_past += n_tokens;
     llama_set_causal_attn(chatData.ctx.get(), true);
+
+    // Suffix tokens if provided
+    if (_suffixTokens.get().valueType != SHType::None) {
+      common_batch_clear(chatData.batch);
+      auto suffixTokens = _suffixTokens.get().payload.seqValue;
+      for (auto &t : suffixTokens) {
+        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      }
+
+      // Add logits for the last token if it's user input (for continuing with generation)
+      if (_logitsLast.get().payload.boolValue) {
+        chatData.batch.logits[chatData.batch.n_tokens - 1] = true;
+      }
+
+      // Process the batch
+      if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+        throw ActivationError("Failed to decode input");
+      }
+    }
   }
 };
 
@@ -353,6 +422,8 @@ struct ChatGenerate {
     auto vocab = llama_model_get_vocab(model);
     common_sampler *sampling_ctx = common_sampler_init(model, params.sampling);
     DEFER({ common_sampler_free(sampling_ctx); });
+
+    // TODO MUST CHECK IF LOGITS ARE SET PROPERLY OR LLAMA JUST ABORTS LOL
 
     // Generate tokens
     chatData.is_generating = true;
