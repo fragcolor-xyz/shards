@@ -87,16 +87,21 @@ struct Chat {
   static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
   static inline shards::ObjectVar<ChatData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
 
-  Chat() { _threads = Var(4); }
+  Chat() {
+    _contextSize = Var(1024);
+    _threads = Var(4);
+  }
 
   static SHTypesInfo inputTypes() { return ModelData::Type; } // Takes LLM.Model
   static SHTypesInfo outputTypes() { return Type; }
 
+  PARAM_PARAMVAR(_contextSize, "ContextSize", "The size of the context window",
+                 {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_PARAMVAR(_mmproj, "MMProj", "Path to the multimodal projector model",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::StringType, shards::CoreInfo::StringVarType});
   PARAM_PARAMVAR(_threads, "Threads", "Number of threads to use for image processing",
                  {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_mmproj), PARAM_IMPL_FOR(_threads));
+  PARAM_IMPL(PARAM_IMPL_FOR(_contextSize), PARAM_IMPL_FOR(_mmproj), PARAM_IMPL_FOR(_threads));
 
   ChatData *_data{};
 
@@ -126,6 +131,7 @@ struct Chat {
 
     // Create a new LLama context from the model
     auto ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = _contextSize.get().payload.intValue;
     _data->ctx = std::shared_ptr<llama_context>(llama_init_from_model(model, ctx_params), llama_free);
     if (!_data->ctx) {
       throw ActivationError("Failed to create chat context");
@@ -142,9 +148,7 @@ struct Chat {
       auto mmproj_path = SHSTRING_PREFER_SHSTRVIEW(mmproj);
       if (!mmproj_path.empty()) {
         _data->mmproj_path = mmproj_path;
-        int verbosity = 1;
-        struct clip_context_params params = {.use_gpu = true, .verbosity = verbosity};
-        _data->clip_ctx = clip_init(mmproj_path.c_str(), params);
+        _data->clip_ctx = clip_model_load(mmproj_path.c_str(), 0);
         if (!_data->clip_ctx) {
           throw ActivationError("Failed to load CLIP model");
         }
@@ -213,11 +217,15 @@ struct ChatAddText {
 
 // Add an image to the conversation
 struct ChatAddImage {
+  ChatAddImage() { _embeddings = Var(256); }
+
   static SHTypesInfo inputTypes() { return shards::CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::ImageType; }
 
   PARAM_PARAMVAR(_chat, "Chat", "The chat context to add the image to", {Chat::VarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat));
+  PARAM_PARAMVAR(_embeddings, "Embeddings", "The number of embeddings to use for the image",
+                 {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_embeddings));
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -247,7 +255,7 @@ struct ChatAddImage {
     // Get the model for embedding dimensions
     auto model = llama_get_model(chatData.ctx.get());
     const int n_embd = llama_model_n_embd(model);
-    const int n_tokens = 256; // Standard for Gemma3
+    const int n_tokens = _embeddings.get().payload.intValue;
 
     // Allocate space for embeddings
     std::vector<float> image_embd_v;
@@ -255,24 +263,19 @@ struct ChatAddImage {
 
     // Load the image
     struct clip_image_u8 *img_u8 = clip_image_u8_init();
+    DEFER({ clip_image_u8_free(img_u8); });
     clip_build_img_from_pixels(image->data, image->width, image->height, img_u8);
 
     // Preprocess the image
     clip_image_f32_batch batch_f32;
+    DEFER({ clip_image_f32_batch_free(&batch_f32); });
     auto ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
     if (!ok) {
-      clip_image_f32_batch_free(&batch_f32);
-      clip_image_u8_free(img_u8);
       throw ActivationError("Failed to preprocess image");
     }
 
     // Encode the image
     ok = clip_image_batch_encode(chatData.clip_ctx, chatData.n_threads, &batch_f32, image_embd_v.data());
-    DEFER({
-      // Free image resources
-      clip_image_f32_batch_free(&batch_f32);
-      clip_image_u8_free(img_u8);
-    });
     if (!ok) {
       throw ActivationError("Failed to encode image");
     }
@@ -349,6 +352,7 @@ struct ChatGenerate {
     auto model = llama_get_model(chatData.ctx.get());
     auto vocab = llama_model_get_vocab(model);
     common_sampler *sampling_ctx = common_sampler_init(model, params.sampling);
+    DEFER({ common_sampler_free(sampling_ctx); });
 
     // Generate tokens
     chatData.is_generating = true;
@@ -369,13 +373,11 @@ struct ChatGenerate {
       common_batch_add(chatData.batch, token_id, chatData.n_past++, {0}, true);
 
       if (llama_decode(chatData.ctx.get(), chatData.batch)) {
-        common_sampler_free(sampling_ctx);
         throw ActivationError("Failed to decode token during generation");
       }
     }
 
     chatData.is_generating = false;
-    common_sampler_free(sampling_ctx);
     return Var(_output);
   }
 };
