@@ -1,13 +1,6 @@
 #include "shared.hpp"
 
-// Try to include the CLIP library for image support
-#if __has_include("../../../deps/llama.cpp/examples/llava/clip.h")
-#define HAS_CLIP_SUPPORT
 #include "../../../deps/llama.cpp/examples/llava/clip.h"
-#else
-#pragma message("CLIP support is not available - building LLM.Chat with text-only support")
-#endif
-
 #include "../../../deps/llama.cpp/common/sampling.h"
 
 #include <string>
@@ -32,30 +25,25 @@ struct ChatData {
 
   ChatData() { batch = llama_batch_init(params.n_batch, 0, 1); }
 
-#ifdef HAS_CLIP_SUPPORT
   // CLIP model components
   struct clip_ctx *clip_ctx = nullptr;
   std::string mmproj_path;
   int n_threads = 1;
-#endif
 
   // State tracking
   llama_pos n_past = 0;
   bool is_generating = false;
 
   ~ChatData() {
-#ifdef HAS_CLIP_SUPPORT
     if (clip_ctx) {
       clip_free(clip_ctx);
       clip_ctx = nullptr;
     }
     llama_batch_free(batch);
-#endif
   }
 };
 
 // Helper for handling embedded images
-#ifdef HAS_CLIP_SUPPORT
 struct decode_embd_batch {
   std::vector<llama_pos> pos;
   std::vector<int32_t> n_seq_id;
@@ -89,7 +77,6 @@ struct decode_embd_batch {
     }
   }
 };
-#endif
 
 // The MultiModal Chat shard
 struct Chat {
@@ -151,7 +138,6 @@ struct Chat {
 
     auto &mmproj = _mmproj.get();
     if (mmproj.valueType != SHType::None) {
-#ifdef HAS_CLIP_SUPPORT
       // Load the multimodal projector if provided
       auto mmproj_path = SHSTRING_PREFER_SHSTRVIEW(mmproj);
       if (!mmproj_path.empty()) {
@@ -163,12 +149,6 @@ struct Chat {
           throw ActivationError("Failed to load CLIP model");
         }
       }
-#else
-      auto mmproj_path = SHSTRING_PREFER_SHSTRVIEW(mmproj);
-      if (!mmproj_path.empty()) {
-        SHLOG_DEBUG("CLIP support is not available - images will not be processed");
-      }
-#endif
     }
 
     return ObjectVar.Get(_data);
@@ -231,124 +211,82 @@ struct ChatAddText {
   }
 };
 
-// // Add an image to the conversation
-// struct ChatAddImage {
-//   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; } // Path to image
-//   static SHTypesInfo outputTypes() { return shards::CoreInfo::BoolType; }
+// Add an image to the conversation
+struct ChatAddImage {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::ImageType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::ImageType; }
 
-//   PARAM_PARAMVAR(_chat, "Chat", "The chat context to add the image to", {Chat::VarType});
-//   PARAM_IMPL(PARAM_IMPL_FOR(_chat));
+  PARAM_PARAMVAR(_chat, "Chat", "The chat context to add the image to", {Chat::VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat));
 
-//   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-//   void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-//   PARAM_REQUIRED_VARIABLES();
-//   SHTypeInfo compose(SHInstanceData &data) {
-//     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-//     return outputTypes().elements[0];
-//   }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
-//   SHVar activate(SHContext *context, const SHVar &input) {
-// #ifdef HAS_CLIP_SUPPORT
-//     auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
+  void activate(SHContext *context, const SHVar &input) {
+    auto &image = input.payload.imageValue;
+    if (image->channels != 3) {
+      throw ActivationError("Image must have 3 channels");
+    }
 
-//     // Check if we have the CLIP model loaded
-//     if (!chatData.clip_ctx) {
-//       throw ActivationError("Chat has no CLIP model loaded - can't process images");
-//     }
+    auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
 
-//     std::lock_guard<std::mutex> lock(*chatData._mutex);
+    // Check if we have the CLIP model loaded
+    if (!chatData.clip_ctx) {
+      throw ActivationError("Chat has no CLIP model loaded - can't process images");
+    }
 
-//     // Get the image path
-//     std::string image_path = SHSTRING_PREFER_SHSTRVIEW(input);
+    std::lock_guard<std::mutex> lock(*chatData._mutex);
 
-//     // Get the model for embedding dimensions
-//     auto model = llama_get_model(chatData.ctx.get());
-//     const int n_embd = llama_model_n_embd(model);
-//     const int n_tokens = 256; // Standard for Gemma3
+    // Get the model for embedding dimensions
+    auto model = llama_get_model(chatData.ctx.get());
+    const int n_embd = llama_model_n_embd(model);
+    const int n_tokens = 256; // Standard for Gemma3
 
-//     // Allocate space for embeddings
-//     std::vector<float> image_embd_v;
-//     image_embd_v.resize(n_tokens * n_embd);
+    // Allocate space for embeddings
+    std::vector<float> image_embd_v;
+    image_embd_v.resize(n_tokens * n_embd);
 
-//     // Load the image
-//     struct clip_image_u8 *img_u8 = clip_image_u8_init();
-//     bool ok = clip_image_load_from_file(image_path.c_str(), img_u8);
-//     if (!ok) {
-//       clip_image_u8_free(img_u8);
-//       throw ActivationError("Failed to load image: " + image_path);
-//     }
+    // Load the image
+    struct clip_image_u8 *img_u8 = clip_image_u8_init();
+    clip_build_img_from_pixels(image->data, image->width, image->height, img_u8);
 
-//     // Preprocess the image
-//     clip_image_f32_batch batch_f32;
-//     ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
-//     if (!ok) {
-//       clip_image_f32_batch_free(&batch_f32);
-//       clip_image_u8_free(img_u8);
-//       throw ActivationError("Failed to preprocess image");
-//     }
+    // Preprocess the image
+    clip_image_f32_batch batch_f32;
+    auto ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
+    if (!ok) {
+      clip_image_f32_batch_free(&batch_f32);
+      clip_image_u8_free(img_u8);
+      throw ActivationError("Failed to preprocess image");
+    }
 
-//     // Encode the image
-//     ok = clip_image_batch_encode(chatData.clip_ctx, chatData.n_threads, &batch_f32, image_embd_v.data());
-//     if (!ok) {
-//       clip_image_f32_batch_free(&batch_f32);
-//       clip_image_u8_free(img_u8);
-//       throw ActivationError("Failed to encode image");
-//     }
+    // Encode the image
+    ok = clip_image_batch_encode(chatData.clip_ctx, chatData.n_threads, &batch_f32, image_embd_v.data());
+    DEFER({
+      // Free image resources
+      clip_image_f32_batch_free(&batch_f32);
+      clip_image_u8_free(img_u8);
+    });
+    if (!ok) {
+      throw ActivationError("Failed to encode image");
+    }
 
-//     // Free image resources
-//     clip_image_f32_batch_free(&batch_f32);
-//     clip_image_u8_free(img_u8);
-
-//     // Start image sequence
-//     const auto vocab = llama_model_get_vocab(model);
-//     std::vector<llama_token> start_tokens = llama_tokenize(vocab, "<start_of_image>", 16, true, true);
-
-//     // Create batch for start token
-//     auto batch = llama_batch_init(start_tokens.size(), 0, 1);
-//     for (size_t i = 0; i < start_tokens.size(); i++) {
-//       llama_batch_add(batch, start_tokens[i], chatData.n_past + i, {0}, false);
-//     }
-
-//     // Process the start token
-//     if (llama_decode(chatData.ctx.get(), batch)) {
-//       llama_batch_free(batch);
-//       return Var(false);
-//     }
-//     chatData.n_past += start_tokens.size();
-//     llama_batch_free(batch);
-
-//     // Process the image embeddings
-//     llama_set_causal_attn(chatData.ctx.get(), false);
-//     decode_embd_batch batch_img(image_embd_v.data(), n_tokens, chatData.n_past, 0);
-//     if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
-//       return Var(false);
-//     }
-//     chatData.n_past += n_tokens;
-//     llama_set_causal_attn(chatData.ctx.get(), true);
-
-//     // End image sequence
-//     std::vector<llama_token> end_tokens = llama_tokenize(vocab, "<end_of_image>", 14, true, true);
-//     batch = llama_batch_init(end_tokens.size(), 0, 1);
-//     for (size_t i = 0; i < end_tokens.size(); i++) {
-//       llama_batch_add(batch, end_tokens[i], chatData.n_past + i, {0}, false);
-//     }
-
-//     if (llama_decode(chatData.ctx.get(), batch)) {
-//       llama_batch_free(batch);
-//       return Var(false);
-//     }
-
-//     chatData.n_past += end_tokens.size();
-//     llama_batch_free(batch);
-
-//     return Var(true);
-// #else
-//     throw ActivationError("CLIP support is not available - cannot process images");
-// #endif
-//   }
-// };
+    // Process the image embeddings
+    llama_set_causal_attn(chatData.ctx.get(), false);
+    decode_embd_batch batch_img(image_embd_v.data(), n_tokens, chatData.n_past, 0);
+    if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
+      throw ActivationError("Failed to decode image");
+    }
+    chatData.n_past += n_tokens;
+    llama_set_causal_attn(chatData.ctx.get(), true);
+  }
+};
 
 // Generate text from the conversation
 struct ChatGenerate {
@@ -487,7 +425,7 @@ struct ChatReset {
 SHARDS_REGISTER_FN(llm_chat) {
   REGISTER_SHARD("LLM.Chat", llm::Chat);
   REGISTER_SHARD("LLM.AddText", llm::ChatAddText);
-  // REGISTER_SHARD("LLM.Chat.AddImage", llm::ChatAddImage);
+  REGISTER_SHARD("LLM.AddImage", llm::ChatAddImage);
   REGISTER_SHARD("LLM.Generate", llm::ChatGenerate);
   // REGISTER_SHARD("LLM.Chat.StopGeneration", llm::ChatStopGeneration);
   REGISTER_SHARD("LLM.Reset", llm::ChatReset);
