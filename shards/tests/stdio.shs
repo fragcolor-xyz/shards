@@ -1,0 +1,2 @@
+Process.StdIn | Assert.Is("Hello world")
+"OK\n" | Process.StdOut

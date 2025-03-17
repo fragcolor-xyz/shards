@@ -4,6 +4,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
+#include <shards/core/runtime.hpp>
 
 #include <stdlib.h>
 
@@ -70,7 +71,7 @@ struct Run {
     boost::process::opstream ipipe;
 
     // try PATH first
-    auto exePath = boost::filesystem::path(moduleName);
+    auto exePath = boost::filesystem::path(moduleName.c_str());
     if (!boost::filesystem::exists(exePath)) {
       // fallback to searching PATH
       exePath = boost::process::search_path(moduleName);
@@ -91,7 +92,7 @@ struct Run {
       throw ActivationError("Failed to open streams for child process");
     }
 
-    ipipe << SHSTRVIEW(input) << std::endl;
+    ipipe << SHSTRVIEW(input);
     ipipe.pipe().close(); // send EOF
 
     SHLOG_TRACE("Process started");
@@ -220,7 +221,7 @@ struct Exe {
 
 struct Shell {
   // boost process sucks.. we use our own pipe implementation
-  
+
   static constexpr size_t bufferSize = 4096;
   std::vector<char> _readBuffer;
 
@@ -399,6 +400,79 @@ struct Shell {
         });
   }
 };
+
+struct StdIn {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString help() { return SHCCSTR("Reads a line from standard input."); }
+
+  PARAM_IMPL();
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  std::string line;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    line.clear();
+
+    while (true) {
+      // Check if there's input available
+#ifdef _WIN32
+      HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+      DWORD events = 0;
+      INPUT_RECORD buffer;
+      PeekConsoleInput(hStdin, &buffer, 1, &events);
+      if (events == 0) {
+        SH_SUSPEND(context, 0);
+        continue;
+      }
+#else
+      fd_set rfds;
+      struct timeval tv;
+      FD_ZERO(&rfds);
+      FD_SET(STDIN_FILENO, &rfds);
+      tv.tv_sec = 0;
+      tv.tv_usec = 0;
+
+      if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) <= 0) {
+        SH_SUSPEND(context, 0);
+        continue;
+      }
+#endif
+
+      // Read the line
+      if (std::getline(std::cin, line)) {
+        return Var(line);
+      }
+
+      // If we get here, something went wrong with reading
+      // (like EOF or error), so we should return empty
+      return Var("");
+    }
+  }
+};
+
+struct StdOut {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Writes a string to standard output."); }
+
+  PARAM_IMPL();
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    std::string_view str = SHSTRVIEW(input);
+    std::cout << str << std::flush;
+    return Var::Empty;
+  }
+};
 } // namespace Process
 
 SHARDS_REGISTER_FN(process) {
@@ -406,6 +480,8 @@ SHARDS_REGISTER_FN(process) {
   REGISTER_SHARD("Process.StackTrace", Process::StackTrace);
   REGISTER_SHARD("Process.Exe", Process::Exe);
   REGISTER_SHARD("Process.Shell", Process::Shell);
+  REGISTER_SHARD("Process.StdIn", Process::StdIn);
+  REGISTER_SHARD("Process.StdOut", Process::StdOut);
 }
 } // namespace shards
 // namespace shards
