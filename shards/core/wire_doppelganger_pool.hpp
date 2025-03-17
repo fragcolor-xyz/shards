@@ -70,7 +70,7 @@ template <typename T> struct WireDoppelgangerPool {
   void stopAll()
     requires WireData<T>
   {
-    std::unique_lock<LockableBase(std::mutex)> _l(_poolMutex);
+    std::unique_lock<LockableBase(std::recursive_mutex)> _l(_poolMutex);
     for (auto &item : _pool) {
       stop(item->wire.get());
       _avail.emplace(item.get());
@@ -84,7 +84,7 @@ template <typename T> struct WireDoppelgangerPool {
     ZoneScoped;
 
     BatchOperation operation;
-    std::unique_lock<LockableBase(std::mutex)> lock(_poolMutex);
+    std::unique_lock<LockableBase(std::recursive_mutex)> lock(_poolMutex);
     operation.items.reserve(numWires);
     for (size_t i = 0; i < numWires; ++i) {
       if (_avail.size() == 0) {
@@ -213,7 +213,7 @@ template <typename T> struct WireDoppelgangerPool {
   void release(T *wire) {
     shassert(wire != nullptr && "Releasing a null wire?");
 
-    std::unique_lock<LockableBase(std::mutex)> _l(_poolMutex);
+    std::unique_lock<LockableBase(std::recursive_mutex)> _l(_poolMutex);
 
     if constexpr (WireDataCleanup<T>) {
       wire->cleanup();
@@ -240,7 +240,7 @@ private:
   // keep our pool in a deque in order to keep them alive
   // so users don't have to worry about lifetime
   // just release when possible
-  TracyLockable(std::mutex, _poolMutex);
+  TracyLockable(std::recursive_mutex, _poolMutex);
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<T *> _avail;
   std::string _wireStr;
