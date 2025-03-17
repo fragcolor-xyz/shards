@@ -99,6 +99,7 @@ public var G = Globals()
 public var RegisterShard: SHRegisterShard = G.Core.pointee.registerShard
 
 public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
+    // Blittables
     case NoValue
     case AnyValue
     case Enum
@@ -114,8 +115,11 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case Float3 // A vector of 3 32bits floats
     case Float4 // A vector of 4 32bits floats
     case Color // A vector of 4 uint8
-    case Shard // a shard, useful for future introspection shards!
+
+    // Internal use only
     case EndOfBlittableTypes = 50 // anything below this is not blittable (ish)
+
+    // Non Blittables
     case Bytes // pointer + size
     case String
     case Path // An OS filesystem path
@@ -124,9 +128,13 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case Seq
     case Table
     case Wire
-    case Object
-    case Array // Notice: of just blittable types!
-    case ShardRef // A reference to a shard
+    case ShardRef // a shard, useful for future introspection shards!
+    case Object = 60
+    // Array, // Notice: of just blittable types - Reserved for future use - 61
+    // Set, // Reserved for future use - 62
+    case Audio = 63
+    case TypeInfo // Describes a type
+    case Trait // A wire trait
 
     public var description: String {
         switch self {
@@ -160,8 +168,6 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
             return "Float4"
         case .Color:
             return "Color"
-        case .Shard:
-            return "Shard"
         case .Bytes:
             return "Bytes"
         case .String:
@@ -180,10 +186,16 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
             return "Wire"
         case .Object:
             return "Object"
-        case .Array:
-            return "Array"
         case .ShardRef:
             return "ShardRef"
+        case .Audio:
+            return "Audio"
+        case .TypeInfo:
+            return "Type"
+        case .Trait:
+            return "Trait"
+        case .EndOfBlittableTypes:
+            return "EndOfBlittableTypes"
         default:
             fatalError("Type not found!")
         }
@@ -217,62 +229,7 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
 
 extension SHVar: CustomStringConvertible {
     public var description: String {
-        switch type {
-        case .NoValue:
-            return "nil"
-        case .AnyValue:
-            return "Any"
-        case .Enum:
-            return "(Enum \(payload.enumVendorId) \(payload.enumTypeId) \(payload.enumValue))"
-        case .Bool:
-            return "\(payload.boolValue)"
-        case .Int:
-            return "\(payload.intValue)"
-        case .Int2:
-            return "(Int2 \(payload.int2Value.x) \(payload.int2Value.y))"
-        case .Int3:
-            return "(Int3 \(payload.int3Value.x) \(payload.int3Value.y) \(payload.int3Value.z))"
-        case .Int4:
-            return "\(payload.int4Value)"
-        case .Int8:
-            return "\(payload.int8Value)"
-        case .Int16:
-            return "\(payload.int16Value)"
-        case .Float:
-            return "\(payload.floatValue)"
-        case .Float2:
-            return "\(payload.float2Value)"
-        case .Float3:
-            return "\(payload.float3Value)"
-        case .Float4:
-            return "\(payload.float4Value)"
-        case .Color:
-            return "Color"
-        case .Shard:
-            return "Shard"
-        case .Bytes:
-            return "Bytes"
-        case .String:
-            return .init(cString: payload.stringValue)
-        case .Path:
-            return "Path"
-        case .ContextVar:
-            return "ContextVar"
-        case .Image:
-            return "Image"
-        case .Seq:
-            return "Seq"
-        case .Table:
-            return "Table"
-        case .Wire:
-            return "Wire"
-        case .Object:
-            return "Object"
-        case .Array:
-            return "Array"
-        default:
-            fatalError("Type not found!")
-        }
+        typename
     }
 
     public var typename: String {
@@ -505,14 +462,14 @@ extension SHVar: CustomStringConvertible {
 
     init(value: ShardPtr) {
         var v = SHVar()
-        v.valueType = SHType(rawValue: VarType.Shard.rawValue)
+        v.valueType = SHType(rawValue: VarType.ShardRef.rawValue)
         v.payload.shardValue = value
         self = v
     }
 
     public var shard: ShardPtr {
         get {
-            assert(type == .Shard, "Shard variable expected!")
+            assert(type == .ShardRef, "Shard variable expected!")
             return payload.shardValue
         }
         set {
@@ -983,10 +940,10 @@ class ShardsVar {
         composeResult = SHComposeResult()
     }
 
-    func cleanup(context: OpaquePointer?) -> Result<Void, ShardError> {
+    func cleanup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
         for shard in shardsPtrs {
-            error = shard!.pointee.cleanup(shard!, context)
+            error = shard!.pointee.cleanup(shard!, context.context)
             if error.code != 0 {
                 return .failure(ShardError(message: error.message.toString()!))
             }
@@ -994,10 +951,10 @@ class ShardsVar {
         return .success(())
     }
 
-    func warmup(context: OpaquePointer?) -> Result<Void, ShardError> {
+    func warmup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
         for shard in shardsPtrs {
-            error = shard!.pointee.warmup(shard!, context)
+            error = shard!.pointee.warmup(shard!, context.context)
             if error.code != 0 {
                 return .failure(ShardError(message: error.message.toString()!))
             }
@@ -1059,14 +1016,16 @@ class ShardsVar {
         return .success(composeResult)
     }
 
-    func activate(context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>) -> SHWireState {
+    func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
         if shardsPtrs.isEmpty {
             return SHWireState(rawValue: 0) // continue
         }
 
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
-            G.Core.pointee.runShards(nativeShards, context, input, output)
+            withUnsafeMutablePointer(to: &output) { ptr in
+                G.Core.pointee.runShards(nativeShards, context.context, input, ptr)
+            }
         }
         return state
     }
@@ -1414,6 +1373,18 @@ class TypeInfo {
 
     init(type: VarType) {
         native.basicType = type.asSHType()
+    }
+
+    init(seqOf: TypeInfo) {
+        native.basicType = VarType.Seq.asSHType()
+        native.seqTypes.len = 1
+        native.seqTypes.elements = withUnsafeMutablePointer(to: &seqOf.native) { $0 }
+    }
+
+    init(tableOf: TypeInfo) {
+        native.basicType = VarType.Table.asSHType()
+        native.table.types.len = 1
+        native.table.types.elements = withUnsafeMutablePointer(to: &tableOf.native) { $0 }
     }
 }
 
