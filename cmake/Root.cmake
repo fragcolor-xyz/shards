@@ -1,17 +1,19 @@
 # Silence DOWNLOAD_EXTRACT_TIMESTAMP warning
 # because of FetchContent_Declare usage
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-cmake_policy(SET CMP0144 NEW)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.27.0")
+  cmake_policy(SET CMP0144 NEW)
+endif()
 
 # Also set policy defaults to affect subdirectories and included projects
 set(CMAKE_POLICY_DEFAULT_CMP0144 NEW)
 
 get_filename_component(SHARDS_DIR ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
- 
+
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -51,6 +53,7 @@ add_subdirectory(${SHARDS_DIR}/shards/rust src/rust)
 
 # Modules
 set(SHARDS_MODULE_ROOT ${SHARDS_DIR}/shards/modules)
+
 macro(add_module NAME)
   add_subdirectory(${SHARDS_MODULE_ROOT}/${NAME} modules/${NAME})
   list(APPEND ADDED_MODULES ${NAME})
@@ -65,8 +68,10 @@ message(STATUS "ADDED_MODULES = ${ADDED_MODULES}")
 
 # Automatic scan for remaining modules
 file(GLOB SHARDS_MODULE_FOLDERS RELATIVE ${SHARDS_MODULE_ROOT} ${SHARDS_MODULE_ROOT}/*)
+
 foreach(MODULE_FOLDER ${SHARDS_MODULE_FOLDERS})
   list(FIND ADDED_MODULES ${MODULE_FOLDER} ALREADY_ADDED)
+
   if(EXISTS ${SHARDS_MODULE_ROOT}/${MODULE_FOLDER}/CMakeLists.txt AND ALREADY_ADDED LESS 0)
     add_subdirectory(${SHARDS_MODULE_ROOT}/${MODULE_FOLDER} modules/${MODULE_FOLDER})
   endif()
@@ -83,6 +88,7 @@ add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
 # Automatically find subprojects
 set(SHARDS_SUBPROJECT_ROOT "${SHARDS_DIR}/external")
 file(GLOB SHARDS_SUBPROJECT_FOLDERS RELATIVE ${SHARDS_SUBPROJECT_ROOT} ${SHARDS_SUBPROJECT_ROOT}/*)
+
 foreach(SUBPROJECT_FOLDER ${SHARDS_SUBPROJECT_FOLDERS})
   if(EXISTS ${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER}/CMakeLists.txt)
     message(STATUS "Adding subproject: ${SUBPROJECT_FOLDER}")
@@ -92,8 +98,10 @@ endforeach()
 
 # Add manually specified subproject paths
 set(SHARDS_SUBPROJECTS "" CACHE FILEPATH "List of paths to subprojects to integrate into the main build")
+
 foreach(SUBPROJECT_PATH ${SHARDS_SUBPROJECTS})
   get_filename_component(SUBPROJECT_PATH_ABS "${SUBPROJECT_PATH}" ABSOLUTE BASE_DIR "${SHARDS_DIR}")
+
   if(EXISTS ${SUBPROJECT_PATH_ABS}/CMakeLists.txt)
     get_filename_component(FILENAME ${SUBPROJECT_PATH_ABS} NAME)
     message(STATUS "Adding subproject: ${SUBPROJECT_PATH_ABS} (as ${FILENAME})")
