@@ -418,7 +418,46 @@ struct StdIn {
   SHVar activate(SHContext *context, const SHVar &input) {
     line.clear();
 
-#ifndef _WIN32
+#ifdef _WIN32
+    char buf[1024];
+    DWORD bytesRead;
+    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+
+    while (true) {
+      // Check if there's data available
+      DWORD totalBytesAvail;
+      if (!PeekNamedPipe(hStdin, NULL, 0, NULL, &totalBytesAvail, NULL)) {
+        // Error or pipe closed
+        return Var("");
+      }
+
+      if (totalBytesAvail == 0) {
+        SH_SUSPEND(context, 0);
+        continue;
+      }
+
+      // Read available data
+      if (!ReadFile(hStdin, buf, sizeof(buf) - 1, &bytesRead, NULL) || bytesRead == 0) {
+        return Var(""); // EOF or error
+      }
+
+      buf[bytesRead] = '\0';
+      line.append(buf, bytesRead);
+
+      // If we found a newline, we can return
+      if (line.find('\n') != std::string::npos) {
+        // Remove the trailing newline if present
+        if (!line.empty() && line.back() == '\n') {
+          line.pop_back();
+          // Also remove \r if present (Windows-style line endings)
+          if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+          }
+        }
+        return Var(line);
+      }
+    }
+#else
     fd_set rfds;
     struct timeval tv;
     char buf[1024];
@@ -454,6 +493,8 @@ struct StdIn {
       }
     }
 #endif
+
+    return Var("");
   }
 };
 
