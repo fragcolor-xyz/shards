@@ -3,6 +3,7 @@ set(BUILD_SHARED_LIBS OFF)
 # Find & cache git using (only considering host tools)
 set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
 find_package(Git REQUIRED)
+set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH OFF)
 
 include(SHExternalProject)
 include(FetchContent)
@@ -216,9 +217,10 @@ target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLS
 
 if(NOT EMSCRIPTEN)
   # TODO vulkan build support
-  # if(WIN32 OR LINUX)
-  # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
-  # endif()
+  if(WIN32 OR LINUX)
+    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+  endif()
+
   set(GGML_STATIC ON CACHE BOOL "" FORCE)
   set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
   set(GGML_AVX ON CACHE BOOL "" FORCE)
@@ -226,6 +228,7 @@ if(NOT EMSCRIPTEN)
   set(GGML_F16C ON CACHE BOOL "" FORCE)
   set(GGML_FMA ON CACHE BOOL "" FORCE)
   set(GGML_OPENMP OFF CACHE BOOL "" FORCE) # omp is very omp...
+
   if(APPLE)
     if(IS_SIMULATOR)
       set(GGML_METAL OFF CACHE BOOL "" FORCE)

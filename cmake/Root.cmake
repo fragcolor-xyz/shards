@@ -4,9 +4,14 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   cmake_policy(SET CMP0135 NEW)
 endif()
 
+cmake_policy(SET CMP0144 NEW)
+
+# Also set policy defaults to affect subdirectories and included projects
+set(CMAKE_POLICY_DEFAULT_CMP0144 NEW)
+
 get_filename_component(SHARDS_DIR ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
-
+ 
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
