@@ -397,6 +397,82 @@ struct Contains {
   }
 };
 
+struct Find {
+  static SHOptionalString help() {
+    return SHCCSTR("Finds the next occurence of the string specified in the String parameter in the input string and outputs the "
+                   "index of the first occurence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to check."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The index of the first occurence of the string specified, or -1 if the string is not found.");
+  }
+  ParamVar _check{Var("")};
+
+  PARAM_PARAMVAR(_toFind, "ToFind", "The string to find.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_toFind));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::IntType;
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sv = SHSTRVIEW(input);
+    auto toFind = SHSTRVIEW(_toFind.get());
+    size_t idx = sv.find(toFind);
+    if (idx != std::string_view::npos) {
+      return Var(int64_t(idx));
+    } else {
+      return Var(-1);
+    }
+  }
+};
+
+struct FindReverse {
+  static SHOptionalString help() {
+    return SHCCSTR("Finds the last occurence of the string specified in the String parameter in the input string and outputs the "
+                   "index of the first occurence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to check."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The index of the first occurence of the string specified, or -1 if the string is not found.");
+  }
+  ParamVar _check{Var("")};
+
+  PARAM_PARAMVAR(_toFind, "ToFind", "The string to find.", {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_toFind));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::IntType;
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sv = SHSTRVIEW(input);
+    auto toFind = SHSTRVIEW(_toFind.get());
+    size_t idx = sv.rfind(toFind);
+    if (idx != std::string_view::npos) {
+      return Var(int64_t(idx));
+    } else {
+      return Var(-1);
+    }
+  }
+};
+
 struct StartsWith : Contains {
   static SHOptionalString help() {
     return SHCCSTR("This shard checks if the input string starts with the string specified in the With parameter. If the input "
@@ -683,6 +759,8 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("ParseFloat", ParseFloat);
   REGISTER_SHARD("String.Trim", Trim);
   REGISTER_SHARD("String.Contains", Contains);
+  REGISTER_SHARD("String.Find", Find);
+  REGISTER_SHARD("String.RFind", FindReverse);
   REGISTER_SHARD("String.Split", Split);
   REGISTER_SHARD("String.Starts", StartsWith);
   REGISTER_SHARD("String.Ends", EndsWith);

@@ -51,17 +51,36 @@ struct Model {
 };
 
 struct Tokenize {
+  // Output table type when limited
+  static inline std::array<SHVar, 2> OutputTableKeys{
+      Var("tokens"),
+      Var("length"),
+  };
+  static inline ::shards::Types OutputTableTypes{{
+      shards::CoreInfo::IntSeqType,
+      shards::CoreInfo::IntType,
+  }};
+  static inline ::shards::Type TokenLimitType{shards::Type::TableOf(OutputTableTypes, OutputTableKeys)};
+  static inline ::shards::Types OutputTypes{{
+      TokenLimitType,
+      shards::CoreInfo::IntSeqType,
+
+  }};
+
   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return shards::CoreInfo::IntSeqType; }
+  static SHTypesInfo outputTypes() { return OutputTypes; }
 
   PARAM_PARAMVAR(_model, "Model", "The model to use", {ModelData::VarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_model));
+  PARAM_VAR(_limit, "Limit", "The maximum number of tokens to tokenize", {shards::CoreInfo::NoneType, shards::CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_model), PARAM_IMPL_FOR(_limit));
+
+  bool _isTokenLimited{};
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     // free up all the memory explicitly
-    _tokens = {};
+    _seqOutput = {};
     _tokensCache = {};
   }
 
@@ -70,11 +89,94 @@ struct Tokenize {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
+
+    if (!_limit->isNone()) {
+      _isTokenLimited = true;
+      return outputTypes().elements[0];
+    } else {
+      return outputTypes().elements[1];
+    }
   }
 
-  SeqVar _tokens;
+  SeqVar _seqOutput;
+  TableVar _tableOutput;
   std::vector<llama_token> _tokensCache;
+
+  void iterativeFitTokenizeInto(const llama_vocab *vocab, TableVar &output, std::string_view input, size_t tokenLimit) {
+    _tokensCache.resize(tokenLimit);
+    const size_t originalInputLen = input.size();
+    const size_t threshold = 32; // Acceptable difference from target token count
+
+    // Binary search bounds
+    size_t left = 1;
+    size_t right = originalInputLen;
+    size_t bestLen = 0;
+    int32_t lastLen = 0;
+    int32_t lastTokens = 0;
+    int32_t bestDiff = std::numeric_limits<int32_t>::max();
+    size_t numIterations = 0;
+
+    // Check original input first
+    lastLen = originalInputLen;
+    lastTokens = llama_tokenize(vocab, input.data(), lastLen, _tokensCache.data(), _tokensCache.size(), true, true);
+    if (lastTokens > 0) {
+      bestLen = originalInputLen;
+    } else {
+      while (left <= right) {
+        ++numIterations;
+        size_t mid = left + (right - left) / 2;
+        lastTokens = llama_tokenize(vocab, input.data(), mid, _tokensCache.data(), _tokensCache.size(), true, true);
+        lastLen = mid;
+
+        if (lastTokens < 0) {
+          // Input too long, try shorter
+          right = mid - 1;
+          continue;
+        }
+
+        // Calculate difference from target
+        int32_t diff = std::abs(lastTokens - static_cast<int32_t>(tokenLimit));
+
+        // Update best result if this is closer to target
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestLen = mid;
+        }
+
+        // If we're within threshold, we can stop
+        if (diff <= threshold) {
+          break;
+        }
+
+        // Adjust search bounds based on whether we need more or fewer tokens
+        if (lastTokens < static_cast<int32_t>(tokenLimit)) {
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+    }
+
+    // If we found no valid length, use the best attempt
+    if (bestLen == 0) {
+      throw std::logic_error("Unable to find suitable input length");
+    }
+
+    // Get final tokenization with best length
+    if (lastLen != bestLen) {
+      lastTokens = llama_tokenize(vocab, input.data(), bestLen, _tokensCache.data(), _tokensCache.size(), true, true);
+      if (lastTokens < 0) {
+        throw std::logic_error("Failed to tokenize with best length");
+      }
+    }
+
+    auto &tokens = makeSeq(output["tokens"]);
+    tokens.clear();
+    for (size_t i = 0; i < lastTokens; i++) {
+      tokens.push_back(Var(_tokensCache[i]));
+    }
+    output["length"] = Var((int64_t)bestLen);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &data = varAsObjectChecked<ModelData>(_model.get(), ModelData::Type);
@@ -83,18 +185,24 @@ struct Tokenize {
 
     auto text = SHSTRVIEW(input);
 
-    _tokensCache.resize(text.size());
-    auto nTokens = llama_tokenize(vocab, text.data(), text.size(), _tokensCache.data(), _tokensCache.size(), true, true);
-    if (nTokens < 0) {
-      throw ActivationError("Failed to tokenize input");
-    }
+    if (_isTokenLimited) {
+      int limit = (int)*_limit;
+      iterativeFitTokenizeInto(vocab, _tableOutput, text, limit);
+      return _tableOutput;
+    } else {
+      _tokensCache.resize(text.size());
+      auto nTokens = llama_tokenize(vocab, text.data(), text.size(), _tokensCache.data(), _tokensCache.size(), true, true);
+      if (nTokens < 0) {
+        throw ActivationError("Failed to tokenize input");
+      }
 
-    _tokens.clear();
-    for (int i = 0; i < nTokens; i++) {
-      _tokens.push_back(Var(_tokensCache[i]));
-    }
+      _seqOutput.clear();
+      for (int i = 0; i < nTokens; i++) {
+        _seqOutput.push_back(Var(_tokensCache[i]));
+      }
 
-    return _tokens;
+      return _seqOutput;
+    }
   }
 };
 
