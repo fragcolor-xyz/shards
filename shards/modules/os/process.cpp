@@ -418,59 +418,61 @@ struct StdIn {
   SHVar activate(SHContext *context, const SHVar &input) {
     line.clear();
 
+#ifndef _WIN32
+    fd_set rfds;
+    struct timeval tv;
+    char buf[1024];
+
     while (true) {
-      // Check if there's input available
-#ifdef _WIN32
-      HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-      DWORD events = 0;
-      INPUT_RECORD buffer;
-      PeekConsoleInput(hStdin, &buffer, 1, &events);
-      if (events == 0) {
-        SH_SUSPEND(context, 0);
-        continue;
-      }
-#else
-      fd_set rfds;
-      struct timeval tv;
       FD_ZERO(&rfds);
       FD_SET(STDIN_FILENO, &rfds);
       tv.tv_sec = 0;
       tv.tv_usec = 0;
 
-      if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) <= 0) {
+      int ret = select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv);
+      if (ret <= 0) {
         SH_SUSPEND(context, 0);
         continue;
       }
-#endif
 
-      // Read the line
-      if (std::getline(std::cin, line)) {
-        return Var(line);
+      // Use unbuffered read instead of std::getline
+      ssize_t n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+      if (n <= 0) {
+        return Var(""); // EOF or error
       }
 
-      // If we get here, something went wrong with reading
-      // (like EOF or error), so we should return empty
-      return Var("");
+      buf[n] = '\0';
+      line.append(buf);
+
+      // If we found a newline, we can return
+      if (line.find('\n') != std::string::npos) {
+        // Remove the trailing newline if present
+        if (!line.empty() && line.back() == '\n') {
+          line.pop_back();
+        }
+        return Var(line);
+      }
     }
+#endif
   }
 };
 
 struct StdOut {
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringOrBytes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringOrBytes; }
   static SHOptionalString help() { return SHCCSTR("Writes a string to standard output."); }
 
   PARAM_IMPL();
   PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+  SHTypeInfo compose(SHInstanceData &data) { return data.inputType; }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    std::string_view str = SHSTRVIEW(input);
-    std::cout << str << std::flush;
-    return Var::Empty;
+  void activate(SHContext *context, const SHVar &input) {
+    // either bytes or string they overlap in SHVar layout
+    fwrite(input.payload.bytesValue, input.payload.bytesSize, 1, stdout);
+    fflush(stdout);
   }
 };
 } // namespace Process

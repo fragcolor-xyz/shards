@@ -177,39 +177,6 @@ struct Msg : public LoggingBase {
   }
 };
 
-struct Output {
-  static SHOptionalString inputHelp() { return SHCCSTR("The string or bytes to output to stdout."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The same variable that was inputted, unmodified."); }
-
-  static SHOptionalString help() { return SHCCSTR("Outputs data directly to stdout"); }
-
-  static SHTypesInfo inputTypes() {
-    static Types types{CoreInfo::StringType, CoreInfo::BytesType};
-    return types;
-  }
-  static SHTypesInfo outputTypes() { return inputTypes(); }
-
-  PARAM_IMPL();
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return data.inputType;
-  }
-
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.valueType == SHType::String) {
-      fwrite(input.payload.stringValue, input.payload.stringLen, 1, stdout);
-    } else if (input.valueType == SHType::Bytes) {
-      fwrite(input.payload.bytesValue, input.payload.bytesSize, 1, stdout);
-    }
-    return input;
-  }
-};
-
 /*
  * Custom ring buffer sink
  */
@@ -409,7 +376,6 @@ SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("Log", Log);
   REGISTER_SHARD("LogType", LogType);
   REGISTER_SHARD("Msg", Msg);
-  REGISTER_SHARD("Output", Output);
   REGISTER_SHARD("CaptureLog", CaptureLog);
 
   struct LogFlush : public LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
