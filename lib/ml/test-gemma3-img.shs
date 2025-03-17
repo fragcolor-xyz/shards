@@ -1,7 +1,9 @@
-; "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-27b-it-GGUF/gemma-3-27b-it-Q8_0.gguf"
-"/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
-LLM.Model(UseMmap: true GPULayers: 1000) = model
-LLM.Chat(MMProj: "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/mmproj-model-f16.gguf") = chat-context
+@define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf" IgnoreRedefined: true)
+@define(image-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/mmproj-model-f16.gguf" IgnoreRedefined: true)
+@define(test-image "/Users/sugar/devel/shards/assets/simple1.PNG" IgnoreRedefined: true)
+
+@text-model | LLM.Model(UseMmap: true GPULayers: 1000) = model
+LLM.Chat(MMProj: @image-model) = chat-context
 
 "<bos>" | LLM.AddText(chat-context)
 
@@ -32,7 +34,7 @@ LLM.Chat(MMProj: "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-
 "<start_of_turn>user\n" | LLM.AddText(chat-context)
 
 "<start_of_image>" | LLM.AddText(chat-context)
-LoadImage("/Users/sugar/devel/shards/assets/simple1.PNG") | StripAlpha | LLM.AddImage(chat-context)
+LoadImage(@test-image) | StripAlpha | LLM.AddImage(chat-context)
 "<end_of_image>" | LLM.AddText(chat-context)
 
 "What is in this image?" | LLM.AddText(chat-context)

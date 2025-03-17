@@ -1,6 +1,6 @@
-; "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-27b-it-GGUF/gemma-3-27b-it-Q8_0.gguf"
-"/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf"
-LLM.Model(UseMmap: false GPULayers: 1000) = model
+@define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf" IgnoreRedefined: true)
+
+@text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat = chat-context
 
 "<bos>" | LLM.AddText(chat-context)
