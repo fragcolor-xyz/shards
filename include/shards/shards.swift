@@ -322,10 +322,34 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
+    init(r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
+        var v = SHVar()
+        v.valueType = Color
+        v.payload.colorValue.r = r
+        v.payload.colorValue.g = g
+        v.payload.colorValue.b = b
+        v.payload.colorValue.a = a
+        self = v
+    }
+
     init(value: SIMD2<Int64>) {
         var v = SHVar()
         v.valueType = Int2
         v.payload.int2Value = value
+        self = v
+    }
+
+    init(value: SIMD3<Float>) {
+        var v = SHVar()
+        v.valueType = Float3
+        v.payload.float3Value = SIMD4<Float>(value, 0)
+        self = v
+    }
+
+    init(value: SIMD4<Float>) {
+        var v = SHVar()
+        v.valueType = Float4
+        v.payload.float4Value = value
         self = v
     }
 
@@ -550,6 +574,11 @@ class OwnedVar {
         v = SHVar()
         set(string: string)
     }
+    
+    init(variable: String) {
+        v = SHVar()
+        set(variable: variable)
+    }
 
     init(bytes: ContiguousArray<UInt8>) {
         v = SHVar()
@@ -559,6 +588,11 @@ class OwnedVar {
     init(bool: Bool) {
         v = SHVar()
         set(bool: bool)
+    }
+
+    init(float: Double) {
+        v = SHVar()
+        set(float: float)
     }
 
     init(int: Int) {
@@ -590,10 +624,26 @@ class OwnedVar {
             G.Core.pointee.cloneVar(&v, &tmp)
         }
     }
+    
+    func set(variable: String) {
+        variable.withCString { cString in
+            var tmp = SHVar()
+            tmp.valueType = VarType.ContextVar.asSHType()
+            tmp.payload.stringValue = cString
+            let length = variable.lengthOfBytes(using: .utf8)
+            tmp.payload.stringLen = UInt32(length)
+            G.Core.pointee.cloneVar(&v, &tmp)
+        }
+    }
 
     func set(bool: Bool) {
         v.valueType = VarType.Bool.asSHType()
         v.payload.boolValue = bool
+    }
+
+    func set(float: Double) {
+        v.valueType = VarType.Float.asSHType()
+        v.payload.floatValue = float
     }
 
     func set(int: Int) {
@@ -847,13 +897,13 @@ class ParamVar {
         pointee = nil
     }
 
-    func warmup(context: OpaquePointer?) {
+    func warmup(context: Context) {
         if parameter.v.valueType == VarType.ContextVar.asSHType() {
             assert(pointee == nil)
             var swl = SHStringWithLen()
             swl.string = parameter.v.payload.stringValue
             swl.len = UInt64(parameter.v.payload.stringLen)
-            pointee = G.Core.pointee.referenceVariable(context, swl)
+            pointee = G.Core.pointee.referenceVariable(context.context, swl)
         } else {
             withUnsafeMutablePointer(to: &parameter.v) {
                 pointee = UnsafeMutablePointer($0)
@@ -1094,6 +1144,12 @@ public class TypeInfo {
         native.basicType = VarType.Table.asSHType()
         native.table.types.len = 1
         native.table.types.elements = withUnsafeMutablePointer(to: &tableOf.native) { $0 }
+    }
+
+    init(variableOf: TypeInfo) {
+        native.basicType = VarType.ContextVar.asSHType()
+        native.contextVarTypes.len = 1
+        native.contextVarTypes.elements = withUnsafeMutablePointer(to: &variableOf.native) { $0 }
     }
 }
 
