@@ -1077,21 +1077,204 @@ public final class ShardError: Error {
     }
 }
 
+public class TypeInfo {
+    var native = SHTypeInfo()
+
+    init(type: VarType) {
+        native.basicType = type.asSHType()
+    }
+
+    init(seqOf: TypeInfo) {
+        native.basicType = VarType.Seq.asSHType()
+        native.seqTypes.len = 1
+        native.seqTypes.elements = withUnsafeMutablePointer(to: &seqOf.native) { $0 }
+    }
+
+    init(tableOf: TypeInfo) {
+        native.basicType = VarType.Table.asSHType()
+        native.table.types.len = 1
+        native.table.types.elements = withUnsafeMutablePointer(to: &tableOf.native) { $0 }
+    }
+}
+
+public class Types {
+    private var types: [TypeInfo] // to keep alive
+    public var native = SHTypesInfo()
+
+    init(types: [TypeInfo]) {
+        self.types = types
+        for t in types {
+            withUnsafeMutablePointer(to: &native) { ptr in
+                withUnsafePointer(to: &t.native) { native in
+                    G.Core.pointee.typesPush(ptr, native)
+                }
+            }
+        }
+    }
+
+    deinit {
+        withUnsafeMutablePointer(to: &native) { ptr in
+            G.Core.pointee.typesFree(ptr)
+        }
+    }
+}
+
+public class ParameterInfo {
+    var name: ContiguousArray<CChar>
+    var help: ContiguousArray<CChar>
+    var types: [TypeInfo] // to keep alive
+    var typesStorage: ContiguousArray<SHTypeInfo> = []
+
+    init(name: String, help: String, types: [TypeInfo]) {
+        self.name = name.utf8CString
+        self.help = help.utf8CString
+        self.types = types
+        for t in types {
+            typesStorage.append(t.native)
+        }
+    }
+
+    func toSHParameterInfo() -> SHParameterInfo {
+        var result = SHParameterInfo()
+
+        name.withUnsafeBufferPointer {
+            result.name = $0.baseAddress
+        }
+        help.withUnsafeBufferPointer {
+            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
+        }
+        withUnsafeMutablePointer(to: &typesStorage[0]) { ptr in
+            result.valueTypes.elements = ptr
+        }
+        result.valueTypes.len = UInt32(types.count)
+        result.valueTypes.cap = 0
+
+        return result
+    }
+}
+
+public class Parameters {
+    private var infos: [ParameterInfo] = [] // to keep alive
+    public var native = SHParametersInfo()
+
+    func add(name: String, help: String, types: [TypeInfo]) {
+        let info = ParameterInfo(name: name, help: help, types: types)
+        infos.append(info)
+    }
+
+    func done() {
+        for info in infos {
+            var pInfo = info.toSHParameterInfo()
+            withUnsafeMutablePointer(to: &native) { ptr in
+                withUnsafePointer(to: &pInfo) { nativeInfo in
+                    G.Core.pointee.paramsPush(ptr, nativeInfo)
+                }
+            }
+        }
+    }
+
+    deinit {
+        withUnsafeMutablePointer(to: &native) { ptr in
+            G.Core.pointee.paramsFree(ptr)
+        }
+    }
+}
+
+public class ExposedTypeInfo {
+    var name: ContiguousArray<CChar>
+    var help: ContiguousArray<CChar>
+    var exposedType: TypeInfo
+    var isMutable: Bool
+    var isProtected: Bool
+    var global: Bool
+    var tracked: Bool
+    var declared: Bool
+
+    init(name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false, isProtected: Bool = false, global: Bool = false, tracked: Bool = false, declared: Bool = false) {
+        self.name = name.utf8CString
+        self.help = help.utf8CString
+        self.exposedType = exposedType
+        self.isMutable = isMutable
+        self.isProtected = isProtected
+        self.global = global
+        self.tracked = tracked
+        self.declared = declared
+    }
+
+    func toSHExposedTypeInfo() -> SHExposedTypeInfo {
+        var result = SHExposedTypeInfo()
+
+        name.withUnsafeBufferPointer {
+            result.name = $0.baseAddress
+        }
+        help.withUnsafeBufferPointer {
+            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
+        }
+        result.exposedType = exposedType.native
+
+        result.isMutable = isMutable
+        result.isProtected = isProtected
+        result.global = global
+        result.tracked = tracked
+        result.declared = declared
+
+        return result
+    }
+}
+
+public class ExposedTypes {
+    private var types: [ExposedTypeInfo] // to keep alive
+    public var native = SHExposedTypesInfo()
+
+    init() {
+        types = []
+    }
+
+    init(types: [ExposedTypeInfo]) {
+        self.types = types
+        for t in types {
+            var eInfo = t.toSHExposedTypeInfo()
+            withUnsafeMutablePointer(to: &native) { ptr in
+                withUnsafePointer(to: &eInfo) { nativeInfo in
+                    G.Core.pointee.expTypesPush(ptr, nativeInfo)
+                }
+            }
+        }
+    }
+
+    func extend(types: SHExposedTypesInfo) {
+        for i in 0 ..< types.len {
+            var eInfo = types.elements[Int(i)]
+            withUnsafeMutablePointer(to: &native) { ptr in
+                withUnsafePointer(to: &eInfo) { nativeInfo in
+                    G.Core.pointee.expTypesPush(ptr, nativeInfo)
+                }
+            }
+        }
+    }
+
+    deinit {
+        withUnsafeMutablePointer(to: &native) { ptr in
+            G.Core.pointee.expTypesFree(ptr)
+        }
+    }
+}
+
 public protocol IShard: AnyObject {
     static var name: StaticString { get }
     static var help: StaticString { get }
 
     init()
 
-    var inputTypes: [SHTypeInfo] { get }
-    var outputTypes: [SHTypeInfo] { get }
+    var inputTypes: Types { get }
+    var outputTypes: Types { get }
 
-    var parameters: [SHParameterInfo] { get }
+    var parameters: Parameters { get }
     func setParam(idx: Int, value: SHVar) -> Result<Void, ShardError>
     func getParam(idx: Int) -> SHVar
 
-    var exposedVariables: [SHExposedTypeInfo] { get }
-    var requiredVariables: [SHExposedTypeInfo] { get }
+    var exposedVariables: ExposedTypes { get }
+    var requiredVariables: ExposedTypes { get }
 
     func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError>
 
@@ -1128,13 +1311,7 @@ public extension IShard {}
 @inlinable public func bridgeParameters<T: IShard>(_: T.Type, shard: ShardPtr) -> SHParametersInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    var result = SHParametersInfo()
-    let paramsPtr = b.parameters.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
-    result.elements = UnsafeMutablePointer<SHParameterInfo>(mutating: paramsPtr)
-    result.len = UInt32(b.parameters.count)
-    return result
+    return b.parameters.native
 }
 
 @inlinable public func bridgeName<T: IShard>(_: T.Type) -> UnsafePointer<Int8>? {
@@ -1185,25 +1362,13 @@ public extension IShard {}
 @inlinable public func bridgeInputTypes<T: IShard>(_: T.Type, shard: ShardPtr) -> SHTypesInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    var result = SHTypesInfo()
-    let ptr = b.inputTypes.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
-    result.elements = UnsafeMutablePointer<SHTypeInfo>(mutating: ptr)
-    result.len = UInt32(b.inputTypes.count)
-    return result
+    return b.inputTypes.native
 }
 
 @inlinable public func bridgeOutputTypes<T: IShard>(_: T.Type, shard: ShardPtr) -> SHTypesInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    var result = SHTypesInfo()
-    let ptr = b.outputTypes.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
-    result.elements = UnsafeMutablePointer<SHTypeInfo>(mutating: ptr)
-    result.len = UInt32(b.outputTypes.count)
-    return result
+    return b.outputTypes.native
 }
 
 @inlinable public func bridgeCompose<T: IShard>(_: T.Type, shard: ShardPtr, data: UnsafeMutablePointer<SHInstanceData>?) -> SHShardComposeResult {
@@ -1291,25 +1456,13 @@ public extension IShard {}
 @inlinable public func bridgeExposedVariables<T: IShard>(_: T.Type, shard: ShardPtr) -> SHExposedTypesInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    var result = SHExposedTypesInfo()
-    let ptr = b.exposedVariables.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
-    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>(mutating: ptr)
-    result.len = UInt32(b.exposedVariables.count)
-    return result
+    return b.exposedVariables.native
 }
 
 @inlinable public func bridgeRequiredVariables<T: IShard>(_: T.Type, shard: ShardPtr) -> SHExposedTypesInfo {
     let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
     let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    var result = SHExposedTypesInfo()
-    let ptr = b.requiredVariables.withUnsafeBufferPointer {
-        $0.baseAddress
-    }
-    result.elements = UnsafeMutablePointer<SHExposedTypeInfo>(mutating: ptr)
-    result.len = UInt32(b.requiredVariables.count)
-    return result
+    return b.requiredVariables.native
 }
 
 @inlinable public func hashShard<T: IShard>(_: T.Type) -> UInt32 {
@@ -1366,134 +1519,6 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
 
     // Cast to Shard pointer without rebinding
     return UnsafeMutableRawPointer(cwrapper).assumingMemoryBound(to: Shard.self)
-}
-
-class TypeInfo {
-    var native = SHTypeInfo()
-
-    init(type: VarType) {
-        native.basicType = type.asSHType()
-    }
-
-    init(seqOf: TypeInfo) {
-        native.basicType = VarType.Seq.asSHType()
-        native.seqTypes.len = 1
-        native.seqTypes.elements = withUnsafeMutablePointer(to: &seqOf.native) { $0 }
-    }
-
-    init(tableOf: TypeInfo) {
-        native.basicType = VarType.Table.asSHType()
-        native.table.types.len = 1
-        native.table.types.elements = withUnsafeMutablePointer(to: &tableOf.native) { $0 }
-    }
-}
-
-class Types {
-    var types: [TypeInfo] // to keep alive
-    var typesStorage: [SHTypeInfo] = []
-
-    init(types: [TypeInfo]) {
-        self.types = types
-        for t in types {
-            typesStorage.append(t.native)
-        }
-    }
-
-    func get() -> [SHTypeInfo] {
-        typesStorage
-    }
-}
-
-class ParameterInfo {
-    var name: ContiguousArray<CChar>
-    var help: ContiguousArray<CChar>
-    var types: [TypeInfo] // to keep alive
-    var typesStorage: ContiguousArray<SHTypeInfo> = []
-
-    init(name: String, help: String, types: [TypeInfo]) {
-        self.name = name.utf8CString
-        self.help = help.utf8CString
-        self.types = types
-        for t in types {
-            typesStorage.append(t.native)
-        }
-    }
-
-    func toSHParameterInfo() -> SHParameterInfo {
-        var result = SHParameterInfo()
-
-        name.withUnsafeBufferPointer {
-            result.name = $0.baseAddress
-        }
-        help.withUnsafeBufferPointer {
-            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
-        }
-        withUnsafeMutablePointer(to: &typesStorage[0]) { ptr in
-            result.valueTypes.elements = ptr
-        }
-        result.valueTypes.len = UInt32(types.count)
-        result.valueTypes.cap = 0
-
-        return result
-    }
-}
-
-class Parameters {
-    // pod C type, so contiguous array is not needed anyway, this is compatible with the IShard interface
-    private var storage: [SHParameterInfo] = []
-    private var infos: [ParameterInfo] = [] // to keep alive
-
-    func add(name: String, help: String, types: [TypeInfo]) {
-        let info = ParameterInfo(name: name, help: help, types: types)
-        storage.append(info.toSHParameterInfo())
-        infos.append(info)
-    }
-
-    func get() -> [SHParameterInfo] {
-        storage
-    }
-}
-
-class ExposedTypeInfo {
-    var name: ContiguousArray<CChar>
-    var help: ContiguousArray<CChar>
-    var exposedType: TypeInfo
-    var isMutable: Bool
-    var isProtected: Bool
-    var global: Bool
-    var tracked: Bool
-    var declared: Bool
-
-    init(name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false, isProtected: Bool = false, global: Bool = false, tracked: Bool = false, declared: Bool = false) {
-        self.name = name.utf8CString
-        self.help = help.utf8CString
-        self.exposedType = exposedType
-        self.isMutable = isMutable
-        self.isProtected = isProtected
-        self.global = global
-        self.tracked = tracked
-        self.declared = declared
-    }
-
-    func toSHExposedTypeInfo() -> SHExposedTypeInfo {
-        var result = SHExposedTypeInfo()
-
-        name.withUnsafeBufferPointer {
-            result.name = $0.baseAddress
-        }
-        help.withUnsafeBufferPointer {
-            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
-        }
-        result.exposedType = exposedType.native
-
-        result.isMutable = isMutable
-        result.isProtected = isProtected
-        result.global = global
-        result.tracked = tracked
-        result.declared = declared
-
-        return result
-    }
 }
 
 class WireController {
