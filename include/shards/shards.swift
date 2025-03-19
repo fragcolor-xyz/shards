@@ -433,7 +433,7 @@ extension SHVar: CustomStringConvertible {
     }
 
     public var string: String {
-        assert(type == .String, "String variable expected!")
+        assert(type == .String || type == .ContextVar, "String variable expected!")
         guard let stringPtr = payload.stringValue else {
             return ""
         }
@@ -447,7 +447,7 @@ extension SHVar: CustomStringConvertible {
     }
 
     public var maybeString: String? {
-        if type != .String {
+        if type != .String || type != .ContextVar {
             return nil
         }
         return string
