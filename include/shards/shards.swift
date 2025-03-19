@@ -885,9 +885,19 @@ extension SeqVar: Sequence {
 class ParamVar {
     private var parameter: OwnedVar
     private var pointee: UnsafeMutablePointer<SHVar>?
+    private var requiredTypes = ExposedTypes()
 
     init(parameter: OwnedVar) {
         self.parameter = parameter
+    }
+    
+    func compose(help: String, requiredType: TypeInfo) {
+        if isVariable() {
+            let reqInfo = ExposedTypeInfo(name: getName()!, help: help, exposedType: requiredType)
+            requiredTypes = .init(types: [reqInfo])
+        } else {
+            requiredTypes = .init(types: [])
+        }
     }
 
     func cleanup() {
@@ -961,6 +971,10 @@ class ParamVar {
             return parameter.v.string
         }
         return nil
+    }
+
+    func getRequiredTypes() -> ExposedTypes {
+        return requiredTypes
     }
 }
 
