@@ -447,7 +447,7 @@ extension SHVar: CustomStringConvertible {
     }
 
     public var maybeString: String? {
-        if type != .String || type != .ContextVar {
+        if type != .String && type != .ContextVar {
             return nil
         }
         return string
