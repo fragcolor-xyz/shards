@@ -3072,18 +3072,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     delete smesh;
   };
 
-  result->compose = [](SHMeshRef mesh, SHWireRef wire) noexcept {
+  result->compose = [](SHMeshRef mesh, SHWireRef wire, struct SHVar *errorCloned) noexcept {
     try {
       auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
       (*smesh)->compose(SHWire::sharedFromRef(wire));
+      return true;
     } catch (const std::exception &e) {
-      SHLOG_ERROR("Errors while composing: {}", e.what());
+      shards::cloneVar(*errorCloned, shards::Var(e.what(), 0)); // 0 to force strlen
       return false;
     } catch (...) {
-      SHLOG_ERROR("Errors while composing");
+      shards::cloneVar(*errorCloned, shards::Var("foreign exception failure during compose"));
       return false;
     }
-    return true;
   };
 
   result->schedule = [](SHMeshRef mesh, SHWireRef wire, SHBool compose) noexcept {
@@ -3103,11 +3103,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
       (*smesh)->schedule(SHWire::sharedFromRef(wire), shards::Var::Empty, compose);
       return true;
     } catch (const std::exception &e) {
-      SHLOG_ERROR("Errors while scheduling: {}", e.what());
       shards::cloneVar(*errorCloned, shards::Var(e.what(), 0)); // 0 to force strlen
       return false;
     } catch (...) {
-      SHLOG_ERROR("Errors while scheduling");
       shards::cloneVar(*errorCloned, shards::Var("foreign exception failure during schedule"));
       return false;
     }

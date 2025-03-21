@@ -386,7 +386,7 @@ extension SHVar: CustomStringConvertible {
             payload.floatValue = SHFloat(newValue)
         }
     }
-    
+
     public var double2: SIMD2<Double> {
         get {
             assert(type == .Float2, "Float2 variable expected!")
@@ -397,7 +397,7 @@ extension SHVar: CustomStringConvertible {
             payload.float2Value = newValue
         }
     }
-    
+
     public var float4: SIMD4<Float> {
         get {
             assert(type == .Float4, "Float4 variable expected!")
@@ -474,35 +474,35 @@ extension SHVar: CustomStringConvertible {
         }
         return string
     }
-    
+
     public var maybeFloat: Float? {
         if type != .Float {
             return nil
         }
         return float
     }
-    
+
     public var maybeDouble: Double? {
         if type != .Float {
             return nil
         }
         return double
     }
-    
+
     public var maybeDouble2: SIMD2<Double>? {
         if type != .Float2 {
             return nil
         }
         return double2
     }
-    
+
     public var maybeFloat4: SIMD4<Float>? {
         if type != .Float4 {
             return nil
         }
         return float4
     }
-    
+
     public var maybe: SHVar? {
         if type != .NoValue {
             return self
@@ -632,7 +632,7 @@ class OwnedVar {
         v = SHVar()
         set(string: string)
     }
-    
+
     init(variable: String) {
         v = SHVar()
         set(variable: variable)
@@ -682,7 +682,7 @@ class OwnedVar {
             G.Core.pointee.cloneVar(&v, &tmp)
         }
     }
-    
+
     func set(variable: String) {
         variable.withCString { cString in
             var tmp = SHVar()
@@ -948,7 +948,7 @@ class ParamVar {
     init(parameter: OwnedVar) {
         self.parameter = parameter
     }
-    
+
     func compose(help: String, requiredType: TypeInfo) {
         if isVariable() {
             let reqInfo = ExposedTypeInfo(name: getName()!, help: help, exposedType: requiredType)
@@ -1789,6 +1789,15 @@ class MeshController {
 
     func schedule(wire: WireController) {
         G.Core.pointee.schedule(nativeRef, wire.nativeRef, true)
+    }
+
+    func maybeSchedule(wire: WireController) -> Result<Void, ShardError> {
+        let error = OwnedVar()
+        let result = G.Core.pointee.schedule1(nativeRef, wire.nativeRef, true, &error.v)
+        if result {
+            return .success(())
+        }
+        return .failure(ShardError(message: error.v.string))
     }
 
     func unschedule(wire: WireController) {

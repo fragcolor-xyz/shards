@@ -952,7 +952,7 @@ typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
 typedef struct SHVar(__cdecl *SHCreateMeshVar)();
 typedef void(__cdecl *SHSetMeshLabel)(SHMeshRef mesh, SHStringWithLen label);
-typedef SHBool(__cdecl *SHCompose)(SHMeshRef mesh, SHWireRef wire);
+typedef SHBool(__cdecl *SHCompose)(SHMeshRef mesh, SHWireRef wire, struct SHVar *errorCloned);
 typedef void(__cdecl *SHUnSchedule)(SHMeshRef mesh, SHWireRef wire);
 typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire, SHBool compose);
 typedef SHBool(__cdecl *SHSchedule1)(SHMeshRef mesh, SHWireRef wire, SHBool compose, struct SHVar *errorCloned);

@@ -998,10 +998,10 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
       wire.add_shard(shard.0);
     }
     let mut mesh = Mesh::default();
-    if !mesh.compose(wire.0) {
+    if let Err(e) = mesh.compose(wire.0) {
       return Err(
         (
-          "Error composing eval mesh",
+          e,
           LineInfo {
             line: line_info.0,
             column: line_info.1,
@@ -4128,9 +4128,7 @@ macro_rules! include_shards {
     let token = new_cancellation_token();
     let wire = eval::eval(&prog, "include_shards", defines, token).unwrap();
     let mut mesh = Mesh::default();
-    if !mesh.compose(wire.0) {
-      panic!("Failed to compose wire");
-    }
+    mesh.compose(wire.0).unwrap();
     mesh.schedule(wire.0, false);
 
     loop {

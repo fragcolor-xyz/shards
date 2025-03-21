@@ -354,8 +354,14 @@ impl Drop for Mesh {
 }
 
 impl Mesh {
-  pub fn compose(&self, wire: WireRef) -> bool {
-    unsafe { (*Core).compose.unwrap_unchecked()(self.0, wire.0) }
+  pub fn compose(&self, wire: WireRef) -> Result<(), std::string::String> {
+    let mut error = ClonedVar::default();
+    if unsafe { (*Core).compose.unwrap_unchecked()(self.0, wire.0, &mut error.0) } {
+      let error: &str = error.0.as_ref().try_into()?;
+      Err(error.to_string())
+    } else {
+      Ok(())
+    }
   }
 
   pub fn schedule(&mut self, wire: WireRef, compose: bool) {
@@ -397,8 +403,14 @@ impl MeshVar {
     }
   }
 
-  pub fn compose(&self, wire: WireRef) -> bool {
-    unsafe { (*Core).compose.unwrap_unchecked()(self.mesh_ref(), wire.0) }
+  pub fn compose(&self, wire: WireRef) -> Result<(), std::string::String> {
+    let mut error = ClonedVar::default();
+    if unsafe { (*Core).compose.unwrap_unchecked()(self.mesh_ref(), wire.0, &mut error.0) } {
+      let error: &str = error.0.as_ref().try_into()?;
+      Err(error.to_string())
+    } else {
+      Ok(())
+    }
   }
 
   pub fn schedule(&mut self, wire: WireRef, compose: bool) {

@@ -3,7 +3,7 @@ use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
-use shards::core::{Core};
+use shards::core::Core;
 use shards::types::Mesh;
 use shards::util::from_raw_parts_allow_null;
 use shards::{
@@ -298,7 +298,7 @@ fn execute_seq(
 
   let wire = {
     eval(&ast, "root", defines, cancellation_token.clone()).map_err(|e| {
-      shlog!("Error: {:?}", e);
+      shlog_error!("Error: {:?}", e);
       "Failed to evaluate file"
     })?
   };
@@ -306,7 +306,8 @@ fn execute_seq(
   wire.set_stack_size(eval::EVAL_STACK_SIZE);
 
   let mut mesh = Mesh::default();
-  if !mesh.compose(wire.0) {
+  if let Err(e) = mesh.compose(wire.0) {
+    shlog_error!("Failed to compose mesh: {}", e);
     return Err("Failed to compose mesh");
   }
   mesh.schedule(wire.0, false);
