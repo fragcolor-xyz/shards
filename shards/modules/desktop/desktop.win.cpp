@@ -54,7 +54,7 @@ public:
 
       _previousTitle = name;
       _previousClass = class_;
-      
+
       if (name.valueType == SHType::String) {
         _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, name.payload.stringValue, -1, 0, 0));
         MultiByteToWideChar(CP_UTF8, 0, name.payload.stringValue, -1, &_wTitle[0], _wTitle.size());
@@ -819,9 +819,7 @@ struct Tap : public MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param("Long",
-                        SHCCSTR("A big delay will be injected after tap down "
-                                "to simulate a long tap."),
+      ParamsInfo::Param("Long", SHCCSTR("A big delay will be injected after tap down to simulate a long tap."),
                         CoreInfo::BoolType),
       ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after tap events down & up."), CoreInfo::BoolType));
 
@@ -832,23 +830,20 @@ struct Tap : public MousePosBase {
   void setParam(int index, const SHVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
-    else {
-      if (index == 1)
-        _longTap = value.payload.boolValue;
-      else // 2
-        _delays = value.payload.boolValue;
-    }
+    else if (index == 1)
+      _longTap = value.payload.boolValue;
+    else if (index == 2)
+      _delays = value.payload.boolValue;
   }
 
   SHVar getParam(int index) {
     if (index == 0)
       return MousePosBase::getParam(index);
-    else {
-      if (index == 1)
-        return Var(_longTap);
-      else
-        return Var(_delays);
-    }
+    else if (index == 1)
+      return Var(_longTap);
+    else if (index == 2)
+      return Var(_delays);
+    return Var::Empty;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -869,6 +864,7 @@ struct Tap : public MousePosBase {
       POINT p;
       p.x = input.payload.int2Value[0];
       p.y = input.payload.int2Value[1];
+
       ClientToScreen(wnd, &p);
       LogicalToPhysicalPoint(wnd, &p);
       pinfo.pointerInfo.ptPixelLocation.x = p.x;
@@ -923,10 +919,12 @@ struct Tap : public MousePosBase {
 
 template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
   bool _delays = true;
+  bool _usePostMessage = false;
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after click events down & up."), CoreInfo::BoolType));
+      ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after click events down & up."), CoreInfo::BoolType),
+      ParamsInfo::Param("NoFocus", SHCCSTR("Use PostMessage to send mouse events without changing focus."), CoreInfo::BoolType));
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -935,64 +933,120 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
   void setParam(int index, const SHVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
-    else {
+    else if (index == 1) {
       _delays = value.payload.boolValue;
+    } else if (index == 2) {
+      _usePostMessage = value.payload.boolValue;
     }
   }
 
   SHVar getParam(int index) {
     if (index == 0)
       return MousePosBase::getParam(index);
-    else {
+    else if (index == 1) {
       return Var(_delays);
+    } else if (index == 2) {
+      return Var(_usePostMessage);
     }
+    return Var::Empty;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    INPUT event;
-    event.type = INPUT_MOUSE;
-    event.mi.mouseData = 0;
-    event.mi.dwFlags = 0;
-    event.ki.dwExtraInfo = GetMessageExtraInfo();
-    event.mi.dwFlags = MOUSEEVENTF_ABSOLUTE;
+    if (_usePostMessage) {
+      auto wnd = AsHWND(_window.get());
+      if (!wnd) {
+        throw ActivationError("Window not found or not a Desktop's window!");
+      }
 
-    auto wnd = AsHWND(_window.get());
-    if (wnd) {
       POINT p;
       p.x = input.payload.int2Value[0];
       p.y = input.payload.int2Value[1];
-      ClientToScreen(wnd, &p);
-      LogicalToPhysicalPoint(wnd, &p);
-      event.mi.dx = p.x;
-      event.mi.dy = p.y;
+
+      // Create the LPARAM for mouse position (low word = x, high word = y)
+      LPARAM lParam = MAKELPARAM(p.x, p.y);
+
+      // First send WM_MOUSEMOVE
+      PostMessage(wnd, WM_MOUSEMOVE, 0, lParam);
+
+      if (_delays) {
+        SH_SUSPEND(context, 0.02);
+      }
+
+      // Send mouse down message
+      UINT downMsg = (MBD == MOUSEEVENTF_LEFTDOWN)     ? WM_LBUTTONDOWN
+                     : (MBD == MOUSEEVENTF_RIGHTDOWN)  ? WM_RBUTTONDOWN
+                     : (MBD == MOUSEEVENTF_MIDDLEDOWN) ? WM_MBUTTONDOWN
+                                                       : WM_LBUTTONDOWN;
+
+      WPARAM wParam = (MBD == MOUSEEVENTF_LEFTDOWN)     ? MK_LBUTTON
+                      : (MBD == MOUSEEVENTF_RIGHTDOWN)  ? MK_RBUTTON
+                      : (MBD == MOUSEEVENTF_MIDDLEDOWN) ? MK_MBUTTON
+                                                        : MK_LBUTTON;
+
+      PostMessage(wnd, downMsg, wParam, lParam);
+
+      if (_delays) {
+        SH_SUSPEND(context, 0.05);
+      }
+
+      // Send mouse up message
+      UINT upMsg = (MBU == MOUSEEVENTF_LEFTUP)     ? WM_LBUTTONUP
+                   : (MBU == MOUSEEVENTF_RIGHTUP)  ? WM_RBUTTONUP
+                   : (MBU == MOUSEEVENTF_MIDDLEUP) ? WM_MBUTTONUP
+                                                   : WM_LBUTTONUP;
+
+      PostMessage(wnd, upMsg, 0, lParam);
+
+      if (_delays) {
+        SH_SUSPEND(context, 0.05);
+      }
     } else {
-      event.mi.dx = input.payload.int2Value[0];
-      event.mi.dy = input.payload.int2Value[1];
-    }
+      // Original SendInput implementation
+      INPUT event;
+      event.type = INPUT_MOUSE;
+      event.mi.mouseData = 0;
+      event.mi.dwFlags = 0;
+      event.ki.dwExtraInfo = GetMessageExtraInfo();
+      event.mi.dwFlags = MOUSEEVENTF_ABSOLUTE;
 
-    event.mi.dx = (event.mi.dx * 65536) / GetSystemMetrics(SM_CXSCREEN);
-    event.mi.dy = (event.mi.dy * 65536) / GetSystemMetrics(SM_CYSCREEN);
+      auto wnd = AsHWND(_window.get());
+      if (wnd) {
+        POINT p;
+        p.x = input.payload.int2Value[0];
+        p.y = input.payload.int2Value[1];
+        ClientToScreen(wnd, &p);
+        LogicalToPhysicalPoint(wnd, &p);
+        event.mi.dx = p.x;
+        event.mi.dy = p.y;
+      } else {
+        event.mi.dx = input.payload.int2Value[0];
+        event.mi.dy = input.payload.int2Value[1];
+      }
 
-    // down
-    event.mi.dwFlags = event.mi.dwFlags | MBD;
-    if (!SendInput(1, &event, sizeof(INPUT))) {
-      SHLOG_ERROR("SendInput (down) error: {0:x}", GetLastError());
-      throw ActivationError("LeftClick failed.");
-    }
+      event.mi.dx = (event.mi.dx * 65536) / GetSystemMetrics(SM_CXSCREEN);
+      event.mi.dy = (event.mi.dy * 65536) / GetSystemMetrics(SM_CYSCREEN);
 
-    if (_delays) {
-      SH_SUSPEND(context, 0.05);
-    }
+      // down
+      event.mi.dwFlags = event.mi.dwFlags | MBD;
+      if (!SendInput(1, &event, sizeof(INPUT))) {
+        SHLOG_ERROR("SendInput (down) error: {0:x}", GetLastError());
+        throw ActivationError("Click failed.");
+      }
 
-    // up
-    event.mi.dwFlags = event.mi.dwFlags | MBU;
-    if (!SendInput(1, &event, sizeof(INPUT))) {
-      SHLOG_ERROR("SendInput (up) error: {0:x}", GetLastError());
-      throw ActivationError("LeftClick failed.");
-    }
+      if (_delays) {
+        SH_SUSPEND(context, 0.05);
+      }
 
-    if (_delays) {
-      SH_SUSPEND(context, 0.05);
+      // up
+      event.mi.dwFlags = event.mi.dwFlags | MBU;
+      if (!SendInput(1, &event, sizeof(INPUT))) {
+        SHLOG_ERROR("SendInput (up) error: {0:x}", GetLastError());
+        throw ActivationError("Click failed.");
+      }
+
+      if (_delays) {
+        SH_SUSPEND(context, 0.05);
+      }
     }
 
     return input;
