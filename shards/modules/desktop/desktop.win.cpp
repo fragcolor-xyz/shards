@@ -819,9 +819,7 @@ struct Tap : public MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param("Long",
-                        SHCCSTR("A big delay will be injected after tap down "
-                                "to simulate a long tap."),
+      ParamsInfo::Param("Long", SHCCSTR("A big delay will be injected after tap down to simulate a long tap."),
                         CoreInfo::BoolType),
       ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after tap events down & up."), CoreInfo::BoolType));
 
@@ -832,23 +830,20 @@ struct Tap : public MousePosBase {
   void setParam(int index, const SHVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
-    else {
-      if (index == 1)
-        _longTap = value.payload.boolValue;
-      else // 2
-        _delays = value.payload.boolValue;
-    }
+    else if (index == 1)
+      _longTap = value.payload.boolValue;
+    else if (index == 2)
+      _delays = value.payload.boolValue;
   }
 
   SHVar getParam(int index) {
     if (index == 0)
       return MousePosBase::getParam(index);
-    else {
-      if (index == 1)
-        return Var(_longTap);
-      else
-        return Var(_delays);
-    }
+    else if (index == 1)
+      return Var(_longTap);
+    else if (index == 2)
+      return Var(_delays);
+    return Var::Empty;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -869,6 +864,7 @@ struct Tap : public MousePosBase {
       POINT p;
       p.x = input.payload.int2Value[0];
       p.y = input.payload.int2Value[1];
+
       ClientToScreen(wnd, &p);
       LogicalToPhysicalPoint(wnd, &p);
       pinfo.pointerInfo.ptPixelLocation.x = p.x;
@@ -965,23 +961,16 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
       POINT p;
       p.x = input.payload.int2Value[0];
       p.y = input.payload.int2Value[1];
-      ClientToScreen(wnd, &p);
-      LogicalToPhysicalPoint(wnd, &p);
-
-      // Save original window style if we need to prevent focus change
-      LONG_PTR originalStyle = 0;
-      if (_usePostMessage) {
-        originalStyle = GetWindowLongPtr(wnd, GWL_EXSTYLE);
-        // Add WS_EX_NOACTIVATE to prevent focus change
-        SetWindowLongPtr(wnd, GWL_EXSTYLE, originalStyle | WS_EX_NOACTIVATE);
-      }
-
-      // Convert screen coordinates to client coordinates
-      POINT clientPt = p;
-      ScreenToClient(wnd, &clientPt);
 
       // Create the LPARAM for mouse position (low word = x, high word = y)
-      LPARAM lParam = MAKELPARAM(clientPt.x, clientPt.y);
+      LPARAM lParam = MAKELPARAM(p.x, p.y);
+
+      // First send WM_MOUSEMOVE
+      PostMessage(wnd, WM_MOUSEMOVE, 0, lParam);
+
+      if (_delays) {
+        SH_SUSPEND(context, 0.02);
+      }
 
       // Send mouse down message
       UINT downMsg = (MBD == MOUSEEVENTF_LEFTDOWN)     ? WM_LBUTTONDOWN
@@ -1010,11 +999,6 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
 
       if (_delays) {
         SH_SUSPEND(context, 0.05);
-      }
-
-      // Restore original window style
-      if (_usePostMessage) {
-        SetWindowLongPtr(wnd, GWL_EXSTYLE, originalStyle);
       }
     } else {
       // Original SendInput implementation
