@@ -218,7 +218,7 @@ target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLS
 if(NOT EMSCRIPTEN)
   # TODO vulkan build support
   if(WIN32 OR LINUX)
-    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+    # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
   endif()
 
   set(GGML_STATIC ON CACHE BOOL "" FORCE)
