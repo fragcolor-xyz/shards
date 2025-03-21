@@ -2344,6 +2344,106 @@ public:
   void activate(SHContext *context, const SHVar &input) { _brancher.activate(); }
 };
 
+struct WireComposer : public BaseLoader<WireComposer> {
+  static inline Parameters params{
+      {"Wire", SHCCSTR("The wire variable to compose."), {CoreInfo::WireType, CoreInfo::WireVarType}},
+  };
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static SHParametersInfo parameters() { return params; }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Returns \"OK\" if the wire was successfully composed, otherwise returns an error message.");
+  }
+
+  SHOptionalString help() {
+    return SHCCSTR(
+        "Attempts to compose the specified wire and outputs \"OK\" if successful, or an error message if the composition fails.");
+  }
+
+  ParamVar _wire{};
+  SHVar _wireHash{};
+  SHWire *_wirePtr = nullptr;
+  SHExposedTypeInfo _requiredWire{};
+
+  void setParam(int index, const SHVar &value) {
+    if (index == 0) {
+      _wire = value;
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index == 0) {
+      return _wire;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup(SHContext *context) {
+    BaseLoader<WireComposer>::cleanup(context);
+    _wire.cleanup();
+    _wirePtr = nullptr;
+  }
+
+  void warmup(SHContext *context) {
+    BaseLoader<WireComposer>::warmup(context);
+    _wire.warmup(context);
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (_wire.isVariable()) {
+      _requiredWire = SHExposedTypeInfo{_wire.variableName(), SHCCSTR("The wire to compose."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  std::string _errorMessage;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto wireVar = _wire.get();
+    wire = SHWire::sharedFromRef(wireVar.payload.wireValue);
+    if (unlikely(!wire)) {
+      throw ComposeError("WireComposer: Could not find a wire to compose");
+    }
+
+    try {
+      SHInstanceData data{};
+      data.inputType = _inputTypeCopy;
+      data.shared = _sharedCopy;
+      data.wire = wire.get();
+      wire->mesh = context->main->mesh;
+
+      // avoid stack-overflow
+      if (WireBase::gatheringWires().count(wire.get())) {
+        return Var("OK"); // Circular dependency but that's ok
+      }
+
+      WireBase::gatheringWires().insert(wire.get());
+      DEFER(WireBase::gatheringWires().erase(wire.get()));
+
+      // We need to validate the sub wire to figure it out!
+      // Throws on failure
+      auto res = composeWire(wire.get(), data);
+
+      // Free resources
+      shards::arrayFree(res.exposedInfo);
+      shards::arrayFree(res.requiredInfo);
+
+      return Var("OK");
+    } catch (const std::exception &e) {
+      _errorMessage = e.what();
+      return Var(_errorMessage);
+    } catch (...) {
+      return Var("Unknown error during composition");
+    }
+  }
+};
+
 SHARDS_REGISTER_FN(wires) {
   REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
   REGISTER_ENUM(ParallelBase::WaitUntilEnumInfo);
@@ -2370,5 +2470,6 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("Suspend", SuspendWire);
   REGISTER_SHARD("Resume", ResumeWire);
   REGISTER_SHARD("WhenDone", WhenDone); // Forbidden for FBL for now. But to fix eventually
+  REGISTER_SHARD("WireComposer", WireComposer);
 }
 }; // namespace shards

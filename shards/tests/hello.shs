@@ -129,8 +129,9 @@ n/text | Log
 @x-defined | Log
 """
 {Shards.Read(OutputType: AstType::Json) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log}
-{Shards.Read(OutputType: AstType::Bytes) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = mey-weired}
-WireRunner(mey-weired)
+{Shards.Read(OutputType: AstType::Bytes) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = my-wire}
+{WireComposer(my-wire) | Assert.Is("OK")}
+WireRunner(my-wire)
 
 ["B" "C" "D" "E" "F"] >= bcdef
 

@@ -7,11 +7,12 @@ use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
-use std::rc::Rc;
 
 use nanoid::nanoid;
 use shards::cstr;
+use shards::types::InstanceData;
 use shards::types::SeqVar;
+use shards::types::BOOL_TYPES_SLICE;
 use shards::types::STRINGS_OR_NONE_SLICE;
 use shards::SHType_Trait;
 
@@ -3932,8 +3933,23 @@ lazy_static! {
       shccstr!("The optional forbidden shards and functions."),
       STRINGS_OR_NONE_SLICE
     )
-      .into()
+      .into(),
+    (
+      cstr!("FullOutput"),
+      shccstr!("Whether to return as output a table with the error and the wire."),
+      BOOL_TYPES_SLICE
+    )
+      .into(),
   ];
+  // both types are any, as they can be none
+  static ref DISTILL_FULL_OUTPUT_TYPES: Vec<Type> = vec![common_type::any, common_type::any,];
+  static ref DISTILL_FULL_OUTPUT_KEYS: Vec<Var> = vec![
+    shards::shstr!("error").into(),
+    shards::shstr!("wire").into(),
+  ];
+  static ref DISTILL_OUTPUT_TYPE: Type =
+    Type::table(&DISTILL_FULL_OUTPUT_KEYS, &DISTILL_FULL_OUTPUT_TYPES);
+  static ref DISTILL_OUTPUT_TYPES: Vec<Type> = vec![*DISTILL_OUTPUT_TYPE];
 }
 
 #[derive(Default)]
@@ -3943,6 +3959,7 @@ pub struct EvalShard {
   name: ParamVar,
   defines: ParamVar,
   forbidden_shards: ClonedVar,
+  full_output: bool,
 }
 
 impl LegacyShard for EvalShard {
@@ -3969,11 +3986,26 @@ impl LegacyShard for EvalShard {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &WIRE_TYPES
+    if !self.full_output {
+      &WIRE_TYPES
+    } else {
+      &DISTILL_OUTPUT_TYPES
+    }
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
     Some(&EVAL_PARAMETERS)
+  }
+
+  fn hasCompose() -> bool
+  where
+    Self: Sized,
+  {
+    true
+  }
+
+  fn compose(&mut self, _: &InstanceData) -> Result<Type, &str> {
+    Ok(self.outputTypes()[0])
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
@@ -3982,6 +4014,7 @@ impl LegacyShard for EvalShard {
       1 => self.defines.set_param(value),
       2 => self.namespace.set_param(value),
       3 => Ok(self.forbidden_shards = value.into()),
+      4 => Ok(self.full_output = value.try_into()?),
       _ => Err("invalid parameter index"),
     }
   }
@@ -3992,6 +4025,7 @@ impl LegacyShard for EvalShard {
       1 => self.defines.get_param(),
       2 => self.namespace.get_param(),
       3 => self.forbidden_shards.0,
+      4 => self.full_output.into(),
       _ => Var::default(),
     }
   }
@@ -4086,33 +4120,71 @@ impl LegacyShard for EvalShard {
       }
     }
 
-    let mut env = eval_sequence(
-      &prog.sequence,
-      Some(&mut env),
-      Arc::new(AtomicBool::new(false)),
-    )
-    .map_err(|e| {
-      shlog_error!("failed to evaluate shards: {:?}", e);
-      "failed to evaluate shards"
-    })?;
+    if !self.full_output {
+      let mut env = eval_sequence(
+        &prog.sequence,
+        Some(&mut env),
+        Arc::new(AtomicBool::new(false)),
+      )
+      .map_err(|e| {
+        shlog_error!("failed to evaluate shards: {:?}", e);
+        "failed to evaluate shards"
+      })?;
 
-    let name = self.name.get();
-    let wire = if name.is_string() {
-      let name: &str = name.try_into()?;
-      transform_env(&mut env, name).map_err(|e| {
-        shlog_error!("failed to transform shards into wire: {:?}", e);
-        "failed to transform shards into wire"
-      })?
+      let name = self.name.get();
+      let wire = if name.is_string() {
+        let name: &str = name.try_into()?;
+        transform_env(&mut env, name).map_err(|e| {
+          shlog_error!("failed to transform shards into wire: {:?}", e);
+          "failed to transform shards into wire"
+        })?
+      } else {
+        transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
+          shlog_error!("failed to transform shards into wire: {:?}", e);
+          "failed to transform shards into wire"
+        })?
+      };
+
+      self.output = wire.0.into();
+      Ok(Some(self.output.0))
     } else {
-      transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
+      let mut output_table = AutoTableVar::new();
+
+      let mut env = match eval_sequence(
+        &prog.sequence,
+        Some(&mut env),
+        Arc::new(AtomicBool::new(false)),
+      ) {
+        Ok(env) => env,
+        Err(e) => {
+          let error_message = format!("{}, line {}", e.message, e.loc.line);
+          let error_var = Var::ephemeral_string(&error_message);
+          output_table.0.insert_fast_static("error", &error_var);
+          output_table.0.insert_fast_static("wire", &Var::default());
+          self.output = output_table.to_cloned();
+          return Ok(Some(self.output.0));
+        }
+      };
+
+      match transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
         shlog_error!("failed to transform shards into wire: {:?}", e);
         "failed to transform shards into wire"
-      })?
-    };
-
-    self.output = wire.0.into();
-
-    Ok(Some(self.output.0))
+      }) {
+        Ok(wire) => {
+          output_table.0.insert_fast_static("error", &Var::default());
+          output_table.0.insert_fast_static("wire", &wire.0.into());
+          self.output = output_table.to_cloned();
+          return Ok(Some(self.output.0));
+        }
+        Err(e) => {
+          let error_var = Var::ephemeral_string(e);
+          output_table.0.insert_fast_static("error", &error_var);
+          output_table.0.insert_fast_static("wire", &Var::default());
+          self.output = output_table.to_cloned();
+          return Ok(Some(self.output.0));
+        }
+      };
+    }
   }
 }
 
