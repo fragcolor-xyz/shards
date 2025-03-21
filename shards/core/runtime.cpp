@@ -3097,6 +3097,22 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     }
   };
 
+  result->schedule1 = [](SHMeshRef mesh, SHWireRef wire, SHBool compose, struct SHVar *errorCloned) noexcept {
+    try {
+      auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+      (*smesh)->schedule(SHWire::sharedFromRef(wire), shards::Var::Empty, compose);
+      return true;
+    } catch (const std::exception &e) {
+      SHLOG_ERROR("Errors while scheduling: {}", e.what());
+      shards::cloneVar(*errorCloned, shards::Var(e.what(), 0)); // 0 to force strlen
+      return false;
+    } catch (...) {
+      SHLOG_ERROR("Errors while scheduling");
+      shards::cloneVar(*errorCloned, shards::Var("foreign exception failure during schedule"));
+      return false;
+    }
+  };
+
   result->unschedule = [](SHMeshRef mesh, SHWireRef wire) noexcept {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
     (*smesh)->remove(SHWire::sharedFromRef(wire));

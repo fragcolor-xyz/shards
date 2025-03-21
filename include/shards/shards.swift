@@ -386,6 +386,28 @@ extension SHVar: CustomStringConvertible {
             payload.floatValue = SHFloat(newValue)
         }
     }
+    
+    public var double2: SIMD2<Double> {
+        get {
+            assert(type == .Float2, "Float2 variable expected!")
+            return payload.float2Value
+        }
+        set {
+            assert(type == .Float2, "Float2 variable expected!")
+            payload.float2Value = newValue
+        }
+    }
+    
+    public var float4: SIMD4<Float> {
+        get {
+            assert(type == .Float4, "Float4 variable expected!")
+            return payload.float4Value
+        }
+        set {
+            assert(type == .Float4, "Float4 variable expected!")
+            payload.float4Value = newValue
+        }
+    }
 
     public var double: Double {
         get {
@@ -451,6 +473,42 @@ extension SHVar: CustomStringConvertible {
             return nil
         }
         return string
+    }
+    
+    public var maybeFloat: Float? {
+        if type != .Float {
+            return nil
+        }
+        return float
+    }
+    
+    public var maybeDouble: Double? {
+        if type != .Float {
+            return nil
+        }
+        return double
+    }
+    
+    public var maybeDouble2: SIMD2<Double>? {
+        if type != .Float2 {
+            return nil
+        }
+        return double2
+    }
+    
+    public var maybeFloat4: SIMD4<Float>? {
+        if type != .Float4 {
+            return nil
+        }
+        return float4
+    }
+    
+    public var maybe: SHVar? {
+        if type != .NoValue {
+            return self
+        } else {
+            return nil
+        }
     }
 
     public var bytes: ContiguousArray<UInt8> {
