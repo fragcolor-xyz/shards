@@ -356,7 +356,7 @@ impl Drop for Mesh {
 impl Mesh {
   pub fn compose(&self, wire: WireRef) -> Result<(), std::string::String> {
     let mut error = ClonedVar::default();
-    if unsafe { (*Core).compose.unwrap_unchecked()(self.0, wire.0, &mut error.0) } {
+    if !unsafe { (*Core).compose.unwrap_unchecked()(self.0, wire.0, &mut error.0) } {
       let error: &str = error.0.as_ref().try_into()?;
       Err(error.to_string())
     } else {
@@ -692,8 +692,9 @@ pub struct DerivedType(pub Type);
 #[macro_export]
 macro_rules! shstr {
   ($text:expr) => {{
-    const shstr: RawString = concat!($text, "\0").as_ptr() as *const std::os::raw::c_char;
-    shstr
+    use shards::types::RawString;
+    const SHSTR: RawString = concat!($text, "\0").as_ptr() as *const std::os::raw::c_char;
+    SHSTR
   }};
 }
 
