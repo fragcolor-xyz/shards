@@ -1937,7 +1937,7 @@ class Shards {
         }
     }
 
-    static func evalWire(_ name: String, _ code: String, _ basePath: String) -> WireController? {
+    static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {
         // Create SHStringWithLen instances
         let nameStr = SwiftSWL(name)
         let codeStr = SwiftSWL(code)
@@ -1946,8 +1946,11 @@ class Shards {
         // Read the AST
         let ast = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0)
         guard ast.error == nil else {
+            let errorMessage = String(cString: ast.error!.pointee.message)
+            let line = ast.error!.pointee.line
+            let column = ast.error!.pointee.column
             G.Core.pointee.freeError(ast.error)
-            return nil
+            return .failure(ShardError(message: "Failed to read AST: \(errorMessage) at line \(line), column \(column)"))
         }
         // ast will have refcount of 0, need to bump it with a clone
         let astOwned = OwnedVar(cloning: ast.ast)
@@ -1959,21 +1962,37 @@ class Shards {
         // Evaluate the AST
         let error = G.Core.pointee.eval(env, &astOwned.v) // consumes ast
         guard error == nil else {
+            let errorMessage = String(cString: error!.pointee.message)
+            let line = error!.pointee.line
+            let column = error!.pointee.column
             G.Core.pointee.freeEvalEnv(env)
-            return nil
+            return .failure(ShardError(message: "Failed to evaluate AST: \(errorMessage) at line \(line), column \(column)"))
         }
 
         // Transform environment into a wire
         let wire = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen()) // consumes env
         guard wire.error == nil else {
             G.Core.pointee.freeWire(wire)
-            return nil
+            let errorMessage = String(cString: wire.error!.pointee.message)
+            let line = wire.error!.pointee.line
+            let column = wire.error!.pointee.column
+            return .failure(ShardError(message: "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"))
         }
 
         // Create WireController from the resulting wire
         let wireController = WireController(native: wire.wire.pointee!)
         G.Core.pointee.freeWire(wire)
-        return wireController
+        return .success(wireController)
+    }
+
+    static func evalWire(_ name: String, _ code: String, _ basePath: String) -> WireController? {
+        let result = maybeEvalWire(name, code, basePath)
+        switch result {
+        case let .success(wireController):
+            return wireController
+        case let .failure(error):
+            return nil
+        }
     }
 
     static func evalWire(_ name: String, _ ast: [UInt8]) -> WireController? {
