@@ -1793,8 +1793,9 @@ class MeshController {
 
     func maybeSchedule(wire: WireController) -> Result<Void, ShardError> {
         let error = OwnedVar()
-        let result = G.Core.pointee.schedule1(nativeRef, wire.nativeRef, true, &error.v)
+        let result = G.Core.pointee.compose(nativeRef, wire.nativeRef, &error.v)
         if result {
+            schedule(wire: wire)
             return .success(())
         }
         return .failure(ShardError(message: error.v.string))

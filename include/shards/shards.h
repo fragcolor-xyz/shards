@@ -955,7 +955,6 @@ typedef void(__cdecl *SHSetMeshLabel)(SHMeshRef mesh, SHStringWithLen label);
 typedef SHBool(__cdecl *SHCompose)(SHMeshRef mesh, SHWireRef wire, struct SHVar *errorCloned);
 typedef void(__cdecl *SHUnSchedule)(SHMeshRef mesh, SHWireRef wire);
 typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire, SHBool compose);
-typedef SHBool(__cdecl *SHSchedule1)(SHMeshRef mesh, SHWireRef wire, SHBool compose, struct SHVar *errorCloned);
 typedef SHBool(__cdecl *SHTick)(SHMeshRef mesh);
 typedef void(__cdecl *SHTerminate)(SHMeshRef mesh);
 typedef void(__cdecl *SHSleep)(double seconds);
@@ -1265,8 +1264,6 @@ typedef struct _SHCore {
   // Error event handling
   SHRegisterErrorEvent registerErrorEvent;
   SHUnregisterErrorEvent unregisterErrorEvent;
-
-  SHSchedule1 schedule1;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
