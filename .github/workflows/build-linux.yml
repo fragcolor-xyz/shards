@@ -98,6 +98,8 @@ jobs:
           fi
 
           ninja shards
+          ninja test-runtime
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -105,14 +107,22 @@ jobs:
           path: build/shards
           if-no-files-found: error
           retention-days: 1
+          
+      # Minimize disk usage to prevent the next steps getting stuck due to no disk space
+      - name: Minimize disk usage
+        env:
+          RUST_BACKTRACE: full
+        shell: bash
+        run: |
+          rm -rf build/target
+          rm -rf build/lib
+          
       - name: Test
         env:
           RUST_BACKTRACE: full
         run: |
           cd build
           chmod +x shards
-          # Run test-runtime
-          ninja test-runtime
           ./test-runtime
           # Run other tests
           ./shards new ../shards/tests/hello.shs
@@ -201,8 +211,6 @@ jobs:
           RUST_BACKTRACE: full
         shell: bash
         run: |
-          rm -rf build/target
-          rm -rf build/lib
           rm -rf build/deps
           rm -rf build/_deps
           rm -rf build/.cache
