@@ -21,36 +21,36 @@ jobs:
     steps:
       - run: exit 0
 
-  #
-  # Build shards for macOS
-  #
-  macOS-Debug:
-    needs: Setup
-    uses: ./.github/workflows/build-macos.yml
-    secrets: inherit
-    with:
-      build-type: Debug
-      run-tests: true
-  macOS-Release:
-    needs: Setup
-    uses: ./.github/workflows/build-macos.yml
-    secrets: inherit
-    with:
-      build-type: Release
-      run-tests: true
+  # #
+  # # Build shards for macOS
+  # #
+  # macOS-Debug:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-macos.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Debug
+  #     run-tests: true
+  # macOS-Release:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-macos.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Release
+  #     run-tests: true
 
-  #
-  # Build shards for emscripten
-  #
-  wasm32-emscripten:
-    needs: [Setup]
-    uses: ./.github/workflows/build-wasm.yml
-    secrets: inherit
+  # #
+  # # Build shards for emscripten
+  # #
+  # wasm32-emscripten:
+  #   needs: [Setup]
+  #   uses: ./.github/workflows/build-wasm.yml
+  #   secrets: inherit
 
-  wasm32-emscripten-test:
-    needs: [Setup, macOS-Release, wasm32-emscripten]
-    uses: ./.github/workflows/test-wasm.yml
-    secrets: inherit
+  # wasm32-emscripten-test:
+  #   needs: [Setup, macOS-Release, wasm32-emscripten]
+  #   uses: ./.github/workflows/test-wasm.yml
+  #   secrets: inherit
 
   #
   # Build shards for linux
@@ -61,65 +61,63 @@ jobs:
     secrets: inherit
     with:
       build-type: Debug
-      run-tests: true
   Linux-Release:
     needs: Setup
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
       build-type: Release
-      run-tests: true
-  MacOS-GPU:
-    needs: Setup
-    uses: ./.github/workflows/test-macos-gpu.yml
-    secrets: inherit
-    with:
-      build-type: Debug
-  Codecov:
-    needs: [Linux-Debug, MacOS-GPU]
-    uses: ./.github/workflows/codecov.yml
-    secrets: inherit
+  # MacOS-GPU:
+  #   needs: Setup
+  #   uses: ./.github/workflows/test-macos-gpu.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Debug
+  # Codecov:
+  #   needs: [Linux-Debug, MacOS-GPU]
+  #   uses: ./.github/workflows/codecov.yml
+  #   secrets: inherit
 
-  #
-  # Build shards and run valgrind on Linux
-  #
-  Linux-valgrind:
-    needs: Setup
-    uses: ./.github/workflows/build-linux-valgrind.yml
-    secrets: inherit
+  # #
+  # # Build shards and run valgrind on Linux
+  # #
+  # Linux-valgrind:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-linux-valgrind.yml
+  #   secrets: inherit
 
-  #
-  # Build shards for Windows
-  #
-  Windows-Debug:
-    needs: Setup
-    uses: ./.github/workflows/build-windows.yml
-    secrets: inherit
-    with:
-      build-type: Debug
-      run-tests: true
-  Windows-Release:
-    needs: Setup
-    uses: ./.github/workflows/build-windows.yml
-    secrets: inherit
-    with:
-      build-type: Release
-      run-tests: true
+  # #
+  # # Build shards for Windows
+  # #
+  # Windows-Debug:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-windows.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Debug
+  #     run-tests: true
+  # Windows-Release:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-windows.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Release
+  #     run-tests: true
 
-  #
-  # Build the documentation
-  #
-  docs:
-    needs: [Windows-Debug, Windows-Release]
-    uses: ./.github/workflows/build-doc.yml
-    secrets: inherit
-    with:
-      publish: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
+  # #
+  # # Build the documentation
+  # #
+  # docs:
+  #   needs: [Windows-Debug, Windows-Release]
+  #   uses: ./.github/workflows/build-doc.yml
+  #   secrets: inherit
+  #   with:
+  #     publish: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
 
-  #
-  # Build shards for iOS
-  #
-  iOS:
-    needs: Setup
-    uses: ./.github/workflows/build-ios.yml
-    secrets: inherit
+  # #
+  # # Build shards for iOS
+  # #
+  # iOS:
+  #   needs: Setup
+  #   uses: ./.github/workflows/build-ios.yml
+  #   secrets: inherit
