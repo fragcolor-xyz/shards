@@ -390,6 +390,7 @@ struct ChatGenerate {
     // as per llama default
     _temperature = Var(0.80f);
     _topP = Var(0.95f);
+    _minP = Var(0.05f);
   }
 
   PARAM_PARAMVAR(_maxTokens, "MaxTokens", "Maximum number of tokens to generate",
@@ -397,7 +398,8 @@ struct ChatGenerate {
   PARAM_PARAMVAR(_temperature, "Temperature", "Sampling temperature",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_topP, "TopP", "Top-p sampling threshold", {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_maxTokens), PARAM_IMPL_FOR(_temperature), PARAM_IMPL_FOR(_topP));
+  PARAM_PARAMVAR(_minP, "MinP", "Min-p sampling threshold", {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_maxTokens), PARAM_IMPL_FOR(_temperature), PARAM_IMPL_FOR(_topP), PARAM_IMPL_FOR(_minP));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
@@ -436,6 +438,7 @@ struct ChatGenerate {
     common_params params{};
     params.sampling.temp = _temperature.get().payload.floatValue;
     params.sampling.top_p = _topP.get().payload.floatValue;
+    params.sampling.min_p = _minP.get().payload.floatValue;
 
     // Create the sampler
     auto model = llama_get_model(chatData.ctx.get());
