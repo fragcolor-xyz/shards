@@ -54,6 +54,8 @@ jobs:
           remove-haskell: true
           remove-codeql: true 
           remove-docker-images: true
+          # temp-reserve-mb:  10000
+          root-reserve-mb: 10000
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -81,6 +83,11 @@ jobs:
 
           ninja shards
           ninja test-runtime
+
+      - name: Check Disk Space
+        if: failure()
+        run: |
+          df -h /
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
