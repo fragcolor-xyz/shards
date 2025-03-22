@@ -18,26 +18,28 @@ LLM.Chat(MMProj: "/Users/sugar/.cache/lm-studio/models/vikhyatk/moondream2/moond
 ;         }
 ;     )
 
-LoadImage("/Users/sugar/devel/shards/assets/simple1.PNG") | StripAlpha | LLM.AddImage(chat-context
+LoadImage("/Users/sugar/devel/tmp/test-img.png")
+; LoadImage("/Users/sugar/devel/shards/assets/simple1.PNG") 
+StripAlpha | LLM.AddImage(chat-context
   ImageTokens: 384
   PrefixTokens: [
     50256 ; BOS
   ]
-  ; SuffixTokens: [
-  ;   198 198 16438 8305 25 ; query suffix
-  ;   ; 198 198 24334 1159 25 ; query suffix
-  ; ]
-  ; NeedLogits: true
-)
-
-"button" | LLM.AddText(chat-context
-  PrefixTokens: [
-    198 198 47504 25 ; detect prefix
-  ]
   SuffixTokens: [
-    628 ; detect suffix
+    ; 198 198 16438 8305 25 ; query suffix
+    198 198 24334 1159 25 ; query suffix
   ]
   NeedLogits: true
 )
+
+; "button" | LLM.AddText(chat-context
+;   PrefixTokens: [
+;     198 198 47504 25 ; detect prefix
+;   ]
+;   SuffixTokens: [
+;     628 ; detect suffix
+;   ]
+;   NeedLogits: true
+; )
 
 chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("response")

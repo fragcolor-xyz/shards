@@ -248,7 +248,7 @@ struct ChatAddImage {
   PARAM_PARAMVAR(_logitsLast, "NeedLogits",
                  "Whether to add logits for the last token (true) or not (false), this is needed to prepare for generation",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_embeddings, "ImageTokens", "Number of tokens to allocate for image representation in context window",
+  PARAM_PARAMVAR(_embeddings, "ImageTokens", "Maximum number of tokens to use for image representation in the context window",
                  {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_PARAMVAR(_prefixTokens, "PrefixTokens", "Optional raw tokens to add to the beginning",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
@@ -286,11 +286,10 @@ struct ChatAddImage {
     auto model = llama_get_model(chatData.ctx.get());
     const int n_embd = llama_model_n_embd(model);
     const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
-    const int n_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
-
-    // Allocate space for embeddings
-    std::vector<float> image_embd_v;
-    image_embd_v.resize(n_tokens * n_embd);
+    
+    // Calculate the maximum tokens we'll allow for the image
+    // This is limited by both the user-specified ImageTokens parameter and the context size
+    const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
 
     // Load the image
     struct clip_image_u8 *img_u8 = clip_image_u8_init();
@@ -305,11 +304,28 @@ struct ChatAddImage {
       throw ActivationError("Failed to preprocess image");
     }
 
+    // Calculate the actual number of image patches based on the image and patch size
+    const int patch_size = clip_patch_size(chatData.clip_ctx);
+    // Get dimensions post-preprocessing (should be square as per CLIP preprocessing)
+    int image_size = clip_image_size(chatData.clip_ctx);
+    // Calculate the number of patches (this is the actual number of tokens CLIP will produce)
+    int actual_n_patches = (image_size / patch_size) * (image_size / patch_size);
+    // Add 1 for the class embedding token (common in CLIP models)
+    actual_n_patches += 1;
+    
+    // Allocate space for the full embedding output from CLIP
+    // We need to allocate the full size that CLIP might write
+    std::vector<float> image_embd_v;
+    image_embd_v.resize(actual_n_patches * n_embd);
+
     // Encode the image
     ok = clip_image_batch_encode(chatData.clip_ctx, chatData.n_threads, &batch_f32, image_embd_v.data());
     if (!ok) {
       throw ActivationError("Failed to encode image");
     }
+    
+    // Ensure we don't exceed our maximum token count for the LLM
+    int actual_n_tokens = std::min(actual_n_patches, max_tokens);
 
     // Prefix tokens if provided
     if (_prefixTokens.get().valueType != SHType::None) {
@@ -326,7 +342,10 @@ struct ChatAddImage {
 
     // Process the image embeddings
     llama_set_causal_attn(chatData.ctx.get(), false);
-    decode_embd_batch batch_img(image_embd_v.data(), n_tokens, chatData.n_past, 0);
+    DEFER({ llama_set_causal_attn(chatData.ctx.get(), true); });
+
+    // Use the actual token count for the embedding batch
+    decode_embd_batch batch_img(image_embd_v.data(), actual_n_tokens, chatData.n_past, 0);
 
     if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
       batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
@@ -336,8 +355,7 @@ struct ChatAddImage {
     if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
       throw ActivationError("Failed to decode image");
     }
-    chatData.n_past += n_tokens;
-    llama_set_causal_attn(chatData.ctx.get(), true);
+    chatData.n_past += actual_n_tokens;
 
     // Suffix tokens if provided
     if (_suffixTokens.get().valueType != SHType::None) {
