@@ -1003,6 +1003,10 @@ class ParamVar {
         assert(pointee != nil)
         return pointee!.pointee
     }
+    
+    func maybeGet() -> SHVar? {
+        return pointee?.pointee
+    }
 
     func assignParam(value: SHVar) {
         parameter = .init(cloning: value)
