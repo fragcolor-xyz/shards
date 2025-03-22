@@ -61,14 +61,12 @@ jobs:
     secrets: inherit
     with:
       build-type: Debug
-      run-tests: true
   Linux-Release:
     needs: Setup
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
       build-type: Release
-      run-tests: true
   MacOS-GPU:
     needs: Setup
     uses: ./.github/workflows/test-macos-gpu.yml
