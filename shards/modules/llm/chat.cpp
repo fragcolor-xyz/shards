@@ -286,7 +286,7 @@ struct ChatAddImage {
     auto model = llama_get_model(chatData.ctx.get());
     const int n_embd = llama_model_n_embd(model);
     const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
-    
+
     // Calculate the maximum tokens we'll allow for the image
     // This is limited by both the user-specified ImageTokens parameter and the context size
     const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
@@ -312,7 +312,7 @@ struct ChatAddImage {
     int actual_n_patches = (image_size / patch_size) * (image_size / patch_size);
     // Add 1 for the class embedding token (common in CLIP models)
     actual_n_patches += 1;
-    
+
     // Allocate space for the full embedding output from CLIP
     // We need to allocate the full size that CLIP might write
     std::vector<float> image_embd_v;
@@ -323,7 +323,7 @@ struct ChatAddImage {
     if (!ok) {
       throw ActivationError("Failed to encode image");
     }
-    
+
     // Ensure we don't exceed our maximum token count for the LLM
     int actual_n_tokens = std::min(actual_n_patches, max_tokens);
 
@@ -341,21 +341,23 @@ struct ChatAddImage {
     }
 
     // Process the image embeddings
-    llama_set_causal_attn(chatData.ctx.get(), false);
-    DEFER({ llama_set_causal_attn(chatData.ctx.get(), true); });
+    {
+      llama_set_causal_attn(chatData.ctx.get(), false);
+      DEFER({ llama_set_causal_attn(chatData.ctx.get(), true); });
 
-    // Use the actual token count for the embedding batch
-    decode_embd_batch batch_img(image_embd_v.data(), actual_n_tokens, chatData.n_past, 0);
+      // Use the actual token count for the embedding batch
+      decode_embd_batch batch_img(image_embd_v.data(), actual_n_tokens, chatData.n_past, 0);
 
-    if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
-      batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
+      if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
+        batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
+      }
+
+      // Process the batch
+      if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
+        throw ActivationError("Failed to decode image");
+      }
+      chatData.n_past += actual_n_tokens;
     }
-
-    // Process the batch
-    if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
-      throw ActivationError("Failed to decode image");
-    }
-    chatData.n_past += actual_n_tokens;
 
     // Suffix tokens if provided
     if (_suffixTokens.get().valueType != SHType::None) {
