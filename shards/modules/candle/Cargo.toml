@@ -17,9 +17,12 @@ tokenizers = { version = "0.21.0", default-features = false, features = [
   "onig",
 ] }
 
-candle-core = { git = "https://github.com/shards-lang/candle.git", tag = "0.8.2" }
-candle-transformers = { git = "https://github.com/shards-lang/candle.git", tag = "0.8.2" }
-candle-nn = { git = "https://github.com/shards-lang/candle.git", tag = "0.8.2" }
+candle-core = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
+candle-transformers = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
+candle-nn = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
+# candle-core = { path = "../../../../candle/candle-core" }
+# candle-transformers = { path = "../../../../candle/candle-transformers" }
+# candle-nn = { path = "../../../../candle/candle-nn" }
 
 rand = "0.8"
 anyhow = "1.0.80"
