@@ -246,7 +246,9 @@ public:
 
   static void setMeshLabel(SHMeshRef mesh, SHStringWithLen label) { sCore._core->setMeshLabel(mesh, label); }
 
-  static bool compose(SHMeshRef mesh, SHWireRef wire) { return sCore._core->compose(mesh, wire); }
+  static bool compose(SHMeshRef mesh, SHWireRef wire, SHVar &errorCloned) {
+    return sCore._core->compose(mesh, wire, &errorCloned);
+  }
 
   static void schedule(SHMeshRef mesh, SHWireRef wire, SHBool compose) { sCore._core->schedule(mesh, wire, compose); }
 
