@@ -1994,7 +1994,7 @@ class Shards {
         switch result {
         case let .success(wireController):
             return wireController
-        case let .failure(error):
+        case let .failure(_error):
             return nil
         }
     }
