@@ -2706,6 +2706,15 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
+#ifdef SH_COMPRESSED_STRINGS
+const char *shards_get_compressed_string(uint32_t crc_id) {
+  auto str = getCompiledCompressedString(crc_id);
+  return str.string;
+}
+#else
+const char *shards_get_compressed_string(uint32_t crc_id) { return nullptr; }
+#endif
+
 void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
   shards::triggerVarValueChange(ctx, name, key, isGlobal, var);
 }

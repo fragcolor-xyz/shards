@@ -7,7 +7,7 @@ use shards::core::Core;
 use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
-  fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHTypeInfo,
+  fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHOptionalString, SHTypeInfo,
   SHType_ContextVar as SHTYPE_CONTEXT_VAR, SHType_Enum as SHTYPE_ENUM, SHType_Seq as SHTYPE_SEQ,
   SHType_Table as SHTYPE_TABLE, GIT_VERSION, SHARDS_CURRENT_ABI,
 };
@@ -24,6 +24,7 @@ extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
   fn shards_install_signal_handlers();
   fn shards_decompress_strings();
+  fn shards_get_compressed_string(crc_id: u32) -> *const c_char;
 }
 
 #[derive(Debug, clap::Args)]
@@ -220,15 +221,15 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
     indent,
     type_to_string(t.basicType.into())
   )?;
-  let next_indent = format!("{}    ", indent);  // 4 spaces for consistent indentation
-  let branch_indent = format!("{}  └─", indent);  // No trailing space after box drawing character
+  let next_indent = format!("{}    ", indent); // 4 spaces for consistent indentation
+  let branch_indent = format!("{}  └─", indent); // No trailing space after box drawing character
 
   match t.basicType {
     SHTYPE_SEQ => {
       let types_seq = unsafe { t.details.seqTypes };
       for i in 0..types_seq.len {
         let t = unsafe { &*types_seq.elements.offset(i as isize) };
-        writeln!(w, "{} Seq of:", branch_indent)?;  // Add newline after "Seq of:"
+        writeln!(w, "{} Seq of:", branch_indent)?; // Add newline after "Seq of:"
         print_type_indented(w, t, &next_indent)?;
       }
     }
@@ -237,7 +238,7 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
       let table_types = types_table.types;
       for i in 0..table_types.len {
         let t = unsafe { &*table_types.elements.offset(i as isize) };
-        writeln!(w, "{} Table of:", branch_indent)?;  // Add newline after "Table of:"
+        writeln!(w, "{} Table of:", branch_indent)?; // Add newline after "Table of:"
         print_type_indented(w, t, &next_indent)?;
       }
       let table_keys = types_table.keys;
@@ -250,7 +251,7 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
       let types_context_var = unsafe { t.details.contextVarTypes };
       for i in 0..types_context_var.len {
         let t = unsafe { &*types_context_var.elements.offset(i as isize) };
-        writeln!(w, "{} Variable of:", branch_indent)?;  // Add newline after "Variable of:"
+        writeln!(w, "{} Variable of:", branch_indent)?; // Add newline after "Variable of:"
         print_type_indented(w, t, &next_indent)?;
       }
     }
@@ -277,6 +278,15 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
 // Update print_type to use the non-recursive approach
 pub fn print_type<W: Write>(w: &mut W, t: &SHTypeInfo) -> std::io::Result<()> {
   print_type_indented(w, t, "")
+}
+
+pub fn get_optional_string(os: SHOptionalString) -> &'static str {
+  let c_str = if os.crc != 0 {
+    unsafe { shards_get_compressed_string(os.crc) }
+  } else {
+    os.string
+  };
+  unsafe { CStr::from_ptr(c_str).to_str().unwrap() }
 }
 
 pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<(), Error> {
@@ -346,7 +356,7 @@ pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<()
             let name = unsafe { CStr::from_ptr(parameter.name).to_str().unwrap() };
             writeln!(w, "   ● `{}`", name)?;
 
-            let help = unsafe { CStr::from_ptr(parameter.help.string).to_str().unwrap() };
+            let help = get_optional_string(parameter.help);
             if !help.is_empty() {
               writeln!(w, "     Description: {}", help)?;
             }
@@ -375,7 +385,7 @@ pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<()
         writeln!(w, "Help for enum `{}`", name)?;
 
         // Description section
-        let help = unsafe { CStr::from_ptr(info.help.string).to_str().unwrap() };
+        let help = get_optional_string(info.help);
         if !help.is_empty() {
           writeln!(w, "Description:")?;
           writeln!(w, "   {}", help)?;
@@ -395,14 +405,8 @@ pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<()
             }
           };
           let value = unsafe { &*info.values.elements.offset(i as isize) };
-          let description = unsafe {
-            let description_ptr = *info.descriptions.elements.offset(i as isize);
-            if description_ptr.string.is_null() {
-              "<null>"
-            } else {
-              CStr::from_ptr(description_ptr.string).to_str().unwrap()
-            }
-          };
+          let description =
+            get_optional_string(unsafe { *info.descriptions.elements.offset(i as isize) });
 
           writeln!(w, "   ● `{}` = {}", label, value)?;
           if !description.is_empty() {

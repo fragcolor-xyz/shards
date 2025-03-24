@@ -646,6 +646,10 @@ impl AutoShardRef {
   }
 }
 
+extern "C" {
+  fn shards_get_compressed_string(crc_id: u32) -> *const c_char;
+}
+
 impl ShardRef {
   pub fn output_types(&self) -> &[Type] {
     unsafe {
@@ -670,7 +674,14 @@ impl ShardRef {
   pub fn input_help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).inputHelp.unwrap_unchecked()(self.0);
-      if help.string.is_null() {
+      if help.crc != 0 {
+        let c_str = shards_get_compressed_string(help.crc);
+        if c_str.is_null() {
+          None
+        } else {
+          Some(CStr::from_ptr(c_str).to_str().unwrap())
+        }
+      } else if help.string.is_null() {
         None
       } else {
         Some(
@@ -685,7 +696,14 @@ impl ShardRef {
   pub fn output_help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).outputHelp.unwrap_unchecked()(self.0);
-      if help.string.is_null() {
+      if help.crc != 0 {
+        let c_str = shards_get_compressed_string(help.crc);
+        if c_str.is_null() {
+          None
+        } else {
+          Some(CStr::from_ptr(c_str).to_str().unwrap())
+        }
+      } else if help.string.is_null() {
         None
       } else {
         Some(
@@ -700,7 +718,14 @@ impl ShardRef {
   pub fn help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).help.unwrap_unchecked()(self.0);
-      if help.string.is_null() {
+      if help.crc != 0 {
+        let c_str = shards_get_compressed_string(help.crc);
+        if c_str.is_null() {
+          None
+        } else {
+          Some(CStr::from_ptr(c_str).to_str().unwrap())
+        }
+      } else if help.string.is_null() {
         None
       } else {
         Some(
