@@ -170,6 +170,39 @@ impl From<SHType> for crate::shardsc::SHType {
   }
 }
 
+pub fn type_to_string(t: SHType) -> &'static str {
+  match t {
+    SHType::None => "None",
+    SHType::Any => "Any",
+    SHType::Enum => "Enum",
+    SHType::Bool => "Bool",
+    SHType::Int => "Int",
+    SHType::Int2 => "Int2",
+    SHType::Int3 => "Int3",
+    SHType::Int4 => "Int4",
+    SHType::Int8 => "Int8",
+    SHType::Int16 => "Int16",
+    SHType::Float => "Float",
+    SHType::Float2 => "Float2",
+    SHType::Float3 => "Float3",
+    SHType::Float4 => "Float4",
+    SHType::Color => "Color",
+    SHType::Bytes => "Bytes",
+    SHType::String => "String",
+    SHType::Path => "Path",
+    SHType::ContextVar => "ContextVar",
+    SHType::Image => "Image",
+    SHType::Seq => "Seq",
+    SHType::Table => "Table",
+    SHType::Wire => "Wire",
+    SHType::ShardRef => "ShardRef",
+    SHType::Object => "Object",
+    SHType::Audio => "Audio",
+    SHType::Type => "Type",
+    SHType::Trait => "Trait",
+  }
+}
+
 pub type Context = SHContext;
 pub type Var = SHVar;
 pub type Type = SHTypeInfo;
@@ -578,6 +611,51 @@ impl ShardRef {
     }
   }
 
+  pub fn input_help(&self) -> Option<&str> {
+    unsafe {
+      let help = (*self.0).inputHelp.unwrap_unchecked()(self.0);
+      if help.string.is_null() {
+        None
+      } else {
+        Some(
+          CStr::from_ptr(help.string as *const c_char)
+            .to_str()
+            .unwrap(),
+        )
+      }
+    }
+  }
+
+  pub fn output_help(&self) -> Option<&str> {
+    unsafe {
+      let help = (*self.0).outputHelp.unwrap_unchecked()(self.0);
+      if help.string.is_null() {
+        None
+      } else {
+        Some(
+          CStr::from_ptr(help.string as *const c_char)
+            .to_str()
+            .unwrap(),
+        )
+      }
+    }
+  }
+
+  pub fn help(&self) -> Option<&str> {
+    unsafe {
+      let help = (*self.0).help.unwrap_unchecked()(self.0);
+      if help.string.is_null() {
+        None
+      } else {
+        Some(
+          CStr::from_ptr(help.string as *const c_char)
+            .to_str()
+            .unwrap(),
+        )
+      }
+    }
+  }
+
   pub fn name(&self) -> &str {
     unsafe {
       let c_name = (*self.0).name.unwrap_unchecked()(self.0);
@@ -941,25 +1019,6 @@ impl From<SHOptionalString> for OptionalString {
     OptionalString(s)
   }
 }
-
-// impl From<&str> for OptionalString {
-//   fn from(s: &str) -> OptionalString {
-//     let cos = SHOptionalString {
-//       string: s.as_ptr() as *const std::os::raw::c_char,
-//       crc: 0, // TODO
-//     };
-//     OptionalString(cos)
-//   }
-// }
-
-// impl From<&str> for SHOptionalString {
-//   fn from(s: &str) -> SHOptionalString {
-//     SHOptionalString {
-//       string: s.as_ptr() as *const std::os::raw::c_char,
-//       crc: 0, // TODO
-//     }
-//   }
-// }
 
 impl From<(&'static str, &[Type])> for ParameterInfo {
   fn from(v: (&'static str, &[Type])) -> ParameterInfo {
@@ -6536,4 +6595,274 @@ fn precision_conversion() {
     half::f16::INFINITY,
     "[half::f16,4] conversion failed"
   );
+}
+
+impl std::fmt::Display for Var {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self.get_type() {
+      SHType::None => write!(f, "none"),
+      SHType::Any => write!(f, "Any"),
+      SHType::Type => {
+        write!(f, "@type(")?;
+        // Note: The C++ code references typeValue which would need to be implemented
+        // This is just a placeholder based on the pattern
+        // format(os, *var.payload.typeValue);
+        write!(f, ")")?;
+        Ok(())
+      }
+      SHType::Bool => {
+        let value = unsafe { self.payload.__bindgen_anon_1.boolValue };
+        write!(f, "{}", if value { "true" } else { "false" })
+      }
+      SHType::Int => {
+        let value = unsafe { self.payload.__bindgen_anon_1.intValue };
+        write!(f, "{}", value)
+      }
+      SHType::Int2 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.int2Value };
+        write!(f, "@i2({} {})", values[0], values[1])
+      }
+      SHType::Int3 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.int3Value };
+        write!(f, "@i3({} {} {})", values[0], values[1], values[2])
+      }
+      SHType::Int4 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.int4Value };
+        write!(
+          f,
+          "@i4({} {} {} {})",
+          values[0], values[1], values[2], values[3]
+        )
+      }
+      SHType::Int8 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.int8Value };
+        write!(f, "@i8(")?;
+        for (i, val) in values.iter().enumerate() {
+          if i > 0 {
+            write!(f, " ")?;
+          }
+          write!(f, "{}", val)?;
+        }
+        write!(f, ")")
+      }
+      SHType::Int16 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.int16Value };
+        write!(f, "@i16(")?;
+        for val in values.iter() {
+          write!(f, "{:02x}", *val as u8 & 0xFF)?;
+        }
+        write!(f, ")")
+      }
+      SHType::Float => {
+        let value = unsafe { self.payload.__bindgen_anon_1.floatValue };
+        write!(f, "{}", value)
+      }
+      SHType::Float2 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.float2Value };
+        write!(f, "@f2({} {})", values[0], values[1])
+      }
+      SHType::Float3 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.float3Value };
+        write!(f, "@f3({} {} {})", values[0], values[1], values[2])
+      }
+      SHType::Float4 => {
+        let values = unsafe { self.payload.__bindgen_anon_1.float4Value };
+        write!(
+          f,
+          "@f4({} {} {} {})",
+          values[0], values[1], values[2], values[3]
+        )
+      }
+      SHType::Color => {
+        let color = unsafe { &self.payload.__bindgen_anon_1.colorValue };
+        write!(
+          f,
+          "@color({} {} {} {})",
+          color.r as i32, color.g as i32, color.b as i32, color.a as i32
+        )
+      }
+      SHType::String => {
+        unsafe {
+          let string_value = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue;
+          let string_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen;
+
+          if !string_value.is_null() && string_len == 0 {
+            // Edge case: treat as null-terminated C string
+            let cstr = CStr::from_ptr(string_value);
+            write!(f, "{}", cstr.to_str().unwrap_or("<invalid UTF-8 string>"))
+          } else {
+            // Normal case: use as_str() which uses string_len
+            match self.as_str() {
+              Ok(s) => write!(f, "{}", s),
+              Err(_) => write!(f, "<invalid string>"),
+            }
+          }
+        }
+      }
+      SHType::Path => {
+        unsafe {
+          let string_value = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue;
+          let string_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen;
+
+          if !string_value.is_null() && string_len == 0 {
+            // Edge case: treat as null-terminated C string
+            let cstr = CStr::from_ptr(string_value);
+            write!(
+              f,
+              "Path: {}",
+              cstr.to_str().unwrap_or("<invalid UTF-8 string>")
+            )
+          } else {
+            // Normal case: use as_str() which uses string_len
+            match self.as_str() {
+              Ok(s) => write!(f, "Path: {}", s),
+              Err(_) => write!(f, "<invalid path>"),
+            }
+          }
+        }
+      }
+      SHType::ContextVar => {
+        unsafe {
+          let string_value = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue;
+          let string_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen;
+
+          if !string_value.is_null() && string_len == 0 {
+            // Edge case: treat as null-terminated C string
+            let cstr = CStr::from_ptr(string_value);
+            write!(
+              f,
+              "Var: {}",
+              cstr.to_str().unwrap_or("<invalid UTF-8 string>")
+            )
+          } else {
+            // Normal case: use as_str() which uses string_len
+            match self.as_str() {
+              Ok(s) => write!(f, "Var: {}", s),
+              Err(_) => write!(f, "<invalid context var>"),
+            }
+          }
+        }
+      }
+      SHType::Seq => match self.as_seq() {
+        Ok(seq) => {
+          write!(f, "[")?;
+          for i in 0..seq.len() {
+            if i > 0 {
+              write!(f, " ")?;
+            }
+            write!(f, "{}", &seq[i])?;
+          }
+          write!(f, "]")
+        }
+        Err(_) => write!(f, "<invalid sequence>"),
+      },
+      SHType::Table => match self.as_table() {
+        Ok(table) => {
+          write!(f, "{{")?;
+          let mut first = true;
+          for (k, v) in table.iter() {
+            if !first {
+              write!(f, " ")?;
+            }
+            write!(f, "{}: {}", k, v)?;
+            first = false;
+          }
+          write!(f, "}}")
+        }
+        Err(_) => write!(f, "<invalid table>"),
+      },
+      SHType::ShardRef => {
+        // Adapted from the C++ code which uses var.payload.shardValue->name
+        unsafe {
+          let shard_ptr = self.payload.__bindgen_anon_1.shardValue;
+          if !shard_ptr.is_null() {
+            let name_fn = (*shard_ptr).name;
+            if let Some(name_fn) = name_fn {
+              let name = std::ffi::CStr::from_ptr(name_fn(shard_ptr)).to_string_lossy();
+              write!(f, "Shard: {}", name)
+            } else {
+              write!(f, "Shard: <unnamed>")
+            }
+          } else {
+            write!(f, "Shard: <null>")
+          }
+        }
+      }
+      SHType::Image => unsafe {
+        let image = self.payload.__bindgen_anon_1.imageValue;
+        if !image.is_null() {
+          write!(
+            f,
+            "Image({:x}) Width: {} Height: {} Channels: {}",
+            image as usize,
+            (*image).width,
+            (*image).height,
+            (*image).channels
+          )
+        } else {
+          write!(f, "Image(null)")
+        }
+      },
+      SHType::Wire => {
+        unsafe {
+          let wire_ref = self.payload.__bindgen_anon_1.wireValue;
+          if !wire_ref.is_null() {
+            // Need to implement sharedFromRef equivalent
+            write!(f, "<Wire>")
+          } else {
+            write!(f, "<Wire: None>")
+          }
+        }
+      }
+      SHType::Object => {
+        unsafe {
+          // This needs access to objectInfo and findObjectInfo
+          write!(
+            f,
+            "Object: 0x{:x} vendor: 0x{:x} type: 0x{:x}",
+            self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as usize,
+            self
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_1
+              .objectVendorId,
+            self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+          )
+        }
+      }
+      SHType::Enum => {
+        unsafe {
+          // This would need access to findEnumInfo
+          write!(
+            f,
+            "Enum: {} vendor: 0x{:x} type: 0x{:x}",
+            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
+            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId,
+            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
+          )
+        }
+      }
+      SHType::Audio => unsafe {
+        let audio = self.payload.__bindgen_anon_1.audioValue;
+        write!(
+          f,
+          "Audio SampleRate: {} Samples: {} Channels: {}",
+          audio.sampleRate, audio.nsamples, audio.channels
+        )
+      },
+      SHType::Bytes => unsafe {
+        write!(
+          f,
+          "<{} SHType::Bytes>",
+          self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+        )
+      },
+      SHType::Trait => {
+        // Would need to implement trait formatting
+        write!(f, "<Trait>")
+      }
+      // Handle any other types
+      _ => write!(f, "<unknown type>"),
+    }
+  }
 }

@@ -4,10 +4,12 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::Core;
-use shards::types::Mesh;
+use shards::types::{type_to_string, AutoShardRef, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
-  fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, GIT_VERSION, SHARDS_CURRENT_ABI,
+  fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHTypeInfo,
+  SHType_ContextVar as SHTYPE_CONTEXT_VAR, SHType_Seq as SHTYPE_SEQ, SHType_Table as SHTYPE_TABLE,
+  GIT_VERSION, SHARDS_CURRENT_ABI,
 };
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -29,15 +31,19 @@ struct RunArgs {
   /// The script to execute
   #[arg(value_hint = clap::ValueHint::FilePath)]
   file: String,
+
   /// Decompress help strings before running the script
   #[arg(long, short = 'd', default_value = "false", action)]
   decompress_strings: bool,
+
   /// Change the current path to the scripts's path
   #[arg(long, short = 'c', action)]
   skip_cwd: bool,
+
   /// List of include directories
   #[arg(long, short = 'I')]
   include: Vec<String>,
+
   #[arg(num_args = 0..)]
   args: Vec<String>,
 }
@@ -101,6 +107,15 @@ enum Commands {
     decompress_strings: bool,
     #[arg(num_args = 0..)]
     args: Vec<String>,
+  },
+  /// Shards documentation search
+  Docs {
+    /// The search query
+    #[arg()]
+    name: String,
+    /// The type of the help to search for
+    #[arg(long = "type", short = 't', default_value = "shard", action)]
+    type_: String,
   },
 }
 
@@ -179,6 +194,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
         inline,
       } => format(file, output, *inline),
       Commands::Test {} => formatter::run_tests(),
+      Commands::Docs { name, type_ } => help(name, type_),
     },
     // Try to support a simple "shards script.shs" command line in case none of the above matched
     Err(orig_err) => match SimpleCLI::try_parse_from(args) {
@@ -192,6 +208,160 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
     1
   } else {
     0
+  }
+}
+
+fn print_type(t: &SHTypeInfo) -> String {
+  let mut s = String::new();
+  s.push_str(&format!("Type: `{}`", type_to_string(t.basicType.into())));
+  match t.basicType {
+    SHTYPE_SEQ => {
+      let types_seq = unsafe { t.details.seqTypes };
+      for i in 0..types_seq.len {
+        let t = unsafe { &*types_seq.elements.offset(i as isize) };
+        s.push_str(&format!(
+          "\n  └─ Seq of: {}",
+          print_type(t).replace("\n", "\n  │  ")
+        ));
+      }
+    }
+    SHTYPE_TABLE => {
+      let types_table = unsafe { t.details.table };
+      let table_types = types_table.types;
+      for i in 0..table_types.len {
+        let t = unsafe { &*table_types.elements.offset(i as isize) };
+        s.push_str(&format!(
+          "\n  └─ Table of: {}",
+          print_type(t).replace("\n", "\n  │  ")
+        ));
+      }
+      let table_keys = types_table.keys;
+      for i in 0..table_keys.len {
+        let t = unsafe { &*table_keys.elements.offset(i as isize) };
+        s.push_str(&format!("\n  └─ Table key: `{}`", t));
+      }
+    }
+    SHTYPE_CONTEXT_VAR => {
+      let types_context_var = unsafe { t.details.contextVarTypes };
+      for i in 0..types_context_var.len {
+        let t = unsafe { &*types_context_var.elements.offset(i as isize) };
+        s.push_str(&format!(
+          "\n  └─ Variable of: {}",
+          print_type(t).replace("\n", "\n  │  ")
+        ));
+      }
+    }
+    _ => {}
+  }
+  s
+}
+
+fn help(name: &str, type_: &str) -> Result<(), Error> {
+  unsafe {
+    shards_decompress_strings();
+  }
+
+  match type_ {
+    "shard" => {
+      let shard = AutoShardRef::create(name, None);
+      if let Some(shard) = shard {
+        let mut help_output = String::new();
+        let help_text = shard.0.help();
+        let input_help = shard.0.input_help();
+        let output_help = shard.0.output_help();
+        let input_types = shard.0.input_types();
+        let output_types = shard.0.output_types();
+        let parameters = shard.0.parameters();
+
+        // Title with box drawing characters
+        help_output.push_str(&format!("Help for `{}`\n", name));
+
+        // Description section
+        if let Some(help) = help_text {
+          if !help.is_empty() {
+            help_output.push_str("Description:\n");
+            help_output.push_str(&format!("   {}\n\n", help));
+          }
+        }
+
+        // Input section with types
+        help_output.push_str("Input:\n");
+        if let Some(help) = input_help {
+          if !help.is_empty() {
+            help_output.push_str(&format!("   {}\n", help));
+          }
+        }
+        if !input_types.is_empty() {
+          for input_type in input_types {
+            help_output.push_str(&format!(
+              "   {}\n",
+              print_type(&input_type).replace("\n", "\n   ")
+            ));
+          }
+        } else {
+          help_output.push_str("   No specific input type requirements\n");
+        }
+        help_output.push_str("\n");
+
+        // Output section with types
+        help_output.push_str("Output:\n");
+        if let Some(help) = output_help {
+          if !help.is_empty() {
+            help_output.push_str(&format!("   {}\n", help));
+          }
+        }
+        if !output_types.is_empty() {
+          for output_type in output_types {
+            help_output.push_str(&format!(
+              "   {}\n",
+              print_type(&output_type).replace("\n", "\n   ")
+            ));
+          }
+        } else {
+          help_output.push_str("   No specific output type information\n");
+        }
+        help_output.push_str("\n");
+
+        // Parameters section
+        if !parameters.is_empty() {
+          help_output.push_str("🔧 Parameters:\n");
+          for parameter in parameters {
+            let name = unsafe { CStr::from_ptr(parameter.name).to_str().unwrap() };
+            help_output.push_str(&format!("   ● `{}`\n", name));
+
+            let help = unsafe { CStr::from_ptr(parameter.help.string).to_str().unwrap() };
+            if !help.is_empty() {
+              help_output.push_str(&format!("     Description: {}\n", help));
+            }
+
+            let types = parameter.valueTypes;
+            if types.len > 0 {
+              help_output.push_str("     Accepted types:\n");
+              for i in 0..types.len {
+                let t = unsafe { &*types.elements.offset(i as isize) };
+                help_output.push_str(&format!(
+                  "     {}\n",
+                  print_type(t).replace("\n", "\n     ")
+                ));
+              }
+            }
+            help_output.push_str("\n");
+          }
+        }
+
+        println!("{}", help_output);
+        Ok(())
+      } else {
+        Err(format!("Shard '{}' not found", name).into())
+      }
+    }
+    "enum" => {
+      unimplemented!()
+    }
+    "object" => {
+      unimplemented!()
+    }
+    _ => Err("Invalid help type. Supported types are 'shard' and 'enum'".into()),
   }
 }
 
