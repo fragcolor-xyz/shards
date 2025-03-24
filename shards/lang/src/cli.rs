@@ -4,12 +4,12 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::Core;
-use shards::types::{get_enum_info, get_object_info, type_to_string, AutoShardRef, Mesh};
+use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
   fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHTypeInfo,
-  SHType_ContextVar as SHTYPE_CONTEXT_VAR, SHType_Seq as SHTYPE_SEQ, SHType_Table as SHTYPE_TABLE,
-  GIT_VERSION, SHARDS_CURRENT_ABI,
+  SHType_ContextVar as SHTYPE_CONTEXT_VAR, SHType_Enum as SHTYPE_ENUM, SHType_Seq as SHTYPE_SEQ,
+  SHType_Table as SHTYPE_TABLE, GIT_VERSION, SHARDS_CURRENT_ABI,
 };
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -251,6 +251,20 @@ fn print_type(t: &SHTypeInfo) -> String {
         ));
       }
     }
+    SHTYPE_ENUM => {
+      let enum_vendor = unsafe { t.details.enumeration.vendorId };
+      let enum_type = unsafe { t.details.enumeration.typeId };
+      let enum_info = get_enum_info(EnumInfoId::VendorTypePair(enum_vendor, enum_type));
+      if let Some(enum_info) = enum_info {
+        let name = unsafe { CStr::from_ptr(enum_info.name).to_str().unwrap() };
+        s.push_str(&format!("\n  └─ Enum: `{}`", name));
+      } else {
+        s.push_str(&format!(
+          "\n  └─ Enum: (Vendor: {}, Type: {})",
+          enum_vendor, enum_type
+        ));
+      }
+    }
     _ => {}
   }
   s
@@ -358,7 +372,7 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
       }
     }
     "enum" => {
-      let info = get_enum_info(name);
+      let info = get_enum_info(EnumInfoId::String(name));
       if let Some(info) = info {
         let mut help_output = String::new();
 

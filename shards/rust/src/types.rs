@@ -492,29 +492,55 @@ extern "C" {
   fn shards_get_object_info(id: i64) -> *const SHObjectInfo;
 }
 
-pub fn get_enum_info(name: &str) -> Option<&'static SHEnumInfo> {
-  let name = SHStringWithLen {
-    string: name.as_ptr() as *const c_char,
-    len: name.len() as u64,
+pub enum EnumInfoId<'a> {
+  Int(i64),
+  VendorTypePair(i32, i32),
+  String(&'a str),
+}
+
+pub fn get_enum_info(id: EnumInfoId) -> Option<&'static SHEnumInfo> {
+  let id = match id {
+    EnumInfoId::Int(id) => id,
+    EnumInfoId::VendorTypePair(vendor, type_) => (vendor as i64) << 32 | type_ as i64,
+    EnumInfoId::String(name) => {
+      let name = SHStringWithLen {
+        string: name.as_ptr() as *const c_char,
+        len: name.len() as u64,
+      };
+      unsafe { shards_find_enum_id(name) }
+    }
   };
-  let id = unsafe { shards_find_enum_id(name) };
-  if id == 0 {
+  let enum_info = unsafe { shards_get_enum_info(id) };
+  if enum_info.is_null() {
     None
   } else {
-    Some(unsafe { &*shards_get_enum_info(id) })
+    Some(unsafe { &*enum_info })
   }
 }
 
-pub fn get_object_info(name: &str) -> Option<&'static SHObjectInfo> {
-  let name = SHStringWithLen {
-    string: name.as_ptr() as *const c_char,
-    len: name.len() as u64,
+pub enum ObjectInfoId<'a> {
+  Int(i64),
+  VendorTypePair(i32, i32),
+  String(&'a str),
+}
+
+pub fn get_object_info(id: ObjectInfoId) -> Option<&'static SHObjectInfo> {
+  let id = match id {
+    ObjectInfoId::Int(id) => id,
+    ObjectInfoId::VendorTypePair(vendor, type_) => (vendor as i64) << 32 | type_ as i64,
+    ObjectInfoId::String(name) => {
+      let name = SHStringWithLen {
+        string: name.as_ptr() as *const c_char,
+        len: name.len() as u64,
+      };
+      unsafe { shards_find_object_type_id(name) }
+    }
   };
-  let id = unsafe { shards_find_object_type_id(name) };
-  if id == 0 {
+  let object_info = unsafe { shards_get_object_info(id) };
+  if object_info.is_null() {
     None
   } else {
-    Some(unsafe { &*shards_get_object_info(id) })
+    Some(unsafe { &*object_info })
   }
 }
 
