@@ -564,6 +564,9 @@ struct Await : public BaseSubFlow {
     if (!_context->shouldContinue()) {
       SHLOG_DEBUG("Await shard stopped by context");
       context->mirror(&*_context);
+
+      // Reset any error for the next time this is ran
+      _context->continueFlow();
     }
 
     // copy after checking if we should continue

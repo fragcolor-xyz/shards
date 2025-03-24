@@ -34,6 +34,17 @@ if(NOT EMSCRIPTEN)
   set_target_properties(shards-lib PROPERTIES OUTPUT_NAME "${LIB_PREFIX}shards-static")
   target_compile_definitions(shards-lib PRIVATE "shards_EXPORTS=1")
 
+  # shared
+  add_library(shards-dll SHARED dll.cpp)
+
+  if(WIN32)
+    target_sources(shards-dll PRIVATE shards.def)
+  endif()
+
+  target_link_libraries(shards-dll shards-core shards-cpp-union)
+  set_target_properties(shards-dll PROPERTIES OUTPUT_NAME "shards")
+  target_compile_definitions(shards-dll PRIVATE "shards_EXPORTS=1")
+
   # Apple Framework target
   if(APPLE)
     add_library(shards-framework SHARED ${cli_SOURCES})

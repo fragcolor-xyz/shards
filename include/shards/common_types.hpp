@@ -137,7 +137,7 @@ struct CoreInfo {
 
   static inline Types Shards{{ShardRefType, ShardRefSeqType}};
 
-  static inline Types ShardsOrNone{Shards, {NoneType}};
+  static inline Types  ShardsOrNone{Shards, {NoneType}};
 
   static inline Types BytesOrAny{{BytesType, AnyType}};
 

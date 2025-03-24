@@ -22,13 +22,13 @@ pub struct SHLError {
 pub struct SHLAst {
   /// of Program ast object, ref counted, count at 0 when returned, receiver must clone it!
   ast: Var,
-  error: *mut SHLError,
+  error: SHLError,
 }
 
 #[repr(C)]
 pub struct SHLWire {
   wire: *mut Wire,
-  error: *mut SHLError,
+  error: SHLError,
 }
 
 #[no_mangle]
@@ -45,7 +45,8 @@ pub extern "C" fn shards_read(
   base_path: SHStringWithLen,
   include_dirs: *const SHStringWithLen,
   num_include_dirs: u32,
-) -> SHLAst {
+  out_ast: *mut SHLAst,
+) -> bool {
   profiling::scope!("shards_read");
   let name: &str = name.into();
   let code = code.into();
@@ -67,10 +68,13 @@ pub extern "C" fn shards_read(
   let result = read::read(code, name, base_path.to_string(), include_dirs);
 
   match result {
-    Ok(p) => SHLAst {
-      ast: Var::new_ref_counted(p, &AST_TYPE),
-      error: std::ptr::null_mut(),
-    },
+    Ok(p) => {
+      unsafe {
+        let v = Var::new_ref_counted(p, &AST_TYPE);
+        shards::core::cloneVar(&mut (*out_ast).ast, &v);
+      }
+      true
+    }
     Err(error) => {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
@@ -79,24 +83,27 @@ pub extern "C" fn shards_read(
         line: error.loc.line,
         column: error.loc.column,
       };
-      SHLAst {
-        ast: Var::default(),
-        error: Box::into_raw(Box::new(shards_error)),
+      unsafe {
+        (*out_ast).ast = Var::default();
+        (*out_ast).error = shards_error;
       }
+      false
     }
   }
 }
 
 #[no_mangle]
-pub extern "C" fn shards_load_ast(bytes: *const u8, size: u32) -> SHLAst {
+pub extern "C" fn shards_load_ast(bytes: *const u8, size: u32, out_ast: *mut SHLAst) -> bool {
   profiling::scope!("shards_load_ast");
   let bytes = unsafe { from_raw_parts_allow_null(bytes, size as usize) };
   let decoded_bin: Result<Program, _> = flexbuffers::from_slice(bytes);
   match decoded_bin {
-    Ok(p) => SHLAst {
-      ast: Var::new_ref_counted(p, &AST_TYPE),
-      error: std::ptr::null_mut(),
-    },
+    Ok(p) => {
+      unsafe {
+        (*out_ast).ast = Var::new_ref_counted(p, &AST_TYPE);
+      }
+      true
+    }
     Err(error) => {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.to_string()).unwrap();
@@ -105,10 +112,22 @@ pub extern "C" fn shards_load_ast(bytes: *const u8, size: u32) -> SHLAst {
         line: 0,
         column: 0,
       };
-      SHLAst {
-        ast: Var::default(),
-        error: Box::into_raw(Box::new(shards_error)),
+      unsafe {
+        (*out_ast).ast = Var::default();
+        (*out_ast).error = shards_error;
       }
+      false
+    }
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_free_ast(ast: *mut SHLAst) {
+  profiling::scope!("shards_free_ast");
+  unsafe {
+    shards_free_error(&mut (*ast).error);
+    if (*ast).ast != Var::default() {
+      shards::core::destroyVar(&mut (*ast).ast);
     }
   }
 }
@@ -174,7 +193,7 @@ pub extern "C" fn shards_create_sub_env(
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError {
+pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var, out_error: *mut SHLError) -> bool {
   profiling::scope!("shards_eval_env");
   let ast = unsafe {
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")
@@ -184,30 +203,38 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var) -> *mut SHLError
   for stmt in &ast.sequence.statements {
     if let Err(error) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       shlog_error!("{:?}", error);
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-        line: error.loc.line,
-        column: error.loc.column,
-      };
-      return Box::into_raw(Box::new(shards_error));
+      if out_error != std::ptr::null_mut() {
+        let error_message = CString::new(error.message).unwrap();
+        unsafe {
+          (*out_error).line = error.loc.line;
+          (*out_error).column = error.loc.column;
+          (*out_error).message = error_message.into_raw();
+        }
+      }
+      return false;
     }
   }
-  core::ptr::null_mut()
+  return true;
 }
 
 /// It will consume the env
 #[no_mangle]
-pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
+pub extern "C" fn shards_transform_env(
+  env: *mut EvalEnv,
+  name: SHStringWithLen,
+  out_wire: *mut SHLWire,
+) -> bool {
   profiling::scope!("shards_transform_env");
   let name = name.into();
   let mut env = unsafe { Box::from_raw(env) };
   let res = eval::transform_env(&mut env, name);
   match res {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
+    Ok(wire) => {
+      unsafe {
+        (*out_wire).wire = Box::into_raw(Box::new(wire));
+      }
+      true
+    }
     Err(error) => {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
@@ -216,10 +243,11 @@ pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen)
         line: error.loc.line,
         column: error.loc.column,
       };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+      unsafe {
+        (*out_wire).wire = std::ptr::null_mut();
+        (*out_wire).error = shards_error;
       }
+      false
     }
   }
 }
@@ -229,7 +257,8 @@ pub extern "C" fn shards_transform_envs(
   env: *mut *mut EvalEnv,
   len: usize,
   name: SHStringWithLen,
-) -> SHLWire {
+  out_wire: *mut SHLWire,
+) -> bool {
   profiling::scope!("shards_transform_envs");
   let name = name.into();
   let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
@@ -240,10 +269,12 @@ pub extern "C" fn shards_transform_envs(
   }
   let res = eval::transform_envs(deref_envs.iter_mut().map(|x| x.as_mut()), name);
   match res {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
+    Ok(wire) => {
+      unsafe {
+        (*out_wire).wire = Box::into_raw(Box::new(wire));
+      }
+      true
+    }
     Err(error) => {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
@@ -252,17 +283,22 @@ pub extern "C" fn shards_transform_envs(
         line: error.loc.line,
         column: error.loc.column,
       };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+      unsafe {
+        (*out_wire).wire = std::ptr::null_mut();
+        (*out_wire).error = shards_error;
       }
+      false
     }
   }
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
-  profiling::scope!("shards_eval");
+pub extern "C" fn shards_eval_ast(
+  ast: &Var,
+  name: SHStringWithLen,
+  out_wire: *mut SHLWire,
+) -> bool {
+  profiling::scope!("shards_eval_ast");
   let name = name.into();
   // we just want a reference to the sequence, not ownership
   let ast = unsafe {
@@ -270,10 +306,12 @@ pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
   };
   let result = eval::eval(&ast, name, HashMap::new(), new_cancellation_token());
   match result {
-    Ok(wire) => SHLWire {
-      wire: Box::into_raw(Box::new(wire)),
-      error: std::ptr::null_mut(),
-    },
+    Ok(wire) => {
+      unsafe {
+        (*out_wire).wire = Box::into_raw(Box::new(wire));
+      }
+      true
+    }
     Err(error) => {
       shlog_error!("{:?}", error);
       let error_message = CString::new(error.message).unwrap();
@@ -282,10 +320,11 @@ pub extern "C" fn shards_eval(ast: &Var, name: SHStringWithLen) -> SHLWire {
         line: error.loc.line,
         column: error.loc.column,
       };
-      SHLWire {
-        wire: std::ptr::null_mut(),
-        error: Box::into_raw(Box::new(shards_error)),
+      unsafe {
+        (*out_wire).wire = std::ptr::null_mut();
+        (*out_wire).error = shards_error;
       }
+      false
     }
   }
 }
@@ -361,15 +400,14 @@ pub extern "C" fn shards_propagate_error(
 }
 
 #[no_mangle]
-pub extern "C" fn shards_free_wire(wire: SHLWire) {
+pub extern "C" fn shards_free_wire(wire: *mut SHLWire) {
   profiling::scope!("shards_free_wire");
   unsafe {
+    let wire = &mut *wire;
     if wire.wire != std::ptr::null_mut() {
       drop(Box::from_raw(wire.wire));
     }
-    if wire.error != std::ptr::null_mut() {
-      drop(Box::from_raw(wire.error));
-    }
+    shards_free_error(&mut wire.error);
   }
 }
 
@@ -377,8 +415,10 @@ pub extern "C" fn shards_free_wire(wire: SHLWire) {
 pub extern "C" fn shards_free_error(error: *mut SHLError) {
   profiling::scope!("shards_free_error");
   unsafe {
-    drop(CString::from_raw((*error).message));
-    drop(Box::from_raw(error));
+    if (*error).message != std::ptr::null_mut() {
+      drop(CString::from_raw((*error).message));
+      (*error).message = std::ptr::null_mut();
+    }
   }
 }
 
@@ -406,21 +446,25 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
 
 /// Please note it will consume `from` but not `to`
 #[no_mangle]
-pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mut SHLError {
+pub extern "C" fn shards_merge_envs(
+  from: *mut EvalEnv,
+  to: *mut EvalEnv,
+  out_error: *mut SHLError,
+) -> bool {
   profiling::scope!("shards_merge_envs");
   let from = unsafe { Box::from_raw(from) };
   let to = unsafe { &mut *to };
   if let Err(e) = merge_env(*from, to) {
     shlog_error!("{:?}", e);
     let error_message = CString::new(e.message).unwrap();
-    let shards_error = SHLError {
-      message: error_message.into_raw(),
-      line: e.loc.line,
-      column: e.loc.column,
+    unsafe {
+      (*out_error).message = error_message.into_raw();
+      (*out_error).line = e.loc.line;
+      (*out_error).column = e.loc.column;
     };
-    Box::into_raw(Box::new(shards_error))
+    false
   } else {
-    std::ptr::null_mut()
+    true
   }
 }
 

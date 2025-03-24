@@ -925,6 +925,8 @@ typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext 
 
 typedef void(__cdecl *SHLog)(struct SHStringWithLen msg);
 typedef void(__cdecl *SHLogLevel)(int level, struct SHStringWithLen msg);
+typedef void(__cdecl *SHLogLogger)(struct SHStringWithLen cat, int level, struct SHStringWithLen message);
+typedef void(__cdecl *SHLogVar)(struct SHStringWithLen cat, int level, struct SHStringWithLen message, struct SHVar *var);
 
 typedef struct Shard *(__cdecl *SHCreateShard)(struct SHStringWithLen name);
 typedef void(__cdecl *SHReleaseShard)(struct Shard *shard);
@@ -990,6 +992,7 @@ SH_ARRAY_TYPE(SHTraits, SHTrait);
   _array_##SlowDelete _short_##SlowDelete
 
 typedef struct SHTable(__cdecl *SHTableNew)();
+typedef void(__cdecl *SHTableInit)(struct SHTable *table);
 
 typedef SHString(__cdecl *SHGetRootPath)();
 typedef void(__cdecl *SHSetRootPath)(SHString);
@@ -1066,26 +1069,29 @@ struct SHLError {
 struct SHLAst {
   /// of Program ast object, ref counted, count at 0 when returned, receiver must clone it!
   struct SHVar ast;
-  struct SHLError *error;
+  struct SHLError error;
 };
 
 struct SHLWire {
   SHWireRef *wire;
-  struct SHLError *error;
+  struct SHLError error;
 };
 
 struct SHLEvalEnv;
 
-typedef struct SHLAst(__cdecl *SHReadProc)(struct SHStringWithLen name, struct SHStringWithLen code,
-                                           struct SHStringWithLen basePath, const struct SHStringWithLen *includeDirs,
-                                           uint32_t numIncludeDirs);
-typedef struct SHLAst(__cdecl *SHLoadAstProc)(const uint8_t *bytes, uint32_t size);
+typedef bool(__cdecl *SHReadProc)(struct SHStringWithLen name, struct SHStringWithLen code, struct SHStringWithLen basePath,
+                                  const struct SHStringWithLen *includeDirs, uint32_t numIncludeDirs, struct SHLAst *out_ast);
+typedef bool(__cdecl *SHLoadAstProc)(const uint8_t *bytes, uint32_t size, struct SHLAst *out_ast);
 typedef void(__cdecl *SHFreeError)(struct SHLError *error);
 typedef struct SHLEvalEnv *(__cdecl *SHCreateEvalEnv)(struct SHStringWithLen namespace_);
 typedef void(__cdecl *SHFreeEvalEnv)(struct SHLEvalEnv *env);
-typedef struct SHLError *(__cdecl *SHEvalProc)(struct SHLEvalEnv *env, const struct SHVar *ast);
-typedef struct SHLWire(__cdecl *SHTransformEnv)(struct SHLEvalEnv *env, struct SHStringWithLen name);
-typedef void(__cdecl *SHFreeWire)(struct SHLWire wire);
+typedef bool(__cdecl *SHEvalProc)(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error);
+typedef bool(__cdecl *SHTransformEnv)(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire);
+typedef bool(__cdecl *SHTransformEnvs)(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name,
+                                       struct SHLWire *out_wire);
+typedef bool(__cdecl *SHEvalAst)(const struct SHVar *ast, struct SHStringWithLen name, struct SHLWire *out_wire);
+typedef void(__cdecl *SHFreeWire)(struct SHLWire *wire);
+typedef void(__cdecl *SHFreeAst)(struct SHLAst *wire);
 
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
@@ -1232,7 +1238,10 @@ typedef struct _SHCore {
   SHFreeEvalEnv freeEvalEnv;
   SHEvalProc eval;
   SHTransformEnv transformEnv;
+  SHTransformEnvs transformEnvs;
+  SHEvalAst evalAst;
   SHFreeWire freeWire;
+  SHFreeAst freeAst;
 
   // Utility to deal with SHSeqs
   SH_ARRAY_PROCS(SHSeq, seq);
@@ -1265,6 +1274,11 @@ typedef struct _SHCore {
   SHRegisterErrorEvent registerErrorEvent;
   SHUnregisterErrorEvent unregisterErrorEvent;
 
+  SHLogLogger logLogger;
+  SHLogVar logVar;
+
+  SHTableInit tableInit;
+
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
 
@@ -1289,8 +1303,8 @@ typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);
 #define SHARDS_API SHARDS_IMPORT
 #endif
 
-#define SHARDS_CURRENT_ABI 0x20200102
-#define SHARDS_CURRENT_ABI_STR "0x20200102"
+#define SHARDS_CURRENT_ABI 0x20200103
+#define SHARDS_CURRENT_ABI_STR "0x20200103"
 
 #if defined(__cplusplus)
 extern "C" {

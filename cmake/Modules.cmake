@@ -310,6 +310,10 @@ function(shards_generate_union UNION_TARGET_NAME)
     )
   endif()
 
+  target_compile_definitions(${UNION_TARGET_NAME} PRIVATE 
+    SHARDS_CORE_DLL=1 
+    shards_core_EXPORTS=1)
+
   foreach(TARGET_NAME ${SHARDS_MODULE_TARGETS})
     get_property(MODULE_ID TARGET ${TARGET_NAME} PROPERTY SHARDS_MODULE_ID)
 

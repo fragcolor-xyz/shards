@@ -18,7 +18,7 @@ extern crate approx;
 extern crate lazy_static;
 
 #[macro_use]
-extern crate compile_time_crc32;
+extern crate compile_time_crc32; 
 pub use compile_time_crc32::crc32;
 
 use git_version::git_version;

@@ -10,6 +10,7 @@ set(core_SOURCES
   hash.cpp
   taskflow.cpp
   pmr/shared_temp_allocator.cpp
+  log_api.cpp
 )
 
 if(EMSCRIPTEN)
@@ -161,11 +162,6 @@ if(EMSCRIPTEN)
   # target_link_options(shards-core PUBLIC "-O3")
   # endif()
 endif()
-
-duplicate_library_target(shards-core SHARED shards-core-shared)
-target_compile_definitions(shards-core-shared
-  PUBLIC SHARDS_CORE_DLL=1
-  PRIVATE shards_core_EXPORTS=1)
 
 if(DESKTOP_LINUX OR APPLE AND USE_UBSAN)
   target_compile_options(shards-core PUBLIC -fsanitize=undefined)

@@ -13,6 +13,7 @@
 #include <shards/linalg_shim.hpp>
 #include <shards/wire_dsl.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
+#include <memory>
 
 using namespace shards::literals;
 
@@ -1351,34 +1352,49 @@ TEST_CASE("Function") {
   CHECK(!f4);
 }
 
-#define TEST_SUCCESS_CASE(testName, code)                                   \
-  SECTION(testName) {                                                       \
-    auto seq = readHelper(code);                                            \
-    shards::OwnedVar ast{seq.ast};                                          \
-    REQUIRE(ast.valueType == SHType::Object);                               \
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")}); \
-    REQUIRE(wire.wire);                                                     \
-    auto mesh = SHMesh::make();                                             \
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));                    \
-    mesh->tick();                                                           \
-    shards_free_wire(wire);                                                 \
+#define TEST_SUCCESS_CASE(testName, code)                 \
+  SECTION(testName) {                                     \
+    auto seq = readHelper(code);                          \
+    shards::OwnedVar ast{seq->ast};                       \
+    REQUIRE(ast.valueType == SHType::Object);             \
+    auto wire = evalHelper(&ast, "root");                 \
+    REQUIRE(wire->wire);                                  \
+    auto mesh = SHMesh::make();                           \
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire))); \
+    mesh->tick();                                         \
   }
 
-#define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage)          \
-  SECTION(testName) {                                                       \
-    auto seq = readHelper(code);                                            \
-    shards::OwnedVar ast{seq.ast};                                          \
-    REQUIRE(ast.valueType == SHType::Object);                               \
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")}); \
-    REQUIRE(wire.error);                                                    \
-    std::string a(wire.error->message);                                     \
-    std::string b(expectedErrorMessage);                                    \
-    REQUIRE(a == b);                                                        \
-    shards_free_error(wire.error);                                          \
+#define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage) \
+  SECTION(testName) {                                              \
+    auto seq = readHelper(code);                                   \
+    shards::OwnedVar ast{seq->ast};                                \
+    REQUIRE(ast.valueType == SHType::Object);                      \
+    auto wire = evalHelper(&ast, "root");                          \
+    REQUIRE(wire->error.message);                                  \
+    std::string a(wire->error.message);                            \
+    std::string b(expectedErrorMessage);                           \
+    REQUIRE(a == b);                                               \
   }
 
-inline SHLAst readHelper(const char *code) {
-  return shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}, nullptr, 0);
+inline std::shared_ptr<SHLAst> readHelper(const char *code) {
+  auto ast = std::shared_ptr<SHLAst>(new SHLAst{}, [](SHLAst *ast) {
+    shards_free_ast(ast);
+    delete ast;
+  });
+  bool okay = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}, nullptr, 0, ast.get());
+  if (!okay) {
+    throw std::runtime_error(ast->error.message);
+  }
+  return ast;
+}
+
+inline std::shared_ptr<SHLWire> evalHelper(const SHVar *ast, const char *name) {
+  auto wire = std::shared_ptr<SHLWire>(new SHLWire{}, [](SHLWire *wire) {
+    shards_free_wire(wire);
+    delete wire;
+  });
+  shards_eval_ast(ast, SHStringWithLen{name, strlen(name)}, wire.get());
+  return wire;
 }
 
 TEST_CASE("shards-lang") {
@@ -1403,13 +1419,11 @@ TEST_CASE("shards-lang") {
   SECTION("TableTake 2") {
     auto code = "{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
@@ -1417,25 +1431,22 @@ TEST_CASE("shards-lang") {
     auto code = "{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
                 "| Log | Assert.Is(2)";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
   SECTION("Enums 1") {
     auto code = "Msg(Enum::NotExisting)";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.error);
-    DEFER(shards_free_error(wire.error));
-    std::string a(wire.error->message);
+    auto wire = evalHelper(&ast, "root");
+    REQUIRE(wire->error.message != nullptr);
+    std::string a(wire->error.message);
     std::string b("Enum Enum not found");
     REQUIRE(a == b);
   }
@@ -1443,55 +1454,56 @@ TEST_CASE("shards-lang") {
   SECTION("Enums 2") {
     auto code = "Const(Type::String) | Log";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
+    REQUIRE(wire->wire);
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
   SECTION("Enums 3") {
     auto code = "Type::String | Log";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
+    REQUIRE(wire->wire);
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
   SECTION("Namespaces 1") {
     auto code1 = "10 = n";
     auto seq1 = readHelper(code1);
-    shards::OwnedVar ast1{seq1.ast};
+    shards::OwnedVar ast1{seq1->ast};
     REQUIRE(ast1.valueType == SHType::Object);
 
     auto code2 = "x/n | Math.Add(2) | Log";
     auto seq2 = readHelper(code2);
-    shards::OwnedVar ast2{seq2.ast};
+    shards::OwnedVar ast2{seq2->ast};
     REQUIRE(ast2.valueType == SHType::Object);
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
 
-    auto err = shards_eval_env(env, &ast1);
-    REQUIRE_FALSE(err);
+    auto success = shards_eval_env(env, &ast1, nullptr);
+    REQUIRE(success);
 
     auto sub_env = shards_create_env(SHStringWithLen{});
 
-    err = shards_eval_env(sub_env, &ast2);
-    REQUIRE_FALSE(err);
+    success = shards_eval_env(sub_env, &ast2, nullptr);
+    REQUIRE(success);
 
     SHLEvalEnv *envs[] = {env, sub_env};
 
-    auto wire = shards_transform_envs(&envs[0], 2, SHStringWithLen{"root", strlen("root")});
+    SHLWire wire{};
+    DEFER(shards_free_wire(&wire));
+    success = shards_transform_envs(&envs[0], 2, "root"_swl, &wire);
+    REQUIRE(success);
     REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
@@ -1500,45 +1512,48 @@ TEST_CASE("shards-lang") {
   SECTION("Namespaces 2") {
     auto code1 = "10 = n";
     auto seq1 = readHelper(code1);
-    shards::OwnedVar ast1{seq1.ast};
+    shards::OwnedVar ast1{seq1->ast};
     REQUIRE(ast1.valueType == SHType::Object);
 
     auto code2 = "x/n | Math.Add(2) | Log = r2"; // access still needs to be explicit
     auto seq2 = readHelper(code2);
-    shards::OwnedVar ast2{seq2.ast};
+    shards::OwnedVar ast2{seq2->ast};
     REQUIRE(ast2.valueType == SHType::Object);
 
     auto code3 = "r2 | Math.Add(2) | Log";
     auto seq3 = readHelper(code3);
-    shards::OwnedVar ast3{seq3.ast};
+    shards::OwnedVar ast3{seq3->ast};
     REQUIRE(ast3.valueType == SHType::Object);
 
     auto code4 = "x/n | Math.Add(x/y/r2) | Log";
     auto seq4 = readHelper(code4);
-    shards::OwnedVar ast4{seq4.ast};
+    shards::OwnedVar ast4{seq4->ast};
     REQUIRE(ast4.valueType == SHType::Object);
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
-    auto err = shards_eval_env(env, &ast1);
-    REQUIRE_FALSE(err);
+    bool success = shards_eval_env(env, &ast1, nullptr);
+    REQUIRE(success);
 
     auto sub_env1 = shards_create_sub_env(env, SHStringWithLen{"y", strlen("y")});
-    err = shards_eval_env(sub_env1, &ast2);
-    REQUIRE_FALSE(err);
+    success = shards_eval_env(sub_env1, &ast2, nullptr);
+    REQUIRE(success);
 
     auto sub_env2 = shards_create_sub_env(sub_env1, SHStringWithLen{});
-    err = shards_eval_env(sub_env2, &ast3);
-    REQUIRE_FALSE(err);
+    success = shards_eval_env(sub_env2, &ast3, nullptr);
+    REQUIRE(success);
 
     auto another_env = shards_create_env(SHStringWithLen{});
-    err = shards_eval_env(another_env, &ast4);
-    REQUIRE_FALSE(err);
+    success = shards_eval_env(another_env, &ast4, nullptr);
+    REQUIRE(success);
 
     SHLEvalEnv *envs[] = {env, sub_env1, sub_env2, another_env};
 
-    auto wire = shards_transform_envs(&envs[0], 4, SHStringWithLen{"root", strlen("root")});
+    SHLWire wire{};
+    DEFER(shards_free_wire(&wire));
+    success = shards_transform_envs(&envs[0], 4, "root"_swl, &wire);
+    REQUIRE(success);
     REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
@@ -1552,13 +1567,11 @@ TEST_CASE("shards-lang") {
       2 | Do(wire1) | Assert.Is(3)
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    auto pWire = SHWire::sharedFromRef(*(wire.wire));
+    auto pWire = SHWire::sharedFromRef(*(wire->wire));
     mesh->schedule(pWire);
     // cover getherWires
     shards::printWireGraph(pWire.get());
@@ -1573,13 +1586,11 @@ TEST_CASE("shards-lang") {
       s | Log
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
@@ -1593,13 +1604,11 @@ TEST_CASE("shards-lang") {
       3 | @group1(2) | Assert.Is(5)
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
@@ -1617,14 +1626,11 @@ TEST_CASE("shards-lang") {
       #(@range(0 5)) | Log
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
@@ -1638,14 +1644,11 @@ TEST_CASE("shards-lang") {
       @run(main 1.0 5)
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
-    auto wire = shards_eval(&ast, SHStringWithLen{"root", strlen("root")});
-
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    auto wire = evalHelper(&ast, "root");
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(wire->wire)));
     mesh->tick();
   }
 
@@ -1667,18 +1670,22 @@ TEST_CASE("shards-lang") {
       Do(w)
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
 
     auto env = shards_create_env("x"_swl);
-    auto err = shards_eval_env(env, &ast);
-    REQUIRE_FALSE(err);
+    SHLError error{};
+    bool success = shards_eval_env(env, &ast, &error);
+    REQUIRE(success);
 
-    auto wire = shards_transform_env(env, "x"_swl);
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
+    SHLWire out_wire{};
+    DEFER({ shards_free_wire(&out_wire); });
+    success = shards_transform_env(env, "x"_swl, &out_wire);
+    REQUIRE(success);
+    REQUIRE(out_wire.wire != nullptr);
+
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(out_wire.wire)));
     mesh->tick();
   }
 
@@ -1698,19 +1705,23 @@ TEST_CASE("shards-lang") {
       Do(w2)
     )";
     auto seq = readHelper(code);
-    shards::OwnedVar ast{seq.ast};
+    shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
 
     auto env = shards_create_env("x"_swl);
-    auto err = shards_eval_env(env, &ast);
+    SHLError error{};
+    DEFER({ shards_free_error(&error); });
+    bool success = shards_eval_env(env, &ast, &error);
+    REQUIRE(success);
 
-    REQUIRE_FALSE(err);
+    SHLWire out_wire{};
+    DEFER({ shards_free_wire(&out_wire); });
+    success = shards_transform_env(env, "x"_swl, &out_wire);
+    REQUIRE(success);
+    REQUIRE(out_wire.wire != nullptr);
 
-    auto wire = shards_transform_env(env, "x"_swl);
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire));
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->schedule(SHWire::sharedFromRef(*(out_wire.wire)));
     mesh->tick();
   }
 }

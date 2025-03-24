@@ -42,6 +42,8 @@
 #include "type_cache.hpp"
 #include "platform.hpp"
 #include "serialization.hpp"
+#include "lang_api.hpp"
+#include "log_api.hpp"
 
 #if SH_APPLE || SH_LINUX
 #include <dlfcn.h>
@@ -2667,16 +2669,6 @@ bool sh_current_interface_loaded{false};
 SHCore sh_current_interface{};
 
 extern "C" {
-SHLAst shards_read(SHStringWithLen name, SHStringWithLen code, SHStringWithLen base_path, const SHStringWithLen *include_dirs,
-                   uint32_t num_include_dirs);
-SHLAst shards_load_ast(const uint8_t *bytes, uint32_t size);
-void shards_free_error(SHLError *error);
-SHLEvalEnv *shards_create_env(SHStringWithLen namespace_);
-void shards_free_env(SHLEvalEnv *env);
-SHLError *shards_eval_env(SHLEvalEnv *env, const SHVar *ast);
-SHLWire shards_transform_env(SHLEvalEnv *env, SHStringWithLen name);
-void shards_free_wire(SHLWire wire);
-
 int64_t shards_find_enum_id(SHStringWithLen name) { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); }
 
 int64_t shards_find_object_type_id(SHStringWithLen name) {
@@ -2892,6 +2884,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return res;
   };
 
+  result->tableInit = [](SHTable *table) noexcept { 
+    table->api = &shards::GetGlobals().TableInterface;
+    table->opaque = new shards::SHMap();
+  };   
+
   result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     try {
@@ -2966,17 +2963,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                     SHStringWithLen{wire->finishedError.c_str(), wire->finishedError.size()},
                     wire->finishedOutput.has_value() ? &wire->finishedOutput.value() : nullptr};
     return info;
-  };
-
-  result->log = [](SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, size_t(msg.len));
-    SHLOG_INFO(sv);
-  };
-
-  result->logLevel = [](int level, SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, size_t(msg.len));
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
-                                      sv);
   };
 
   result->createShard = [](SHStringWithLen name) noexcept {
@@ -3241,22 +3227,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->imageClone = [](SHImage *img) { return imageClone(img); };
   result->imageDeriveDataLength = [](SHImage *img) { return imageDeriveDataLength(img); };
 
-  result->read = [](SHStringWithLen name, SHStringWithLen code, SHStringWithLen basePath, const SHStringWithLen *includeDirs,
-                    uint32_t numIncludeDirs) { return shards_read(name, code, basePath, includeDirs, numIncludeDirs); };
-
-  result->loadAst = [](const uint8_t *bytes, uint32_t size) { return shards_load_ast(bytes, size); };
-
-  result->freeError = [](SHLError *error) { shards_free_error(error); };
-
-  result->createEvalEnv = [](SHStringWithLen namespace_) { return shards_create_env(namespace_); };
-
-  result->freeEvalEnv = [](SHLEvalEnv *env) { shards_free_env(env); };
-
-  result->eval = [](SHLEvalEnv *env, const SHVar *ast) { return shards_eval_env(env, ast); };
-
-  result->transformEnv = [](SHLEvalEnv *env, SHStringWithLen name) { return shards_transform_env(env, name); };
-
-  result->freeWire = [](SHLWire wire) { shards_free_wire(wire); };
+  setupCoreLang(result);
 
   result->registerErrorEvent = [](SHMeshRef mesh, void *userData,
                                   void (*callback)(void *userData, SHStringWithLen message, uint32_t line, uint32_t column)) {
@@ -3268,6 +3239,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
     (*smesh)->unregisterErrorEvent(userData);
   };
+
+  setupCoreLogging(result);
 
   return result;
 }

@@ -300,22 +300,22 @@ EMSCRIPTEN_KEEPALIVE void shardsLoadScript(Instance **outInstance, const char *c
   try {
     instance->mesh = SHMesh::make();
 
-    auto astRes = shards_read("script"_swl, toSWL(code), toSWL(basePath), includeDirs.data(), includeDirs.size());
-    shards::OwnedVar ast{astRes.ast};
-    if (astRes.error) {
-      instance->error = fmt::format("Failed to read code: {}", astRes.error->message);
+    SHLAst astRes{};
+    DEFER(shards_free_ast(&astRes));
+    if (!shards_read("script"_swl, toSWL(code), toSWL(basePath), includeDirs.data(), includeDirs.size(), &astRes)) {
+      instance->error = fmt::format("Failed to read code: {}", astRes.error.message);
       SPDLOG_ERROR("{}", *instance->error);
-      shards_free_error(astRes.error);
       return;
     }
+    shards::OwnedVar ast{astRes.ast};
 
     core->setRootPath(basePath);
 
-    SHLWire shlwire = shards_eval(&astRes.ast, "script"_swl);
-    DEFER(shards_free_wire(shlwire));
-    if (shlwire.error) {
-      SPDLOG_ERROR("Failed to evaluate script at {}:{}: {}", shlwire.error->line, shlwire.error->column, shlwire.error->message);
-      instance->error = shlwire.error->message;
+    SHLWire shlWire{};
+    DEFER(shards_free_wire(&shlWire));
+    if (!shards_eval_ast(&astRes.ast, "script"_swl, &shlWire)) {
+      SPDLOG_ERROR("Failed to evaluate script at {}:{}: {}", shlWire.error.line, shlWire.error.column, shlWire.error.message);
+      instance->error = shlWire.error.message;
       return;
     }
 
@@ -324,7 +324,7 @@ EMSCRIPTEN_KEEPALIVE void shardsLoadScript(Instance **outInstance, const char *c
       fs::current_path(execWorkingDir);
     }
 
-    auto wire = SHWire::sharedFromRef(*shlwire.wire);
+    auto wire = SHWire::sharedFromRef(*shlWire.wire);
     instance->wire = wire;
     instance->mesh->schedule(wire);
     instance->error.reset();

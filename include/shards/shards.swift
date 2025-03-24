@@ -84,7 +84,9 @@ public struct Globals {
 
         // If not writable, try to set to documents directory
         if !isWritable {
-            if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path {
+            if let documentsPath = FileManager.default.urls(
+                for: .documentDirectory, in: .userDomainMask
+            ).first?.path {
                 FileManager.default.changeCurrentDirectoryPath(documentsPath)
             }
         }
@@ -104,37 +106,37 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case AnyValue
     case Enum
     case Bool
-    case Int // A 64bits int
-    case Int2 // A vector of 2 64bits ints
-    case Int3 // A vector of 3 32bits ints
-    case Int4 // A vector of 4 32bits ints
-    case Int8 // A vector of 8 16bits ints
-    case Int16 // A vector of 16 8bits ints
-    case Float // A 64bits float
-    case Float2 // A vector of 2 64bits floats
-    case Float3 // A vector of 3 32bits floats
-    case Float4 // A vector of 4 32bits floats
-    case Color // A vector of 4 uint8
+    case Int  // A 64bits int
+    case Int2  // A vector of 2 64bits ints
+    case Int3  // A vector of 3 32bits ints
+    case Int4  // A vector of 4 32bits ints
+    case Int8  // A vector of 8 16bits ints
+    case Int16  // A vector of 16 8bits ints
+    case Float  // A 64bits float
+    case Float2  // A vector of 2 64bits floats
+    case Float3  // A vector of 3 32bits floats
+    case Float4  // A vector of 4 32bits floats
+    case Color  // A vector of 4 uint8
 
     // Internal use only
-    case EndOfBlittableTypes = 50 // anything below this is not blittable (ish)
+    case EndOfBlittableTypes = 50  // anything below this is not blittable (ish)
 
     // Non Blittables
-    case Bytes // pointer + size
+    case Bytes  // pointer + size
     case String
-    case Path // An OS filesystem path
-    case ContextVar // A string label to find from SHContext variables
+    case Path  // An OS filesystem path
+    case ContextVar  // A string label to find from SHContext variables
     case Image
     case Seq
     case Table
     case Wire
-    case ShardRef // a shard, useful for future introspection shards!
+    case ShardRef  // a shard, useful for future introspection shards!
     case Object = 60
     // Array, // Notice: of just blittable types - Reserved for future use - 61
     // Set, // Reserved for future use - 62
     case Audio = 63
-    case TypeInfo // Describes a type
-    case Trait // A wire trait
+    case TypeInfo  // Describes a type
+    case Trait  // A wire trait
 
     public var description: String {
         switch self {
@@ -423,7 +425,7 @@ extension SHVar: CustomStringConvertible {
         v.valueType = String
         value.withUnsafeBufferPointer {
             v.payload.stringValue = $0.baseAddress
-            v.payload.stringLen = UInt32(value.count - 1) // assumes \0 terminator
+            v.payload.stringLen = UInt32(value.count - 1)  // assumes \0 terminator
             v.payload.stringCapacity = UInt32(value.capacity)
         }
         self = v
@@ -462,7 +464,9 @@ extension SHVar: CustomStringConvertible {
             return ""
         }
         // Cast `CChar` (Int8) to `UInt8` for decoding
-        let buffer = UnsafeBufferPointer(start: stringPtr, count: length).map { UInt8(bitPattern: $0) }
+        let buffer = UnsafeBufferPointer(start: stringPtr, count: length).map {
+            UInt8(bitPattern: $0)
+        }
         return String(decoding: buffer, as: UTF8.self)
     }
 
@@ -584,7 +588,8 @@ extension SHVar: CustomStringConvertible {
         get {
             assert(type == .Seq, "Seq variable expected!")
             return .init(start: payload.seqValue.elements, count: Int(payload.seqValue.len))
-        } set {
+        }
+        set {
             self = .init(value: newValue)
         }
     }
@@ -808,7 +813,19 @@ class TableVar: OwnedVar, Sequence {
     struct Iterator: IteratorProtocol {
         let table: SHTable
         // could not find a better solution... anyway why not...
-        var iterator: (CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        var iterator:
+            (
+                CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar,
+                CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar,
+                CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar,
+                CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar,
+                CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar, CChar,
+                CChar, CChar, CChar, CChar
+            ) = (
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+            )
 
         init(table: SHTable) {
             self.table = table
@@ -885,7 +902,8 @@ class SeqVar: OwnedVar {
         let index = size()
         resize(size: index + 1)
         withUnsafePointer(to: value) { ptr in
-            G.Core.pointee.cloneVar(&v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
+            G.Core.pointee.cloneVar(
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
         }
     }
 
@@ -894,7 +912,7 @@ class SeqVar: OwnedVar {
             var tmp = SHVar()
             tmp.valueType = VarType.String.asSHType()
             tmp.payload.stringValue = buffer.baseAddress
-            tmp.payload.stringLen = UInt32(buffer.count - 1) // Subtract 1 to exclude null terminator
+            tmp.payload.stringLen = UInt32(buffer.count - 1)  // Subtract 1 to exclude null terminator
             pushCloning(value: tmp)
         }
     }
@@ -916,7 +934,8 @@ class SeqVar: OwnedVar {
     func set(index: Int, value: SHVar) {
         assert(index >= 0 && index < size())
         withUnsafePointer(to: value) { ptr in
-            G.Core.pointee.cloneVar(&v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
+            G.Core.pointee.cloneVar(
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
         }
     }
 
@@ -1114,7 +1133,7 @@ class ShardsVar {
         } else if value.valueType == VarType.Seq.asSHType() {
             // Handle sequence of shards
             let seqLen = value.payload.seqValue.len
-            for i in 0 ..< seqLen {
+            for i in 0..<seqLen {
                 let elemVar = value.payload.seqValue.elements[Int(i)]
                 if elemVar.valueType == VarType.ShardRef.asSHType() {
                     let shardPtr = elemVar.payload.shardValue
@@ -1158,7 +1177,7 @@ class ShardsVar {
 
     func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
         if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0) // continue
+            return SHWireState(rawValue: 0)  // continue
         }
 
         var inputCopy = input
@@ -1170,9 +1189,11 @@ class ShardsVar {
         return state
     }
 
-    func activateHandlingReturn(context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>) -> SHWireState {
+    func activateHandlingReturn(
+        context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>
+    ) -> SHWireState {
         if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0) // continue
+            return SHWireState(rawValue: 0)  // continue
         }
 
         var inputCopy = input
@@ -1313,7 +1334,7 @@ public class TypeInfo {
 }
 
 public class Types {
-    private var types: [TypeInfo] // to keep alive
+    private var types: [TypeInfo]  // to keep alive
     public var native = SHTypesInfo()
 
     init(types: [TypeInfo]) {
@@ -1337,7 +1358,7 @@ public class Types {
 public class ParameterInfo {
     var name: ContiguousArray<CChar>
     var help: ContiguousArray<CChar>
-    var types: [TypeInfo] // to keep alive
+    var types: [TypeInfo]  // to keep alive
     var typesStorage: ContiguousArray<SHTypeInfo> = []
 
     init(name: String, help: String, types: [TypeInfo]) {
@@ -1369,7 +1390,7 @@ public class ParameterInfo {
 }
 
 public class Parameters {
-    private var infos: [ParameterInfo] = [] // to keep alive
+    private var infos: [ParameterInfo] = []  // to keep alive
     public var native = SHParametersInfo()
 
     func add(name: String, help: String, types: [TypeInfo]) {
@@ -1405,7 +1426,11 @@ public class ExposedTypeInfo {
     var tracked: Bool
     var declared: Bool
 
-    init(name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false, isProtected: Bool = false, global: Bool = false, tracked: Bool = false, declared: Bool = false) {
+    init(
+        name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false,
+        isProtected: Bool = false, global: Bool = false, tracked: Bool = false,
+        declared: Bool = false
+    ) {
         self.name = name.utf8CString
         self.help = help.utf8CString
         self.exposedType = exposedType
@@ -1438,7 +1463,7 @@ public class ExposedTypeInfo {
 }
 
 public class ExposedTypes {
-    private var types: [ExposedTypeInfo] // to keep alive
+    private var types: [ExposedTypeInfo]  // to keep alive
     public var native = SHExposedTypesInfo()
 
     init() {
@@ -1458,7 +1483,7 @@ public class ExposedTypes {
     }
 
     func extend(types: SHExposedTypesInfo) {
-        for i in 0 ..< types.len {
+        for i in 0..<types.len {
             var eInfo = types.elements[Int(i)]
             withUnsafeMutablePointer(to: &native) { ptr in
                 withUnsafePointer(to: &eInfo) { nativeInfo in
@@ -1521,7 +1546,7 @@ public protocol IShard: AnyObject {
     var output: SHVar { get set }
 }
 
-public extension IShard {}
+extension IShard {}
 
 @inlinable public func bridgeParameters<T: IShard>(_: T.Type, shard: ShardPtr) -> SHParametersInfo {
     let swiftShardPtr = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self)
@@ -1705,7 +1730,8 @@ public extension IShard {}
 
 @inlinable public func hashShard<T: IShard>(_: T.Type) -> UInt32 {
     let name = T.name
-    let namePtr = name.utf8Start.withMemoryRebound(to: UInt8.self, capacity: name.utf8CodeUnitCount) { $0 }
+    let namePtr = name.utf8Start.withMemoryRebound(to: UInt8.self, capacity: name.utf8CodeUnitCount)
+    { $0 }
     let nameData = Data(bytes: namePtr, count: name.utf8CodeUnitCount)
 
     // Create a buffer with the shard name and SHARDS_CURRENT_ABI
@@ -1800,7 +1826,9 @@ class WireController {
         return nil
     }
 
-    private func addExternalVar(name: String, varPtr: UnsafeMutablePointer<SHVar>, varType: UnsafePointer<SHTypeInfo>? = nil) {
+    private func addExternalVar(
+        name: String, varPtr: UnsafeMutablePointer<SHVar>, varType: UnsafePointer<SHTypeInfo>? = nil
+    ) {
         varPtr.pointee.flags |= UInt16(SHVAR_FLAGS_EXTERNAL)
         var ev = SHExternalVariable()
         ev.var = varPtr
@@ -1872,7 +1900,7 @@ class WireController {
     public func wait() async {
         // Check copier status every 100ms
         while isRunning() {
-            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
         }
     }
 
@@ -1944,19 +1972,24 @@ class MeshController {
     private var errorCallbacks: [UnsafeMutableRawPointer: (String, UInt32, UInt32) -> Void] = [:]
 
     // C function that will be called by Shards when an error occurs
-    private let errorCallbackBridge: @convention(c) (UnsafeMutableRawPointer?, SHStringWithLen, UInt32, UInt32) -> Void = { userData, message, line, column in
-        guard let userData = userData else { return }
-        // Get the Swift closure from context
-        let callbackHolder = Unmanaged<MeshController>.fromOpaque(userData).takeUnretainedValue()
+    private let errorCallbackBridge:
+        @convention(c) (UnsafeMutableRawPointer?, SHStringWithLen, UInt32, UInt32) -> Void = {
+            userData, message, line, column in
+            guard let userData = userData else { return }
+            // Get the Swift closure from context
+            let callbackHolder = Unmanaged<MeshController>.fromOpaque(userData)
+                .takeUnretainedValue()
 
-        if let callback = callbackHolder.errorCallbacks[userData] {
-            let messageStr = message.toString() ?? "Unknown error"
-            callback(messageStr, line, column)
+            if let callback = callbackHolder.errorCallbacks[userData] {
+                let messageStr = message.toString() ?? "Unknown error"
+                callback(messageStr, line, column)
+            }
         }
-    }
 
     // Register a callback that will be called when an error occurs
-    func registerErrorEvent(callback: @escaping (String, UInt32, UInt32) -> Void) -> UnsafeMutableRawPointer {
+    func registerErrorEvent(callback: @escaping (String, UInt32, UInt32) -> Void)
+        -> UnsafeMutableRawPointer
+    {
         // Create a context pointer to pass to the C function
         let context = Unmanaged.passUnretained(self).toOpaque()
 
@@ -1987,7 +2020,7 @@ extension SHStringWithLen {
     static func from(_ chars: ContiguousArray<CChar>) -> SHStringWithLen {
         var result = SHStringWithLen()
         result.string = chars.withUnsafeBufferPointer { $0.baseAddress }
-        result.len = UInt64(chars.count - 1) // Subtract 1 to exclude null terminator
+        result.len = UInt64(chars.count - 1)  // Subtract 1 to exclude null terminator
         return result
     }
 
@@ -2022,7 +2055,7 @@ extension SHStringWithLen {
 }
 
 class SwiftSWL {
-    var chars: ContiguousArray<CChar> // store the CChar array directly
+    var chars: ContiguousArray<CChar>  // store the CChar array directly
 
     init(_ string: String) {
         chars = string.utf8CString
@@ -2068,13 +2101,16 @@ class Shards {
         let codeStr = SwiftSWL(code)
         let basePathStr = SwiftSWL(basePath)
 
+        // Create output AST struct
+        var ast = SHLAst()
+
         // Read the AST
-        let ast = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0)
-        guard ast.error == nil else {
-            let errorMessage = String(cString: ast.error!.pointee.message)
-            let line = ast.error!.pointee.line
-            let column = ast.error!.pointee.column
-            G.Core.pointee.freeError(ast.error)
+        let success = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0, &ast)
+        guard success, ast.error.message == nil else {
+            let errorMessage = String(cString: ast.error.message)
+            let line = ast.error.line
+            let column = ast.error.column
+            G.Core.pointee.freeAst(&ast)
             return .failure(ShardError(message: "Failed to read AST: \(errorMessage) at line \(line), column \(column)"))
         }
         // ast will have refcount of 0, need to bump it with a clone
@@ -2084,29 +2120,41 @@ class Shards {
         let emptyStr = SHStringWithLen.fromStatic("")
         let env = G.Core.pointee.createEvalEnv(emptyStr)
 
+        // Create error struct for eval
+        var evalError = SHLError()
+
         // Evaluate the AST
-        let error = G.Core.pointee.eval(env, &astOwned.v) // consumes ast
-        guard error == nil else {
-            let errorMessage = String(cString: error!.pointee.message)
-            let line = error!.pointee.line
-            let column = error!.pointee.column
+        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)  // consumes ast
+        guard evalSuccess else {
+            let errorMessage = String(cString: evalError.message)
+            let line = evalError.line
+            let column = evalError.column
             G.Core.pointee.freeEvalEnv(env)
+            G.Core.pointee.freeError(&evalError)
             return .failure(ShardError(message: "Failed to evaluate AST: \(errorMessage) at line \(line), column \(column)"))
         }
 
+        // Create output wire struct
+        var outWire = SHLWire()
+
         // Transform environment into a wire
-        let wire = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen()) // consumes env
-        guard wire.error == nil else {
-            G.Core.pointee.freeWire(wire)
-            let errorMessage = String(cString: wire.error!.pointee.message)
-            let line = wire.error!.pointee.line
-            let column = wire.error!.pointee.column
-            return .failure(ShardError(message: "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"))
+        let transformSuccess = G.Core.pointee.transformEnv(
+            env, nameStr.asSHStringWithLen(), &outWire)  // consumes env
+        guard transformSuccess, outWire.error.message == nil else {
+            let errorMessage = String(cString: outWire.error.message)
+            let line = outWire.error.line
+            let column = outWire.error.column
+            G.Core.pointee.freeWire(&outWire)
+            return .failure(
+                ShardError(
+                    message:
+                        "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"
+                ))
         }
 
         // Create WireController from the resulting wire
-        let wireController = WireController(native: wire.wire.pointee!)
-        G.Core.pointee.freeWire(wire)
+        let wireController = WireController(native: outWire.wire.pointee!)
+        G.Core.pointee.freeWire(&outWire)
         return .success(wireController)
     }
 
@@ -2125,37 +2173,45 @@ class Shards {
         let nameStr = SwiftSWL(name)
 
         // Read the AST
-        let ast = ast.withUnsafeBufferPointer { buffer in
-            G.Core.pointee.loadAst(buffer.baseAddress!, UInt32(buffer.count))
+        var outAst = SHLAst()
+        let success = ast.withUnsafeBufferPointer { buffer in
+            G.Core.pointee.loadAst(buffer.baseAddress!, UInt32(buffer.count), &outAst)
         }
-        guard ast.error == nil else {
-            G.Core.pointee.freeError(ast.error)
+        guard success, outAst.error.message == nil else {
+            G.Core.pointee.freeAst(&outAst)
             return nil
         }
         // ast will have refcount of 0, need to bump it with a clone
-        let astOwned = OwnedVar(cloning: ast.ast)
+        let astOwned = OwnedVar(cloning: outAst.ast)
 
         // Create evaluation environment
         let emptyStr = SHStringWithLen.fromStatic("")
         let env = G.Core.pointee.createEvalEnv(emptyStr)
 
+        // Create error struct for eval
+        var evalError = SHLError()
+        
         // Evaluate the AST
-        let error = G.Core.pointee.eval(env, &astOwned.v) // consumes ast
-        guard error == nil else {
+        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
+        guard evalSuccess else {
+            G.Core.pointee.freeError(&evalError)
             G.Core.pointee.freeEvalEnv(env)
             return nil
         }
 
+        // Create output wire struct
+        var outWire = SHLWire()
+        
         // Transform environment into a wire
-        let wire = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen()) // consumes env
-        guard wire.error == nil else {
-            G.Core.pointee.freeWire(wire)
+        let transformSuccess = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen(), &outWire) // consumes env
+        guard transformSuccess, outWire.error.message == nil else {
+            G.Core.pointee.freeWire(&outWire)
             return nil
         }
 
         // Create WireController from the resulting wire
-        let wireController = WireController(native: wire.wire.pointee!)
-        G.Core.pointee.freeWire(wire)
+        let wireController = WireController(native: outWire.wire.pointee!)
+        G.Core.pointee.freeWire(&outWire)
         return wireController
     }
 
@@ -2203,7 +2259,7 @@ class Shards {
             i + distance
         }
 
-        @Published private(set) var count: Int = 0 // This helps SwiftUI track changes
+        @Published private(set) var count: Int = 0  // This helps SwiftUI track changes
         public var seq: SeqVar
 
         init() {
@@ -2213,7 +2269,7 @@ class Shards {
         // Wrap the original methods but with notification
         func push(string: String) {
             seq.push(string: string)
-            objectWillChange.send() // Notify SwiftUI
+            objectWillChange.send()  // Notify SwiftUI
             count = seq.size()
         }
 
@@ -2364,7 +2420,7 @@ class Shards {
         func notifyChange() {
             // Ensure UI updates happen on main thread
             DispatchQueue.main.async {
-                self.valueChanged.toggle() // Toggle to ensure notification happens
+                self.valueChanged.toggle()  // Toggle to ensure notification happens
                 self.objectWillChange.send()
             }
         }
@@ -2382,7 +2438,9 @@ class Shards {
     extension UIView {
         var safeArea: UIEdgeInsets {
             if #available(iOS 11, *) {
-                if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first {
+                if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+                    .windows.first
+                {
                     return window.safeAreaInsets
                 }
             }
@@ -2391,7 +2449,9 @@ class Shards {
     }
 
     @_cdecl("shards_get_uiview_safe_area")
-    public func getViewSafeArea(uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?) {
+    public func getViewSafeArea(
+        uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?
+    ) {
         let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
         uiEdgeInsets.pointee = view.safeArea
     }
@@ -2407,7 +2467,7 @@ class Shards {
                 // Base width/height from the cgImage
                 let width = cgImage.width
                 let height = cgImage.height
-                let bytesPerPixel = 4 // RGBA
+                let bytesPerPixel = 4  // RGBA
                 var drawWidth = width
                 var drawHeight = height
 
@@ -2415,17 +2475,20 @@ class Shards {
                 var transform = CGAffineTransform.identity
                 switch image.imageOrientation {
                 case .down, .downMirrored:
-                    transform = transform
+                    transform =
+                        transform
                         .translatedBy(x: CGFloat(width), y: CGFloat(height))
                         .rotated(by: .pi)
                 case .left, .leftMirrored:
                     swap(&drawWidth, &drawHeight)
-                    transform = transform
+                    transform =
+                        transform
                         .translatedBy(x: CGFloat(drawWidth), y: 0)
                         .rotated(by: .pi / 2)
                 case .right, .rightMirrored:
                     swap(&drawWidth, &drawHeight)
-                    transform = transform
+                    transform =
+                        transform
                         .translatedBy(x: 0, y: CGFloat(drawHeight))
                         .rotated(by: -.pi / 2)
                 default:
@@ -2449,15 +2512,17 @@ class Shards {
                 let colorSpace = CGColorSpaceCreateDeviceRGB()
                 let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
 
-                guard let context = CGContext(
-                    data: result.v.payload.imageValue.pointee.data,
-                    width: drawWidth,
-                    height: drawHeight,
-                    bitsPerComponent: 8,
-                    bytesPerRow: rowStride,
-                    space: colorSpace,
-                    bitmapInfo: bitmapInfo
-                ) else {
+                guard
+                    let context = CGContext(
+                        data: result.v.payload.imageValue.pointee.data,
+                        width: drawWidth,
+                        height: drawHeight,
+                        bitsPerComponent: 8,
+                        bytesPerRow: rowStride,
+                        space: colorSpace,
+                        bitmapInfo: bitmapInfo
+                    )
+                else {
                     print("Unable to create CGContext.")
                     return nil
                 }
@@ -2468,7 +2533,8 @@ class Shards {
 
                 return result
             #elseif canImport(AppKit)
-                guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+                else {
                     print("Unable to get CGImage from NSImage")
                     return nil
                 }
@@ -2532,7 +2598,7 @@ class Shards {
 
             let width = cgImage.width
             let height = cgImage.height
-            let bytesPerPixel = 4 // RGBA
+            let bytesPerPixel = 4  // RGBA
             let rowStride = width * bytesPerPixel
             let totalBytes = height * rowStride
 
@@ -2549,15 +2615,17 @@ class Shards {
             let colorSpace = CGColorSpaceCreateDeviceRGB()
             let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
 
-            guard let context = CGContext(
-                data: result.v.payload.imageValue.pointee.data,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: rowStride,
-                space: colorSpace,
-                bitmapInfo: bitmapInfo
-            ) else {
+            guard
+                let context = CGContext(
+                    data: result.v.payload.imageValue.pointee.data,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: rowStride,
+                    space: colorSpace,
+                    bitmapInfo: bitmapInfo
+                )
+            else {
                 print("Unable to create CGContext.")
                 return nil
             }

@@ -386,7 +386,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire deleteRef - use_count: {}", (*pref)->name, pref->use_count());
+    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void*) ref, pref->use_count());
     delete pref;
   }
 
@@ -399,8 +399,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto cref = sharedFromRef(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire addRef - use_count: {}", cref->name, cref.use_count());
     auto res = new std::shared_ptr<SHWire>(cref);
+    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void*)res, cref.use_count());
     return reinterpret_cast<SHWireRef>(res);
   }
 
@@ -1140,7 +1140,7 @@ namespace shards {
 NO_INLINE void _destroyVarSlow(SHVar &var);
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src);
 
-ALWAYS_INLINE inline void destroyVar(SHVar &var) {
+inline void destroyVar(SHVar &var) {
   // if var.flags contains SHVAR_FLAGS_FOREIGN, then the var should not be destroyed
   if ((var.flags & SHVAR_FLAGS_FOREIGN) == SHVAR_FLAGS_FOREIGN) {
     return;
@@ -1155,7 +1155,7 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   var.valueType = SHType::None;
 }
 
-ALWAYS_INLINE inline void cloneVar(SHVar &dst, const SHVar &src) {
+inline void cloneVar(SHVar &dst, const SHVar &src) {
   if (src.valueType < SHType::EndOfBlittableTypes && dst.valueType < SHType::EndOfBlittableTypes) {
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
