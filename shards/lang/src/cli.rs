@@ -220,15 +220,15 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
     indent,
     type_to_string(t.basicType.into())
   )?;
-  let next_indent = format!("{}  │  ", indent);
-  let branch_indent = format!("{}  └─ ", indent);
+  let next_indent = format!("{}    ", indent);  // 4 spaces for consistent indentation
+  let branch_indent = format!("{}  └─", indent);  // No trailing space after box drawing character
 
   match t.basicType {
     SHTYPE_SEQ => {
       let types_seq = unsafe { t.details.seqTypes };
       for i in 0..types_seq.len {
         let t = unsafe { &*types_seq.elements.offset(i as isize) };
-        write!(w, "{}Seq of: ", branch_indent)?;
+        writeln!(w, "{} Seq of:", branch_indent)?;  // Add newline after "Seq of:"
         print_type_indented(w, t, &next_indent)?;
       }
     }
@@ -237,20 +237,20 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
       let table_types = types_table.types;
       for i in 0..table_types.len {
         let t = unsafe { &*table_types.elements.offset(i as isize) };
-        write!(w, "{}Table of: ", branch_indent)?;
+        writeln!(w, "{} Table of:", branch_indent)?;  // Add newline after "Table of:"
         print_type_indented(w, t, &next_indent)?;
       }
       let table_keys = types_table.keys;
       for i in 0..table_keys.len {
         let t = unsafe { &*table_keys.elements.offset(i as isize) };
-        writeln!(w, "{}Table key: `{}`", branch_indent, t)?;
+        writeln!(w, "{} Table key: `{}`", branch_indent, t)?;
       }
     }
     SHTYPE_CONTEXT_VAR => {
       let types_context_var = unsafe { t.details.contextVarTypes };
       for i in 0..types_context_var.len {
         let t = unsafe { &*types_context_var.elements.offset(i as isize) };
-        write!(w, "{}Variable of: ", branch_indent)?;
+        writeln!(w, "{} Variable of:", branch_indent)?;  // Add newline after "Variable of:"
         print_type_indented(w, t, &next_indent)?;
       }
     }
@@ -260,11 +260,11 @@ fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std
       let enum_info = get_enum_info(EnumInfoId::VendorTypePair(enum_vendor, enum_type));
       if let Some(enum_info) = enum_info {
         let name = unsafe { CStr::from_ptr(enum_info.name).to_str().unwrap() };
-        writeln!(w, "{}Enum: `{}`", branch_indent, name)?;
+        writeln!(w, "{} Enum: `{}`", branch_indent, name)?;
       } else {
         writeln!(
           w,
-          "{}Enum: (Vendor: {}, Type: {})",
+          "{} Enum: (Vendor: {}, Type: {})",
           branch_indent, enum_vendor, enum_type
         )?;
       }
