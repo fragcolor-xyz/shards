@@ -211,18 +211,25 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
   }
 }
 
-fn print_type(t: &SHTypeInfo) -> String {
-  let mut s = String::new();
-  s.push_str(&format!("Type: `{}`", type_to_string(t.basicType.into())));
+// Alternative simpler implementation to avoid recursion issues
+// Create a wrapper that handles indentation without recursion
+fn print_type_indented<W: Write>(w: &mut W, t: &SHTypeInfo, indent: &str) -> std::io::Result<()> {
+  writeln!(
+    w,
+    "{}Type: `{}`",
+    indent,
+    type_to_string(t.basicType.into())
+  )?;
+  let next_indent = format!("{}  │  ", indent);
+  let branch_indent = format!("{}  └─ ", indent);
+
   match t.basicType {
     SHTYPE_SEQ => {
       let types_seq = unsafe { t.details.seqTypes };
       for i in 0..types_seq.len {
         let t = unsafe { &*types_seq.elements.offset(i as isize) };
-        s.push_str(&format!(
-          "\n  └─ Seq of: {}",
-          print_type(t).replace("\n", "\n  │  ")
-        ));
+        write!(w, "{}Seq of: ", branch_indent)?;
+        print_type_indented(w, t, &next_indent)?;
       }
     }
     SHTYPE_TABLE => {
@@ -230,25 +237,21 @@ fn print_type(t: &SHTypeInfo) -> String {
       let table_types = types_table.types;
       for i in 0..table_types.len {
         let t = unsafe { &*table_types.elements.offset(i as isize) };
-        s.push_str(&format!(
-          "\n  └─ Table of: {}",
-          print_type(t).replace("\n", "\n  │  ")
-        ));
+        write!(w, "{}Table of: ", branch_indent)?;
+        print_type_indented(w, t, &next_indent)?;
       }
       let table_keys = types_table.keys;
       for i in 0..table_keys.len {
         let t = unsafe { &*table_keys.elements.offset(i as isize) };
-        s.push_str(&format!("\n  └─ Table key: `{}`", t));
+        writeln!(w, "{}Table key: `{}`", branch_indent, t)?;
       }
     }
     SHTYPE_CONTEXT_VAR => {
       let types_context_var = unsafe { t.details.contextVarTypes };
       for i in 0..types_context_var.len {
         let t = unsafe { &*types_context_var.elements.offset(i as isize) };
-        s.push_str(&format!(
-          "\n  └─ Variable of: {}",
-          print_type(t).replace("\n", "\n  │  ")
-        ));
+        write!(w, "{}Variable of: ", branch_indent)?;
+        print_type_indented(w, t, &next_indent)?;
       }
     }
     SHTYPE_ENUM => {
@@ -257,22 +260,26 @@ fn print_type(t: &SHTypeInfo) -> String {
       let enum_info = get_enum_info(EnumInfoId::VendorTypePair(enum_vendor, enum_type));
       if let Some(enum_info) = enum_info {
         let name = unsafe { CStr::from_ptr(enum_info.name).to_str().unwrap() };
-        s.push_str(&format!("\n  └─ Enum: `{}`", name));
+        writeln!(w, "{}Enum: `{}`", branch_indent, name)?;
       } else {
-        s.push_str(&format!(
-          "\n  └─ Enum: (Vendor: {}, Type: {})",
-          enum_vendor, enum_type
-        ));
+        writeln!(
+          w,
+          "{}Enum: (Vendor: {}, Type: {})",
+          branch_indent, enum_vendor, enum_type
+        )?;
       }
     }
     _ => {}
   }
-  s
+  Ok(())
 }
 
-fn help(name: &str, type_: &str) -> Result<(), Error> {
-  shlog_debug!("Help for {}, type: {}", name, type_);
+// Update print_type to use the non-recursive approach
+pub fn print_type<W: Write>(w: &mut W, t: &SHTypeInfo) -> std::io::Result<()> {
+  print_type_indented(w, t, "")
+}
 
+pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<(), Error> {
   unsafe {
     shards_decompress_strings();
   }
@@ -281,7 +288,6 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
     "shard" => {
       let shard = AutoShardRef::create(name, None);
       if let Some(shard) = shard {
-        let mut help_output = String::new();
         let help_text = shard.0.help();
         let input_help = shard.0.input_help();
         let output_help = shard.0.output_help();
@@ -290,82 +296,73 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
         let parameters = shard.0.parameters();
 
         // Title with box drawing characters
-        help_output.push_str(&format!("Help for `{}`\n", name));
+        writeln!(w, "Help for `{}`", name)?;
 
         // Description section
         if let Some(help) = help_text {
           if !help.is_empty() {
-            help_output.push_str("Description:\n");
-            help_output.push_str(&format!("   {}\n\n", help));
+            writeln!(w, "Description:")?;
+            writeln!(w, "   {}", help)?;
+            writeln!(w)?;
           }
         }
 
         // Input section with types
-        help_output.push_str("Input:\n");
+        writeln!(w, "Input:")?;
         if let Some(help) = input_help {
           if !help.is_empty() {
-            help_output.push_str(&format!("   {}\n", help));
+            writeln!(w, "   {}", help)?;
           }
         }
         if !input_types.is_empty() {
           for input_type in input_types {
-            help_output.push_str(&format!(
-              "   {}\n",
-              print_type(&input_type).replace("\n", "\n   ")
-            ));
+            print_type_indented(w, &input_type, "   ")?;
           }
         } else {
-          help_output.push_str("   No specific input type requirements\n");
+          writeln!(w, "   No specific input type requirements")?;
         }
-        help_output.push_str("\n");
+        writeln!(w)?;
 
         // Output section with types
-        help_output.push_str("Output:\n");
+        writeln!(w, "Output:")?;
         if let Some(help) = output_help {
           if !help.is_empty() {
-            help_output.push_str(&format!("   {}\n", help));
+            writeln!(w, "   {}", help)?;
           }
         }
         if !output_types.is_empty() {
           for output_type in output_types {
-            help_output.push_str(&format!(
-              "   {}\n",
-              print_type(&output_type).replace("\n", "\n   ")
-            ));
+            print_type_indented(w, &output_type, "   ")?;
           }
         } else {
-          help_output.push_str("   No specific output type information\n");
+          writeln!(w, "   No specific output type information")?;
         }
-        help_output.push_str("\n");
+        writeln!(w)?;
 
         // Parameters section
         if !parameters.is_empty() {
-          help_output.push_str("🔧 Parameters:\n");
+          writeln!(w, "🔧 Parameters:")?;
           for parameter in parameters {
             let name = unsafe { CStr::from_ptr(parameter.name).to_str().unwrap() };
-            help_output.push_str(&format!("   ● `{}`\n", name));
+            writeln!(w, "   ● `{}`", name)?;
 
             let help = unsafe { CStr::from_ptr(parameter.help.string).to_str().unwrap() };
             if !help.is_empty() {
-              help_output.push_str(&format!("     Description: {}\n", help));
+              writeln!(w, "     Description: {}", help)?;
             }
 
             let types = parameter.valueTypes;
             if types.len > 0 {
-              help_output.push_str("     Accepted types:\n");
+              writeln!(w, "     Accepted types:")?;
               for i in 0..types.len {
                 let t = unsafe { &*types.elements.offset(i as isize) };
-                help_output.push_str(&format!(
-                  "     {}\n",
-                  print_type(t).replace("\n", "\n     ")
-                ));
+                print_type_indented(w, t, "     ")?;
               }
             }
-            help_output.push_str("\n");
+            writeln!(w)?;
           }
         }
 
-        println!("{}", help_output);
         Ok(())
       } else {
         Err(format!("Shard '{}' not found", name).into())
@@ -374,20 +371,19 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
     "enum" => {
       let info = get_enum_info(EnumInfoId::String(name));
       if let Some(info) = info {
-        let mut help_output = String::new();
-
         // Title
-        help_output.push_str(&format!("Help for enum `{}`\n", name));
+        writeln!(w, "Help for enum `{}`", name)?;
 
         // Description section
         let help = unsafe { CStr::from_ptr(info.help.string).to_str().unwrap() };
         if !help.is_empty() {
-          help_output.push_str("Description:\n");
-          help_output.push_str(&format!("   {}\n\n", help));
+          writeln!(w, "Description:")?;
+          writeln!(w, "   {}", help)?;
+          writeln!(w)?;
         }
 
         // Values section
-        help_output.push_str("Values:\n");
+        writeln!(w, "Values:")?;
         assert!(info.values.len == info.labels.len);
         for i in 0..info.values.len {
           let label = unsafe {
@@ -408,13 +404,12 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
             }
           };
 
-          help_output.push_str(&format!("   ● `{}` = {}\n", label, value));
+          writeln!(w, "   ● `{}` = {}", label, value)?;
           if !description.is_empty() {
-            help_output.push_str(&format!("     Description: {}\n", description));
+            writeln!(w, "     Description: {}", description)?;
           }
         }
 
-        println!("{}", help_output);
         Ok(())
       } else {
         Err(format!("Enum '{}' not found", name).into())
@@ -422,6 +417,11 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
     }
     _ => Err("Invalid help type. Supported types are 'shard' and 'enum'".into()),
   }
+}
+
+fn help(name: &str, type_: &str) -> Result<(), Error> {
+  let mut stdout = std::io::stdout();
+  help_to_writer(&mut stdout, name, type_)
 }
 
 fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error> {

@@ -1,3 +1,4 @@
+use crate::cli;
 use crate::custom_state::CustomStateContainer;
 use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
@@ -5,7 +6,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use shards::shard::Shard;
 use shards::types::{
-  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, SeqVar, Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
+  SeqVar, Type, Types, Var, FRAG_CC, STRINGS_TYPES, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
@@ -177,7 +179,11 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
     ">>" => Ok(AssignmentKind::AssignPush),
     _ => Err(("Unexpected assignment operator.", pos).into()),
   }?;
-  Ok(Assignment{ kind: op, identifier, line_info: Some(pos.into()) })
+  Ok(Assignment {
+    kind: op,
+    identifier,
+    line_info: Some(pos.into()),
+  })
 }
 
 enum FunctionValue {
@@ -411,7 +417,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             {
               // Insert this into the root map so it gets tracked globally
               let root_env = get_root_env(env);
-              root_env.dependencies.borrow_mut().push(file_path.to_string_lossy().to_string());
+              root_env
+                .dependencies
+                .borrow_mut()
+                .push(file_path.to_string_lossy().to_string());
             }
 
             if as_bytes {
@@ -910,7 +919,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
 
   Ok(Param {
     name: param_name,
-    value: param_value, 
+    value: param_value,
     custom_state: CustomStateContainer::new(),
     is_default: None,
   })
@@ -1189,7 +1198,7 @@ impl ShardsErrorsShard {
       match child {
         Statement::Pipeline(p) => {
           self.process_pipeline(p);
-        },
+        }
         _ => (),
       }
     }
@@ -1352,4 +1361,78 @@ fn test_parsing2() {
 
   let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
+}
+
+// Shards.Docs shard for getting documentation for shards and enums
+#[derive(shards::shard)]
+#[shard_info("Shards.Docs", "Outputs documentation for a shard or enum.")]
+pub struct DocsShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: ClonedVar,
+
+  #[shard_param(
+    "Type",
+    "The type of documentation to get, either 'shard' or 'enum'.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  doc_type: ParamVar,
+}
+
+impl Default for DocsShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: ClonedVar::default(),
+      doc_type: ParamVar::new(Var::ephemeral_string("shard")),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for DocsShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(common_type::string)
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let name: &str = input.try_into()?;
+    let doc_type: &str = self.doc_type.get().try_into()?;
+
+    // Use a buffer to collect the output
+    let mut buffer = Vec::new();
+
+    // Call help_to_writer from cli.rs
+    crate::cli::help_to_writer(&mut buffer, name, doc_type)
+      .map_err(|_| "Failed to get documentation")?;
+
+    // Convert the buffer to a string
+    let docs =
+      String::from_utf8(buffer).map_err(|_| "Failed to convert documentation to string")?;
+
+    // Output the documentation string
+    self.output = Var::ephemeral_string(&docs).into();
+
+    Ok(Some(self.output.0))
+  }
 }

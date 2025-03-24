@@ -389,6 +389,7 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
   }
 
   register_shard::<read::ReadShard>();
+  register_shard::<read::DocsShard>();
   register_shard::<read::ShardsErrorsShard>();
   register_legacy_shard::<eval::EvalShard>();
   register_enum::<read::AstType>();
