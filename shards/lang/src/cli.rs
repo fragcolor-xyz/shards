@@ -284,6 +284,9 @@ pub fn get_optional_string(os: SHOptionalString) -> &'static str {
   let c_str = if os.crc != 0 {
     unsafe { shards_get_compressed_string(os.crc) }
   } else {
+    if os.string.is_null() {
+      panic!("SHOptionalString is empty");
+    }
     os.string
   };
   unsafe { CStr::from_ptr(c_str).to_str().unwrap() }

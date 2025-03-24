@@ -107,7 +107,7 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
     val.crc = id; // make sure we return with crc to allow later lookups!
     return val;
   } else {
-    return SHOptionalString{nullptr, 0};
+    return SHOptionalString{nullptr, id}; // make sure we return with crc to allow later lookups!
   }
 }
 
