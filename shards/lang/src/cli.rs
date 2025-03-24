@@ -281,13 +281,14 @@ pub fn print_type<W: Write>(w: &mut W, t: &SHTypeInfo) -> std::io::Result<()> {
 }
 
 pub fn get_optional_string(os: SHOptionalString) -> &'static str {
-  let c_str = if os.crc != 0 {
-    unsafe { shards_get_compressed_string(os.crc) }
+  let c_str = if !os.string.is_null() {
+    os.string
   } else {
-    if os.string.is_null() {
+    if os.crc != 0 {
+      unsafe { shards_get_compressed_string(os.crc) }
+    } else {
       panic!("SHOptionalString is empty");
     }
-    os.string
   };
   unsafe { CStr::from_ptr(c_str).to_str().unwrap() }
 }

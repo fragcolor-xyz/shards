@@ -95,14 +95,19 @@ inline shards::logging::Logger getPerfLogger() { return shards::logging::getOrCr
 #define SHLOG_PERF_WARN(...) (void)0
 #endif
 
-#ifdef SH_COMPRESSED_STRINGS
-SHOptionalString getCompiledCompressedString(uint32_t id) {
+auto &getCompiledCompressedStrings() {
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
+  return CompiledCompressedStrings;
+}
 
-  auto it = CompiledCompressedStrings.find(id);
-  if (it != CompiledCompressedStrings.end()) {
+#ifdef SH_COMPRESSED_STRINGS
+SHOptionalString getCompiledCompressedString(uint32_t id) {
+  auto &_comp = getCompiledCompressedStrings(); // make sure it's initialized
+
+  auto it = _comp.find(id);
+  if (it != _comp.end()) {
     auto val = it->second;
     val.crc = id; // make sure we return with crc to allow later lookups!
     return val;
@@ -148,12 +153,10 @@ void decompressStrings() {
 }
 #else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
-  static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
-  if (GetGlobals().CompressedStrings == nullptr)
-    GetGlobals().CompressedStrings = &CompiledCompressedStrings;
+  auto &_comp = getCompiledCompressedStrings(); // make sure it's initialized
 
   SHOptionalString ls{str, id};
-  CompiledCompressedStrings.emplace(id, ls);
+  _comp.emplace(id, ls);
   return ls;
 }
 #endif
