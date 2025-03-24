@@ -486,6 +486,36 @@ extern "C" {
   fn shards_set_wire_debug_id(wire: SHWireRef, id: u64);
   fn shards_deserialize_var(bytes_buffer_var: *const SHVar) -> SHVar;
   fn shards_serialize_var(var: *const SHVar) -> SHVar;
+  fn shards_find_enum_id(name: SHStringWithLen) -> i64;
+  fn shards_find_object_type_id(name: SHStringWithLen) -> i64;
+  fn shards_get_enum_info(id: i64) -> *const SHEnumInfo;
+  fn shards_get_object_info(id: i64) -> *const SHObjectInfo;
+}
+
+pub fn get_enum_info(name: &str) -> Option<&'static SHEnumInfo> {
+  let name = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len() as u64,
+  };
+  let id = unsafe { shards_find_enum_id(name) };
+  if id == 0 {
+    None
+  } else {
+    Some(unsafe { &*shards_get_enum_info(id) })
+  }
+}
+
+pub fn get_object_info(name: &str) -> Option<&'static SHObjectInfo> {
+  let name = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len() as u64,
+  };
+  let id = unsafe { shards_find_object_type_id(name) };
+  if id == 0 {
+    None
+  } else {
+    Some(unsafe { &*shards_get_object_info(id) })
+  }
 }
 
 impl Wire {

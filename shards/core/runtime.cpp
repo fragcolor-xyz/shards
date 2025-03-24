@@ -2670,6 +2670,26 @@ SHLError *shards_eval_env(SHLEvalEnv *env, const SHVar *ast);
 SHLWire shards_transform_env(SHLEvalEnv *env, SHStringWithLen name);
 void shards_free_wire(SHLWire wire);
 
+int64_t shards_find_enum_id(SHStringWithLen name) { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); }
+
+int64_t shards_find_object_type_id(SHStringWithLen name) {
+  return shards::findObjectTypeId(std::string_view{name.string, size_t(name.len)});
+}
+
+const SHEnumInfo *shards_get_enum_info(int64_t id) {
+  // we need two uint32_t vendor and type from the single int64_t id
+  int32_t vendorId = (int32_t)((id & 0xFFFFFFFF00000000) >> 32);
+  int32_t enumId = (int32_t)(id & 0x00000000FFFFFFFF);
+  return shards::findEnumInfo(vendorId, enumId);
+}
+
+const SHObjectInfo *shards_get_object_info(int64_t id) {
+  // we need two uint32_t vendor and type from the single int64_t id
+  int32_t vendorId = (int32_t)((id & 0xFFFFFFFF00000000) >> 32);
+  int32_t typeId = (int32_t)(id & 0x00000000FFFFFFFF);
+  return shards::findObjectInfo(vendorId, typeId);
+}
+
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto &wire = SHWire::sharedFromRef(wireRef);
   std::string_view nameView{name, nameLen};

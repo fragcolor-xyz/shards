@@ -4,7 +4,7 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::Core;
-use shards::types::{type_to_string, AutoShardRef, Mesh};
+use shards::types::{get_enum_info, type_to_string, AutoShardRef, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
   fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHTypeInfo,
@@ -257,6 +257,8 @@ fn print_type(t: &SHTypeInfo) -> String {
 }
 
 fn help(name: &str, type_: &str) -> Result<(), Error> {
+  shlog_debug!("Help for {}, type: {}", name, type_);
+
   unsafe {
     shards_decompress_strings();
   }
@@ -356,7 +358,53 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
       }
     }
     "enum" => {
-      unimplemented!()
+      let info = get_enum_info(name);
+      if let Some(info) = info {
+        let mut help_output = String::new();
+
+        // Title
+        help_output.push_str(&format!("Help for enum `{}`\n", name));
+
+        // Description section
+        let help = unsafe { CStr::from_ptr(info.help.string).to_str().unwrap() };
+        if !help.is_empty() {
+          help_output.push_str("Description:\n");
+          help_output.push_str(&format!("   {}\n\n", help));
+        }
+
+        // Values section
+        help_output.push_str("Values:\n");
+        assert!(info.values.len == info.labels.len);
+        for i in 0..info.values.len {
+          let label = unsafe {
+            let label_ptr = *info.labels.elements.offset(i as isize);
+            if label_ptr.is_null() {
+              "<null>"
+            } else {
+              CStr::from_ptr(label_ptr).to_str().unwrap()
+            }
+          };
+          let value = unsafe { &*info.values.elements.offset(i as isize) };
+          let description = unsafe {
+            let description_ptr = *info.descriptions.elements.offset(i as isize);
+            if description_ptr.string.is_null() {
+              "<null>"
+            } else {
+              CStr::from_ptr(description_ptr.string).to_str().unwrap()
+            }
+          };
+
+          help_output.push_str(&format!("   ● `{}` = {}\n", label, value));
+          if !description.is_empty() {
+            help_output.push_str(&format!("     Description: {}\n", description));
+          }
+        }
+
+        println!("{}", help_output);
+        Ok(())
+      } else {
+        Err(format!("Enum '{}' not found", name).into())
+      }
     }
     "object" => {
       unimplemented!()
