@@ -4,7 +4,7 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
 use shards::core::Core;
-use shards::types::{get_enum_info, type_to_string, AutoShardRef, Mesh};
+use shards::types::{get_enum_info, get_object_info, type_to_string, AutoShardRef, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
   fourCharacterCode, shlog, shlog_debug, shlog_error, SHCore, SHTypeInfo,
@@ -113,7 +113,7 @@ enum Commands {
     /// The search query
     #[arg()]
     name: String,
-    /// The type of the help to search for
+    /// The type of the help to search for, can be "shard" or "enum"
     #[arg(long = "type", short = 't', default_value = "shard", action)]
     type_: String,
   },
@@ -405,9 +405,6 @@ fn help(name: &str, type_: &str) -> Result<(), Error> {
       } else {
         Err(format!("Enum '{}' not found", name).into())
       }
-    }
-    "object" => {
-      unimplemented!()
     }
     _ => Err("Invalid help type. Supported types are 'shard' and 'enum'".into()),
   }
