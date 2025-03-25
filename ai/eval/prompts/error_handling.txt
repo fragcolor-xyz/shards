@@ -1,0 +1,11 @@
+# Error Handling
+
+Problem: Write a Shards script that demonstrates error handling with Maybe. Your script should:
+
+1. Try to parse the string "42" as JSON and log the result
+2. Try to parse the string "not valid json" as JSON and handle the error
+3. Create a nested Maybe structure where:
+   - The outer block tries to parse a valid JSON array
+   - The inner block tries to access an element that doesn't exist
+
+Add comments explaining what happens in each case.

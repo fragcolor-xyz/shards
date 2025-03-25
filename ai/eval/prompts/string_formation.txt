@@ -1,0 +1,10 @@
+# String Formation
+
+Problem: Write a Shards script that demonstrates both String.Join and String.Format operations. Your script should:
+
+1. Create variables for a username ("User123") and a score (85)
+2. Use String.Join to combine "Welcome, " and the username
+3. Use String.Format to create a message that includes the username and their score
+4. Log both results
+
+Explain why String.Join and String.Format are used differently in this scenario.

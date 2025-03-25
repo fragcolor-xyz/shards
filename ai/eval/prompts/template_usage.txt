@@ -1,0 +1,10 @@
+# Template Definition and Usage
+
+Problem: Create a Shards script that demonstrates templates. Your script should:
+
+1. Define a template called 'calculate-area' that takes width and height parameters and returns their product
+2. Define a template called 'format-person' that takes name and age parameters and returns a formatted string
+3. Use both templates with different arguments
+4. Log the results
+
+Explain how templates help with code reuse in Shards.

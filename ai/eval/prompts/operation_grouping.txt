@@ -1,0 +1,10 @@
+# Operation Grouping
+
+Problem: Write a Shards script that demonstrates the importance of operation grouping with parentheses. Your script should:
+
+1. Calculate 5 + (3 * 2) with proper grouping
+2. Calculate (5 + 3) * 2 with a different grouping
+3. Create a more complex expression: 10 + (5 * (2 + 1))
+4. Create two variables a=2 and b=3, then calculate a^(2*b) vs (a^2)*b
+
+Log all results and explain the difference grouping makes in each case.

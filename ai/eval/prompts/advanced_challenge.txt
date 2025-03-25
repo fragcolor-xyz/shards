@@ -1,0 +1,13 @@
+# Anti-Cheating Challenge
+
+Problem: Write a Shards script that demonstrates deep understanding of the language. Your script should:
+
+1. Create a mutable table with a nested structure containing both sequences and sub-tables
+2. Implement a function that recursively processes this structure
+3. For each number found at any depth, double it
+4. For each string found at any depth, append "_processed"
+5. Log the final modified structure
+
+Explain how your solution handles the recursive traversal and modification of the nested structure, and how it maintains the original structure's format while changing the values.
+
+Note: This problem is designed to be difficult to solve by simple pattern matching, and requires true understanding of Shards data structures and operations.

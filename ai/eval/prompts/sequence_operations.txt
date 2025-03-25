@@ -1,0 +1,12 @@
+# Working with Sequences
+
+Problem: Write a Shards script that works with sequences. Your script should:
+
+1. Create a mutable sequence 'numbers' containing integers [5, 10, 15, 20, 25]
+2. Add the value 30 to the end of the sequence
+3. Extract and log the third element (index 2)
+4. Extract and log the last element
+5. Remove the element at index 1
+6. Log the modified sequence
+
+Use comments to explain each operation.
