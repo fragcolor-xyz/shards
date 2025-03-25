@@ -1,0 +1,93 @@
+; Script to demonstrate wires and state management in Shards
+
+; Define a parent wire with state
+@wire(parent-wire {
+  ; Initialize state
+  0 >= counter
+  "Initial" = message
+  [1 2 3] >= numbers
+  
+  ; Log initial state
+  counter | Log("Parent initial counter")
+  message | Log("Parent message")
+  numbers | Log("Parent initial numbers")
+  
+  ; Call child wire with direct access to parent's state
+  Do(child-wire)
+  
+  ; See that child wire modified parent's state
+  counter | Log("Parent counter after child")
+  numbers | Log("Parent numbers after child")
+  
+  ; Call detached child wire - works with copies of variables
+  Detach(detached-child-wire)
+  
+  ; Parent state unchanged by detached wire
+  counter | Log("Parent counter after detached")
+  numbers | Log("Parent numbers after detached")
+})
+
+; Child wire that modifies parent's state
+@wire(child-wire {
+  ; Modify parent's variables directly
+  counter | Add(5) > counter
+  4 >> numbers
+  
+  counter | Log("Child updated counter")
+  numbers | Log("Child updated numbers")
+})
+
+; Detached child that gets its own copies
+@wire(detached-child-wire {
+  ; Modifies only its local copies
+  counter | Add(10) > counter
+  5 >> numbers
+  
+  counter | Log("Detached counter")
+  numbers | Log("Detached numbers")
+})
+
+; Global variables for shared state
+@wire(globals-init {
+  ; Create global variables
+  "Shared data" | Set(global-message Global: true)
+  0 | Set(global-counter Global: true)
+  
+  ; Initialize a global table
+  {status: "ready" count: 0} | Set(global-state Global: true)
+})
+
+; Wire to access and modify globals
+@wire(access-globals {
+  ; Access and log global variables
+  global-message | Log("Global message")
+  global-counter | Log("Global counter before")
+  
+  ; Modify globals
+  global-counter | Add(1) > global-counter
+  "updated" | Update(global-state "status")
+  
+  ; Log changes
+  global-counter | Log("Global counter after")
+  global-state:status | Log("Global state status")
+})
+
+; Main wire to run the demonstrations
+@wire(main {
+  ; Run parent wire to show variable scoping
+  Do(parent-wire)
+  
+  ; Initialize and use globals
+  Do(globals-init)
+  Do(access-globals)
+  
+  ; Return examples
+  {examples: {
+    parent_child: "Child wires can access parent's variables",
+    detached: "Detached wires get copies of parent's variables",
+    globals: "Global variables can be accessed from any wire"
+  }}
+})
+
+; Run the main wire
+Do(main)

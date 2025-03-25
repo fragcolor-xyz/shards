@@ -1,0 +1,38 @@
+; Script to demonstrate templates in Shards
+
+; Define a simple template that doubles a value
+@template(double [value] {
+  value | Mul(2)
+})
+
+; Define a template with multiple parameters
+@template(process-data [input processor output] {
+  input | processor > output
+  output | Log("Processed value")
+})
+
+; Define a template for formatting messages
+@template(format-message [name age] {
+  ["Hello " name "! You are " age " years old."] | String.Format
+})
+
+; Use the double template
+5 | @double() | Log("Doubled")
+
+; Use the process-data template
+10 >= input-value
+Add(5) = add-five
+0 >= result
+@process-data(input-value add-five result)
+
+; Use the format-message template
+"Alice" = name
+30 = age
+@format-message(name age) | Log("Formatted")
+
+; Return examples
+{examples: {
+  simple: "@template(double [value] { value | Mul(2) })",
+  with_params: "@template(process-data [input processor output] { input | processor > output })",
+  usage: "5 | @double() | Log"
+}}

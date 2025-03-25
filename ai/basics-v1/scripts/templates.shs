@@ -1,0 +1,56 @@
+; Script to demonstrate templates in Shards
+
+; Define a simple template to double a value
+@template(double [value] {
+  value | Mul(2)
+})
+
+; Define a template with multiple parameters
+@template(process-data [input processor output] {
+  input | processor > output
+  output | Log("Processed data")
+})
+
+; Define a template for mathematical operations
+@template(math-op [a b operation result-label] {
+  a | operation(b) | Log(result-label)
+})
+
+; Define a template for creating a formatted message
+@template(format-message [name age] {
+  ["Hello " name "! You are " age " years old."] | String.Format
+})
+
+; Use the templates
+5 | @double() | Log("Doubled value")
+
+10 >= input-value
+Add(5) = my-processor
+0 >= result
+@process-data(input-value my-processor result)
+
+10 = a-val
+5 = b-val
+Add = op
+"10 + 5 =" = label
+a-val | @math-op(b-val op label)
+
+; Use the format message template
+"Alice" = name
+30 = age
+@format-message(name age) | Log("Formatted message")
+
+; Define and use a template for repeated UI patterns
+@template(input-field [label value] {
+  [label ": " value] | String.Format
+})
+
+@input-field("Username" "user123") | Log("UI Field 1")
+@input-field("Email" "user@example.com") | Log("UI Field 2")
+
+; Return examples of the templates
+{examples: {
+  simple: "@template(double [value] { value | Mul(2) })",
+  with_params: "@template(process-data [input processor output] { input | processor > output })",
+  usage: "value | @double | Log"
+}}

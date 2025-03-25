@@ -1,0 +1,41 @@
+; Script to demonstrate error handling in Shards with Maybe
+
+; Maybe with successful JSON parsing
+Maybe({
+  "42" | FromJson | Log("Successfully parsed number")
+  "Reached after successful parsing" | Log
+} {
+  "Error in parsing example" | Log("Error handler")
+})
+
+; Maybe with invalid JSON that will cause an error
+Maybe({
+  "not a number" | FromJson | Log("This won't be reached")
+  "This won't be reached either" | Log
+} {
+  "Error occurred in parsing example" | Log("Error handler")
+})
+
+; Nested Maybe blocks
+Maybe({
+  ; Outer try block
+  "Outer try block" | Log
+  Maybe({
+    ; Inner try block
+    "Inner try block" | Log
+    "[1, 2, 3]" | FromJson | Log("Inner success")
+  } {
+    ; Inner catch block
+    "Inner error handler" | Log
+  })
+  "After inner Maybe" | Log
+} {
+  ; Outer catch block
+  "Outer error handler" | Log
+})
+
+; Return examples
+{examples: {
+  basic_maybe: "Maybe({try-block} {catch-block})",
+  usage_scenarios: ["Parsing JSON", "HTTP requests", "File operations", "Index out of bounds"]
+}}
