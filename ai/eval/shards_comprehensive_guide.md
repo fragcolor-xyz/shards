@@ -210,7 +210,7 @@ Maybe({
   ["Hello, " name "!"] | String.Format
 })
 
-; Use the template
+; Use the template, notice template calls are always prefixed with @ otherwise, Shards will interpret the name as a variable
 @greet("Alice") | Log  ; Outputs: "Hello, Alice!"
 
 ; Template with multiple parameters
@@ -219,6 +219,13 @@ Maybe({
 })
 
 @math-op(5 10) | Log  ; Outputs: 15
+
+; Or using shards natural flow syntax
+@template(math-op [b] {
+  Add(b)
+})
+
+5 | @math-op(10) | Log  ; Outputs: 15
 ```
 
 ## Wire Definitions and State Management
