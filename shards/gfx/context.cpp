@@ -176,7 +176,8 @@ struct ContextMainOutput {
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
     if (st.status != WGPUSurfaceGetCurrentTextureStatus_Success) {
-      SPDLOG_LOGGER_WARN(logger, "Failed to acquire surface texture: {}", magic_enum::enum_name(st.status));
+      // this happens on windows when the window is minimized
+      SPDLOG_LOGGER_DEBUG(logger, "Failed to acquire surface texture: {}", magic_enum::enum_name(st.status));
       return false;
     }
 
