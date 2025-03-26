@@ -8,10 +8,11 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl};
 use candle_core::{DType, Device, Tensor as CandleTensor};
 
 mod audio;
-mod model;
+pub mod model;
+pub mod moondream;
 mod tensor;
-mod tokenizer;
-mod whisper;
+pub mod tokenizer;
+pub mod whisper;
 
 use once_cell::sync::OnceCell;
 
@@ -120,7 +121,7 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorZerosLikeShard>();
   register_shard::<model::ForwardShard>();
   register_shard::<model::SpeechToTextShard>();
-  register_shard::<model::VisionToTextShard>();
+  register_shard::<moondream::VisionToTextShard>();
 
   register_shard::<tensor::TensorMulShard>();
   register_shard::<tensor::TensorSubShard>();

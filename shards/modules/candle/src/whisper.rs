@@ -2,11 +2,11 @@
 
 use anyhow::{Error as E, Result};
 use candle_core::{Device, IndexOp, Tensor};
-use candle_nn::{ops::softmax, VarBuilder};
+use candle_nn::ops::softmax;
 use rand::{distributions::Distribution, SeedableRng};
 use tokenizers::Tokenizer;
 
-use candle_transformers::models::whisper::{self as m, audio, Config};
+use candle_transformers::models::whisper::{self as m, Config};
 
 pub enum Model {
   Normal(m::model::Whisper),
