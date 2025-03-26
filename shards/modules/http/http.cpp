@@ -1361,6 +1361,11 @@ struct DecodeURI {
 };
 } // namespace Http
 } // namespace shards
+
+extern "C" {
+void shards_webkit_register();
+}
+
 SHARDS_REGISTER_FN(http) {
   using namespace shards::Http;
 #if SH_EMSCRIPTEN
@@ -1379,4 +1384,6 @@ SHARDS_REGISTER_FN(http) {
 #endif
   REGISTER_SHARD("String.EncodeURI", EncodeURI);
   REGISTER_SHARD("String.DecodeURI", DecodeURI);
+
+  shards_webkit_register();
 }

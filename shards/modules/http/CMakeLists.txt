@@ -47,3 +47,12 @@ if(HTTP_SUPPORTED)
       "SHELL:-s FETCH=1")
   endif()
 endif()
+
+if(APPLE)
+  # Build swift sources
+  add_library(shards-http-swift webkit.swift ${SHARDS_DIR}/include/shards/shards.swift)
+  target_include_directories(shards-http-swift PRIVATE ${SHARDS_DIR}/include)
+  set_target_properties(shards-http-swift PROPERTIES Swift_MODULE_NAME shards_http_swift)
+  target_link_libraries(shards-module-http $<TARGET_FILE:shards-http-swift>)
+  add_dependencies(shards-module-http shards-http-swift)
+endif()
