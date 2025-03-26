@@ -69,6 +69,14 @@ enum Commands {
   /// Reads and executes a Shards file
   New(RunArgs),
   Run(RunArgs),
+  /// Evaluates Shards code from stdin
+  Eval {
+    /// Decompress help strings before running the script
+    #[arg(long, short = 'd', default_value = "false", action)]
+    decompress_strings: bool,
+    #[arg(num_args = 0..)]
+    args: Vec<String>,
+  },
   /// Reads and builds a binary AST Shards file
   Build {
     /// The script to evaluate
@@ -189,6 +197,33 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
       } => load(file, args, *decompress_strings, cancellation_token),
       Commands::New(args) => execute(args, cancellation_token),
       Commands::Run(args) => execute(args, cancellation_token),
+      Commands::Eval {
+        decompress_strings,
+        args,
+      } => {
+        if *decompress_strings {
+          unsafe {
+            shards_decompress_strings();
+          }
+        }
+        match std::io::read_to_string(std::io::stdin()) {
+          Ok(input) => {
+            match read(&input, "<stdin>", ".".to_string(), vec![]) {
+              Ok(ast) => {
+                match execute_seq(args, ast, cancellation_token) {
+                  Ok(_) => Ok(()),
+                  Err(e) => Err(format!("Failed to execute stdin: {}", e).into()),
+                }
+              }
+              Err(e) => {
+                shlog!("Error: {:?}", e);
+                Err("Failed to parse stdin".into())
+              }
+            }
+          }
+          Err(e) => Err(format!("Failed to read stdin: {}", e).into()),
+        }
+      }
       Commands::Format {
         file,
         output,
