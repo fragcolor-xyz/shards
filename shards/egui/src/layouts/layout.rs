@@ -43,7 +43,6 @@ use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
-
 use std::rc::Rc;
 
 macro_rules! retrieve_layout_class_attribute {
@@ -1233,4 +1232,12 @@ impl Shard for LayoutShard {
 pub fn register_shards() {
   register_legacy_shard::<LayoutConstructor>();
   register_shard::<LayoutShard>();
+
+  let mut info = shards::SHObjectInfo::default();
+  info.name = shards::cstr!("LayoutClass").as_ptr() as *const i8;
+  shards::core::register_object_type_internal(
+    shards::types::FRAG_CC,
+    shards::fourCharacterCode(*b"layc"),
+    info,
+  );
 }

@@ -455,7 +455,7 @@ struct WSClientShard {
     }
   }
 
-  bool useRawData() { return  _raw.payload.boolValue; }
+  bool useRawData() { return _raw.payload.boolValue; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -682,7 +682,7 @@ struct WSClientShard {
     }
   }
 
-  bool useRawData() { return  _raw.payload.boolValue; }
+  bool useRawData() { return _raw.payload.boolValue; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -767,4 +767,7 @@ SHARDS_REGISTER_FN(network_ws) {
   REGISTER_SHARD("Network.WS.Server", WSServerShard);
 #endif
   REGISTER_SHARD("Network.WS.Client", WSClientShard);
+
+  shards::registerObjectType(shards::CoreCC, shards::Network::PeerCC, SHObjectInfo{"Peer"});
+  shards::registerObjectType(shards::CoreCC, shards::Network::ServerCC, SHObjectInfo{"Server"});
 }

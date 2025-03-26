@@ -1003,7 +1003,7 @@ class ParamVar {
         assert(pointee != nil)
         return pointee!.pointee
     }
-    
+
     func maybeGet() -> SHVar? {
         return pointee?.pointee
     }
@@ -1939,6 +1939,10 @@ class Shards {
             shString.len = UInt64(length)
             G.Core.pointee.logLevel(Int32(level), shString)
         }
+    }
+
+    static func registerObjectType(vendor: Int32, type: Int32, info: SHObjectInfo) {
+        G.Core.pointee.registerObjectType(vendor, type, info)
     }
 
     static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {

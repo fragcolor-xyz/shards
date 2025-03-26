@@ -1951,4 +1951,8 @@ SHARDS_REGISTER_FN(audio) {
   REGISTER_SHARD("Audio.Direction", shards::Audio::SetDirection);
   REGISTER_SHARD("Audio.Cones", shards::Audio::SetCones);
   REGISTER_SHARD("Audio.Velocity", shards::Audio::SetVelocity);
+
+  shards::registerObjectType(shards::CoreCC, shards::Audio::Device::DeviceCC, SHObjectInfo{"Device"});
+  shards::registerObjectType(shards::CoreCC, shards::Audio::Engine::EngineCC, SHObjectInfo{"Engine"});
+  shards::registerObjectType(shards::CoreCC, shards::Audio::Sound::SoundCC, SHObjectInfo{"Sound"});
 }

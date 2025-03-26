@@ -14,6 +14,7 @@ extern crate lazy_static;
 use reqwest::RequestBuilder;
 use reqwest::Response;
 use shards::core::register_legacy_shard;
+use shards::core::register_object_type_internal;
 use shards::core::register_shard;
 use shards::core::run_future;
 use shards::fourCharacterCode;
@@ -30,7 +31,6 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::RawString;
 use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
@@ -54,8 +54,8 @@ fn print_error(e: &dyn std::error::Error) {
   shlog_error!("Error: {}", e);
   let mut source = e.source();
   while let Some(e) = source {
-      shlog_error!("Caused by: {}", e);
-      source = e.source();
+    shlog_error!("Caused by: {}", e);
+    source = e.source();
   }
 }
 
@@ -168,7 +168,7 @@ lazy_static! {
       INT_TYPES_SLICE
     )
       .into(),
-      
+
   ];
 }
 
@@ -253,7 +253,11 @@ impl RequestBase {
       7 => Ok(self.keep_alive = value.try_into().map_err(|_x| "Failed to set keep_alive")?),
       8 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
       9 => Ok(self.backoff = value.try_into().map_err(|_x| "Failed to set backoff")?),
-      10 => Ok(self.connection_timeout = value.try_into().map_err(|_x| "Failed to set connection_timeout")?),
+      10 => Ok(
+        self.connection_timeout = value
+          .try_into()
+          .map_err(|_x| "Failed to set connection_timeout")?,
+      ),
       _ => unreachable!(),
     }
   }
@@ -270,7 +274,10 @@ impl RequestBase {
       7 => self.keep_alive.into(),
       8 => self.streaming.into(),
       9 => self.backoff.try_into().expect("A valid integer in range"),
-      10 => self.connection_timeout.try_into().expect("A valid integer in range"),
+      10 => self
+        .connection_timeout
+        .try_into()
+        .expect("A valid integer in range"),
       _ => unreachable!(),
     }
   }
@@ -341,7 +348,7 @@ impl RequestBase {
       }
     }
     self.task_cancel = None;
-    
+
     self.url.cleanup(ctx);
     self.headers.cleanup(ctx);
     self._close_client();
@@ -373,122 +380,121 @@ impl RequestBase {
     let as_bytes = self.as_bytes;
     let full_response = self.full_response;
     let streaming = self.streaming;
-    
+
     // Create a cancellation token that we'll store
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
     let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
     self.task_cancel = Some(cancellation.clone());
 
-    let result = run_future(context, async move {
-      let runtime = TOKIO_RUNTIME.clone();
-      let request = request; // Capture request in the async block
-      
-      // Setup cancellation receiver
-      let cancel_rx = cancel_rx;
+    let result = run_future(
+      context,
+      async move {
+        let runtime = TOKIO_RUNTIME.clone();
+        let request = request; // Capture request in the async block
 
-      // Lock the runtime briefly to spawn the task
-      let task = {
-        let runtime = runtime.lock().unwrap();
-        runtime.spawn(async move {
-          // Use tokio::select! to race between the request and cancellation
-          let response = tokio::select! {
-            resp = request.send() => resp.map_err(|e| {
-              print_error(&e);
-              "Failed to send the request"
-            })?,
-            _ = cancel_rx => return Err("Request cancelled")
-          };
+        // Setup cancellation receiver
+        let cancel_rx = cancel_rx;
 
-          if !full_response && !response.status().is_success() {
-            shlog_error!("Request failed with status {}", response.status());
-            let err_text = response.text().await.map_err(|e| {
-              print_error(&e);
-              "Failed to decode the failure response"
-            })?;
-            let err_text = if err_text.len() > 1024 {
-              format!("{}...", err_text.chars().take(1024).collect::<String>())
-            } else {
-              err_text
+        // Lock the runtime briefly to spawn the task
+        let task = {
+          let runtime = runtime.lock().unwrap();
+          runtime.spawn(async move {
+            // Use tokio::select! to race between the request and cancellation
+            let response = tokio::select! {
+              resp = request.send() => resp.map_err(|e| {
+                print_error(&e);
+                "Failed to send the request"
+              })?,
+              _ = cancel_rx => return Err("Request cancelled")
             };
-            shlog_error!(
-              "Request failed with body {}",
-              err_text
-            );
-            return Err("Request failed");
-          }
 
-          if streaming {
-            // When streaming, we return a ref counted object with the response it self
-            let response_object = Var::new_ref_counted(OurResponse(response), &*STREAM_TYPE);
-            return Ok(response_object.into());
-          }
+            if !full_response && !response.status().is_success() {
+              shlog_error!("Request failed with status {}", response.status());
+              let err_text = response.text().await.map_err(|e| {
+                print_error(&e);
+                "Failed to decode the failure response"
+              })?;
+              let err_text = if err_text.len() > 1024 {
+                format!("{}...", err_text.chars().take(1024).collect::<String>())
+              } else {
+                err_text
+              };
+              shlog_error!("Request failed with body {}", err_text);
+              return Err("Request failed");
+            }
 
-          let mut output_table = AutoTableVar::new();
+            if streaming {
+              // When streaming, we return a ref counted object with the response it self
+              let response_object = Var::new_ref_counted(OurResponse(response), &*STREAM_TYPE);
+              return Ok(response_object.into());
+            }
 
-          if full_response {
-            output_table
-              .0
-              .insert_fast_static("status", &response.status().as_u16().into());
+            let mut output_table = AutoTableVar::new();
 
-            let headers = output_table
-              .0
-              .get_mut_fast_static("headers")
-              .as_mut_table_creating()
-              .unwrap();
-            for (key, value) in response.headers() {
-              let key = Var::ephemeral_string(key.as_str());
-              let value = Var::ephemeral_string(value.to_str().map_err(|e| {
+            if full_response {
+              output_table
+                .0
+                .insert_fast_static("status", &response.status().as_u16().into());
+
+              let headers = output_table
+                .0
+                .get_mut_fast_static("headers")
+                .as_mut_table_creating()
+                .unwrap();
+              for (key, value) in response.headers() {
+                let key = Var::ephemeral_string(key.as_str());
+                let value = Var::ephemeral_string(value.to_str().map_err(|e| {
+                  print_error(&e);
+                  "Failed to decode the response"
+                })?);
+                headers.insert_fast(key, &value);
+              }
+            }
+
+            let content: ClonedVar = if as_bytes {
+              let bytes = response.bytes().await.map_err(|e| {
                 print_error(&e);
                 "Failed to decode the response"
-              })?);
-              headers.insert_fast(key, &value);
-            }
-          }
+              })?;
 
-          let content: ClonedVar = if as_bytes {
-            let bytes = response.bytes().await.map_err(|e| {
-              print_error(&e);
-              "Failed to decode the response"
-            })?;
+              bytes.as_ref().into()
+            } else {
+              let str = response.text().await.map_err(|e| {
+                print_error(&e);
+                "Failed to decode the response"
+              })?;
 
-            bytes.as_ref().into()
-          } else {
-            let str = response.text().await.map_err(|e| {
-              print_error(&e);
-              "Failed to decode the response"
-            })?;
+              let shards_str = Var::ephemeral_string(str.as_str());
+              shards_str.into()
+            };
 
-            let shards_str = Var::ephemeral_string(str.as_str());
-            shards_str.into()
-          };
+            let result: ClonedVar = if full_response {
+              output_table.0.insert_fast_static("body", &content.0);
+              output_table.to_cloned()
+            } else {
+              content
+            };
 
-          let result: ClonedVar = if full_response {
-            output_table
-              .0
-              .insert_fast_static("body", &content.0);
-            output_table.to_cloned()
-          } else {
-            content
-          };
+            Ok(result)
+          })
+        };
 
-          Ok(result)
-        })
-      };
-
-      // Await the spawned task outside the lock
-      task.await.map_err(|e| {
-        print_error(&e);
-        "Failed to join task"
-      })?
-    }, move || {
-      shlog_debug!("Request cancelled");
-      // Cancel any running task
-      if let Some(tx) = cancellation.lock().unwrap().take() {
-        shlog_trace!("Cancelling HTTP task");
-        // Send cancellation signal - ignore error if receiver dropped
-        let _ = tx.send(());
-      }
-    })?;
+        // Await the spawned task outside the lock
+        task.await.map_err(|e| {
+          print_error(&e);
+          "Failed to join task"
+        })?
+      },
+      move || {
+        shlog_debug!("Request cancelled");
+        // Cancel any running task
+        if let Some(tx) = cancellation.lock().unwrap().take() {
+          shlog_trace!("Cancelling HTTP task");
+          // Send cancellation signal - ignore error if receiver dropped
+          let _ = tx.send(());
+        }
+      },
+    )?;
 
     if !streaming {
       // We are done here if we are not streaming, might as well clear this up
@@ -882,7 +888,7 @@ struct HttpStreamShard {
   stream: ParamVar,
 
   output: ClonedVar,
-  
+
   // Add cancellation support
   task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
 }
@@ -927,7 +933,7 @@ impl Shard for HttpStreamShard {
       }
     }
     self.task_cancel = None;
-    
+
     self.cleanup_helper(ctx)?;
     Ok(())
   }
@@ -939,51 +945,55 @@ impl Shard for HttpStreamShard {
 
   fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &'static str> {
     let stream = *self.stream.get();
-    
+
     // Create a cancellation token that we'll store
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
     let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
     self.task_cancel = Some(cancellation.clone());
-    
-    let result = run_future(context, async move {
-      let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
-      let response = unsafe { &mut (*stream?).0 };
-      let runtime = TOKIO_RUNTIME.clone();
-      let task = {
-        let runtime = runtime.lock().unwrap();
-        runtime.spawn(async move {
-          // Use tokio::select! to race between the request and cancellation
-          let bytes_result = tokio::select! {
-            chunk = response.chunk() => chunk.map_err(|e| {
-              print_error(&e);
-              "Failed to read from stream"
-            }),
-            _ = cancel_rx => return Err("Stream read cancelled")
-          };
-          
-          let bytes = bytes_result?;
-          if let Some(bytes) = bytes {
-            Ok(ClonedVar::new_bytes(&bytes))
-          } else {
-            Ok(ClonedVar::new_bytes(&[]))
-          }
-        })
-      };
-      // Await the spawned task outside the lock
-      task.await.map_err(|e| {
-        print_error(&e);
-        "Failed to join task"
-      })?
-    }, || {
-      shlog_debug!("Request cancelled");
-      // Cancel any running task
-      if let Some(tx) = cancellation.lock().unwrap().take() {
-        shlog_trace!("Cancelling HTTP task");
-        // Send cancellation signal - ignore error if receiver dropped
-        let _ = tx.send(());
-      }
-    })?;
-    
+
+    let result = run_future(
+      context,
+      async move {
+        let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
+        let response = unsafe { &mut (*stream?).0 };
+        let runtime = TOKIO_RUNTIME.clone();
+        let task = {
+          let runtime = runtime.lock().unwrap();
+          runtime.spawn(async move {
+            // Use tokio::select! to race between the request and cancellation
+            let bytes_result = tokio::select! {
+              chunk = response.chunk() => chunk.map_err(|e| {
+                print_error(&e);
+                "Failed to read from stream"
+              }),
+              _ = cancel_rx => return Err("Stream read cancelled")
+            };
+
+            let bytes = bytes_result?;
+            if let Some(bytes) = bytes {
+              Ok(ClonedVar::new_bytes(&bytes))
+            } else {
+              Ok(ClonedVar::new_bytes(&[]))
+            }
+          })
+        };
+        // Await the spawned task outside the lock
+        task.await.map_err(|e| {
+          print_error(&e);
+          "Failed to join task"
+        })?
+      },
+      || {
+        shlog_debug!("Request cancelled");
+        // Cancel any running task
+        if let Some(tx) = cancellation.lock().unwrap().take() {
+          shlog_trace!("Cancelling HTTP task");
+          // Send cancellation signal - ignore error if receiver dropped
+          let _ = tx.send(());
+        }
+      },
+    )?;
+
     // We're done with this task
     self.task_cancel = None;
     self.output = result;
@@ -1005,4 +1015,8 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
   register_legacy_shard::<Delete>();
 
   register_shard::<HttpStreamShard>();
+
+  let mut info = shards::SHObjectInfo::default();
+  info.name = cstr!("Stream").as_ptr() as *const i8;
+  register_object_type_internal(FRAG_CC, fourCharacterCode(*b"htst"), info);
 }

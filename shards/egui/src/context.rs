@@ -112,7 +112,9 @@ impl Shard for ContextShard {
   }
 
   fn output_help(&mut self) -> OptionalString {
-    *HELP_OUTPUT_EQUAL_INPUT
+    OptionalString(shccstr!(
+      "Outputs an internal UI Output object that could be useful to other shards such as GFX ones."
+    ))
   }
 
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
@@ -322,4 +324,12 @@ impl RenderShard {
 pub fn register_shards() {
   register_shard::<ContextShard>();
   register_shard::<RenderShard>();
+
+  let mut info = shards::SHObjectInfo::default();
+  info.name = shards::cstr!("UIOutput").as_ptr() as *const i8;
+  shards::core::register_object_type_internal(
+    shards::types::FRAG_CC,
+    shards::fourCharacterCode(*b"uiui"),
+    info,
+  );
 }
