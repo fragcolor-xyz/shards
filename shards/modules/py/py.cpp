@@ -162,6 +162,7 @@ struct Env {
   typedef PyObject *(__cdecl *PyCapsule_New)(void *ptr, const char *name, PyCapsuleDtor dtor);
   typedef void *(__cdecl *PyCapsule_GetPointer)(PyObject *cap, const char *name);
   typedef int(__cdecl *PyObject_SetAttrString)(PyObject *obj, const char *attrName, PyObject *item);
+  typedef PyObject *(__cdecl *PyDict_GetItemString)(PyObject *obj, const char *attrName);
   typedef int(__cdecl *PyDict_SetItemString)(PyObject *obj, const char *attrName, PyObject *item);
   typedef int(__cdecl *PyArg_ParseTuple)(PyObject *args, const char *fmt, ...);
   typedef void(__cdecl *PyErr_Clear)();
@@ -177,6 +178,10 @@ struct Env {
   typedef PyThreadState *(__cdecl *PyThreadState_Swap)(PyThreadState *state);
   typedef PyThreadState *(__cdecl *Py_NewInterpreter)();
   typedef void(__cdecl *Py_EndInterpreter)(PyThreadState *state);
+
+  // Add the necessary function typedefs for compilation and evaluation
+  typedef PyObject *(__cdecl *Py_CompileString)(const char *str, const char *filename, int start);
+  typedef PyObject *(__cdecl *PyEval_EvalCode)(PyObject *co, PyObject *globals, PyObject *locals);
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
@@ -239,7 +244,7 @@ struct Env {
   static inline Py_NewInterpreter _newInterpreter;
   static inline PySys_GetObject _sysGetObj;
   static inline Py_EndInterpreter _endInterpreter;
-
+  static inline PyDict_GetItemString _borrow_dictGetItem;
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
   static inline PyFloat_Type _float_type;
@@ -260,6 +265,9 @@ struct Env {
 
   static inline PyEval_SaveThread _saveThread;
   static inline PyEval_RestoreThread _restoreThread;
+
+  static inline Py_CompileString _pyCompileString;
+  static inline PyEval_EvalCode _pyEvalCode;
 
   static PyObject *__cdecl methodPause(PyObject *self, PyObject *args) {
     auto ctxObj = make_pyshared(_getAttr(self, "__shcontext__"));
@@ -713,6 +721,7 @@ struct Env {
       DLIMPORT(_pyCodeNew, PyCode_NewEmpty);
       DLIMPORT(_frameNew, PyFrame_New);
       DLIMPORT(_setDictItem, PyDict_SetItemString);
+      DLIMPORT(_borrow_dictGetItem, PyDict_GetItemString);
       DLIMPORT(_swapState, PyThreadState_Swap);
       DLIMPORT(_newInterpreter, Py_NewInterpreter);
       DLIMPORT(_sysGetObj, PySys_GetObject);
@@ -738,6 +747,9 @@ struct Env {
 
       DLIMPORT(_saveThread, PyEval_SaveThread);
       DLIMPORT(_restoreThread, PyEval_RestoreThread);
+
+      DLIMPORT(_pyCompileString, Py_CompileString);
+      DLIMPORT(_pyEvalCode, PyEval_EvalCode);
 
       _initThreads();
       _savedThreadState = _saveThread();
@@ -1536,7 +1548,164 @@ private:
   std::string _scriptName;
 };
 
-SHARDS_REGISTER_FN(py) { REGISTER_SHARD("Py", Py); }
+struct PyEval {
+  PyEval() {
+    // Try lazy init
+    if (!Env::ok()) {
+      Env::init();
+    }
+
+    // Initialize
+    _compiledCode = nullptr;
+    _preserveState = false;
+  }
+
+  ~PyEval() {
+    // Clean up
+    Context ctx;
+    _compiledCode.reset();
+    _globals.reset();
+    _locals.reset();
+  }
+
+  static inline Parameters params{
+      {"Expression",
+       SHCCSTR("Python code to evaluate. Input is available as _s. The value of the last expression is returned."),
+       {CoreInfo::StringType}},
+      {"PreserveState", SHCCSTR("Whether to preserve variable state between calls"), {CoreInfo::BoolType}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void warmup(SHContext *context) { compileExpression(); }
+
+  void cleanup(SHContext *context) {
+    if (_compiledCode) {
+      Context ctx; // Acquire GIL
+      _compiledCode.reset();
+      _globals.reset();
+      _locals.reset();
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (!Env::ok()) {
+      SHLOG_ERROR("Python support not available");
+      throw SHException("Python support not available");
+    }
+
+    Context ctx; // Acquire GIL
+
+    // Create globals and locals dictionaries if not already created or if not preserving state
+    if (!_globals || !_preserveState) {
+      _globals = Env::dict();
+      _locals = Env::dict();
+    }
+
+    // Convert input to Python object and set as _s variable
+    try {
+      auto py_input = Env::var2Py(input);
+      SHLOG_DEBUG("Input converted to Python object: {}", py_input != nullptr);
+
+      Env::setDictItem(_locals, "_s", Env::make_pyshared(py_input));
+      SHLOG_DEBUG("Input set in locals dictionary");
+
+      // Evaluate the compiled code
+      if (!_compiledCode) {
+        throw SHException("No compiled Python code available");
+      }
+
+      SHLOG_DEBUG("Evaluating Python code: {}", _expression);
+      auto result = Env::_pyEvalCode(_compiledCode.get(), _globals.get(), _locals.get());
+      if (!result) {
+        Env::printErrors();
+        throw SHException("Python evaluation failed");
+      }
+
+      // Convert result back to SHVar
+      try {
+        auto [shvar, _] = Env::py2Var(Env::make_pyshared(result));
+        SHLOG_DEBUG("Result converted to SHVar");
+        return shvar;
+      } catch (const std::exception &e) {
+        SHLOG_ERROR("Failed to convert result to SHVar: {}", e.what());
+        throw SHException(std::string("Failed to convert result to SHVar: ") + e.what());
+      }
+    } catch (const std::exception &e) {
+      SHLOG_ERROR("Python evaluation error: {}", e.what());
+      throw SHException(std::string("Python evaluation error: ") + e.what());
+    }
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0: { // Expression
+      _expression = SHSTRVIEW(value);
+      break;
+    }
+    case 1: { // PreserveState
+      _preserveState = value.payload.boolValue;
+      break;
+    }
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_expression);
+    case 1:
+      return Var(_preserveState);
+    default:
+      return Var();
+    }
+  }
+
+private:
+  // static constexpr auto Py_file_input = 257;
+  static constexpr auto Py_eval_input = 258;
+
+  void compileExpression() {
+    if (!Env::ok()) {
+      SHLOG_ERROR("Python support not available");
+      throw SHException("Python support not available");
+    }
+
+    Context ctx; // Acquire GIL
+
+    // Clear previous compiled code
+    _compiledCode.reset();
+
+    // Then compile and evaluate the modified expression
+    PyObject *code = Env::_pyCompileString(_expression.c_str(), "<string>", Py_eval_input);
+    if (!code) {
+      Env::printErrors();
+      throw SHException("Failed to compile Python expression");
+    }
+
+    _compiledCode = Env::make_pyshared(code);
+
+    // Initialize globals and locals for the new code if not preserving state
+    if (!_preserveState) {
+      _globals = Env::dict();
+      _locals = Env::dict();
+    }
+  }
+
+  std::string _expression;
+  PyObj _compiledCode;
+  PyObj _globals;
+  PyObj _locals;
+  bool _preserveState;
+};
+
+SHARDS_REGISTER_FN(py) {
+  REGISTER_SHARD("Py", Py);
+  REGISTER_SHARD("Py.Eval", PyEval);
+}
 } // namespace Python
 } // namespace shards
 
