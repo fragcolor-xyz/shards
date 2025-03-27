@@ -1710,6 +1710,11 @@ class WireController {
             G.Core.pointee.setExternalVariable(nativeRef, cname, &ev)
         }
     }
+    
+    func addExternal(name: String, owned: OwnedVar) {
+        addExternalVar(name: name, varPtr: owned.ptr())
+        references.append(owned)
+    }
 
     func addExternal(name: String, owned: inout OwnedVar) {
         addExternalVar(name: name, varPtr: owned.ptr())
@@ -1766,6 +1771,8 @@ class WireController {
     }
 
     var nativeRef = SHWireRef(bitPattern: 0)
+    
+    private var references: [OwnedVar] = []
 }
 
 class MeshController {
