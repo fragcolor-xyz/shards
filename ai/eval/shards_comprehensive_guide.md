@@ -4,6 +4,8 @@
 
 Shards is a data flow programming language where data flows through operations using the pipe `|` operator. Think of it as a river system rather than containers:
 
+> You might already know an old version of the syntax that was inspired by LISP but actually now Shards uses a completely different custom syntax!
+
 ```shards
 ; Traditional imperative thinking (WRONG):
 x = 5          ❌ Not a container being filled
