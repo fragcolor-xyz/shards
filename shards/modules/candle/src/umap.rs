@@ -27,6 +27,7 @@ const DEFAULT_MIN_DIST: f32 = 0.1;
 const DEFAULT_LEARNING_RATE: f32 = 1.0;
 const DEFAULT_INIT: &str = "spectral";
 const DEFAULT_MAX_EPOCHS: i64 = 200;
+const DEFAULT_CLUSTERS: i64 = 0; // 0 means auto-detect
 
 #[derive(shards::shard)]
 #[shard_info(
@@ -93,6 +94,13 @@ pub struct TensorUMAPShard {
     )]
   seed: ParamVar,
 
+  #[shard_param(
+        "Clusters",
+        "Number of clusters to detect. Default is 0 (auto-detect).",
+        [common_type::int, common_type::int_var, common_type::none]
+    )]
+  clusters: ParamVar,
+
   output: ClonedVar,
 }
 
@@ -108,6 +116,7 @@ impl Default for TensorUMAPShard {
       metric: ParamVar::new(Var::ephemeral_string(DEFAULT_METRIC)),
       init: ParamVar::new(Var::ephemeral_string(DEFAULT_INIT)),
       seed: ParamVar::new(42.into()),
+      clusters: ParamVar::new(DEFAULT_CLUSTERS.into()),
       output: ClonedVar::default(),
     }
   }
@@ -206,10 +215,21 @@ impl Shard for TensorUMAPShard {
       let val: i64 = self.seed.get().try_into()?;
       val.clamp(0, i64::MAX) as u64 // Ensure non-negative
     };
-    let seed = seed as u64; // todo, check bounds/clip
+    let seed = seed as u64;
+    
+    // Get clusters parameter
+    let requested_clusters: i64 = if self.clusters.is_none() {
+      DEFAULT_CLUSTERS
+    } else {
+      let val: i64 = self.clusters.get().try_into()?;
+      val.clamp(0, 100) // Limit between 0 (auto) and 100 clusters
+    };
 
     // Get tensor's device
     let device = tensor.0.device();
+    
+    // Initialize RNG for reproducibility
+    let mut rng = Pcg64::seed_from_u64(seed);
 
     // UMAP Implementation - Distance Calculation Phase
     let mut dist_matrix = Array2::<f64>::zeros((n_samples, n_samples));
@@ -384,7 +404,7 @@ impl Shard for TensorUMAPShard {
     
     // For datasets with clear clusters, we need to find multiple gaps
     // First, create a histogram of distances to identify gaps
-    let num_bins = 20.min(all_distances.len() / 2);
+    let num_bins = 50.min(all_distances.len() / 2);
     let bin_width = range / num_bins as f64;
     let mut histogram = vec![0; num_bins];
     let mut bin_starts = vec![0.0; num_bins];
@@ -424,9 +444,12 @@ impl Shard for TensorUMAPShard {
         let gap_threshold = (gap_start + gap_end) / 2.0;
         let gap_ratio = gap_size / range;
         
-        gaps.push((gap_threshold, gap_ratio));
-        shlog_error!("UMAP: Found gap between bins {} and {}: [{:.2}, {:.2}], threshold: {:.2}, ratio: {:.2}", 
+        // Only consider significant gaps
+        if gap_ratio > 0.05 { // Gap must be at least 5% of the total range
+          gaps.push((gap_threshold, gap_ratio));
+          shlog_error!("UMAP: Found gap between bins {} and {}: [{:.2}, {:.2}], threshold: {:.2}, ratio: {:.2}", 
                      prev_bin, curr_bin, gap_start, gap_end, gap_threshold, gap_ratio);
+        }
       }
     }
     
@@ -439,47 +462,75 @@ impl Shard for TensorUMAPShard {
     // Sort gaps by threshold
     gaps.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     
-    // For this specific dataset with 3 clusters, we need to ensure we have at least 2 thresholds
+    // Determine number of clusters
+    let num_clusters: usize;
     let mut thresholds = Vec::new();
     
-    if gaps.len() >= 2 {
-      // Use the detected gaps
-      for (threshold, _) in &gaps {
-        thresholds.push(*threshold);
+    if requested_clusters > 0 {
+      // User specified number of clusters
+      num_clusters = requested_clusters as usize;
+      shlog_error!("UMAP: Using user-specified {} clusters", num_clusters);
+      
+      // If we need to create thresholds for the specified number of clusters
+      if num_clusters > 1 {
+        if gaps.len() >= num_clusters - 1 {
+          // Use the detected gaps (take the most significant ones)
+          gaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)); // Sort by gap ratio (descending)
+          for i in 0..(num_clusters - 1) {
+            if i < gaps.len() {
+              thresholds.push(gaps[i].0);
+            }
+          }
+        } else {
+          // Not enough gaps detected, create evenly spaced thresholds
+          for i in 1..num_clusters {
+            let threshold = min_dist + (range * i as f64) / num_clusters as f64;
+            thresholds.push(threshold);
+          }
+        }
+        // Sort thresholds in ascending order
+        thresholds.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
       }
-    } else if gaps.len() == 1 {
-      // If we only found one gap, add another threshold
-      let (threshold, _) = gaps[0];
-      thresholds.push(threshold);
-      
-      // Add a second threshold at half the distance to the max
-      let second_threshold = threshold + (max_dist - threshold) / 2.0;
-      thresholds.push(second_threshold);
-      shlog_error!("UMAP: Adding second threshold at {:.2}", second_threshold);
     } else {
-      // If no gaps found, use percentiles
-      let p33_idx = all_distances.len() / 3;
-      let p67_idx = 2 * all_distances.len() / 3;
-      
-      thresholds.push(all_distances[p33_idx]);
-      thresholds.push(all_distances[p67_idx]);
-      shlog_error!("UMAP: Using percentile thresholds: {:.2} and {:.2}", 
-                   all_distances[p33_idx], all_distances[p67_idx]);
+      // Auto-detect number of clusters based on gaps
+      if gaps.is_empty() {
+        // No significant gaps found, assume single cluster
+        num_clusters = 1;
+        shlog_error!("UMAP: No significant gaps found, assuming single cluster");
+      } else {
+        // Sort gaps by significance (gap ratio)
+        gaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        // Use the most significant gaps to determine clusters
+        // Heuristic: gaps with ratio > 0.1 are significant
+        let significant_gaps = gaps.iter().filter(|&&(_, ratio)| ratio > 0.1).count();
+        
+        if significant_gaps > 0 {
+          num_clusters = significant_gaps + 1;
+          shlog_error!("UMAP: Detected {} significant gaps, assuming {} clusters", significant_gaps, num_clusters);
+          
+          // Use thresholds from significant gaps
+          for i in 0..significant_gaps {
+            thresholds.push(gaps[i].0);
+          }
+          // Sort thresholds in ascending order
+          thresholds.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        } else {
+          // Fall back to using all gaps if none are highly significant
+          num_clusters = gaps.len() + 1;
+          shlog_error!("UMAP: Using all {} gaps, assuming {} clusters", gaps.len(), num_clusters);
+          
+          // Use all gap thresholds
+          for &(threshold, _) in &gaps {
+            thresholds.push(threshold);
+          }
+          // Sort thresholds in ascending order
+          thresholds.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        }
+      }
     }
     
-    // For this specific dataset, we know there should be 3 clusters
-    // Let's force 3 clusters by using appropriate thresholds
-    if thresholds.len() < 2 {
-      // If we don't have enough thresholds, create them
-      thresholds.clear();
-      let third = range / 3.0;
-      thresholds.push(min_dist + third);
-      thresholds.push(min_dist + 2.0 * third);
-      shlog_error!("UMAP: Forcing 3 clusters with thresholds: {:.2} and {:.2}", 
-                   min_dist + third, min_dist + 2.0 * third);
-    }
-    
-    shlog_error!("UMAP: Using {} thresholds for clustering: {:?}", thresholds.len(), thresholds);
+    shlog_error!("UMAP: Using {} thresholds for {} clusters: {:?}", thresholds.len(), num_clusters, thresholds);
     
     // Identify clusters based on distance thresholds
     // For this specific case, we'll use a different approach to ensure we get 3 clusters
@@ -502,17 +553,76 @@ impl Shard for TensorUMAPShard {
       shlog_error!("UMAP: Dimension {} range: [{:.2}, {:.2}]", j, min_vals[j], max_vals[j]);
     }
     
-    // For this dataset, we know there should be 3 clusters
-    // Let's initialize 3 cluster centers evenly spaced across the data range
+    // Initialize cluster centers based on the detected number of clusters
     let mut centers = Vec::new();
-    for i in 0..3 {
-      let mut center = Vec::new();
+    
+    // Use k-means++ initialization for better starting centers
+    if num_clusters > 0 {
+      // Choose first center randomly
+      let first_center_idx = rng.gen_range(0..n_samples);
+      let mut first_center = Vec::with_capacity(n_features);
       for j in 0..n_features {
-        let range = max_vals[j] - min_vals[j];
-        let val = min_vals[j] + range * (i as f64 + 0.5) / 3.0;
-        center.push(val);
+        let val = tensor.0.get(first_center_idx).unwrap().get(j).unwrap().to_scalar::<f64>().unwrap();
+        first_center.push(val);
       }
-      centers.push(center);
+      centers.push(first_center);
+      
+      // Choose remaining centers with probability proportional to distance squared
+      if num_clusters > 1 {
+        let mut distances = vec![f64::MAX; n_samples];
+        
+        for _ in 1..num_clusters {
+          // Update distances to nearest center for each point
+          for i in 0..n_samples {
+            let mut min_dist_sq = f64::MAX;
+            
+            for center in &centers {
+              let mut dist_sq = 0.0;
+              for j in 0..n_features {
+                let val = tensor.0.get(i).unwrap().get(j).unwrap().to_scalar::<f64>().unwrap();
+                let diff = val - center[j];
+                dist_sq += diff * diff;
+              }
+              min_dist_sq = min_dist_sq.min(dist_sq);
+            }
+            
+            distances[i] = min_dist_sq;
+          }
+          
+          // Choose next center with probability proportional to distance squared
+          let total_dist: f64 = distances.iter().sum();
+          let mut cumulative_prob = 0.0;
+          let threshold = rng.gen::<f64>() * total_dist;
+          
+          let mut next_center_idx = 0;
+          for i in 0..n_samples {
+            cumulative_prob += distances[i];
+            if cumulative_prob >= threshold {
+              next_center_idx = i;
+              break;
+            }
+          }
+          
+          // Add the selected point as a new center
+          let mut next_center = Vec::with_capacity(n_features);
+          for j in 0..n_features {
+            let val = tensor.0.get(next_center_idx).unwrap().get(j).unwrap().to_scalar::<f64>().unwrap();
+            next_center.push(val);
+          }
+          centers.push(next_center);
+        }
+      }
+    } else {
+      // Fallback to evenly spaced centers if num_clusters is 0
+      for i in 0..num_clusters {
+        let mut center = Vec::new();
+        for j in 0..n_features {
+          let range = max_vals[j] - min_vals[j];
+          let val = min_vals[j] + range * (i as f64 + 0.5) / num_clusters as f64;
+          center.push(val);
+        }
+        centers.push(center);
+      }
     }
     
     // Log initial centers
@@ -524,7 +634,74 @@ impl Shard for TensorUMAPShard {
       shlog_error!("UMAP: Initial center {}: {}", i+1, center_str);
     }
     
-    // Assign each point to nearest center
+    // Run k-means iterations to refine centers
+    let max_kmeans_iterations = 10;
+    for iteration in 0..max_kmeans_iterations {
+      // Assign each point to nearest center
+      let mut cluster_assignments = vec![0; n_samples];
+      let mut cluster_sizes = vec![0; num_clusters];
+      
+      for i in 0..n_samples {
+        let mut min_dist = f64::MAX;
+        let mut closest_center = 0;
+        
+        for (c, center) in centers.iter().enumerate() {
+          let mut dist_sq = 0.0;
+          
+          for j in 0..n_features {
+            let val = tensor.0.get(i).unwrap().get(j).unwrap().to_scalar::<f64>().unwrap();
+            let diff = val - center[j];
+            dist_sq += diff * diff;
+          }
+          
+          if dist_sq < min_dist {
+            min_dist = dist_sq;
+            closest_center = c;
+          }
+        }
+        
+        cluster_assignments[i] = closest_center;
+        cluster_sizes[closest_center] += 1;
+      }
+      
+      // Update centers
+      let mut new_centers = vec![vec![0.0; n_features]; num_clusters];
+      
+      for i in 0..n_samples {
+        let cluster = cluster_assignments[i];
+        for j in 0..n_features {
+          let val = tensor.0.get(i).unwrap().get(j).unwrap().to_scalar::<f64>().unwrap();
+          new_centers[cluster][j] += val;
+        }
+      }
+      
+      // Compute average for each center
+      let mut centers_changed = false;
+      for c in 0..num_clusters {
+        if cluster_sizes[c] > 0 {
+          for j in 0..n_features {
+            new_centers[c][j] /= cluster_sizes[c] as f64;
+            // Check if center changed significantly
+            if (new_centers[c][j] - centers[c][j]).abs() > 0.001 {
+              centers_changed = true;
+            }
+          }
+        }
+      }
+      
+      // Update centers
+      centers = new_centers;
+      
+      shlog_error!("UMAP: K-means iteration {}, cluster sizes: {:?}", iteration + 1, cluster_sizes);
+      
+      // Stop if centers didn't change much
+      if !centers_changed {
+        shlog_error!("UMAP: K-means converged after {} iterations", iteration + 1);
+        break;
+      }
+    }
+    
+    // Final assignment of points to clusters
     let mut cluster_assignments = vec![0; n_samples];
     
     for i in 0..n_samples {
@@ -549,8 +726,6 @@ impl Shard for TensorUMAPShard {
       cluster_assignments[i] = closest_center + 1; // 1-based cluster IDs
     }
     
-    let num_clusters = 3; // We know we want 3 clusters for this dataset
-    
     // Print cluster assignments for debugging
     let mut cluster_members = std::collections::HashMap::new();
     for i in 0..n_samples {
@@ -561,8 +736,11 @@ impl Shard for TensorUMAPShard {
     
     for (cluster, members) in &cluster_members {
       let mut member_str = String::new();
-      for &idx in members {
+      for &idx in members.iter().take(10) { // Show only first 10 members to avoid log spam
         member_str.push_str(&format!("{} ", idx));
+      }
+      if members.len() > 10 {
+        member_str.push_str(&format!("... ({} more)", members.len() - 10));
       }
       shlog_error!("UMAP: Cluster {} members: {}", cluster, member_str);
     }
@@ -572,8 +750,9 @@ impl Shard for TensorUMAPShard {
       for j in 0..n_samples {
         if i != j {
           let dist = dist_matrix[[i, j]];
-          // Only consider points in the same cluster
-          if cluster_assignments[i] == cluster_assignments[j] {
+          // Only consider points in the same cluster if we have multiple clusters
+          // and the user hasn't explicitly requested to ignore clusters
+          if num_clusters <= 1 || requested_clusters == 0 || cluster_assignments[i] == cluster_assignments[j] {
             dists.push((j, dist));
           }
         }
@@ -655,7 +834,6 @@ impl Shard for TensorUMAPShard {
     }
 
     // 3. Initialize the low-dimensional embedding
-    let mut rng = Pcg64::seed_from_u64(seed);
     let mut embedding = Array2::<f32>::zeros((n_samples, n_components));
 
     if init == "random" {
