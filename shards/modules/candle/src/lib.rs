@@ -11,6 +11,7 @@ mod audio;
 pub mod model;
 pub mod moondream;
 mod tensor;
+mod umap;
 pub mod tokenizer;
 pub mod whisper;
 
@@ -139,6 +140,7 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorSliceShard>();
   register_shard::<tensor::TensorToIntsShard>();
   register_shard::<tensor::TensorToFloatsShard>();
+  register_shard::<umap::TensorUMAPShard>();
 
   register_shard::<audio::MLAudioToMel>();
 
