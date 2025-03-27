@@ -141,6 +141,9 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorToIntsShard>();
   register_shard::<tensor::TensorToFloatsShard>();
   register_shard::<umap::TensorUMAPShard>();
+  register_shard::<tensor::TensorToFloat2sShard>();
+  register_shard::<tensor::TensorToFloat3sShard>();
+  register_shard::<tensor::TensorToFloat4sShard>();
 
   register_shard::<audio::MLAudioToMel>();
 

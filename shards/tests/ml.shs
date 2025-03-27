@@ -135,7 +135,21 @@
   [1.0 1.0] | Tensor(Shape: [2] Type: TensorType::F32) >> grid-input
   
   grid-input | Tensor.Stack
-  Tensor.UMAP(2 Neighbors: 2 MinDist: 0.1 Seed: 42) | Tensor.ToString | Log("2D Grid UMAP")
+  Tensor.UMAP(2 Neighbors: 2 MinDist: 0.1 Seed: 42)
+  {Tensor.ToString | Log("2D Grid UMAP")}
+  Tensor.ToFloat2s | Log("2D Grid UMAP Float2s")
+  
+  ; Test Tensor.ToFloat2s
+  [1.0 2.0 3.0 4.0] | Tensor(Shape: [4] Type: TensorType::F32) | Tensor.ToFloat2s | Log("Float2s")
+  Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat2s | Log("Float2s Error")})
+  
+  ; Test Tensor.ToFloat3s
+  [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [6] Type: TensorType::F32) | Tensor.ToFloat3s | Log("Float3s")
+  Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat3s | Log("Float3s Error")})
+  
+  ; Test Tensor.ToFloat4s
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0] | Tensor(Shape: [8] Type: TensorType::F32) | Tensor.ToFloat4s | Log("Float4s")
+  Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat4s | Log("Float4s Error")})
 })
 
 @schedule(main ml-test)

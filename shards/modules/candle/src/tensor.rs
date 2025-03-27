@@ -5,13 +5,19 @@ use shards::types::AutoSeqVar;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
+use shards::types::FLOAT2_TYPES;
+use shards::types::FLOAT3_TYPES;
+use shards::types::FLOAT4_TYPES;
 use shards::types::FLOAT_TYPES;
 use shards::types::SEQ_OF_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_OR_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, SeqVar, Type, Types, Var};
-use shards::{SHType_Float as SHTYPE_FLOAT, SHType_Int as SHTYPE_INT};
+use shards::{
+  SHType_Float as SHTYPE_FLOAT, SHType_Float2, SHType_Float3, SHType_Float4,
+  SHType_Int as SHTYPE_INT,
+};
 
 use candle_core::{Device, Shape, Tensor as CandleTensor};
 
@@ -19,6 +25,16 @@ use crate::get_global_device;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_VAR_TYPE;
 use crate::{Tensor, TensorType, TENSORTYPE_TYPES, TENSOR_TYPE, TENSOR_TYPE_VEC};
+
+// Define sequence types for Float2, Float3, and Float4
+lazy_static! {
+  pub static ref SEQ_OF_FLOAT2: Type = Type::seq(&FLOAT2_TYPES);
+  pub static ref SEQ_OF_FLOAT2_TYPES: Vec<Type> = vec![*SEQ_OF_FLOAT2];
+  pub static ref SEQ_OF_FLOAT3: Type = Type::seq(&FLOAT3_TYPES);
+  pub static ref SEQ_OF_FLOAT3_TYPES: Vec<Type> = vec![*SEQ_OF_FLOAT3];
+  pub static ref SEQ_OF_FLOAT4: Type = Type::seq(&FLOAT4_TYPES);
+  pub static ref SEQ_OF_FLOAT4_TYPES: Vec<Type> = vec![*SEQ_OF_FLOAT4];
+}
 
 #[derive(shards::shard)]
 #[shard_info("Tensor.ToString", "Outputs a string representation of a tensor.")]
@@ -1353,6 +1369,7 @@ impl Shard for TensorSliceShard {
     Ok(Some(self.output.0))
   }
 }
+
 #[derive(shards::shard)]
 #[shard_info(
   "Tensor.ToFloats",
@@ -1524,6 +1541,267 @@ impl Shard for TensorToIntsShard {
         }
       }
       _ => return Err("Unsupported tensor dtype for conversion to integers"),
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ToFloat2s",
+  "Flattens a tensor into a Shards sequence of Float2 vectors (2 64-bit floats). Fails if the tensor size is not divisible by 2."
+)]
+pub(crate) struct TensorToFloat2sShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorToFloat2sShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorToFloat2sShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT2_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor = unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
+
+    self.output.0.clear();
+
+    let flattened = tensor.0.flatten_all().map_err(|e| {
+      shlog_error!("Failed to flatten tensor: {}", e);
+      "Failed to flatten tensor"
+    })?;
+    let data = match tensor.0.dtype() {
+      candle_core::DType::F32 => {
+        let vec = flattened.to_vec1::<f32>().map_err(|e| {
+          shlog_error!("Failed to convert F32 tensor to vec: {}", e);
+          "Failed to convert F32 tensor to vec"
+        })?;
+        vec.into_iter().map(|v| v as f64).collect::<Vec<f64>>()
+      }
+      candle_core::DType::F64 => flattened.to_vec1::<f64>().map_err(|e| {
+        shlog_error!("Failed to convert F64 tensor to vec: {}", e);
+        "Failed to convert F64 tensor to vec"
+      })?,
+      _ => return Err("Unsupported tensor dtype for conversion to Float2"),
+    };
+
+    // Validate that the tensor size is divisible by 2
+    if data.len() % 2 != 0 {
+      shlog_error!("Tensor size {} is not divisible by 2", data.len());
+      return Err("Tensor size must be divisible by 2 for Float2 conversion");
+    }
+
+    // Process data in pairs to create Float2 vectors
+    for chunk in data.chunks_exact(2) {
+      let float2 = Var::new_float2(chunk[0], chunk[1]);
+      self.output.0.push(&float2);
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ToFloat3s",
+  "Flattens a tensor into a Shards sequence of Float3 vectors (3 32-bit floats). Fails if the tensor size is not divisible by 3."
+)]
+pub(crate) struct TensorToFloat3sShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorToFloat3sShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorToFloat3sShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT3_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor = unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
+
+    self.output.0.clear();
+
+    let flattened = tensor.0.flatten_all().map_err(|e| {
+      shlog_error!("Failed to flatten tensor: {}", e);
+      "Failed to flatten tensor"
+    })?;
+    let data = match tensor.0.dtype() {
+      candle_core::DType::F32 => flattened.to_vec1::<f32>().map_err(|e| {
+        shlog_error!("Failed to convert F32 tensor to vec: {}", e);
+        "Failed to convert F32 tensor to vec"
+      })?,
+      candle_core::DType::F64 => {
+        let vec = flattened.to_vec1::<f64>().map_err(|e| {
+          shlog_error!("Failed to convert F64 tensor to vec: {}", e);
+          "Failed to convert F64 tensor to vec"
+        })?;
+        vec.into_iter().map(|v| v as f32).collect::<Vec<f32>>()
+      }
+      _ => return Err("Unsupported tensor dtype for conversion to Float3"),
+    };
+
+    // Validate that the tensor size is divisible by 3
+    if data.len() % 3 != 0 {
+      shlog_error!("Tensor size {} is not divisible by 3", data.len());
+      return Err("Tensor size must be divisible by 3 for Float3 conversion");
+    }
+
+    // Process data in triples to create Float3 vectors
+    for chunk in data.chunks_exact(3) {
+      let float3 = Var::new_float3(chunk[0], chunk[1], chunk[2]);
+      self.output.0.push(&float3);
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Tensor.ToFloat4s",
+  "Flattens a tensor into a Shards sequence of Float4 vectors (4 32-bit floats). Fails if the tensor size is not divisible by 4."
+)]
+pub(crate) struct TensorToFloat4sShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TensorToFloat4sShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TensorToFloat4sShard {
+  fn input_types(&mut self) -> &Types {
+    &TENSOR_TYPE_VEC
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT4_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tensor = unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&input, &*TENSOR_TYPE)? };
+
+    self.output.0.clear();
+
+    let flattened = tensor.0.flatten_all().map_err(|e| {
+      shlog_error!("Failed to flatten tensor: {}", e);
+      "Failed to flatten tensor"
+    })?;
+    let data = match tensor.0.dtype() {
+      candle_core::DType::F32 => flattened.to_vec1::<f32>().map_err(|e| {
+        shlog_error!("Failed to convert F32 tensor to vec: {}", e);
+        "Failed to convert F32 tensor to vec"
+      })?,
+      candle_core::DType::F64 => {
+        let vec = flattened.to_vec1::<f64>().map_err(|e| {
+          shlog_error!("Failed to convert F64 tensor to vec: {}", e);
+          "Failed to convert F64 tensor to vec"
+        })?;
+        vec.into_iter().map(|v| v as f32).collect::<Vec<f32>>()
+      }
+      _ => return Err("Unsupported tensor dtype for conversion to Float4"),
+    };
+
+    // Validate that the tensor size is divisible by 4
+    if data.len() % 4 != 0 {
+      shlog_error!("Tensor size {} is not divisible by 4", data.len());
+      return Err("Tensor size must be divisible by 4 for Float4 conversion");
+    }
+
+    // Process data in quadruples to create Float4 vectors
+    for chunk in data.chunks_exact(4) {
+      let float4 = Var::new_float4(chunk[0], chunk[1], chunk[2], chunk[3]);
+      self.output.0.push(&float4);
     }
 
     Ok(Some(self.output.0 .0))
