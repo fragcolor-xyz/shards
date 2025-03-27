@@ -1,8 +1,10 @@
-# Below are comprehensive instructions for learning and using the Shards programming language:
+# Below are comprehensive instructions for learning and using the Shards programming language
 
 ## Context
 
 Shards is a data flow programming language that follows a unique paradigm. It uses pipes (`|`) and organizes logic into Wires scheduled on Meshes.
+
+> You might already know an old version of the syntax that was inspired by LISP but actually now Shards uses a completely different custom syntax!
 
 ## Execution Model
 
