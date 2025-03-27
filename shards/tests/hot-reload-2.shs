@@ -1,0 +1,5 @@
+@wire(three {
+  Log("Hello 3")
+})
+
+{three: three}

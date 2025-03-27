@@ -1,0 +1,20 @@
+@include("defs.shs")
+
+@define(script-hot-reload true)
+@include("../../lib/hot-reload.shs")
+@define(some-toggle true)
+
+@maybe-hot-reload("hot-reload-1.shs" [zero one])
+@maybe-hot-reload("hot-reload-2.shs" [three])
+
+@wire(main-2 {
+  Once({
+    Do(zero)
+    Do(one)
+    Do(three)
+  } Every: 1.0)
+} Looped: true)
+
+@mesh(root)
+@schedule(root main-2)
+@run(root FPS: 60 Iterations: 100)

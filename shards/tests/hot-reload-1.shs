@@ -1,0 +1,20 @@
+@template(log-tmpl [msg] {
+  Log(msg Name: "log-tmpl")
+})
+
+@wire(zero {
+  @log-tmpl("Hello 000")
+})
+
+@wire(one {
+  Once({
+    Log("Helo 1 once triggered")
+  })
+  @log-tmpl("Hello 111")
+})
+
+@wire(two {
+  @log-tmpl("Hello 222")
+})
+
+{zero: zero one: one}

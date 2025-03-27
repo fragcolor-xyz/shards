@@ -1,0 +1,147 @@
+@define(script-hot-reload false IgnoreRedefined: true)
+
+; Builds wrapper wires around imported hot-reloadable wires
+; usage:
+;   @hot-reload(@script-dir @namespace "my-script.shs" [wire-0 wire-1 ...])
+; The wires can then be invoked simply using Do(wire-0), etc.
+@macro(hot-reload [base-path namespace script-path wires] {
+  Sequence(root)
+  
+  script-path | FS.Filename(true) = wrapper-name
+  {id: {name: wrapper-name}} | ToJson = wrapper-name-id-json
+  
+  ; Escape \ in base-path
+  [base-path script-path] | FS.Join = script-path-abs
+  script-path-abs | Regex.Replace("\\\\" "\\\\\\\\") = script-path-escaped
+  
+  script-path-abs | Log("Setting up hot reload for script")
+  
+  ; Body of the loader wire
+  @ast(
+    @wire(loader {
+      @wire(dummy-wire {
+        Pass
+      })
+      
+      Once({
+        Table(hot-result Type: @type({tag: Type::Int none: Type::Wire}))
+        {tag: 0} > hot-result
+      })
+      
+      script-path | Maybe({FS.LastWriteTime} {0}) | Memoize({
+        script-path | Log("Triggered change on script")
+        Maybe({
+            script-path | FS.Read | Shards.Read(AstType::Object
+            BasePath: (script-path | FS.Parent))
+            Shards.Distill(
+              Context: @capture-eval-context
+              Name: #(script-path | FS.Filename(true))
+              Namespace: namespace
+            ) = wire
+            
+            hot-result:tag = old-tag
+            {tag: (old-tag | Add(1))} > hot-result
+            WireRunner(wire) | ExpectTable
+            ForEach({
+              $1 | ExpectWire | Update(hot-result $0)
+            })
+          } {
+            Msg((["Failed to distill " script-path] | String.Format) Level: LogLevel::Error Name: "reload")
+            
+            ; wire-names | ForEach({
+            ;   dummy-wire | Update(hot-result $0)
+            ; })
+          }
+        )
+      })
+      
+      hot-result
+    } Pure: true)
+  ) = loader-ast
+  Regex.Replace("""\{"id":\{"name":"loader"\}\}""" wrapper-name-id-json)
+  Regex.Replace("""\{"id":\{"name":"script-path"\}\}""" (["{\"str\": \"" script-path-escaped "\"}"] | String.Format))
+  FromJson = loader-ast-1
+  [loader-ast-1] >> root
+  
+  ; Body of the wrapper wire
+  @ast({
+    = inp
+    Once({
+      false >= _we
+    })
+    {none | Do(wrapper-id) = _wt}
+    
+    Get(_wt "tag") | Memoize({
+      Msg((["Reloaded wire " wire-name] | String.Format) Level: LogLevel::Info Name: "reload")
+      false > _we
+    })
+    WhenNot({_we} {
+      Maybe({
+          WireRunner((Get(_wt wire-name)))
+        } {
+          Msg((["Failed to run wire " wire-name] | String.Format) Level: LogLevel::Error Name: "reload")
+          true > _we
+        }
+      )
+    })
+  })
+  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json) = body-shards-1
+  
+  @ast(wires) | FromJson | ExpectTable
+  Take("seq") | ExpectSeq
+  ForEach({
+    ExpectTable = fn-id
+    Log("Generating wrapper function")
+    Take("id") | ExpectTable = wire-id
+    Take("name") = wire-name
+    @ast(
+      @wire(wire-name {
+        Pass
+      })
+    ) | FromJson | Expect(@type({func: {params: [{none: Type::Any}]}})) >= wire-ast
+    Take("func") >= func
+    Take("params") >= params
+    [0 fn-id] | Assoc(params)
+    
+    body-shards-1 | Regex.Replace("""\{"id":\{"name":"wire-name"\}\}""" (["{\"str\": \"" wire-name "\"}"] | String.Format)) | FromJson = body-shards2
+    [1 body-shards2] | Assoc(params)
+    
+    params | Update(func "params")
+    func | Update(wire-ast "func")
+    
+    [wire-ast]
+    >> root
+  })
+  
+  root | ToJson
+})
+
+@macro(if-root [cond yes no] {
+  @template(filter-ast [] {
+    If({ExpectTable | Take("shs") | IsSeq} {
+        ExpectTable | Take("shs")
+      } {
+        = in
+        [in]
+      }
+    )
+  })
+  
+  Sequence(pipelines)
+  cond | If(IsAny([true "true" 1]) {
+      @ast(yes) | FromJson | @filter-ast()
+    } {
+      @ast(no) | FromJson | @filter-ast()
+    }
+  ) | ToJson
+})
+
+@inline-template(maybe-hot-reload [script-path wires] {
+  @if-root(@script-hot-reload {
+      #(Log("Running hot reload macro"))
+      @hot-reload(@script-dir @namespace script-path wires)
+    } {
+      @include(script-path)
+    }
+  )
+})

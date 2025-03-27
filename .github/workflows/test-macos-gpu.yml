@@ -128,6 +128,10 @@ jobs:
 
           echo "Running GlobalOnce test"
           build/shards new shards/tests/global-init.shs
+
+          echo "Running hot-reload test"
+          build/shards new shards/tests/hot-reload.shs
+
       - name: Test Physics
         env:
           RUST_BACKTRACE: full

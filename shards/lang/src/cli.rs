@@ -626,7 +626,7 @@ fn build(
 
   let (deps, ast) = {
     let file_path = Path::new(&file);
-    let file_path = std::fs::canonicalize(file_path).unwrap();
+    let file_path = dunce::canonicalize(file_path).unwrap();
     let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
@@ -714,7 +714,7 @@ fn execute(eargs: &RunArgs, cancellation_token: Arc<AtomicBool>) -> Result<(), E
 
   let ast = {
     let file_path = Path::new(&file);
-    let file_path = std::fs::canonicalize(file_path).unwrap();
+    let file_path = dunce::canonicalize(file_path).unwrap();
     let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
@@ -724,8 +724,7 @@ fn execute(eargs: &RunArgs, cancellation_token: Arc<AtomicBool>) -> Result<(), E
     let mut include_paths = Vec::new();
     for path in in_include_paths {
       let path = std::path::PathBuf::from(path);
-      let path = path
-        .canonicalize()
+      let path = dunce::canonicalize(path.clone())
         .map_err(|x| format!("Failed to canonicalize path: {} ({:?})", x, path))?;
       include_paths.push(path.to_string_lossy().to_string());
     }
