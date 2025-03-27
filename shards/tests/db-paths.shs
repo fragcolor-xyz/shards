@@ -1,0 +1,32 @@
+@include("defs.shs") ; to use the macro `if`
+
+@mesh(root)
+
+@define(db-file-1 "shards.db")
+@define(db-file-2 "main-1.db")
+@wire(db-test-1 {
+  Maybe({
+    @db-file-1 | FS.Remove
+    @db-file-2 | FS.Remove
+  })
+  
+  ; Default: "shards.db"
+  "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
+  [] | DB.Query("SELECT * FROM integers") | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
+  [] | DB.Query("SELECT * FROM integers" @db-file-1) | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
+
+  ; Use value from sqlite/database
+  @db-file-2 >= sqlite/database
+  "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
+  [] | DB.Query("SELECT * FROM integers") | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
+  [] | DB.Query("SELECT * FROM integers" @db-file-2) | Log
+  Assert.Is({x: [88 100 102] y: [99 101 none]})
+})
+
+@schedule(root db-test-1)
+@run(root) | Assert.Is(true)
