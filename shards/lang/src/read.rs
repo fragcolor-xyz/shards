@@ -1,9 +1,12 @@
 use crate::cli;
 use crate::custom_state::CustomStateContainer;
-use crate::{ast::*, RcStrWrapper};
+use crate::{
+  ast::{self, *},
+  RcStrWrapper,
+};
 use core::convert::TryInto;
-use pest::iterators::Pair;
-use pest::Parser;
+use pest::iterators::{Pair, Pairs};
+use pest::{Parser, Position};
 use shards::shard::Shard;
 use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
@@ -13,9 +16,18 @@ use shards::{
   fourCharacterCode, ref_counted_object_type_impl, shard, shard_impl, shlog_debug, shlog_error,
   shlog_trace,
 };
+use std::borrow::Cow;
 use std::cell::{Ref, RefCell};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::mem::swap;
+use std::ops::Sub;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Copy)]
+enum ReadEnvType {
+  Default,
+  InlineTemplateSubstitution,
+}
 
 pub struct ReadEnv {
   name: RcStrWrapper,
@@ -23,7 +35,16 @@ pub struct ReadEnv {
   include_directories: Vec<String>,
   included: RefCell<HashSet<RcStrWrapper>>,
   dependencies: RefCell<Vec<String>>,
+  inline_templates: HashMap<Identifier, InlineTemplate>,
+  substitutions: HashMap<Identifier, Value>,
   parent: Option<*const ReadEnv>,
+  env_type: ReadEnvType,
+}
+
+#[derive(Debug, Clone)]
+struct InlineTemplate {
+  args: Vec<Value>,
+  shards: String,
 }
 
 impl ReadEnv {
@@ -40,14 +61,22 @@ impl ReadEnv {
       include_directories: include_directories,
       included: RefCell::new(HashSet::new()),
       dependencies: RefCell::new(Vec::new()),
+      inline_templates: HashMap::new(),
+      substitutions: HashMap::new(),
       parent: None,
+      env_type: ReadEnvType::Default,
     }
+  }
+
+  pub fn set_parent(&mut self, parent: *const ReadEnv) {
+    self.parent = Some(parent);
+    self.env_type = unsafe { (&*parent).env_type };
   }
 
   pub fn resolve_file(&self, name: &str) -> Result<PathBuf, String> {
     let script_dir = Path::new(&self.script_directory);
     let file_path = script_dir.join(name);
-    if let Ok(canonical) = std::fs::canonicalize(&file_path) {
+    if let Ok(canonical) = dunce::canonicalize(&file_path) {
       shlog_debug!("Found include {:?}", file_path);
       return Ok(canonical);
     }
@@ -61,7 +90,7 @@ impl ReadEnv {
     for dir in &self.include_directories {
       let script_dir = Path::new(&dir);
       let file_path = script_dir.join(name);
-      let canonical = std::fs::canonicalize(&file_path);
+      let canonical = dunce::canonicalize(&file_path);
       if let Ok(canonical) = canonical {
         shlog_debug!("Found include {:?}", file_path);
         return Ok(canonical);
@@ -74,6 +103,40 @@ impl ReadEnv {
       }
     }
     return Err(format!("File not found: {}", name).to_string());
+  }
+
+  fn find_inline_template(&self, name: &Identifier) -> Option<&InlineTemplate> {
+    if let Some(itempl) = self.inline_templates.get(name) {
+      return Some(itempl);
+    } else if let Some(parent) = self.parent {
+      return unsafe { (*parent).find_inline_template(name) };
+    }
+    None
+  }
+
+  fn find_substitution(&self, name: &Identifier) -> Option<&Value> {
+    if let ReadEnvType::InlineTemplateSubstitution = self.env_type {
+      if let Some(value) = self.substitutions.get(name) {
+        return Some(value);
+      } else if let Some(parent) = self.parent {
+        return unsafe { (*parent).find_substitution(name) };
+      }
+    }
+    None
+  }
+
+  fn with_inline_template_scope<F, R>(&mut self, env_type: ReadEnvType, f: F) -> R
+  where
+    F: FnOnce(&mut Self) -> R,
+  {
+    let old_env_type = self.env_type;
+    let mut new_substitutions = self.substitutions.clone();
+    swap(&mut self.substitutions, &mut new_substitutions);
+    self.env_type = env_type;
+    let result = f(self);
+    self.env_type = old_env_type;
+    self.substitutions = new_substitutions;
+    result
   }
 }
 
@@ -192,6 +255,110 @@ enum FunctionValue {
   Program(Program),
 }
 
+fn extract_params_from_pairs<'a>(
+  pairs: &mut Pairs<Rule>,
+  env: &mut ReadEnv,
+  pos: Position<'a>,
+) -> Result<Option<Vec<Param>>, ShardsError> {
+  let params = match pairs.next() {
+    Some(pair) => {
+      if pair.as_rule() == Rule::Params {
+        Some(process_params(pair, env)?)
+      } else {
+        return Err(("Expected Params in Shard", pos).into());
+      }
+    }
+    None => None,
+  };
+  Ok(params)
+}
+
+fn substitute_inline_template<'a>(
+  itempl: &InlineTemplate,
+  param_pairs: &mut Pairs<Rule>,
+  pos: Position<'a>,
+) -> Result<String, ShardsError> {
+  // Foreach param, match against InlineTemplate and substitute value in string
+  let templ_args = unsafe { &*itempl.args };
+  let mut str = itempl.shards.clone();
+  let mut i = 0;
+  loop {
+    if let Some(param) = param_pairs.next() {
+      if i >= templ_args.len() {
+        return Err(("Expected more arguments in InlineTemplate", pos).into());
+      }
+
+      // let name = &templ_args[i];
+      if let Value::Identifier(iden) = &templ_args[i] {
+        let sw = (&iden).resolve();
+        let src = sw.as_str();
+        let dst = param.as_str();
+        eprintln!("Subst {} => {}", src, dst);
+        str = str.replace(src, dst);
+      } else {
+        return Err(("Parameter should be an identifier", pos).into());
+      }
+    } else {
+      break;
+    }
+    i += 1;
+  }
+  Ok(str)
+}
+
+fn convert_to_function_value<'a>(
+  identifier: Identifier,
+  pairs: &mut Pairs<Rule>,
+  env: &mut ReadEnv,
+  pos: Position<'a>,
+) -> Result<FunctionValue, ShardsError> {
+  let params = extract_params_from_pairs(pairs, env, pos)?;
+  let itc: Option<InlineTemplate> = env.find_inline_template(&identifier).cloned();
+  if let Some(itempl) = itc {
+    let itempl = itempl.clone();
+    let mut prog: Program =
+      env.with_inline_template_scope(ReadEnvType::InlineTemplateSubstitution, |env| {
+        let params = params.ok_or(("Expected parameters", pos).into())?;
+
+        // Insert substitutions into environment
+        if params.len() != itempl.args.len() {
+          return Err(
+            (
+              "Number of parameters does not match number of arguments in inline template",
+              pos,
+            )
+              .into(),
+          );
+        }
+        for (param, arg) in params.iter().zip(&itempl.args) {
+          if let Value::Identifier(iden) = arg {
+            let value = param.value.clone();
+            env.substitutions.insert(iden.clone(), value);
+          } else {
+            return Err(("Expected argument to be an identifier", pos).into());
+          }
+        }
+
+        let src_str = &itempl.shards;
+        let mut successful_parse = ShardsParser::parse(Rule::Program, &src_str)
+          .map_err(|e| (format!("Failed to parse template: {}\n{}", e, src_str), pos).into())?;
+        let root = successful_parse
+          .next()
+          .ok_or(("Expected a sequence", pos).into())?;
+
+        process_program(root, env)
+      })?;
+
+    return Ok(FunctionValue::Program(prog));
+  };
+
+  Ok(FunctionValue::Function(Function {
+    name: identifier,
+    params,
+    custom_state: CustomStateContainer::new(),
+  }))
+}
+
 fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue, ShardsError> {
   let pos = pair.as_span().start_pos();
 
@@ -232,23 +399,78 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
     Rule::VarName => {
       // Many other things...!
       let identifier = extract_identifier(exp)?;
-      let next = inner.next();
-
-      let params = match next {
-        Some(pair) => {
-          if pair.as_rule() == Rule::Params {
-            Some(process_params(pair, env)?)
-          } else {
-            return Err(("Expected Params in Shard", pos).into());
-          }
-        }
-        None => None,
-      };
 
       if identifier.namespaces.is_empty() {
         let name = identifier.name.as_str().to_owned();
         match name.as_str() {
+          "inline-template" => {
+            let params = inner.next();
+            let mut inner = params
+              .ok_or(("Expected parameters", pos).into())?
+              .into_inner();
+
+            let param1 = process_param(
+              inner
+                .next()
+                .ok_or(("Expected first parameter", pos).into())?,
+              env,
+            )?;
+            let param2 = process_param(
+              inner
+                .next()
+                .ok_or(("Expected second parameter", pos).into())?,
+              env,
+            )?;
+            let remaining = inner.next();
+
+            let func_name = if param1.name.is_none() {
+              Some(&param1)
+            } else {
+              None
+            };
+            let func_name = func_name.ok_or(("Expected a function name", pos).into())?;
+            let func_name = match &func_name.value {
+              Value::Identifier(s) => Ok(s),
+              _ => Err(("Expected a string value for function name", pos).into()),
+            }?;
+
+            let args = if param2.name.is_none() {
+              Some(&param2)
+            } else {
+              None
+            };
+            let args = args.ok_or(("Expected an argument list", pos).into())?;
+            let args = match &args.value {
+              Value::Seq(s) => Ok(s),
+              _ => Err(("Expected a sequence value for Args", pos).into()),
+            }?;
+
+            let shards = remaining.ok_or(("Expected a shards sequence (Shards:)", pos).into())?;
+            let contents = shards
+              .into_inner()
+              .next()
+              .ok_or(("Expected a shards sequence (Shards:)", pos).into())?; // (Param)
+            let contents = contents
+              .into_inner()
+              .next()
+              .ok_or(("Expected a shards sequence (Shards:)", pos).into())?; // (Sequence)
+            let contents = contents
+              .into_inner()
+              .next()
+              .ok_or(("Expected a shards sequence (Shards:)", pos).into())?; // (Shards)
+            let contents = contents.as_str().to_owned();
+
+            env.inline_templates.insert(
+              func_name.clone(),
+              InlineTemplate {
+                args: args.clone(),
+                shards: contents,
+              },
+            );
+            Ok(FunctionValue::Const(Value::None(())))
+          }
           "include" => {
+            let params = extract_params_from_pairs(&mut inner, env, pos)?;
             let params = params.ok_or(("Expected 2-3 parameters", pos).into())?;
             let n_params = params.len();
 
@@ -350,16 +572,20 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .into(),
               Vec::new(),
             );
-            sub_env.parent = Some(env);
+            sub_env.set_parent(env);
             let program = process_program(
               successful_parse.into_iter().next().unwrap(), // should be qed because of success parse
               &mut sub_env,
             )?;
 
+            // Merge inline templates into parent
+            env.inline_templates.extend(sub_env.inline_templates);
+
             Ok(FunctionValue::Program(program))
           }
           "env" => {
             // read from environment variable
+            let params = extract_params_from_pairs(&mut inner, env, pos)?;
             let params = params.ok_or(("Expected 1 parameter", pos).into())?;
             let n_params = params.len();
 
@@ -381,6 +607,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             Ok(FunctionValue::Const(Value::String(value.into())))
           }
           "read" => {
+            let params = extract_params_from_pairs(&mut inner, env, pos)?;
             let params = params.ok_or(("Expected 2 parameters", pos).into())?;
             let n_params = params.len();
 
@@ -435,18 +662,14 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               Ok(FunctionValue::Const(Value::String(string.into())))
             }
           }
-          _ => Ok(FunctionValue::Function(Function {
-            name: identifier,
-            params,
-            custom_state: CustomStateContainer::new(),
-          })),
+          "script-dir" => {
+            let script_dir = RcStrWrapper::new(env.script_directory.to_string());
+            Ok(FunctionValue::Const(Value::String(script_dir)))
+          }
+          _ => convert_to_function_value(identifier, &mut inner, env, pos),
         }
       } else {
-        Ok(FunctionValue::Function(Function {
-          name: identifier,
-          params,
-          custom_state: CustomStateContainer::new(),
-        }))
+        convert_to_function_value(identifier, &mut inner, env, pos)
       }
     }
     _ => Err(
@@ -690,7 +913,13 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::VarName => Ok(Value::Identifier(extract_identifier(pair)?)),
+    Rule::VarName => {
+      let identifier = extract_identifier(pair)?;
+      if let Some(value) = env.find_substitution(&identifier) {
+        return Ok(value.clone());
+      }
+      Ok(Value::Identifier(identifier))
+    }
     Rule::Enum => {
       let text = pair.as_str();
       let splits: Vec<_> = text.split("::").collect();

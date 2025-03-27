@@ -1,4 +1,4 @@
-use shards::core::{register_enum, register_legacy_shard, register_shard};
+use shards::core::{register_enum, register_shard};
 use shards::util::from_raw_parts_allow_null;
 use shards::SHStringWithLen;
 use shards::{shlog_error, types::*};
@@ -391,7 +391,7 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
   register_shard::<read::ReadShard>();
   register_shard::<read::DocsShard>();
   register_shard::<read::ShardsErrorsShard>();
-  register_legacy_shard::<eval::EvalShard>();
+  register_shard::<eval::EvalShard>();
   register_enum::<read::AstType>();
   register_shard::<print::ShardsPrintShard>();
 

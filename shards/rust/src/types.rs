@@ -415,6 +415,7 @@ impl Mesh {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct MeshVar(pub ClonedVar);
 
 impl MeshVar {

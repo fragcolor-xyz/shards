@@ -1,22 +1,19 @@
 @macro(if [cond yes no] {
-  Sequence(pipelines)
+  @template(filter-ast [] {
+    If({ExpectTable | Take("shs") | IsSeq} {
+        ExpectTable | Take("shs")
+      } {
+        = in
+        [[in]]
+      }
+    )
+  })
   cond | If(IsAny([true "true" 1]) {
-      {
-        sh: {
-          name: "SubFlow"
-          params: [(@ast(yes) | FromJson)]
-        }
-      }
+      @ast(yes) | FromJson | @filter-ast() 
     } {
-      {
-        sh: {
-          name: "SubFlow"
-          params: [(@ast(no) | FromJson)]
-        }
-      }
+      @ast(no) | FromJson | @filter-ast() 
     }
-  ) >> pipelines
-  [pipelines] | ToJson
+  ) | ToJson
 })
 
 @macro(tmp-path [path] {
@@ -24,9 +21,8 @@
   @platform | If(Is("emscripten") {
       {
         eExpr: [[
-          {const: {seq: [{str: "/tmp"}, {str: path}]}},
-          {sh: {name: "FS.Join"}}
-        ]]
+            {const: {seq: [{str: "/tmp"} {str: path}]}}
+            {sh: {name: "FS.Join"}}]]
       } >> pipelines
     } {
       {const: {str: path}} >> pipelines

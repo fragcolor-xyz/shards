@@ -22,6 +22,7 @@ use core::fmt;
 
 use std::borrow::Cow;
 use std::ops::Deref;
+use std::path::PathBuf;
 
 use shards::types::{AutoShardRef, ClonedVar};
 
@@ -271,12 +272,12 @@ impl<'a> ParamHelperMut<'a> {
 pub trait ShardsExtension {
   fn name(&self) -> &str;
   fn process_to_var(
-    &mut self,
+    &self,
     func: &Function,
     line_info: LineInfo,
   ) -> Result<ClonedVar, ShardsError>;
   fn process_to_shard(
-    &mut self,
+    &self,
     func: &Function,
     line_info: LineInfo,
   ) -> Result<AutoShardRef, ShardsError>;

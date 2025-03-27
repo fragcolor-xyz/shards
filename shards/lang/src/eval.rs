@@ -8,15 +8,24 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
+use clap::error::ContextKind;
 use nanoid::nanoid;
 use shards::cstr;
+use shards::fourCharacterCode;
+use shards::ref_counted_object_type_impl;
+use shards::shard;
+use shards::shard::Shard;
+use shards::shard_impl;
+use shards::types::ExposedInfo;
+use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::SeqVar;
 use shards::types::BOOL_TYPES_SLICE;
+use shards::types::FRAG_CC;
 use shards::types::STRINGS_OR_NONE_SLICE;
 use shards::SHType_Trait;
 
-use shards::shard::LegacyShard;
+use shards::shlog_error;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
@@ -24,10 +33,8 @@ use shards::types::AutoTableVar;
 use shards::types::Context;
 use shards::types::MeshVar;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use shards::{shccstr, shlog_error};
 
 use shards::types::Type;
 use shards::types::Types;
@@ -38,11 +45,9 @@ use shards::types::WIRE_TYPES;
 use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
-use std::sync::atomic;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use shards::core::sleep;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -67,9 +72,34 @@ pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
 }
 
-struct ShardsGroup {
+#[derive(Clone)]
+struct ShardsGroupSource {
   args: *const Vec<Value>,
   shards: *const Sequence,
+}
+
+#[derive(Clone)]
+struct ShardsGroupGenerated {
+  args: Vec<Value>,
+  shards: Sequence,
+}
+
+#[derive(Clone)]
+enum ShardsGroup {
+  Source(ShardsGroupSource),
+  Generated(ShardsGroupGenerated),
+}
+
+impl From<ShardsGroupSource> for ShardsGroup {
+  fn from(source: ShardsGroupSource) -> Self {
+    ShardsGroup::Source(source)
+  }
+}
+
+impl From<ShardsGroupGenerated> for ShardsGroup {
+  fn from(generated: ShardsGroupGenerated) -> Self {
+    ShardsGroup::Generated(generated)
+  }
 }
 
 #[repr(C)]
@@ -82,8 +112,22 @@ pub struct Setting {
 
 #[derive(Clone)]
 enum Definition {
-  Value(*const Value),
+  ValueSource(*const Value),
+  ValueGenerated(Value),
   Constant(SVar),
+}
+
+enum WireParams {
+  Source(*const Vec<Param>),
+  Generated(Vec<Param>),
+}
+
+#[derive(Clone, Copy)]
+enum ContextType {
+  // Parsing directly from source ast, meaning all references will stay valid during evaluation
+  Source,
+  // Parsing from a generated AST or source code, meaning all references will be invalidated after exiting some scope
+  Generated,
 }
 
 pub struct EvalEnv {
@@ -96,7 +140,7 @@ pub struct EvalEnv {
 
   shards: Vec<AutoShardRef>,
 
-  deferred_wires: HashMap<Identifier, (Wire, *const Vec<Param>, LineInfo)>,
+  deferred_wires: HashMap<Identifier, (Wire, WireParams, LineInfo)>,
   finalized_wires: HashMap<Identifier, ClonedVar>,
 
   shards_groups: HashMap<Identifier, ShardsGroup>,
@@ -116,15 +160,16 @@ pub struct EvalEnv {
   pub forbidden_funcs: HashSet<Identifier>,
 
   // Shards that need rewriting, e.g. upgrading to new versions
-  pub rewrite_funcs: HashMap<Identifier, Box<dyn RewriteFunction>>,
+  pub rewrite_funcs: HashMap<Identifier, Arc<dyn RewriteFunction>>,
 
   pub settings: Vec<Setting>,
 
   meshes: HashMap<Identifier, MeshVar>,
 
-  extensions: HashMap<Identifier, Box<dyn ShardsExtension>>,
+  extensions: HashMap<Identifier, Arc<dyn ShardsExtension>>,
 
   complexity: u64,
+  context_type: ContextType,
 }
 
 impl Drop for EvalEnv {
@@ -166,16 +211,18 @@ impl EvalEnv {
       extensions: HashMap::new(),
       traits: HashMap::new(),
       complexity: 0,
+      context_type: ContextType::Source,
     };
 
     if let Some(parent) = parent {
-      env.parent = Some(parent);
       // resolve namespaces
       let parent = unsafe { &*parent };
       env.full_namespace = parent.full_namespace.clone();
       env.settings = parent.settings.clone();
       env.complexity = parent.complexity;
+      env.context_type = parent.context_type;
     }
+    env.parent = parent;
 
     if let Some(namespace) = namespace {
       env.namespace = namespace.clone();
@@ -189,6 +236,370 @@ impl EvalEnv {
 
     env
   }
+
+  fn from_captured(env: &CapturedEvalContext) -> Self {
+    let mut result = EvalEnv {
+      program: None,
+      parent: None,
+      namespace: env.namespace.clone(),
+      full_namespace: env.full_namespace.clone(),
+      qualified_cache: HashMap::new(),
+      shards: Vec::new(),
+      deferred_wires: HashMap::new(),
+      finalized_wires: HashMap::new(),
+      shards_groups: HashMap::new(),
+      macro_groups: HashMap::new(),
+      definitions: HashMap::new(),
+      replacements: HashMap::new(),
+      suffix: env.suffix.clone(),
+      suffix_assigned: env.suffix_assigned.clone(),
+      forbidden_funcs: env.forbidden_funcs.clone(),
+      rewrite_funcs: env.rewrite_funcs.clone(),
+      settings: env.settings.clone(),
+      meshes: env.meshes.clone(),
+      extensions: env.extensions.clone(),
+      traits: HashMap::new(),
+      complexity: 0,
+      context_type: ContextType::Source,
+    };
+
+    // Convert ClonedDefinition to Definition
+    for (name, def) in &env.definitions {
+      result.definitions.insert(name.clone(), def.clone());
+    }
+
+    // Convert ClonedShardsGroup to ShardsGroup for macro_groups
+    for (name, group) in &env.macro_groups {
+      result.macro_groups.insert(name.clone(), group.clone());
+    }
+
+    // Convert ClonedShardsGroup to ShardsGroup for shards_groups
+    for (name, group) in &env.shards_groups {
+      result.shards_groups.insert(name.clone(), group.clone());
+    }
+
+    // Convert replacements
+    for (name, value) in &env.replacements {
+      let boxed_value = Box::new(value.clone());
+      let value_ptr = Box::into_raw(boxed_value);
+      result.replacements.insert(name.clone(), value_ptr);
+    }
+
+    // Convert traits
+    for (name, trait_var) in &env.traits {
+      result.traits.insert(name.clone(), trait_var.clone());
+    }
+
+    // Convert finalized_wires
+    for (name, wire_var) in &env.wires {
+      result
+        .finalized_wires
+        .insert(name.clone(), wire_var.clone());
+    }
+
+    result
+  }
+
+  fn lookup<'a, R, F>(&self, f: F) -> Option<R>
+  where
+    F: Fn(&'a mut EvalEnv) -> Option<R>,
+  {
+    let mut current: Option<*const EvalEnv> = Some(self);
+    while let Some(env1) = current {
+      let env = unsafe { &mut *(env1 as *mut EvalEnv) };
+      let r = f(env);
+      if r.is_some() {
+        return r;
+      }
+      current = unsafe { &*env1 }.parent;
+    }
+    None
+  }
+
+  fn find_mesh<'a>(&self, name: &'a Identifier) -> Option<&'a mut MeshVar> {
+    self.lookup(|env| env.meshes.get_mut(name))
+  }
+
+  fn find_trait<'a>(&self, name: &'a Identifier) -> Option<Var> {
+    self.lookup(|env| env.traits.get(name).map(|t| t.0.into()))
+  }
+
+  fn find_shards_group<'a>(&self, name: &'a Identifier) -> Option<&'a ShardsGroup> {
+    self.lookup(|env| env.shards_groups.get(name))
+  }
+
+  fn find_macro_group<'a>(&self, name: &'a Identifier) -> Option<&'a ShardsGroup> {
+    self.lookup(|env| env.macro_groups.get(name))
+  }
+
+  fn find_defined<'a>(&self, name: &'a Identifier) -> Option<&'a Definition> {
+    self.lookup(|env| env.definitions.get(name))
+  }
+
+  fn get_program<'a>(&self) -> Option<&'a Program> {
+    self.lookup(|env| env.program.map(|p| unsafe { &*p }))
+  }
+
+  fn is_forbidden_func<'a>(&self, name: &'a Identifier) -> bool {
+    self
+      .lookup(|env| {
+        if env.forbidden_funcs.contains(name) {
+          Some(true)
+        } else {
+          None
+        }
+      })
+      .unwrap_or(false)
+  }
+
+  fn get_rewrite_func<'a>(&self, name: &'a Identifier) -> Option<&'a Arc<dyn RewriteFunction>> {
+    self.lookup(|env| env.rewrite_funcs.get(name))
+  }
+  fn find_current_suffix<'a>(&self) -> Option<&'a RcStrWrapper> {
+    self.lookup(|env| env.suffix.as_ref())
+  }
+
+  fn find_suffix<'a>(&self, name: &'a RcStrWrapper) -> Option<&'a RcStrWrapper> {
+    self.lookup(|env| env.suffix_assigned.get(name))
+  }
+
+  fn find_replacement<'a>(&self, name: &'a Identifier) -> Option<&'a Value> {
+    self.lookup(|env| {
+      let name = &name.name;
+      if let Some(replacement) = env.replacements.get(name) {
+        let replacement = *replacement;
+        let replacement = unsafe { &*replacement };
+        Some(replacement)
+      } else {
+        None
+      }
+    })
+  }
+
+  fn find_wire<'a>(&self, name: &'a Identifier) -> Option<(Var, bool)> {
+    self.lookup(|env| {
+      if let Some(wire) = env.finalized_wires.get(name) {
+        Some((wire.0.into(), true))
+      } else if let Some(wire) = env.deferred_wires.get(name) {
+        Some((wire.0 .0.into(), false))
+      } else {
+        None
+      }
+    })
+  }
+
+  fn find_extension<'a>(&self, name: &'a Identifier) -> Option<&'a Arc<dyn ShardsExtension>> {
+    self.lookup(|env| env.extensions.get(name))
+  }
+
+  fn with_context_mut<R, F>(&mut self, context_type: ContextType, f: F) -> R
+  where
+    F: FnOnce(&mut Self) -> R,
+  {
+    let prev = self.context_type;
+    self.context_type = context_type;
+    let result = f(self);
+    self.context_type = prev;
+    result
+  }
+}
+
+impl ShardsGroup {
+  fn without_pointers(&self) -> Self {
+    match self {
+      ShardsGroup::Source(source) => ShardsGroup::Generated(ShardsGroupGenerated {
+        args: unsafe { &*source.args }.clone(),
+        shards: unsafe { &*source.shards }.clone(),
+      }),
+      ShardsGroup::Generated(generated) => ShardsGroup::Generated(generated.clone()),
+    }
+  }
+}
+
+impl Definition {
+  fn without_pointers(&self) -> Self {
+    match self {
+      Definition::ValueGenerated(v) => Definition::ValueGenerated(v.clone()),
+      Definition::ValueSource(v) => Definition::ValueGenerated(unsafe { (**v).clone() }),
+      Definition::Constant(v) => Definition::Constant(v.clone()),
+    }
+  }
+}
+
+// Captured EvalContext passed into shards
+struct CapturedEvalContext {
+  cached_definition_pointers: HashMap<Identifier, Definition>,
+  cached_macro_group_pointers: HashMap<Identifier, ShardsGroup>,
+  cached_shards_group_pointers: HashMap<Identifier, ShardsGroup>,
+
+  definitions: HashMap<Identifier, Definition>,
+  extensions: HashMap<Identifier, Arc<dyn ShardsExtension>>,
+  forbidden_funcs: HashSet<Identifier>,
+  full_namespace: RcStrWrapper,
+  macro_groups: HashMap<Identifier, ShardsGroup>,
+  shards_groups: HashMap<Identifier, ShardsGroup>,
+  meshes: HashMap<Identifier, MeshVar>,
+  namespace: RcStrWrapper,
+  replacements: HashMap<RcStrWrapper, Value>,
+  rewrite_funcs: HashMap<Identifier, Arc<dyn RewriteFunction>>,
+  settings: Vec<Setting>,
+  suffix: Option<RcStrWrapper>,
+  suffix_assigned: HashMap<RcStrWrapper, RcStrWrapper>,
+  traits: HashMap<Identifier, ClonedVar>,
+  wires: HashMap<Identifier, ClonedVar>,
+}
+ref_counted_object_type_impl!(CapturedEvalContext);
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+  pub static ref EVAL_CONTEXT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"shev")); // last letter used as version
+  pub static ref EVAL_CONTEXT_TYPE_VEC: Vec<Type> = vec![*EVAL_CONTEXT_TYPE];
+  pub static ref EVAL_CONTEXT_VAR_TYPE: Type = Type::context_variable(&EVAL_CONTEXT_TYPE_VEC);
+}
+
+pub fn capture_eval_context(env: &EvalEnv) -> ClonedVar {
+  // Helper function to gather data from all environments in the chain
+  fn gather_data<T, F>(env: &EvalEnv, mut result: T, gather_fn: F) -> T
+  where
+    F: Fn(&EvalEnv, &mut T),
+  {
+    // Start with current environment
+    gather_fn(env, &mut result);
+
+    // Then recursively process all parent environments
+    let mut current = env.parent.as_ref();
+    while let Some(parent_lookup) = current {
+      let parent = unsafe { &**parent_lookup };
+      gather_fn(parent, &mut result);
+      current = parent.parent.as_ref();
+    }
+
+    result
+  }
+
+  // Gather definitions from all environments
+  let definitions = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.definitions {
+      // Only insert if not already present (child definitions take precedence)
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.without_pointers());
+      }
+    }
+  });
+
+  // Gather extensions from all environments
+  let extensions = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.extensions {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  // Gather forbidden functions from all environments
+  let forbidden_funcs = gather_data(env, HashSet::new(), |e, result| {
+    for k in &e.forbidden_funcs {
+      result.insert(k.clone());
+    }
+  });
+
+  // Gather full namespace - takes precedence from current environment
+  let full_namespace = env.full_namespace.clone();
+
+  // Gather macro groups
+  let macro_groups = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.macro_groups {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.without_pointers());
+      }
+    }
+  });
+
+  // Continue gathering remaining data
+  let meshes = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.meshes {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  let namespace = env.namespace.clone();
+
+  let replacements = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.replacements {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), unsafe { (**v).clone() });
+      }
+    }
+  });
+
+  let rewrite_funcs = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.rewrite_funcs {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  let settings = env.settings.clone(); // Settings from current environment only
+
+  let suffix = env.suffix.clone();
+
+  let suffix_assigned = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.suffix_assigned {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  let traits = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.traits {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  let wires = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.finalized_wires {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.clone());
+      }
+    }
+  });
+
+  let shards_groups = gather_data(env, HashMap::new(), |e, result| {
+    for (k, v) in &e.shards_groups {
+      if !result.contains_key(k) {
+        result.insert(k.clone(), v.without_pointers());
+      }
+    }
+  });
+
+  let ctx = CapturedEvalContext {
+    cached_definition_pointers: HashMap::new(),
+    cached_macro_group_pointers: HashMap::new(),
+    cached_shards_group_pointers: HashMap::new(),
+    definitions,
+    extensions,
+    forbidden_funcs,
+    full_namespace,
+    macro_groups,
+    meshes,
+    namespace,
+    replacements,
+    rewrite_funcs,
+    settings,
+    shards_groups,
+    wires,
+    suffix,
+    suffix_assigned,
+    traits,
+  };
+  Var::new_ref_counted(ctx, &*EVAL_CONTEXT_TYPE).into()
 }
 
 #[derive(Clone)]
@@ -223,7 +634,8 @@ fn is_compile_time_constant(v: &Value, e: &EvalEnv) -> bool {
     Value::Func(f) => {
       if let Some(defined) = find_defined(&f.name, e) {
         match defined {
-          Definition::Value(v) => is_compile_time_constant(unsafe { &**v }, e),
+          Definition::ValueSource(v) => is_compile_time_constant(unsafe { &**v }, e),
+          Definition::ValueGenerated(v) => is_compile_time_constant(v, e),
           Definition::Constant(_) => true,
         }
       } else {
@@ -797,65 +1209,83 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
   Ok(Var::color_u8s(colors[0], colors[1], colors[2], colors[3]))
 }
 
+fn is_forbidden_func<'a>(name: &'a Identifier, e: &'a EvalEnv) -> bool {
+  e.is_forbidden_func(name)
+}
+
+fn get_rewrite_func<'a>(
+  name: &'a Identifier,
+  e: &'a EvalEnv,
+) -> Option<&'a Arc<dyn RewriteFunction>> {
+  e.get_rewrite_func(name)
+}
+
+fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
+  e.find_current_suffix()
+}
+
+fn find_suffix<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
+  e.find_suffix(name)
+}
+
+fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Value> {
+  e.find_replacement(name)
+}
+
 fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut MeshVar> {
-  if let Some(mesh) = env.meshes.get_mut(name) {
-    Some(mesh)
-  } else if let Some(parent) = env.parent {
-    find_mesh(name, unsafe { &mut *(parent as *mut EvalEnv) })
-  } else {
-    None
-  }
+  env.find_mesh(name)
 }
 
 fn find_trait<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<Var> {
-  if let Some(trait_) = env.traits.get(name) {
-    Some(trait_.0.into())
-  } else if let Some(parent) = env.parent {
-    find_trait(name, unsafe { &mut *(parent as *mut EvalEnv) })
-  } else {
-    None
-  }
+  env.find_trait(name)
 }
 
 fn find_wire<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<(Var, bool)> {
-  if let Some(wire) = env.finalized_wires.get(name) {
-    Some((wire.0.into(), true))
-  } else if let Some(wire) = env.deferred_wires.get(name) {
-    Some((wire.0 .0.into(), false))
-  } else if let Some(parent) = env.parent {
-    find_wire(name, unsafe { &mut *(parent as *mut EvalEnv) })
-  } else {
-    None
-  }
+  env.find_wire(name)
 }
 
 fn find_extension<'a>(
   name: &'a Identifier,
   env: &'a mut EvalEnv,
-) -> Option<&'a mut Box<dyn ShardsExtension>> {
-  if let Some(extension) = env.extensions.get_mut(name) {
-    Some(extension)
-  } else if let Some(parent) = env.parent {
-    find_extension(name, unsafe { &mut *(parent as *mut EvalEnv) })
-  } else {
-    None
-  }
+) -> Option<&'a Arc<dyn ShardsExtension>> {
+  env.find_extension(name)
 }
 
 fn get_program<'a>(env: &'a EvalEnv) -> Option<&'a Program> {
-  if let Some(program) = env.program {
-    Some(unsafe { &*program })
-  } else if let Some(parent) = env.parent {
-    get_program(unsafe { &*(parent as *const EvalEnv) })
+  env.get_program()
+}
+
+fn find_shards_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+  e.find_shards_group(name)
+}
+
+fn find_macro_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+  e.find_macro_group(name)
+}
+
+fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Definition> {
+  e.find_defined(name)
+}
+
+fn find_replacement_identifier<'a>(
+  name: &'a Identifier,
+  line_info: LineInfo,
+  env: &'a EvalEnv,
+) -> Result<Option<&'a Identifier>, ShardsError> {
+  if let Some(replacement) = find_replacement(name, env) {
+    match replacement {
+      Value::Identifier(name) => Ok(Some(name)),
+      _ => Err(("Replacement must be an identifier", line_info).into()),
+    }
   } else {
-    None
+    Ok(None)
   }
 }
 
 fn finalize_wire(
   wire: &Wire,
   name: &Identifier,
-  params: *const Vec<Param>,
+  params: &WireParams,
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
@@ -863,7 +1293,10 @@ fn finalize_wire(
 
   shlog_trace!("Finalizing wire {}", name);
 
-  let param_helper = ParamHelper::new(unsafe { &*params });
+  let param_helper = match &params {
+    WireParams::Source(params) => ParamHelper::new(unsafe { &**params }),
+    WireParams::Generated(params) => ParamHelper::new(&params),
+  };
 
   // ignore first parameter, which is the name
 
@@ -982,7 +1415,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
       .insert(wire.0.clone(), wire.1 .0 .0.into());
   }
   for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
-    finalize_wire(&wire, &name, params, line_info, env)?;
+    finalize_wire(&wire, &name, &params, line_info, env)?;
   }
   Ok(())
 }
@@ -1108,105 +1541,6 @@ fn create_take_seq_chain(
     add_take_shard(var_name, &idx, line, e)?;
   }
   Ok(())
-}
-
-fn is_forbidden_func(name: &Identifier, e: &EvalEnv) -> bool {
-  //recurse env and check
-  let mut env = e;
-  loop {
-    if env.forbidden_funcs.contains(name) {
-      return true;
-    }
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return false;
-    }
-  }
-}
-
-fn get_rewrite_func<'a>(name: &Identifier, e: &'a EvalEnv) -> Option<&'a Box<dyn RewriteFunction>> {
-  //recurse env and check
-  let mut env = e;
-  loop {
-    if let Some(rewrite) = env.rewrite_funcs.get(name) {
-      return Some(rewrite);
-    }
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-/// Recurse into environment and find the suffix
-fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
-  let mut env = e;
-  loop {
-    if let Some(suffix) = &env.suffix {
-      return Some(suffix);
-    }
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-/// Recurse into environment and find the suffix for a given variable name if it exists
-fn find_suffix<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
-  let mut env = e;
-  loop {
-    if let Some(suffix) = env.suffix_assigned.get(name) {
-      return Some(suffix);
-    }
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-/// Recurse into environment and find the replacement for a given variable name if it exists
-fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Value> {
-  if !name.namespaces.is_empty() {
-    // no replacements for qualified names
-    return None;
-  }
-
-  let name = &name.name;
-
-  let mut env = e;
-  loop {
-    if let Some(replacement) = env.replacements.get(name) {
-      let replacement = *replacement;
-      let replacement = unsafe { &*replacement };
-      return Some(replacement);
-    }
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-fn find_replacement_identifier<'a>(
-  name: &'a Identifier,
-  line_info: LineInfo,
-  env: &'a EvalEnv,
-) -> Result<Option<&'a Identifier>, ShardsError> {
-  if let Some(replacement) = find_replacement(name, env) {
-    match replacement {
-      Value::Identifier(name) => Ok(Some(name)),
-      _ => Err(("Replacement must be an identifier", line_info).into()),
-    }
-  } else {
-    Ok(None)
-  }
 }
 
 fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) -> RcStrWrapper {
@@ -1544,7 +1878,7 @@ impl<'e> VariableResolver<'e> {
           F: FnOnce(&mut EvalEnv) -> Result<SVar, ShardsError>,
         {
           let has_variables = if let Some(params) = &f.params {
-            params.iter().any(|x| {
+            params.iter().any(|x: &Param| {
               return !is_compile_time_constant(&x.value, e);
             })
           } else {
@@ -1672,13 +2006,18 @@ impl<'e> VariableResolver<'e> {
           ))),
           ("type", true) => process_type(func, line_info, self.e).map(ResolvedVar::new_const),
           ("ast", true) => process_ast(func, line_info, self.e).map(ResolvedVar::new_const),
+          ("capture-eval-context", true) => {
+            let ctx = capture_eval_context(self.e);
+            Ok(ResolvedVar::new_const(SVar::Cloned(ctx)))
+          }
           _ => {
             if let Some(defined_value) = find_defined(&func.name, self.e).map(|x| x.clone()) {
               match defined_value {
-                Definition::Value(value) => {
+                Definition::ValueSource(value) => {
                   let replacement = unsafe { &*value };
                   self.resolve_var(replacement, line_info, shard)
                 }
+                Definition::ValueGenerated(value) => self.resolve_var(&value, line_info, shard),
                 Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
               }
             } else if let Some(mut shards_env) = process_template(func, line_info, self.e)? {
@@ -2604,54 +2943,6 @@ fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Resul
   Ok(())
 }
 
-/// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_shards_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
-  let mut env = e;
-  loop {
-    if let Some(group) = env.shards_groups.get(name) {
-      return Some(group);
-    }
-
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-/// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_macro_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
-  let mut env = e;
-  loop {
-    if let Some(group) = env.macro_groups.get(name) {
-      return Some(group);
-    }
-
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
-/// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Definition> {
-  let mut env = e;
-  loop {
-    if let Some(val) = env.definitions.get(name) {
-      return Some(val);
-    }
-
-    if let Some(parent) = env.parent {
-      env = unsafe { &*parent };
-    } else {
-      return None;
-    }
-  }
-}
-
 fn get_mesh<'a>(
   param: &'a Param,
   find_mesh: impl Fn(&'a Identifier, &'a mut EvalEnv) -> Option<&'a mut MeshVar>,
@@ -2682,8 +2973,18 @@ fn process_macro(
   e: &mut EvalEnv,
 ) -> Result<Option<ClonedVar>, ShardsError> {
   if let Some(group) = find_macro_group(&func.name, e) {
-    let args = unsafe { &*group.args };
-    let shards = unsafe { &*group.shards };
+    let (args, shards) = match &group {
+      ShardsGroup::Source(source) => {
+        let args = unsafe { &*source.args };
+        let shards = unsafe { &*source.shards };
+        (args, shards)
+      }
+      ShardsGroup::Generated(generated) => {
+        let args = &generated.args;
+        let shards = &generated.shards;
+        (args, shards)
+      }
+    };
 
     let expected_params = func.params.as_ref().map(|p| p.len()).unwrap_or(0);
     let provided_args = args.len();
@@ -2701,7 +3002,7 @@ fn process_macro(
       );
     }
 
-    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
+    let mut eval_env = EvalEnv::new(None, Some(e), None);
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2797,8 +3098,18 @@ fn process_template(
   e: &mut EvalEnv,
 ) -> Result<Option<EvalEnv>, ShardsError> {
   if let Some(group) = find_shards_group(&func.name, e) {
-    let args = unsafe { &*group.args };
-    let shards = unsafe { &*group.shards };
+    let (args, shards) = match &group {
+      ShardsGroup::Source(source) => {
+        let args = unsafe { &*source.args };
+        let shards = unsafe { &*source.shards };
+        (args, shards)
+      }
+      ShardsGroup::Generated(generated) => {
+        let args = &generated.args;
+        let shards = &generated.shards;
+        (args, shards)
+      }
+    };
 
     if args.len() != func.params.as_ref().map(|params| params.len()).unwrap_or(0) {
       return Err(
@@ -2814,7 +3125,7 @@ fn process_template(
       );
     }
 
-    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv), None);
+    let mut sub_env = EvalEnv::new(None, Some(e), None);
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
@@ -3133,9 +3444,14 @@ fn eval_pipeline(
                     let value = as_var(&value.value, block.line_info.unwrap_or_default(), None, e)?;
                     e.definitions
                       .insert(name.clone(), Definition::Constant(value));
+                  } else if let ContextType::Generated = e.context_type {
+                    e.definitions.insert(
+                      name.clone(),
+                      Definition::ValueGenerated(value.value.clone()),
+                    );
                   } else {
                     e.definitions
-                      .insert(name.clone(), Definition::Value(&value.value));
+                      .insert(name.clone(), Definition::ValueSource(&value.value));
                   }
 
                   Ok(())
@@ -3210,6 +3526,11 @@ fn eval_pipeline(
                 name.namespaces.is_empty(),
               )?;
               shlog_trace!("Adding deferred wire {}", wire_name);
+              let params = if let ContextType::Source = e.context_type {
+                WireParams::Source(params_ptr)
+              } else {
+                WireParams::Generated(unsafe { &*params_ptr }.to_vec())
+              };
               e.deferred_wires.insert(
                 name,
                 (
@@ -3226,7 +3547,7 @@ fn eval_pipeline(
                       })
                       .unwrap_or(0)
                   }),
-                  params_ptr,
+                  params,
                   block.line_info.unwrap_or_default(),
                 ),
               );
@@ -3285,9 +3606,16 @@ fn eval_pipeline(
                   let shards_ptr = shards as *const _;
                   e.shards_groups.insert(
                     name.clone(),
-                    ShardsGroup {
-                      args: args_ptr,
-                      shards: shards_ptr,
+                    if let ContextType::Source = e.context_type {
+                      ShardsGroup::Source(ShardsGroupSource {
+                        args: args_ptr,
+                        shards: shards_ptr,
+                      })
+                    } else {
+                      ShardsGroup::Generated(ShardsGroupGenerated {
+                        args: unsafe { &*args_ptr }.clone(),
+                        shards: unsafe { &*shards_ptr }.clone(),
+                      })
                     },
                   );
                   Ok(())
@@ -3360,10 +3688,10 @@ fn eval_pipeline(
             }
           }
           ("schedule", true) => {
-            if let Some(ref params) = func.params {
-              let mut otherFn = func.clone();
-              otherFn.name.name = RcStrWrapper::new("Schedule");
-              add_shard(&otherFn, block.line_info.unwrap_or_default(), e)?;
+            if let Some(ref _params) = func.params {
+              let mut other_fn = func.clone();
+              other_fn.name.name = RcStrWrapper::new("Schedule");
+              add_shard(&other_fn, block.line_info.unwrap_or_default(), e)?;
               Ok(())
             } else {
               Err(
@@ -3452,9 +3780,16 @@ fn eval_pipeline(
                   let shards_ptr = shards as *const _;
                   e.macro_groups.insert(
                     name.clone(),
-                    ShardsGroup {
-                      args: args_ptr,
-                      shards: shards_ptr,
+                    if let ContextType::Source = e.context_type {
+                      ShardsGroup::Source(ShardsGroupSource {
+                        args: args_ptr,
+                        shards: shards_ptr,
+                      })
+                    } else {
+                      ShardsGroup::Generated(ShardsGroupGenerated {
+                        args: unsafe { &*args_ptr }.clone(),
+                        shards: unsafe { &*shards_ptr }.clone(),
+                      })
                     },
                   );
                   Ok(())
@@ -3488,6 +3823,19 @@ fn eval_pipeline(
           ("ast", true) => {
             let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
             add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
+          }
+          ("eval-context", true) => {
+            let ctx = capture_eval_context(e);
+            add_const_shard2(func, ctx.0, block.line_info.unwrap_or_default(), e)
+          }
+          ("namespace", true) => {
+            let namespace = e.full_namespace.clone();
+            add_const_shard2(
+              func,
+              Var::ephemeral_string(namespace.as_str()),
+              block.line_info.unwrap_or_default(),
+              e,
+            )
           }
           _ => {
             match (
@@ -3556,15 +3904,66 @@ fn eval_pipeline(
                     .into()
                 })?;
 
-                // which we directly evaluate
-                for stmt in &decoded_json.statements {
-                  eval_statement(stmt, e, cancellation_token.clone())?;
-                }
+                e.with_context_mut(ContextType::Generated, |e| {
+                  // which we directly evaluate
+                  for stmt in &decoded_json.statements {
+                    eval_statement(stmt, e, cancellation_token.clone())?;
+                  }
+                  Ok(())
+                })?;
 
                 Ok(())
               }
               (Some(value), _, _, _) => {
                 // defined
+                fn eval_def(
+                  replacement: &Value,
+                  func: &Function,
+                  start_idx: usize,
+                  block: &Block,
+                  e: &mut EvalEnv,
+                  cancellation_token: Arc<AtomicBool>,
+                ) -> Result<(), ShardsError> {
+                  match replacement {
+                    Value::None(_)
+                    | Value::Identifier(_)
+                    | Value::Boolean(_)
+                    | Value::Enum(_, _)
+                    | Value::Number(_)
+                    | Value::String(_)
+                    | Value::Bytes(_)
+                    | Value::Int2(_)
+                    | Value::Int3(_)
+                    | Value::Int4(_)
+                    | Value::Int8(_)
+                    | Value::Int16(_)
+                    | Value::Float2(_)
+                    | Value::Float3(_)
+                    | Value::Float4(_)
+                    | Value::Seq(_)
+                    | Value::Func(_)
+                    | Value::TakeTable(_, _)
+                    | Value::TakeSeq(_, _)
+                    | Value::Table(_) => {
+                      add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
+                    }
+                    Value::Shards(seq) => {
+                      // purely include the ast of the sequence
+                      for stmt in &seq.statements {
+                        eval_statement(stmt, e, cancellation_token.clone())?;
+                      }
+                    }
+                    Value::EvalExpr(seq) => {
+                      let value = eval_eval_expr(&seq, e)?;
+                      add_const_shard2(func, value.0 .0, block.line_info.unwrap_or_default(), e)?
+                    }
+                    Value::Expr(seq) => eval_expr(seq, e, block, start_idx, cancellation_token)?,
+                    Value::Shard(shard) => {
+                      add_shard(shard, block.line_info.unwrap_or_default(), e)?
+                    }
+                  }
+                  Ok(())
+                }
                 match value {
                   Definition::Constant(value) => match value {
                     SVar::Cloned(value) => {
@@ -3574,49 +3973,22 @@ fn eval_pipeline(
                       add_const_shard2(func, value, block.line_info.unwrap_or_default(), e)?
                     }
                   },
-                  Definition::Value(value) => {
-                    let replacement = unsafe { &*value };
-                    match replacement {
-                      Value::None(_)
-                      | Value::Identifier(_)
-                      | Value::Boolean(_)
-                      | Value::Enum(_, _)
-                      | Value::Number(_)
-                      | Value::String(_)
-                      | Value::Bytes(_)
-                      | Value::Int2(_)
-                      | Value::Int3(_)
-                      | Value::Int4(_)
-                      | Value::Int8(_)
-                      | Value::Int16(_)
-                      | Value::Float2(_)
-                      | Value::Float3(_)
-                      | Value::Float4(_)
-                      | Value::Seq(_)
-                      | Value::Func(_)
-                      | Value::TakeTable(_, _)
-                      | Value::TakeSeq(_, _)
-                      | Value::Table(_) => {
-                        add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
-                      }
-                      Value::Shards(seq) => {
-                        // purely include the ast of the sequence
-                        for stmt in &seq.statements {
-                          eval_statement(stmt, e, cancellation_token.clone())?;
-                        }
-                      }
-                      Value::EvalExpr(seq) => {
-                        let value = eval_eval_expr(&seq, e)?;
-                        add_const_shard2(func, value.0 .0, block.line_info.unwrap_or_default(), e)?
-                      }
-                      Value::Expr(seq) => {
-                        eval_expr(seq, e, block, start_idx, new_cancellation_token())?
-                      }
-                      Value::Shard(shard) => {
-                        add_shard(shard, block.line_info.unwrap_or_default(), e)?
-                      }
-                    }
-                  }
+                  Definition::ValueSource(value) => eval_def(
+                    unsafe { &*value },
+                    func,
+                    start_idx,
+                    block,
+                    e,
+                    cancellation_token.clone(),
+                  )?,
+                  Definition::ValueGenerated(value) => eval_def(
+                    &value,
+                    func,
+                    start_idx,
+                    block,
+                    e,
+                    cancellation_token.clone(),
+                  )?,
                 }
                 Ok(())
               }
@@ -3880,7 +4252,7 @@ pub fn eval(
         namespaces: Vec::new(),
         custom_state: CustomStateContainer::new(),
       },
-      Definition::Value(value),
+      Definition::ValueSource(value),
     );
   }
 
@@ -3895,7 +4267,7 @@ pub fn eval(
 
 /// Register an extension which is a type that implements the `ShardsExtension` trait to the environment.
 #[allow(dead_code)]
-pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env: &mut EvalEnv) {
+pub fn register_extension<T: ShardsExtension>(ext: Arc<dyn ShardsExtension>, env: &mut EvalEnv) {
   env.extensions.insert(
     Identifier {
       name: ext.name().to_owned().into(),
@@ -3906,141 +4278,97 @@ pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env
   );
 }
 
-use lazy_static::lazy_static;
-
-lazy_static! {
-  static ref EVAL_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Name"),
-      shccstr!("The optional output wire name."),
-      STRING_VAR_OR_NONE_SLICE
-    )
-      .into(),
-    (
-      cstr!("Defines"),
-      shccstr!("The optional initial injected defines."),
-      ANY_TABLE_VAR_NONE_SLICE
-    )
-      .into(),
-    (
-      cstr!("Namespace"),
-      shccstr!("The optional namespace name."),
-      STRING_VAR_OR_NONE_SLICE
-    )
-      .into(),
-    (
-      cstr!("Forbid"),
-      shccstr!("The optional forbidden shards and functions."),
-      STRINGS_OR_NONE_SLICE
-    )
-      .into(),
-    (
-      cstr!("FullOutput"),
-      shccstr!("Whether to return as output a table with the error and the wire."),
-      BOOL_TYPES_SLICE
-    )
-      .into(),
-  ];
-  // both types are any, as they can be none
-  static ref DISTILL_FULL_OUTPUT_TYPES: Vec<Type> = vec![common_type::any, common_type::any,];
-  static ref DISTILL_FULL_OUTPUT_KEYS: Vec<Var> = vec![
-    shards::shstr!("error").into(),
-    shards::shstr!("wire").into(),
-  ];
-  static ref DISTILL_OUTPUT_TYPE: Type =
-    Type::table(&DISTILL_FULL_OUTPUT_KEYS, &DISTILL_FULL_OUTPUT_TYPES);
-  static ref DISTILL_OUTPUT_TYPES: Vec<Type> = vec![*DISTILL_OUTPUT_TYPE];
+lazy_static::lazy_static! {
+   // both types are any, as they can be none
+   static ref DISTILL_FULL_OUTPUT_TYPES: Vec<Type> = vec![common_type::any, common_type::any,];
+   static ref DISTILL_FULL_OUTPUT_KEYS: Vec<Var> = vec![
+     shards::shstr!("error").into(),
+     shards::shstr!("wire").into(),
+   ];
+   static ref DISTILL_OUTPUT_TYPE: Type =
+     Type::table(&DISTILL_FULL_OUTPUT_KEYS, &DISTILL_FULL_OUTPUT_TYPES);
+   static ref DISTILL_OUTPUT_TYPES: Vec<Type> = vec![*DISTILL_OUTPUT_TYPE];
 }
 
-#[derive(Default)]
+#[derive(shard)]
+#[shard_info("Shards.Distill", "Evaluates a Shards program and outputs a wire.")]
 pub struct EvalShard {
   output: ClonedVar,
-  namespace: ParamVar,
+  #[shard_param("Name", "The optional output wire name.", STRING_VAR_OR_NONE_SLICE)]
   name: ParamVar,
+  #[shard_param(
+    "Defines",
+    "The optional initial injected defines.",
+    ANY_TABLE_VAR_NONE_SLICE
+  )]
   defines: ParamVar,
+  #[shard_param("Namespace", "The optional namespace name.", STRING_VAR_OR_NONE_SLICE)]
+  namespace: ParamVar,
+  #[shard_param(
+    "Context",
+    "The evaluation context to inherit templates/definitions/variables from for this script.",
+    [common_type::none, *EVAL_CONTEXT_TYPE, *EVAL_CONTEXT_VAR_TYPE]
+  )]
+  // This is a magic variable that is automatically populated during read
+  eval_context: ParamVar,
+  #[shard_param(
+    "Forbid",
+    "The optional forbidden shards and functions.",
+    STRINGS_OR_NONE_SLICE
+  )]
   forbidden_shards: ClonedVar,
-  full_output: bool,
+  #[shard_param(
+    "FullOutput",
+    "Whether to return as output a table with the error and the wire.",
+    BOOL_TYPES_SLICE
+  )]
+  full_output: ClonedVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
-impl LegacyShard for EvalShard {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("Shards.Distill")
+impl Default for EvalShard {
+  fn default() -> Self {
+    Self {
+      output: ClonedVar::default(),
+      name: ParamVar::default(),
+      defines: ParamVar::default(),
+      namespace: ParamVar::default(),
+      eval_context: ParamVar::default(),
+      forbidden_shards: ClonedVar::default(),
+      full_output: Var::new_bool(false).into(),
+      required: ExposedTypes::new(),
+    }
   }
+}
 
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("Shards.Distill-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "Shards.Distill"
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for EvalShard {
+  fn input_types(&mut self) -> &Types {
     &read::READ_OUTPUT_TYPES
   }
 
-  fn outputTypes(&mut self) -> &Types {
-    if !self.full_output {
+  fn output_types(&mut self) -> &Types {
+    let full_output: bool = unsafe { (&self.full_output.0).try_into().unwrap_unchecked() };
+    if !full_output {
       &WIRE_TYPES
     } else {
       &DISTILL_OUTPUT_TYPES
     }
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&EVAL_PARAMETERS)
-  }
-
-  fn hasCompose() -> bool
-  where
-    Self: Sized,
-  {
-    true
-  }
-
-  fn compose(&mut self, _: &InstanceData) -> Result<Type, &str> {
-    Ok(self.outputTypes()[0])
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.name.set_param(value),
-      1 => self.defines.set_param(value),
-      2 => self.namespace.set_param(value),
-      3 => Ok(self.forbidden_shards = value.into()),
-      4 => Ok(self.full_output = value.try_into()?),
-      _ => Err("invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.name.get_param(),
-      1 => self.defines.get_param(),
-      2 => self.namespace.get_param(),
-      3 => self.forbidden_shards.0,
-      4 => self.full_output.into(),
-      _ => Var::default(),
-    }
-  }
-
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.namespace.cleanup(ctx);
-    self.name.cleanup(ctx);
-    self.defines.cleanup(ctx);
-    Ok(())
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.namespace.warmup(context);
-    self.name.warmup(context);
-    self.defines.warmup(context);
+    self.warmup_helper(context)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 
@@ -4048,6 +4376,26 @@ impl LegacyShard for EvalShard {
     let maybe_bytes: Result<&[u8], _> = input.try_into();
     let maybe_string: Result<&str, _> = input.try_into();
     let maybe_object = unsafe { Var::from_ref_counted_object::<Program>(input, &AST_TYPE) };
+
+    let eval_context_var = self.eval_context.get();
+    let eval_context = if eval_context_var.is_none() {
+      None
+    } else {
+      let eval_context = unsafe {
+        &mut *Var::from_ref_counted_object::<CapturedEvalContext>(
+          &eval_context_var,
+          &*EVAL_CONTEXT_TYPE,
+        )?
+      };
+      Some(eval_context)
+    };
+
+    let parent = if let Some(eval_context) = eval_context {
+      Some(EvalEnv::from_captured(eval_context))
+    } else {
+      None
+    };
+    let parent_ptr = parent.as_ref().map(|p| p as *const EvalEnv);
 
     let mut prog = match (maybe_bytes, maybe_string, maybe_object) {
       (Ok(bytes), _, _) => {
@@ -4082,9 +4430,13 @@ impl LegacyShard for EvalShard {
     let namespace = self.namespace.get();
     let mut env = if namespace.is_string() {
       let namespace: &str = namespace.try_into()?;
-      EvalEnv::new(Some(namespace.into()), None, Some(prog as *const Program))
+      EvalEnv::new(
+        Some(namespace.into()),
+        parent_ptr,
+        Some(prog as *const Program),
+      )
     } else {
-      EvalEnv::new(None, None, Some(prog as *const Program))
+      EvalEnv::new(None, parent_ptr, Some(prog as *const Program))
     };
 
     let defines = self.defines.get();
@@ -4104,7 +4456,7 @@ impl LegacyShard for EvalShard {
           namespaces: Vec::new(),
           custom_state: CustomStateContainer::new(),
         },
-        Definition::Value(v),
+        Definition::ValueSource(v),
       );
     }
 
@@ -4120,7 +4472,8 @@ impl LegacyShard for EvalShard {
       }
     }
 
-    if !self.full_output {
+    let full_output: bool = (&self.full_output.0).try_into()?;
+    if !full_output {
       let mut env = eval_sequence(
         &prog.sequence,
         Some(&mut env),
