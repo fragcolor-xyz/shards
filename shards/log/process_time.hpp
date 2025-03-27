@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 
+namespace shards::logging {
 class TimeKeeper {
 public:
   TimeKeeper() { startTime = std::chrono::high_resolution_clock::now(); }
@@ -42,5 +43,6 @@ public:
 private:
   std::shared_ptr<TimeKeeper> timeKeeper;
 };
+} // namespace shards::logging
 
 #endif /* A3D46BB0_72BD_48CD_AC40_44503BFF61DB */

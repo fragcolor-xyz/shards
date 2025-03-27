@@ -1,0 +1,45 @@
+@mesh(sub-mesh)
+@mesh(root-mesh)
+
+@wire(b {
+  Once({
+    0 >= v
+  })
+  Log("From sub-wire 0")
+  Log("From sub-wire 1" Level: LogLevel::Error)
+  
+  Maybe({
+    IntRange(0 32) | TryMany({
+      Log("ParallelLog")
+      "This should fail quietly" | Fail
+    })
+  } Silent: true)
+  Maybe({
+    Log("Before suspend silently")
+    Pause(0.1)
+    Log("After suspend silently")
+  } Silent: true)
+  Math.Inc(v)
+  Msg("Incremented")
+} Looped: true)
+
+@wire(a {
+  Pause(0.2)
+  CaptureLog({
+    ; Step sub-wires
+    Once({
+      0 >= fc
+    })
+    fc | Log("> in")
+    Branch([b] Mesh: sub-mesh)
+    fc | Log("< out")
+    Math.Inc(fc)
+  } Silent: true Format: "-- [proc: %P] [block: %p] %v --")
+  ForEach({
+    Msg($0 Raw: true)
+    ; Pass
+  })
+} Looped: true)
+
+@schedule(root-mesh a)
+@run(root-mesh Iterations: 100 FPS: 10)

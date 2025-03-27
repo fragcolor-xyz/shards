@@ -40,6 +40,7 @@
 #endif
 #include <boost/context/continuation_fcontext.hpp>
 #include <boost/thread.hpp>
+#include <shards/log/log.hpp>
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
@@ -56,6 +57,8 @@ private:
   std::atomic_bool isRunning;
 
   std::optional<boost::thread> thread;
+  logging::ThreadContext* srcLogContext{};
+  logging::ThreadContext* logContext;
 
 public:
   ThreadFiber() = default;

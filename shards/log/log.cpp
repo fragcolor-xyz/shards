@@ -1,5 +1,7 @@
 #include "log.hpp"
-#include "spdlog/fmt/bundled/core.h"
+#include <spdlog/fmt/bundled/core.h>
+#include <shards/core/assert.hpp>
+#include <shards/core/platform.hpp>
 #include <iterator>
 #include <spdlog/spdlog.h>
 #include <vector>
@@ -14,7 +16,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include "../core/platform.hpp"
 #include "process_time.hpp"
 
 #if SH_ANDROID
@@ -53,7 +54,6 @@ struct EmscriptenSink : public spdlog::sinks::base_sink<std::mutex> {
 #endif
 
 namespace shards::logging {
-
 std::shared_mutex &__getRegisterMutex() {
   static std::shared_mutex m;
   return m;
@@ -138,10 +138,54 @@ struct Config {
   }
 };
 
+static thread_local ThreadContext *threadContext{};
+
+struct ShardsSink : public spdlog::sinks::dist_sink_mt {
+  void sink_it_(const spdlog::details::log_msg &msg) override {
+    ThreadContext *pp = threadContext;
+    while (pp) {
+      if (pp->intercept) {
+        if (!pp->intercept(msg))
+          return;
+      }
+      pp = pp->prev;
+    }
+
+    spdlog::sinks::dist_sink_mt::sink_it_(msg);
+  }
+};
+
+ThreadContext::ThreadContext(ThreadContext &&other) {
+  shassert(threadContext == &other);
+  other.pop();
+  this->intercept = other.intercept;
+  push();
+}
+
+void ThreadContext::push() {
+  prev = threadContext;
+  threadContext = this;
+}
+void ThreadContext::pop() {
+  if (this == threadContext) {
+    threadContext = prev;
+  }
+};
+
+ThreadContext *ThreadContext::source() { return threadContext; }
+ThreadContext ThreadContext::fork(ThreadContext *from) {
+  if (from && from->intercept) {
+    // Copy the intercept function
+    return ThreadContext{from->intercept};
+  }
+  // Blank
+  return ThreadContext();
+}
+
 struct Sinks {
   std::shared_mutex lock;
 
-  std::shared_ptr<spdlog::sinks::dist_sink_mt> distSink;
+  std::shared_ptr<ShardsSink> mainSink;
   std::shared_ptr<spdlog::sinks::stderr_color_sink_mt> stdErrSink;
   std::shared_ptr<spdlog::sinks::sink> logFileSink;
 #if SH_ANDROID
@@ -153,7 +197,7 @@ struct Sinks {
   bool logLevelOverriden{};
 
   Sinks() {
-    distSink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+    mainSink = std::make_shared<ShardsSink>();
 
 #if SH_EMSCRIPTEN
     emscriptenSink = std::make_shared<EmscriptenSink>();
@@ -188,17 +232,17 @@ struct Sinks {
   void initStdErrSink() {
 #if !SH_EMSCRIPTEN
     if (stdErrSink)
-      distSink->remove_sink(stdErrSink);
+      mainSink->remove_sink(stdErrSink);
     stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     resetStdErrSink();
-    distSink->add_sink(stdErrSink);
+    mainSink->add_sink(stdErrSink);
 #endif
   }
 
   void initLogFile(std::string fileName) {
     std::string logFilePath = boost::filesystem::absolute(fileName).string();
     if (logFileSink)
-      distSink->remove_sink(logFileSink);
+      mainSink->remove_sink(logFileSink);
 
 #if defined(SHARDS_LOG_ROTATING_MAX_FILE_SIZE) && defined(SHARDS_LOG_ROTATING_MAX_FILES)
     logFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath.c_str(), SHARDS_LOG_ROTATING_MAX_FILE_SIZE,
@@ -210,13 +254,13 @@ struct Sinks {
     if (Config::DefaultFileLogLevel) {
       logFileSink->set_level(Config::DefaultFileLogLevel.value());
     }
-    distSink->add_sink(logFileSink);
+    mainSink->add_sink(logFileSink);
   }
 
   // Reset compile-time settings when environment override is detected
   void overrideLogLevel() {
     if (!logLevelOverriden) {
-      for (auto &s : distSink->sinks())
+      for (auto &s : mainSink->sinks())
         s->set_level(spdlog::level::trace);
       spdlog::set_level(spdlog::level::info);
       logLevelOverriden = true;
@@ -229,9 +273,9 @@ Sinks &globalSinks() {
   return sinks;
 }
 
-void flush() { globalSinks().distSink->flush(); }
+void flush() { globalSinks().mainSink->flush(); }
 
-std::shared_ptr<spdlog::sinks::dist_sink_mt> getDistSink() { return globalSinks().distSink; }
+std::shared_ptr<spdlog::sinks::dist_sink_mt> getDistSink() { return globalSinks().mainSink; }
 
 void __init(Logger logger) {
   spdlog::register_logger(logger);
@@ -270,7 +314,7 @@ void initFlush(Logger logger) {
   }
 }
 
-static std::shared_ptr<TimeKeeper> getTimeKeeper() {
+std::shared_ptr<TimeKeeper> getProcessTimeKeeper() {
   static auto t = std::make_shared<TimeKeeper>();
   return t;
 }
@@ -279,7 +323,7 @@ void initLogFormat(Logger logger) {
   std::string varName = fmt::format("LOG_{}_FORMAT", logger->name());
 
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
-  formatter->add_flag<ProcessTimeFlag>('P', getTimeKeeper());
+  formatter->add_flag<ProcessTimeFlag>('P', getProcessTimeKeeper());
 
 #if SHARDS_LOG_SDL
   if (const char *val = SDL_getenv(varName.c_str())) {
@@ -311,16 +355,16 @@ void initLogFormat(Logger logger) {
 
 void initSinks(Logger logger) {
   logger->sinks().clear();
-  logger->sinks().push_back(globalSinks().distSink);
+  logger->sinks().push_back(globalSinks().mainSink);
 }
 
 void initAllSinks() {
   spdlog::apply_all([&](Logger logger) { initSinks(logger); });
 }
 
-spdlog::level::level_enum getSinkLevel() { return globalSinks().distSink->level(); }
+spdlog::level::level_enum getSinkLevel() { return globalSinks().mainSink->level(); }
 
-void setSinkLevel(spdlog::level::level_enum level) { globalSinks().distSink->set_level(level); }
+void setSinkLevel(spdlog::level::level_enum level) { globalSinks().mainSink->set_level(level); }
 
 static void setupDefaultLogger(const std::string &fileName) {
   auto &sinks = globalSinks();
@@ -334,7 +378,7 @@ static void setupDefaultLogger(const std::string &fileName) {
     sinks.initStdErrSink();
   }
 
-  auto logger = std::make_shared<spdlog::logger>("shards", sinks.distSink);
+  auto logger = std::make_shared<spdlog::logger>("shards", sinks.mainSink);
   initFlush(logger);
   spdlog::set_default_logger(logger);
   initLogLevel(logger);

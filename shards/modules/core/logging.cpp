@@ -5,6 +5,7 @@
 #include <shards/shardwrapper.hpp>
 #include <shards/utility.hpp>
 #include <shards/core/params.hpp>
+#include <shards/log/process_time.hpp>
 #include <spdlog/spdlog.h>
 #include <atomic>
 #include <numeric>
@@ -12,6 +13,7 @@
 #include <cstdio>
 #include <shards/log/log.hpp>
 #include <spdlog/sinks/dist_sink.h>
+#include <oneapi/tbb/concurrent_queue.h>
 
 namespace shards {
 
@@ -178,190 +180,6 @@ struct Msg : public LoggingBase {
   }
 };
 
-/*
- * Custom ring buffer sink
- */
-template <typename Mutex> class custom_ringbuffer_sink final : public spdlog::sinks::base_sink<Mutex> {
-public:
-  explicit custom_ringbuffer_sink(size_t n_items, spdlog::level::level_enum min_level = spdlog::level::debug)
-      : q_{n_items}, min_level_(min_level) {}
-
-  inline bool is_dirty() const noexcept { return _dirty.load(); }
-
-  std::vector<std::string> get_last_formatted() {
-    if (is_dirty()) {
-      std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
-      _dirty = false;
-
-      auto n_items = q_.size();
-      _formatted_cache.clear();
-      _formatted_cache.reserve(n_items);
-      for (size_t i = 0; i < n_items; i++) {
-        spdlog::memory_buf_t formatted;
-        spdlog::sinks::base_sink<Mutex>::formatter_->format(q_.at(i), formatted);
-        _formatted_cache.push_back(fmt::to_string(formatted));
-      }
-    }
-
-    return _formatted_cache;
-  }
-
-protected:
-  void sink_it_(const spdlog::details::log_msg &msg) override {
-    if (msg.level >= min_level_) {
-      _dirty = true;
-      q_.push_back(spdlog::details::log_msg_buffer{msg});
-    }
-  }
-  void flush_() override {}
-
-private:
-  spdlog::details::circular_q<spdlog::details::log_msg_buffer> q_;
-  spdlog::level::level_enum min_level_;
-
-  std::atomic<bool> _dirty{false};
-  std::vector<std::string> _formatted_cache;
-};
-
-using custom_ringbuffer_sink_mt = custom_ringbuffer_sink<std::mutex>;
-using custom_ringbuffer_sink_st = custom_ringbuffer_sink<spdlog::details::null_mutex>;
-
-struct CaptureLog {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input is ignored. This shard captures log messages based on specified parameters.");
-  }
-
-  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
-
-  static SHOptionalString outputHelp() { return SHCCSTR("A sequence of captured log messages."); }
-
-  static SHOptionalString help() {
-    return SHCCSTR(
-        "Captures log messages based on specified parameters, such as the number of messages to retain, the minimum log level, "
-        "and the log format pattern. It can optionally suspend execution until new log messages are available.");
-  }
-
-  static SHParametersInfo parameters() { return _params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _n_items = size_t(value.payload.intValue);
-      break;
-    case 1:
-      _min_level = SHSTRVIEW(value);
-      break;
-    case 2:
-      _pattern = SHSTRVIEW(value);
-      break;
-    case 3:
-      _suspend = value.payload.boolValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(int64_t(_n_items));
-    case 1:
-      return Var(_min_level);
-    case 2:
-      return Var(_pattern);
-    case 3:
-      return Var(_suspend);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void warmup(SHContext *context) {
-    auto logger = spdlog::default_logger();
-    assert(logger);
-    auto sink = logger->sinks().at(0);
-    assert(sink);
-    auto dist_sink = std::dynamic_pointer_cast<spdlog::sinks::dist_sink_mt>(sink);
-    if (dist_sink) {
-      _ring = std::make_shared<custom_ringbuffer_sink_mt>(_n_items, spdlog::level::from_str(_min_level));
-      _ring->set_formatter(
-          std::unique_ptr<spdlog::formatter>(new spdlog::pattern_formatter(_pattern, spdlog::pattern_time_type::local)));
-      dist_sink->add_sink(_ring);
-    }
-  }
-
-  void cleanup(SHContext *context) {
-    auto logger = spdlog::default_logger();
-    assert(logger);
-    auto sink = logger->sinks().at(0);
-    assert(sink);
-    auto dist_sink = std::dynamic_pointer_cast<spdlog::sinks::dist_sink_mt>(sink);
-    if (dist_sink) {
-      dist_sink->remove_sink(_ring);
-      _ring.reset();
-    }
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    if (_suspend) {
-      OVERRIDE_ACTIVATE(data, activateWithSuspend);
-    }
-
-    return CoreInfo::StringSeqType;
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    if (likely((bool)_ring)) {
-      if (_ring->is_dirty()) {
-        updateSeq();
-      }
-    }
-    return Var(SHSeq(_seq));
-  }
-
-  SHVar activateWithSuspend(SHContext *context, const SHVar &input) {
-    if (likely((bool)_ring)) {
-      while (!_ring->is_dirty()) {
-        SH_SUSPEND(context, 0);
-      }
-
-      updateSeq();
-    }
-    return Var(SHSeq(_seq));
-  }
-
-private:
-  void updateSeq() {
-    auto msgs = _ring->get_last_formatted();
-    auto size = msgs.size();
-    _pool.resize(size);
-    _seq.resize(size);
-    for (size_t i = 0; i < size; i++) {
-      _pool[i].assign(msgs[i]);
-      _seq[i] = Var(_pool[i]);
-    }
-  }
-
-  static inline Parameters _params{
-      {"Size", SHCCSTR("The maximum number of logs to retain."), {CoreInfo::IntType}},
-      {"MinLevel", SHCCSTR("The minimum level of logs to capture."), {CoreInfo::StringType}},
-      {"Pattern", SHCCSTR("The pattern used to format the logs."), {CoreInfo::StringType}},
-      {"Suspend", SHCCSTR("Suspend execution until new logs are available."), {CoreInfo::BoolType}},
-  };
-
-  std::vector<std::string> _pool;
-  IterableSeq _seq;
-
-  size_t _n_items{8};
-  std::string _min_level{"debug"};
-  std::string _pattern{"%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v"};
-  std::shared_ptr<custom_ringbuffer_sink_mt> _ring;
-  bool _suspend{false};
-};
-
 SHVar logsFlushActivation(const SHVar &input) {
   spdlog::default_logger()->flush();
   return input;
@@ -369,39 +187,121 @@ SHVar logsFlushActivation(const SHVar &input) {
 
 SHVar logsChangeLevelActivation(const SHVar &input) {
   auto level = SHSTRING_PREFER_SHSTRVIEW(input);
-  spdlog::set_level(spdlog::level::from_str(level));
+  logging::setSinkLevel(spdlog::level::from_str(level));
   return input;
 }
+
+struct CaptureLog {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Captures log messages with additional control over silent mode and format pattern. "
+                   "When silent mode is enabled, log output is suppressed. "
+                   "A custom format pattern can be specified to control how log messages are formatted.");
+  }
+
+  PARAM(ShardsVar, _content, "Content", "The content of the log message", {CoreInfo::Shards})
+  PARAM_VAR(_silent, "Silent", "Whether to suppress log output", {CoreInfo::BoolType})
+  PARAM_VAR(_format, "Format", "Custom format pattern for log messages (%P will record the process's life time, %p will record the shard's life time)", {CoreInfo::StringType})
+  PARAM_IMPL(PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_silent), PARAM_IMPL_FOR(_format));
+
+  oneapi::tbb::concurrent_queue<spdlog::memory_buf_t> _messages;
+  std::vector<spdlog::memory_buf_t> _stringBuffer;
+  SeqVar _seqView;
+  bool _passThrough{};
+  const char *_pattern{};
+  std::shared_ptr<logging::TimeKeeper> _timeKeeper;
+  std::unique_ptr<spdlog::pattern_formatter> _formatter;
+
+  CaptureLog2() {
+    // Default format
+    _format = Var("[%l] %v");
+    _silent = Var(true);
+    _timeKeeper = std::make_shared<logging::TimeKeeper>();
+    _formatter = std::make_unique<spdlog::pattern_formatter>("%v", spdlog::pattern_time_type::local, "");
+    _formatter->add_flag<logging::ProcessTimeFlag>('P', logging::getProcessTimeKeeper());
+    _formatter->add_flag<logging::ProcessTimeFlag>('p', _timeKeeper);
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _content.compose(data);
+    return outputTypes().elements[0];
+  }
+
+  logging::ThreadContext createScopedLogContext() {
+    bool passThrough = !_silent.payload.boolValue;
+    const char *pattern = _format.payload.stringValue;
+    return logging::ThreadContext([this, passThrough](const spdlog::details::log_msg &msg) {
+      spdlog::memory_buf_t mb;
+      _formatter->format(msg, mb);
+      _messages.emplace(std::move(mb));
+      return passThrough;
+    });
+  }
+
+  SHExposedTypesInfo exposedVariables() { return _content.composeResult().exposedInfo; }
+
+  void warmup(SHContext *context) {
+    _formatter->set_pattern(_format.payload.stringValue);
+    auto $ = createScopedLogContext();
+    // Warmup after so we can collect warmup logs
+    PARAM_WARMUP(context);
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    {
+      auto $ = createScopedLogContext();
+      SHVar out{};
+      _content.activate(context, input, out);
+    }
+
+    // Now flush the queue into the output sequence
+    auto size = _messages.unsafe_size();
+    _stringBuffer.resize(size);
+    _seqView.resize(size);
+    for (size_t i = 0; i < size; i++) {
+      spdlog::memory_buf_t &msg = _stringBuffer[i];
+      if (_messages.try_pop(msg)) {
+        _seqView[i] = OwnedVar::Foreign(std::string_view(msg.data(), msg.size()));
+      }
+    }
+    return _seqView;
+  }
+};
+
+struct LogFlush : public LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard flushes the log buffer to the console. This ensures that any pending log messages are "
+                   "immediately written to the console.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+};
+
+struct LogChangeLevel : public LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard changes the log level to the level specified by the string passed as input. ");
+  }
+
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("A string representing the new log level (e.g., 'debug', 'info', 'warn', 'error', 'critical').");
+  }
+
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
+};
 
 SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("Log", Log);
   REGISTER_SHARD("LogType", LogType);
   REGISTER_SHARD("Msg", Msg);
   REGISTER_SHARD("CaptureLog", CaptureLog);
-
-  struct LogFlush : public LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType> {
-    static SHOptionalString help() {
-      return SHCCSTR("This shard flushes the log buffer to the console. This ensures that any pending log messages are "
-                     "immediately written to the console.");
-    }
-
-    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
-
-    static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
-  };
-
-  struct LogChangeLevel : public LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType> {
-    static SHOptionalString help() {
-      return SHCCSTR("This shard changes the log level to the level specified by the string passed as input. ");
-    }
-
-    static SHOptionalString inputHelp() {
-      return SHCCSTR("A string representing the new log level (e.g., 'debug', 'info', 'warn', 'error', 'critical').");
-    }
-
-    static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
-  };
-
   REGISTER_SHARD("FlushLog", LogFlush);
   REGISTER_SHARD("SetLogLevel", LogChangeLevel);
   REGISTER_ENUM(Enums::LogLevelEnumInfo);

@@ -1557,7 +1557,9 @@ struct ParallelBase : public CapturingSpawners {
 
     // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
     tf::Semaphore semaphore(std::max<size_t>(1, _threads));
+    auto logSrc = logging::ThreadContext::source();
     flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
+      logging::ThreadContext ctx = logging::ThreadContext::fork(logSrc);
       if (_policy == WaitUntil::FirstSuccess && anySuccess) {
         // Early exit if FirstSuccess policy
         return;
