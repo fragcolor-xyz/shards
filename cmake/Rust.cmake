@@ -5,7 +5,6 @@ set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
 find_program(CARGO_EXE NAMES "cargo" REQUIRED)
 
 # set(CARGO_EXE ${CMAKE_CURRENT_LIST_DIR}/test_script.sh)
-
 if(NOT RUST_CARGO_TARGET)
   if(ANDROID)
     if(ANDROID_ABI MATCHES "arm64-v8a")
@@ -19,6 +18,7 @@ if(NOT RUST_CARGO_TARGET)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
       list(APPEND RUST_FLAGS -Ctarget-feature=+fp16,+fhm)
     endif()
+
     if(CMAKE_SYSTEM_NAME MATCHES "visionOS")
       set(PLATFORM "visionos")
 
@@ -81,6 +81,11 @@ elseif(RUST_BUILD_TYPE STREQUAL "RelWithDebInfo")
 else()
   set(RUST_CARGO_FLAGS_INT --release)
   set(RUST_BUILD_SUBDIR_CONFIGURATION release)
+endif()
+
+if(TRACY_ENABLE)
+  set(RUST_BUILD_SUBDIR_CONFIGURATION ${RUST_BUILD_SUBDIR_CONFIGURATION}-tracy)
+  set(RUST_CARGO_FLAGS_INT --profile ${RUST_BUILD_SUBDIR_CONFIGURATION})
 endif()
 
 if(RUST_BUILD_SUBDIR_HAS_TARGET)
@@ -313,7 +318,7 @@ function(add_rust_library)
   endif()
 
   if(EMSCRIPTEN_ROOT_PATH)
-    list(APPEND _RUST_ENVIRONMENT 
+    list(APPEND _RUST_ENVIRONMENT
       "--modify" "PATH=path_list_append:${EMSCRIPTEN_ROOT_PATH}"
       "TARGET_CC=${CMAKE_C_COMPILER}"
       "TARGET_AR=${CMAKE_AR}"

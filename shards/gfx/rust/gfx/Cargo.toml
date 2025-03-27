@@ -13,6 +13,9 @@ tracy = [
   "tracy-client/enable",
   "tracy-client/manual-lifetime",
 ]
+tracy-on-demand = [
+  "tracy-client/ondemand",
+]
 default = []
 trace = ["wgpu-core/trace", "wgpu-native/trace"]
 

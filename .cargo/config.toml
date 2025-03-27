@@ -3,5 +3,11 @@ inherits = "release"
 debug-assertions = true
 debug = "line-tables-only"
 
-[profile.tracy]
+[profile.rel-with-deb-info-tracy]
+inherits = "rel-with-deb-info" 
+
+[profile.release-tracy]
 inherits = "release" 
+
+[profile.debug-tracy]
+inherits = "debug"  

@@ -10,6 +10,9 @@ file(GLOB_RECURSE EXTRA_SOURCES
 if(TRACY_ENABLE)
   message(STATUS "Building gfx crate with tracy profiling enabled")
   list(APPEND FEATURES tracy)
+  if(TRACY_ON_DEMAND)
+    list(APPEND FEATURES tracy-on-demand)
+  endif()
   list(APPEND RUST_ENV
     TRACY_CLIENT_LIB=TracyClient # The lib file is called libTracyClient.a but this needs to be and -l compatible arg
     TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>
