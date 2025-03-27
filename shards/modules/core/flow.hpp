@@ -413,21 +413,13 @@ struct Maybe : public BaseSubFlow {
   shards::Var _output;
   const SHVar &activate(SHContext *context, const SHVar &input) {
     if (likely(_shards)) {
-      auto prev_level = logging::getSinkLevel();
-      if (_silent) {
-        logging::setSinkLevel(spdlog::level::off);
-      }
+      logging::ThreadContext ctx{[&](const spdlog::details::log_msg &msg) { return !_silent; }};
       auto state = _shards.activate(context, input, _output);
-      if (_silent) {
-        logging::setSinkLevel(prev_level);
-      }
       if (state == SHWireState::Error) {
-        if (!_silent) {
-          shassert(_self);
-          auto currentWire = context->currentWire();
-          SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}, wire: {}", context->getErrorMessage(),
-                        _self->line, _self->column, currentWire ? currentWire->name : "unknown");
-        }
+        shassert(_self);
+        auto currentWire = context->currentWire();
+        SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}, wire: {}", context->getErrorMessage(), _self->line,
+                      _self->column, currentWire ? currentWire->name : "unknown");
         if (likely(!context->onLastResume)) {
           context->resetErrorStack();
           context->continueFlow();

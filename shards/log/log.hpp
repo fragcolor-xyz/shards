@@ -8,7 +8,36 @@
 #include <vector>
 
 namespace shards::logging {
+
+struct ShardsSink;
+struct ThreadContext {
+  using CB = bool(const spdlog::details::log_msg &);
+  ThreadContext() { push(); }
+  ThreadContext(std::function<CB> intercept) : intercept(std::move(intercept)) { push(); }
+  ~ThreadContext() { pop(); }
+  ThreadContext(const ThreadContext &) = delete;
+  ThreadContext &operator=(const ThreadContext &) = delete;
+  ThreadContext(ThreadContext &&other);
+  ThreadContext &operator=(ThreadContext &&other) = delete;
+
+  // Return false to prevent handling the log message
+  std::function<CB> intercept;
+
+  static ThreadContext *source();
+  // Use as fork(src) on a new thread, where src is aquired from source() on the origin thread
+  // This is only safe if the called context outlives the new context
+  static ThreadContext fork(ThreadContext *from);
+
+private:
+  void push();
+  void pop();
+  ThreadContext *prev{};
+  friend struct ::shards::logging::ShardsSink;
+};
+
 typedef std::shared_ptr<spdlog::logger> Logger;
+struct TimeKeeper;
+std::shared_ptr<TimeKeeper> getProcessTimeKeeper();
 // Redirects this logger to the same output as the default logger
 void initSinks(Logger logger);
 // Sets the log level for this logger based on the LOG_<name> environment variable if it is set
@@ -35,9 +64,9 @@ std::shared_ptr<spdlog::sinks::dist_sink_mt> getDistSink();
 // !! use getOrCreate instead to prevent race conditions
 void __init(Logger logger);
 
-std::shared_mutex& __getRegisterMutex();
+std::shared_mutex &__getRegisterMutex();
 template <typename T> Logger getOrCreate(const std::string &name, T init) {
-  auto& m = __getRegisterMutex();
+  auto &m = __getRegisterMutex();
   std::shared_lock<std::shared_mutex> l(m);
   auto logger = spdlog::get(name);
   if (!logger) {

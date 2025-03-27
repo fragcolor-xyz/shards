@@ -33,6 +33,9 @@ void ThreadFiber::init(std::function<void()> fn) {
   boost::thread::attributes attrs;
   attrs.set_stack_size(SH_DEBUG_THREAD_STACK_SIZE);
   thread.emplace(attrs, [this, fn]() {
+    logging::ThreadContext lctx;
+    logContext = &lctx;
+    DEFER({ logContext = nullptr; });
     try {
       fn();
     } catch (std::exception &e) {
@@ -55,6 +58,7 @@ void ThreadFiber::resume() {
   if (isRunning) {
     switchToCaller();
   } else {
+    srcLogContext = logging::ThreadContext::source();
     // SPDLOG_TRACE("CALLER> {}", thread->get_id());
     switchToThread();
     // SPDLOG_TRACE("CALLER< {}", thread->get_id());
@@ -67,9 +71,16 @@ void ThreadFiber::resume() {
 
 void ThreadFiber::suspend() {
   // SPDLOG_TRACE("RUNNER< {}", thread->get_id());
+  // Store src log context
+  // srcLogContext = logging::ThreadContext::source()
+  // logContext.reset();
   shassert(isRunning && "Cannot suspend an already suspended fiber");
   switchToCaller();
   // SPDLOG_TRACE("RUNNER> {}", thread->get_id());
+  // Maybe initialize log context
+  if (srcLogContext) {
+    logContext->intercept = srcLogContext->intercept;
+  }
 }
 
 void ThreadFiber::switchToCaller() {
