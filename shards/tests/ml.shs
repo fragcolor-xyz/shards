@@ -135,7 +135,7 @@
   [1.0 1.0] | Tensor(Shape: [2] Type: TensorType::F32) >> grid-input
   
   grid-input | Tensor.Stack
-  Tensor.UMAP(2 Neighbors: 3 MinDist: 0.1 Seed: 42) | Tensor.ToString | Log("2D Grid UMAP")
+  Tensor.UMAP(2 Neighbors: 2 MinDist: 0.1 Seed: 42) | Tensor.ToString | Log("2D Grid UMAP")
 })
 
 @schedule(main ml-test)
