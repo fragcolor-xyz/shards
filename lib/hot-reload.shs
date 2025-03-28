@@ -7,7 +7,7 @@
 @macro(hot-reload [base-path namespace script-path wires] {
   Sequence(root)
   
-  script-path | FS.Filename(true) = wrapper-name
+  ["hlw-" (script-path | FS.Filename(true))] String.Format = wrapper-name
   {id: {name: wrapper-name}} | ToJson = wrapper-name-id-json
   
   ; Escape \ in base-path
@@ -69,7 +69,10 @@
     Once({
       false >= _we
     })
-    {none | Do(wrapper-id) = _wt}
+    {
+      ; #([wire-name (TypeOf({Do(wrapper-id)}))] | Log("Wrapper ID type"))
+      none | Do(wrapper-id) = _wt
+    }
     
     Get(_wt "tag") | Memoize({
       Msg((["Reloaded wire " wire-name] | String.Format) Level: LogLevel::Info Name: "reload")

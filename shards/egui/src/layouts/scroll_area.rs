@@ -65,7 +65,7 @@ impl Default for ScrollArea {
       horizontal: ParamVar::new(Var::new_bool(false)),
       vertical: ParamVar::new(Var::new_bool(true)),
       always_show: ParamVar::new(Var::new_bool(false)),
-      auto_shrink: ParamVar::new(Var::new_bool(false)),
+      auto_shrink: ParamVar::new(Var::new_bool(true)),
       max_height: ParamVar::default(),
       max_width: ParamVar::default(),
     }
