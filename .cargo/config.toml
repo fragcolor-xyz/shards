@@ -10,4 +10,4 @@ inherits = "rel-with-deb-info"
 inherits = "release" 
 
 [profile.debug-tracy]
-inherits = "debug"  
+inherits = "dev"  
