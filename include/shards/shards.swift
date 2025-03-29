@@ -1710,7 +1710,7 @@ class WireController {
             G.Core.pointee.setExternalVariable(nativeRef, cname, &ev)
         }
     }
-    
+
     func addExternal(name: String, owned: OwnedVar) {
         addExternalVar(name: name, varPtr: owned.ptr())
         references.append(owned)
@@ -1771,7 +1771,7 @@ class WireController {
     }
 
     var nativeRef = SHWireRef(bitPattern: 0)
-    
+
     private var references: [OwnedVar] = []
 }
 
@@ -2049,8 +2049,17 @@ class Shards {
         return wireController
     }
 
-    static func suspend(_ context: Context, _ duration: Double) -> SHWireState {
-        G.Core.pointee.suspend(context.context, duration)
+    enum SuspendResult {
+        case canContinue
+        case mustInterrupt
+    }
+
+    static func suspend(_ context: Context, _ duration: Double = 0.0) -> SuspendResult {
+        if G.Core.pointee.suspend(context.context, duration) == SHWireState(rawValue: 0) {
+            return .canContinue
+        } else {
+            return .mustInterrupt
+        }
     }
 }
 
