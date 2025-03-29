@@ -47,8 +47,42 @@ impl<'de> Deserialize<'de> for RcBytesWrapper {
   where
     D: Deserializer<'de>,
   {
-    let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-    Ok(RcBytesWrapper(Rc::new(Cow::Owned(bytes))))
+    struct BytesVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for BytesVisitor {
+      type Value = RcBytesWrapper;
+
+      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a byte array")
+      }
+
+      fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+      where
+        E: serde::de::Error,
+      {
+        Ok(RcBytesWrapper(Rc::new(Cow::Owned(v.to_vec()))))
+      }
+
+      fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+      where
+        E: serde::de::Error,
+      {
+        Ok(RcBytesWrapper(Rc::new(Cow::Owned(v))))
+      }
+
+      fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+      where
+        A: serde::de::SeqAccess<'de>,
+      {
+        let mut bytes = Vec::new();
+        while let Some(byte) = seq.next_element()? {
+          bytes.push(byte);
+        }
+        Ok(RcBytesWrapper(Rc::new(Cow::Owned(bytes))))
+      }
+    }
+
+    deserializer.deserialize_bytes(BytesVisitor)
   }
 }
 

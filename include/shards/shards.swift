@@ -511,6 +511,13 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
+    public var maybeImage: UnsafeMutablePointer<SHImage>? {
+        if type != .Image {
+            return nil
+        }
+        return payload.imageValue
+    }
+
     public var bytes: ContiguousArray<UInt8> {
         assert(type == .Bytes, "Bytes variable expected!")
         guard let bytesPtr = payload.bytesValue else {
@@ -2367,6 +2374,45 @@ class Shards {
                 let tempImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
                 return OwnedVar.from(image: tempImage)
             #endif
+        }
+    }
+
+    public extension SHVar {
+        func toCGImage() throws -> CGImage {
+            let imageValue = payload.imageValue!
+            let channels = Int(imageValue.pointee.channels)
+            let width = Int(imageValue.pointee.width)
+            let height = Int(imageValue.pointee.height)
+            let data = imageValue.pointee.data
+
+            // Create CGImage from raw data
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+            let bytesPerRow = width * channels
+
+            // Create CFData from raw pointer
+            let dataSize = height * bytesPerRow
+            let cfData = CFDataCreate(kCFAllocatorDefault, data, dataSize)
+
+            guard let provider = CGDataProvider(data: cfData!),
+                  let cgImage = CGImage(
+                      width: width,
+                      height: height,
+                      bitsPerComponent: 8,
+                      bitsPerPixel: channels * 8,
+                      bytesPerRow: bytesPerRow,
+                      space: colorSpace,
+                      bitmapInfo: bitmapInfo,
+                      provider: provider,
+                      decode: nil,
+                      shouldInterpolate: false,
+                      intent: .defaultIntent
+                  )
+            else {
+                throw ShardError(message: "Failed to create CGImage from image data")
+            }
+
+            return cgImage
         }
     }
 #endif
