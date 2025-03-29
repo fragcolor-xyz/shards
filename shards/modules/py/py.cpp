@@ -1558,13 +1558,13 @@ struct PyEval {
     // Initialize
     _compiledCode = nullptr;
     _preserveState = false;
+    _fileMode = false;
   }
 
   ~PyEval() {
     // Clean up
     Context ctx;
     _compiledCode.reset();
-    _globals.reset();
     _locals.reset();
   }
 
@@ -1572,7 +1572,8 @@ struct PyEval {
       {"Expression",
        SHCCSTR("Python code to evaluate. Input is available as _s. The value of the last expression is returned."),
        {CoreInfo::StringType}},
-      {"PreserveState", SHCCSTR("Whether to preserve variable state between calls"), {CoreInfo::BoolType}}};
+      {"PreserveState", SHCCSTR("Whether to preserve variable state between calls"), {CoreInfo::BoolType}},
+      {"FileMode", SHCCSTR("Execute as file instead of as expression (useful for multi-line scripts)"), {CoreInfo::BoolType}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -1580,13 +1581,18 @@ struct PyEval {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void warmup(SHContext *context) { compileExpression(); }
+  void warmup(SHContext *context) {
+    auto mesh = context->main->mesh.lock();
+    auto storageKey = fmt::format("Py.Globals");
+    Context ctx; // Acquire GIL
+    _globals = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Env::dict(); });
+    compileExpression();
+  }
 
   void cleanup(SHContext *context) {
     if (_compiledCode) {
       Context ctx; // Acquire GIL
       _compiledCode.reset();
-      _globals.reset();
       _locals.reset();
     }
   }
@@ -1600,8 +1606,7 @@ struct PyEval {
     Context ctx; // Acquire GIL
 
     // Create globals and locals dictionaries if not already created or if not preserving state
-    if (!_globals || !_preserveState) {
-      _globals = Env::dict();
+    if (!_locals || !_preserveState) {
       _locals = Env::dict();
     }
 
@@ -1619,10 +1624,14 @@ struct PyEval {
       }
 
       SHLOG_DEBUG("Evaluating Python code: {}", _expression);
-      auto result = Env::_pyEvalCode(_compiledCode.get(), _globals.get(), _locals.get());
+      auto result = Env::_pyEvalCode(_compiledCode.get(), _globals->get(), _locals.get());
       if (!result) {
         Env::printErrors();
         throw SHException("Python evaluation failed");
+      }
+
+      if (_fileMode) {
+        return input;
       }
 
       // Convert result back to SHVar
@@ -1650,6 +1659,10 @@ struct PyEval {
       _preserveState = value.payload.boolValue;
       break;
     }
+    case 2: { // FileMode
+      _fileMode = value.payload.boolValue;
+      break;
+    }
     }
   }
 
@@ -1659,28 +1672,24 @@ struct PyEval {
       return Var(_expression);
     case 1:
       return Var(_preserveState);
+    case 2:
+      return Var(_fileMode);
     default:
       return Var();
     }
   }
 
 private:
-  // static constexpr auto Py_file_input = 257;
+  static constexpr auto Py_file_input = 257;
   static constexpr auto Py_eval_input = 258;
 
   void compileExpression() {
-    if (!Env::ok()) {
-      SHLOG_ERROR("Python support not available");
-      throw SHException("Python support not available");
-    }
-
-    Context ctx; // Acquire GIL
-
     // Clear previous compiled code
     _compiledCode.reset();
 
-    // Then compile and evaluate the modified expression
-    PyObject *code = Env::_pyCompileString(_expression.c_str(), "<string>", Py_eval_input);
+    // Compile using file mode or eval mode based on parameter
+    int mode = _fileMode ? Py_file_input : Py_eval_input;
+    PyObject *code = Env::_pyCompileString(_expression.c_str(), "<string>", mode);
     if (!code) {
       Env::printErrors();
       throw SHException("Failed to compile Python expression");
@@ -1690,16 +1699,16 @@ private:
 
     // Initialize globals and locals for the new code if not preserving state
     if (!_preserveState) {
-      _globals = Env::dict();
       _locals = Env::dict();
     }
   }
 
   std::string _expression;
   PyObj _compiledCode;
-  PyObj _globals;
   PyObj _locals;
+  AnyStorage<PyObj> _globals;
   bool _preserveState;
+  bool _fileMode = false;
 };
 
 SHARDS_REGISTER_FN(py) {
