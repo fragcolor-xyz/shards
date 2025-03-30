@@ -196,8 +196,6 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
             return "Trait"
         case .EndOfBlittableTypes:
             return "EndOfBlittableTypes"
-        default:
-            fatalError("Type not found!")
         }
     }
 
@@ -2012,7 +2010,7 @@ class Shards {
         switch result {
         case let .success(wireController):
             return wireController
-        case let .failure(_error):
+        case .failure(_):
             return nil
         }
     }
