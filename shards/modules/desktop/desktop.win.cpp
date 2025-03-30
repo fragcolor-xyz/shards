@@ -10,6 +10,8 @@
 #include "desktop.capture.win.hpp"
 #include "desktop.hpp"
 
+#include <oneapi/tbb/concurrent_queue.h>
+
 using namespace shards;
 
 #ifndef NDEBUG
@@ -571,9 +573,9 @@ struct WaitKeyEvent : public WaitKeyEventBase {
   static inline thread_local KeyboardHookState *hookState = nullptr;
 
   bool attached = false;
-  std::deque<SHVar> events;
+  oneapi::tbb::concurrent_queue<SHVar> events;
 
-  void keyboardEvent(int state, int vkCode) { events.push_back(Var(state, vkCode)); }
+  void keyboardEvent(int state, int vkCode) { events.push(Var(state, vkCode)); }
 
   void cleanup(SHContext *context) {
     if (attached && hookState) {
@@ -618,15 +620,9 @@ struct WaitKeyEvent : public WaitKeyEventBase {
       attached = true;
     }
 
-    // Check for pending events before waiting
-    if (!events.empty()) {
-      auto event = events.front();
-      events.pop_front();
-      return event;
-    }
-
     // Wait for new events
-    while (events.empty()) {
+    SHVar event{};
+    while (!events.try_pop(event)) {
       // Wait for events
       SH_SUSPEND(context, 0);
       // Process Windows messages to allow the hook to work
@@ -634,8 +630,153 @@ struct WaitKeyEvent : public WaitKeyEventBase {
       PeekMessage(&msg, 0, 0, 0, 0);
     }
 
-    auto event = events.front();
-    events.pop_front();
+    return event;
+  }
+};
+
+struct MouseHook : public MousePosBase {
+  struct MouseHookState {
+    int refCount = 0;
+    HHOOK hook{};
+    std::vector<MouseHook *> receivers;
+  };
+
+  static inline thread_local MouseHookState *hookState = nullptr;
+
+  bool attached = false;
+  oneapi::tbb::concurrent_queue<SHVar> events;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int4Type; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard captures mouse events using a low-level mouse hook and outputs the event as an Int4 value. "
+                   "It waits for mouse events and returns them one at a time.");
+  }
+
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("An Int4 value where:\n"
+                   "- First element [0]: State (0 = button down, 1 = button up, -1 = mouse move)\n"
+                   "- Second element [1]: Button (0 = left, 1 = right, 2 = middle, -1 = none/move)\n"
+                   "- Third element [2]: X position\n"
+                   "- Fourth element [3]: Y position");
+  }
+
+  void mouseEvent(int state, int button, POINT position) {
+    SHVar event{};
+    event.valueType = SHType::Int4;
+    event.payload.int4Value[0] = state;  // 0 = down, 1 = up
+    event.payload.int4Value[1] = button; // 0 = left, 1 = right, 2 = middle
+    event.payload.int4Value[2] = position.x;
+    event.payload.int4Value[3] = position.y; // x, y coordinates
+
+    events.push(event);
+  }
+
+  void cleanup(SHContext *context) {
+    MousePosBase::cleanup(context);
+
+    if (attached && hookState) {
+      auto selfIt = std::find(hookState->receivers.begin(), hookState->receivers.end(), this);
+      if (selfIt != hookState->receivers.end()) {
+        hookState->receivers.erase(selfIt);
+        hookState->refCount--;
+        if (hookState->refCount == 0) {
+          auto res = UnhookWindowsHookEx(hookState->hook);
+          assert(res);
+          delete hookState;
+          hookState = nullptr;
+        }
+      }
+      attached = false;
+    }
+  }
+
+  static LRESULT __attribute__((stdcall)) Hookproc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+      auto lp = reinterpret_cast<MSLLHOOKSTRUCT *>(lParam);
+      POINT p = lp->pt;
+
+      for (auto &rcvr : hookState->receivers) {
+        auto wnd = AsHWND(rcvr->_window.get());
+        POINT clientP = p;
+
+        if (wnd) {
+          // Convert screen to client coordinates if window is specified
+          PhysicalToLogicalPoint(wnd, &clientP);
+          ScreenToClient(wnd, &clientP);
+        }
+
+        int state = -1;
+        int button = -1;
+
+        // Determine button and state
+        switch (wParam) {
+        case WM_LBUTTONDOWN:
+          state = 0;  // Down
+          button = 0; // Left
+          break;
+        case WM_LBUTTONUP:
+          state = 1;  // Up
+          button = 0; // Left
+          break;
+        case WM_RBUTTONDOWN:
+          state = 0;  // Down
+          button = 1; // Right
+          break;
+        case WM_RBUTTONUP:
+          state = 1;  // Up
+          button = 1; // Right
+          break;
+        case WM_MBUTTONDOWN:
+          state = 0;  // Down
+          button = 2; // Middle
+          break;
+        case WM_MBUTTONUP:
+          state = 1;  // Up
+          button = 2; // Middle
+          break;
+        case WM_MOUSEMOVE:
+          // Just update position, no button event
+          rcvr->mouseEvent(-1, -1, clientP);
+          break;
+        }
+
+        if (state != -1 && button != -1) {
+          rcvr->mouseEvent(state, button, clientP);
+        }
+      }
+    }
+    return CallNextHookEx(hookState->hook, nCode, wParam, lParam);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (!attached) {
+      if (!hookState) {
+        hookState = new MouseHookState();
+        hookState->refCount = 1;
+        hookState->receivers.push_back(this);
+        hookState->hook = SetWindowsHookEx(WH_MOUSE_LL, Hookproc, NULL, 0);
+        assert(hookState->hook);
+      } else {
+        hookState->refCount++;
+        hookState->receivers.push_back(this);
+      }
+      attached = true;
+    }
+
+    // Wait for new events
+    SHVar event{};
+    while (!events.try_pop(event)) {
+      // Wait for events
+      SH_SUSPEND(context, 0);
+      // Process Windows messages to allow the hook to work
+      MSG msg;
+      PeekMessage(&msg, 0, 0, 0, 0);
+    }
+
     return event;
   }
 };
@@ -1468,9 +1609,11 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD2(Desktop, MiddleClick);
   REGISTER_SHARD2(Desktop, CursorBitmap);
   REGISTER_SHARD2(Desktop, SetTimerResolution);
+
   REGISTER_SHARD("Desktop.LastInput", LastInput);
   REGISTER_SHARD("Desktop.ScrollHorizontal", ScrollHorizontal);
   REGISTER_SHARD("Desktop.ScrollVertical", ScrollVertical);
   REGISTER_SHARD("Desktop.MoveMouse", SetMouseRelativePos);
   REGISTER_SHARD("Desktop.CaptureFrame", CaptureFrame);
+  REGISTER_SHARD("Desktop.MouseHook", MouseHook);
 }
