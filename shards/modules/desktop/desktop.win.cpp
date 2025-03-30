@@ -573,9 +573,48 @@ struct WaitKeyEvent : public WaitKeyEventBase {
   static inline thread_local KeyboardHookState *hookState = nullptr;
 
   bool attached = false;
+  size_t _maxQueueSize = 100; // Default maximum queue size
   oneapi::tbb::concurrent_queue<SHVar> events;
 
-  void keyboardEvent(int state, int vkCode) { events.push(Var(state, vkCode)); }
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "MaxQueueSize", SHCCSTR("Maximum number of events to queue before dropping old ones."), CoreInfo::IntType));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    if (index == 0 && value.valueType == SHType::Int) {
+      _maxQueueSize = std::max(size_t(1), size_t(value.payload.intValue));
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index == 0) {
+      return Var(int64_t(_maxQueueSize));
+    }
+    return Var::Empty;
+  }
+
+  void keyboardEvent(int state, int vkCode) {
+    events.push(Var(state, vkCode));
+
+    // Check if queue is getting too large and trim if needed
+    size_t currentSize = events.unsafe_size();
+
+    if (currentSize > _maxQueueSize) {
+      // Queue is too large, let's trim it by removing oldest events
+      SHVar dummy;
+      while (events.unsafe_size() > _maxQueueSize / 2) {
+        if (events.try_pop(dummy)) {
+          // Successfully removed an old event
+          if (events.unsafe_size() == _maxQueueSize) {
+            SHLOG_WARNING("WaitKeyEvent queue overflow! Dropping older events. Consider processing events faster.");
+          }
+        } else {
+          break; // Queue empty or race condition
+        }
+      }
+    }
+  }
 
   void cleanup(SHContext *context) {
     if (attached && hookState) {
@@ -644,7 +683,15 @@ struct MouseHook : public MousePosBase {
   static inline thread_local MouseHookState *hookState = nullptr;
 
   bool attached = false;
+  size_t _maxQueueSize = 100; // Default maximum queue size
   oneapi::tbb::concurrent_queue<SHVar> events;
+
+  static inline ParamsInfo params =
+      ParamsInfo(MousePosBase::params,
+                 ParamsInfo::Param("MaxQueueSize", SHCCSTR("Maximum number of events to queue before dropping old ones."),
+                                   CoreInfo::IntType));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int4Type; }
@@ -664,6 +711,23 @@ struct MouseHook : public MousePosBase {
                    "- Fourth element [3]: Y position");
   }
 
+  void setParam(int index, const SHVar &value) {
+    if (index == 0) {
+      MousePosBase::setParam(index, value);
+    } else if (index == 1 && value.valueType == SHType::Int) {
+      _maxQueueSize = std::max(size_t(1), size_t(value.payload.intValue));
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index == 0) {
+      return MousePosBase::getParam(index);
+    } else if (index == 1) {
+      return Var(int64_t(_maxQueueSize));
+    }
+    return Var::Empty;
+  }
+
   void mouseEvent(int state, int button, POINT position) {
     SHVar event{};
     event.valueType = SHType::Int4;
@@ -672,7 +736,27 @@ struct MouseHook : public MousePosBase {
     event.payload.int4Value[2] = position.x;
     event.payload.int4Value[3] = position.y; // x, y coordinates
 
+    // Check if queue is getting too large and trim if needed
+    size_t currentSize = 0;
     events.push(event);
+
+    // Get approximate size (this is not 100% accurate with concurrent queues but works for our purpose)
+    currentSize = events.unsafe_size();
+
+    if (currentSize > _maxQueueSize) {
+      // Queue is too large, let's trim it by removing oldest events
+      SHVar dummy;
+      while (events.unsafe_size() > _maxQueueSize / 2) {
+        if (events.try_pop(dummy)) {
+          // Successfully removed an old event
+          if (events.unsafe_size() == _maxQueueSize) {
+            SHLOG_WARNING("MouseHook queue overflow! Dropping older events. Consider processing events faster.");
+          }
+        } else {
+          break; // Queue empty or race condition
+        }
+      }
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -1478,6 +1562,9 @@ RUNTIME_SHARD_outputTypes(WaitKeyEvent);
 RUNTIME_SHARD_activate(WaitKeyEvent);
 RUNTIME_SHARD_cleanup(WaitKeyEvent);
 RUNTIME_SHARD_help(WaitKeyEvent);
+RUNTIME_SHARD_parameters(WaitKeyEvent);
+RUNTIME_SHARD_setParam(WaitKeyEvent);
+RUNTIME_SHARD_getParam(WaitKeyEvent);
 RUNTIME_SHARD_END(WaitKeyEvent);
 
 RUNTIME_SHARD(Desktop, SendKeyEvent);
