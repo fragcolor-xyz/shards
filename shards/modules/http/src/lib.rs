@@ -1017,6 +1017,6 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<HttpStreamShard>();
 
   let mut info = shards::SHObjectInfo::default();
-  info.name = cstr!("Stream").as_ptr() as *const i8;
+  info.name = cstr!("Stream").as_ptr() as shards::SHString;
   register_object_type_internal(FRAG_CC, fourCharacterCode(*b"htst"), info);
 }

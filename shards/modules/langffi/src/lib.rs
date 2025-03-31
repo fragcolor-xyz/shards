@@ -396,7 +396,7 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
   register_shard::<print::ShardsPrintShard>();
 
   let mut info = shards::SHObjectInfo::default();
-  info.name = shards::cstr!("AST").as_ptr() as *const i8;
+  info.name = shards::cstr!("AST").as_ptr() as shards::SHString;
   shards::core::register_object_type_internal(
     shards::types::FRAG_CC,
     shards::fourCharacterCode(*b"ASTa"),
