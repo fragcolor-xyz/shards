@@ -1638,25 +1638,33 @@ public extension IShard {}
 }
 
 @inlinable public func bridgeActivate<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?, input: UnsafePointer<SHVar>?) -> UnsafePointer<SHVar>? {
-    let a = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self).pointee
-    let b = Unmanaged<T>.fromOpaque(a.swiftClass).takeUnretainedValue()
-    // Obtain a mutable pointer to b.output
-    let pResult: UnsafeMutablePointer<SHVar> = withUnsafeMutablePointer(to: &b.output) { $0 }
-    let result = b.activate(context: Context(context: ctx), input: input!.pointee)
-    switch result {
-    case let .success(res):
-        b.output = res
-        return UnsafePointer(pResult)
-    case let .failure(error):
+    // Direct pointer cast to avoid Unmanaged overhead
+    let swiftShardPtr = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self)
+    let instance = unsafeBitCast(swiftShardPtr.pointee.swiftClass, to: UnsafeMutableRawPointer.self)
+    let typedInstance = unsafeBitCast(instance, to: T.self)
+    
+    // Cache output pointer location - avoids repeated property access
+    let outputPtr = withUnsafeMutablePointer(to: &typedInstance.output) { $0 }
+    
+    // Process activation
+    let result = typedInstance.activate(context: Context(context: ctx), input: input!.pointee)
+    
+    // Handle result - success path is hot, keep it simple
+    if case let .success(res) = result {
+        typedInstance.output = res
+        return UnsafePointer(outputPtr)
+    }
+    
+    // Error path unchanged - not performance critical
+    if case let .failure(error) = result {
         var errorMsg = SHStringWithLen()
         let error = error.message.utf8CString
-        errorMsg.string = error.withUnsafeBufferPointer {
-            $0.baseAddress
-        }
+        errorMsg.string = error.withUnsafeBufferPointer { $0.baseAddress }
         errorMsg.len = UInt64(error.count - 1)
         G.Core.pointee.abortWire(ctx, errorMsg)
-        return UnsafePointer(pResult)
     }
+    
+    return UnsafePointer(outputPtr)
 }
 
 @inlinable public func bridgeExposedVariables<T: IShard>(_: T.Type, shard: ShardPtr) -> SHExposedTypesInfo {
