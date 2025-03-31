@@ -1208,6 +1208,75 @@ public final class ShardError: Error {
     }
 }
 
+public class EnumInfo {
+    var native = SHEnumInfo()
+
+    private var name: ContiguousArray<CChar>
+    private var help: ContiguousArray<CChar>
+
+    private var labels: [ContiguousArray<CChar>]
+    private var labelPointers: [UnsafePointer<CChar>?]
+
+    private var descriptions: [ContiguousArray<CChar>]
+    private var dscriptionsOpts: [SHOptionalString]
+
+    private var values: [Int32]
+
+    init(name: String, help: String, labels: [String] = [], descriptions: [String] = [], values: [Int32] = []) {
+        self.name = name.utf8CString
+        self.help = help.utf8CString
+
+        self.labels = labels.map(\.utf8CString)
+        labelPointers = self.labels.map { array -> UnsafePointer<CChar>? in
+            array.withUnsafeBufferPointer { $0.baseAddress }
+        }
+
+        self.descriptions = descriptions.map(\.utf8CString)
+        dscriptionsOpts = self.descriptions.map { array -> SHOptionalString in
+            array.withUnsafeBufferPointer { buffer in
+                SHOptionalString(string: buffer.baseAddress, crc: 0)
+            }
+        }
+
+        self.values = values
+    }
+
+    func toSHEnumInfo() -> SHEnumInfo {
+        var result = SHEnumInfo()
+
+        name.withUnsafeBufferPointer {
+            result.name = $0.baseAddress
+        }
+        help.withUnsafeBufferPointer {
+            result.help = SHOptionalString(string: $0.baseAddress, crc: 0)
+        }
+
+        if !labels.isEmpty {
+            labelPointers.withUnsafeBufferPointer { buffer in
+                result.labels.elements = UnsafeMutablePointer(mutating: buffer.baseAddress)
+            }
+            result.labels.len = UInt32(labels.count)
+            result.labels.cap = 0
+        }
+
+        if !descriptions.isEmpty {
+            dscriptionsOpts.withUnsafeBufferPointer { buffer in
+                result.descriptions.elements = UnsafeMutablePointer(mutating: buffer.baseAddress)
+            }
+            result.descriptions.len = UInt32(descriptions.count)
+            result.descriptions.cap = 0
+        }
+
+        if !values.isEmpty {
+            result.values.len = UInt32(values.count)
+            result.values.elements = withUnsafeMutablePointer(to: &values[0]) { $0 }
+            result.values.cap = 0
+        }
+
+        return result
+    }
+}
+
 public class TypeInfo {
     var native = SHTypeInfo()
 
@@ -1957,6 +2026,10 @@ class Shards {
         G.Core.pointee.registerObjectType(vendor, type, info)
     }
 
+    static func registerEnumInfo(vendor: Int32, type: Int32, info: SHEnumInfo) {
+        G.Core.pointee.registerEnumType(vendor, type, info)
+    }
+
     static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {
         // Create SHStringWithLen instances
         let nameStr = SwiftSWL(name)
@@ -2010,7 +2083,7 @@ class Shards {
         switch result {
         case let .success(wireController):
             return wireController
-        case .failure(_):
+        case .failure:
             return nil
         }
     }
