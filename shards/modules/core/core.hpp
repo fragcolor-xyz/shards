@@ -976,7 +976,7 @@ struct VariableBase {
 
   ALWAYS_INLINE void checkIfTableChanged() {
     SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-    if (_tableId != table->id || _tableVersion != _target->version) {
+    if (table && (_tableId != table->id || _tableVersion != _target->version)) {
       _tableId = table->id;
       _cell = nullptr;
       _tableVersion = _target->version;
