@@ -184,7 +184,7 @@ struct MemoryLockedVfs : sqlite3_vfs {
         initIoMethods(pFile->pMethods);
       pFile->pMethods = &ioMethods;
 
-      auto normalizedPath = boost::filesystem::absolute(boost::filesystem::path(zName)).normalize().string();
+      auto normalizedPath = boost::filesystem::absolute(boost::filesystem::path(zName)).lexically_normal().string();
       auto it = fileNodes.find(normalizedPath);
       auto uniqueNode = std::make_shared<UniqueFileNode>();
       std::shared_ptr<SharedFileNode> node;

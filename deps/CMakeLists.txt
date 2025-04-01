@@ -104,6 +104,11 @@ if(WIN32)
   set(BOOST_STACKTRACE_ENABLE_WINDBG_CACHED ON CACHE BOOL "")
 endif()
 
+if(WIN32)
+  # Prevent Boost::uuid from linking against -latomic
+  set(BOOST_UUID_LINK_LIBATOMIC OFF CACHE BOOL "" FORCE)
+endif()
+
 set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
 
 if(BOOST_DIR)
@@ -113,11 +118,10 @@ else()
   message(STATUS "Fetching boost")
   FetchContent_Declare(
     boost
-    URL https://develop.fragcolor.com/boost-1.81.0-shards-5.7z
-
-    # URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards-5/output.7z
-    URL_HASH SHA256=a890f672200cf9f018cbd75a433a4dd7837e09a97b0b9287861a497a4a744626
+    URL https://develop.fragcolor.com/boost-1.87.0.7z
+    URL_HASH SHA256=abade069520e065e28740ba1f379a356a96bebb14e1b4b853316587c860747b5
   )
+
   FetchContent_MakeAvailable(boost)
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
@@ -132,26 +136,17 @@ sh_add_external_project(
   NAME wasm3_a
   TARGETS m3
   LIB_RELATIVE_DIRS source/
-  CMAKE_ARGS -DBUILD_NATIVE=0
+  CMAKE_ARGS -DBUILD_NATIVE=0 -DLIBUV_BUILD_SHARED=OFF
   RELATIVE_INCLUDE_PATHS source
   REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/wasm3)
 
-sh_add_external_project(
-  NAME snappy_a
-  TARGETS snappy
-  CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
-  RELATIVE_INCLUDE_PATHS .
-  RELATIVE_BINARY_INCLUDE_PATHS .
-  REPO_ARGS GIT_REPOSITORY https://github.com/shards-lang/snappy.git
-  GIT_TAG 9e3775b)
+set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(SNAPPY_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(snappy)
 
-sh_add_external_project(
-  NAME brotli_a
-  TARGETS brotlidec-static brotlienc-static brotlicommon-static
-  CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1
-  RELATIVE_INCLUDE_PATHS c/include
-  REPO_ARGS GIT_REPOSITORY https://github.com/shards-lang/brotli.git
-  GIT_TAG e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
+set(BROTLI_DISABLE_TESTS ON)
+add_subdirectory(brotli)
 
 add_subdirectory(Catch2)
 
@@ -254,11 +249,17 @@ else()
   set(JPEG_LIB_NAMES jpeg)
 endif()
 
+unset(MOZ_OPTIONS)
+
+if(EMSCRIPTEN)
+  list(APPEND MOZ_OPTIONS -DREQUIRE_SIMD=OFF -DWITH_SIMD=OFF)
+endif()
+
 sh_add_external_project(
   NAME mozjpeg_a
   LIB_NAMES ${JPEG_LIB_NAMES}
   TARGETS jpeg-static
   RELATIVE_INCLUDE_PATHS .
   RELATIVE_BINARY_INCLUDE_PATHS .
-  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF
+  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
   REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/mozjpeg)

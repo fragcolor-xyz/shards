@@ -99,6 +99,7 @@ endif()
 
 if(ARCH)
   add_compile_options(-march=${ARCH})
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -march=${ARCH}")
 endif()
 
 if(USE_FPIC)

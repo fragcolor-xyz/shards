@@ -1,4 +1,4 @@
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT IOS AND NOT VISIONOS)
   set(SOURCES
     os.cpp
     process.cpp

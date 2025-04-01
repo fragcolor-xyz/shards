@@ -5,4 +5,4 @@ set(SOURCES
 add_shards_module(brotli SOURCES ${SOURCES}
   REGISTER_SHARDS brotli)
 
-target_link_libraries(shards-module-brotli brotlienc-static brotlidec-static brotlicommon-static)
+target_link_libraries(shards-module-brotli brotlienc brotlidec brotlicommon)

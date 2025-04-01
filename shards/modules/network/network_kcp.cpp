@@ -1074,11 +1074,14 @@ struct ClientShard : public NetworkBase {
       _socket->set_option(option_send);
       _socket->set_option(option_recv);
 
-      boost::asio::io_service io_service;
-      udp::resolver resolver(io_service);
+      boost::asio::io_context tmp_io_context;
+      udp::resolver resolver(tmp_io_context);
       auto sport = std::to_string(_port.get().payload.intValue);
-      udp::resolver::query query(udp::v4(), SHSTRING_PREFER_SHSTRVIEW(_addr.get()), sport);
-      _server = *resolver.resolve(query);
+      auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
+      auto r = resolver.resolve(udp::v4(), hostname, sport);
+      if (r.size() == 0)
+        throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
+      _server = r.begin()->endpoint();
       _peer.endpoint = _server;
 
       // start receiving

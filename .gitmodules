@@ -58,9 +58,11 @@
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/shards-lang/brotli.git
+	branch = shards-1.1.0
 [submodule "deps/snappy"]
 	path = deps/snappy
 	url = https://github.com/shards-lang/snappy.git
+	branch = shards-1.2.2
 [submodule "deps/tracy"]
 	path = deps/tracy
 	url = https://github.com/shards-lang/tracy.git

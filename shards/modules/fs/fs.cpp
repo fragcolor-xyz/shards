@@ -636,7 +636,7 @@ struct Normalize {
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
-    _output = p.normalize().string();
+    _output = p.lexically_normal().string();
     return Var(_output);
   }
 };

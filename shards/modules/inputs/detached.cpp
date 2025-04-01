@@ -420,7 +420,7 @@ struct Detached {
       ZoneScopedN("CopyOutputs");
       if (_outputBuffer.read_available() > 0) {
         _mainDataSeq.clear();
-        _outputBuffer.consume_all([&](OutputFrame &frame) {
+        _outputBuffer.consume_all([&](OutputFrame &&frame) {
           if (frame.exceptionString) {
             throw ActivationError(fmt::format("Input branch had errors: {}", frame.exceptionString.value()));
           }
