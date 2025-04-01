@@ -14,47 +14,6 @@ using json = nlohmann::json;
 void from_json(const json &j, SHWireRef &wire);
 void to_json(json &j, const SHWireRef &wire);
 
-void _releaseMemory(SHVar &var) {
-  // Used by Shard and Wire from_json
-  switch (var.valueType) {
-  case SHType::Path:
-  case SHType::ContextVar:
-  case SHType::String:
-    delete[] var.payload.stringValue;
-    break;
-  case SHType::Image:
-    shards::imageDecRef(var.payload.imageValue);
-    break;
-  case SHType::Audio:
-    delete[] var.payload.audioValue.samples;
-    break;
-  case SHType::Bytes:
-    delete[] var.payload.bytesValue;
-    break;
-  case SHType::Seq:
-    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      _releaseMemory(var.payload.seqValue.elements[i]);
-    }
-    shards::arrayFree(var.payload.seqValue);
-    break;
-  case SHType::Table: {
-    auto map = (shards::SHMap *)var.payload.tableValue.opaque;
-    delete map;
-  } break;
-  case SHType::Wire: {
-    SHWire::deleteRef(var.payload.wireValue);
-  } break;
-  case SHType::Object: {
-    if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
-      var.objectInfo->release(var.payload.objectValue);
-    }
-  } break;
-  default:
-    break;
-  }
-  var = {};
-}
-
 void to_json(json &j, const SHVar &var) {
   auto valType = magic_enum::enum_name(var.valueType);
   switch (var.valueType) {
@@ -251,7 +210,7 @@ void to_json(json &j, const SHVar &var) {
 }
 
 void from_json(const json &j, SHVar &var) {
-  auto valName = j.at("type").get<std::string>();
+  auto valName = j.at("type").get<std::string_view>();
   auto valType = magic_enum::enum_cast<SHType>(valName);
   if (!valType.has_value()) {
     throw shards::ActivationError("Failed to parse SHVar value type.");
@@ -304,13 +263,13 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::Int16: {
     var.valueType = SHType::Int16;
-    auto hexStr = j.at("value").get<std::string>();
+    auto hexStr = j.at("value").get<std::string_view>();
     if (hexStr.length() != 32) { // 16 bytes = 32 hex chars
       throw shards::ActivationError("Int16 hex string must be exactly 32 characters long (16 bytes)");
     }
     for (int i = 0; i < 16; i++) {
-      std::string byteStr = hexStr.substr(i * 2, 2);
-      var.payload.int16Value[i] = static_cast<int8_t>(std::stoi(byteStr, nullptr, 16));
+      std::string_view byteStr = hexStr.substr(i * 2, 2);
+      var.payload.int16Value[i] = static_cast<int8_t>(std::stoi(std::string(byteStr), nullptr, 16));
     }
     break;
   }
@@ -342,31 +301,31 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::ContextVar: {
     var.valueType = SHType::ContextVar;
-    auto strVal = j.at("value").get<std::string>();
+    auto strVal = j.at("value").get<std::string_view>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
     var.payload.stringLen = uint32_t(strLen);
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    memcpy((void *)var.payload.stringValue, strVal.data(), strLen);
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
   case SHType::String: {
     var.valueType = SHType::String;
-    auto strVal = j.at("value").get<std::string>();
+    auto strVal = j.at("value").get<std::string_view>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
     var.payload.stringLen = uint32_t(strLen);
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    memcpy((void *)var.payload.stringValue, strVal.data(), strLen);
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
   case SHType::Path: {
     var.valueType = SHType::Path;
-    auto strVal = j.at("value").get<std::string>();
+    auto strVal = j.at("value").get<std::string_view>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
     var.payload.stringLen = uint32_t(strLen);
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    memcpy((void *)var.payload.stringValue, strVal.data(), strLen);
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
@@ -435,18 +394,17 @@ void from_json(const json &j, SHVar &var) {
       auto key = item.at("key").get<SHVar>();
       auto value = item.at("value").get<SHVar>();
       (*map)[key] = value;
-      _releaseMemory(key);   // key is copied over
-      _releaseMemory(value); // value is copied over
+      shards::destroyVar(key);   // key is copied over
+      shards::destroyVar(value); // value is copied over
     }
     break;
   }
   case SHType::ShardRef: {
     var.valueType = SHType::ShardRef;
-    auto blkname = j.at("name").get<std::string>();
-    auto blk = shards::createShard(blkname.c_str());
+    auto blkname = j.at("name").get<std::string_view>();
+    auto blk = shards::createShard(blkname.data());
     if (!blk) {
-      auto errmsg = "Failed to create shard of type: " + std::string("blkname");
-      throw shards::ActivationError(errmsg.c_str());
+      throw shards::ActivationError(fmt::format("Failed to create shard of type: {}", blkname));
     }
 
     shards::incRef(blk);
@@ -459,7 +417,7 @@ void from_json(const json &j, SHVar &var) {
     auto jparams = j.at("params");
     auto blkParams = blk->parameters(blk);
     for (auto jparam : jparams) {
-      auto paramName = jparam.at("name").get<std::string>();
+      auto paramName = jparam.at("name").get<std::string_view>();
       auto value = jparam.at("value").get<SHVar>();
       if (value.valueType != SHType::None) {
         for (uint32_t i = 0; blkParams.len > i; i++) {
@@ -471,13 +429,13 @@ void from_json(const json &j, SHVar &var) {
         }
       }
       // Assume shard copied memory internally so we can clean up here!!!
-      _releaseMemory(value);
+      shards::destroyVar(value);
     }
 
     if (blk->setState) {
       auto state = j.at("state").get<SHVar>();
       blk->setState(blk, &state);
-      _releaseMemory(state);
+      shards::destroyVar(state);
     }
     break;
   }
@@ -530,7 +488,7 @@ void to_json(json &j, const SHWireRef &wireref) {
 }
 
 void from_json(const json &j, SHWireRef &wireref) {
-  auto wireName = j.at("name").get<std::string>();
+  auto wireName = j.at("name").get<std::string_view>();
   auto wire = SHWire::make(wireName);
 
   wire->looped = j.at("looped").get<bool>();
@@ -681,15 +639,14 @@ struct FromJson {
 
   SHVar getParam(int index) { return Var(_pure); }
 
-  void cleanup(SHContext *context) { _releaseMemory(_output); }
+  void cleanup(SHContext *context) { shards::destroyVar(_output); }
 
   void anyParse(json &j, SHVar &storage) {
     if (j.is_array()) {
       storage.valueType = SHType::Seq;
+      arrayResize(storage.payload.seqValue, j.size());
       for (json::iterator it = j.begin(); it != j.end(); ++it) {
-        const auto len = storage.payload.seqValue.len;
-        arrayResize(storage.payload.seqValue, len + 1);
-        anyParse(*it, storage.payload.seqValue.elements[len]);
+        anyParse(*it, storage.payload.seqValue.elements[it - j.begin()]);
       }
     } else if (j.is_number_integer()) {
       storage.valueType = SHType::Int;
@@ -698,13 +655,8 @@ struct FromJson {
       storage.valueType = SHType::Float;
       storage.payload.floatValue = j.get<double>();
     } else if (j.is_string()) {
-      storage.valueType = SHType::String;
-      auto strVal = j.get<std::string>();
-      const auto strLen = strVal.length();
-      storage.payload.stringValue = new char[strLen + 1];
-      storage.payload.stringLen = strLen;
-      memcpy((void *)storage.payload.stringValue, strVal.c_str(), strLen);
-      ((char *)storage.payload.stringValue)[strLen] = 0;
+      auto tmp = Var(j.get<std::string_view>());
+      cloneVar(storage, tmp);
     } else if (j.is_boolean()) {
       storage.valueType = SHType::Bool;
       storage.payload.boolValue = j.get<bool>();
@@ -769,8 +721,6 @@ struct FromJson {
   }
 
   SHVar &activate(SHContext *context, const SHVar &input) {
-    _releaseMemory(_output); // release previous
-
     try {
       json j = json::parse(SHSTRVIEW(input));
 

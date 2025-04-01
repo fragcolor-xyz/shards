@@ -773,7 +773,7 @@ struct LoadImage {
       std::swap(_output, premultipliedOutput);
     }
 
-    _output.version = 0;
+    _output.version++;
     return _output;
   }
 };
