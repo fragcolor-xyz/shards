@@ -96,8 +96,7 @@ void to_json(json &j, const SHVar &var) {
   case SHType::Int16: {
     std::stringstream ss;
     for (int i = 0; i < 16; i++) {
-        ss << std::setfill('0') << std::setw(2) << std::hex 
-           << (static_cast<int>(var.payload.int16Value[i]) & 0xFF);
+      ss << std::setfill('0') << std::setw(2) << std::hex << (static_cast<int>(var.payload.int16Value[i]) & 0xFF);
     }
     j = json{{"type", valType}, {"value", ss.str()}};
     break;
@@ -307,11 +306,11 @@ void from_json(const json &j, SHVar &var) {
     var.valueType = SHType::Int16;
     auto hexStr = j.at("value").get<std::string>();
     if (hexStr.length() != 32) { // 16 bytes = 32 hex chars
-        throw shards::ActivationError("Int16 hex string must be exactly 32 characters long (16 bytes)");
+      throw shards::ActivationError("Int16 hex string must be exactly 32 characters long (16 bytes)");
     }
     for (int i = 0; i < 16; i++) {
-        std::string byteStr = hexStr.substr(i * 2, 2);
-        var.payload.int16Value[i] = static_cast<int8_t>(std::stoi(byteStr, nullptr, 16));
+      std::string byteStr = hexStr.substr(i * 2, 2);
+      var.payload.int16Value[i] = static_cast<int8_t>(std::stoi(byteStr, nullptr, 16));
     }
     break;
   }
@@ -710,13 +709,62 @@ struct FromJson {
       storage.valueType = SHType::Bool;
       storage.payload.boolValue = j.get<bool>();
     } else if (j.is_object()) {
-      storage.valueType = SHType::Table;
-      auto map = new shards::SHMap();
-      storage.payload.tableValue.api = &shards::GetGlobals().TableInterface;
-      storage.payload.tableValue.opaque = map;
-      for (auto &[key, value] : j.items()) {
-        anyParse(value, (*map)[Var(key)]);
+      if (storage.valueType == SHType::Table) {
+        auto map = static_cast<shards::SHMap *>(storage.payload.tableValue.opaque);
+
+        // Try fast update first, assuming matching table layouts
+        bool fastUpdateSuccessful = j.size() == map->size();
+        auto dstIt = map->begin();
+
+        if (fastUpdateSuccessful) {
+          auto srcIt = j.begin();
+          // copy values fast, hoping keys are the same
+          while (srcIt != j.end()) {
+            auto cowKey = shards::OwnedVar::Foreign(srcIt.key());
+            if (cowKey != dstIt->first) {
+              fastUpdateSuccessful = false;
+              break;
+            }
+
+            anyParse(srcIt.value(), dstIt->second);
+            ++srcIt;
+            ++dstIt;
+          }
+        }
+
+        // Slower stable update if fast update failed
+        if (!fastUpdateSuccessful) {
+          // Delete/update set
+          for (; dstIt != map->end();) {
+            auto strKey = SHSTRVIEW(dstIt->first);
+            auto srcIt = j.find(strKey);
+            if (srcIt == j.end()) {
+              dstIt = map->erase(dstIt);
+            } else {
+              anyParse(srcIt.value(), dstIt->second);
+              ++dstIt;
+            }
+          }
+
+          // Add missing elements
+          for (auto srcIt = j.begin(); srcIt != j.end(); ++srcIt) {
+            auto cowKey = shards::OwnedVar::Foreign(srcIt.key());
+            if (map->find(cowKey) == map->end()) {
+              anyParse(srcIt.value(), (*map)[cowKey]);
+            }
+          }
+        }
+      } else {
+        storage.valueType = SHType::Table;
+        auto map = new shards::SHMap();
+        storage.payload.tableValue.api = &shards::GetGlobals().TableInterface;
+        storage.payload.tableValue.opaque = map;
+        for (auto &[key, value] : j.items()) {
+          auto cowKey = shards::OwnedVar::Foreign(key);
+          anyParse(value, (*map)[cowKey]);
+        }
       }
+      storage.version++;
     }
   }
 

@@ -3323,7 +3323,7 @@ struct Take {
   SHVar *_fastValue = nullptr;
   SHMap *_fastTable = nullptr;
   uint64_t _fastVersion = 0xFFFFFFFFFFFFFFFF;
-  SHVar &activateFastTable(SHContext *context, const SHVar &input) {
+  SHVar activateFastTable(SHContext *context, const SHVar &input) {
     shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
 
     SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
@@ -3336,6 +3336,10 @@ struct Take {
     // If not, find the value
     auto fk = shards::OwnedVar::Foreign(_indices);
     const auto val = table->find(fk);
+    if (val == table->end()) {
+      // well if there is no value, we should return empty and avoid setting the cache yet
+      return Var::Empty;
+    }
 
     _fastValue = &val->second;
 
