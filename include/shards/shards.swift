@@ -365,7 +365,7 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
-    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer) -> SHVar {
+    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?) -> SHVar {
         var v = SHVar()
         v.valueType = Object
         v.payload.objectVendorId = vendorId
@@ -551,6 +551,13 @@ extension SHVar: CustomStringConvertible {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.ShardRef.rawValue)
         v.payload.shardValue = value
+        self = v
+    }
+    
+    init(value: SHWireRef) {
+        var v = SHVar()
+        v.valueType = SHType(rawValue: VarType.Wire.rawValue)
+        v.payload.wireValue = value
         self = v
     }
 
