@@ -227,6 +227,9 @@ struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar>
   SHTableImpl() {}
   ~SHTableImpl() {}
 #endif
+
+  static inline std::atomic_uint64_t uniqueId{0};
+  uint64_t id{uniqueId++};
 };
 
 typedef void(__cdecl *SHSetWireError)(const SHWire *, void *errorData, struct SHStringWithLen msg);

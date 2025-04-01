@@ -1895,7 +1895,6 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     shassert(var.payload.tableValue.opaque);
     auto map = (SHMap *)var.payload.tableValue.opaque;
     delete map;
-    // Don't reset version, prevent edge cases of same pointer being reused
   } break;
   case SHType::Image:
     shassert(var.payload.imageValue);

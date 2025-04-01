@@ -910,7 +910,7 @@ struct VariableBase {
   ExposedInfo _exposedInfo{};
   bool _isTable{false};
   bool _global{false};
-  void *_tablePtr{nullptr};
+  uint64_t _tableId{0};
   uint64_t _tableVersion{0};
 
   static inline Parameters getterParams{
@@ -975,8 +975,9 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
-      _tablePtr = _target->payload.tableValue.opaque;
+    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+    if (_tableId != table->id || _tableVersion != _target->version) {
+      _tableId = table->id;
       _cell = nullptr;
       _tableVersion = _target->version;
     }
@@ -3035,7 +3036,7 @@ struct Take {
     }
 
     _fastValue = nullptr;
-    _fastTable = nullptr;
+    _fastTableId = 0;
     _fastVersion = 0xFFFFFFFFFFFFFFFF;
   }
 
@@ -3321,7 +3322,7 @@ struct Take {
 
   // If the key is a constant, at compose time, we can cache the result, unless version changes
   SHVar *_fastValue = nullptr;
-  SHMap *_fastTable = nullptr;
+  uint64_t _fastTableId = 0;
   uint64_t _fastVersion = 0xFFFFFFFFFFFFFFFF;
   SHVar activateFastTable(SHContext *context, const SHVar &input) {
     shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
@@ -3329,7 +3330,7 @@ struct Take {
     SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
 
     // If same table and same version, return cached value
-    if (table == _fastTable && input.version == _fastVersion) {
+    if (table->id == _fastTableId && input.version == _fastVersion) {
       return *_fastValue;
     }
 
@@ -3343,7 +3344,7 @@ struct Take {
 
     _fastValue = &val->second;
 
-    _fastTable = table;
+    _fastTableId = table->id;
     _fastVersion = input.version;
 
     return *_fastValue;
