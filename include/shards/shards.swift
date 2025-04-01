@@ -786,6 +786,8 @@ class TableVar: OwnedVar, Sequence {
 
     func clear() {
         v.payload.tableValue.api.pointee.tableClear(v.payload.tableValue)
+        // also increase version
+        v.version += 1
     }
 
     func contains(key: SHVar) -> Bool {
