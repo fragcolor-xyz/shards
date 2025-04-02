@@ -65,7 +65,7 @@ struct Run {
 
   SHVar run(std::string moduleName, std::vector<std::string> argsArray, const SHVar &input) {
     // use async asio to avoid deadlocks
-    boost::asio::io_service ios;
+    boost::asio::io_context ios;
     std::future<std::string> ostr;
     std::future<std::string> estr;
     boost::process::opstream ipipe;

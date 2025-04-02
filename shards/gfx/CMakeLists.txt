@@ -90,7 +90,7 @@ target_link_libraries(gfx-core-obj
   tinygltf draco-wrapper
   magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container Boost::tti
-  brotlidec-static brotlicommon-static
+  brotlidec brotlicommon
   shards-logging
   shards-fast-string
 )

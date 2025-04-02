@@ -43,6 +43,11 @@
 #include "platform.hpp"
 #include "serialization.hpp"
 
+#if SH_APPLE || SH_LINUX
+#include <dlfcn.h>
+#endif
+
+
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
 #endif
