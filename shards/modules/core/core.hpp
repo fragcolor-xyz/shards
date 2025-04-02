@@ -910,7 +910,7 @@ struct VariableBase {
   ExposedInfo _exposedInfo{};
   bool _isTable{false};
   bool _global{false};
-  void *_tablePtr{nullptr};
+  uint64_t _tableId{0};
   uint64_t _tableVersion{0};
 
   static inline Parameters getterParams{
@@ -975,8 +975,9 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
-      _tablePtr = _target->payload.tableValue.opaque;
+    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+    if (table && (_tableId != table->id || _tableVersion != _target->version)) {
+      _tableId = table->id;
       _cell = nullptr;
       _tableVersion = _target->version;
     }
@@ -3033,6 +3034,10 @@ struct Take {
     if (_cachedSeq.elements) {
       shards::arrayFree(_cachedSeq);
     }
+
+    _fastValue = nullptr;
+    _fastTableId = 0;
+    _fastVersion = 0xFFFFFFFFFFFFFFFF;
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Indexables; }
@@ -3180,7 +3185,13 @@ struct Take {
           return CoreInfo::IntType;
         }
       } else if (data.inputType.basicType == SHType::Table) {
-        OVERRIDE_ACTIVATE(data, activateTable);
+        if (_indices.valueType != SHType::ContextVar && !_seqOutput) {
+          // If not a variable and not multiple values, we can use fast path
+          OVERRIDE_ACTIVATE(data, activateFastTable);
+        } else {
+          OVERRIDE_ACTIVATE(data, activateTable);
+        }
+
         if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar) {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
@@ -3308,6 +3319,36 @@ struct Take {
   ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, input.payload.seqValue.elements[index])
   ACTIVATE_INDEXABLE(activateString, SHSTRLEN(input), shards::Var(input.payload.stringValue[index]))
   ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, shards::Var(input.payload.bytesValue[index]))
+
+  // If the key is a constant, at compose time, we can cache the result, unless version changes
+  SHVar *_fastValue = nullptr;
+  uint64_t _fastTableId = 0;
+  uint64_t _fastVersion = 0xFFFFFFFFFFFFFFFF;
+  SHVar activateFastTable(SHContext *context, const SHVar &input) {
+    shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
+
+    SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
+
+    // If same table and same version, return cached value
+    if (table->id == _fastTableId && input.version == _fastVersion) {
+      return *_fastValue;
+    }
+
+    // If not, find the value
+    auto fk = shards::OwnedVar::Foreign(_indices);
+    const auto val = table->find(fk);
+    if (val == table->end()) {
+      // well if there is no value, we should return empty and avoid setting the cache yet
+      return Var::Empty;
+    }
+
+    _fastValue = &val->second;
+
+    _fastTableId = table->id;
+    _fastVersion = input.version;
+
+    return *_fastValue;
+  }
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
     shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");

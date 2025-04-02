@@ -335,6 +335,10 @@ int _tableCompare(const SHVar &a, const SHVar &b) {
   const shards::SHMap &map_a = *reinterpret_cast<shards::SHMap *>(a.payload.tableValue.opaque);
   const shards::SHMap &map_b = *reinterpret_cast<shards::SHMap *>(b.payload.tableValue.opaque);
 
+  if (&map_a == &map_b) {
+    return 0;
+  }
+
   auto it_a = map_a.cbegin();
   auto it_b = map_b.cbegin();
 
@@ -370,6 +374,10 @@ inline int compareElements(const SHVar &a, const SHVar &b) { return cmp(a, b); }
 int _seqCompare(const SHVar &a, const SHVar &b) {
   const auto &seq_a = a.payload.seqValue;
   const auto &seq_b = b.payload.seqValue;
+
+  if (&seq_a == &seq_b) {
+    return 0;
+  }
 
   uint32_t minLen = std::min(seq_a.len, seq_b.len);
 

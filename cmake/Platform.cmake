@@ -313,14 +313,25 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
-  add_link_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-  )
+  if(CMAKE_GENERATOR STREQUAL "Xcode")
+    add_link_options(
+      -DBOOST_USE_ASAN
+      -fsanitize=address
+      -fno-optimize-sibling-calls
+      -fsanitize-address-use-after-scope
+      -fno-omit-frame-pointer
+      -g
+    )
+  else()
+    add_link_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-g>
+    )
+  endif()
 
   if(USE_ASAN GREATER 1)
     add_compile_options(

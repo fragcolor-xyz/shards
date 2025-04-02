@@ -262,6 +262,7 @@ struct Serialization {
         if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
           map = (SHMap *)output.payload.tableValue.opaque;
           map->clear();
+          output.version++;
         } else {
           destroyVar(output);
           output.valueType = nextType;

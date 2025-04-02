@@ -236,8 +236,10 @@ none
 
 [] | IsAll(true) | Assert.Is(true) | Log ; vacuously true
 
-"../../.github/workflows/main.yml" | FS.Read | Yaml.ToJson | FromJson | Log
-ToJson | Yaml.FromJson | Log
+Repeat({
+  "../../.github/workflows/main.yml" | FS.Read | Yaml.ToJson | FromJson | Log
+  ToJson | Yaml.FromJson | Log
+} Times: 4)
 
 {["A" 1]: 1 ["A" 2]: 2 ["C"]: 3 ["D" 1]: 4 ["D" 2]: 5 ["E"]: 6} = sorted-table-test
 {Iterate(From: ["B" 1] To: ["D" 1] Action: {Log | $1 | Assert.Is(3)})}

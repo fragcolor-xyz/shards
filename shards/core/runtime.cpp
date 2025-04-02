@@ -1900,7 +1900,6 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     shassert(var.payload.tableValue.opaque);
     auto map = (SHMap *)var.payload.tableValue.opaque;
     delete map;
-    var.version = 0;
   } break;
   case SHType::Image:
     shassert(var.payload.imageValue);

@@ -30,18 +30,12 @@
 #pragma clang attribute pop
 #endif
 
-template<typename K>
-struct ShardsKeyCompare  {
-  bool operator()(const K &lhs, const K &rhs) const {
-    return std::less<K>()(lhs, rhs);
-  }
+template <typename K> struct ShardsKeyCompare {
+  bool operator()(const K &lhs, const K &rhs) const { return std::less<K>()(lhs, rhs); }
 };
 
-template<typename K>
-struct ShardsKeyEqual  {
-  bool operator()(const K &lhs, const K &rhs) const {
-    return std::equal_to<K>()(lhs, rhs);
-  }
+template <typename K> struct ShardsKeyEqual {
+  bool operator()(const K &lhs, const K &rhs) const { return std::equal_to<K>()(lhs, rhs); }
 };
 
 template <typename K, typename V>
@@ -457,25 +451,21 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     return res;
   }
 };
-}
+} // namespace shards
 
 #ifdef HAS_BOOST_CONTAINER
-template<typename T>
-struct ShardsKeyCompare<shards::TOwnedVar<T>> {
+template <typename T> struct ShardsKeyCompare<shards::TOwnedVar<T>> {
   using is_transparent = void;
 
-  template<typename K>
-  bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
+  template <typename K> bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
     return std::less<SHVar>()(lhs, rhs);
   }
 };
 
-template<typename T>
-struct ShardsKeyEqual<shards::TOwnedVar<T>> {
+template <typename T> struct ShardsKeyEqual<shards::TOwnedVar<T>> {
   using is_transparent = void;
 
-  template<typename K>
-  bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
+  template <typename K> bool operator()(const shards::TOwnedVar<T> &lhs, const K &rhs) const {
     return std::equal_to<SHVar>()(lhs, rhs);
   }
 };
@@ -663,6 +653,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #else
     payload.tableValue.api->tableRemove(payload.tableValue, key);
 #endif
+    // also increase version
+    version++;
   }
 
   void remove(std::string_view key) { remove(Var(key)); }
@@ -675,6 +667,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 #else
     payload.tableValue.api->tableClear(payload.tableValue);
 #endif
+    // also increase version
+    version++;
   }
 
   size_t size() const {

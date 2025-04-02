@@ -275,11 +275,17 @@ function(add_rust_library)
 
   if(IOS)
     list(APPEND EXTRA_CLANG_ARGS "-mios-version-min=10.0")
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND XCODE_SDK MATCHES ".*simulator$")
+      list(APPEND EXTRA_CLANG_ARGS "--target=aarch64-apple-ios-simulator")
+    else()
+      list(APPEND EXTRA_CLANG_ARGS "--target=aarch64-apple-ios")
+    endif()
   endif()
 
   if(VISIONOS)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND XCODE_SDK MATCHES ".*simulator$")
-      list(APPEND EXTRA_CLANG_ARGS "--target=aarch64-apple-xros-sim")
+      list(APPEND EXTRA_CLANG_ARGS "--target=aarch64-apple-xros-simulator")
     else()
       list(APPEND EXTRA_CLANG_ARGS "--target=aarch64-apple-xros")
     endif()

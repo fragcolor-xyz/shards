@@ -365,7 +365,7 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
-    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer) -> SHVar {
+    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?) -> SHVar {
         var v = SHVar()
         v.valueType = Object
         v.payload.objectVendorId = vendorId
@@ -551,6 +551,13 @@ extension SHVar: CustomStringConvertible {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.ShardRef.rawValue)
         v.payload.shardValue = value
+        self = v
+    }
+    
+    init(value: SHWireRef) {
+        var v = SHVar()
+        v.valueType = SHType(rawValue: VarType.Wire.rawValue)
+        v.payload.wireValue = value
         self = v
     }
 
@@ -786,6 +793,8 @@ class TableVar: OwnedVar, Sequence {
 
     func clear() {
         v.payload.tableValue.api.pointee.tableClear(v.payload.tableValue)
+        // also increase version
+        v.version += 1
     }
 
     func contains(key: SHVar) -> Bool {
@@ -1895,15 +1904,15 @@ class MeshController {
         }
     }
 
-    func schedule(wire: WireController) {
-        G.Core.pointee.schedule(nativeRef, wire.nativeRef, true)
+    func schedule(wire: WireController, compose: Bool = true) {
+        G.Core.pointee.schedule(nativeRef, wire.nativeRef, compose)
     }
 
     func maybeSchedule(wire: WireController) -> Result<Void, ShardError> {
         let error = OwnedVar()
         let result = G.Core.pointee.compose(nativeRef, wire.nativeRef, &error.v)
         if result {
-            schedule(wire: wire)
+            schedule(wire: wire, compose: false)
             return .success(())
         }
         return .failure(ShardError(message: error.v.string))

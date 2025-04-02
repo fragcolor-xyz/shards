@@ -6179,6 +6179,8 @@ impl TableVar {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       (*t.api).tableClear.unwrap_unchecked()(t);
     }
+    // Also increase version (used for caching!)
+    unsafe { self.0.__bindgen_anon_1.version += 1 };
   }
 
   pub fn remove(&mut self, k: Var) {
@@ -6186,6 +6188,8 @@ impl TableVar {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       (*t.api).tableRemove.unwrap_unchecked()(t, k);
     }
+    // Also increase version (used for caching!)
+    unsafe { self.0.__bindgen_anon_1.version += 1 };
   }
 
   pub fn remove_static(&mut self, k: &'static str) {
@@ -6194,6 +6198,8 @@ impl TableVar {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       (*t.api).tableRemove.unwrap_unchecked()(t, k);
     }
+    // Also increase version (used for caching!)
+    unsafe { self.0.__bindgen_anon_1.version += 1 };
   }
 }
 
