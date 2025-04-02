@@ -40,6 +40,8 @@ struct Compress {
 
   SHVar getParam(int index) { return Var(_quality); }
 
+  void cleanup() { _buffer = {}; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto maxLen = BrotliEncoderMaxCompressedSize(input.payload.bytesSize);
     _buffer.resize(maxLen + sizeof(uint32_t));
@@ -59,7 +61,8 @@ struct Decompress {
   std::vector<uint8_t> _buffer;
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard decompresses the input byte array that has been previously compressed using the Brotli.Compress shard.");
+    return SHCCSTR(
+        "This shard decompresses the input byte array that has been previously compressed using the Brotli.Compress shard.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The compressed byte array to decompress."); }
@@ -81,6 +84,8 @@ struct Decompress {
       }
     }
   }
+
+  void cleanup() { _buffer = {}; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.bytesSize < sizeof(uint32_t)) {
