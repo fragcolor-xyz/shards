@@ -59,8 +59,6 @@ struct WireBase {
 
   IterableExposedInfo exposedInfo{};
 
-  void resetComposition();
-
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 

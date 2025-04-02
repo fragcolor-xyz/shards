@@ -31,15 +31,6 @@
 #endif
 
 namespace shards {
-void WireBase::resetComposition() {
-  if (wire) {
-    if (wire->composeResult) {
-      shards::arrayFree(wire->composeResult->requiredInfo);
-      shards::arrayFree(wire->composeResult->exposedInfo);
-      wire->composeResult.reset();
-    }
-  }
-}
 std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 #ifdef WIN32
   // TODO FIX THIS
