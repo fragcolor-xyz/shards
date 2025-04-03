@@ -246,7 +246,7 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
     SHVarPayload aPayload = a.payload;
     SHVarPayload bPayload = b.payload;
 
-    // Oparands might be swapped (e.g. v*s, s*v)
+    // Operands might be swapped (e.g. v*s, s*v)
     if (vecType->dimension == 1) {
       std::swap(vecType, scalarType);
     }
@@ -476,6 +476,17 @@ template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
 };
 
+template <class TOp> struct UnaryIntOperation : public UnaryOperation<TOp> {
+  static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                     CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::AnySeqType}};
+
+  static SHTypesInfo inputTypes() { return IntOrSeqTypes; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("An integer, a vector of integers (Int2, Int3, Int4), a sequence of these types supported by this operation.");
+  }
+  static SHTypesInfo outputTypes() { return IntOrSeqTypes; }
+};
+
 template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -533,9 +544,7 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
 
   void cleanup(SHContext *context) { _value.cleanup(); }
 
-  ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) {
-    this->operate(_value.get(), _value.get());
-  }
+  ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) { this->operate(_value.get(), _value.get()); }
 };
 
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)      \
@@ -1646,6 +1655,21 @@ struct Percentile {
     return Var{threshold};
   }
 };
+
+struct NotOp {
+  template <typename T> T apply(const T &a) { return ~a; }
+};
+
+struct Not : public UnaryIntOperation<BasicUnaryOperation<NotOp, DispatchType::IntTypes>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard performs a bitwise NOT operation on the input. It flips all the bits of the input number.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The integer (or sequence of integers) to perform bitwise NOT on."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The result of the bitwise NOT operation."); }
+};
+RUNTIME_SHARD_TYPE(Math, Not);
 
 } // namespace Math
 } // namespace shards

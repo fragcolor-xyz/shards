@@ -201,6 +201,7 @@ void registerMathShards() {
 
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Round", shards::Math::Round, OperatorRound);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Negate", shards::Math::Negate, OperatorNegate);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Not", shards::Math::Not, OperatorNot);
 
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Abs", shards::Math::Abs, OperatorAbs);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Abs", shards::Math::Abs, OperatorAbs);

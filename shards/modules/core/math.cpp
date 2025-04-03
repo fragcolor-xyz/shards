@@ -72,6 +72,7 @@ SHARDS_REGISTER_FN(math) {
   REGISTER_SHARD("Math.Dec", Dec);
   REGISTER_SHARD_ALIAS("Dec", Dec);
   REGISTER_SHARD("Math.Negate", Negate);
+  REGISTER_SHARD("Math.Not", Not);
 
   REGISTER_SHARD("Max", Max);
   REGISTER_SHARD("Min", Min);

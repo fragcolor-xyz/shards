@@ -241,6 +241,11 @@ struct OperatorNegate {
   static inline const char *op = "-";
 };
 
+struct OperatorNot {
+  static inline bool prefixOp = true;
+  static inline const char *op = "~";
+};
+
 struct OperatorAbs {
   static inline const char *call = "abs";
 };
