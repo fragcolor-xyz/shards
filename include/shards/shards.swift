@@ -916,6 +916,16 @@ class SeqVar: OwnedVar {
             pushCloning(value: tmp)
         }
     }
+    
+    func push(bytes: ContiguousArray<UInt8>) {
+        bytes.withUnsafeBufferPointer { buffer in
+            var tmp = SHVar()
+            tmp.valueType = VarType.Bytes.asSHType()
+            tmp.payload.bytesValue = UnsafeMutablePointer(mutating: buffer.baseAddress)
+            tmp.payload.bytesSize = UInt32(bytes.count)
+            pushCloning(value: tmp)
+        }
+    }
 
     // Notice that the memory of the result is still owned by SeqVar as when we destroy we destroy capacity!
     // So a further push will reuse same memory!
