@@ -1601,15 +1601,14 @@ inline bool isObjectType(const SHVar &var, const SHTypeInfo &type) {
 }
 
 template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type &type) {
-  SHTypeInfo typeInfo(type);
   if (var.valueType != SHType::Object) {
     throw std::runtime_error(fmt::format("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType)));
   }
-  if (var.payload.objectVendorId != typeInfo.object.vendorId) {
+  if (var.payload.objectVendorId != type->object.vendorId) {
     throw std::runtime_error(fmt::format("Invalid object vendor id, expected: {} got: {}", type,
                                          Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
-  if (var.payload.objectTypeId != typeInfo.object.typeId) {
+  if (var.payload.objectTypeId != type->object.typeId) {
     throw std::runtime_error(fmt::format("Invalid object type id, expected: {} got: {}", type,
                                          Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
