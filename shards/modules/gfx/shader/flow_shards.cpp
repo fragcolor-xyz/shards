@@ -80,6 +80,58 @@ struct IfTranslator {
   }
 };
 
+struct CondTranslator {
+  static void translate(Cond *shard, TranslationContext &context) {
+    Type inputType = context.wgslTop->getType();
+    BlockPtr inputBlock = context.wgslTop->toBlock();
+
+    std::string ifResultVarName;
+    Type outputType;
+    if (!shard->_passthrough) {
+      SHTypeInfo ta = shard->_wireValidation.outputType;
+      outputType = shardsTypeToFieldType(ta);
+      ifResultVarName = context.getUniqueVariableName("cond");
+      context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
+    }
+
+    for (int i = 0; i < shard->_conditions.size(); i++) {
+      const char *en{};
+      if (i == 0)
+        en = "if(";
+      else {
+        en = "else if(";
+      }
+
+      auto condShards = shard->_conditions[i];
+      SHComposeResult condResult{};
+      condResult.requiredInfo = SHExposedTypesInfo(shard->_requiredInfo);
+      condResult.outputType = shards::CoreInfo::BoolType;
+      auto func = context.processShards(condShards, condResult, inputType, "condition");
+      auto cmp = generateFunctionCall(func, std::make_unique<WGSLBlock>(inputType, inputBlock->clone()), context);
+
+      context.enterNew(blocks::makeCompoundBlock());
+      context.addNew(blocks::makeBlock<blocks::Direct>(en));
+      context.addNew(cmp->toBlock());
+      context.addNew(blocks::makeBlock<blocks::Direct>(") {\n"));
+
+      auto actionShards = shard->_actions[i];
+      context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
+      processShards(actionShards, context);
+
+      if (!shard->_passthrough)
+        context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
+      context.addNew(blocks::makeBlock<blocks::Direct>("}\n"));
+      context.leave();
+    }
+
+    if (shard->_passthrough) {
+      context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
+    } else {
+      context.setWGSLTop<WGSLBlock>(outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
+    }
+  }
+};
+
 template <typename TShard> struct ExtractTemplateBool {};
 template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> {
   static constexpr bool Cond = B;
@@ -164,6 +216,7 @@ struct LogicAndTranslator {
 void registerFlowShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "_SubFlow", shards::Sub);
   REGISTER_EXTERNAL_SHADER_SHARD(IfTranslator, "If", shards::IfBlock);
+  REGISTER_EXTERNAL_SHADER_SHARD(CondTranslator, "Cond", shards::Cond);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "When", shards::When<true>);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "WhenNot", shards::When<false>);
   REGISTER_EXTERNAL_SHADER_SHARD(ForRangeTranslator, "ForRange", shards::ForRangeShard);

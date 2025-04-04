@@ -5,7 +5,7 @@
 ;   @hot-reload(@script-dir @namespace "my-script.shs" [wire-0 wire-1 ...])
 ; The wires can then be invoked simply using Do(wire-0), etc.
 @macro(hot-reload [base-path include-dirs namespace script-path wires] {
-  Sequence(root)
+  Sequence(hr-root-seq)
   
   ["hlw-" (script-path | FS.Filename(true))] | String.Format = wrapper-name
   {id: {name: wrapper-name}} | ToJson = wrapper-name-id-json
@@ -74,11 +74,11 @@
   Regex.Replace(""""id":\{"name":"include-dirs"\}""" include-dirs-json)
   
   FromJson = loader-ast-1
-  [loader-ast-1] >> root
+  [loader-ast-1] >> hr-root-seq
   
   ; Body of the wrapper wire
+  NanoID >= rnd
   @ast({
-    = inp
     Once({
       false >= _we
     })
@@ -101,7 +101,10 @@
       )
     })
   })
-  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json) = body-shards-1
+  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json) 
+  Regex.Replace("""_we""" (["_we" rnd] | String.Format)) 
+  Regex.Replace("""_wt""" (["_wt" rnd] | String.Format))
+  = body-shards-1
   
   @ast(wires) | FromJson | ExpectTable
   Take("seq") | ExpectSeq
@@ -126,10 +129,10 @@
     func | Update(wire-ast "func")
     
     [wire-ast]
-    >> root
+    >> hr-root-seq
   })
   
-  root | ToJson
+  hr-root-seq | ToJson
 })
 
 @macro(if-root [cond yes no] {
@@ -154,7 +157,7 @@
 
 @inline-template(maybe-hot-reload [script-path wires] {
   @if-root(@script-hot-reload {
-      #(Log("Running hot reload macro"))
+      ; #(Log("Running hot reload macro"))
       @hot-reload(@script-dir @include-dirs @namespace script-path wires)
     } {
       @include(script-path)
