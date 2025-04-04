@@ -316,12 +316,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool detached{false};
   std::unordered_set<void *> wireUsers;
 
-  // we need to clone this, as might disappear, since outside wire
-  mutable shards::TypeInfo inputType{};
   // flag if we changed inputType to None or Any on purpose
   mutable bool ignoreInputTypeCheck{false};
-  // this one is a shard inside the wire, so won't disappear
-  mutable SHTypeInfo outputType{};
+
+  mutable shards::TypeInfo inputType{};
+  mutable shards::TypeInfo outputType{};
 
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;
@@ -386,7 +385,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void*) ref, pref->use_count());
+    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void *)ref, pref->use_count());
     delete pref;
   }
 
@@ -400,7 +399,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
     auto res = new std::shared_ptr<SHWire>(cref);
-    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void*)res, cref.use_count());
+    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void *)res, cref.use_count());
     return reinterpret_cast<SHWireRef>(res);
   }
 

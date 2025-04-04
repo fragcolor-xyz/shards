@@ -49,7 +49,6 @@
 #include <dlfcn.h>
 #endif
 
-
 #ifdef SH_COMPRESSED_STRINGS
 #include <shards/wire_dsl.hpp>
 #endif
@@ -1375,7 +1374,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   validateWireTraits(wire, res);
 
   // set output type
-  wire->outputType = res.outputType;
+  wire->outputType = res.outputType; // this is a shallow copy, because it will come from a shard within the wire
 
   // validate wire output types for additional return paths
   if (wire->composeData) {
@@ -2884,10 +2883,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return res;
   };
 
-  result->tableInit = [](SHTable *table) noexcept { 
+  result->tableInit = [](SHTable *table) noexcept {
     table->api = &shards::GetGlobals().TableInterface;
     table->opaque = new shards::SHMap();
-  };   
+  };
 
   result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);

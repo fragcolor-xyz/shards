@@ -198,7 +198,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   SHTypeInfo wireOutput = wire->outputType;
   composeCtx->visitedWires.insert_or_assign(wire.get(), wireOutput);
   SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(), *wire->inputType,
-              wire->outputType);
+              *wire->outputType);
 
 #if SH_CORO_NEED_STACK_MEM
   // Propagate stack size
