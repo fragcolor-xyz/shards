@@ -7,6 +7,7 @@
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
+#include <shards/core/exposed_type_utils.hpp>
 #include <atomic>
 
 namespace shards {
@@ -31,6 +32,7 @@ struct Cond {
   bool _passthrough = true;
   bool _threading = false;
   SHComposeResult _wireValidation{};
+  ExposedInfo _requiredInfo;
 
   static SHOptionalString help() {
     return SHCCSTR("Takes a sequence of conditions and predicates. "
@@ -170,6 +172,8 @@ struct Cond {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredInfo.clear();
+
     // Free any previous result!
     shards::arrayFree(_wireValidation.exposedInfo);
     shards::arrayFree(_wireValidation.requiredInfo);
@@ -181,6 +185,7 @@ struct Cond {
       if (validation.outputType.basicType != SHType::Bool) {
         throw ComposeError("Cond - expected Bool output from predicate shards");
       }
+      mergeIntoExposedInfo(_requiredInfo, validation.requiredInfo);
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
     }
@@ -192,6 +197,7 @@ struct Cond {
     auto exposing = true;
     for (const auto &action : _actions) {
       auto validation = composeWire(action, data);
+      mergeIntoExposedInfo(_requiredInfo, validation.requiredInfo);
 
       if (first) {
         // A first valid exposedInfo array is our gold
@@ -246,6 +252,7 @@ struct Cond {
   }
 
   SHExposedTypesInfo exposedVariables() { return _wireValidation.exposedInfo; }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
 
   shards::Var _output;
   const SHVar &activate(SHContext *context, const SHVar &input) {

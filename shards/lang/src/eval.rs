@@ -2005,7 +2005,7 @@ impl<'e> VariableResolver<'e> {
           ("type", true) => process_type(func, line_info, self.e).map(ResolvedVar::new_const),
           ("ast", true) => process_ast(func, line_info, self.e).map(ResolvedVar::new_const),
           ("capture-eval-context", true) => {
-            let ctx = capture_eval_context(self.e);
+            let ctx: ClonedVar = capture_eval_context(self.e);
             Ok(ResolvedVar::new_const(SVar::Cloned(ctx)))
           }
           _ => {
@@ -3360,7 +3360,7 @@ fn eval_pipeline(
                   Param {
                     value: Value::Identifier(name),
                     ..
-                  },
+                  }, 
                   types,
                 ) => {
                   let make_trait_shards = Sequence {
@@ -4387,7 +4387,7 @@ impl Default for EvalShard {
 #[shard_impl]
 impl Shard for EvalShard {
   fn input_types(&mut self) -> &Types {
-    &read::READ_OUTPUT_TYPES
+    &read::AST_TYPES
   }
 
   fn output_types(&mut self) -> &Types {

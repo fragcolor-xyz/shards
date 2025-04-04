@@ -4,10 +4,10 @@
 ; usage:
 ;   @hot-reload(@script-dir @namespace "my-script.shs" [wire-0 wire-1 ...])
 ; The wires can then be invoked simply using Do(wire-0), etc.
-@macro(hot-reload [base-path namespace script-path wires] {
-  Sequence(root)
+@macro(hot-reload [base-path include-dirs namespace script-path wires] {
+  Sequence(hr-root-seq)
   
-  ["hlw-" (script-path | FS.Filename(true))] String.Format = wrapper-name
+  ["hlw-" (script-path | FS.Filename(true))] | String.Format = wrapper-name
   {id: {name: wrapper-name}} | ToJson = wrapper-name-id-json
   
   ; Escape \ in base-path
@@ -15,6 +15,15 @@
   script-path-abs | Regex.Replace("\\\\" "\\\\\\\\") = script-path-escaped
   
   script-path-abs | Log("Setting up hot reload for script")
+  
+  [
+    "\"seq\":["
+    (include-dirs | Map({
+        ["{\"str\":\"" $0 "\"}"] | String.Format
+      }) | String.Join(",") | Regex.Replace("""\\""" """\\""")
+    )
+    "]"
+  ] | String.Format = include-dirs-json
   
   ; Body of the loader wire
   @ast(
@@ -25,14 +34,26 @@
       
       Once({
         Table(hot-result Type: @type({tag: Type::Int none: Type::Wire}))
+        Sequence(dependencies Type: @type([Type::String]))
         {tag: 0} > hot-result
       })
       
-      script-path | Maybe({FS.LastWriteTime} {0}) | Memoize({
-        script-path | Log("Triggered change on script")
+      Maybe({
+        dependencies | Map({FS.LastWriteTime}) >= sub-lwt
+        script-path | FS.LastWriteTime | PrependTo(sub-lwt)
+        sub-lwt
+      } {[0]}) = timestamps
+      
+      timestamps | Memoize({
+        [script-path timestamps] | Log("Triggered change on script" Level: LogLevel::Debug)
         Maybe({
-            script-path | FS.Read | Shards.Read(AstType::Object
-            BasePath: (script-path | FS.Parent))
+            script-path | FS.Read | Shards.Read(
+              BasePath: (script-path | FS.Parent)
+              Include: include-dirs
+              OutputType: AstType::AdvancedObject
+            )
+            {Take("dependencies") | Log("Script dependencies" Level: LogLevel::Trace) > dependencies}
+            Take("ast")
             Shards.Distill(
               Context: @capture-eval-context
               Name: #(script-path | FS.Filename(true))
@@ -60,12 +81,14 @@
   ) = loader-ast
   Regex.Replace("""\{"id":\{"name":"loader"\}\}""" wrapper-name-id-json)
   Regex.Replace("""\{"id":\{"name":"script-path"\}\}""" (["{\"str\": \"" script-path-escaped "\"}"] | String.Format))
+  Regex.Replace(""""id":\{"name":"include-dirs"\}""" include-dirs-json)
+  
   FromJson = loader-ast-1
-  [loader-ast-1] >> root
+  [loader-ast-1] >> hr-root-seq
   
   ; Body of the wrapper wire
+  NanoID >= rnd
   @ast({
-    = inp
     Once({
       false >= _we
     })
@@ -88,7 +111,10 @@
       )
     })
   })
-  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json) = body-shards-1
+  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json)
+  Regex.Replace("""_we""" (["_we" rnd] | String.Format))
+  Regex.Replace("""_wt""" (["_wt" rnd] | String.Format))
+  = body-shards-1
   
   @ast(wires) | FromJson | ExpectTable
   Take("seq") | ExpectSeq
@@ -113,10 +139,10 @@
     func | Update(wire-ast "func")
     
     [wire-ast]
-    >> root
+    >> hr-root-seq
   })
   
-  root | ToJson
+  hr-root-seq | ToJson
 })
 
 @macro(if-root [cond yes no] {
@@ -141,8 +167,8 @@
 
 @inline-template(maybe-hot-reload [script-path wires] {
   @if-root(@script-hot-reload {
-      #(Log("Running hot reload macro"))
-      @hot-reload(@script-dir @namespace script-path wires)
+      ; #(Log("Running hot reload macro"))
+      @hot-reload(@script-dir @include-dirs @namespace script-path wires)
     } {
       @include(script-path)
     }
