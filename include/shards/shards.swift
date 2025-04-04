@@ -106,37 +106,37 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     case AnyValue
     case Enum
     case Bool
-    case Int  // A 64bits int
-    case Int2  // A vector of 2 64bits ints
-    case Int3  // A vector of 3 32bits ints
-    case Int4  // A vector of 4 32bits ints
-    case Int8  // A vector of 8 16bits ints
-    case Int16  // A vector of 16 8bits ints
-    case Float  // A 64bits float
-    case Float2  // A vector of 2 64bits floats
-    case Float3  // A vector of 3 32bits floats
-    case Float4  // A vector of 4 32bits floats
-    case Color  // A vector of 4 uint8
+    case Int // A 64bits int
+    case Int2 // A vector of 2 64bits ints
+    case Int3 // A vector of 3 32bits ints
+    case Int4 // A vector of 4 32bits ints
+    case Int8 // A vector of 8 16bits ints
+    case Int16 // A vector of 16 8bits ints
+    case Float // A 64bits float
+    case Float2 // A vector of 2 64bits floats
+    case Float3 // A vector of 3 32bits floats
+    case Float4 // A vector of 4 32bits floats
+    case Color // A vector of 4 uint8
 
     // Internal use only
-    case EndOfBlittableTypes = 50  // anything below this is not blittable (ish)
+    case EndOfBlittableTypes = 50 // anything below this is not blittable (ish)
 
     // Non Blittables
-    case Bytes  // pointer + size
+    case Bytes // pointer + size
     case String
-    case Path  // An OS filesystem path
-    case ContextVar  // A string label to find from SHContext variables
+    case Path // An OS filesystem path
+    case ContextVar // A string label to find from SHContext variables
     case Image
     case Seq
     case Table
     case Wire
-    case ShardRef  // a shard, useful for future introspection shards!
+    case ShardRef // a shard, useful for future introspection shards!
     case Object = 60
     // Array, // Notice: of just blittable types - Reserved for future use - 61
     // Set, // Reserved for future use - 62
     case Audio = 63
-    case TypeInfo  // Describes a type
-    case Trait  // A wire trait
+    case TypeInfo // Describes a type
+    case Trait // A wire trait
 
     public var description: String {
         switch self {
@@ -425,7 +425,7 @@ extension SHVar: CustomStringConvertible {
         v.valueType = String
         value.withUnsafeBufferPointer {
             v.payload.stringValue = $0.baseAddress
-            v.payload.stringLen = UInt32(value.count - 1)  // assumes \0 terminator
+            v.payload.stringLen = UInt32(value.count - 1) // assumes \0 terminator
             v.payload.stringCapacity = UInt32(value.capacity)
         }
         self = v
@@ -557,7 +557,7 @@ extension SHVar: CustomStringConvertible {
         v.payload.shardValue = value
         self = v
     }
-    
+
     init(value: SHWireRef) {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.Wire.rawValue)
@@ -898,12 +898,24 @@ class SeqVar: OwnedVar {
         v.payload.seqValue.elements[index] = value
     }
 
-    func pushCloning(value: SHVar) {
+    func pushCloning(value: OwnedVar) {
+        let index = size()
+        resize(size: index + 1)
+        withUnsafePointer(to: value.v) { ptr in
+            G.Core.pointee.cloneVar(
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr)
+            )
+        }
+    }
+    
+    // Private cos it is actually unsafe-ish, prone to life time errors in release mode
+    private func pushCloning(value: SHVar) {
         let index = size()
         resize(size: index + 1)
         withUnsafePointer(to: value) { ptr in
             G.Core.pointee.cloneVar(
-                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr)
+            )
         }
     }
 
@@ -912,11 +924,11 @@ class SeqVar: OwnedVar {
             var tmp = SHVar()
             tmp.valueType = VarType.String.asSHType()
             tmp.payload.stringValue = buffer.baseAddress
-            tmp.payload.stringLen = UInt32(buffer.count - 1)  // Subtract 1 to exclude null terminator
+            tmp.payload.stringLen = UInt32(buffer.count - 1) // Subtract 1 to exclude null terminator
             pushCloning(value: tmp)
         }
     }
-    
+
     func push(bytes: ContiguousArray<UInt8>) {
         bytes.withUnsafeBufferPointer { buffer in
             var tmp = SHVar()
@@ -945,7 +957,8 @@ class SeqVar: OwnedVar {
         assert(index >= 0 && index < size())
         withUnsafePointer(to: value) { ptr in
             G.Core.pointee.cloneVar(
-                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr))
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr)
+            )
         }
     }
 
@@ -1143,7 +1156,7 @@ class ShardsVar {
         } else if value.valueType == VarType.Seq.asSHType() {
             // Handle sequence of shards
             let seqLen = value.payload.seqValue.len
-            for i in 0..<seqLen {
+            for i in 0 ..< seqLen {
                 let elemVar = value.payload.seqValue.elements[Int(i)]
                 if elemVar.valueType == VarType.ShardRef.asSHType() {
                     let shardPtr = elemVar.payload.shardValue
@@ -1187,7 +1200,7 @@ class ShardsVar {
 
     func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
         if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0)  // continue
+            return SHWireState(rawValue: 0) // continue
         }
 
         var inputCopy = input
@@ -1203,7 +1216,7 @@ class ShardsVar {
         context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>
     ) -> SHWireState {
         if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0)  // continue
+            return SHWireState(rawValue: 0) // continue
         }
 
         var inputCopy = input
@@ -1344,7 +1357,7 @@ public class TypeInfo {
 }
 
 public class Types {
-    private var types: [TypeInfo]  // to keep alive
+    private var types: [TypeInfo] // to keep alive
     public var native = SHTypesInfo()
 
     init(types: [TypeInfo]) {
@@ -1368,7 +1381,7 @@ public class Types {
 public class ParameterInfo {
     var name: ContiguousArray<CChar>
     var help: ContiguousArray<CChar>
-    var types: [TypeInfo]  // to keep alive
+    var types: [TypeInfo] // to keep alive
     var typesStorage: ContiguousArray<SHTypeInfo> = []
 
     init(name: String, help: String, types: [TypeInfo]) {
@@ -1400,7 +1413,7 @@ public class ParameterInfo {
 }
 
 public class Parameters {
-    private var infos: [ParameterInfo] = []  // to keep alive
+    private var infos: [ParameterInfo] = [] // to keep alive
     public var native = SHParametersInfo()
 
     func add(name: String, help: String, types: [TypeInfo]) {
@@ -1473,7 +1486,7 @@ public class ExposedTypeInfo {
 }
 
 public class ExposedTypes {
-    private var types: [ExposedTypeInfo]  // to keep alive
+    private var types: [ExposedTypeInfo] // to keep alive
     public var native = SHExposedTypesInfo()
 
     init() {
@@ -1493,7 +1506,7 @@ public class ExposedTypes {
     }
 
     func extend(types: SHExposedTypesInfo) {
-        for i in 0..<types.len {
+        for i in 0 ..< types.len {
             var eInfo = types.elements[Int(i)]
             withUnsafeMutablePointer(to: &native) { ptr in
                 withUnsafePointer(to: &eInfo) { nativeInfo in
@@ -1741,7 +1754,7 @@ extension IShard {}
 @inlinable public func hashShard<T: IShard>(_: T.Type) -> UInt32 {
     let name = T.name
     let namePtr = name.utf8Start.withMemoryRebound(to: UInt8.self, capacity: name.utf8CodeUnitCount)
-    { $0 }
+        { $0 }
     let nameData = Data(bytes: namePtr, count: name.utf8CodeUnitCount)
 
     // Create a buffer with the shard name and SHARDS_CURRENT_ABI
@@ -1910,7 +1923,7 @@ class WireController {
     public func wait() async {
         // Check copier status every 100ms
         while isRunning() {
-            try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
     }
 
@@ -2030,7 +2043,7 @@ extension SHStringWithLen {
     static func from(_ chars: ContiguousArray<CChar>) -> SHStringWithLen {
         var result = SHStringWithLen()
         result.string = chars.withUnsafeBufferPointer { $0.baseAddress }
-        result.len = UInt64(chars.count - 1)  // Subtract 1 to exclude null terminator
+        result.len = UInt64(chars.count - 1) // Subtract 1 to exclude null terminator
         return result
     }
 
@@ -2065,7 +2078,7 @@ extension SHStringWithLen {
 }
 
 class SwiftSWL {
-    var chars: ContiguousArray<CChar>  // store the CChar array directly
+    var chars: ContiguousArray<CChar> // store the CChar array directly
 
     init(_ string: String) {
         chars = string.utf8CString
@@ -2134,7 +2147,7 @@ class Shards {
         var evalError = SHLError()
 
         // Evaluate the AST
-        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)  // consumes ast
+        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
         guard evalSuccess else {
             let errorMessage = String(cString: evalError.message)
             let line = evalError.line
@@ -2149,7 +2162,8 @@ class Shards {
 
         // Transform environment into a wire
         let transformSuccess = G.Core.pointee.transformEnv(
-            env, nameStr.asSHStringWithLen(), &outWire)  // consumes env
+            env, nameStr.asSHStringWithLen(), &outWire
+        ) // consumes env
         guard transformSuccess, outWire.error.message == nil else {
             let errorMessage = String(cString: outWire.error.message)
             let line = outWire.error.line
@@ -2158,7 +2172,7 @@ class Shards {
             return .failure(
                 ShardError(
                     message:
-                        "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"
+                    "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"
                 ))
         }
 
@@ -2200,7 +2214,7 @@ class Shards {
 
         // Create error struct for eval
         var evalError = SHLError()
-        
+
         // Evaluate the AST
         let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
         guard evalSuccess else {
@@ -2211,7 +2225,7 @@ class Shards {
 
         // Create output wire struct
         var outWire = SHLWire()
-        
+
         // Transform environment into a wire
         let transformSuccess = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen(), &outWire) // consumes env
         guard transformSuccess, outWire.error.message == nil else {
@@ -2238,209 +2252,6 @@ class Shards {
         }
     }
 }
-
-#if canImport(SwiftUI)
-    import SwiftUI
-
-    class ObservableSeqVar: ObservableObject, RandomAccessCollection {
-        // Collection protocol requirements
-        typealias Index = Int
-        typealias Element = SHVar
-
-        var startIndex: Int { 0 }
-        var endIndex: Int { size() }
-
-        // Required subscript for RandomAccessCollection
-        subscript(position: Int) -> SHVar {
-            at(position)
-        }
-
-        // Required for RandomAccessCollection
-        func index(after i: Int) -> Int {
-            i + 1
-        }
-
-        // For better performance with ForEach
-        func distance(from start: Int, to end: Int) -> Int {
-            end - start
-        }
-
-        func index(_ i: Int, offsetBy distance: Int) -> Int {
-            i + distance
-        }
-
-        @Published private(set) var count: Int = 0  // This helps SwiftUI track changes
-        public var seq: SeqVar
-
-        init() {
-            seq = SeqVar()
-        }
-
-        // Wrap the original methods but with notification
-        func push(string: String) {
-            seq.push(string: string)
-            objectWillChange.send()  // Notify SwiftUI
-            count = seq.size()
-        }
-
-        func pushRaw(value: SHVar) {
-            seq.pushRaw(value: value)
-            objectWillChange.send()
-            count = seq.size()
-        }
-
-        func pushCloning(value: SHVar) {
-            seq.pushCloning(value: value)
-            objectWillChange.send()
-            count = seq.size()
-        }
-
-        func pop() -> SHVar {
-            objectWillChange.send()
-            let result = seq.popRaw()
-            count = seq.size()
-            return result
-        }
-
-        func remove(at index: Int) {
-            seq.remove(index: index)
-            objectWillChange.send()
-            count = seq.size()
-        }
-
-        func removeFast(at index: Int) {
-            seq.removeFast(index: index)
-            objectWillChange.send()
-            count = seq.size()
-        }
-
-        func clear() {
-            seq.clear()
-            objectWillChange.send()
-            count = 0
-        }
-
-        // Read-only operations don't need notifications
-        func at(_ index: Int) -> SHVar {
-            return seq.at(index: index)
-        }
-
-        func size() -> Int {
-            return seq.size()
-        }
-
-        // Allow setting with notification
-        func set(_ index: Int, value: SHVar) {
-            seq.set(index: index, value: value)
-            objectWillChange.send()
-        }
-
-        func triggerChange() {
-            // Ensure UI updates happen on main thread
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
-    }
-
-    class ObservableOwnedVar: ObservableObject {
-        @Published private var valueChanged: Bool = false
-        public var v: OwnedVar
-
-        init() {
-            v = OwnedVar()
-        }
-
-        init(cloning: SHVar) {
-            v = OwnedVar(cloning: cloning)
-        }
-
-        init(borrowing: SHVar) {
-            v = OwnedVar(borrowing: borrowing)
-        }
-
-        init(string: String) {
-            v = OwnedVar(string: string)
-        }
-
-        init(bytes: ContiguousArray<UInt8>) {
-            v = OwnedVar(bytes: bytes)
-        }
-
-        init(bool: Bool) {
-            v = OwnedVar(bool: bool)
-        }
-
-        init(int: Int) {
-            v = OwnedVar(int: int)
-        }
-
-        // Getter for accessing the underlying SHVar
-        var value: SHVar { v.v }
-
-        // Wrap OwnedVar methods with notification
-        func set(string: String) {
-            v.set(string: string)
-            notifyChange()
-        }
-
-        func set(bool: Bool) {
-            v.set(bool: bool)
-            notifyChange()
-        }
-
-        func set(int: Int) {
-            v.set(int: int)
-            notifyChange()
-        }
-
-        func set(int: Int64) {
-            v.set(int: int)
-            notifyChange()
-        }
-
-        func set(bytes: ContiguousArray<UInt8>) {
-            v.set(bytes: bytes)
-            notifyChange()
-        }
-
-        func assign(other: SHVar) {
-            v.assign(other: other)
-            notifyChange()
-        }
-
-        // Get value helpers that match OwnedVar properties
-        var string: String? {
-            v.v.maybeString
-        }
-
-        var bool: Bool? {
-            v.v.maybeBool
-        }
-
-        var int: Int? {
-            v.v.maybeInt
-        }
-
-        var bytes: ContiguousArray<UInt8>? {
-            v.v.maybeBytes
-        }
-
-        // Helper method to trigger UI updates
-        func notifyChange() {
-            // Ensure UI updates happen on main thread
-            DispatchQueue.main.async {
-                self.valueChanged.toggle()  // Toggle to ensure notification happens
-                self.objectWillChange.send()
-            }
-        }
-
-        // Same pointer access as OwnedVar
-        func ptr() -> UnsafeMutablePointer<SHVar> {
-            return v.ptr()
-        }
-    }
-#endif
 
 #if canImport(UIKit)
     import UIKit
@@ -2477,7 +2288,7 @@ class Shards {
                 // Base width/height from the cgImage
                 let width = cgImage.width
                 let height = cgImage.height
-                let bytesPerPixel = 4  // RGBA
+                let bytesPerPixel = 4 // RGBA
                 var drawWidth = width
                 var drawHeight = height
 
@@ -2487,20 +2298,20 @@ class Shards {
                 case .down, .downMirrored:
                     transform =
                         transform
-                        .translatedBy(x: CGFloat(width), y: CGFloat(height))
-                        .rotated(by: .pi)
+                            .translatedBy(x: CGFloat(width), y: CGFloat(height))
+                            .rotated(by: .pi)
                 case .left, .leftMirrored:
                     swap(&drawWidth, &drawHeight)
                     transform =
                         transform
-                        .translatedBy(x: CGFloat(drawWidth), y: 0)
-                        .rotated(by: .pi / 2)
+                            .translatedBy(x: CGFloat(drawWidth), y: 0)
+                            .rotated(by: .pi / 2)
                 case .right, .rightMirrored:
                     swap(&drawWidth, &drawHeight)
                     transform =
                         transform
-                        .translatedBy(x: 0, y: CGFloat(drawHeight))
-                        .rotated(by: -.pi / 2)
+                            .translatedBy(x: 0, y: CGFloat(drawHeight))
+                            .rotated(by: -.pi / 2)
                 default:
                     break
                 }
@@ -2608,7 +2419,7 @@ class Shards {
 
             let width = cgImage.width
             let height = cgImage.height
-            let bytesPerPixel = 4  // RGBA
+            let bytesPerPixel = 4 // RGBA
             let rowStride = width * bytesPerPixel
             let totalBytes = height * rowStride
 

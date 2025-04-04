@@ -561,16 +561,16 @@ struct Await : public BaseSubFlow {
         [] {});
 
     // need to replicate things that happened in the context
-    if (!_context->shouldContinue()) {
+    if (unlikely(!_context->shouldContinue())) {
       SHLOG_DEBUG("Await shard stopped by context");
       context->mirror(&*_context);
 
       // Reset any error for the next time this is ran
       _context->continueFlow();
+    } else {
+      // copy after checking if we should continue
+      _output = output;
     }
-
-    // copy after checking if we should continue
-    _output = output;
 
     return _output;
   }
