@@ -144,8 +144,8 @@ struct ShardsSink : public spdlog::sinks::dist_sink_mt {
   void sink_it_(const spdlog::details::log_msg &msg) override {
     ThreadContext *pp = threadContext;
     while (pp) {
-      if (threadContext->intercept) {
-        if (!threadContext->intercept(msg))
+      if (pp->intercept) {
+        if (!pp->intercept(msg))
           return;
       }
       pp = pp->prev;
