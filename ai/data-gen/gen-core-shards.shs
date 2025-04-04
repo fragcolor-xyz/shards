@@ -68,10 +68,13 @@ ForEach({
       Shards.Help = docs
       
       ; Add general help 
-      docs:help | When(IsNot("") {
-        = i
-        [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
-      })
+      docs:help | If(IsNot("") {
+          = i
+          [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
+        } {
+          [$0 " has no help"] | String.Join | Fail
+        }
+      )
       
       ; Prepare I/O Types section
       "I/O Types " >= io-types-section
@@ -149,7 +152,7 @@ ForEach({
               })
             })
           })
-
+          
           shard-doc-md | When(String.Ends(With: "/") {
             shard-doc-md | Slice(To: -1) > shard-doc-md
           })

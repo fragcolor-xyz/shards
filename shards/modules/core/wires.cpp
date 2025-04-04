@@ -1212,6 +1212,8 @@ template <class T> struct BaseLoader : public BaseRunner {
 };
 
 struct WireRunner : public BaseLoader<WireRunner> {
+  SHOptionalString help() { return SHCCSTR("Runs the wire variable specified by the input wire variable."); }
+
   static inline Parameters params{
       {"Wire", SHCCSTR("The wire variable to compose and run."), {CoreInfo::WireType, CoreInfo::WireVarType}},
       {"Mode",

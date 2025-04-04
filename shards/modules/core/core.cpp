@@ -1857,6 +1857,8 @@ struct GetShards {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
+  SHOptionalString help() { return SHCCSTR("Returns a sequence of all shard names in the system."); }
+
   PARAM_VAR(_category, "Category", "The optional category of the shards to get.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_category));
 
@@ -1899,6 +1901,8 @@ struct GetEnumTypes {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
 
+  SHOptionalString help() { return SHCCSTR("Returns a sequence of all enum types in the system."); }
+
   SeqVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1914,6 +1918,8 @@ struct GetEnumTypes {
 struct GetObjectTypes {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntSeqType; }
+
+  SHOptionalString help() { return SHCCSTR("Returns a sequence of all object types in the system."); }
 
   SeqVar _output{};
 
@@ -1931,6 +1937,8 @@ struct GetObjectTypes {
 struct GetShardHelp {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  SHOptionalString help() { return SHCCSTR("Returns a table of help information for the shard specified by the input name."); }
 
   TableVar _output{};
 
@@ -2020,6 +2028,8 @@ struct GetEnumTypeHelp {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
 
+  SHOptionalString help() { return SHCCSTR("Returns a table of help information for the enum type specified by the input id."); }
+
   TableVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -2068,6 +2078,10 @@ struct GetEnumTypeHelp {
 struct GetObjectTypeHelp {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  SHOptionalString help() {
+    return SHCCSTR("Returns a table of help information for the object type specified by the input id.");
+  }
 
   TableVar _output{};
 
