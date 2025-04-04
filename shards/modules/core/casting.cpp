@@ -566,7 +566,7 @@ template <SHType ET> struct ExpectX {
       return SHCCSTR("Checks the input value if it is a Boolean. The shard outputs the input value unchanged if it is of the "
                      "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else if constexpr (ET == SHType::Image) {
-      return SHCCSTR("Checks the input value if it is an Image file. The shard outputs the input value unchanged if it is of the "
+      return SHCCSTR("Checks the input value if it is an Image. The shard outputs the input value unchanged if it is of the "
                      "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else if constexpr (ET == SHType::String) {
       return SHCCSTR("Checks the input value if it is a String. The shard outputs the input value unchanged if it is of the "
@@ -725,7 +725,7 @@ template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
           "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else if (ET == CoreInfo::ImageSeqType) {
       return SHCCSTR(
-          "Checks if the input value is a sequence of Images files. The shard outputs the input value unchanged if it is of the "
+          "Checks if the input value is a sequence of Images. The shard outputs the input value unchanged if it is of the "
           "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else if (ET == CoreInfo::StringSeqType) {
       return SHCCSTR(
@@ -737,7 +737,7 @@ template <Type &ET, bool UNSAFE = false> struct ExpectXComplex {
           "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else if (ET == CoreInfo::AudioSeqType) {
       return SHCCSTR(
-          "Checks if the input value is a sequence of Audio files. The shard outputs the input value unchanged if it is of the "
+          "Checks if the input value is a sequence of Audio buffers. The shard outputs the input value unchanged if it is of the "
           "appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     } else {
       return SHCCSTR(
@@ -1017,7 +1017,7 @@ template <SHType ET> struct IsX {
       return SHCCSTR("Checks the input value if it is a Boolean. The shard will return true if the input is of the appropriate "
                      "type, and false otherwise.");
     } else if constexpr (ET == SHType::Image) {
-      return SHCCSTR("Checks the input value if it is an Image file. The shard will return true if the input is of the "
+      return SHCCSTR("Checks the input value if it is an Image. The shard will return true if the input is of the "
                      "appropriate type, and false otherwise.");
     } else if constexpr (ET == SHType::String) {
       return SHCCSTR("Checks the input value if it is a String. The shard will return true if the input is of the appropriate "
