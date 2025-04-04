@@ -43,7 +43,7 @@
 })
 
 ; Initialize markdown document
-"# Shards reference\n\n" >= markdown-doc
+"# Shards Reference\n\n" >= markdown-doc
 
 Shards.Enumerate("core") = shards
 {Count(shards) | Log("Total Shards")}
@@ -62,94 +62,107 @@ ForEach({
       
       "" >= shard-doc-md
       ; Add shard name as a header
-      ["## " $0 "\n\n"] | String.Format | AppendTo(shard-doc-md)
+      ["# " $0 "\n"] | String.Format | AppendTo(shard-doc-md)
       
       $0
-      Shards.Help
+      Shards.Help = docs
       
       ; Add general help 
-      {Take("help") | When(IsNot("") {
-          = i
-          [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
-        })
-      }
+      docs:help | When(IsNot("") {
+        = i
+        [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
+      })
       
-      ; Add input and output information
-      {Take("inputHelp") | When(IsNot("") {
-          = i
-          ["### Input\n\n" i "\n\n"] | String.Format | AppendTo(shard-doc-md)
-        })
-      }
+      ; Prepare I/O Types section
+      "I/O Types: " >= io-types-section
       
-      {Take("outputHelp") | When(IsNot("") {
-          = i
-          ["### Output\n\n" i "\n\n"] | String.Format | AppendTo(shard-doc-md)
-        })
-      }
+      ; Get input types
+      docs:inputTypes | ExpectSeq = input-types
       
-      ; Add input types if available
-      {Take("inputTypes") | ExpectSeq | When(IsNot([]) {
-          {"### Input Types\n\n" | AppendTo(shard-doc-md)}
-          ForEach({
-            "- " | AppendTo(shard-doc-md)
-            @format-type-field($0) | AppendTo(shard-doc-md)
-            "\n" | AppendTo(shard-doc-md)
+      ; Format input types
+      "" >= formatted-input-types
+      input-types | When(IsNot([]) {
+        ForEach({
+          $0 | ExpectTable = tt
+          @resolve-type-id((tt:type)) = tn
+          tt:name | When(IsNot("") {
+            [(tt:name) "/"] | String.Format | AppendTo(io-types-section)
           })
-          "\n" | AppendTo(shard-doc-md)
         })
-      }
+      })
       
-      ; Add output types if available
-      {Take("outputTypes") | ExpectSeq | When(IsNot([]) {
-          {"### Output Types\n\n" | AppendTo(shard-doc-md)}
-          ForEach({
-            "- " | AppendTo(shard-doc-md)
-            @format-type-field($0) | AppendTo(shard-doc-md)
-            "\n" | AppendTo(shard-doc-md)
+      io-types-section | When(String.Ends(With: "/") {
+        io-types-section | Slice(To: -1) > io-types-section
+      })
+      
+      ; Add arrow
+      " → " | AppendTo(io-types-section)
+      
+      ; Get output types
+      docs:outputTypes | ExpectSeq = output-types
+      
+      ; Format output types
+      output-types | When(IsNot([]) {
+        ForEach({
+          $0 | ExpectTable = tt
+          @resolve-type-id((tt:type)) = tn
+          tt:name | When(IsNot("") {
+            [(tt:name) "/"] | String.Format | AppendTo(io-types-section)
           })
-          "\n" | AppendTo(shard-doc-md)
         })
-      }
+      })
+      
+      io-types-section | When(String.Ends(With: "/") {
+        io-types-section | Slice(To: -1) > io-types-section
+      })
+      
+      ; Add the I/O Types section to the documentation
+      [io-types-section "\n\n"] | String.Format | AppendTo(shard-doc-md)
       
       ; Add parameters if available
-      {Take("parameters") | ExpectSeq = parameters}
+      docs:parameters | ExpectSeq = parameters
       parameters | When(IsNot([]) {
-        {"### Parameters\n\n" | AppendTo(shard-doc-md)}
+        {"Parameters:\n" | AppendTo(shard-doc-md)}
         ForEach({
           ExpectTable
           {Take("name") = param-name}
           {Take("help") = param-help}
-          {Take("default") | ToString = param-default}
+          {Take("default") | If(IsString {
+              ExpectString = string-value
+              ["\"" string-value "\""] | String.Join
+            } ToString) = param-default
+          }
           {Take("types") = param-types}
           
-          ; Format parameter name and help
-          ["#### " param-name "\n\n"] | String.Format | AppendTo(shard-doc-md)
+          ; Start with parameter name
+          ["- " param-name ": "] | String.Format | AppendTo(shard-doc-md)
           
-          ; Add parameter help if available
-          param-help | When(IsNotNone {
-            = i
-            [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
+          ; Format parameter types in a compact way
+          param-types | When(IsNotNone {
+            ExpectSeq | When(IsNot([]) {
+              ForEach({
+                $0 | ExpectTable = tt
+                @resolve-type-id((tt:type)) = tn
+                tt:name | When(IsNot("") {
+                  [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
+                })
+              })
+            })
+          })
+
+          shard-doc-md | When(String.Ends(With: "/") {
+            shard-doc-md | Slice(To: -1) > shard-doc-md
           })
           
           ; Add default value if available
           param-default | When(IsNotNone {
             = i
-            ["**Default value**: `" i "`\n\n"] | String.Format | AppendTo(shard-doc-md)
+            [" (default: " i ")"] | String.Format | AppendTo(shard-doc-md)
           })
           
-          ; Add parameter types if available
-          param-types | When(IsNotNone {
-            ExpectSeq | When(IsNot([]) {
-              {"**Types**:\n\n" | AppendTo(shard-doc-md)}
-              ForEach({
-                "- " | AppendTo(shard-doc-md)
-                @format-type-field($0) | AppendTo(shard-doc-md)
-                "\n" | AppendTo(shard-doc-md)
-              })
-              "\n" | AppendTo(shard-doc-md)
-            })
-          })
+          "\n" | AppendTo(shard-doc-md)
         })
+        "\n" | AppendTo(shard-doc-md)
       })
       
       ; Append this shard's documentation to the main markdown
@@ -181,9 +194,9 @@ Shards.EnumTypes | ForEach({
         ]
       )
     } {
-      ["## " enum-name "\n\n"] | String.Format | AppendTo(markdown-doc)
+      ["# " enum-name "\n\n"] | String.Format | AppendTo(markdown-doc)
       
-      enum-help | When(IsNotNone {
+      enum-help | When({IsNotNone | And | IsNot("")} {
         = i
         [i "\n\n"] | String.Format | AppendTo(markdown-doc)
       })
@@ -193,7 +206,7 @@ Shards.EnumTypes | ForEach({
         $0:d = desc
         
         ["### " enum-name "::" label "\n\n"] | String.Format | AppendTo(markdown-doc)
-        desc | When(IsNotNone {
+        desc | When({IsNotNone | And | IsNot("")} {
           = i
           [i "\n\n"] | String.Format | AppendTo(markdown-doc)
         })
@@ -216,7 +229,7 @@ Shards.ObjectTypes | ForEach({
         "Mesh"
       ])
     } {
-      ["## " object-name "\n\n"] | String.Format | AppendTo(markdown-doc)
+      ["# " object-name "\n\n"] | String.Format | AppendTo(markdown-doc)
       
       is-thread-safe | When(IsNotNone {
         = i
