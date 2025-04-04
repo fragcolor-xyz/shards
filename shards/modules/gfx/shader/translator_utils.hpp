@@ -4,6 +4,7 @@
 #include <shards/shards.h>
 #include <shards/number_types.hpp>
 #include <shards/core/shared.hpp>
+#include <boost/core/span.hpp>
 #include "translator.hpp"
 #include "../shards_types.hpp"
 #include <gfx/shader/wgsl_mapping.hpp>
@@ -16,12 +17,13 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
 inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, TranslationContext &context) {
   VirtualTable vt;
   shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &value) {
-    if(key.valueType != SHType::String)
+    if (key.valueType != SHType::String)
       throw std::runtime_error("Table key must be string");
     std::string keyStr(key.payload.stringValue, key.payload.stringLen);
     std::unique_ptr<IWGSLGenerated> generatedValue;
     if (value.valueType == SHType::ContextVar)
-      generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue)); // null term fine cos table values are cloned
+      generatedValue =
+          std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue)); // null term fine cos table values are cloned
     else
       generatedValue = translateConst(value, context);
     vt.elements.emplace(std::make_pair(std::move(keyStr), std::move(generatedValue)));
@@ -33,12 +35,12 @@ inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, Translat
 inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
   std::unique_ptr<IWGSLGenerated> result{};
 
-#define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                             \
-  {                                                                                                    \
+#define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                        \
+  {                                                                                               \
     NumType fieldType(_type, _dim);                                                               \
     std::string resultStr = fmt::format("{}(" _fmt ")", getWGSLTypeName(fieldType), __VA_ARGS__); \
-    SPDLOG_LOGGER_TRACE(context.logger, "gen(const)> {}", resultStr);                                   \
-    result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(const)> {}", resultStr);                             \
+    result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                       \
   }
 
   const SHVarPayload &pl = var.payload;
@@ -73,6 +75,12 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
     OUTPUT_VEC(ShaderFieldBaseType::Float32, 4, "{:f}, {:f}, {:f}, {:f}", (float)pl.float4Value[0], (float)pl.float4Value[1],
                (float)pl.float4Value[2], (float)pl.float4Value[3]);
     break;
+  case SHType::Bool: {
+    auto fieldType = Types::Bool;
+    std::string resultStr = pl.boolValue ? "true" : "false";
+    SPDLOG_LOGGER_TRACE(context.logger, "gen(const)> {}", resultStr);
+    result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));
+  } break;
   case SHType::Table:
     translateTable(var, context);
     break;
@@ -201,12 +209,15 @@ inline std::unique_ptr<IWGSLGenerated> translateParamVar(const shards::ParamVar 
   }
 }
 
-inline void processShardsVar(shards::ShardsVar &shards, TranslationContext &context) {
-  auto &shardsSeq = shards.shards();
-  for (size_t i = 0; i < shardsSeq.len; i++) {
-    ShardPtr shard = shardsSeq.elements[i];
+inline void processShards(boost::span<ShardPtr> shards, TranslationContext &context) {
+  for (size_t i = 0; i < shards.size(); i++) {
+    ShardPtr shard = shards[i];
     context.processShard(shard);
   }
+}
+inline void processShardsVar(shards::ShardsVar &shards, TranslationContext &context) {
+  auto &shardsSeq = shards.shards();
+  processShards(boost::span(shardsSeq.elements, shardsSeq.elements + shardsSeq.len), context);
 }
 
 inline std::unique_ptr<IWGSLGenerated> generateFunctionCall(const TranslatedFunction &function,
