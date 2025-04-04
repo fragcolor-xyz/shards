@@ -4,10 +4,10 @@
 ; usage:
 ;   @hot-reload(@script-dir @namespace "my-script.shs" [wire-0 wire-1 ...])
 ; The wires can then be invoked simply using Do(wire-0), etc.
-@macro(hot-reload [base-path namespace script-path include-dirs wires] {
+@macro(hot-reload [base-path include-dirs namespace script-path wires] {
   Sequence(root)
   
-  ["hlw-" (script-path | FS.Filename(true))] String.Format = wrapper-name
+  ["hlw-" (script-path | FS.Filename(true))] | String.Format = wrapper-name
   {id: {name: wrapper-name}} | ToJson = wrapper-name-id-json
   
   ; Escape \ in base-path
@@ -15,8 +15,15 @@
   script-path-abs | Regex.Replace("\\\\" "\\\\\\\\") = script-path-escaped
   
   script-path-abs | Log("Setting up hot reload for script")
-  @ast([""]) >= include-dirs
-  Log("jj")
+  
+  [
+    "\"seq\":["
+    (include-dirs | Map({
+        ["{\"str\":\"" $0 "\"}"] | String.Format
+      }) | String.Join(",") | Regex.Replace("""\\""" """\\""")
+    )
+    "]"
+  ] | String.Format = include-dirs-json
   
   ; Body of the loader wire
   @ast(
@@ -34,12 +41,13 @@
         script-path | Log("Triggered change on script")
         Maybe({
             script-path | FS.Read | Shards.Read(AstType::Object
-            BasePath: (script-path | FS.Parent))
+              BasePath: (script-path | FS.Parent)
+              Include: include-dirs
+            )
             Shards.Distill(
               Context: @capture-eval-context
               Name: #(script-path | FS.Filename(true))
               Namespace: namespace
-              IncludeDirs: include-dirs
             ) = wire
             
             hot-result:tag = old-tag
@@ -63,6 +71,8 @@
   ) = loader-ast
   Regex.Replace("""\{"id":\{"name":"loader"\}\}""" wrapper-name-id-json)
   Regex.Replace("""\{"id":\{"name":"script-path"\}\}""" (["{\"str\": \"" script-path-escaped "\"}"] | String.Format))
+  Regex.Replace(""""id":\{"name":"include-dirs"\}""" include-dirs-json)
+  
   FromJson = loader-ast-1
   [loader-ast-1] >> root
   
@@ -145,7 +155,7 @@
 @inline-template(maybe-hot-reload [script-path wires] {
   @if-root(@script-hot-reload {
       #(Log("Running hot reload macro"))
-      @hot-reload(@script-dir @namespace script-path wires)
+      @hot-reload(@script-dir @include-dirs @namespace script-path wires)
     } {
       @include(script-path)
     }
