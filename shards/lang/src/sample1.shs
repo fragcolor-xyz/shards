@@ -68,14 +68,14 @@ Do(w2)
   cond | If(IsAny([true "true" 1]) {
       {
         sh: {
-          name: "SubFlow"
+          name: "_SubFlow"
           params: [(@ast(yes) | FromJson)]
         }
       }
     } {
       {
         sh: {
-          name: "SubFlow"
+          name: "_SubFlow"
           params: [(@ast(no) | FromJson)]
         }
       }

@@ -44,7 +44,7 @@
     } >> pipelines
     {
       sh: {
-        name: "SubFlow"
+        name: "_SubFlow"
         params: [(@ast(code) | FromJson)]
       }
     } >> pipelines

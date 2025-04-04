@@ -191,35 +191,35 @@ If you define a constant in your program, it will have a global scope and can be
 
 Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`SubFlow`](../../../../reference/shards/shards/General/SubFlow/). `SubFlow` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `SubFlow` will run as per usual, except that the final output will be replaced with the initial input passed into `SubFlow`, thereby creating a passthrough effect.
+Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`_SubFlow`](../../../../reference/shards/shards/General/_SubFlow/). `_SubFlow` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `_SubFlow` will run as per usual, except that the final output will be replaced with the initial input passed into `_SubFlow`, thereby creating a passthrough effect.
 
-`SubFlow` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
+`_SubFlow` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
 
-=== "SubFlow Example"
+=== "_SubFlow Example"
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
     (defwire sub-test
-      1 >= .x (Log "Before SubFlow")
-      (SubFlow
+      1 >= .x (Log "Before _SubFlow")
+      (_SubFlow
        :Shards
        (-> (Math.Add 2) > .x
-           .x (Log "In SubFlow")))
-      (Log "After SubFlow"))
+           .x (Log "In _SubFlow")))
+      (Log "After _SubFlow"))
 
     (schedule main sub-test)
     (run main)
     ```
 
-=== "SubFlow Example with |"
+=== "_SubFlow Example with |"
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
     (defwire sub-test
-      1 >= .x (Log "Before SubFlow")
+      1 >= .x (Log "Before _SubFlow")
       (|(Math.Add 2) > .x
-        .x (Log "In SubFlow"))
-      (Log "After SubFlow"))
+        .x (Log "In _SubFlow"))
+      (Log "After _SubFlow"))
 
     (schedule main sub-test)
     (run main)
@@ -227,9 +227,9 @@ Most shards take in data, process the data, and output the results. To allow dat
 
 === "Output"
     ```
-    [sub-test] Before SubFlow: 1
-    [sub-test] In SubFlow: 3
-    [sub-test] After SubFlow: 1
+    [sub-test] Before _SubFlow: 1
+    [sub-test] In _SubFlow: 3
+    [sub-test] After _SubFlow: 1
     ```
 
 In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into a Wire and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.

@@ -2872,7 +2872,7 @@ fn make_sub_shard(
   shards: Vec<AutoShardRef>,
   line_info: LineInfo,
 ) -> Result<AutoShardRef, ShardsError> {
-  let shard = AutoShardRef::create("SubFlow", Some(line_info.into())).unwrap(); // qed, Sub must exist
+  let shard = AutoShardRef::create("_SubFlow", Some(line_info.into())).unwrap(); // qed, Sub must exist
   let mut seq = AutoSeqVar::new();
   for shard in shards {
     let s = shard.0 .0;

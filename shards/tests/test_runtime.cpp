@@ -1403,9 +1403,9 @@ TEST_CASE("shards-lang") {
 
   TEST_SUCCESS_CASE("Simple", "1 | Math.Add(2) | Assert.Is(3) | Log");
   TEST_SUCCESS_CASE("Assign 1", "100 = x\n x | Log | Assert.Is(100)");
-  TEST_SUCCESS_CASE("SubFlow Shards 1", "1 | Math.Add(2) | SubFlow({Assert.Is(3) | Log}) | Log");
-  TEST_SUCCESS_CASE("SubFlow Shards 2", "1 | Math.Add(2) | SubFlow({Assert.Is(Value: 3) | Log}) | Log");
-  TEST_EVAL_ERROR_CASE("SubFlow Shards 3", "1 | Math.Add(2) | SubFlow({Assert.Is(LOL: 3) | Log}) | Log",
+  TEST_SUCCESS_CASE("_SubFlow Shards 1", "1 | Math.Add(2) | _SubFlow({Assert.Is(3) | Log}) | Log");
+  TEST_SUCCESS_CASE("_SubFlow Shards 2", "1 | Math.Add(2) | _SubFlow({Assert.Is(Value: 3) | Log}) | Log");
+  TEST_EVAL_ERROR_CASE("_SubFlow Shards 3", "1 | Math.Add(2) | _SubFlow({Assert.Is(LOL: 3) | Log}) | Log",
                        "Unknown parameter 'LOL'");
   TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log (3 | Log))");
   TEST_SUCCESS_CASE("Exp 2", "[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
@@ -1427,7 +1427,7 @@ TEST_CASE("shards-lang") {
     mesh->tick();
   }
 
-  SECTION("SubFlow 1") {
+  SECTION("_SubFlow 1") {
     auto code = "{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
                 "| Log | Assert.Is(2)";
     auto seq = readHelper(code);
