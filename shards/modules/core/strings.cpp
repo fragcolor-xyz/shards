@@ -79,7 +79,7 @@ struct Match : public Common {
 };
 
 struct Search : public Common {
-  IterableSeq _output;
+  std::vector<SeqVar> _seqs;
   std::vector<std::string> _pool;
 
   static SHOptionalString help() {
@@ -92,24 +92,34 @@ struct Search : public Common {
     return SHCCSTR("A sequence of strings, each containing one occurrence of the regex pattern.");
   }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+  static inline Type SeqOfSeqType = Type::SeqOf(CoreInfo::StringSeqType);
+  static SHTypesInfo outputTypes() { return SeqOfSeqType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     std::smatch match;
     _subject.assign(input.payload.stringValue, SHSTRLEN(input));
     _pool.clear();
-    _output.clear();
+    _seqs.clear();
+    size_t idx = 0;
     while (std::regex_search(_subject, match, _re)) {
+      SeqVar *sv{};
+      if (idx >= _seqs.size()) {
+        sv = &_seqs.emplace_back();
+      } else {
+        sv = &_seqs[idx];
+      }
+      ++idx;
+
       auto size = match.size();
       for (size_t i = 0; i < size; i++) {
-        _pool.emplace_back(match[i].str());
+        sv->push_back(Var(std::string_view(match[i].first, match[i].second)));
       }
       _subject.assign(match.suffix());
     }
-    for (auto &s : _pool) {
-      _output.push_back(Var(s));
-    }
-    return Var(SHSeq(_output));
+    SHVar out1{.valueType = SHType::Seq};
+    out1.payload.seqValue.elements = _seqs.data();
+    out1.payload.seqValue.len = idx;
+    return out1;
   }
 };
 
