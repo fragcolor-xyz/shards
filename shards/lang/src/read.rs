@@ -666,6 +666,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let script_dir = RcStrWrapper::new(env.script_directory.to_string());
             Ok(FunctionValue::Const(Value::String(script_dir)))
           }
+          "include-dirs" => {
+            let include_dirs = env.include_directories.clone();
+            Ok(FunctionValue::Const(Value::Seq(include_dirs.into_iter().map(|x| Value::String(x.into())).collect())))
+          }
           _ => convert_to_function_value(identifier, &mut inner, env, pos),
         }
       } else {

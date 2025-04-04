@@ -12,6 +12,7 @@
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
+#include <shards/log/log.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <chrono>
@@ -1556,7 +1557,7 @@ struct ParallelBase : public CapturingSpawners {
     // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
     tf::Semaphore semaphore(std::max<size_t>(1, _threads));
     auto logSrc = logging::ThreadContext::source();
-    flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
+    flow.for_each_index(size_t(0), len, size_t(1), [&](const auto &idx) {
       logging::ThreadContext ctx = logging::ThreadContext::fork(logSrc);
       if (_policy == WaitUntil::FirstSuccess && anySuccess) {
         // Early exit if FirstSuccess policy
