@@ -4,7 +4,7 @@
 ; usage:
 ;   @hot-reload(@script-dir @namespace "my-script.shs" [wire-0 wire-1 ...])
 ; The wires can then be invoked simply using Do(wire-0), etc.
-@macro(hot-reload [base-path namespace script-path wires] {
+@macro(hot-reload [base-path namespace script-path include-dirs wires] {
   Sequence(root)
   
   ["hlw-" (script-path | FS.Filename(true))] String.Format = wrapper-name
@@ -15,6 +15,8 @@
   script-path-abs | Regex.Replace("\\\\" "\\\\\\\\") = script-path-escaped
   
   script-path-abs | Log("Setting up hot reload for script")
+  @ast([""]) >= include-dirs
+  Log("jj")
   
   ; Body of the loader wire
   @ast(
@@ -37,6 +39,7 @@
               Context: @capture-eval-context
               Name: #(script-path | FS.Filename(true))
               Namespace: namespace
+              IncludeDirs: include-dirs
             ) = wire
             
             hot-result:tag = old-tag
