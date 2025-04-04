@@ -248,15 +248,15 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToFloat3", ToNumber<SHType::Float3>);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToFloat4", ToNumber<SHType::Float4>);
 
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeInt2", MakeVector<SHType::Int2>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeInt3", MakeVector<SHType::Int3>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeInt4", MakeVector<SHType::Int4>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeInt8", MakeVector<SHType::Int8>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeInt16", MakeVector<SHType::Int16>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeColor", MakeVector<SHType::Color>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeFloat2", MakeVector<SHType::Float2>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeFloat3", MakeVector<SHType::Float3>);
-  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "MakeFloat4", MakeVector<SHType::Float4>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeInt2", MakeVector<SHType::Int2>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeInt3", MakeVector<SHType::Int3>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeInt4", MakeVector<SHType::Int4>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeInt8", MakeVector<SHType::Int8>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeInt16", MakeVector<SHType::Int16>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeColor", MakeVector<SHType::Color>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeFloat2", MakeVector<SHType::Float2>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeFloat3", MakeVector<SHType::Float3>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(MakeVectorTranslator, "_MakeFloat4", MakeVector<SHType::Float4>);
 }
 
 } // namespace gfx::shader

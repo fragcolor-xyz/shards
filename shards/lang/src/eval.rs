@@ -698,11 +698,11 @@ fn extract_make_ints_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => AutoShardRef::create("MakeInt2", Some(line_info.into())),
-    3 => AutoShardRef::create("MakeInt3", Some(line_info.into())),
-    4 => AutoShardRef::create("MakeInt4", Some(line_info.into())),
-    8 => AutoShardRef::create("MakeInt8", Some(line_info.into())),
-    16 => AutoShardRef::create("MakeInt16", Some(line_info.into())),
+    2 => AutoShardRef::create("_MakeInt2", Some(line_info.into())),
+    3 => AutoShardRef::create("_MakeInt3", Some(line_info.into())),
+    4 => AutoShardRef::create("_MakeInt4", Some(line_info.into())),
+    8 => AutoShardRef::create("_MakeInt8", Some(line_info.into())),
+    16 => AutoShardRef::create("_MakeInt16", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -730,7 +730,7 @@ fn extract_make_ints_shard<const WIDTH: usize>(
       .map_err(|err| {
         (
           format!(
-            "Error setting parameter for MakeInt{}, error: {}",
+            "Error setting parameter for _MakeInt{}, error: {}",
             WIDTH, err
           ),
           line_info,
@@ -916,9 +916,9 @@ fn extract_make_floats_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => AutoShardRef::create("MakeFloat2", Some(line_info.into())),
-    3 => AutoShardRef::create("MakeFloat3", Some(line_info.into())),
-    4 => AutoShardRef::create("MakeFloat4", Some(line_info.into())),
+    2 => AutoShardRef::create("_MakeFloat2", Some(line_info.into())),
+    3 => AutoShardRef::create("_MakeFloat3", Some(line_info.into())),
+    4 => AutoShardRef::create("_MakeFloat4", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -946,7 +946,7 @@ fn extract_make_floats_shard<const WIDTH: usize>(
       .map_err(|err| {
         (
           format!(
-            "Error setting parameter for MakeFloat{}, error: {}",
+            "Error setting parameter for _MakeFloat{}, error: {}",
             WIDTH, err
           ),
           line_info,
@@ -1053,7 +1053,7 @@ fn extract_make_colors_shard(
     )
   }
 
-  let shard = AutoShardRef::create("MakeColor", Some(line_info.into())).unwrap(); // qed, this shard must exist!
+  let shard = AutoShardRef::create("_MakeColor", Some(line_info.into())).unwrap(); // qed, this shard must exist!
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -1069,7 +1069,7 @@ fn extract_make_colors_shard(
       .set_parameter(i as i32, *var.as_ref()) // Type conversion should be handled by the shard!
       .map_err(|err| {
         (
-          format!("Error setting parameter for MakeColor, error: {}", err),
+          format!("Error setting parameter for _MakeColor, error: {}", err),
           line_info,
         )
           .into()
@@ -3327,7 +3327,7 @@ fn eval_pipeline(
                       blocks: vec![Block {
                         content: BlockContent::Shard(Function {
                           name: Identifier {
-                            name: "MakeTrait".into(),
+                            name: "_MakeTrait".into(),
                             namespaces: vec![],
                             custom_state: CustomStateContainer::new(),
                           },

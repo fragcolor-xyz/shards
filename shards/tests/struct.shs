@@ -154,4 +154,4 @@
 1024 | BytesBuffer = buffer
 Count(buffer) | Assert.Is(1024 true)
 
-"Hello world" | VarPtr | PtrToString | Assert.Is("Hello world" true)
+"Hello world" | VarPtr! | PtrToString | Assert.Is("Hello world" true)

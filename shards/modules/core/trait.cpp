@@ -123,6 +123,6 @@ struct TraitId {
 } // namespace shards
 
 SHARDS_REGISTER_FN(trait) {
-  REGISTER_SHARD("MakeTrait", shards::MakeTrait);
+  REGISTER_SHARD("_MakeTrait", shards::MakeTrait);
   REGISTER_SHARD("TraitId", shards::TraitId);
 }

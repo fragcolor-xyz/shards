@@ -772,6 +772,9 @@ struct Shard {
   // internal use only, to optionally identify the shard
   uint64_t id;
 
+  // Optional compile time defined category
+  SHString category;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,
