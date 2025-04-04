@@ -1278,20 +1278,20 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("ToFloat3", ToNumber<SHType::Float3>);
   REGISTER_SHARD("ToFloat4", ToNumber<SHType::Float4>);
 
-  REGISTER_SHARD("MakeInt2", MakeVector<SHType::Int2>);
-  REGISTER_SHARD("MakeInt3", MakeVector<SHType::Int3>);
-  REGISTER_SHARD("MakeInt4", MakeVector<SHType::Int4>);
-  REGISTER_SHARD("MakeInt8", MakeVector<SHType::Int8>);
-  REGISTER_SHARD("MakeInt16", MakeVector<SHType::Int16>);
-  REGISTER_SHARD("MakeColor", MakeVector<SHType::Color>);
-  REGISTER_SHARD("MakeFloat2", MakeVector<SHType::Float2>);
-  REGISTER_SHARD("MakeFloat3", MakeVector<SHType::Float3>);
-  REGISTER_SHARD("MakeFloat4", MakeVector<SHType::Float4>);
+  REGISTER_SHARD("_MakeInt2", MakeVector<SHType::Int2>);
+  REGISTER_SHARD("_MakeInt3", MakeVector<SHType::Int3>);
+  REGISTER_SHARD("_MakeInt4", MakeVector<SHType::Int4>);
+  REGISTER_SHARD("_MakeInt8", MakeVector<SHType::Int8>);
+  REGISTER_SHARD("_MakeInt16", MakeVector<SHType::Int16>);
+  REGISTER_SHARD("_MakeColor", MakeVector<SHType::Color>);
+  REGISTER_SHARD("_MakeFloat2", MakeVector<SHType::Float2>);
+  REGISTER_SHARD("_MakeFloat3", MakeVector<SHType::Float3>);
+  REGISTER_SHARD("_MakeFloat4", MakeVector<SHType::Float4>);
 
   REGISTER_SHARD("ToString", ToString);
   REGISTER_SHARD("ToHex", ToHex);
   REGISTER_SHARD("ToAny", ToAny);
-  REGISTER_SHARD("VarAddr", VarAddr);
+  REGISTER_SHARD("VarAddr!", VarAddr);
   REGISTER_SHARD("BitSwap32", BitSwap32);
   REGISTER_SHARD("BitSwap64", BitSwap64);
 
@@ -1434,6 +1434,6 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("FromBase64", FromBase64);
   REGISTER_SHARD("HexToBytes", HexToBytes);
 
-  REGISTER_SHARD("VarPtr", VarPtr);
+  REGISTER_SHARD("VarPtr!", VarPtr);
 }
 }; // namespace shards

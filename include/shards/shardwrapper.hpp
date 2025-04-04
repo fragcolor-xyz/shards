@@ -46,6 +46,12 @@ template <class T> struct ShardWrapper {
   static __cdecl Shard *create() {
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) ShardWrapper<T>());
 
+#ifdef SHARDS_THIS_MODULE_ID
+#define SHARD_MODULE_STRINGIFY_HELPER(x) #x
+#define SHARD_MODULE_STRINGIFY(x) SHARD_MODULE_STRINGIFY_HELPER(x)
+    result->category = SHString(SHARD_MODULE_STRINGIFY(SHARDS_THIS_MODULE_ID));
+#endif
+
     // name
     if constexpr (has_name<T>::value) {
       result->name = static_cast<SHNameProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.name(); });

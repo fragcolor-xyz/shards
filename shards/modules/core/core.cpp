@@ -1857,12 +1857,40 @@ struct GetShards {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
+  PARAM_VAR(_category, "Category", "The optional category of the shards to get.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_category));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo composeV2(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::StringSeqType;
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _output = {};
+  }
+
   SeqVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
     for (auto [name, _] : shards::GetGlobals().ShardsRegister) {
-      _output.emplace_back(Var(name));
+      if (_category.valueType != SHType::None) {
+        auto cat = SHSTRVIEW(_category);
+        // sadly we need to create it to check the category but whatever
+        auto shard = createShard(name);
+        if (shard->category && std::string_view(shard->category) == cat) {
+          _output.emplace_back(Var(name));
+        }
+      } else {
+        _output.emplace_back(Var(name));
+      }
     }
+
     return _output;
   }
 };
@@ -3293,7 +3321,7 @@ SHARDS_REGISTER_FN(core) {
 
   using ExitShard = LambdaShard<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_SHARD("Pass", PassShard);
-  REGISTER_SHARD("Exit", ExitShard);
+  REGISTER_SHARD("Exit!", ExitShard);
 
   REGISTER_SHARD("Hash", HasherShard);
 
