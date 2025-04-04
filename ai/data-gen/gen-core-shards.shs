@@ -74,7 +74,7 @@ ForEach({
       })
       
       ; Prepare I/O Types section
-      "I/O Types: " >= io-types-section
+      "I/O Types " >= io-types-section
       
       ; Get input types
       docs:inputTypes | ExpectSeq = input-types
@@ -122,20 +122,20 @@ ForEach({
       ; Add parameters if available
       docs:parameters | ExpectSeq = parameters
       parameters | When(IsNot([]) {
-        {"Parameters:\n" | AppendTo(shard-doc-md)}
+        {"Parameters\n" | AppendTo(shard-doc-md)}
         ForEach({
           ExpectTable
           {Take("name") = param-name}
           {Take("help") = param-help}
-          {Take("default") | If(IsString {
-              ExpectString = string-value
-              ["\"" string-value "\""] | String.Join
-            } ToString) = param-default
-          }
+          ; {Take("default") | If(IsString {
+          ;     ExpectString = string-value
+          ;     ["\"" string-value "\""] | String.Join
+          ;   } ToString) = param-default
+          ; }
           {Take("types") = param-types}
           
           ; Start with parameter name
-          ["- " param-name ": "] | String.Format | AppendTo(shard-doc-md)
+          [param-name " "] | String.Format | AppendTo(shard-doc-md)
           
           ; Format parameter types in a compact way
           param-types | When(IsNotNone {
@@ -154,11 +154,11 @@ ForEach({
             shard-doc-md | Slice(To: -1) > shard-doc-md
           })
           
-          ; Add default value if available
-          param-default | When(IsNotNone {
-            = i
-            [" (default: " i ")"] | String.Format | AppendTo(shard-doc-md)
-          })
+          ; ; Add default value if available
+          ; param-default | When(IsNotNone {
+          ;   = i
+          ;   [" (default: " i ")"] | String.Format | AppendTo(shard-doc-md)
+          ; })
           
           "\n" | AppendTo(shard-doc-md)
         })
