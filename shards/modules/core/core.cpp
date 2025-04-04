@@ -2102,8 +2102,7 @@ struct Iterate {
 
   static SHOptionalString help() {
     return SHCCSTR("Searches through a sorted table input for a range of matching elements. Returns all values from the table "
-                   "that have keys "
-                   "between the From and To keys. If Focused is true, will stop searching once From no longer matches.");
+                   "that have keys between the From and To keys.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
