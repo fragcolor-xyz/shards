@@ -40,17 +40,18 @@ template <class T> struct ShardWrapper {
   T shard;
   std::string lastError;
   SHVar outputStorage; // we added this as a refactor workaround, when activate returns a non ref/pointer type
+
   static inline const char *name = "";
+  static inline const char *aliasOf = "";
+  static inline ShardMetadata metadata;
   static inline uint32_t crc = 0;
 
   static __cdecl Shard *create() {
-    Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) ShardWrapper<T>());
+    auto self = new (std::align_val_t{16}) ShardWrapper<T>();
+    Shard *result = reinterpret_cast<Shard *>(self);
 
-#ifdef SHARDS_THIS_MODULE_ID
-#define SHARD_MODULE_STRINGIFY_HELPER(x) #x
-#define SHARD_MODULE_STRINGIFY(x) SHARD_MODULE_STRINGIFY_HELPER(x)
-    result->category = SHString(SHARD_MODULE_STRINGIFY(SHARDS_THIS_MODULE_ID));
-#endif
+    // set the metadata pointer
+    result->metadata = &metadata;
 
     // name
     if constexpr (has_name<T>::value) {
@@ -327,13 +328,22 @@ template <class T> struct ShardWrapper {
   }
 };
 
+#ifdef SHARDS_THIS_MODULE_ID
+#define SHARD_MODULE_STRINGIFY_HELPER(x) #x
+#define SHARD_MODULE_STRINGIFY(x) SHARD_MODULE_STRINGIFY_HELPER(x)
+#else
+#define SHARD_MODULE_STRINGIFY(x) ""
+#endif
+
 #define REGISTER_SHARD(__name__, __type__)                                                                             \
   ::shards::ShardWrapper<__type__>::name = __name__;                                                                   \
   ::shards::ShardWrapper<__type__>::crc = ::shards::constant<::shards::crc32(__name__ SHARDS_CURRENT_ABI_STR)>::value; \
+  ::shards::ShardWrapper<__type__>::metadata.category = SHString(SHARD_MODULE_STRINGIFY(SHARDS_THIS_MODULE_ID));       \
   ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
                           NAMEOF_FULL_TYPE(__type__))
 
-#define REGISTER_SHARD_ALIAS(__name__, __type__) \
+#define REGISTER_SHARD_ALIAS(__name__, __aliasOf__, __type__)       \
+  ::shards::ShardWrapper<__type__>::metadata.aliasOf = __aliasOf__; \
   ::shards::registerShard(__name__, &::shards::ShardWrapper<__type__>::create, NAMEOF_FULL_TYPE(__type__))
 
 #define OVERRIDE_ACTIVATE(__data__, __func__)                                                                            \

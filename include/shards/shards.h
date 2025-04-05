@@ -750,6 +750,13 @@ typedef struct SHVar(__cdecl *SHGetStateProc)(struct Shard *);
 typedef void(__cdecl *SHSetStateProc)(struct Shard *, const struct SHVar *state);
 typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
+struct ShardMetadata {
+  // Optional compile time defined category
+  SHString category;
+  // Optional compile time defined alias of another shard
+  SHString aliasOf;
+};
+
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
 
@@ -772,8 +779,8 @@ struct Shard {
   // internal use only, to optionally identify the shard
   uint64_t id;
 
-  // Optional compile time defined category
-  SHString category;
+  // Optional compile time defined metadata
+  struct ShardMetadata *metadata;
 
   // \-- The interface to fill --/
 

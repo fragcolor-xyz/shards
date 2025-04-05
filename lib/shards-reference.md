@@ -73,12 +73,12 @@ I/O Types Int/Int2/Int3/Int4/Int8/Int16/Color/[Any] → Int/Int2/Int3/Int4/Int8/
 Parameters
 Operand Int/Int2/Int3/Int4/Int8/Int16/Color/[Any]
 
-# Asin
+# Asin (Math.Asin)
 This shard calculates the inverse sine of the given input, where the input is the sine value. The output is the angle in radians whose sine is the input value.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Pow
+# Pow (Math.Pow)
 This shard raises the input to the power of the exponent specified in the Operand parameter.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -94,7 +94,7 @@ I/O Types Any → Any
 Parameters
 Evaluate Shard/[Shard]
 
-# Dec
+# Dec (Math.Dec)
 Decreases the input by 1.
 
 I/O Types Any → Any
@@ -202,7 +202,7 @@ Wire None/Wire/[Shard]
 Policy WaitUntil
 Threads Int
 
-# Sin
+# Sin (Math.Sin)
 This shard calculates the sine of the given input, where the input is the angle in radians.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -348,7 +348,7 @@ I/O Types [Float] → Float
 Parameters
 Percentile Float/Var(Float)
 
-# Lerp
+# Lerp (Math.Lerp)
 Linearly interpolate between the start value specified in the `First` parameter and the end value specified in the `Second` parameter based on the factor provided as input.
 
 I/O Types Float → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -357,7 +357,7 @@ Parameters
 First Int/Var(Int)/Int2/Var(Int2)/Int3/Var(Int3)/Int4/Var(Int4)/Int8/Var(Int8)/Int16/Var(Int16)/Float/Var(Float)/Float2/Var(Float2)/Float3/Var(Float3)/Float4/Var(Float4)/Color/Var(Color)
 Second Int/Var(Int)/Int2/Var(Int2)/Int3/Var(Int3)/Int4/Var(Int4)/Int8/Var(Int8)/Int16/Var(Int16)/Float/Var(Float)/Float2/Var(Float2)/Float3/Var(Float3)/Float4/Var(Float4)/Color/Var(Color)
 
-# Percentile
+# Percentile (Math.Percentile)
 This shard calculates the percentile of the input value within the specified sequence.
 
 I/O Types [Float] → Float
@@ -389,7 +389,7 @@ I/O Types Any → Any
 Parameters
 Value Var(Int)/Var(Int2)/Var(Int3)/Var(Int4)/Var(Int8)/Var(Int16)/Var(Float)/Var(Float2)/Var(Float3)/Var(Float4)/Var(Color)/Var([Any])
 
-# Inc
+# Inc (Math.Inc)
 Increases the input by 1.
 
 I/O Types Any → Any
@@ -407,12 +407,12 @@ This shard truncates the input floating-point number towards zero, removing any 
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Ceil
+# Ceil (Math.Ceil)
 This shard rounds up the input to the nearest integer.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Floor
+# Floor (Math.Floor)
 This shard rounds down the input to the nearest integer.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -457,6 +457,11 @@ This shard calculates the sine of the given input, where the input is the angle 
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
+# FastInvSqrt (Math.FastInvSqrt)
+This shard calculates the inverse square root of the given input.
+
+I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
+
 # Math.FastInvSqrt
 This shard calculates the inverse square root of the given input.
 
@@ -467,7 +472,7 @@ This shard calculates the square root of the given input.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Sqrt
+# Sqrt (Math.Sqrt)
 This shard calculates the square root of the given input.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -497,7 +502,7 @@ This shard calculates the exponential function with base e (Euler's number) for 
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Abs
+# Abs (Math.Abs)
 This shard outputs the absolute value of the input.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -523,7 +528,7 @@ I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] �
 Parameters
 Operand Int/Var(Int)/Int2/Var(Int2)/Int3/Var(Int3)/Int4/Var(Int4)/Int8/Var(Int8)/Int16/Var(Int16)/Float/Var(Float)/Float2/Var(Float2)/Float3/Var(Float3)/Float4/Var(Float4)/Color/Var(Color)/[Any]/Var([Any])
 
-# Sub
+# Sub (Math.Subtract)
 This shard subtracts the value provided in the Operand parameter from the input value.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -531,7 +536,7 @@ I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] �
 Parameters
 Operand Int/Var(Int)/Int2/Var(Int2)/Int3/Var(Int3)/Int4/Var(Int4)/Int8/Var(Int8)/Int16/Var(Int16)/Float/Var(Float)/Float2/Var(Float2)/Float3/Var(Float3)/Float4/Var(Float4)/Color/Var(Color)/[Any]/Var([Any])
 
-# Add
+# Add (Math.Add)
 This shard adds the input value to the value provided in the Operand parameter.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -606,7 +611,7 @@ I/O Types None → [Float4](4)
 Parameters
 Type Type
 
-# DegreesToRadians
+# DegreesToRadians (Math.DegreesToRadians)
 This shard converts the input angle from degrees to radians. The conversion is done using the formula: radians = degrees * (π / 180).
 
 I/O Types Float → Float
@@ -626,7 +631,7 @@ This shard creates a rotation quaternion for rotation around the Y-axis. It take
 
 I/O Types Float → Float4
 
-# Tan
+# Tan (Math.Tan)
 This shard calculates the tangent of the given input, where the input is the angle in radians.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -914,7 +919,7 @@ I/O Types Any → [Int8]
 Parameters
 Unsafe Bool
 
-# RadiansToDegrees
+# RadiansToDegrees (Math.RadiansToDegrees)
 This shard converts the input angle from radians to degrees. The conversion is done using the formula: degrees = radians * (180 / π).
 
 I/O Types Float → Float
@@ -1066,7 +1071,7 @@ Converts various input types to a vector of sixteen Int elements. If a single va
 
 I/O Types Any → Any
 
-# Mul
+# Mul (Math.Multiply)
 This shard multiplies the input value by the value provided in the Operand parameter.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -1341,7 +1346,7 @@ I/O Types None → Any
 Parameters
 Value Any
 
-# Cos
+# Cos (Math.Cos)
 This shard calculates the cosine of the given input, where the input is the angle in radians.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -1510,7 +1515,7 @@ This shard calculates the inverse tangent of the given input, where the input is
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
-# Div
+# Div (Math.Divide)
 This shard divides the input value by the value provided in the Operand parameter.
 
 I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] → Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any]
@@ -1528,7 +1533,7 @@ Checks the input value if it is an Image. The shard will return true if the inpu
 
 I/O Types Any → Bool
 
-# Atan
+# Atan (Math.Atan)
 This shard calculates the inverse tangent of the given input, where the input is the tangent value. The output is the angle in radians whose tangent is the input value.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -1869,7 +1874,7 @@ I/O Types Any → [Float]
 Parameters
 Unsafe Bool
 
-# FastSqrt
+# FastSqrt (Math.FastSqrt)
 This shard calculates the square root of the given input.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
@@ -1879,7 +1884,7 @@ Checks the input value if it is of type Int. The shard will return true if the i
 
 I/O Types Any → Bool
 
-# Acos
+# Acos (Math.Acos)
 This shard calculates the inverse cosine of the given input, where the input is the cosine value. The output is the angle in radians whose cosine is the input value.
 
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]

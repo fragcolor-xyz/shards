@@ -563,7 +563,7 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
       } else {
         None
       },
-      category: core::ptr::null(),
+      metadata: core::ptr::null_mut(),
     },
     shard: T::default(),
     name: None,
@@ -910,7 +910,7 @@ pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() 
       } else {
         None
       },
-      category: core::ptr::null(),
+      metadata: core::ptr::null_mut(),
     },
     shard: T::default(),
     name: None,

@@ -1885,7 +1885,7 @@ struct GetShards {
         auto cat = SHSTRVIEW(_category);
         // sadly we need to create it to check the category but whatever
         auto shard = createShard(name);
-        if (shard->category && std::string_view(shard->category) == cat) {
+        if (shard->metadata && std::string_view(shard->metadata->category) == cat) {
           _output.emplace_back(Var(name));
         }
       } else {
@@ -1982,6 +1982,15 @@ struct GetShardHelp {
     shard->setup(shard);
 
     _output.clear();
+
+    if (shard->metadata) {
+      if (shard->metadata->aliasOf) {
+        _output.insert(Var("aliasOf"), Var(shard->metadata->aliasOf, 0));
+      }
+      if (shard->metadata->category) {
+        _output.insert(Var("category"), Var(shard->metadata->category, 0));
+      }
+    }
 
     auto help = shard->help(shard);
     _output.insert(Var("help"), ostr(help));
@@ -3318,7 +3327,7 @@ SHARDS_REGISTER_FN(core) {
 
   REGISTER_SHARD("Map", Map);
   REGISTER_SHARD("Fold", Fold);
-  REGISTER_SHARD_ALIAS("Reduce", Fold);
+  REGISTER_SHARD_ALIAS("Reduce", "Fold", Fold);
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
   REGISTER_SHARD("GlobalOnce", GlobalOnce);

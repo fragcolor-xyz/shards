@@ -123,13 +123,13 @@ Erase(["name" "age"] person)    ; Remove multiple fields
 
 ```shards
 ; If with then/else
-value | If(IsMore(10)
+value | If({IsMore(10)}
   {"Greater than 10" | Log}
   {"Less or equal to 10" | Log}
 )
 
 ; When (if without else)
-value | When(IsMore(10) {
+value | When({IsMore(10)} {
   "Greater than 10" | Log
 })
 ```
@@ -155,6 +155,20 @@ value | Match([
   "A" {"Matched A" | Log}
   "B" {"Matched B" | Log}
   none {"No match" | Log}  ; Default case
+])
+
+; or with passthrough off, we flow the output of the match to the next operation
+value | Match([
+  "A" {"Matched A"}
+  "B" {"Matched B"}
+  none {"No match"}  ; Default case
+] Passthrough: false) | Log
+
+; using the even more flexible Cond shard
+value | Cond([
+  {Is("A")} {"Matched A" | Log}
+  {Is("B")} {"Matched B" | Log}
+  {true} {"No match" | Log}  ; Default case
 ])
 ```
 

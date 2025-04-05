@@ -450,7 +450,8 @@ struct Compose {
 struct Project {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Takes a float3 vector representing the 3D point in world space where x, y, and z are the coordinates in world space.");
+    return SHCCSTR(
+        "Takes a float3 vector representing the 3D point in world space where x, y, and z are the coordinates in world space.");
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString outputHelp() {
@@ -483,12 +484,10 @@ struct Project {
 
   bool flipY{true};
 
-  public:
-  Project() {
-    *_flipY = Var(true);
-  }
+public:
+  Project() { *_flipY = Var(true); }
 
-  void warmup(SHContext *context) { 
+  void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     flipY = _flipY.get().payload.boolValue;
   }
@@ -517,7 +516,8 @@ struct Project {
 struct Unproject {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("Takes a float3 vector representing the 3D vector where x and y are screen coordinates, and z is the depth value in screen space.");
+    return SHCCSTR("Takes a float3 vector representing the 3D vector where x and y are screen coordinates, and z is the depth "
+                   "value in screen space.");
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
   static SHOptionalString outputHelp() {
@@ -537,7 +537,8 @@ struct Unproject {
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_screenSize, "ScreenSize", "The float2 vector representing the size of the screen or viewport in pixels.",
                  {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
-  PARAM_PARAMVAR(_depthRange, "DepthRange", "The float2 vector representing the range of depth values (near and far planes). Default is [0, 1].",
+  PARAM_PARAMVAR(_depthRange, "DepthRange",
+                 "The float2 vector representing the range of depth values (near and far planes). Default is [0, 1].",
                  {CoreInfo::NoneType, CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
   PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
                  {CoreInfo::NoneType, CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
@@ -551,12 +552,10 @@ struct Unproject {
 
   bool flipY{true};
 
-  public:
-  Unproject() {
-    *_flipY = Var(true);
-  }
+public:
+  Unproject() { *_flipY = Var(true); }
 
-  void warmup(SHContext *context) { 
+  void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     flipY = _flipY.get().payload.boolValue;
   }
@@ -598,20 +597,20 @@ struct QuaternionMultiply {
   Vec4 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("Takes a float4 vector representing the quaternion to be multiplied.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a float4 vector representing the quaternion to be multiplied."); }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("Outputs a float4 vector representing the resulting quaternion after multiplication.");
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard multiplies two quaternions (represented as float4 vectors) together. It combines the two rotations by multiplying "
+    return SHCCSTR("This shard multiplies two quaternions (represented as float4 vectors) together. It combines the two "
+                   "rotations by multiplying "
                    "the input quaternion with the operand quaternion. A float4 vector is a vector with 4 float elements.");
   }
 
-  PARAM_PARAMVAR(_operand, "Operand", "The float4 vector representing the second quaternion to multiply the input quaternion with.",
+  PARAM_PARAMVAR(_operand, "Operand",
+                 "The float4 vector representing the second quaternion to multiply the input quaternion with.",
                  {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_operand));
 
@@ -647,13 +646,16 @@ struct QuaternionSlerp {
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float4 vector representing the interpolated quaternion."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard performs Spherical Linear Interpolation (SLERP) between two quaternions (represented as float4 vectors). "
-                   "It smoothly interpolates between the quaternions specified in the 'First' parameter and 'Second' parameter "
-                   "based on the input interpolation factor. A float4 vector is a vector with 4 float elements.");
+    return SHCCSTR(
+        "This shard performs Spherical Linear Interpolation (SLERP) between two quaternions (represented as float4 vectors). "
+        "It smoothly interpolates between the quaternions specified in the 'First' parameter and 'Second' parameter "
+        "based on the input interpolation factor. A float4 vector is a vector with 4 float elements.");
   }
 
-  PARAM_PARAMVAR(_a, "First", "The float4 vector representing the first quaternion to interpolate from.", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
-  PARAM_PARAMVAR(_b, "Second", "The float4 vector representing the second quaternion to interpolate to.", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_a, "First", "The float4 vector representing the first quaternion to interpolate from.",
+                 {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_b, "Second", "The float4 vector representing the second quaternion to interpolate to.",
+                 {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -693,7 +695,8 @@ struct QuaternionRotate {
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float3 vector representing the rotated 3D vector."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard rotates the input 3D vector (represented as a float3) by the quaternion (represented as a float4) specified in the Operand parameter and "
+    return SHCCSTR("This shard rotates the input 3D vector (represented as a float3) by the quaternion (represented as a float4) "
+                   "specified in the Operand parameter and "
                    "outputs the resulting rotated 3D vector. A float4 vector is a vector with 4 float elements while a float3 "
                    "vector is a vector with 3 float elements.");
   }
@@ -746,9 +749,9 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.AxisAngleY", AxisAngleY);
   REGISTER_SHARD("Math.AxisAngleZ", AxisAngleZ);
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
-  REGISTER_SHARD_ALIAS("DegreesToRadians", Deg2Rad);
+  REGISTER_SHARD_ALIAS("DegreesToRadians", "Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);
-  REGISTER_SHARD_ALIAS("RadiansToDegrees", Rad2Deg);
+  REGISTER_SHARD_ALIAS("RadiansToDegrees", "Math.RadiansToDegrees", Rad2Deg);
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
   REGISTER_SHARD("Math.Compose", Compose);
   REGISTER_SHARD("Math.Decompose", Decompose);

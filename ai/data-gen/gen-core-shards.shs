@@ -62,10 +62,26 @@ ForEach({
       
       "" >= shard-doc-md
       ; Add shard name as a header
-      ["# " $0 "\n"] | String.Format | AppendTo(shard-doc-md)
+      ["# " $0] | String.Format | AppendTo(shard-doc-md)
       
       $0
       Shards.Help = docs
+      
+      docs:aliasOf | If(IsNotNone {
+          ExpectString
+          If(IsNot($0) {
+              = alias-of
+              " (" | AppendTo(shard-doc-md)
+              alias-of | AppendTo(shard-doc-md)
+              ")\n" | AppendTo(shard-doc-md)
+            } {
+              "\n" | AppendTo(shard-doc-md)
+            }
+          )
+        } {
+          "\n" | AppendTo(shard-doc-md)
+        }
+      )
       
       ; Add general help 
       docs:help | If(IsNot("") {
