@@ -93,7 +93,15 @@ Erase([0 1] sequence)    ; Remove elements at multiple indices
 ### Tables
 
 ```shards
-{name: "Alice" age: 30 city: "NY"} >= person  ; Table creation
+{name: "Alice" age: 30 city: "NY" optional: none} >= person  ; Table creation
+
+; or in full JSON compatible format
+{
+  "name": "Alice",
+  "age": 30,
+  "city": "NY",
+  "optional": null
+} >= person
 
 ; Accessing
 person:name              ; Access via colon syntax
@@ -203,6 +211,20 @@ Once({
 
 ; Nested grouping: 10+(5*(2+1)) = 25
 10 | Add((5 | Mul((2 | Add(1)))))
+
+; Within seqs, it will be applied to each element
+5 |[
+  (Add(1)) ; 6
+  (Mul(2)) ; 12
+] = my-seq
+
+; Within tables, it will be applied to each element
+5 | {
+  a: [
+    (Add(1)) ; 6
+    (Mul(2)) ; 12
+  ]
+} = my-table
 ```
 
 ## Error Handling
