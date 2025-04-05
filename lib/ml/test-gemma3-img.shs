@@ -1,5 +1,5 @@
-@define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/gemma-3-4b-it-Q4_K_M.gguf" IgnoreRedefined: true)
-@define(image-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-3-4b-it-GGUF/mmproj-model-f16.gguf" IgnoreRedefined: true)
+@define(text-model "/Users/sugar/Downloads/gemma-3-4b-it-q4_0.gguf" IgnoreRedefined: true)
+@define(image-model "/Users/sugar/Downloads/mmproj-model-f16-4B.gguf" IgnoreRedefined: true)
 @define(test-image "/Users/sugar/devel/shards/assets/simple1.PNG" IgnoreRedefined: true)
 
 @text-model | LLM.Model(UseMmap: true GPULayers: 1000) = model
