@@ -3958,7 +3958,7 @@ struct RLimit {
 
 struct ForRangeShard {
   static SHOptionalString help() {
-    return SHCCSTR("Executes a series of shards while an iteration value is within a specified range.");
+    return SHCCSTR("Executes a series of shards while an iteration value is within a specified range (inclusive).");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -4083,13 +4083,13 @@ struct ForRangeShard {
 };
 struct IntRangeShard {
   PARAM_PARAMVAR(_start, "Start", "Starting value (inclusive)", {CoreInfo::IntOrIntVar})
-  PARAM_PARAMVAR(_end, "End", "Ending value (exclusive)", {CoreInfo::IntOrIntVar})
+  PARAM_PARAMVAR(_end, "End", "Ending value (inclusive)", {CoreInfo::IntOrIntVar})
 
   PARAM_IMPL(PARAM_IMPL_FOR(_start), PARAM_IMPL_FOR(_end))
 
   SeqVar _output{};
 
-  static SHOptionalString help() { return SHCCSTR("Returns a sequence of integers from Start (inclusive) to End (exclusive)"); }
+  static SHOptionalString help() { return SHCCSTR("Returns a sequence of integers from Start (inclusive) to End (inclusive)."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored"); }
@@ -4114,7 +4114,7 @@ struct IntRangeShard {
     auto start = _start.get().payload.intValue;
     auto end = _end.get().payload.intValue;
 
-    int len = end - start;
+    int len = end - start + 1;
     _output.resize(len);
     if (len > 0) {
       for (int i = 0; i < len; i++) {

@@ -60,11 +60,6 @@ Convert an image into a sequence of floats. Each pixel in the image is converted
 
 I/O Types Image → [Float]
 
-# Input
-The input value of the wire.
-
-I/O Types None → Any
-
 # IsAll
 Checks if all elements in the input are equal to the given value. It outputs true if all elements are equal and false otherwise.
 
@@ -699,7 +694,7 @@ Computes the squared magnitude of a float vector of any dimension and outputs th
 I/O Types Float2/[Float2]/Float3/[Float3]/Float4/[Float4] → Float
 
 # IntRange
-Returns a sequence of integers from Start (inclusive) to End (exclusive)
+Returns a sequence of integers from Start (inclusive) to End (inclusive).
 
 I/O Types None → [Int]
 
@@ -1738,7 +1733,7 @@ Converts various input types to a vector of Four Float elements. If a single val
 I/O Types Any → Any
 
 # ForRange
-Executes a series of shards while an iteration value is within a specified range.
+Executes a series of shards while an iteration value is within a specified range (inclusive).
 
 I/O Types Any → Any
 

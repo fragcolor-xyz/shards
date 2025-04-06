@@ -167,15 +167,15 @@ value | Match([
 
 ; or with passthrough off, we flow the output of the match to the next operation
 value | Match([
-  "A" {"Matched A"}
-  "B" {"Matched B"}
+  "A" {"Matched A"} ; value & action shards
+  "B" {"Matched B"} ; value & action shards
   none {"No match"}  ; Default case
 ] Passthrough: false) | Log
 
 ; using the even more flexible Cond shard
 value | Cond([
-  {Is("A")} {"Matched A" | Log}
-  {Is("B")} {"Matched B" | Log}
+  {Is("A")} {"Matched A" | Log} ; condition shards & action shards
+  {Is("B")} {"Matched B" | Log} ; condition shards & action shards
   {true} {"No match" | Log}  ; Default case
 ])
 ```

@@ -26,7 +26,7 @@
               })
               false >= reversed
               "" >= sorted-by-key
-              Count(data-src) | Memoize({= int-range-len | IntRange(0 int-range-len)}) >= int-range
+              Count(data-src) | Memoize({Sub(1) = int-range-len | IntRange(0 int-range-len)}) >= int-range
             })
             
             
