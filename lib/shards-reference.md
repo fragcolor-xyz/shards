@@ -65,6 +65,14 @@ The input value of the wire.
 
 I/O Types None → Any
 
+# IsAll
+Checks if all elements in the input are equal to the given value. It outputs true if all elements are equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
 # Math.RShift
 This shard shifts the bits of the input value to the right by the number of positions specified in the Operand parameter. The shard then outputs a value, whose binary representation is the resulting shifted binary.
 
@@ -72,6 +80,14 @@ I/O Types Int/Int2/Int3/Int4/Int8/Int16/Color/[Any] → Int/Int2/Int3/Int4/Int8/
 
 Parameters
 Operand Int/Int2/Int3/Int4/Int8/Int16/Color/[Any]
+
+# IsAnyNot
+Checks if any element in the input is not equal to the given value. It outputs true if any element is not equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
 
 # Asin (Math.Asin)
 This shard calculates the inverse sine of the given input, where the input is the sine value. The output is the angle in radians whose sine is the input value.
@@ -281,6 +297,14 @@ I/O Types String → Int
 
 Parameters
 ToFind String/Var(String)
+
+# IsMore
+Checks if the input is greater than the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
 
 # String.Contains
 This shard checks if the input string contains the string specified in the String parameter. If the input string does contain the string specified, the shard will output true. Otherwise, it will output false.
@@ -718,6 +742,14 @@ Then Shard/[Shard]/None
 Else Shard/[Shard]/None
 Passthrough Bool
 
+# RLimit
+This shard truncates the input sequence to the last specified number of elements (Max) and outputs the truncated sequence. If Max is set to 1, it outputs a single element.
+
+I/O Types [Any] → Any
+
+Parameters
+Max Int
+
 # Max
 This shard compares the input with the value specified in the `Operand` parameter and outputs the larger value.
 
@@ -814,6 +846,14 @@ I/O Types Any → Bool
 Checks the input value if it is a Boolean. The shard will return true if the input is of the appropriate type, and false otherwise.
 
 I/O Types Any → Bool
+
+# IsAnyLessEqual
+Checks if any element in the input is less than or equal to the given value. It outputs true if any element is less or equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
 
 # IsBytes
 Checks the input value if it is of type Bytes. The shard will return true if the input is of the appropriate type, and false otherwise.
@@ -986,6 +1026,16 @@ Wire None/Wire/[Shard]
 Policy WaitUntil
 Threads Int
 
+# Clear
+Clears all elements from the sequence or table passed to it. Applicable only to sequences and tables. For sequences, this operation is very fast as Shards recycles memory extensively. If the variable does not exist or the type is not a sequence or table, it simply passes through without failing.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
 # ExpectColor
 Checks the input value if it is vector of four color channels (RGBA). The shard outputs the input value unchanged if it is of the appropriate type; otherwise, the shard will trigger an error, preventing further execution.
 
@@ -1117,6 +1167,11 @@ Returns a table of help information for the enum type specified by the input id.
 
 I/O Types Int → {Any}
 
+# Not
+Computes the logical negation of the input.
+
+I/O Types Bool → Bool
+
 # Shards.ObjectTypes
 Returns a sequence of all object types in the system.
 
@@ -1228,10 +1283,36 @@ TypeOf Any
 OutputOf Shard/[Shard]/None
 Unsafe Bool
 
+# IsAllLessEqual
+Checks if all elements in the input are less than or equal to the given value. It outputs true if all elements are less or equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# Pop
+Pops (removes and outputs) the last element of the sequence variable. Works only on sequences. If the variable is not a sequence or the sequence is empty, an error is thrown.
+
+I/O Types None → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
 # IsTrue
 Gets whether the input is `true`.
 
 I/O Types Bool → Bool
+
+# IsAllMoreEqual
+Checks if all elements in the input are greater than or equal to the given value. It outputs true if all elements are greater or equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
 
 # Log
 Logs the output of a shard or the value of a variable to the console along with an optional prefix string. The logging level can be specified to control the verbosity of the log output.
@@ -1243,10 +1324,42 @@ Prefix String
 Level LogLevel/Var(LogLevel)
 Name String/Var(String)
 
+# IsAnyMoreEqual
+Checks if any element in the input is greater than or equal to the given value. It outputs true if any element is greater or equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# IsAllMore
+Checks if all elements in the input are greater than the given value. It outputs true if all elements are greater and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# IsAnyMore
+Checks if any element in the input is greater than the given value. It outputs true if any element is greater and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
 # Shards.ObjectTypeHelp
 Returns a table of help information for the object type specified by the input id.
 
 I/O Types Int → {Any}
+
+# RTake
+Works exactly like `Take` except that the selection indices are counted backwards from the last element in the target sequence. Also, `RTake` works only on sequences, not on tables.
+
+I/O Types Bytes/String/[Any] → Any
+
+Parameters
+Indices Int/[Int]/Var(Int)/Var([Int])
 
 # FromBytes
 This shard takes a serialized binary representation of a value and convert it back to its original type.
@@ -1258,6 +1371,27 @@ Converts various input types to a vector of four color channels (RGBA). If a sin
 
 I/O Types Any → Any
 
+# And
+If the input of the preceding shard is true, the flow continues; otherwise, the flow stops. This shard is typically used within conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional flow, it might restart the current wire, which can be used as a trick in certain scenarios.
+
+I/O Types Bool → Bool
+
+# IsAny
+Checks if any element in the input is equal to the given value. It outputs true if any element is equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# IsLessEqual
+Checks if the input is less than or equal to the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
 # IsAudio
 Checks the input value if it is an Audio file. The shard will return true if the input is of the appropriate type, and false otherwise.
 
@@ -1267,6 +1401,25 @@ I/O Types Any → Bool
 Converts various input types to a vector of four Int elements. If a single value or a collection with less than 4 elements is provided, the remaining unaccounted elements in the resulting vector will be set to 0.
 
 I/O Types Any → Any
+
+# IsMoreEqual
+Checks if the input is greater than or equal to the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# Remove
+Removes all elements from a sequence that match the given condition. Can also take these matched indices and remove corresponding elements from a joined sequence.
+
+I/O Types None → [Any]
+
+Parameters
+From Var([Any])
+Join Var([Any])/[Var([Any])]
+Predicate Shard/[Shard]
+Unordered Bool
 
 # Pause
 Pauses the wire for a given amount of time.
@@ -1284,10 +1437,27 @@ I/O Types {Any} → {Any}
 Parameters
 Target Var({Any})
 
+# IsNot
+Checks if the input is not equal to the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
 # IsNone
 Gets whether the type of the input is `None`.
 
 I/O Types Any → Bool
+
+# IsAlmost
+Checks whether the input is almost equal to a given value.
+
+I/O Types Float/Float2/Float3/Float4/Int/Int2/Int3/Int4/Int8/Int16/[Any] → Bool
+
+Parameters
+Value Float/Float2/Float3/Float4/Int/Int2/Int3/Int4/Int8/Int16/[Any]
+Threshold Float/Int
 
 # Return
 Stops the current flow and outputs the provided input. This shard is used to exit the execution of the current wire early within loops or conditional flows, returning the specified input.
@@ -1301,6 +1471,74 @@ I/O Types Int/Int2/Int3/Int4/Int8/Int16/Float/Float2/Float3/Float4/Color/[Any] �
 
 Parameters
 Operand Int/Var(Int)/Int2/Var(Int2)/Int3/Var(Int3)/Int4/Var(Int4)/Int8/Var(Int8)/Int16/Var(Int16)/Float/Var(Float)/Float2/Var(Float2)/Float3/Var(Float3)/Float4/Var(Float4)/Color/Var(Color)/[Any]/Var([Any])
+
+# Sort
+Sorts the elements of a sequence. Can also move around the elements of a joined sequence in alignment with the sorted sequence.
+
+I/O Types None → [Any]
+
+Parameters
+From Var([Any])
+Join Var([Any])/[Var([Any])]
+Desc Bool
+Key Shard/[Shard]/None
+
+# Update
+Modifies the value of an existing mutable variable.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
+# Repeat
+Repeat an action a given number of times or until the 'Until' parameter returns true.
+
+I/O Types Any → Any
+
+Parameters
+Action Shard/[Shard]
+Times Int/Var(Int)/None
+Forever Bool
+Until Shard/[Shard]/None
+
+# Limit
+This shard truncates the input sequence to the specified number of elements(specified by the Max parameter) and outputs the truncated sequence.
+
+I/O Types [Any] → Any
+
+Parameters
+Max Int
+
+# Take
+Extracts one or more elements from a sequence or values from a table using the provided indices or keys. This operation is non-destructive and does not modify the target sequence or table. If the key cannot be established to exist at compose time, the output will be of type Any.
+
+I/O Types Int2/Int3/Int4/Int8/Int16/Float2/Float3/Float4/Bytes/Color/String/[Any]/{Any} → Any
+
+Parameters
+Indices/Keys Any/Var(Any)
+
+# Count
+This shard counts the sequence, string or table variable specified in the Name parameter. If the variable specified is a string, it will count the number of characters. If the variable specified is a sequence, it will count the number of elements. If the variable specified is a table, it will count the number of key-value pairs.
+
+I/O Types None → Int
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
+# DropFront
+Drops the first element of the sequence variable. Works only on sequences. If the variable is not a sequence, it simply passes through without failing.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
 
 # LogType
 Logs the type of the value to the console along with an optional prefix string. The logging level can be specified to control the verbosity of the log output.
@@ -1333,6 +1571,65 @@ I/O Types Any → [Int4]
 Parameters
 Unsafe Bool
 
+# Drop
+Drops the last element of the sequence variable. Works only on sequences. If the variable is not a sequence, it simply passes through without failing.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
+# PopFront
+Pops (removes and outputs) the first element of the sequence variable. Works only on sequences. If the variable is not a sequence or the sequence is empty, an error is thrown.
+
+I/O Types None → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+
+# Is
+Checks if the input is equal to the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# IsLess
+Checks if the input is less than the operand.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# Sequence
+Creates an empty sequence (or sequence in a table if a key is passed). Useful to declare and specify types.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+Clear Bool
+Type None/Type
+
+# Ref
+Creates an immutable reference variable. Once created this variable cannot be changed.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+Overwrite Bool
+
 # Shards.EnumTypes
 Returns a sequence of all enum types in the system.
 
@@ -1355,6 +1652,14 @@ I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/
 This shard converts a 4x4 transformation matrix (a sequence of four float 4 vectors) into a table containing its constituent Translation, Rotation, and Scale components. The table has a Translation key with a float3 vector value representing positions on the x, y, z axes, a Rotation key with a float4 vector value representing the quaternion rotation, and a Scale key with a float3 vector value, representing the size on the x, y, z axes. Eg. {translation: @f3(1 2 3), rotation: @f4(0 0 0 1), scale: @f3(1 1 1)} A float3 vector is a vector with 3 float elements while a float4 vector is a vector with 4 float elements. 
 
 I/O Types [Float4](4) → {translation: Float3 rotation: Float4 scale: Float3}
+
+# IsAnyLess
+Checks if any element in the input is less than the given value. It outputs true if any element is less and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
 
 # Math.Cos
 This shard calculates the cosine of the given input, where the input is the angle in radians.
@@ -1442,6 +1747,14 @@ From Int/Var(Int)
 To Int/Var(Int)
 Action Shard/[Shard]/None
 
+# IsAllLess
+Checks if all elements in the input are less than the given value. It outputs true if all elements are less and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
 # Assoc
 Updates a sequence (array) or a table (associative array/ dictionary) on the basis of an input sequence.
 
@@ -1497,6 +1810,17 @@ I/O Types [String Bytes] → String
 Parameters
 Separator String
 
+# Push
+Pushes a new value into a sequence variable. If the variable does not exist, it will be created.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+Clear Bool
+
 # StringToBytes
 Converts a string to its byte representation.
 
@@ -1509,6 +1833,11 @@ I/O Types Any → Any
 
 Parameters
 Action Shard/[Shard]
+
+# IsValidNumber
+Checks if the input is a valid floating-point number (not zero, subnormal, infinity, or NaN). Outputs true if the input is a normal floating-point number, otherwise outputs false.
+
+I/O Types Float → Bool
 
 # Math.Atan
 This shard calculates the inverse tangent of the given input, where the input is the tangent value. The output is the angle in radians whose tangent is the input value.
@@ -1781,6 +2110,16 @@ This shard changes the log level to the level specified by the string passed as 
 
 I/O Types String → Any
 
+# Slice
+Extracts characters from a string or elements from a sequence based on the start and end positions/indices and an increment parameter. Operation is non-destructive; the target string/sequence is not modified.
+
+I/O Types [Any]/Bytes/String → Any
+
+Parameters
+From Int/[Int]/Var(Int)/Var([Int])
+To Int/[Int]/Var(Int)/Var([Int])/None
+Step Int
+
 # Math.Cross
 This shard computes the cross product of the float3 vector (or sequence of float3 vectors) provided as input and the float3 vector provided in the Operand parameter and outputs the result as a float3 vector (or sequence of float3 vectors). A float3 vector is a vector with 3 float elements.
 
@@ -1813,6 +2152,25 @@ Parameters
 First Float4/Var(Float4)
 Second Float4/Var(Float4)
 
+# IsAllNot
+Checks if all elements in the input are not equal to the given value. It outputs true if all elements are not equal and false otherwise.
+
+I/O Types Any → Bool
+
+Parameters
+Value Any
+
+# Set
+Creates a mutable variable and assigns a value to it.
+
+I/O Types Any → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+Tracked Bool
+
 # Math.Translation
 This shard creates a 4x4 translation matrix (a sequence of four float4 vectors) from a float3 vector input representing the translation in x, y, and z directions. A float4 vector is a vector with 4 float elements while a float3 vector is a vector with 3 float elements.
 
@@ -1831,6 +2189,17 @@ I/O Types Any → Any
 Parameters
 Cases [Any]
 Passthrough Bool
+
+# Get
+Reads the value of the specified variable.
+
+I/O Types None → Any
+
+Parameters
+Name String/Var(Any)
+Key Any
+Global Bool
+Default Any
 
 # String.Ends
 This shard checks if the input string ends with the string specified in the With parameter. If the input string does contain the string specified, the shard will output true. Otherwise, it will output false.
@@ -1884,6 +2253,11 @@ Checks the input value if it is of type Int. The shard will return true if the i
 
 I/O Types Any → Bool
 
+# Or
+Computes the logical OR between the input of this shard and the output of the next shard. If the input is true, the flow stops and succeeds; if false, the flow continues with the next shard. Typically used within conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional flow, it might restart the current wire, which can be used as a trick in certain scenarios.
+
+I/O Types Bool → Bool
+
 # Acos (Math.Acos)
 This shard calculates the inverse cosine of the given input, where the input is the cosine value. The output is the angle in radians whose cosine is the input value.
 
@@ -1936,6 +2310,15 @@ I/O Types Float4 → Float4
 
 Parameters
 Operand Float4/Var(Float4)
+
+# Swap
+Swaps the values of the two variables passed to it via `First` and `Second` parameters.
+
+I/O Types Any → Any
+
+Parameters
+First Var(Any)
+Second Var(Any)
 
 # Reverse
 This shard reverses the order of the elements in the input sequence or string.

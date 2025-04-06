@@ -12,9 +12,11 @@
     _name_ core;                                                                                                         \
     std::string lastError;                                                                                               \
     SHVar outputStorage;                                                                                                 \
+    static inline ShardMetadata metadata;                                                                                \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
+    result->metadata = &metadata;                                                                                        \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_namespace_ "." #_name_; });                       \
     result->hash = static_cast<SHHashProc>([](Shard *shard) {                                                            \
       return ::shards::constant<::shards::crc32(#_namespace_ "." #_name_ SHARDS_CURRENT_ABI_STR)>::value;                \
@@ -45,9 +47,11 @@
     _name_ core;                                                                                                         \
     std::string lastError;                                                                                               \
     SHVar outputStorage;                                                                                                 \
+    static inline ShardMetadata metadata{"core"};                                                                        \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
+    result->metadata = &_name_##Runtime::metadata;                                                                       \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_name_; });                                        \
     result->hash = static_cast<SHHashProc>(                                                                              \
         [](Shard *shard) { return ::shards::constant<::shards::crc32(#_name_ SHARDS_CURRENT_ABI_STR)>::value; });        \
@@ -71,16 +75,18 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
-#define RUNTIME_SHARD_TYPE(_namespace_, _name_) \
-  struct _name_##Runtime {                      \
-    Shard header;                               \
-    _name_ core;                                \
-    std::string lastError;                      \
-    SHVar outputStorage;                        \
+#define RUNTIME_SHARD_TYPE(_namespace_, _name_)   \
+  struct _name_##Runtime {                        \
+    Shard header;                                 \
+    _name_ core;                                  \
+    std::string lastError;                        \
+    SHVar outputStorage;                          \
+    static inline ShardMetadata metadata{"core"}; \
   };
 #define RUNTIME_SHARD_FACTORY(_namespace_, _name_)                                                                       \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
+    result->metadata = &_name_##Runtime::metadata;                                                                       \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_namespace_ "." #_name_; });                       \
     result->hash = static_cast<SHHashProc>([](Shard *shard) {                                                            \
       return ::shards::constant<::shards::crc32(#_namespace_ "." #_name_ SHARDS_CURRENT_ABI_STR)>::value;                \
@@ -105,16 +111,19 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
-#define RUNTIME_CORE_SHARD_TYPE(_name_) \
-  struct _name_##Runtime {              \
-    Shard header;                       \
-    _name_ core;                        \
-    std::string lastError;              \
-    SHVar outputStorage;                \
+#define RUNTIME_CORE_SHARD_TYPE(_name_)           \
+  struct _name_##Runtime {                        \
+    Shard header;                                 \
+    _name_ core;                                  \
+    std::string lastError;                        \
+    SHVar outputStorage;                          \
+    static inline ShardMetadata metadata{"core"}; \
   };
+
 #define RUNTIME_CORE_SHARD_FACTORY(_name_)                                                                               \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
+    result->metadata = &_name_##Runtime::metadata;                                                                       \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_name_; });                                        \
     result->hash = static_cast<SHHashProc>(                                                                              \
         [](Shard *shard) { return ::shards::constant<::shards::crc32(#_name_ SHARDS_CURRENT_ABI_STR)>::value; });        \

@@ -54,7 +54,9 @@ ForEach({
       Is("Comment") | Or ; might just create confusion
       Is("Reduce") | Or ; this is an alias of Fold
       Is("WriteFile") | Or ; avoid fs ops files for now
-      Is("ReadFile") ; avoid fs ops for now
+      Is("ReadFile") | Or ; avoid fs ops for now
+      Is("Pack") | Or ; avoid packing for now
+      Is("Unpack") ; avoid unpacking for now
     } {
       Log("Skipping shard")
     } {
