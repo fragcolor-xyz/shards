@@ -12,8 +12,8 @@ x = 5          ❌ Not a container being filled
 x += 1         ❌ Not incrementing a stored value
 
 ; Shards data flow thinking (CORRECT):
-5 >= x         ✅ Creates a channel named 'x' and flows 5 into it
-x | Add(1) > x   ✅ Takes flow from x, adds 1, and channels it back
+5 >= x         ✅ Creates a variable named 'x' and channels 5 into it
+x | Add(1) > x   ✅ Takes flow from x, adds 1, and channels it back into x
 ```
 
 ## Basic Syntax
@@ -189,6 +189,59 @@ Once({
   "" >= message
 })
 ```
+
+## Flow Behavior in Blocks
+
+In Shards, understanding how data flows through blocks is essential:
+
+### Sequential vs. Parallel Flow
+
+```shards
+; Sequential flow - each operation receives previous result
+5 | {
+  Add(1)     ; Result: 6
+  Mul(2)     ; Result: 12 (6×2)
+  IsMore(10) ; Result: true (12>10)
+} | Log      ; Outputs: true
+
+; Parallel flow - each sub-block receives original input
+5 | {
+  {Add(1) | Log}     ; Outputs: 6
+  {Mul(2) | Log}     ; Outputs: 10 (5×2)
+  {IsMore(3) | Log}  ; Outputs: true (5>3)
+}
+```
+
+### The Universal Standard
+
+In Shards, data flow is the fundamental principle:
+
+1. Input flows through the pipe operator `|` to operations
+2. Operations receive their input from the flow
+3. Nested blocks within ANY construct receive input from their parent flow
+4. NO explicit references (like $0) are strictly needed - the value flows naturally
+
+This is the standard behavior across the language and applies to virtually all shards and constructs (Cond, If, Match, etc.), though specific shards may have their own flow behavior (like ForRange providing the index).
+
+### Examples of Universal Flow
+
+```shards
+; In condition blocks
+number | When({IsMore(10)} {"Big" | Log})  ; IsMore receives 'number'
+
+; In match patterns
+value | Match([
+  "A" {"Matched A" | Log}  ; Each action receives 'value'
+  none {Log}  ; Logs the original value
+])
+
+; In loops
+[1 2 3] | ForEach({
+  Mul(2) | Log  ; Each element flows directly to Mul
+})
+```
+
+Remember: In Shards, explicit references are less needed - the value flows naturally through the system. This is the standard behavior unless documentation specifies otherwise.
 
 ## Sub Blocks for Multiple Operations
 

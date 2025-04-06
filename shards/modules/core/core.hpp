@@ -3958,7 +3958,8 @@ struct RLimit {
 
 struct ForRangeShard {
   static SHOptionalString help() {
-    return SHCCSTR("Executes a series of shards while an iteration value is within a specified range (inclusive).");
+    return SHCCSTR("Executes a series of shards while an iteration value is within a specified range (inclusive). Action input "
+                   "is the current index, not the input.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -4089,7 +4090,7 @@ struct IntRangeShard {
 
   SeqVar _output{};
 
-  static SHOptionalString help() { return SHCCSTR("Returns a sequence of integers from Start (inclusive) to End (inclusive)."); }
+  static SHOptionalString help() { return SHCCSTR("Outputs a sequence of integers from Start (inclusive) to End (inclusive)."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Input is ignored"); }

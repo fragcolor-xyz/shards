@@ -4519,10 +4519,7 @@ impl Shard for EvalShard {
         }
       };
 
-      match transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
-        shlog_error!("failed to transform shards into wire: {:?}", e);
-        "failed to transform shards into wire"
-      }) {
+      match transform_env(&mut env, "_anonymous_wire_") {
         Ok(wire) => {
           output_table.0.insert_fast_static("error", &Var::default());
           output_table.0.insert_fast_static("wire", &wire.0.into());
@@ -4530,7 +4527,7 @@ impl Shard for EvalShard {
           return Ok(Some(self.output.0));
         }
         Err(e) => {
-          let error_var = Var::ephemeral_string(e);
+          let error_var = Var::ephemeral_string(&e.message);
           output_table.0.insert_fast_static("error", &error_var);
           output_table.0.insert_fast_static("wire", &Var::default());
           self.output = output_table.to_cloned();

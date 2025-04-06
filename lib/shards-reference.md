@@ -694,7 +694,7 @@ Computes the squared magnitude of a float vector of any dimension and outputs th
 I/O Types Float2/[Float2]/Float3/[Float3]/Float4/[Float4] → Float
 
 # IntRange
-Returns a sequence of integers from Start (inclusive) to End (inclusive).
+Outputs a sequence of integers from Start (inclusive) to End (inclusive).
 
 I/O Types None → [Int]
 
@@ -1733,7 +1733,7 @@ Converts various input types to a vector of Four Float elements. If a single val
 I/O Types Any → Any
 
 # ForRange
-Executes a series of shards while an iteration value is within a specified range (inclusive).
+Executes a series of shards while an iteration value is within a specified range (inclusive). Action input is the current index, not the input.
 
 I/O Types Any → Any
 
