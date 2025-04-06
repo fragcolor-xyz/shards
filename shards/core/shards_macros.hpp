@@ -12,11 +12,9 @@
     _name_ core;                                                                                                         \
     std::string lastError;                                                                                               \
     SHVar outputStorage;                                                                                                 \
-    static inline ShardMetadata metadata;                                                                                \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
-    result->metadata = &metadata;                                                                                        \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_namespace_ "." #_name_; });                       \
     result->hash = static_cast<SHHashProc>([](Shard *shard) {                                                            \
       return ::shards::constant<::shards::crc32(#_namespace_ "." #_name_ SHARDS_CURRENT_ABI_STR)>::value;                \
