@@ -814,8 +814,8 @@ struct IfBlock {
 
 struct Match {
   static SHOptionalString help() {
-    return SHCCSTR("Compares the input with the declared cases (in order of the declaration) and activates the shard of the "
-                   "first matched case.");
+    return SHCCSTR("Compares the input with the declared cases EXACT values (use Cond for more complex matching logic) in order "
+                   "of the declaration and activates the shard of the first matched case.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }

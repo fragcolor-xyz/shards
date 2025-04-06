@@ -1824,7 +1824,7 @@ This shard calculates the inverse hyperbolic cosine of the given input, where th
 I/O Types Float/Float2/Float3/Float4/Color/[Any] → Float/Float2/Float3/Float4/Color/[Any]
 
 # Match
-Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case.
+Compares the input with the declared cases EXACT values (use Cond for more complex matching logic) in order of the declaration and activates the shard of the first matched case.
 
 I/O Types Any → Any
 
