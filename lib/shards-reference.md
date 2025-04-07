@@ -1507,7 +1507,7 @@ Params
 Value: Any
 
 # Log
-Logs the output of a shard or the value of a variable to the console along with an optional prefix string. The logging level can be specified to control the verbosity of the log output.
+Logs the output of a shard or the value of a variable to the console along with an optional prefix string (note that the system will add a `:` to the prefix). The logging level can be specified to control the verbosity of the log output.
 
 In: The value to be logged to the console. (Any)
 Out: The same value that was inputted, unmodified. (Any)
@@ -1672,7 +1672,7 @@ Value: Float/Float2/Float3/Float4/Int/Int2/Int3/Int4/Int8/Int16/[Any]
 Threshold: Float/Int
 
 # Return
-Stops the current flow and outputs the provided input. This shard is used to exit the execution of the current wire early within loops or conditional flows, returning the specified input.
+Stops the current flow and outputs the provided input. This shard is used to exit the execution of the current wire early as well as to short circuit within loops (Repeat, ForEach, etc), returning the specified input.
 
 In: The input to return (when supported) and stop the flow. (Any)
 Out: This shard does not produce an output as it stops the flow. (None)

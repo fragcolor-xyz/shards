@@ -52,7 +52,8 @@ struct Log : public LoggingBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The same value that was inputted, unmodified."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("Logs the output of a shard or the value of a variable to the console along with an optional prefix string. "
+    return SHCCSTR("Logs the output of a shard or the value of a variable to the console along with an optional prefix string "
+                   "(note that the system will add a `:` to the prefix). "
                    "The logging level can be specified to control the verbosity of the log output.");
   }
 
