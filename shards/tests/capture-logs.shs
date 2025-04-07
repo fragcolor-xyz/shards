@@ -1,38 +1,45 @@
-@mesh(root)
+@mesh(sub-mesh)
+@mesh(root-mesh)
 
-@wire(inline-capture {
-  Sequence(log Type: @type([Type::String])) |
-  Repeat({
-    Msg("Hello shards!") |
-    CaptureLog(
-      Size: 8
-      MinLevel: "trace"
-      Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
-    ) > log
-  } Times: 16)
-  log | Msg("Captured log")
-} Looped: true)
-
-@schedule(root inline-capture)
-@run(root 0.05 1) | Assert.Is(true)
-
-@wire(capture {
-  CaptureLog(
-    Size: 8
-    MinLevel: "trace"
-    Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
-    Suspend: true
-  ) | ExpectStringSeq = log
-  Count(log) | Msg("Got log messages")
-} Looped: true)
-
-@wire(detach-capture {
+@wire(b {
   Once({
-    Detach(capture)
+    0 >= v
   })
-  Pause(0.4) |
-  Msg("Hello shards!")
+  Log("From sub-wire 0")
+  Log("From sub-wire 1" Level: LogLevel::Error)
+  
+  Maybe({
+    IntRange(0 32) | TryMany({
+      Log("ParallelLog")
+      "This should fail quietly" | Fail
+    })
+  } Silent: true)
+  Maybe({
+    Log("Before suspend silently")
+    Pause(0.1)
+    Log("After suspend silently")
+  } Silent: true)
+  Math.Inc(v)
+  Msg("Incremented")
 } Looped: true)
 
-@schedule(root detach-capture)
-@run(root 0.1 16) | Assert.Is(true)
+@wire(a {
+  Pause(0.2)
+  CaptureLog({
+    ; Step sub-wires
+    Once({
+      0 >= fc
+    })
+    fc | Log("> in")
+    Branch([b] Mesh: sub-mesh)
+    fc | Log("< out")
+    Math.Inc(fc)
+  } Silent: true Format: "-- [proc: %P] [block: %p] %v --")
+  ForEach({
+    Msg($0 Raw: true)
+    ; Pass
+  })
+} Looped: true)
+
+@schedule(root-mesh a)
+@run(root-mesh Iterations: 100 FPS: 10)
