@@ -7,7 +7,7 @@
 #include <sstream>
 
 namespace shards::logging {
-class TimeKeeper {
+struct TimeKeeper {
 public:
   TimeKeeper() { startTime = std::chrono::high_resolution_clock::now(); }
 

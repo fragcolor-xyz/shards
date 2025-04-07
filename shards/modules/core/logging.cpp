@@ -214,7 +214,7 @@ struct CaptureLog {
   std::shared_ptr<logging::TimeKeeper> _timeKeeper;
   std::unique_ptr<spdlog::pattern_formatter> _formatter;
 
-  CaptureLog2() {
+  CaptureLog() {
     // Default format
     _format = Var("[%l] %v");
     _silent = Var(true);
@@ -233,7 +233,6 @@ struct CaptureLog {
 
   logging::ThreadContext createScopedLogContext() {
     bool passThrough = !_silent.payload.boolValue;
-    const char *pattern = _format.payload.stringValue;
     return logging::ThreadContext([this, passThrough](const spdlog::details::log_msg &msg) {
       spdlog::memory_buf_t mb;
       _formatter->format(msg, mb);
