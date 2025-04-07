@@ -368,6 +368,7 @@ Maybe({
 ; Create global variables accessible from any wire
 0 | Set(global-counter Global: true)
 "shared" | Set(global-message Global: true)
+"value" | Set(global-table "key" Global: true)
 
 ; Access globals from any wire
 @wire(some-wire {
