@@ -95,6 +95,8 @@ struct Search : public Common {
   static inline Type SeqOfSeqType = Type::SeqOf(CoreInfo::StringSeqType);
   static SHTypesInfo outputTypes() { return SeqOfSeqType; }
 
+  void cleanup(SHContext *context) { _seqs = {}; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     std::smatch match;
     _subject.assign(input.payload.stringValue, SHSTRLEN(input));
@@ -116,6 +118,7 @@ struct Search : public Common {
       }
       _subject.assign(match.suffix());
     }
+
     SHVar out1{.valueType = SHType::Seq};
     out1.payload.seqValue.elements = _seqs.data();
     out1.payload.seqValue.len = idx;

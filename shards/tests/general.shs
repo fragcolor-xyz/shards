@@ -941,7 +941,7 @@
   {Take([1 2 3]) | Assert.Is([91 117 93] true)}
   
   "How many many do you see?"
-  Regex.Search("""many""") = twomany
+  Regex.Search("""many""") | Log("Regex Search-1") = twomany
   Count(twomany) | Assert.Is(2 true)
   
   ToBytes
