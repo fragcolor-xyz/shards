@@ -54,6 +54,17 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
           throw ShaderComposeError(fmt::format("Incompatible operand types left:{}, right:{}", typeA, typeB));
       }
 
+      if (typeB.numComponents != typeA.numComponents) {
+        auto maybeCastToVec = [](std::unique_ptr<IWGSLGenerated> &op, NumType &type, size_t numTargetComponents) {
+          if (type.numComponents == 1) {
+            type.numComponents = numTargetComponents;
+            op = std::make_unique<WGSLBlock>(type, blocks::makeCompoundBlock(fmt::format("{}(", getWGSLTypeName(type)), op->toBlock(), ")"));
+          }
+        };
+        maybeCastToVec(operandA, typeA, typeB.numComponents);
+        maybeCastToVec(operandB, typeB, typeA.numComponents);
+      }
+
       if constexpr (has_call<TOp>::value) {
         // generate `call(A, B)`
         context.setWGSLTop<WGSLBlock>(
@@ -206,10 +217,12 @@ struct OperatorTan {
 
 struct OperatorMax {
   static inline const char *call = "max";
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorMin {
   static inline const char *call = "min";
+  static inline NumType validateTypes(NumType a, NumType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorPow {
