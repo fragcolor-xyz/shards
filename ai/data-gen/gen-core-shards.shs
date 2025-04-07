@@ -45,8 +45,11 @@
 ; Initialize markdown document
 "# Shards Reference\n\n" >= markdown-doc
 
-Shards.Enumerate("core") = shards
-{Count(shards) | Log("Total Shards")}
+Shards.Enumerate("core") >> shards
+Shards.Enumerate("random") >> shards
+
+shards | Flatten = all-shards
+{Count(all-shards) | Log("Total Shards")}
 ForEach({
   If({
       String.Starts(With: "_") | Or ; private shards
@@ -95,56 +98,60 @@ ForEach({
         }
       )
       
-      ; Prepare I/O Types section
-      "I/O Types " >= io-types-section
+      "In: " | AppendTo(shard-doc-md)
+      
+      docs:inputHelp | When(IsNot("") {
+        ExpectString | AppendTo(shard-doc-md)
+        " " | AppendTo(shard-doc-md)
+      })
       
       ; Get input types
       docs:inputTypes | ExpectSeq = input-types
       
-      ; Format input types
-      "" >= formatted-input-types
       input-types | When(IsNot([]) {
+        {"(" | AppendTo(shard-doc-md)}
         ForEach({
           $0 | ExpectTable = tt
           @resolve-type-id((tt:type)) = tn
           tt:name | When(IsNot("") {
-            [(tt:name) "/"] | String.Format | AppendTo(io-types-section)
+            [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
-      })
-      
-      io-types-section | When(String.Ends(With: "/") {
-        io-types-section | Slice(To: -1) > io-types-section
+        shard-doc-md | Slice(To: -1) > shard-doc-md ; remove trailing slash
+        ")" | AppendTo(shard-doc-md)
       })
       
       ; Add arrow
-      " → " | AppendTo(io-types-section)
+      "\nOut: " | AppendTo(shard-doc-md)
+      
+      docs:outputHelp | When(IsNot("") {
+        ExpectString | AppendTo(shard-doc-md)
+        " " | AppendTo(shard-doc-md)
+      })
       
       ; Get output types
       docs:outputTypes | ExpectSeq = output-types
       
-      ; Format output types
       output-types | When(IsNot([]) {
+        {"(" | AppendTo(shard-doc-md)}
         ForEach({
           $0 | ExpectTable = tt
           @resolve-type-id((tt:type)) = tn
           tt:name | When(IsNot("") {
-            [(tt:name) "/"] | String.Format | AppendTo(io-types-section)
+            [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
-      })
-      
-      io-types-section | When(String.Ends(With: "/") {
-        io-types-section | Slice(To: -1) > io-types-section
+        shard-doc-md | Slice(To: -1) > shard-doc-md ; remove trailing slash
+        ")" | AppendTo(shard-doc-md)
       })
       
       ; Add the I/O Types section to the documentation
-      [io-types-section "\n\n"] | String.Format | AppendTo(shard-doc-md)
+      "\n\n" | AppendTo(shard-doc-md)
       
       ; Add parameters if available
       docs:parameters | ExpectSeq = parameters
       parameters | When(IsNot([]) {
-        {"Parameters\n" | AppendTo(shard-doc-md)}
+        {"Params\n" | AppendTo(shard-doc-md)}
         ForEach({
           ExpectTable
           {Take("name") = param-name}
@@ -157,7 +164,7 @@ ForEach({
           {Take("types") = param-types}
           
           ; Start with parameter name
-          [param-name " "] | String.Format | AppendTo(shard-doc-md)
+          [param-name ": "] | String.Format | AppendTo(shard-doc-md)
           
           ; Format parameter types in a compact way
           param-types | When(IsNotNone {

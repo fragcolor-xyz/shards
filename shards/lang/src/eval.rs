@@ -4527,7 +4527,8 @@ impl Shard for EvalShard {
           return Ok(Some(self.output.0));
         }
         Err(e) => {
-          let error_var = Var::ephemeral_string(&e.message);
+          let error_message = format!("{}, line {}", e.message, e.loc.line);
+          let error_var = Var::ephemeral_string(&error_message);
           output_table.0.insert_fast_static("error", &error_var);
           output_table.0.insert_fast_static("wire", &Var::default());
           self.output = output_table.to_cloned();

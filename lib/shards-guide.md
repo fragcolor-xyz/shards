@@ -4,7 +4,7 @@
 
 Shards is a data flow programming language where data flows through operations using the pipe `|` operator. Think of it as a river system rather than containers:
 
-> You might already know an old version of the syntax that was inspired by LISP but actually now Shards uses a completely different custom syntax!
+> You might already know an old version of the syntax that was inspired by LISP but actually now Shards uses a completely different CUSTOM syntax!
 
 ```shards
 ; Traditional imperative thinking (WRONG):
@@ -88,6 +88,8 @@ sequence | Take([0 2 4]) ; Get elements at indices 0, 2, and 4
 value >> sequence        ; Append to sequence
 Erase(2 sequence)        ; Remove element at index 2
 Erase([0 1] sequence)    ; Remove elements at multiple indices
+[0 "new-value"] | Assoc(sequence)  ; Update or create a field in a table using Assoc and a sequence of index to insert at and value
+"new-value" | Insert(0 sequence)  ; Insert a value at a specific index
 ```
 
 ### Tables
@@ -104,13 +106,14 @@ Erase([0 1] sequence)    ; Remove elements at multiple indices
 } >= person
 
 ; Accessing
-person:name              ; Access via colon syntax
+person:name              ; Access via colon sugar syntax, notice this is valid ONLY when reading values from a table and the key is a string (NOT A VARIABLE)
 person | Take("age")     ; Access via Take
 
 ; Modifying
 "Bob" | Update(person "name")   ; Update field
 Erase("city" person)            ; Remove field
 Erase(["name" "age"] person)    ; Remove multiple fields
+["name" "Bob"] | Assoc(person)  ; Update or create a field in a table using Assoc and a sequence of key and value
 ```
 
 ## String Operations
