@@ -201,7 +201,7 @@ struct Sinks {
 
 #if SH_EMSCRIPTEN
     emscriptenSink = std::make_shared<EmscriptenSink>();
-    distSink->add_sink(emscriptenSink);
+    mainSink->add_sink(emscriptenSink);
 #endif
 
     initStdErrSink();
@@ -209,7 +209,7 @@ struct Sinks {
     // Setup android logcat output
 #if SH_ANDROID
     androidSink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
-    distSink->add_sink(androidSink);
+    mainSink->add_sink(androidSink);
 #endif
 
     if (Config::DefaultStdOutLogLevel) {
