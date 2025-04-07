@@ -733,8 +733,9 @@ struct Return {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("Stops the current flow and outputs the provided input. This shard is used to exit the execution of the "
-                   "current wire early within loops or conditional flows, returning the specified input.");
+    return SHCCSTR(
+        "Stops the current flow and outputs the provided input. This shard is used to exit the execution of the current wire "
+        "early as well as to short circuit within loops (Repeat, ForEach, etc), returning the specified input.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The input to return (when supported) and stop the flow."); }
