@@ -134,6 +134,7 @@ struct TranslationBlockRef {
   blocks::Block *block{};
   IAppender *appender{};
   VariableStorage variables;
+  std::unique_ptr<IWGSLGenerated> input;
 
   std::map<std::string, VirtualSeq> virtualSequences;
 
@@ -210,6 +211,8 @@ public:
   }
 
   TempVariableAllocator &getTempVariableAllocator() { return tempVariableAllocator; }
+
+  std::unique_ptr<IWGSLGenerated> getInput();
 
   // Add a new generated shader blocks without entering it
   template <typename T> void addNew(std::unique_ptr<T> &&ptr) {
