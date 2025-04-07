@@ -1077,7 +1077,6 @@ struct SHLError {
 };
 
 struct SHLAst {
-  /// of Program ast object, ref counted, count at 0 when returned, receiver must clone it!
   struct SHVar ast;
   struct SHLError error;
 };

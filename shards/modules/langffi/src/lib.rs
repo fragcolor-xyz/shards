@@ -100,7 +100,7 @@ pub extern "C" fn shards_load_ast(bytes: *const u8, size: u32, out_ast: *mut SHL
   match decoded_bin {
     Ok(p) => {
       unsafe {
-        (*out_ast).ast = Var::new_ref_counted(p, &AST_TYPE);
+        shards::core::cloneVar(&mut (*out_ast).ast, &Var::new_ref_counted(p, &AST_TYPE));
       }
       true
     }
