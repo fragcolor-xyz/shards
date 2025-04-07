@@ -12,6 +12,7 @@
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>
 #include <shards/core/wire_doppelganger_pool.hpp>
+#include <shards/log/log.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <chrono>
