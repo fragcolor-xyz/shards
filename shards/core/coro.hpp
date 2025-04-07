@@ -57,8 +57,8 @@ private:
   std::atomic_bool isRunning;
 
   std::optional<boost::thread> thread;
-  logging::ThreadContext* srcLogContext{};
-  logging::ThreadContext* logContext;
+  logging::LogContext* srcLogContext{};
+  logging::LogContext* logContext;
 
 public:
   ThreadFiber() = default;
@@ -81,6 +81,7 @@ using Fiber = ThreadFiber;
 #define SH_CORO_NEED_STACK_MEM 1
 #define SH_BOOST_COROUTINE 1
 #include <boost/context/continuation.hpp>
+#include <shards/log/log.hpp>
 namespace shards {
 struct SHStackAllocator {
   size_t size{SH_BASE_STACK_SIZE};

@@ -36,6 +36,7 @@ private:
   mutable std::vector<SHTypeInfo> _cachedObjectTypes;
 
 public:
+  Brancher() { mesh->inheritLogContext = true; } 
   ~Brancher() { cleanup(nullptr); }
 
   // Adds a single wire or sequence of shards as a looped wire

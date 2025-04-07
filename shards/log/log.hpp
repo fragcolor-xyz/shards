@@ -10,29 +10,35 @@
 namespace shards::logging {
 
 struct ShardsSink;
-struct ThreadContext {
+struct LogContext {
   using CB = bool(const spdlog::details::log_msg &);
-  ThreadContext() { push(); }
-  ThreadContext(std::function<CB> intercept) : intercept(std::move(intercept)) { push(); }
-  ~ThreadContext() { pop(); }
-  ThreadContext(const ThreadContext &) = delete;
-  ThreadContext &operator=(const ThreadContext &) = delete;
-  ThreadContext(ThreadContext &&other);
-  ThreadContext &operator=(ThreadContext &&other) = delete;
+  using Cloned = std::vector<std::function<CB>>;
+  LogContext() { push(); }
+  LogContext(std::function<CB> intercept) : intercept(std::move(intercept)) { push(); }
+  ~LogContext() { pop(); }
+  LogContext(const LogContext &) = delete;
+  LogContext &operator=(const LogContext &) = delete;
+  LogContext(LogContext &&other);
+  LogContext &operator=(LogContext &&other) = delete;
+
+  // Asuuming this is the root log context, set it's parent
+  void linkRootTo(LogContext *other);
+  // Unsafe, unlinks this context from it's parent, should only be called on a root context (coro/thread)
+  void unlink();
 
   // Return false to prevent handling the log message
   std::function<CB> intercept;
 
-  static ThreadContext *source();
-  // Use as fork(src) on a new thread, where src is aquired from source() on the origin thread
-  // This is only safe if the called context outlives the new context
-  static ThreadContext fork(ThreadContext *from);
-
 private:
   void push();
   void pop();
-  ThreadContext *prev{};
+  LogContext *prev{};
   friend struct ::shards::logging::ShardsSink;
+};
+
+struct ThreadState {
+  LogContext *current{};
+  static ThreadState &get();
 };
 
 typedef std::shared_ptr<spdlog::logger> Logger;

@@ -138,11 +138,12 @@ struct Config {
   }
 };
 
-static thread_local ThreadContext *threadContext{};
+static thread_local ThreadState threadState{};
 
 struct ShardsSink : public spdlog::sinks::dist_sink_mt {
   void sink_it_(const spdlog::details::log_msg &msg) override {
-    ThreadContext *pp = threadContext;
+    auto &threadState_ = threadState;
+    LogContext *pp = threadState_.current;
     while (pp) {
       if (pp->intercept) {
         if (!pp->intercept(msg))
@@ -155,32 +156,34 @@ struct ShardsSink : public spdlog::sinks::dist_sink_mt {
   }
 };
 
-ThreadContext::ThreadContext(ThreadContext &&other) {
-  shassert(threadContext == &other);
+LogContext::LogContext(LogContext &&other) {
+  shassert(threadState.current == &other);
   other.pop();
   this->intercept = other.intercept;
   push();
 }
 
-void ThreadContext::push() {
-  prev = threadContext;
-  threadContext = this;
+void LogContext::linkRootTo(LogContext *other) {
+  shassert(prev == nullptr);
+  shassert(other != this);
+  prev = other;
 }
-void ThreadContext::pop() {
-  if (this == threadContext) {
-    threadContext = prev;
-  }
+
+void LogContext::unlink() {
+  prev = nullptr;
+}
+
+void LogContext::push() {
+  prev = threadState.current;
+  threadState.current = this;
+}
+
+void LogContext::pop() {
+  shassert(this == threadState.current);
+  threadState.current = prev;
 };
 
-ThreadContext *ThreadContext::source() { return threadContext; }
-ThreadContext ThreadContext::fork(ThreadContext *from) {
-  if (from && from->intercept) {
-    // Copy the intercept function
-    return ThreadContext{from->intercept};
-  }
-  // Blank
-  return ThreadContext();
-}
+ThreadState &ThreadState::get() { return threadState; }
 
 struct Sinks {
   std::shared_mutex lock;
