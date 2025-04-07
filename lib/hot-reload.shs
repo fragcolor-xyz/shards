@@ -40,10 +40,12 @@
       script-path | Maybe({FS.LastWriteTime} {0}) | Memoize({
         script-path | Log("Triggered change on script")
         Maybe({
-            script-path | FS.Read | Shards.Read(AstType::Object
+            script-path | FS.Read | Shards.Read(AstType::AdvancedObject
               BasePath: (script-path | FS.Parent)
               Include: include-dirs
             )
+            {Take("dependencies") | Log("deps" Level: LogLevel::Trace) = deps}
+            Take("ast")
             Shards.Distill(
               Context: @capture-eval-context
               Name: #(script-path | FS.Filename(true))
@@ -101,8 +103,8 @@
       )
     })
   })
-  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json) 
-  Regex.Replace("""_we""" (["_we" rnd] | String.Format)) 
+  Regex.Replace("""\{"id":\{"name":"wrapper-id"\}\}""" wrapper-name-id-json)
+  Regex.Replace("""_we""" (["_we" rnd] | String.Format))
   Regex.Replace("""_wt""" (["_wt" rnd] | String.Format))
   = body-shards-1
   

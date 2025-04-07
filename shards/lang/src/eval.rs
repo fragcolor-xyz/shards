@@ -4387,7 +4387,7 @@ impl Default for EvalShard {
 #[shard_impl]
 impl Shard for EvalShard {
   fn input_types(&mut self) -> &Types {
-    &read::READ_OUTPUT_TYPES
+    &read::AST_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
