@@ -413,7 +413,7 @@ struct Maybe : public BaseSubFlow {
   shards::Var _output;
   const SHVar &activate(SHContext *context, const SHVar &input) {
     if (likely(_shards)) {
-      logging::ThreadContext ctx{[&](const spdlog::details::log_msg &msg) { return !_silent; }};
+      logging::LogContext ctx{[&](const spdlog::details::log_msg &msg) { return !_silent; }};
       auto state = _shards.activate(context, input, _output);
       if (state == SHWireState::Error) {
         shassert(_self);

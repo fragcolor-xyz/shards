@@ -1558,9 +1558,13 @@ struct ParallelBase : public CapturingSpawners {
 
     // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
     tf::Semaphore semaphore(std::max<size_t>(1, _threads));
-    auto logSrc = logging::ThreadContext::source();
-    flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
-      logging::ThreadContext ctx = logging::ThreadContext::fork(logSrc);
+    auto outerLogCtx = shards::logging::ThreadState::get().current;
+    flow.for_each_index(size_t(0), len, size_t(1), [&, outerLogCtx](auto &idx) {
+      auto &logState = shards::logging::ThreadState::get();
+      auto prevLogContext = logState.current;
+      DEFER({ logState.current = prevLogContext; });
+      logState.current = outerLogCtx;
+
       if (_policy == WaitUntil::FirstSuccess && anySuccess) {
         // Early exit if FirstSuccess policy
         return;
@@ -1573,6 +1577,7 @@ struct ParallelBase : public CapturingSpawners {
         mesh = SHMesh::make();
         auto parentMesh = context->main->mesh.lock();
         mesh->parent = bool(parentMesh) ? parentMesh.get() : nullptr; // we need this for any storage
+        mesh->inheritLogContext = true;
       }
 
       ManyWire *cref;
@@ -2296,6 +2301,7 @@ public:
     case 3:
       if (value.valueType == SHType::None) {
         _brancher.mesh = SHMesh::make();
+        _brancher.mesh->inheritLogContext = true;
       } else {
         auto sharedMesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(value.payload.objectValue);
         _brancher.mesh = *sharedMesh;

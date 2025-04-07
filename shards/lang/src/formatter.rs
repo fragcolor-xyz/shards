@@ -691,10 +691,11 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     let str = self.filter(pair.as_str());
     self.write_atom(&str);
   }
-  fn v_end(&mut self, pair: Pair<Rule>) {
+  fn v_end(&mut self, _pair: Pair<Rule>) {
     // Manually done to measure final newline
     let mut has_final_newline = false;
-    if let Some(us) = self.extract_styling(pair.as_span().end()) {
+    let end = self.input.len();
+    if let Some(us) = self.extract_styling(end) {
       for (i, line) in us.lines.iter().enumerate() {
         match line {
           UserLine::Newline => {

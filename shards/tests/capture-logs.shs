@@ -1,4 +1,3 @@
-@mesh(sub-mesh)
 @mesh(root-mesh)
 
 @wire(b {
@@ -14,6 +13,9 @@
       "This should fail quietly" | Fail
     })
   } Silent: true)
+  Await({
+    Log("Log from await")
+  })
   Maybe({
     Log("Before suspend silently")
     Pause(0.1)
@@ -23,23 +25,101 @@
   Msg("Incremented")
 } Looped: true)
 
+@define(captured-log "captured.log")
+@captured-log | When(FS.IsFile FS.Remove)
+
 @wire(a {
-  Pause(0.2)
+  Pause(0.0)
   CaptureLog({
     ; Step sub-wires
     Once({
       0 >= fc
     })
     fc | Log("> in")
-    Branch([b] Mesh: sub-mesh)
+    Branch([b])
     fc | Log("< out")
     Math.Inc(fc)
-  } Silent: true Format: "-- [proc: %P] [block: %p] %v --")
+  } Silent: true MinLevel: LogLevel::Info Format: "-- [proc: %P] [block: %p] %v --")
+  Pause(0.0)
   ForEach({
-    Msg($0 Raw: true)
-    ; Pass
+    "captured.log" | FS.Write(([$0 "\n"] | String.Format) Append: true)
   })
 } Looped: true)
 
 @schedule(root-mesh a)
-@run(root-mesh Iterations: 100 FPS: 10)
+@run(root-mesh FPS: 10 Iterations: 20) | Assert.Is(true)
+
+@wire(maybe-curr-log {
+  CaptureLog({
+    Maybe({
+        Msg("Hi")
+        "Unknown Error" | Fail
+      } {
+        CurrentCaptureLog
+        {= l | Count(l) | Assert.Is(3)}
+        {Take(0) | Assert.Is("[maybe-curr-log] Hi")}
+        {Take(1) | String.Starts("Fail -> Error") | Assert.Is(true)}
+        {Take(2) | String.Starts("Maybe shard Ignored an error") | Assert.Is(true)}
+        ForEach(Log("The log"))
+      }
+    )
+  } MinLevel: LogLevel::Info Format: "%v")
+})
+@schedule(root-mesh maybe-curr-log)
+@run(root-mesh) | Assert.Is(true)
+
+@wire(a1 {
+  CaptureLog({
+    Log("Starting a1 wire")
+    [1 2 3] | TryMany({
+      Log("Attempting operation in TryMany")
+    })
+  } Silent: true) | ForEach(Log("alog"))
+  {= i | Count(i) | Assert.Is(4)}
+  ; Assert.Is([
+  ;   "[info] [a1] Starting a1 wire: none"
+  ;   "[info] [inline-shards-2] Attempting operation in TryMany: 3"
+  ;   "[info] [inline-shards-1] Attempting operation in TryMany: 2"
+  ;   "[info] [inline-shards-0] Attempting operation in TryMany: 1"
+  ; ])
+})
+
+@wire(c1 {
+  Log("Executing c1 wire (Do)")
+})
+
+@wire(d1 {
+  Log("Executing d1 wire (Step)")
+})
+
+@wire(e1 {
+  Log("e1 wire execution (SwitchTo)")
+})
+
+@wire(b1 {
+  CaptureLog({
+    Log("Starting b1 wire")
+    Pause(0.0)
+    Await({
+      Log("Processing in Await block")
+    })
+    
+    Do(c1)
+    Step(d1)
+    Pause(0.0)
+    SwitchTo(e1)
+    Pause(0.0)
+  } Silent: true) | ForEach(Log("blog"))
+  {= i | Count(i) | Assert.Is(4)}
+  ; Assert.Is([
+  ;   "[info] [b1] Starting b1 wire: none"
+  ;   "[info] [b1] Processing in Await block: none"
+  ;   "[info] [c1] Executing c1 wire (Do): none"
+  ;   "[info] [d1] Executing d1 wire (Step): none"
+  ; ])
+})
+
+
+@schedule(root-mesh a1)
+@schedule(root-mesh b1)
+@run(root-mesh) | Assert.Is(true)

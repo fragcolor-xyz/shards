@@ -17,6 +17,7 @@
 #include "pmr/wrapper.hpp"
 #include "pmr/unordered_map.hpp"
 #include "pmr/shared_temp_allocator.hpp"
+#include <shards/log/log.hpp>
 #include "shards_macros.hpp"
 #include "foundation.hpp"
 #include "inline.hpp"
@@ -121,6 +122,11 @@ struct SHContext {
   SHDuration next{};
 
   entt::delegate<void()> meshThreadTask;
+
+  // This is used when this wire is being stepped, by linking this log context to the parent
+  std::optional<shards::logging::LogContext> linkedLogContext;
+  shards::logging::LogContext *prevLogContext{nullptr};
+  bool isResumed{};
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -304,67 +310,10 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
-#ifdef SH_VERBOSE_COROUTINES_LOGGING
-#define SH_CORO_RESUMED_LOG(_wire)                   \
-  {                                                  \
-    SHLOG_TRACE("> Resumed wire {}", (_wire)->name); \
-  }
-#define SH_CORO_SUSPENDED_LOG(_wire)                   \
-  {                                                    \
-    SHLOG_TRACE("> Suspended wire {}", (_wire)->name); \
-  }
-#define SH_CORO_EXT_RESUME_LOG(_wire)               \
-  {                                                 \
-    SHLOG_TRACE("Resuming wire {}", (_wire)->name); \
-  }
-#define SH_CORO_EXT_SUSPEND_LOG(_wire)                \
-  {                                                   \
-    SHLOG_TRACE("Suspending wire {}", (_wire)->name); \
-  }
-#else
-#define SH_CORO_RESUMED_LOG(_wire)
-#define SH_CORO_SUSPENDED_LOG(_wire)
-#define SH_CORO_EXT_RESUME_LOG(_wire)
-#define SH_CORO_EXT_SUSPEND_LOG(_wire)
-#endif
-
-#if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire)                                                \
-  {                                                                           \
-    shards::pushThreadName((_wire)->threadNameStrings.init(_wire).resumeStr); \
-    SH_CORO_RESUMED_LOG(_wire)                                                \
-  }
-#define SH_CORO_SUSPENDED(_wire)   \
-  {                                \
-    shards::popThreadName();       \
-    SH_CORO_EXT_SUSPEND_LOG(_wire) \
-  }
-#define SH_CORO_EXT_RESUME(_wire)                                                \
-  {                                                                              \
-    shards::pushThreadName((_wire)->threadNameStrings.init(_wire).extResumeStr); \
-    TracyCoroEnter(_wire);                                                       \
-    SH_CORO_EXT_RESUME_LOG(_wire);                                               \
-  }
-#define SH_CORO_EXT_SUSPEND(_wire) \
-  {                                \
-    shards::popThreadName();       \
-    TracyCoroExit(_wire);          \
-    SH_CORO_EXT_SUSPEND_LOG(_wire) \
-  }
-#else
-#define SH_CORO_RESUMED(_wire) SH_CORO_RESUMED_LOG(_wire)
-#define SH_CORO_SUSPENDED(_wire) SH_CORO_SUSPENDED_LOG(_wire)
-#define SH_CORO_EXT_RESUME(_wire) \
-  {                               \
-    TracyCoroEnter(_wire);        \
-    SH_CORO_EXT_RESUME_LOG(_wire) \
-  }
-#define SH_CORO_EXT_SUSPEND(_wire) \
-  {                                \
-    TracyCoroExit(_wire);          \
-    SH_CORO_EXT_SUSPEND_LOG(_wire) \
-  }
-#endif
+void coroResumed(SHWire *wire);
+void coroSuspended(SHWire *wire);
+void coroExtResume(SHWire *wire);
+void coroExtSuspend(SHWire *wire);
 
 inline void prepare(SHWire *wire) {
   shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
@@ -385,9 +334,9 @@ inline void prepare(SHWire *wire) {
   wire->coro.emplace();
 #endif
 
-  SH_CORO_EXT_RESUME(wire);
+  coroExtResume(wire);
   wire->coro->init(runner);
-  SH_CORO_EXT_SUSPEND(wire);
+  coroExtSuspend(wire);
 }
 
 inline void start(SHWire *wire, SHVar input = {}) {
@@ -424,9 +373,9 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
       shassert(wire->context && "Wire has no context!");
       shassert(coroutineValid(wire->coro) && "Wire has no coroutine!");
 
-      SH_CORO_EXT_RESUME(wire);
+      coroExtResume(wire);
       coroutineResume(wire->coro);
-      SH_CORO_EXT_SUSPEND(wire);
+      coroExtSuspend(wire);
 
       // if we have a task to run, run it and resume coro without yielding to caller
       if (unlikely(wire->context && (bool)wire->context->meshThreadTask)) {
@@ -768,6 +717,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
   SHMesh *parent{nullptr};
 
+  // When set to true, wires run on this mesh will inherit the logging context
+  bool inheritLogContext{};
+
   // up to the users to call .update on this, we internally use just "trigger", which is instant
   mutable entt::dispatcher dispatcher{};
 
@@ -1003,9 +955,9 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
 
     // after suspend context might be invalid!
     auto currentWire = context->currentWire();
-    SH_CORO_SUSPENDED(currentWire);
+    coroSuspended(currentWire);
     coroutineResume(*rootContext->continuation); // on root context!
-    SH_CORO_RESUMED(currentWire);
+    coroResumed(currentWire);
 
     shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
     shassert(!rootContext->meshThreadTask && "Context still has a mesh thread task!");

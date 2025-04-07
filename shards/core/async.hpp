@@ -8,6 +8,7 @@
 
 #include <shards/shards.h>
 #include <shards/utility.hpp>
+#include <shards/log/log.hpp>
 #include "utils.hpp"
 #include "runtime.hpp"
 
@@ -144,7 +145,7 @@ struct TidePool {
 
   void controllerWorker() {
     using namespace shards::literals;
-    
+
     pushThreadName("TidePool controller"_ns);
 
     // spawn workers first
@@ -220,16 +221,23 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   return func();
 #else
   struct BlockingCall : TidePool::Work {
-    BlockingCall(FUNC &&func) : func(std::move(func)), exp(), res(), complete(false) {}
+    BlockingCall(FUNC &&func, logging::LogContext *logContext)
+        : func(std::move(func)), exp(), res(), complete(false), logContext(logContext) {}
 
     FUNC &&func;
 
     std::exception_ptr exp;
     SHVar res;
     std::atomic_bool complete;
+    logging::LogContext *logContext;
 
     virtual void call() {
       ZoneScopedNC("awaitne-work", 0xFF00FF00);
+
+      auto &logState = logging::ThreadState::get();
+      auto prevLogContext = logState.current;
+      DEFER({ logState.current = prevLogContext; });
+      logState.current = logContext;
 
       try {
         res = func();
@@ -238,7 +246,7 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
       }
       complete = true;
     }
-  } call{std::forward<FUNC>(func)};
+  } call{std::forward<FUNC>(func), logging::ThreadState::get().current};
 
   context->onWorkerThread = true;
   DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));

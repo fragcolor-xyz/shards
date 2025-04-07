@@ -191,6 +191,41 @@ SHVar logsChangeLevelActivation(const SHVar &input) {
   return input;
 }
 
+struct LogCaptureContext {
+  static inline const char VariableName[] = "Logging.CaptureBuffer";
+  static constexpr uint32_t TypeId = 'LcPT';
+  static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}};
+  static inline const SHOptionalString VariableDescription = SHCCSTR("The log capture context.");
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
+
+  oneapi::tbb::concurrent_queue<spdlog::memory_buf_t> _messages;
+  std::vector<spdlog::memory_buf_t> _stringBuffer;
+
+  void drain() {
+    // Now flush the queue into the output sequence
+    auto size = _messages.unsafe_size();
+    auto ofs = _stringBuffer.size();
+    _stringBuffer.resize(ofs + size);
+    for (size_t i = 0; i < size; i++) {
+      spdlog::memory_buf_t &msg = _stringBuffer[ofs + i];
+      if (!_messages.try_pop(msg)) {
+        _stringBuffer.resize(ofs + i);
+        break;
+      }
+    }
+  }
+
+  static void stringBufferInto(std::vector<spdlog::memory_buf_t> &stringBuffer, SeqVar &sv) {
+    sv.resize(stringBuffer.size());
+    for (size_t i = 0; i < stringBuffer.size(); i++) {
+      spdlog::memory_buf_t &msg = stringBuffer[i];
+      sv[i] = OwnedVar::Foreign(std::string_view(msg.data(), msg.size()));
+    }
+  }
+};
+typedef shards::RequiredContextVariable<LogCaptureContext, LogCaptureContext::Type, LogCaptureContext::VariableName>
+    RequiredLogCaptureContext;
+
 struct CaptureLog {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
@@ -203,40 +238,55 @@ struct CaptureLog {
 
   PARAM(ShardsVar, _content, "Content", "The content of the log message", {CoreInfo::Shards})
   PARAM_VAR(_silent, "Silent", "Whether to suppress log output", {CoreInfo::BoolType})
-  PARAM_VAR(_format, "Format", "Custom format pattern for log messages (%P will record the process's life time, %p will record the shard's life time)", {CoreInfo::StringType})
-  PARAM_IMPL(PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_silent), PARAM_IMPL_FOR(_format));
+  PARAM_VAR(
+      _format, "Format",
+      "Custom format pattern for log messages (%P will record the process's life time, %p will record the shard's life time)",
+      {CoreInfo::StringType})
+  PARAM_VAR(_minLevel, "MinLevel", "The minimum level of logs to capture", {Enums::LogLevelEnumInfo::Type})
+  PARAM_IMPL(PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_silent), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_minLevel));
 
-  oneapi::tbb::concurrent_queue<spdlog::memory_buf_t> _messages;
-  std::vector<spdlog::memory_buf_t> _stringBuffer;
   SeqVar _seqView;
   bool _passThrough{};
   const char *_pattern{};
   std::shared_ptr<logging::TimeKeeper> _timeKeeper;
   std::unique_ptr<spdlog::pattern_formatter> _formatter;
 
+  LogCaptureContext _ctx;
+  ParamVar _captureContext;
+
   CaptureLog() {
     // Default format
     _format = Var("[%l] %v");
-    _silent = Var(true);
+    _silent = Var(false);
     _timeKeeper = std::make_shared<logging::TimeKeeper>();
     _formatter = std::make_unique<spdlog::pattern_formatter>("%v", spdlog::pattern_time_type::local, "");
     _formatter->add_flag<logging::ProcessTimeFlag>('P', logging::getProcessTimeKeeper());
     _formatter->add_flag<logging::ProcessTimeFlag>('p', _timeKeeper);
+    _minLevel = Var::Enum(Enums::LogLevel::Info, Enums::LogLevelEnumInfo::Type);
+    _captureContext = Var::ContextVar(LogCaptureContext::VariableName);
   }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _content.compose(data);
+    ExposedInfo inner(data.shared);
+    inner.push_back(RequiredLogCaptureContext::getExposedTypeInfo());
+    SHInstanceData dataInner = data;
+    dataInner.shared = SHExposedTypesInfo(inner);
+    _content.compose(dataInner);
     return outputTypes().elements[0];
   }
 
-  logging::ThreadContext createScopedLogContext() {
+  logging::LogContext createScopedLogContext() {
     bool passThrough = !_silent.payload.boolValue;
-    return logging::ThreadContext([this, passThrough](const spdlog::details::log_msg &msg) {
+    auto minLevel = spdlog::level::level_enum(_minLevel.payload.enumValue);
+    return logging::LogContext([this, passThrough, minLevel](const spdlog::details::log_msg &msg) {
+      if (int(msg.level) < int(minLevel)) {
+        return passThrough;
+      }
       spdlog::memory_buf_t mb;
       _formatter->format(msg, mb);
-      _messages.emplace(std::move(mb));
+      _ctx._messages.emplace(std::move(mb));
       return passThrough;
     });
   }
@@ -247,10 +297,15 @@ struct CaptureLog {
     _formatter->set_pattern(_format.payload.stringValue);
     auto $ = createScopedLogContext();
     // Warmup after so we can collect warmup logs
+    _captureContext.warmup(context);
+    assignVariableValue(_captureContext.get(), Var::Object(&_ctx, LogCaptureContext::Type));
     PARAM_WARMUP(context);
   }
 
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _captureContext.cleanup(context);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     {
@@ -260,16 +315,50 @@ struct CaptureLog {
     }
 
     // Now flush the queue into the output sequence
-    auto size = _messages.unsafe_size();
-    _stringBuffer.resize(size);
-    _seqView.resize(size);
-    for (size_t i = 0; i < size; i++) {
-      spdlog::memory_buf_t &msg = _stringBuffer[i];
-      if (_messages.try_pop(msg)) {
-        _seqView[i] = OwnedVar::Foreign(std::string_view(msg.data(), msg.size()));
-      }
-    }
+    _ctx.drain();
+    LogCaptureContext::stringBufferInto(_ctx._stringBuffer, _seqView);
     return _seqView;
+  }
+};
+
+struct CurrentCaptureLog {
+  RequiredLogCaptureContext _captureContext;
+
+  SeqVar _output;
+  std::vector<std::string> _tmpBuffer;
+
+  SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+
+  PARAM_IMPL();
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _captureContext.compose(data, _requiredVariables);
+    return CoreInfo::StringSeqType;
+  }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _captureContext.warmup(context);
+  }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _output.clear();
+    _tmpBuffer.clear();
+    _captureContext.cleanup();
+  }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _captureContext.get()->drain();
+    auto &src = _captureContext.get()->_stringBuffer;
+    _tmpBuffer.resize(src.size());
+    _output.resize(src.size());
+    for (size_t i = 0; i < src.size(); i++) {
+      spdlog::memory_buf_t &msg = src[i];
+      auto &dst = _tmpBuffer[i];
+      dst = std::string(msg.data(), msg.size());
+      _output[i] = OwnedVar::Foreign(std::string_view(dst.data(), dst.size()));
+    }
+    return _output;
   }
 };
 
@@ -301,6 +390,7 @@ SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("LogType", LogType);
   REGISTER_SHARD("Msg", Msg);
   REGISTER_SHARD("CaptureLog", CaptureLog);
+  REGISTER_SHARD("CurrentCaptureLog", CurrentCaptureLog);
   REGISTER_SHARD("FlushLog", LogFlush);
   REGISTER_SHARD("SetLogLevel", LogChangeLevel);
   REGISTER_ENUM(Enums::LogLevelEnumInfo);
