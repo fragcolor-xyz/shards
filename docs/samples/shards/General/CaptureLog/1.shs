@@ -1,3 +1,4 @@
-Msg("Hello shards!")
-CaptureLog(Size: 24 MinLevel: "info" Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
+CaptureLog({
+  Msg("Hello shards!")
+} Format: "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
 ExpectStringSeq
