@@ -200,6 +200,9 @@ struct LogicOrTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(") { return true; }"));
+    if (auto inp = context.getInput()) {
+      context.wgslTop = std::move(inp);
+    }
   }
 };
 
@@ -210,6 +213,9 @@ struct LogicAndTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>("if(!("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(")) { return false; }"));
+    if (auto inp = context.getInput()) {
+      context.wgslTop = std::move(inp);
+    }
   }
 };
 
