@@ -4,6 +4,10 @@
 @include("../../lib/hot-reload.shs")
 @define(some-toggle true)
 
+@wire(shared-wire {
+  Log("shared")
+})
+
 @maybe-hot-reload("hot-reload-1.shs" [zero one])
 @maybe-hot-reload("hot-reload-2.shs" [three])
 
