@@ -3,6 +3,7 @@
 })
 
 @wire(zero {
+  none | Do(shared-wire)
   @log-tmpl("Hello 000")
 })
 
