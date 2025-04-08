@@ -442,6 +442,14 @@ pub extern "C" fn shardsRegister_langffi_langffi(core: *mut shards::shardsc::SHC
     shards::fourCharacterCode(*b"ASTa"),
     info,
   );
+
+  let mut info = shards::SHObjectInfo::default();
+  info.name = shards::cstr!("Shards.Context").as_ptr() as shards::SHString;
+  shards::core::register_object_type_internal(
+    shards::types::FRAG_CC,
+    shards::fourCharacterCode(*b"shev"),
+    info,
+  );
 }
 
 /// Please note it will consume `from` but not `to`
