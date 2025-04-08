@@ -34,17 +34,25 @@
       
       Once({
         Table(hot-result Type: @type({tag: Type::Int none: Type::Wire}))
+        Sequence(dependencies Type: @type([Type::String]))
         {tag: 0} > hot-result
       })
       
-      script-path | Maybe({FS.LastWriteTime} {0}) | Memoize({
-        script-path | Log("Triggered change on script")
+      Maybe({
+        dependencies | Map({FS.LastWriteTime}) >= sub-lwt
+        script-path | FS.LastWriteTime | PrependTo(sub-lwt)
+        sub-lwt
+      } {[0]}) = timestamps
+      
+      timestamps | Memoize({
+        [script-path timestamps] | Log("Triggered change on script" Level: LogLevel::Debug)
         Maybe({
-            script-path | FS.Read | Shards.Read(AstType::AdvancedObject
+            script-path | FS.Read | Shards.Read(
               BasePath: (script-path | FS.Parent)
               Include: include-dirs
+              OutputType: AstType::AdvancedObject
             )
-            {Take("dependencies") | Log("deps" Level: LogLevel::Trace) = deps}
+            {Take("dependencies") | Log("Script dependencies" Level: LogLevel::Trace) > dependencies}
             Take("ast")
             Shards.Distill(
               Context: @capture-eval-context
