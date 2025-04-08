@@ -525,17 +525,34 @@ pub enum ObjectInfoId<'a> {
   String(&'a str),
 }
 
+pub fn find_object_type_id(name: &str) -> Option<i64> {
+  let name = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len() as u64,
+  };
+  let id = unsafe { shards_find_object_type_id(name) };
+  if id == 0 {
+    None
+  } else {
+    Some(id)
+  }
+}
+
+pub fn find_object_type_vendor_type_pair(name: &str) -> Option<(i32, i32)> {
+  let id = find_object_type_id(name)?;
+  // Convert to unsigned first to ensure proper bit manipulation
+  let unsigned_id = id as u64;
+  Some((
+    (unsigned_id >> 32) as i32,
+    (unsigned_id & 0xFFFFFFFF) as i32,
+  ))
+}
+
 pub fn get_object_info(id: ObjectInfoId) -> Option<&'static SHObjectInfo> {
   let id = match id {
     ObjectInfoId::Int(id) => id,
     ObjectInfoId::VendorTypePair(vendor, type_) => (vendor as i64) << 32 | type_ as i64,
-    ObjectInfoId::String(name) => {
-      let name = SHStringWithLen {
-        string: name.as_ptr() as *const c_char,
-        len: name.len() as u64,
-      };
-      unsafe { shards_find_object_type_id(name) }
-    }
+    ObjectInfoId::String(name) => find_object_type_id(name).unwrap_or(0),
   };
   let object_info = unsafe { shards_get_object_info(id) };
   if object_info.is_null() {

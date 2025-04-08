@@ -8,15 +8,13 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
-use clap::error::ContextKind;
 use nanoid::nanoid;
-use shards::cstr;
 use shards::fourCharacterCode;
 use shards::ref_counted_object_type_impl;
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
-use shards::types::ExposedInfo;
+use shards::types::find_object_type_vendor_type_pair;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::SeqVar;
@@ -2231,6 +2229,46 @@ fn process_ast(func: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(SVar::Cloned(s.into()))
 }
 
+fn parse_vendor_or_object_id(
+  value: &Value,
+  err_msg: &'static str,
+  line_info: &LineInfo, // assuming this type, replace with the actual one
+) -> Result<i32, ShardsError> {
+  // assuming this Error type, replace with the actual one
+  match value {
+    Value::Number(n) => match n {
+      Number::Integer(v) => i32::try_from(*v).map_err(|_| {
+        (
+          format!("{} failed to parse parameter as integer", err_msg),
+          *line_info,
+        )
+          .into()
+      }),
+      Number::Hexadecimal(v) => {
+        let v = &v[2..];
+        i32::from_str_radix(v, 16).map_err(|_| {
+          (
+            format!("{} failed to parse parameter as hexadecimal", err_msg),
+            *line_info,
+          )
+            .into()
+        })
+      }
+      _ => Err(
+        (
+          format!(
+            "{} requires both parameters as integer or hexadecimal",
+            err_msg
+          ),
+          *line_info,
+        )
+          .into(),
+      ),
+    },
+    _ => Err((format!("{} failed to parse number", err_msg), *line_info).into()),
+  }
+}
+
 fn process_type(
   func: &Function,
   line_info: LineInfo,
@@ -2263,13 +2301,46 @@ fn process_type(
       })
       .unwrap_or(Ok(false))?;
 
-    let vendor_id = param_helper.get_param_by_name_or_index("ObjectVendor", 3);
-    let object_id = param_helper.get_param_by_name_or_index("ObjectTypeId", 4);
+    let mut vendor_id = param_helper
+      .get_param_by_name_or_index("ObjectVendor", 3)
+      .map(|param| {
+        parse_vendor_or_object_id(
+          &param.value,
+          "type built-in function, when Type::Object",
+          &line_info,
+        )
+      });
+
+    let mut object_id = param_helper
+      .get_param_by_name_or_index("ObjectTypeId", 4)
+      .map(|param| {
+        parse_vendor_or_object_id(
+          &param.value,
+          "type built-in function, when Type::Object",
+          &line_info,
+        )
+      });
+
+    if let Some(object_name) = param_helper.get_param_by_name_or_index("ObjectName", 5) {
+      let object_name = match &object_name.value {
+        Value::String(s) => s.as_str(),
+        _ => return Err(("Object parameter must be a string", line_info).into()),
+      };
+      match find_object_type_vendor_type_pair(object_name) {
+        Some((ven_id, obj_id)) => {
+          vendor_id = Some(Ok(ven_id));
+          object_id = Some(Ok(obj_id));
+        }
+        None => {
+          return Err(("Object parameter must be a valid object name", line_info).into());
+        }
+      }
+    }
 
     let mut type_ = process_type_desc(&type_.value, input_type, line_info, e)?;
 
     match (vendor_id, object_id) {
-        (Some(vendor_id), Some(object_id)) => {
+        (Some(Ok(vendor_id)), Some(Ok(object_id))) => {
           // fix up the type
             let native_type = unsafe {type_.as_mut().payload.__bindgen_anon_1.typeValue};
             let native_type = unsafe {&mut *native_type};
@@ -2282,36 +2353,6 @@ fn process_type(
                   .into(),
               )
             }
-
-          fn parse_vendor_or_object_id(
-              value: &Value,
-              err_msg: &'static str,
-              line_info: &LineInfo // assuming this type, replace with the actual one
-          ) -> Result<i32, ShardsError> { // assuming this Error type, replace with the actual one
-              match value {
-                  Value::Number(n) => match n {
-                      Number::Integer(v) => i32::try_from(*v).map_err(|_| {
-                          (format!("{} failed to parse parameter as integer", err_msg), *line_info).into()
-                      }),
-                      Number::Hexadecimal(v) => {
-                        let v = &v[2..];
-                        i32::from_str_radix(v, 16).map_err(|_| {
-                          (format!("{} failed to parse parameter as hexadecimal", err_msg), *line_info).into()
-                      })},
-                      _ => Err((
-                          format!("{} requires both parameters as integer or hexadecimal", err_msg),
-                          *line_info,
-                      ).into())
-                  },
-                  _ => Err((
-                      format!("{} failed to parse number", err_msg),
-                      *line_info,
-                  ).into())
-              }
-          }
-
-          let vendor_id = parse_vendor_or_object_id(&vendor_id.value, "type built-in function, when Type::Object", &line_info)?;
-          let object_id = parse_vendor_or_object_id(&object_id.value, "type built-in function, when Type::Object", &line_info)?;
 
           native_type.details.object.vendorId = vendor_id;
           native_type.details.object.typeId = object_id;
@@ -4280,10 +4321,11 @@ pub fn register_extension<T: ShardsExtension>(ext: Arc<dyn ShardsExtension>, env
 
 lazy_static::lazy_static! {
    // both types are any, as they can be none
-   static ref DISTILL_FULL_OUTPUT_TYPES: Vec<Type> = vec![common_type::any, common_type::any,];
+   static ref DISTILL_FULL_OUTPUT_TYPES: Vec<Type> = vec![common_type::any, common_type::any, common_type::any];
    static ref DISTILL_FULL_OUTPUT_KEYS: Vec<Var> = vec![
      shards::shstr!("error").into(),
      shards::shstr!("wire").into(),
+     shards::shstr!("env").into(),
    ];
    static ref DISTILL_OUTPUT_TYPE: Type =
      Type::table(&DISTILL_FULL_OUTPUT_KEYS, &DISTILL_FULL_OUTPUT_TYPES);
@@ -4514,15 +4556,21 @@ impl Shard for EvalShard {
           let error_var = Var::ephemeral_string(&error_message);
           output_table.0.insert_fast_static("error", &error_var);
           output_table.0.insert_fast_static("wire", &Var::default());
+          output_table.0.insert_fast_static("env", &Var::default());
           self.output = output_table.to_cloned();
           return Ok(Some(self.output.0));
         }
       };
 
+      let captured_env = capture_eval_context(&mut env);
+
       match transform_env(&mut env, "_anonymous_wire_") {
         Ok(wire) => {
           output_table.0.insert_fast_static("error", &Var::default());
           output_table.0.insert_fast_static("wire", &wire.0.into());
+          output_table
+            .0
+            .insert_fast_static("env", &captured_env.0.into());
           self.output = output_table.to_cloned();
           return Ok(Some(self.output.0));
         }
@@ -4531,6 +4579,7 @@ impl Shard for EvalShard {
           let error_var = Var::ephemeral_string(&error_message);
           output_table.0.insert_fast_static("error", &error_var);
           output_table.0.insert_fast_static("wire", &Var::default());
+          output_table.0.insert_fast_static("env", &Var::default());
           self.output = output_table.to_cloned();
           return Ok(Some(self.output.0));
         }
