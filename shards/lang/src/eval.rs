@@ -4562,12 +4562,11 @@ impl Shard for EvalShard {
         }
       };
 
-      let captured_env = capture_eval_context(&mut env);
-
       match transform_env(&mut env, "_anonymous_wire_") {
         Ok(wire) => {
           output_table.0.insert_fast_static("error", &Var::default());
           output_table.0.insert_fast_static("wire", &wire.0.into());
+          let captured_env = capture_eval_context(&mut env);
           output_table
             .0
             .insert_fast_static("env", &captured_env.0.into());
