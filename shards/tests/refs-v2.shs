@@ -1,11 +1,29 @@
-{
-  config: {
-    title: ""
-    value: 3
-  }
-  elements: []
-} >= tbl
+; {
+;   config: {
+;     title: ""
+;     value: 3
+;   }
+;   elements: []
+; } >= tbl
 
-tbl:config = cfg
-cfg:title = title
-{} > cfg
+; tbl:config = cfg
+; cfg:title = title
+; ; {title: "test" value: 100} > cfg
+
+Once({
+  2 >= v
+})
+v
+
+@wire(a {
+  v | Log("v 0")
+})
+Do(a)
+
+@wire(b {
+  "hello" >= v
+  v | Log("v 1")
+})
+Do(b)
+
+v Log("v 2")

@@ -84,6 +84,17 @@ struct FlowAnalysis {
   ShardAnnotationState annotations;
 };
 
+struct Variable {
+  size_t id;
+  std::string_view name;
+  SHExposedTypeInfo type;
+};
+
+struct VariableBlockId {
+  size_t id;
+  pmr::unordered_map<std::string_view, Variable> variables;
+};
+
 struct Scope {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
   Scope(std::allocator_arg_t, allocator_type a);
@@ -94,6 +105,8 @@ struct Scope {
   pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   pmr::unordered_set<SHExposedTypeInfo> required;
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
+
+  pmr::vector<VariableBlockId> variableBlocks;
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -114,8 +127,13 @@ struct CompositionContext {
   shards::pmr::vector<compose::Scope*> scopePool;
   shards::pmr::vector<compose::Scope*> stack;
 
+  size_t idAllocator{};
+
   CompositionContext();
   ~CompositionContext();
+
+  Variable* findVariable(std::string_view name);
+  Variable* insertVariable(std::string_view name, SHExposedTypeInfo type);
 
   compose::Scope &pushScope(std::optional<SHTypeInfo> inputType = std::nullopt);
   void popScope();

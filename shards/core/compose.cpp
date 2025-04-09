@@ -103,7 +103,7 @@ void CompositionContext::step() {
     data.wire = scope->wire;
     data.inputType = previousOutput;
     // data.requiredVariables = scope->fullRequired;
-    data.privateContext = (SHPrivateContext*)this;
+    data.privateContext = (SHPrivateContext *)this;
     if (scope->next) {
       data.outputTypes = scope->next->inputTypes(scope->next);
     }
@@ -280,6 +280,38 @@ void CompositionContext::step() {
         scope->required.emplace(match);
     }
   }
+}
+
+Variable *CompositionContext::findVariable(std::string_view name) {
+  size_t ss = stack.size();
+  for (size_t i0 = 0; i0 < ss; i0++) {
+    size_t idx0 = ss - i0 - 1;
+    auto &scope = stack[idx0];
+    size_t bs = scope->variableBlocks.size();
+    for (size_t i1 = 0; i1 < bs; i1++) {
+      size_t idx1 = bs - i1 - 1;
+      auto &block = scope->variableBlocks[idx1];
+      auto it = block.variables.find(name);
+      if (it != block.variables.end()) {
+        return &it->second;
+      }
+    }
+  }
+  return nullptr;
+}
+
+Variable *CompositionContext::insertVariable(std::string_view name, SHExposedTypeInfo type) {
+  auto existing = findVariable(name);
+  auto &scope = currentScope();
+  if (existing) {
+    // Create a new variable block
+    auto &block = scope.variableBlocks.emplace_back(VariableBlockId{idAllocator++, {}});
+    existing = &block.variables[name];
+  } else {
+    if(scope.variableBlocks.
+    auto &block = scope.variableBlocks.emplace_back(VariableBlockId{idAllocator++, {}});
+  }
+  return existing;
 }
 
 compose::Scope &CompositionContext::pushScope(std::optional<SHTypeInfo> inputType) {
@@ -779,7 +811,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
 } // namespace shards
 void SHMesh::prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
   shards::CompositionContext privateContext;
-  data.privateContext = (SHPrivateContext*)&privateContext;
+  data.privateContext = (SHPrivateContext *)&privateContext;
   try {
     auto validation = shards::composeWire(wire.get(), data);
     shards::arrayFree(validation.exposedInfo);
