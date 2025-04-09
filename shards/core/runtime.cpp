@@ -908,16 +908,15 @@ void coroResumed(SHContext *context) {
   context->isResumed = true;
 #endif
 
+  auto &logTs = shards::logging::ThreadState::get();
   if (context->linkedLogContext) {
     // Push thread logging state
-    auto &logTs = shards::logging::ThreadState::get();
     auto prevContext = logTs.current;
     std::swap(context->prevLogContext, logTs.current);
     // Reattach the parent log context, in case we are stepping from somewhere else
     context->linkedLogContext->linkRootTo(prevContext);
   } else {
     // Push thread logging state
-    auto &logTs = shards::logging::ThreadState::get();
     std::swap(context->prevLogContext, logTs.current);
   }
 }
