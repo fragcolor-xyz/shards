@@ -126,7 +126,10 @@ struct SHContext {
   // This is used when this wire is being stepped, by linking this log context to the parent
   std::optional<shards::logging::LogContext> linkedLogContext;
   shards::logging::LogContext *prevLogContext{nullptr};
+
+#if SH_DEBUG
   bool isResumed{};
+#endif
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -310,8 +313,8 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
-void coroResumed(SHWire *wire);
-void coroSuspended(SHWire *wire);
+void coroResumed(SHContext *context);
+void coroSuspended(SHContext *context);
 void coroExtResume(SHWire *wire);
 void coroExtSuspend(SHWire *wire);
 
@@ -955,9 +958,9 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
 
     // after suspend context might be invalid!
     auto currentWire = context->currentWire();
-    coroSuspended(currentWire);
+    coroSuspended(context);
     coroutineResume(*rootContext->continuation); // on root context!
-    coroResumed(currentWire);
+    coroResumed(context);
 
     shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
     shassert(!rootContext->meshThreadTask && "Context still has a mesh thread task!");

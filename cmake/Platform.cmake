@@ -112,9 +112,12 @@ if(CMAKE_HOST_WIN32)
   SET(CMAKE_NINJA_FORCE_RESPONSE_FILE ON CACHE INTERNAL "" FORCE)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_definitions(SH_DEBUG=1)
+endif()
 if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # define SH_RELWITHDEBINFO to enable some extra debug asserts
-  add_compile_definitions(SH_RELWITHDEBINFO)
+  add_compile_definitions(SH_RELWITHDEBINFO=1)
 endif()
 
 option(SHARDS_MIN_DEBUG_INFO "Use minimal debug info" OFF)

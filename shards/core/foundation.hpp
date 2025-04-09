@@ -1262,6 +1262,12 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 #define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
   DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
+  
+#ifdef __COUNTER__
+#define SH_GENSYM(str) SH_CAT(str, __COUNTER__)
+#else
+#define SH_GENSYM(str) SH_CAT(str, __LINE__)
+#endif
 
 #define SH_CONCAT1(_a_, _b_) _a_##_b_
 #define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
