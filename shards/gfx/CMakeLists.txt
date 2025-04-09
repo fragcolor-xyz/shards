@@ -1,5 +1,3 @@
-option(SH_DEBUG "Enable context debug mode by default" OFF)
-
 set(GFX_SOURCES
   culling.cpp
   context.cpp
