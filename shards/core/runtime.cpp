@@ -890,7 +890,7 @@ void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, cons
   }
 }
 
-void coroResumed(SHContext *context) {
+ALWAYS_INLINE void coroResumed(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
     return;
@@ -921,7 +921,7 @@ void coroResumed(SHContext *context) {
   }
 }
 
-void coroSuspended(SHContext *context) {
+ALWAYS_INLINE void coroSuspended(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
     return;
@@ -948,7 +948,7 @@ void coroSuspended(SHContext *context) {
   std::swap(context->prevLogContext, logTs.current);
 }
 
-void coroExtResume(SHWire *wire) {
+ALWAYS_INLINE void coroExtResume(SHWire *wire) {
   if (!wire)
     return;
 
@@ -963,7 +963,7 @@ void coroExtResume(SHWire *wire) {
 #endif
 }
 
-void coroExtSuspend(SHWire *wire) {
+ALWAYS_INLINE void coroExtSuspend(SHWire *wire) {
   if (!wire)
     return;
 
