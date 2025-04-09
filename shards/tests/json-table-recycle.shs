@@ -1,0 +1,12 @@
+@wire(parser {
+  FromJson | Log
+})
+
+"""{"id":"adf601a4-baed-48c3-865f-b4383842a632","object":"chat.completion.chunk","created":1744188449,"model":"deepseek-reasoner","system_fingerprint":"fp_5417b77867_prod0225","choices":[{"index":0,"delta":{"content":null,"reasoning_content":" to"},"logprobs":null,"finish_reason":null}]}"""
+Ref(before)
+
+"""{"id":"adf601a4-baed-48c3-865f-b4383842a632","object":"chat.completion.chunk","created":1744188449,"model":"deepseek-reasoner","system_fingerprint":"fp_5417b77867_prod0225","choices":[{"index":0,"delta":{"content":"/","reasoning_content":null},"logprobs":null,"finish_reason":null}]}"""
+Ref(after)
+
+before | Do(parser)
+after | Do(parser)
