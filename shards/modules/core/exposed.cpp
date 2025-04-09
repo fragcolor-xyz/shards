@@ -21,10 +21,10 @@ struct Isolate {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+  // Use this directly, don't use PARAM_REQUIRED_VARIABLES()
+  SHExposedTypesInfo requiredInfo() { return _contents.composeResult().requiredInfo; }
 
+  SHTypeInfo compose(SHInstanceData &data) {
     ExposedInfo innerShared;
     for (auto &s : data.shared) {
       bool match{};
