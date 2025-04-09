@@ -49,8 +49,10 @@ struct Isolate {
         }
       }
 
-      if (match)
+      if (match) {
+        SHLOG_DEBUG("Isolate: adding shared var: {}", s.name);
         innerShared.push_back(s);
+      }
     }
 
     SHInstanceData tmpData = data;
@@ -58,11 +60,10 @@ struct Isolate {
     tmpData.shared = SHExposedTypesInfo(innerShared);
     auto cr = _contents.compose(tmpData);
 
-    // SHLOG_INFO("== Isolated Reqs ==");
-    // for(auto& req : cr.requiredInfo) {
-    //   _requiredVariables.push_back(req);
-    //   SHLOG_INFO(" >{}", req.name);
-    // }
+    SHLOG_DEBUG("== Isolated Reqs ==");
+    for (auto &req : cr.requiredInfo) {
+      SHLOG_DEBUG(" >{}", req.name);
+    }
 
     return cr.outputType;
   }
