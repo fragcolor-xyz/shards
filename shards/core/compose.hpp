@@ -145,7 +145,7 @@ struct CompositionContext {
 
   shards::pmr::PolymorphicAllocator<> getAllocator() { return tempAllocator.getAllocator(); }
 
-  static CompositionContext &get(const SHInstanceData &data) { return *static_cast<CompositionContext *>(data.privateContext); }
+  static CompositionContext &get(const SHInstanceData &data) { return *reinterpret_cast<CompositionContext *>(data.privateContext); }
 
   Scope &currentScope() { return *stack.back(); }
   compose::FlowAnalysis &current() { return currentScope().flow; }
@@ -167,5 +167,5 @@ private:
 } // namespace compose
 using compose::CompositionContext;
 } // namespace shards
-
+struct SHPrivateContext  : public shards::CompositionContext {};
 #endif /* CDA366C4_E8D0_474B_AFA2_F66229C830BB */

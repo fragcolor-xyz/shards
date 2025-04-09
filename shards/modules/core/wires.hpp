@@ -130,7 +130,7 @@ struct BaseRunner : public WireBase {
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
+    // dataCopy.requiredVariables = &wire->requirements;
 
     auto res = WireBase::compose(dataCopy);
 

@@ -102,8 +102,8 @@ void CompositionContext::step() {
     data.shard = scope->bottom;
     data.wire = scope->wire;
     data.inputType = previousOutput;
-    data.requiredVariables = scope->fullRequired;
-    data.privateContext = this;
+    // data.requiredVariables = scope->fullRequired;
+    data.privateContext = (SHPrivateContext*)this;
     if (scope->next) {
       data.outputTypes = scope->next->inputTypes(scope->next);
     }
@@ -485,7 +485,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   if (!data.privateContext) {
     ZoneScopedN("new CompositionContext");
     ownedContext.emplace();
-    data.privateContext = &ownedContext.value();
+    data.privateContext = (SHPrivateContext *)&ownedContext.value();
   }
 
   CompositionContext &ctx = CompositionContext::get(data);
@@ -500,7 +500,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   scope.previousOutputType = data.inputType;
   scope.wire = data.wire;
   scope.onWorkerThread = data.onWorkerThread;
-  scope.fullRequired = reinterpret_cast<decltype(compose::Scope::fullRequired)>(data.requiredVariables);
+  // scope.fullRequired = reinterpret_cast<decltype(compose::Scope::fullRequired)>(data.requiredVariables);
 
   // add externally added variables
 
@@ -779,7 +779,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
 } // namespace shards
 void SHMesh::prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
   shards::CompositionContext privateContext;
-  data.privateContext = &privateContext;
+  data.privateContext = (SHPrivateContext*)&privateContext;
   try {
     auto validation = shards::composeWire(wire.get(), data);
     shards::arrayFree(validation.exposedInfo);

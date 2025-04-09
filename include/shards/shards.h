@@ -703,7 +703,7 @@ struct SHInstanceData {
 
   // Internally used
   void *__unused;
-  void *privateContext;
+  struct SHPrivateContext *privateContext;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();

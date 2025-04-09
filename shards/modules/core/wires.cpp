@@ -176,8 +176,8 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   if (!wire->composeResult) {
     SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
 
-    if (data.requiredVariables) {
-      wire->requirements.clear();
+    if (data.privateContext->currentScope().fullRequired) {
+      data.privateContext->currentScope().fullRequired->clear();
     }
 
     wire->composeResult = composeWire(wire.get(), dataCopy);
@@ -851,7 +851,8 @@ struct SwitchTo : public WireBase {
       }
 
       auto dataCopy = data;
-      dataCopy.requiredVariables = &wire->requirements;
+      // dataCopy.privateContext->currentScope().fullRequired
+      // dataCopy.requiredVariables = &wire->requirements;
       for (auto &req : dataCopy.shared) {
         if (!req.global)
           req.tracked = false;
