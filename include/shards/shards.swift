@@ -376,6 +376,26 @@ extension SHVar: CustomStringConvertible {
         return v
     }
 
+    public static func enumVar(vendorId: Int32, typeId: Int32, value: Int32) -> SHVar {
+        var v = SHVar()
+        v.valueType = Enum
+        v.payload.enumVendorId = vendorId
+        v.payload.enumTypeId = typeId
+        v.payload.enumValue = value
+        return v
+    }
+
+    public var enumValue: Int32 {
+        get {
+            assert(type == .Enum, "Enum variable expected!")
+            return payload.enumValue
+        }
+        set {
+            assert(type == .Enum, "Enum variable expected!")
+            payload.enumValue = newValue
+        }
+    }
+
     public var float: Float {
         get {
             assert(type == .Float, "Float variable expected!")
@@ -907,7 +927,7 @@ class SeqVar: OwnedVar {
             )
         }
     }
-    
+
     // Private cos it is actually unsafe-ish, prone to life time errors in release mode
     private func pushCloning(value: SHVar) {
         let index = size()
@@ -2368,6 +2388,31 @@ class Shards {
     }
 
     public extension SHVar {
+        init(color: UIColor) {
+            self.init()
+            valueType = VarType.Color.asSHType()
+            // this is a mess.. let's use getRed
+            var r: CGFloat = 0
+            var g: CGFloat = 0
+            var b: CGFloat = 0
+            var a: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+            payload.colorValue.r = UInt8(r * 255)
+            payload.colorValue.g = UInt8(g * 255)
+            payload.colorValue.b = UInt8(b * 255)
+            payload.colorValue.a = UInt8(a * 255)
+        }
+
+        var uiColor: UIColor {
+            assert(valueType == VarType.Color.asSHType(), "Value is not a color")
+            return UIColor(
+                red: CGFloat(payload.colorValue.r) / 255.0,
+                green: CGFloat(payload.colorValue.g) / 255.0,
+                blue: CGFloat(payload.colorValue.b) / 255.0,
+                alpha: CGFloat(payload.colorValue.a) / 255.0
+            )
+        }
+
         func toCGImage() throws -> CGImage {
             let imageValue = payload.imageValue!
             let channels = Int(imageValue.pointee.channels)
