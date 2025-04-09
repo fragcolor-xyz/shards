@@ -214,7 +214,7 @@ private:
 
     // Branch needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
-    dataCopy.requiredVariables = &_collectedRequirements;
+    // dataCopy.requiredVariables = &_collectedRequirements;
 
     wire->composeResult = composeWire(wire.get(), dataCopy);
   }

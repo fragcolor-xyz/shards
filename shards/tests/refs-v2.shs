@@ -1,0 +1,11 @@
+{
+  config: {
+    title: ""
+    value: 3
+  }
+  elements: []
+} >= tbl
+
+tbl:config = cfg
+cfg:title = title
+{} > cfg

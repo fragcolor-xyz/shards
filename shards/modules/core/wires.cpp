@@ -1342,7 +1342,7 @@ struct CapturingSpawners : public WireBase {
     // Wire needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
+    // dataCopy.requiredVariables = &wire->requirements;
     dataCopy.inputType = inputType;
 
     WireBase::compose(dataCopy); // discard the result, we do our thing here
