@@ -40,6 +40,8 @@ struct ThreadState {
   LogContext *current{};
   static ThreadState &get();
 };
+extern thread_local ThreadState threadState;
+inline ThreadState &ThreadState::get() { return threadState; };
 
 typedef std::shared_ptr<spdlog::logger> Logger;
 struct TimeKeeper;

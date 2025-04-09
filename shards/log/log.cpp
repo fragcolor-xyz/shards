@@ -138,7 +138,7 @@ struct Config {
   }
 };
 
-static thread_local ThreadState threadState{};
+thread_local ThreadState threadState{};
 
 struct ShardsSink : public spdlog::sinks::dist_sink_mt {
   void sink_it_(const spdlog::details::log_msg &msg) override {
@@ -182,8 +182,6 @@ void LogContext::pop() {
   shassert(this == threadState.current);
   threadState.current = prev;
 };
-
-ThreadState &ThreadState::get() { return threadState; }
 
 struct Sinks {
   std::shared_mutex lock;
