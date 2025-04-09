@@ -1327,24 +1327,7 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
 #define shassert assert
 #endif
 
-#ifndef NDEBUG
-#define SH_DEBUG_MODE 1
-#else
-#define SH_DEBUG_MODE 0
-#endif
-
-#define sh_debug_only(__CODE__) \
-  if (SH_DEBUG_MODE) {          \
-    __CODE__;                   \
-  }
-
 #define SH_CAT_IMPL(s1, s2) s1##s2
 #define SH_CAT(s1, s2) SH_CAT_IMPL(s1, s2)
-
-#ifdef __COUNTER__
-#define SH_GENSYM(str) SH_CAT(str, __COUNTER__)
-#else
-#define SH_GENSYM(str) SH_CAT(str, __LINE__)
-#endif
 
 #endif

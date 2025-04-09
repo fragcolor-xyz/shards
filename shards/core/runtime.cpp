@@ -666,10 +666,10 @@ SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
     }
 
     auto currentWire = context->currentWire();
-    coroSuspended(currentWire);
+    coroSuspended(context);
     coroutineSuspend(*context->continuation);
     shassert(context->currentWire() == currentWire);
-    coroResumed(currentWire);
+    coroResumed(context);
   }
 
   // still advancing the step counter, to flag we are in another time step
@@ -890,7 +890,8 @@ void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, cons
   }
 }
 
-void coroResumed(SHWire *wire) {
+void coroResumed(SHContext *context) {
+  SHWire *wire = context->currentWire();
   if (!wire)
     return;
 
@@ -902,29 +903,34 @@ void coroResumed(SHWire *wire) {
   SHLOG_TRACE("> Resumed wire {}", wire->name);
 #endif
 
-  shassert(!wire->context->isResumed);
-  wire->context->isResumed = true;
+#if SH_DEBUG
+  shassert(!context->isResumed);
+  context->isResumed = true;
+#endif
 
-  if (wire->context->linkedLogContext) {
+  if (context->linkedLogContext) {
     // Push thread logging state
     auto &logTs = shards::logging::ThreadState::get();
     auto prevContext = logTs.current;
-    std::swap(wire->context->prevLogContext, logTs.current);
+    std::swap(context->prevLogContext, logTs.current);
     // Reattach the parent log context, in case we are stepping from somewhere else
-    wire->context->linkedLogContext->linkRootTo(prevContext);
+    context->linkedLogContext->linkRootTo(prevContext);
   } else {
     // Push thread logging state
     auto &logTs = shards::logging::ThreadState::get();
-    std::swap(wire->context->prevLogContext, logTs.current);
+    std::swap(context->prevLogContext, logTs.current);
   }
 }
 
-void coroSuspended(SHWire *wire) {
+void coroSuspended(SHContext *context) {
+  SHWire *wire = context->currentWire();
   if (!wire)
     return;
 
-  shassert(wire->context->isResumed);
-  wire->context->isResumed = false;
+#if SH_DEBUG
+  shassert(context->isResumed);
+  context->isResumed = false;
+#endif
 
 #if SH_DEBUG_THREAD_NAMES
   shards::popThreadName();
@@ -935,12 +941,12 @@ void coroSuspended(SHWire *wire) {
 #endif
 
   auto &logTs = shards::logging::ThreadState::get();
-  if (wire->context->linkedLogContext) {
-    shassert(wire->context->prevLogContext != &*wire->context->linkedLogContext &&
+  if (context->linkedLogContext) {
+    shassert(context->prevLogContext != &*context->linkedLogContext &&
              "Prev log context should not be linked log context");
-    wire->context->linkedLogContext->unlink();
+    context->linkedLogContext->unlink();
   }
-  std::swap(wire->context->prevLogContext, logTs.current);
+  std::swap(context->prevLogContext, logTs.current);
 }
 
 void coroExtResume(SHWire *wire) {
@@ -1758,7 +1764,7 @@ void run(SHWire *wire, shards::Coroutine *coro) {
 
   // Populate context before triggering coroResumed/logs
   // This switches to the coroutine log context
-  coroResumed(wire);
+  coroResumed(&context);
 
   auto shouldInheritMeshLogContext = [](SHWire *wire) {
     if (auto m = wire->mesh.lock()) {
@@ -1789,9 +1795,9 @@ void run(SHWire *wire, shards::Coroutine *coro) {
   }
 
   // yield after warming up
-  coroSuspended(wire);
+  coroSuspended(&context);
   coroutineSuspend(*context.continuation);
-  coroResumed(wire);
+  coroResumed(&context);
 
   SHLOG_TRACE("Wire {} starting", wire->name);
 
@@ -1833,9 +1839,9 @@ void run(SHWire *wire, shards::Coroutine *coro) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
 
-      coroSuspended(wire);
+      coroSuspended(&context);
       coroutineSuspend(*context.continuation);
-      coroResumed(wire);
+      coroResumed(&context);
 
       ++context.stepCounter;
 
@@ -1908,7 +1914,7 @@ endOfWire:
   // Need to clear log context here
   context.linkedLogContext.reset();
 
-  coroSuspended(wire);
+  coroSuspended(&context);
 
   // Make sure to clear context at the end so it doesn't point to invalid stack memory
   wire->context = nullptr;
