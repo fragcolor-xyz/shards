@@ -643,22 +643,38 @@ struct FromJson {
 
   void anyParse(json &j, SHVar &storage) {
     if (j.is_array()) {
-      storage.valueType = SHType::Seq;
+      if (storage.valueType != SHType::Seq) {
+        destroyVar(storage);
+        storage.valueType = SHType::Seq;
+      }
       arrayResize(storage.payload.seqValue, j.size());
       for (json::iterator it = j.begin(); it != j.end(); ++it) {
         anyParse(*it, storage.payload.seqValue.elements[it - j.begin()]);
       }
     } else if (j.is_number_integer()) {
-      storage.valueType = SHType::Int;
+      if (storage.valueType != SHType::Int) {
+        destroyVar(storage);
+        storage.valueType = SHType::Int;
+      }
       storage.payload.intValue = j.get<int64_t>();
     } else if (j.is_number_float()) {
-      storage.valueType = SHType::Float;
+      if (storage.valueType != SHType::Float) {
+        destroyVar(storage);
+        storage.valueType = SHType::Float;
+      }
       storage.payload.floatValue = j.get<double>();
     } else if (j.is_string()) {
+      if (storage.valueType != SHType::String) {
+        destroyVar(storage);
+        // don't set type here, cloneVar will do it
+      }
       auto tmp = Var(j.get<std::string_view>());
       cloneVar(storage, tmp);
     } else if (j.is_boolean()) {
-      storage.valueType = SHType::Bool;
+      if (storage.valueType != SHType::Bool) {
+        destroyVar(storage);
+        storage.valueType = SHType::Bool;
+      }
       storage.payload.boolValue = j.get<bool>();
     } else if (j.is_object()) {
       if (storage.valueType == SHType::Table) {
@@ -707,6 +723,7 @@ struct FromJson {
           }
         }
       } else {
+        destroyVar(storage);
         storage.valueType = SHType::Table;
         auto map = new shards::SHMap();
         storage.payload.tableValue.api = &shards::GetGlobals().TableInterface;
@@ -717,6 +734,13 @@ struct FromJson {
         }
       }
       storage.version++;
+    } else if (j.is_null()) {
+      if (storage.valueType != SHType::None) {
+        destroyVar(storage);
+        storage.valueType = SHType::None;
+      }
+    } else {
+      throw shards::ActivationError("Unexpected JSON type");
     }
   }
 
