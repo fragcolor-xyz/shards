@@ -4,13 +4,13 @@
 @define(looped "true" IgnoreRedefined: true)
 
 @wire(sample-launcher-looped {
-  When({Animation.Timer | IsMore(@run-duration)} {Stop})
+  When({Animation.Timer | IsMore(@run-duration)} Stop)
   WireRunner(sample-wire)
   When(Is("END") Stop)
 } Looped: true StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
 @wire(sample-launcher {
-  When({Animation.Timer | IsMore(@run-duration)} {Stop})
+  When({Animation.Timer | IsMore(@run-duration)} Stop)
   WireRunner(sample-wire)
   When(Is("END") Stop)
 } Looped: false StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))

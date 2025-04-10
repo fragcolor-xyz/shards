@@ -170,14 +170,14 @@
     shard-doc:input-help | @input-help-shards >> o
     " | " >> o
     "| " >> o
-    shard-doc:input-types | ForEach(@print-type-info(o))
+    shard-doc:input-types | ForEach({@print-type-info(o)})
     " |\n" >> o
     
     "| `Output ➡️` ||" >> o
     shard-doc:output-help | @output-help-shards >> o
     " | " >> o
     "| " >> o
-    shard-doc:output-types | ForEach(@print-type-info(o))
+    shard-doc:output-types | ForEach({@print-type-info(o)})
     " |\n" >> o
     
     parameters-seq | ForEach({
@@ -200,7 +200,7 @@
       " | `" >> o
       p-default >> o
       "` | " >> o
-      p-types | ForEach(@print-type-info(o))
+      p-types | ForEach({@print-type-info(o)})
       " |\n" >> o
     })
     
