@@ -2018,40 +2018,34 @@ impl<'e> VariableResolver<'e> {
                 Definition::ValueGenerated(value) => self.resolve_var(&value, line_info, shard),
                 Definition::Constant(var) => Ok(ResolvedVar::new_const(var)),
               }
-            } else if let Some(mut shards_env) = process_template(func, line_info, self.e)? {
-              // @template
-              finalize_env(&mut shards_env)?; // finalize the env
-
-              let mut seq = AutoSeqVar::new();
-
-              // shards
-              for shard in shards_env.shards.drain(..) {
-                let s: Var = shard.0 .0.into();
-                seq.0.push(&s);
+            } else if let Some(mut sub_env) = process_template(func, line_info, self.e)? {
+              // Inline the output of the template into the current variable
+              let start_idx = self.e.shards.len();
+              if !sub_env.shards.is_empty() {
+                // create a temporary variable to hold the result of the expression
+                let tmp_name = nanoid!(16);
+                // ensure name starts with a letter
+                let tmp_name = format!("t{}", tmp_name);
+                // debug info
+                let line_info = sub_env.shards[0].0.get_line_info();
+                let line_info = LineInfo {
+                  line: line_info.0,
+                  column: line_info.1,
+                };
+                add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+                  .map_err(|e| (format!("{:?}", e), line_info).into())?;
+                // wrap into a Sub Shard
+                finalize_env(&mut sub_env)?;
+                let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
+                // add this sub shard before the start of this pipeline!
+                self.e.shards.insert(start_idx, sub);
+                // now add a get shard to get the temporary at the end of the pipeline
+                let mut s = Var::ephemeral_string(&tmp_name);
+                s.valueType = SHType_ContextVar;
+                Ok(ResolvedVar::new_const(SVar::Cloned(s.into())))
+              } else {
+                Ok(ResolvedVar::new_const(SVar::NotCloned(().into())))
               }
-
-              // also move possible other possible things we defined!
-              for (name, value) in shards_env.definitions.drain() {
-                self.e.definitions.insert(name, value);
-              }
-              assert_eq!(shards_env.deferred_wires.len(), 0);
-              for (name, value) in shards_env.finalized_wires.drain() {
-                self.e.finalized_wires.insert(name, value);
-              }
-              for (name, value) in shards_env.shards_groups.drain() {
-                self.e.shards_groups.insert(name, value);
-              }
-              for (name, value) in shards_env.macro_groups.drain() {
-                self.e.macro_groups.insert(name, value);
-              }
-              for (id, mesh) in shards_env.meshes.drain() {
-                self.e.meshes.insert(id, mesh);
-              }
-              for (id, t) in shards_env.traits.drain() {
-                self.e.traits.insert(id, t);
-              }
-
-              Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar(seq.leak()))))
             } else if let Some(ast_json) = process_macro(func, line_info, self.e)? {
               let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
                 (
@@ -3360,7 +3354,7 @@ fn eval_pipeline(
                   Param {
                     value: Value::Identifier(name),
                     ..
-                  }, 
+                  },
                   types,
                 ) => {
                   let make_trait_shards = Sequence {
