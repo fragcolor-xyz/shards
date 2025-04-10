@@ -196,10 +196,10 @@ Random.Name(10 " ") | Log
 
 @template(foo-predicate [val] {val | IsMore(2) | Or | val | IsLess(-2)})
 
-When(@foo-predicate(3) {Msg("More than 2")})
-WhenNot(@foo-predicate(1) {Msg("Less than 2")})
-When(@foo-predicate(-3) {Msg("Less than -2")})
-WhenNot(@foo-predicate(-1) {Msg("More than -2")})
+When({@foo-predicate(3)} {Msg("More than 2")})
+WhenNot({@foo-predicate(1)} {Msg("Less than 2")})
+When({@foo-predicate(-3)} {Msg("Less than -2")})
+WhenNot({@foo-predicate(-1)} {Msg("More than -2")})
 
 ; test String.Starts(With: ...)
 "Hello World!" | String.Starts(With: "Hello") | Assert.Is(true) | Log
