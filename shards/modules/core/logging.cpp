@@ -316,6 +316,7 @@ struct CaptureLog {
 
     // Now flush the queue into the output sequence
     _ctx.drain();
+    _seqView.clear();
     LogCaptureContext::stringBufferInto(_ctx._stringBuffer, _seqView);
     return _seqView;
   }
