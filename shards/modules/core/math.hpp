@@ -223,8 +223,9 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
           return Broadcast;
         } else {
           if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
-            throw ComposeError(
-                fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
+            throw ComposeError(fmt::format("Can not multiply vector of size {} ({}) and {} ({})", _lhsVecType->dimension,
+                                           magic_enum::enum_name(_lhsVecType->numberType), _rhsVecType->dimension,
+                                           magic_enum::enum_name(_rhsVecType->numberType)));
           }
           return Direct;
         }
