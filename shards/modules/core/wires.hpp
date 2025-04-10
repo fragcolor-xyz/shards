@@ -451,6 +451,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
 
   SHVar activateNil(SHContext *, const SHVar &input) { return input; }
 
+  OwnedVar _outputClone;
+
   SHVar activateLoop(SHContext *context, const SHVar &input) {
     auto *inputPtr = &input;
   run_wire_loop:
@@ -458,8 +460,9 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
-      context->stopFlow(runRes.output);
-      return runRes.output;
+      _outputClone = runRes.output;
+      context->stopFlow(_outputClone);
+      return _outputClone;
     } else {
       if (runRes.state == SHRunWireOutputState::Restarted) {
         inputPtr = &context->getFlowStorage();
@@ -478,7 +481,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         if constexpr (INPUT_PASSTHROUGH) {
           return input;
         } else {
-          return runRes.output;
+          _outputClone = runRes.output;
+          return _outputClone;
         }
       }
     }
@@ -509,7 +513,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         // When an error happens during inline execution, propagate the error to the parent wire
         SHLOG_ERROR("Wire {} failed", wire->name);
         context->cancelFlow("Wire failed");
-        return runRes.output;
+        _outputClone = runRes.output;
+        return _outputClone;
       } else {
         // we don't want to propagate a (Return)
         if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
@@ -519,7 +524,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         if constexpr (INPUT_PASSTHROUGH) {
           return input;
         } else {
-          return runRes.output;
+          _outputClone = runRes.output;
+          return _outputClone;
         }
       }
     } else {

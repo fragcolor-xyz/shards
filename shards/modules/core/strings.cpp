@@ -754,8 +754,71 @@ struct FromCodePointsShard {
   void warmup(SHContext *ctx) {}
   void cleanup(SHContext *ctx) {}
 };
-
 } // namespace Regex
+
+struct FromUTF16 {
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString help() { return SHCCSTR("Converts a UTF-16 encoded little endian bytes to a UTF-8 encoded string."); }
+
+  std::string utf16_to_utf8(uint8_t *utf16_bytes, size_t size) {
+    // Check if we have an odd number of bytes (invalid UTF-16)
+    if (size % 2 != 0) {
+      throw std::runtime_error("Invalid UTF-16 byte array: odd number of bytes");
+    }
+
+    // Convert byte array to UTF-16 string (assuming little endian)
+    std::u16string utf16_str;
+    utf16_str.reserve(size / 2);
+
+    for (size_t i = 0; i < size; i += 2) {
+      char16_t ch = static_cast<char16_t>(utf16_bytes[i]) | (static_cast<char16_t>(utf16_bytes[i + 1]) << 8);
+      utf16_str.push_back(ch);
+    }
+
+    // Manual UTF-16 to UTF-8 conversion
+    std::string utf8_result;
+    utf8_result.reserve(utf16_str.size() * 3); // Worst case scenario
+
+    for (char16_t ch : utf16_str) {
+      if (ch < 0x80) {
+        // ASCII character
+        utf8_result.push_back(static_cast<char>(ch));
+      } else if (ch < 0x800) {
+        // 2-byte UTF-8
+        utf8_result.push_back(static_cast<char>(0xC0 | (ch >> 6)));
+        utf8_result.push_back(static_cast<char>(0x80 | (ch & 0x3F)));
+      } else if (ch >= 0xD800 && ch <= 0xDBFF && utf16_str.size() > utf8_result.size() + 1 &&
+                 utf16_str[utf8_result.size() + 1] >= 0xDC00 && utf16_str[utf8_result.size() + 1] <= 0xDFFF) {
+        // Surrogate pair
+        char32_t codepoint = 0x10000 + (((ch & 0x3FF) << 10) | (utf16_str[utf8_result.size() + 1] & 0x3FF));
+        // 4-byte UTF-8
+        utf8_result.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+        utf8_result.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+        utf8_result.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+        utf8_result.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+      } else if (ch >= 0xD800 && ch <= 0xDFFF) {
+        // Invalid surrogate
+        utf8_result.push_back('?'); // Replacement character
+      } else {
+        // 3-byte UTF-8
+        utf8_result.push_back(static_cast<char>(0xE0 | (ch >> 12)));
+        utf8_result.push_back(static_cast<char>(0x80 | ((ch >> 6) & 0x3F)));
+        utf8_result.push_back(static_cast<char>(0x80 | (ch & 0x3F)));
+      }
+    }
+
+    return utf8_result;
+  }
+
+  std::string _utf8Str;
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    const auto &utf16Str = input.payload.bytesValue;
+    _utf8Str = utf16_to_utf8(utf16Str, input.payload.bytesSize);
+    return Var(_utf8Str);
+  }
+};
 } // namespace shards
 
 SHARDS_REGISTER_FN(strings) {
@@ -779,4 +842,5 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.Ends", EndsWith);
   REGISTER_SHARD("String.CodePoints", CodePointsShard);
   REGISTER_SHARD("String.FromCodePoints", FromCodePointsShard);
+  REGISTER_SHARD("String.FromUTF16", shards::FromUTF16);
 }
