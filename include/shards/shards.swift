@@ -382,7 +382,7 @@ extension SHVar: CustomStringConvertible {
         v.payload.objectValue = value
         return v
     }
-    
+
     public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?, objectInfo: inout SHObjectInfo) -> SHVar {
         var v = SHVar()
         v.valueType = Object
@@ -2139,21 +2139,28 @@ class SwiftSWL {
 
 public class RefCounted<T> {
     var value: T?
-    
+    private var manualCount: Int = 1 // Start at 1 for the initial owner
+
     init(value: T) {
         self.value = value
     }
-    
+
     public func incRef() {
+        manualCount += 1
         _ = Unmanaged.passRetained(self)
     }
-    
+
     public func decRef() {
+        manualCount -= 1
         Unmanaged.passUnretained(self).release()
     }
-    
+
     public func getSelf() -> UnsafeMutableRawPointer {
         return Unmanaged.passUnretained(self).toOpaque()
+    }
+
+    deinit {
+        assert(manualCount == 1, "RefCounted object deallocated with incorrect reference count (should be 1): \(manualCount)")
     }
 }
 
