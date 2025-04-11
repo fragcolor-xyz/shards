@@ -103,7 +103,7 @@ Cond([
         {Take("paths") | ExpectSeq | Map({ExpectString | @fs-abs-from-root()}) | @srv-log("Preload files root path") = paths}
         {Take("exclude") | ExpectString
           If(Is("") {[]} {
-            String.Split(",") | Map(@fs-abs-from-root())
+            String.Split(",") | Map({@fs-abs-from-root()})
           }) | Expect(@type([Type::String]))
           @srv-log("Exclude path") = excluded
         }
