@@ -1228,8 +1228,9 @@ lazy_static! {
     shards::shstr!("bytes").into(),
     shards::shstr!("dependencies").into(),
   ];
-  
-  pub static ref READ_ADVANCED_OUTPUT_TYPE_BYTES: Type = Type::table(&READ_ADVANCED_OUTPUT_KEYS_BYTES, &vec![common_type::bytes, common_type::strings]);
+
+  pub static ref READ_ADVANCED_OUTPUT_VALUES_BYTES: Vec<Type> = vec![common_type::bytes, common_type::strings];
+  pub static ref READ_ADVANCED_OUTPUT_TYPE_BYTES: Type = Type::table(&READ_ADVANCED_OUTPUT_KEYS_BYTES, &READ_ADVANCED_OUTPUT_VALUES_BYTES);
   pub static ref READ_ADVANCED_OUTPUT_TYPES: Vec<Type> = vec![*READ_ADVANCED_OUTPUT_TYPE_AST, *READ_ADVANCED_OUTPUT_TYPE_BYTES];
   pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE, *READ_ADVANCED_OUTPUT_TYPE_AST, *READ_ADVANCED_OUTPUT_TYPE_BYTES];
   pub static ref AST_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE];
@@ -1411,7 +1412,9 @@ impl Shard for ReadShard {
 
         // Set table values
         output_table.0.insert_fast_static("bytes", &ast_output);
-        output_table.0.insert_fast_static("dependencies", &deps_var.0.0);
+        output_table
+          .0
+          .insert_fast_static("dependencies", &deps_var.0 .0);
 
         self.output = output_table.to_cloned();
       }
@@ -1423,19 +1426,21 @@ impl Shard for ReadShard {
           shlog_error!("Failed to serialize shards code: {}", e);
           "Failed to serialize Shards code"
         })?;
-        
+
         let ast_output = encoded_bin.as_slice().into();
 
         // Get dependencies and convert to Var
         let deps = get_dependencies(&env);
         let mut deps_var = AutoSeqVar::new();
-        for dep in deps.iter() {  
+        for dep in deps.iter() {
           deps_var.0.emplace(ClonedVar::new_string(dep));
         }
 
         // Set table values
         output_table.0.insert_fast_static("ast", &ast_output);
-        output_table.0.insert_fast_static("dependencies", &deps_var.0.0);
+        output_table
+          .0
+          .insert_fast_static("dependencies", &deps_var.0 .0);
 
         self.output = output_table.to_cloned();
       }
