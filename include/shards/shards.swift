@@ -382,6 +382,17 @@ extension SHVar: CustomStringConvertible {
         v.payload.objectValue = value
         return v
     }
+    
+    public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?, objectInfo: inout SHObjectInfo) -> SHVar {
+        var v = SHVar()
+        v.valueType = Object
+        v.payload.objectVendorId = vendorId
+        v.payload.objectTypeId = typeId
+        v.payload.objectValue = value
+        v.flags |= UInt16(SHVAR_FLAGS_USES_OBJINFO)
+        v.objectInfo = withUnsafeMutablePointer(to: &objectInfo) { $0 }
+        return v
+    }
 
     public static func enumVar(vendorId: Int32, typeId: Int32, value: Int32) -> SHVar {
         var v = SHVar()
@@ -2117,45 +2128,30 @@ class SwiftSWL {
 }
 
 @inlinable public func refCountedIncRef<T>(_: T.Type, ptr: UnsafeMutablePointer<RefCounted<T>>) {
-    let swiftPtr = UnsafeRawPointer(ptr).assumingMemoryBound(to: RefCounted<T>.self)
-    swiftPtr.pointee.incRef()
+    let rc = Unmanaged<RefCounted<T>>.fromOpaque(ptr).takeUnretainedValue()
+    rc.incRef()
 }
 
 @inlinable public func refCountedDecRef<T>(_: T.Type, ptr: UnsafeMutablePointer<RefCounted<T>>) {
-    let swiftPtr = UnsafeRawPointer(ptr).assumingMemoryBound(to: RefCounted<T>.self)
-    _ = swiftPtr.pointee.decRef()
+    let rc = Unmanaged<RefCounted<T>>.fromOpaque(ptr).takeUnretainedValue()
+    rc.decRef()
 }
 
 public class RefCounted<T> {
     var value: T?
-    var refCount: Int
-
+    
     init(value: T) {
         self.value = value
-        refCount = 1
     }
-
-    deinit {
-        _ = decRef()
-    }
-
+    
     public func incRef() {
-        assert(refCount >= 0, "RefCounted<T> refCount is negative")
-
-        refCount += 1
+        _ = Unmanaged.passRetained(self)
     }
-
-    public func decRef() -> Int {
-        refCount -= 1
-        if refCount == 0 {
-            value = nil
-        }
-
-        assert(refCount >= 0, "RefCounted<T> refCount is negative")
-
-        return refCount
+    
+    public func decRef() {
+        Unmanaged.passUnretained(self).release()
     }
-
+    
     public func getSelf() -> UnsafeMutableRawPointer {
         return Unmanaged.passUnretained(self).toOpaque()
     }
