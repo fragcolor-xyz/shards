@@ -396,31 +396,32 @@ impl RequestBase {
         let cancel_rx = cancel_rx;
 
         // Lock the runtime briefly to spawn the task
-        let task = {
+        let task: tokio::task::JoinHandle<Result<ClonedVar, String>> = {
           let runtime = runtime.lock().unwrap();
           runtime.spawn(async move {
             // Use tokio::select! to race between the request and cancellation
             let response = tokio::select! {
               resp = request.send() => resp.map_err(|e| {
-                print_error(&e);
-                "Failed to send the request"
+                e.to_string()
               })?,
-              _ = cancel_rx => return Err("Request cancelled")
+              _ = cancel_rx => return Err("Request cancelled".to_string())
             };
 
             if !full_response && !response.status().is_success() {
-              shlog_error!("Request failed with status {}", response.status());
+              let status = response.status();
               let err_text = response.text().await.map_err(|e| {
-                print_error(&e);
-                "Failed to decode the failure response"
+                format!(
+                  "Request failed with status {}, error: {}",
+                  status,
+                  e.to_string()
+                )
               })?;
               let err_text = if err_text.len() > 1024 {
                 format!("{}...", err_text.chars().take(1024).collect::<String>())
               } else {
-                err_text
+                format!("Request failed with status {}, error: {}", status, err_text)
               };
-              shlog_error!("Request failed with body {}", err_text);
-              return Err("Request failed");
+              return Err(err_text);
             }
 
             if streaming {
@@ -443,26 +444,27 @@ impl RequestBase {
                 .unwrap();
               for (key, value) in response.headers() {
                 let key = Var::ephemeral_string(key.as_str());
-                let value = Var::ephemeral_string(value.to_str().map_err(|e| {
-                  print_error(&e);
-                  "Failed to decode the response"
-                })?);
+                let value = Var::ephemeral_string(
+                  value
+                    .to_str()
+                    .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?,
+                );
                 headers.insert_fast(key, &value);
               }
             }
 
             let content: ClonedVar = if as_bytes {
-              let bytes = response.bytes().await.map_err(|e| {
-                print_error(&e);
-                "Failed to decode the response"
-              })?;
+              let bytes = response
+                .bytes()
+                .await
+                .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?;
 
               bytes.as_ref().into()
             } else {
-              let str = response.text().await.map_err(|e| {
-                print_error(&e);
-                "Failed to decode the response"
-              })?;
+              let str = response
+                .text()
+                .await
+                .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?;
 
               let shards_str = Var::ephemeral_string(str.as_str());
               shards_str.into()
@@ -480,10 +482,15 @@ impl RequestBase {
         };
 
         // Await the spawned task outside the lock
-        task.await.map_err(|e| {
+        let result: Result<ClonedVar, String> = task.await.map_err(|e| {
           print_error(&e);
           "Failed to join task"
-        })?
+        })?;
+
+        result.map_err(|e| {
+          shlog_error!("HTTP request failed: {}", e);
+          "HTTP request failed"
+        })
       },
       move || {
         shlog_debug!("Request cancelled");

@@ -7,6 +7,7 @@ use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::Shard as SHShard;
 use crate::shardsc::*;
 use crate::shlog_debug;
+use crate::shlog_error;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
@@ -600,6 +601,7 @@ pub fn run_future<
     std::mem::forget(data);
 
     if result.0.flags & SHVAR_FLAGS_ABORT as u16 != 0 {
+      shlog_error!("Failed to run future: {}", result.0);
       Err("Failed to run future")
     } else {
       Ok(result)
