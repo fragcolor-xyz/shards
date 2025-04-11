@@ -201,7 +201,7 @@ struct LogCaptureContext {
   oneapi::tbb::concurrent_queue<spdlog::memory_buf_t> _messages;
   std::vector<spdlog::memory_buf_t> _stringBuffer;
 
-  void drain() {
+  void flush() {
     // Now flush the queue into the output sequence
     auto size = _messages.unsafe_size();
     auto ofs = _stringBuffer.size();
@@ -214,6 +214,8 @@ struct LogCaptureContext {
       }
     }
   }
+
+  void clear() { _stringBuffer.clear(); }
 
   static void stringBufferInto(std::vector<spdlog::memory_buf_t> &stringBuffer, SeqVar &sv) {
     sv.resize(stringBuffer.size());
@@ -308,6 +310,7 @@ struct CaptureLog {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    _ctx.clear();
     {
       auto $ = createScopedLogContext();
       SHVar out{};
@@ -315,7 +318,7 @@ struct CaptureLog {
     }
 
     // Now flush the queue into the output sequence
-    _ctx.drain();
+    _ctx.flush();
     _seqView.clear();
     LogCaptureContext::stringBufferInto(_ctx._stringBuffer, _seqView);
     return _seqView;
@@ -349,7 +352,7 @@ struct CurrentCaptureLog {
     _captureContext.cleanup();
   }
   SHVar activate(SHContext *context, const SHVar &input) {
-    _captureContext.get()->drain();
+    _captureContext.get()->flush();
     auto &src = _captureContext.get()->_stringBuffer;
     _tmpBuffer.resize(src.size());
     _output.resize(src.size());
