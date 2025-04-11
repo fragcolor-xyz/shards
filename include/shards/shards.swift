@@ -367,6 +367,13 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
+    init(value: SIMD2<Double>) {
+        var v = SHVar()
+        v.valueType = Float2
+        v.payload.float2Value = value
+        self = v
+    }
+
     public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?) -> SHVar {
         var v = SHVar()
         v.valueType = Object
@@ -2106,6 +2113,51 @@ class SwiftSWL {
 
     func asSHStringWithLen() -> SHStringWithLen {
         SHStringWithLen.from(chars)
+    }
+}
+
+@inlinable public func refCountedIncRef<T>(_: T.Type, ptr: UnsafeMutablePointer<RefCounted<T>>) {
+    let swiftPtr = UnsafeRawPointer(ptr).assumingMemoryBound(to: RefCounted<T>.self)
+    swiftPtr.pointee.incRef()
+}
+
+@inlinable public func refCountedDecRef<T>(_: T.Type, ptr: UnsafeMutablePointer<RefCounted<T>>) {
+    let swiftPtr = UnsafeRawPointer(ptr).assumingMemoryBound(to: RefCounted<T>.self)
+    _ = swiftPtr.pointee.decRef()
+}
+
+public class RefCounted<T> {
+    var value: T?
+    var refCount: Int
+
+    init(value: T) {
+        self.value = value
+        refCount = 1
+    }
+
+    deinit {
+        _ = decRef()
+    }
+
+    public func incRef() {
+        assert(refCount >= 0, "RefCounted<T> refCount is negative")
+
+        refCount += 1
+    }
+
+    public func decRef() -> Int {
+        refCount -= 1
+        if refCount == 0 {
+            value = nil
+        }
+
+        assert(refCount >= 0, "RefCounted<T> refCount is negative")
+
+        return refCount
+    }
+
+    public func getSelf() -> UnsafeMutableRawPointer {
+        return Unmanaged.passUnretained(self).toOpaque()
     }
 }
 
