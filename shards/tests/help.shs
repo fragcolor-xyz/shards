@@ -1,3 +1,5 @@
+"shards.db" | When(FS.IsFile FS.Remove)
+
 """
 -- HelpTable
 CREATE TABLE ShardsTable (
