@@ -1542,8 +1542,8 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
     }
   }
 
-  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}",
-                         param.name, value, varType, param.valueTypes, shard->line, shard->column);
+  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}, shard: {}",
+                         param.name, value, varType, param.valueTypes, shard->line, shard->column, shard->name(shard));
 #if SH_DEBUG_TYPE_MATCHING
   // Put a breakpoint here to debug
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
