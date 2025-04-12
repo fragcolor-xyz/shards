@@ -576,6 +576,9 @@ struct WaitKeyEvent : public WaitKeyEventBase {
   size_t _maxQueueSize = 100; // Default maximum queue size
   oneapi::tbb::concurrent_queue<SHVar> events;
 
+  // Add atomic size counter at class level
+  std::atomic<size_t> _currentQueueSize{0};
+
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "MaxQueueSize", SHCCSTR("Maximum number of events to queue before dropping old ones."), CoreInfo::IntType));
 
@@ -596,23 +599,21 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 
   void keyboardEvent(int state, int vkCode) {
     events.push(Var(state, vkCode));
+    size_t newSize = _currentQueueSize.fetch_add(1) + 1;
 
-    // Check if queue is getting too large and trim if needed
-    size_t currentSize = events.unsafe_size();
-
-    if (currentSize > _maxQueueSize) {
-      // Queue is too large, let's trim it by removing oldest events
+    // If queue is too large, trim it by removing oldest events until we're back to a reasonable size
+    if (newSize > _maxQueueSize) {
       SHVar dummy;
-      while (events.unsafe_size() > _maxQueueSize / 2) {
+      const size_t targetSize = _maxQueueSize / 2; // Trim to half max size
+      while (_currentQueueSize.load() > targetSize) {
         if (events.try_pop(dummy)) {
-          // Successfully removed an old event
-          if (events.unsafe_size() == _maxQueueSize) {
-            SHLOG_WARNING("WaitKeyEvent queue overflow! Dropping older events. Consider processing events faster.");
-          }
+          _currentQueueSize.fetch_sub(1);
         } else {
-          break; // Queue empty or race condition
+          break; // Queue empty?
         }
       }
+      SHLOG_WARNING("WaitKeyEvent queue overflow! Trimmed from {} to {} events. Consider processing events faster.", newSize,
+                    _currentQueueSize.load());
     }
   }
 

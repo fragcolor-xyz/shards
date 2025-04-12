@@ -202,16 +202,10 @@ struct LogCaptureContext {
   std::vector<spdlog::memory_buf_t> _stringBuffer;
 
   void flush() {
-    // Now flush the queue into the output sequence
-    auto size = _messages.unsafe_size();
-    auto ofs = _stringBuffer.size();
-    _stringBuffer.resize(ofs + size);
-    for (size_t i = 0; i < size; i++) {
-      spdlog::memory_buf_t &msg = _stringBuffer[ofs + i];
-      if (!_messages.try_pop(msg)) {
-        _stringBuffer.resize(ofs + i);
-        break;
-      }
+    // Process messages one at a time, growing the buffer as needed
+    spdlog::memory_buf_t msg;
+    while (_messages.try_pop(msg)) {
+      _stringBuffer.push_back(std::move(msg));
     }
   }
 
@@ -311,14 +305,17 @@ struct CaptureLog {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _ctx.clear();
+
     {
       auto $ = createScopedLogContext();
       SHVar out{};
       _content.activate(context, input, out);
     }
 
-    // Now flush the queue into the output sequence
+    // Now flush the queue into the output sequence, this could be partially flushed if a CurrentCaptureLog was used in between
+    // the above flow
     _ctx.flush();
+
     _seqView.clear();
     LogCaptureContext::stringBufferInto(_ctx._stringBuffer, _seqView);
     return _seqView;
@@ -352,6 +349,7 @@ struct CurrentCaptureLog {
     _captureContext.cleanup();
   }
   SHVar activate(SHContext *context, const SHVar &input) {
+    // We don't clear cos the idea is that we are snapshotting in the middle of a CaptureLog flow
     _captureContext.get()->flush();
     auto &src = _captureContext.get()->_stringBuffer;
     _tmpBuffer.resize(src.size());
