@@ -961,6 +961,10 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
                 '\\' => new_str.push('\\'),
                 '"' => new_str.push('"'),
                 '\'' => new_str.push('\''),
+                '0' => new_str.push('\0'),
+                'b' => new_str.push('\u{0008}'), // Backspace
+                'f' => new_str.push('\u{000C}'), // Form feed
+                'v' => new_str.push('\u{000B}'), // Vertical tab
                 _ => return Err((format!("Unexpected escaped character {:?}", c), pos).into()),
               }
             } else {
