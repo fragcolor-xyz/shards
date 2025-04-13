@@ -86,7 +86,7 @@ struct FlowAnalysis {
 
 struct Variable {
   size_t id;
-  std::string_view name;
+  // std::string_view name;
   SHExposedTypeInfo type;
 };
 

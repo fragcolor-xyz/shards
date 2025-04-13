@@ -11,6 +11,7 @@ set(SOURCES
   exposed.cpp
   trait.cpp
   memoize.cpp
+  core2.cpp
 )
 
 if(ENABLE_FFI)

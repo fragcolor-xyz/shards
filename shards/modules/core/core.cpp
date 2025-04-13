@@ -3299,29 +3299,33 @@ struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::String
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };
 
+void registerCore2();
 SHARDS_REGISTER_FN(core) {
+  registerCore2();
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
   REGISTER_SHARD("Const", Const);
-  REGISTER_CORE_SHARD(Set);
-  REGISTER_CORE_SHARD(Ref);
-  REGISTER_CORE_SHARD(Update);
-  REGISTER_CORE_SHARD(Push);
-  REGISTER_CORE_SHARD(Sequence);
+  // REGISTER_CORE_SHARD(Set);
+  // REGISTER_CORE_SHARD(Ref);
+  // REGISTER_CORE_SHARD(Update);
+  // REGISTER_CORE_SHARD(Push);
+  // REGISTER_CORE_SHARD(Sequence);
+  // REGISTER_CORE_SHARD(Get);
+  // REGISTER_SHARD("Table", TableDecl);
+
+  REGISTER_CORE_SHARD(Take);
+  REGISTER_CORE_SHARD(RTake);
   REGISTER_CORE_SHARD(Clear);
   REGISTER_CORE_SHARD(Pop);
   REGISTER_CORE_SHARD(PopFront);
   REGISTER_CORE_SHARD(Drop);
   REGISTER_CORE_SHARD(DropFront);
   REGISTER_CORE_SHARD(Count);
-  REGISTER_CORE_SHARD(Get);
   REGISTER_CORE_SHARD(Swap);
   REGISTER_CORE_SHARD(And);
   REGISTER_CORE_SHARD(Or);
   REGISTER_CORE_SHARD(Not);
   REGISTER_CORE_SHARD(IsValidNumber);
-  REGISTER_CORE_SHARD(Take);
-  REGISTER_CORE_SHARD(RTake);
   REGISTER_CORE_SHARD(Slice);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
@@ -3360,7 +3364,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
   REGISTER_SHARD("GlobalOnce", GlobalOnce);
-  REGISTER_SHARD("Table", TableDecl);
 
   REGISTER_SHARD("Pause", Pause);
   REGISTER_SHARD("PauseMs", PauseMs);

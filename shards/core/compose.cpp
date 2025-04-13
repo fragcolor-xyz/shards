@@ -1,6 +1,7 @@
 #include "compose.hpp"
 #include "pmr/unordered_set.hpp"
 #include "pmr/vector.hpp"
+#include "pmr/string.hpp"
 #include "type_cache.hpp"
 #include "compose_fmt.hpp"
 #include <functional>
@@ -204,21 +205,22 @@ void CompositionContext::step() {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
     if (exposed_param.declared && scope->wire) {
-      auto inserted = scope->wire->getComposeData().declaredVariables.emplace(name, exposed_param);
-      SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
-      if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
-        throw ComposeError(
-            fmt::format("Variable {} declared twice with different mutability in wire {}", name, scope->wire->name));
-      }
-      if (!inserted.second && inserted.first->second.isMutable) {
-        if (inserted.first->second.exposedType.basicType == SHType::Table &&
-            exposed_param.exposedType.basicType == SHType::Table) {
-        } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
-          throw ComposeError(
-              fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, scope->wire->name));
-        }
-      }
-      exposed_param.declared = false;
+      insertVariable(name, exposed_param);
+      // auto inserted = scope->wire->getComposeData().declaredVariables.emplace(name, exposed_param);
+      // SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
+      // if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
+      //   throw ComposeError(
+      //       fmt::format("Variable {} declared twice with different mutability in wire {}", name, scope->wire->name));
+      // }
+      // if (!inserted.second && inserted.first->second.isMutable) {
+      //   if (inserted.first->second.exposedType.basicType == SHType::Table &&
+      //       exposed_param.exposedType.basicType == SHType::Table) {
+      //   } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
+      //     throw ComposeError(
+      //         fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, scope->wire->name));
+      //   }
+      // }
+      // exposed_param.declared = false;
     }
 
     scope->exposed[name] = exposed_param;
@@ -226,11 +228,10 @@ void CompositionContext::step() {
   }
 
   auto requiredVar = scope->bottom->requiredVariables(scope->bottom);
-
-  pmr::unordered_map<std::string, SHExposedTypeInfo> requiredVars{getAllocator()};
+  pmr::unordered_map<pmr::string, SHExposedTypeInfo> requiredVars{getAllocator()};
   for (uint32_t i = 0; requiredVar.len > i; i++) {
     auto &required_param = requiredVar.elements[i];
-    std::string name(required_param.name);
+    pmr::string name(required_param.name);
     requiredVars[name] = required_param;
   }
 
@@ -242,10 +243,12 @@ void CompositionContext::step() {
 
     std::string_view name(required_param.name);
 
+    auto foundInherited = findVariable(name);
     std::optional<SHExposedTypeInfo> found;
-    const auto foundInherited = inherited.find(name);
-    if (foundInherited != inherited.end()) {
-      found = foundInherited->second;
+    // const auto foundInherited = inherited.find(name);
+    // if (foundInherited != inherited.end()) {
+    if(foundInherited) {
+      found = foundInherited->type;
     } else {
       found = std::nullopt;
     }
@@ -303,14 +306,16 @@ Variable *CompositionContext::findVariable(std::string_view name) {
 Variable *CompositionContext::insertVariable(std::string_view name, SHExposedTypeInfo type) {
   auto existing = findVariable(name);
   auto &scope = currentScope();
-  if (existing) {
+  if (existing || scope.variableBlocks.empty()) {
     // Create a new variable block
     auto &block = scope.variableBlocks.emplace_back(VariableBlockId{idAllocator++, {}});
     existing = &block.variables[name];
   } else {
-    if(scope.variableBlocks.
-    auto &block = scope.variableBlocks.emplace_back(VariableBlockId{idAllocator++, {}});
+    // Add to existing block, since it doesn't contain this variable yet
+    auto &block = scope.variableBlocks.back();
+    existing = &block.variables[name];
   }
+  existing->type = type;
   return existing;
 }
 
