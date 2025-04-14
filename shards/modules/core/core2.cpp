@@ -18,16 +18,15 @@ struct Set {
     _global = Var(false);
   }
 
-  PARAM_REQUIRED_VARIABLES();
+  SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposed); }
+
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_name.isVariable()) {
-      _exposed.push_back(SHExposedTypeInfo{
-          .name = _name->payload.stringValue,
-          .exposedType = data.inputType,
-          .global = _global->payload.boolValue,
-          .declared = true,
-      });
-    }
+    _exposed.push_back(SHExposedTypeInfo{
+        .name = _name->payload.stringValue,
+        .exposedType = data.inputType,
+        .global = _global->payload.boolValue,
+        .declared = true,
+    });
     return data.inputType;
   }
 
@@ -90,7 +89,7 @@ struct Get {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo composeV2(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     auto &ctx = compose::CompositionContext::get(data);
     auto var = ctx.findVariable(_name->payload.stringValue);
@@ -103,7 +102,7 @@ struct Get {
   SHVar activate(SHContext *ctx, const SHVar &input) { return input; }
 };
 
-void registerCore2() { 
+void registerCore2() {
   REGISTER_SHARD("Set", Set);
   REGISTER_SHARD("Update", Update);
   REGISTER_SHARD("Ref", Ref);

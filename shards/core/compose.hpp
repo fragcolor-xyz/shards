@@ -86,36 +86,48 @@ struct FlowAnalysis {
 
 struct Variable {
   size_t id;
-  // std::string_view name;
   SHExposedTypeInfo type;
 };
 
-struct VariableBlockId {
-  size_t id;
-  pmr::unordered_map<std::string_view, Variable> variables;
-};
-
+struct ComposedWire;
 struct Scope {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
   Scope(std::allocator_arg_t, allocator_type a);
   Scope(std::allocator_arg_t, allocator_type a, Scope &&other);
 
+  size_t id;
+
   FlowAnalysis flow;
 
+  struct PerShard {};
+  pmr::vector<PerShard> shards;
   pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   pmr::unordered_set<SHExposedTypeInfo> required;
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
-
-  pmr::vector<VariableBlockId> variableBlocks;
+  pmr::unordered_map<std::string_view, size_t> variableMap;
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
 
   Shard *bottom{};
   Shard *next{};
-  SHWire *wire{};
+  std::shared_ptr<ComposedWire> wire;
 
   bool onWorkerThread{false};
+
+  std::string_view wireName() const;
+};
+
+struct ComposedWire {
+  std::vector<Variable> variables;
+  // Span [0, numExtVariables) contains externally added variables
+  size_t numExtVariables{};
+  // Span [numExtVariables, variables.size()) contains global variables
+  size_t numGlobalVariables{};
+  std::unordered_map<std::string_view, SHExternalVariable> required;
+  SHWire *source;
+
+  ComposedWire(SHWire *source);
 };
 
 struct CompositionContext {
@@ -124,16 +136,17 @@ struct CompositionContext {
   std::vector<std::string> errorStack;
   shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
 
-  shards::pmr::vector<compose::Scope*> scopePool;
-  shards::pmr::vector<compose::Scope*> stack;
+  shards::pmr::vector<compose::Scope *> scopePool;
+  shards::pmr::vector<compose::Scope *> stack;
+  shards::pmr::unordered_map<SHWire *, std::shared_ptr<compose::ComposedWire>> wires;
 
   size_t idAllocator{};
 
   CompositionContext();
   ~CompositionContext();
 
-  Variable* findVariable(std::string_view name);
-  Variable* insertVariable(std::string_view name, SHExposedTypeInfo type);
+  Variable *findVariable(std::string_view name);
+  Variable *insertVariable(std::string_view name, SHExposedTypeInfo type);
 
   compose::Scope &pushScope(std::optional<SHTypeInfo> inputType = std::nullopt);
   void popScope();
@@ -163,7 +176,10 @@ struct CompositionContext {
 
   shards::pmr::PolymorphicAllocator<> getAllocator() { return tempAllocator.getAllocator(); }
 
-  static CompositionContext &get(const SHInstanceData &data) { return *reinterpret_cast<CompositionContext *>(data.privateContext); }
+  static CompositionContext &get(const SHInstanceData &data) {
+    shassert(data.privateContext && "Private context should be valid");
+    return *reinterpret_cast<CompositionContext *>(data.privateContext);
+  }
 
   Scope &currentScope() { return *stack.back(); }
   compose::FlowAnalysis &current() { return currentScope().flow; }
@@ -185,5 +201,5 @@ private:
 } // namespace compose
 using compose::CompositionContext;
 } // namespace shards
-struct SHPrivateContext  : public shards::CompositionContext {};
+struct SHPrivateContext : public shards::CompositionContext {};
 #endif /* CDA366C4_E8D0_474B_AFA2_F66229C830BB */

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-	<Type Name="shards_lang::RcStrWrapper">
-		<DisplayString>{&amp;__0.ptr.pointer.data_ptr-&gt;value,[__0.ptr.pointer.length]s} (RcStr)</DisplayString>
+	<Type Name="::shards_lang::RcStrWrapper">
+		<DisplayString>{__0.ptr.pointer-&gt;value.variant1.value.__0} (RcStr)</DisplayString>
 		<Expand>
-			<Item Name="[Size]">__0.ptr.pointer.length</Item>
-			<Item Name="[Test]">&amp;__0.ptr.pointer.data_ptr-&gt;value</Item>
+			<ExpandedItem>__0.ptr.pointer-&gt;value.variant1.value.__0</ExpandedItem>
 		</Expand>
 	</Type>
 	<Type Name="shards::fast_string::FastString">

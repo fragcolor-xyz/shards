@@ -139,14 +139,14 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       auto sv = SHSTRVIEW(value);
       const auto varName = sv;
       shassert(data.privateContext && "Private context should be valid");
-      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-      auto info = findExposedVariable(inherited->inherited, varName);
+      auto& ctx = compose::CompositionContext::get(data);
+      auto info = ctx.findVariable(varName);
       if (info) {
-        expInfo->push_back(*info);
+        expInfo->push_back(info->type);
         if (resolveContextVariables) {
-          return cloneTypeInfo(info->exposedType);
+          return cloneTypeInfo(info->type.exposedType);
         } else {
-          shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info->exposedType));
+          shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info->type.exposedType));
           return varType;
         }
       } else {

@@ -498,6 +498,9 @@ struct SHExposedTypeInfo {
 
   // If the variable is declared in this shard (not inherited from an inner shard)
   SHBool declared;
+
+  // Internally used to distinguish similarly named variables
+  uint32_t internalId;
 };
 
 typedef struct SHStringPayload {

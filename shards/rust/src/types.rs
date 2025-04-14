@@ -982,6 +982,7 @@ impl ExposedInfo {
       global: false,
       tracked: false,
       declared: false,
+      internalId: 0,
     }
   }
 
@@ -998,6 +999,7 @@ impl ExposedInfo {
       global: false,
       tracked: false,
       declared: false,
+      internalId: 0,
     }
   }
 
@@ -1011,6 +1013,7 @@ impl ExposedInfo {
       global: false,
       tracked: false,
       declared: false,
+      internalId: 0,
     }
   }
 
@@ -1029,6 +1032,7 @@ impl ExposedInfo {
       global: false,
       tracked: false,
       declared: false,
+      internalId: 0,
     }
   }
 
@@ -1047,6 +1051,7 @@ impl ExposedInfo {
       global: false,
       tracked: false,
       declared: false,
+      internalId: 0,
     }
   }
 }
