@@ -270,26 +270,67 @@ void CompositionContext::step() {
   }
 }
 
-Variable *CompositionContext::findVariable(std::string_view name) {
+VariableRef CompositionContext::findVariable(std::string_view name, size_t scopeOffset) {
   size_t ss = stack.size();
-  for (size_t i0 = 0; i0 < ss; i0++) {
+  for (size_t i0 = scopeOffset; i0 < ss; i0++) {
     size_t idx0 = ss - i0 - 1;
     auto &scope = stack[idx0];
     shassert(scope->wire && "Wire should be valid");
     auto it = scope->variableMap.find(name);
     if (it != scope->variableMap.end()) {
-      return &scope->wire->variables[it->second];
+      auto varPtr = &scope->wire->variables[it->second];
+      auto wire = scope->wire.get();
+      return VariableRef{varPtr, wire};
     }
   }
-  return nullptr;
+  return VariableRef{};
 }
+
+VariableRef CompositionContext::findVariable(uint32_t id, size_t scopeOffset) {
+  auto &scope = *stack[stack.size() - 1 - scopeOffset];
+  auto &wire = *scope.wire;
+  if (id >= wire.variables.size()) {
+    throw std::logic_error(fmt::format("Invalid variable id: {}", id));
+  }
+  return VariableRef{&wire.variables[id], &wire};
+}
+
+// VariableRef CompositionContext::findVariable(uint32_t id_, size_t scopeOffset) {
+//   auto idType = (id_ & InternalIdFlagMask);
+//   auto id = (id_ & InternalIdValueMask);
+//   if (idType == InternalIdFlagsInternal) {
+//     auto &scope = stack.back();
+//     auto &wire = *scope->wire;
+//     if (id < wire.numExtVariables) {
+//       return VariableRef{&wire.variables[id], &wire};
+//     } else {
+//       throw std::logic_error(fmt::format("Invalid variable id: {}", id_));
+//     }
+//   } else if (idType == InternalIdFlagsExternal) {
+//     auto &scope = stack.back();
+//     auto &wire = *scope->wire;
+//     if (id < wire.numExtVariables) {
+//       return VariableRef{&wire.variables[id], &wire};
+//     } else {
+//       throw std::logic_error(fmt::format("Invalid variable id: {}", id_));
+//     }
+//   } else {
+//     throw std::logic_error(fmt::format("Invalid variable id: {}", id_));
+//   }
+// }
 
 Variable *CompositionContext::insertVariable(std::string_view name, SHExposedTypeInfo type) {
   auto &scope = currentScope();
+  auto newVar = insertAnonymousVariable(type);
+  scope.variableMap[name] = newVar->id;
+  return newVar;
+}
+
+Variable *CompositionContext::insertAnonymousVariable(SHExposedTypeInfo type) {
+  auto &scope = currentScope();
   shassert(scope.wire && "Wire should be valid");
-  size_t newIdx = scope.wire->variables.size();
-  scope.variableMap[name] = newIdx;
-  auto &newVar = scope.wire->variables.emplace_back(Variable{newIdx, type});
+  size_t newId = scope.wire->variables.size();
+  auto &newVar = scope.wire->variables.emplace_back(Variable{newId, type});
   return &newVar;
 }
 
@@ -489,9 +530,7 @@ std::string_view Scope::wireName() const { return wire ? std::string_view(wire->
 
 ComposedWire::ComposedWire(SHWire *source) : source(source) {}
 
-} // namespace compose
-
-SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
+SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire) {
   ZoneScoped;
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
@@ -526,11 +565,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     SPDLOG_LOGGER_DEBUG(compose::logger, "Composing new wire: {}", data.wire->name);
   }
   scope.wire = it->second;
-  // scope.fullRequired = reinterpret_cast<decltype(compose::Scope::fullRequired)>(data.requiredVariables);
 
-  // add externally added variables
-
-  // TODO: Move to compose interface and consume on SHWire::compose()
   if (composeWireRoot) {
     auto &numExtVariables = composeWireRoot->numExtVariables;
     for (const auto &[key, pVar] : scope.wire->source->getExternalVariables()) {
@@ -578,16 +613,34 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
-      // auto &info = data.shared.elements[i];
+      auto &info = data.shared.elements[i];
       // std::string_view sName(info.name);
       // ctx.inherited.insert(sName, info);
-      auto* v = ctx.findVariable(data.shared.elements[i].name);
-      if (v) {
-        // ctx.inherited.insert(v->name, v->type);
-        // ctx.
-      } else {
-        SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared to wire '{}'", data.shared.elements[i].name, scope.wireName());
-        // throw std::runtime_error(fmt::format("Variable '{}' not found in wire '{}'", data.shared.elements[i].name, scope.wireName()));
+
+      bool done = false;
+      VariableRef variable{};
+      if (info.internalId != 0) {
+        variable = ctx.findVariable(info.internalId, 1);
+        if (!variable)
+          throw std::logic_error(
+              fmt::format("Variable '{}' (as id: {}) not found in wire '{}'", info.name, info.internalId, scope.wireName()));
+        scope.variableMap[info.name] = info.internalId;
+        done = true;
+      }
+
+      if (!done && info.internalId == 0) {
+        variable = ctx.findVariable(info.name, 1);
+        if (variable->type.exposedType == info.exposedType) {
+          scope.variableMap[info.name] = variable->id;
+          done = true;
+        }
+      }
+
+      if (!done) {
+        SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared to wire '{}'",
+                            data.shared.elements[i].name, scope.wireName());
+        auto v = ctx.insertAnonymousVariable(info);
+        scope.variableMap[info.name] = v->id;
       }
     }
   }
@@ -654,6 +707,12 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   }
 
   return result;
+}
+
+} // namespace compose
+
+SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
+  return compose::internalComposeWire(wire, data, fromWire);
 }
 
 SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {

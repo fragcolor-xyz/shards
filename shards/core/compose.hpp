@@ -18,9 +18,14 @@ struct SHComposeInterface {
 };
 
 namespace shards {
-
 namespace compose {
 extern std::shared_ptr<spdlog::logger> logger;
+
+inline const uint32_t InternalIdNone = 0;
+inline const uint32_t InternalIdFlagsInternal = 1 << 31;
+inline const uint32_t InternalIdFlagsExternal = 1 << 30;
+inline const uint32_t InternalIdValueMask = InternalIdFlagsExternal - 1;
+inline const uint32_t InternalIdFlagMask = InternalIdFlagsInternal | InternalIdFlagsExternal;
 
 // Matches a `x IsXXX` or `x Is(@type(...))` rule
 struct AssertionRule_IsA {
@@ -90,6 +95,15 @@ struct Variable {
 };
 
 struct ComposedWire;
+struct VariableRef {
+  Variable *variable;
+  ComposedWire *wire;
+
+  operator bool() { return isValid(); }
+  bool isValid() const { return variable; }
+  const Variable *operator->() const { return variable; }
+};
+
 struct Scope {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
   Scope(std::allocator_arg_t, allocator_type a);
@@ -140,13 +154,17 @@ struct CompositionContext {
   shards::pmr::vector<compose::Scope *> stack;
   shards::pmr::unordered_map<SHWire *, std::shared_ptr<compose::ComposedWire>> wires;
 
+  std::vector<Variable> variables;
+
   size_t idAllocator{};
 
   CompositionContext();
   ~CompositionContext();
 
-  Variable *findVariable(std::string_view name);
+  VariableRef findVariable(std::string_view name, size_t scopeOffset = 0);
+  VariableRef findVariable(uint32_t id, size_t scopeOffset = 0);
   Variable *insertVariable(std::string_view name, SHExposedTypeInfo type);
+  Variable *insertAnonymousVariable(SHExposedTypeInfo type);
 
   compose::Scope &pushScope(std::optional<SHTypeInfo> inputType = std::nullopt);
   void popScope();
