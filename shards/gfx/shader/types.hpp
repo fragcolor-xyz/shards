@@ -8,6 +8,7 @@
 #include <variant>
 #include <compare>
 #include <vector>
+#include <algorithm>
 
 namespace gfx {
 // TODO: Rename to BaseType
