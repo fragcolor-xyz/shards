@@ -133,11 +133,11 @@ struct Scope {
 };
 
 struct ComposedWire {
-  std::vector<Variable> variables;
+  // std::vector<Variable> variables;
   // Span [0, numExtVariables) contains externally added variables
-  size_t numExtVariables{};
+  // size_t numExtVariables{};
   // Span [numExtVariables, variables.size()) contains global variables
-  size_t numGlobalVariables{};
+  // size_t numGlobalVariables{};
   std::unordered_map<std::string_view, SHExternalVariable> required;
   SHWire *source;
 

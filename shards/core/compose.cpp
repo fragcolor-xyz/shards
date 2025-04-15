@@ -329,8 +329,8 @@ Variable *CompositionContext::insertVariable(std::string_view name, SHExposedTyp
 Variable *CompositionContext::insertAnonymousVariable(SHExposedTypeInfo type) {
   auto &scope = currentScope();
   shassert(scope.wire && "Wire should be valid");
-  size_t newId = scope.wire->variables.size();
-  auto &newVar = scope.wire->variables.emplace_back(Variable{newId, type});
+  size_t newId = variables.size();
+  auto &newVar = variables.emplace_back(Variable{newId, type});
   return &newVar;
 }
 
@@ -567,7 +567,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   scope.wire = it->second;
 
   if (composeWireRoot) {
-    auto &numExtVariables = composeWireRoot->numExtVariables;
+    // auto &numExtVariables = composeWireRoot->numExtVariables;
     for (const auto &[key, pVar] : scope.wire->source->getExternalVariables()) {
       const SHExternalVariable &extVar = pVar;
       const SHVar &var = *extVar.var;
