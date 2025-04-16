@@ -67,7 +67,9 @@ if(NOT SHARDS_NO_CONSISTENT_RESUMER AND CMAKE_BUILD_TYPE MATCHES Debug AND NOT S
 endif()
 
 if(WIN32)
-  target_link_libraries(shards-core Boost::stacktrace_windbg_cached)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_libraries(shards-core Boost::stacktrace_windbg)
+  endif()
 
   # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
   # 0x0A00 = Windows 10
