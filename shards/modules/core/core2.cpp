@@ -96,7 +96,7 @@ struct Get {
     if (!var) {
       throw ComposeError(fmt::format("Variable {} not found", _name->payload.stringValue));
     }
-    return var->type.exposedType;
+    return var->exposed.exposedType;
   }
 
   SHVar activate(SHContext *ctx, const SHVar &input) { return input; }

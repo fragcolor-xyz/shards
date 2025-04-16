@@ -142,11 +142,11 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       auto& ctx = compose::CompositionContext::get(data);
       auto info = ctx.findVariable(varName);
       if (info) {
-        expInfo->push_back(info->type);
+        expInfo->push_back(info->exposed);
         if (resolveContextVariables) {
-          return cloneTypeInfo(info->type.exposedType);
+          return cloneTypeInfo(info->exposed.exposedType);
         } else {
-          shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info->type.exposedType));
+          shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info->exposed.exposedType));
           return varType;
         }
       } else {

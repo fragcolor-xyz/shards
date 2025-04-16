@@ -23,9 +23,8 @@ extern std::shared_ptr<spdlog::logger> logger;
 
 inline const uint32_t InternalIdNone = 0;
 inline const uint32_t InternalIdFlagsInternal = 1 << 31;
-inline const uint32_t InternalIdFlagsExternal = 1 << 30;
-inline const uint32_t InternalIdValueMask = InternalIdFlagsExternal - 1;
-inline const uint32_t InternalIdFlagMask = InternalIdFlagsInternal | InternalIdFlagsExternal;
+inline const uint32_t InternalIdFlagMask = InternalIdFlagsInternal;
+inline const uint32_t InternalIdValueMask = InternalIdFlagsInternal - 1;
 
 // Matches a `x IsXXX` or `x Is(@type(...))` rule
 struct AssertionRule_IsA {
@@ -89,9 +88,18 @@ struct FlowAnalysis {
   ShardAnnotationState annotations;
 };
 
+enum VariableKind {
+  Local,
+  External,
+  Required,
+  Global,
+};
+
 struct Variable {
   size_t id;
-  SHExposedTypeInfo type;
+  size_t declaredIn;
+  VariableKind kind;
+  SHExposedTypeInfo exposed;
 };
 
 struct ComposedWire;
@@ -115,10 +123,16 @@ struct Scope {
 
   struct PerShard {};
   pmr::vector<PerShard> shards;
-  pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
-  pmr::unordered_set<SHExposedTypeInfo> required;
+  // pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
+  // pmr::unordered_set<SHExposedTypeInfo> required;
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
+
   pmr::unordered_map<std::string_view, size_t> variableMap;
+  pmr::vector<size_t> usedVariables;
+  // Determinies whenever to lookup parent scope variables or not
+  bool hasAllVariables{};
+
+  size_t estimatedNumVariables{};
 
   SHTypeInfo previousOutputType{};
   SHTypeInfo originalInputType{};
@@ -133,11 +147,6 @@ struct Scope {
 };
 
 struct ComposedWire {
-  // std::vector<Variable> variables;
-  // Span [0, numExtVariables) contains externally added variables
-  // size_t numExtVariables{};
-  // Span [numExtVariables, variables.size()) contains global variables
-  // size_t numGlobalVariables{};
   std::unordered_map<std::string_view, SHExternalVariable> required;
   SHWire *source;
 
@@ -157,14 +166,23 @@ struct CompositionContext {
   std::vector<Variable> variables;
 
   size_t idAllocator{};
+  mutable std::string shardContextStrBuf;
 
   CompositionContext();
   ~CompositionContext();
 
-  VariableRef findVariable(std::string_view name, size_t scopeOffset = 0);
-  VariableRef findVariable(uint32_t id, size_t scopeOffset = 0);
-  Variable *insertVariable(std::string_view name, SHExposedTypeInfo type);
-  Variable *insertAnonymousVariable(SHExposedTypeInfo type);
+  Shard *currentShard() const;
+  std::string_view currentShardName() const;
+  std::string_view shardContextStr() const;
+
+  VariableRef findVariablePrivate(std::string_view name, size_t scopeOffset = 0);
+  VariableRef findVariablePrivate(uint32_t id, size_t scopeOffset = 0);
+
+  // Find variable and reference it as used in the current context
+  VariableRef findVariable(std::string_view id, size_t scopeOffset = 0);
+
+  Variable &insertVariable(std::string_view name, SHExposedTypeInfo type);
+  Variable &insertAnonymousVariable(SHExposedTypeInfo type);
 
   compose::Scope &pushScope(std::optional<SHTypeInfo> inputType = std::nullopt);
   void popScope();
@@ -200,6 +218,7 @@ struct CompositionContext {
   }
 
   Scope &currentScope() { return *stack.back(); }
+  const Scope &currentScope() const { return *stack.back(); }
   compose::FlowAnalysis &current() { return currentScope().flow; }
 
 private:
