@@ -24,6 +24,7 @@ struct Set {
     _exposed.push_back(SHExposedTypeInfo{
         .name = _name->payload.stringValue,
         .exposedType = data.inputType,
+        .isMutable = true,
         .global = _global->payload.boolValue,
         .declared = true,
     });
@@ -48,16 +49,16 @@ struct Ref {
     _global = Var(false);
   }
 
-  PARAM_REQUIRED_VARIABLES();
+  SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposed); }
+
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_name.isVariable()) {
-      _exposed.push_back(SHExposedTypeInfo{
-          .name = _name->payload.stringValue,
-          .exposedType = data.inputType,
-          .global = _global->payload.boolValue,
-          .declared = true,
-      });
-    }
+    _exposed.push_back(SHExposedTypeInfo{
+        .name = _name->payload.stringValue,
+        .exposedType = data.inputType,
+        .isMutable = false,
+        .global = _global->payload.boolValue,
+        .declared = true,
+    });
     return data.inputType;
   }
 

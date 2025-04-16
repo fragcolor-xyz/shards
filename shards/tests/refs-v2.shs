@@ -23,7 +23,12 @@ Do(a)
 @wire(b {
   "hello" >= v
   v | Log("v 1")
+  s0 | ForEach({
+    ["hello" $0] | String.Format
+  })
 })
-Do(b)
 
-v Log("v 2")
+[1 2 3 4] = s0
+Do(b) | Log("b out")
+
+v | Log("v 2")

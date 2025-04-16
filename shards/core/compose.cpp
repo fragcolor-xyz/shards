@@ -225,9 +225,9 @@ void CompositionContext::step() {
         SPDLOG_LOGGER_DEBUG(logger, "Forward exposed variable: {} (id: {}) type: {} in {}", name, v.id, exposed_param.exposedType,
                             shardContextStr());
       } else {
-        insertVariable(name, exposed_param);
-        SPDLOG_LOGGER_DEBUG(logger, "Declared variable: {} mutable: {}, type: {} in {}", name, exposed_param.isMutable,
-                            exposed_param.exposedType, shardContextStr());
+        auto &v = insertVariable(name, exposed_param);
+        SPDLOG_LOGGER_DEBUG(logger, "Declared variable: {} (id: {}) mutable: {}, type: {} in {}", name, v.id,
+                            exposed_param.isMutable, exposed_param.exposedType, shardContextStr());
       }
       // auto inserted = scope->wire->getComposeData().declaredVariables.emplace(name, exposed_param);
       // if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
@@ -386,9 +386,9 @@ compose::Scope &CompositionContext::pushScope(std::optional<SHTypeInfo> inputTyp
   e->id = idAllocator++;
 
   if (inputType)
-    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({}) < {}", stack.size(), *inputType);
+    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({}) < {}", e->id, *inputType);
   else
-    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({})", stack.size());
+    SPDLOG_LOGGER_DEBUG(logger, "Push scope ({})", e->id);
   auto &s = *stack.emplace_back(e);
   if (inputType) {
     s.previousOutputType = s.originalInputType = *inputType;
@@ -399,10 +399,11 @@ compose::Scope &CompositionContext::pushScope(std::optional<SHTypeInfo> inputTyp
   return s;
 }
 void CompositionContext::popScope() {
+  auto scope = stack.back();
   // Commit rule
   auto comitted = flowCommitRule();
   if (comitted) {
-    SPDLOG_LOGGER_DEBUG(logger, "Pop scope({}): Committed rule: {}", stack.size(), *comitted);
+    SPDLOG_LOGGER_DEBUG(logger, "Pop scope({}): Committed rule: {}", scope->id, *comitted);
   }
 
   // Analyze contents
@@ -411,10 +412,9 @@ void CompositionContext::popScope() {
     SPDLOG_LOGGER_DEBUG(logger, "Assertion rules: {}", rules);
   }
 
-  auto scope = stack.back();
   stack.pop_back();
   scopePool.push_back(scope);
-  SPDLOG_LOGGER_DEBUG(logger, "Popped scope ({})", stack.size());
+  SPDLOG_LOGGER_DEBUG(logger, "Popped scope ({})", scope->id);
 }
 void CompositionContext::annotateContextVariable(std::string_view name, std::optional<SHTypeInfo> type) {
   flowAnnotateContextVariable(name, type);
@@ -497,14 +497,14 @@ void CompositionContext::annotateIsNotNone() {
 void CompositionContext::flowAnnotateNextShard(Shard *shard) {
   auto &c = current();
   if (c.shardIndex > 0 && !c.annotations.isInstrumented) {
-    // SPDLOG_LOGGER_DEBUG(logger, "non-instrumented shard: {} (shardId: {})", c.shardName, c.shardIndex);
+    // SPDLOG_LOGGER_DEBUG(logger, "non-instrumented shard: {} ({})", c.shardName, c.shardIndex);
     flowClearUndeterministic();
   }
   c.shardIndex = size_t(shard->id);
   // c.shardIndex++;
   c.shardName = shard->name(shard);
   c.annotations.reset();
-  SPDLOG_LOGGER_DEBUG(logger, "Annotating next shard: {} (shardId: {})", c.shardName, c.shardIndex);
+  SPDLOG_LOGGER_DEBUG(logger, "Annotating next shard: {} ({})", c.shardName, c.shardIndex);
 }
 
 void CompositionContext::flowAnnotateContextVariable(std::string_view name, std::optional<SHTypeInfo> type) {
@@ -654,6 +654,8 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       if (composeWireRoot) {
         // Create an external variable reference
         auto &v = ctx.insertVariable(v1->exposed.name, v1->exposed);
+        SPDLOG_LOGGER_DEBUG(compose::logger, "Forwarding variable: {} (id: {}) to wire {}", v.exposed.name, v.id,
+                            scope.wireName());
         v.kind = VariableKind::Required;
       } else {
         // Just forward the same instance
@@ -724,7 +726,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   pmr::unordered_set<size_t> usedVariables(ctx.getAllocator());
   for (auto &v : scope1.usedVariables) {
     auto &var = ctx.variables[v];
-    if (var.declaredIn == scope1.id) {
+    if (var.declaredIn == scope1.id && var.kind == VariableKind::Local) {
       continue; // Ignore locally declared variables
     }
 
@@ -741,22 +743,6 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       shards::arrayPush(result.exposedInfo, var.exposed);
     }
   }
-
-  // TODO: finalize
-  // for (auto &exposed : scope1.exposed) {
-  //   shards::arrayPush(result.exposedInfo, exposed.second);
-  // }
-
-  // if (scope1.fullRequired) {
-  //   for (auto &req : scope1.required) {
-  //     shards::arrayPush(result.requiredInfo, req);
-  //     (*scope1.fullRequired)[req.name] = req;
-  //   }
-  // } else {
-  //   for (auto &req : scope1.required) {
-  //     shards::arrayPush(result.requiredInfo, req);
-  //   }
-  // }
 
   if (wire.size() > 0) {
     auto &last = wire.back();
