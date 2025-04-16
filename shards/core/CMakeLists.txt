@@ -69,6 +69,8 @@ endif()
 if(WIN32)
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_libraries(shards-core Boost::stacktrace_windbg)
+  else()
+    target_link_libraries(shards-core Boost::stacktrace_basic)
   endif()
 
   # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
