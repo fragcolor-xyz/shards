@@ -18,6 +18,20 @@ struct SHComposeInterface {
 };
 
 namespace shards {
+
+struct WireRuntimeVariableInfo {
+  struct Local {
+    std::string name;
+    SHTypeInfo type;
+  };
+  std::vector<Local> localVariables;
+  struct External {
+    std::string name;
+    TypeInfo type;
+  };
+  std::vector<External> externalVariables;
+};
+
 namespace compose {
 extern std::shared_ptr<spdlog::logger> logger;
 
@@ -95,19 +109,6 @@ enum VariableKind {
   Global,
 };
 
-struct WireRuntimeVariableInfo {
-  struct Local {
-    std::string name;
-    SHTypeInfo type;
-  };
-  std::vector<Local> localVariables;
-  struct External {
-    std::string name;
-    TypeInfo type;
-  };
-  std::vector<External> externalVariables;
-};
-
 struct Variable {
   size_t id;
   size_t declaredIn;
@@ -174,7 +175,7 @@ struct ComposedWire {
 
   struct ShardInfo {
     size_t seqId{};
-    Shard* shard;
+    Shard *shard;
     std::vector<size_t> variableRefs;
   };
   std::unordered_map<size_t, ShardInfo> shardSeqId;
@@ -206,7 +207,7 @@ struct CompositionContext {
   Shard *currentShard(size_t scopeOffset = 0) const;
   std::string_view currentShardName() const;
   std::string_view shardContextStr(size_t scopeOffset = 0) const;
-  std::string_view shardContextStr(Shard* shard) const;
+  std::string_view shardContextStr(Shard *shard) const;
 
   VariableRef findVariablePrivate(std::string_view name, size_t scopeOffset = 0);
   VariableRef findVariablePrivate(uint32_t id, size_t scopeOffset = 0);
@@ -217,7 +218,7 @@ struct CompositionContext {
   Variable &insertVariable(std::string_view name, SHExposedTypeInfo type);
   Variable &insertAnonymousVariable(SHExposedTypeInfo type);
 
-  ComposedWire::ShardInfo& currentShardInfo();
+  ComposedWire::ShardInfo &currentShardInfo();
 
   compose::Scope &pushScope(std::optional<SHTypeInfo> inputType = std::nullopt);
   void popScope();

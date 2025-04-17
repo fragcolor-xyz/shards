@@ -221,6 +221,7 @@ struct TypeInfo {
 private:
   SHTypeInfo _info{};
 };
+struct WireRuntimeVariableInfo;
 } // namespace shards
 
 struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar> {
@@ -235,7 +236,6 @@ struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar>
 
 typedef void(__cdecl *SHSetWireError)(const SHWire *, void *errorData, struct SHStringWithLen msg);
 
-struct WireRuntimeVariableInfo;
 struct SHWire : public std::enable_shared_from_this<SHWire> {
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
 
@@ -324,7 +324,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable shards::TypeInfo inputType{};
   mutable shards::TypeInfo outputType{};
 
-  std::shared_ptr<WireRuntimeVariableInfo> runtimeVariableInfo;
+  std::shared_ptr<shards::WireRuntimeVariableInfo> runtimeVariableInfo;
 
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;

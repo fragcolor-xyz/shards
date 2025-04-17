@@ -3,6 +3,7 @@
 #include "pmr/vector.hpp"
 #include "pmr/string.hpp"
 #include "pmr/set.hpp"
+#include "pmr/map.hpp"
 #include "type_cache.hpp"
 #include "compose_fmt.hpp"
 #include <functional>
@@ -622,189 +623,223 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   }
   scope.wire = it->second;
 
-  if (composeWireRoot) {
-    // auto &numExtVariables = composeWireRoot->numExtVariables;
-    for (const auto &[key, pVar] : scope.wire->source->getExternalVariables()) {
-      const SHExternalVariable &extVar = pVar;
-      const SHVar &var = *extVar.var;
-      if ((var.flags & SHVAR_FLAGS_EXTERNAL) == 0) {
-        throw std::runtime_error(fmt::format("Variable '{}' must have SHVAR_FLAGS_EXTERNAL flag set", key.payload.stringValue));
+  std::shared_ptr<WireRuntimeVariableInfo> runtimeVariableInfo;
+  try {
+    if (composeWireRoot) {
+      auto &sourceWire = data.wire;
+      if (sourceWire->runtimeVariableInfo)
+        throw std::logic_error(fmt::format("Wire {} is already composed/being composed", sourceWire->name));
+      runtimeVariableInfo = sourceWire->runtimeVariableInfo = std::make_shared<WireRuntimeVariableInfo>();
+
+      // auto &numExtVariables = composeWireRoot->numExtVariables;
+      for (const auto &[key, pVar] : scope.wire->source->getExternalVariables()) {
+        const SHExternalVariable &extVar = pVar;
+        const SHVar &var = *extVar.var;
+        if ((var.flags & SHVAR_FLAGS_EXTERNAL) == 0) {
+          throw std::runtime_error(fmt::format("Variable '{}' must have SHVAR_FLAGS_EXTERNAL flag set", key.payload.stringValue));
+        }
+
+        const SHTypeInfo *type{};
+        if (extVar.type) {
+          type = extVar.type;
+        } else {
+          static TypeCache typeCache;
+          type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
+        }
+
+        auto &v = ctx.insertVariable(key.payload.stringValue,
+                                     SHExposedTypeInfo{key.payload.stringValue, {}, *type, true /* mutable */});
+        v.kind = VariableKind::External;
+        v.exposed.tracked = var.flags & SHVAR_FLAGS_TRACKED;
       }
 
-      const SHTypeInfo *type{};
-      if (extVar.type) {
-        type = extVar.type;
-      } else {
-        static TypeCache typeCache;
-        type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
-      }
-
-      auto &v =
-          ctx.insertVariable(key.payload.stringValue, SHExposedTypeInfo{key.payload.stringValue, {}, *type, true /* mutable */});
-      v.kind = VariableKind::External;
-      v.exposed.tracked = var.flags & SHVAR_FLAGS_TRACKED;
-    }
-
-    // add present mesh variables as well if we have a mesh
-    auto mesh = scope.wire->source->mesh.lock();
-    if (mesh) {
-      for (auto &v : mesh->getVariables()) {
-        // only add variables with metadata basically
-        auto metadata = mesh->getMetadata(&v.second);
-        if (metadata) {
-          std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
-          auto &v = ctx.insertVariable(sName, *metadata);
-          v.kind = VariableKind::Global;
+      // add present mesh variables as well if we have a mesh
+      auto mesh = scope.wire->source->mesh.lock();
+      if (mesh) {
+        for (auto &v : mesh->getVariables()) {
+          // only add variables with metadata basically
+          auto metadata = mesh->getMetadata(&v.second);
+          if (metadata) {
+            std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
+            auto &v = ctx.insertVariable(sName, *metadata);
+            v.kind = VariableKind::Global;
+          }
         }
       }
     }
-  }
 
-  // Fully specify all variables
-  scope.hasAllVariables = true;
+    // Fully specify all variables
+    scope.hasAllVariables = true;
 
-  if (data.shared.elements) {
-    auto insertExistingVariable = [&](VariableRef v1) {
-      if (composeWireRoot) {
-        // Create an external variable reference
-        auto &v = ctx.insertVariable(v1->exposed.name, v1->exposed);
-        SPDLOG_LOGGER_DEBUG(compose::logger, "Forwarding variable: {} (id: {}) to wire {}", v.exposed.name, v.id,
-                            scope.wireName());
-        v.kind = VariableKind::Required;
-      } else {
-        // Just forward the same instance
-        scope.variableMap[v1->exposed.name] = v1->id;
-      }
-    };
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      auto &info = data.shared.elements[i];
-      bool done = false;
-      VariableRef variable{};
-      if (info.internalId != 0) {
-        variable = ctx.findVariablePrivate(info.internalId, 1);
-        if (!variable)
-          throw std::logic_error(
-              fmt::format("Variable '{}' (as id: {}) not found in wire '{}'", info.name, info.internalId, scope.wireName()));
-        insertExistingVariable(variable);
-        done = true;
-      }
-
-      if (!done && info.internalId == 0) {
-        variable = ctx.findVariablePrivate(info.name, 1);
-        if (variable && variable->exposed.exposedType == info.exposedType) {
+    if (data.shared.elements) {
+      auto insertExistingVariable = [&](VariableRef v1) {
+        if (composeWireRoot) {
+          // Create an external variable reference
+          auto &v = ctx.insertVariable(v1->exposed.name, v1->exposed);
+          SPDLOG_LOGGER_DEBUG(compose::logger, "Forwarding variable: {} (id: {}) to wire {}", v.exposed.name, v.id,
+                              scope.wireName());
+          v.kind = VariableKind::Required;
+        } else {
+          // Just forward the same instance
+          scope.variableMap[v1->exposed.name] = v1->id;
+        }
+      };
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &info = data.shared.elements[i];
+        bool done = false;
+        VariableRef variable{};
+        if (info.internalId != 0) {
+          variable = ctx.findVariablePrivate(info.internalId, 1);
+          if (!variable)
+            throw std::logic_error(
+                fmt::format("Variable '{}' (as id: {}) not found in wire '{}'", info.name, info.internalId, scope.wireName()));
           insertExistingVariable(variable);
           done = true;
         }
-      }
 
-      if (!done) {
-        SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared in shard {}", data.shared.elements[i].name,
-                            ctx.shardContextStr(1));
-        ctx.insertVariable(info.name, info);
-      }
-    }
-  }
+        if (!done && info.internalId == 0) {
+          variable = ctx.findVariablePrivate(info.name, 1);
+          if (variable && variable->exposed.exposedType == info.exposedType) {
+            insertExistingVariable(variable);
+            done = true;
+          }
+        }
 
-  size_t chsize = wire.size();
-  for (size_t i = 0; i < chsize; i++) {
-    auto &scope = ctx.currentScope();
-    Shard *blk = wire[i];
-    scope.next = nullptr;
-    if (i < chsize - 1)
-      scope.next = wire[i + 1];
-
-    scope.bottom = blk;
-    try {
-      ctx.step();
-    } catch (std::exception &ex) {
-      auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
-                                    blk->line, blk->column, scope.wireName(), ex.what());
-      SHLOG_ERROR("{}", verboseMsg);
-      if (data.wire) {
-        auto mesh = data.wire->mesh.lock();
-        if (mesh) {
-          std::string_view what{ex.what()};
-          shards::OwnedVar err{Var(what)};
-          mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+        if (!done) {
+          SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared in shard {}",
+                              data.shared.elements[i].name, ctx.shardContextStr(1));
+          ctx.insertVariable(info.name, info);
         }
       }
-      throw ComposeError(verboseMsg);
-    }
-  }
-
-  SHComposeResult result = {scope.previousOutputType};
-
-  // Check referenced variables, not declared locally
-
-  pmr::unordered_set<size_t> usedVariables(ctx.getAllocator());
-  for (auto &v : scope.usedVariables) {
-    auto &var = ctx.variables[v];
-    if (var.declaredIn == scope.id && var.kind == VariableKind::Local) {
-      continue; // Ignore locally declared variables
     }
 
-    if (!usedVariables.contains(v)) {
-      usedVariables.insert(v);
-      auto &var = ctx.variables[v];
-      shards::arrayPush(result.requiredInfo, var.exposed);
-    }
-  }
+    size_t chsize = wire.size();
+    for (size_t i = 0; i < chsize; i++) {
+      auto &scope = ctx.currentScope();
+      Shard *blk = wire[i];
+      scope.next = nullptr;
+      if (i < chsize - 1)
+        scope.next = wire[i + 1];
 
-  for (auto &[k, v] : scope.variableMap) {
-    auto &var = ctx.variables[v];
-    if (var.kind == VariableKind::Local && var.declaredIn == scope.id) {
-      shards::arrayPush(result.exposedInfo, var.exposed);
-    }
-  }
-
-  if (wire.size() > 0) {
-    auto &last = wire.back();
-    if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
-        strcmp(last->name(last), "Fail") == 0) {
-      result.flowStopper = true;
-    } else if (strcmp(last->name(last), "Stop") == 0) {
-      // need to check if first param is none
-      auto fp = last->getParam(last, 0);
-      if (fp.valueType == SHType::None)
-        result.flowStopper = true;
-    }
-  }
-
-  if (composeWireRoot) {
-    // Populate wire data
-    auto runtimeVariableInfo = std::make_unique<WireRuntimeVariableInfo>();
-
-    SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis", scope.wireName());
-    pmr::set<size_t> uniqueRequirements(ctx.getAllocator());
-    for (auto &s : composeWireRoot->shardSeqId) {
-      auto shard = s.second.shard;
-      SPDLOG_LOGGER_DEBUG(compose::logger, " Shard {}, Id: {}, SeqId: {}:", ctx.shardContextStr(shard), s.first,
-                          shard ? shard->id : 0, s.second.seqId);
-      pmr::set<size_t> uniqueRefs(ctx.getAllocator());
-      for (auto &v : s.second.variableRefs) {
-        uniqueRefs.insert(v);
+      scope.bottom = blk;
+      try {
+        ctx.step();
+      } catch (std::exception &ex) {
+        auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
+                                      blk->line, blk->column, scope.wireName(), ex.what());
+        SHLOG_ERROR("{}", verboseMsg);
+        if (data.wire) {
+          auto mesh = data.wire->mesh.lock();
+          if (mesh) {
+            std::string_view what{ex.what()};
+            shards::OwnedVar err{Var(what)};
+            mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+          }
+        }
+        throw ComposeError(verboseMsg);
       }
-      for (auto &v : uniqueRefs) {
+    }
+
+    SHComposeResult result = {scope.previousOutputType};
+
+    // Check referenced variables, not declared locally
+
+    pmr::unordered_set<size_t> usedVariables(ctx.getAllocator());
+    for (auto &v : scope.usedVariables) {
+      auto &var = ctx.variables[v];
+      if (var.declaredIn == scope.id && var.kind == VariableKind::Local) {
+        continue; // Ignore locally declared variables
+      }
+
+      if (!usedVariables.contains(v)) {
+        usedVariables.insert(v);
         auto &var = ctx.variables[v];
-        SPDLOG_LOGGER_DEBUG(compose::logger, " - Variable: {} (id: {}, kind: {}, type: {})", var.exposed.name, var.id,
-                            magic_enum::enum_name(var.kind), var.exposed.exposedType);
-        if (var.kind == VariableKind::Required) {
-          uniqueRequirements.insert(v);
-        }
+        shards::arrayPush(result.requiredInfo, var.exposed);
       }
     }
 
-    for (auto &v : uniqueRequirements) {
+    // Insert wire root scope variables into exposed
+    for (auto &[k, v] : scope.variableMap) {
       auto &var = ctx.variables[v];
-      SPDLOG_LOGGER_DEBUG(compose::logger, " Wire required variable: {} (id: {}, type: {})", var.exposed.name, var.id,
-                          var.exposed.exposedType);
-      runtimeVariableInfo->externalVariables.emplace_back(var.exposed.name, var.exposed.exposedType);
+      if (var.kind == VariableKind::Local && var.declaredIn == scope.id) {
+        shards::arrayPush(result.exposedInfo, var.exposed);
+      }
     }
 
-    SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis done", scope.wireName());
-  }
+    if (wire.size() > 0) {
+      auto &last = wire.back();
+      if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
+          strcmp(last->name(last), "Fail") == 0) {
+        result.flowStopper = true;
+      } else if (strcmp(last->name(last), "Stop") == 0) {
+        // need to check if first param is none
+        auto fp = last->getParam(last, 0);
+        if (fp.valueType == SHType::None)
+          result.flowStopper = true;
+      }
+    }
 
-  return result;
+    if (composeWireRoot) {
+      // Finalize and populate wire variable data
+      SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis", scope.wireName());
+      pmr::set<size_t> allRequiredVariables(ctx.getAllocator());
+      pmr::map<size_t, compose::ComposedWire::ShardInfo *> orderedShards(ctx.getAllocator());
+      for (auto &[k, v] : composeWireRoot->shardSeqId) {
+        orderedShards.emplace(v.seqId, &v);
+      }
+
+      for (auto &[k, shardInfo] : orderedShards) {
+        // Ignore wire root (seqid == 0) since it's only used to populate inherited variables, and we only want to collect usages
+        if (k == 0) {
+          bool okay = true;
+          for (auto &v : shardInfo->variableRefs) {
+            auto &var = ctx.variables[v];
+            if (var.kind == VariableKind::Local) {
+              okay = false;
+              SPDLOG_LOGGER_ERROR(compose::logger, "Wire root must not have local variables, found {} (id: {}, type: {})",
+                                  var.exposed.name, var.id, var.exposed.exposedType);
+            }
+          }
+          if (!okay) {
+            throw std::logic_error("Wire root must not have local variables");
+          }
+          continue;
+        }
+
+        auto shard = shardInfo->shard;
+        SPDLOG_LOGGER_DEBUG(compose::logger, " [{}] Shard {}, Id: {}", k, ctx.shardContextStr(shard), shard ? shard->id : 0);
+        pmr::set<size_t> uniqueRefs(ctx.getAllocator());
+        for (auto &v : shardInfo->variableRefs) {
+          uniqueRefs.insert(v);
+        }
+        for (auto &v : uniqueRefs) {
+          auto &var = ctx.variables[v];
+          SPDLOG_LOGGER_DEBUG(compose::logger, " - Variable: {} (id: {}, kind: {}, type: {})", var.exposed.name, var.id,
+                              magic_enum::enum_name(var.kind), var.exposed.exposedType);
+          // Ignore SeqId 0 since it's the wire root, and will always have required variables defined through it's environment
+          if (var.kind == VariableKind::Required) {
+            allRequiredVariables.insert(v);
+          }
+        }
+      }
+
+      for (auto &v : allRequiredVariables) {
+        auto &var = ctx.variables[v];
+        SPDLOG_LOGGER_DEBUG(compose::logger, " Wire required variable: {} (id: {}, type: {})", var.exposed.name, var.id,
+                            var.exposed.exposedType);
+        runtimeVariableInfo->externalVariables.emplace_back(var.exposed.name, var.exposed.exposedType);
+      }
+
+      SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis done", scope.wireName());
+    }
+
+    return result;
+  } catch (...) {
+    if (runtimeVariableInfo) {
+      data.wire->runtimeVariableInfo.reset();
+    }
+    throw;
+  }
 }
 
 } // namespace compose
