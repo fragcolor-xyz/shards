@@ -12,6 +12,7 @@ struct Set {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ExposedInfo _exposed;
+  SHVar *_slot{};
 
   Set() {
     _name = Var("");
@@ -31,7 +32,20 @@ struct Set {
     return data.inputType;
   }
 
-  SHVar activate(SHContext *ctx, const SHVar &input) { return input; }
+  void warmup(SHContext *ctx) {
+    if (_global->payload.boolValue) {
+      _slot = referenceGlobalVariable(ctx, _name->payload.stringValue);
+    } else {
+      _slot = referenceVariable(ctx, _name->payload.stringValue);
+    }
+  }
+
+  void cleanup(SHContext *ctx) { releaseVariable(_slot); }
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    (*_slot) = input;
+    return input;
+  }
 };
 
 struct Ref {
@@ -43,6 +57,7 @@ struct Ref {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ExposedInfo _exposed;
+  SHVar *_slot{};
 
   Ref() {
     _name = Var("");
@@ -73,11 +88,30 @@ struct Update {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  SHVar *_slot{};
+  bool _existingDeclaredAsGlobal{};
+
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.clear();
+    auto &ctx = compose::CompositionContext::get(data);
+    auto existing = ctx.findVariable(_name->payload.stringValue);
+    if (!existing)
+      throw ComposeError(fmt::format("Variable {} not found", _name->payload.stringValue));
+    _requiredVariables.push_back(existing->exposed);
+    _existingDeclaredAsGlobal = existing->kind == compose::VariableKind::Global;
     return data.inputType;
   }
+
+  void warmup(SHContext *ctx) {
+    if (_existingDeclaredAsGlobal || _global->payload.boolValue) {
+      _slot = referenceGlobalVariable(ctx, _name->payload.stringValue);
+    } else {
+      _slot = referenceVariable(ctx, _name->payload.stringValue);
+    }
+  }
+
+  void cleanup(SHContext *ctx) { releaseVariable(_slot); }
 
   SHVar activate(SHContext *ctx, const SHVar &input) { return input; }
 };

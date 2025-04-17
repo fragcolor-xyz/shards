@@ -96,10 +96,11 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-SHVar *findVariable(SHContext *ctx, std::string_view name);
-SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
-SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name);
+SHVar *referenceWireVariable(SHWireRef wire, std::string_view name);
+SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
+SHVar *findVariable(SHContext *ctx, std::string_view name);
+SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 void releaseVariable(SHVar *variable);
 void setSharedVariable(std::string_view name, const SHVar &value);
 void unsetSharedVariable(std::string_view name);
@@ -234,6 +235,7 @@ struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar>
 
 typedef void(__cdecl *SHSetWireError)(const SHWire *, void *errorData, struct SHStringWithLen msg);
 
+struct WireRuntimeVariableInfo;
 struct SHWire : public std::enable_shared_from_this<SHWire> {
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
 
@@ -321,6 +323,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   mutable shards::TypeInfo inputType{};
   mutable shards::TypeInfo outputType{};
+
+  std::shared_ptr<WireRuntimeVariableInfo> runtimeVariableInfo;
 
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;

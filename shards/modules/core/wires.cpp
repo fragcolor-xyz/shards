@@ -176,10 +176,6 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   if (!wire->composeResult) {
     SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
 
-    if (data.privateContext->currentScope().fullRequired) {
-      data.privateContext->currentScope().fullRequired->clear();
-    }
-
     wire->composeResult = composeWire(wire.get(), dataCopy);
 
     IterableExposedInfo exposing(wire->composeResult->exposedInfo);
