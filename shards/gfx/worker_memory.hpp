@@ -21,7 +21,7 @@ namespace gfx::detail {
 // An implementation of memory_resource
 // This behaves like monotonic_buffer_resource
 //  with the addition that it updates the preallocated memory block based on previous peak usage
-struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
+struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
   static constexpr size_t MinPreallocatedSize = Megabyte * 8;
 
@@ -64,7 +64,7 @@ struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
 #endif
   }
 
-  __attribute__((always_inline)) void *do_allocate(size_t _Bytes, size_t _Align) override {
+  inline void *do_allocate(size_t _Bytes, size_t _Align) override {
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
     // Check for allocations from threads other than the owner of this memory pool
     // since these allocators are not thread safe and meant to be used from a single thread
