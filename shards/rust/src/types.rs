@@ -6966,8 +6966,6 @@ impl std::fmt::Display for Var {
         // Would need to implement trait formatting
         write!(f, "<Trait>")
       }
-      // Handle any other types
-      _ => write!(f, "<unknown type>"),
     }
   }
 }
