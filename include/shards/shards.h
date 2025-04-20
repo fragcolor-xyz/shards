@@ -1288,6 +1288,10 @@ typedef struct _SHCore {
 
   SHTableInit tableInit;
 
+  // To be used within shards, to reference global variables
+  // We never needed it before but actually useful to expose for rust and swift shards
+  SHReferenceVariable referenceGlobalVariable;
+
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
 

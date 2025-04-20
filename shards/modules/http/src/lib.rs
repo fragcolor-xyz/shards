@@ -12,11 +12,12 @@ extern crate shards;
 extern crate lazy_static;
 
 use reqwest::RequestBuilder;
-use reqwest::Response;
+use shards::core::cloneVar;
 use shards::core::register_legacy_shard;
 use shards::core::register_object_type_internal;
 use shards::core::register_shard;
 use shards::core::run_future;
+use shards::core::VarRef;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
@@ -93,6 +94,7 @@ lazy_static! {
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
     Type::table(&FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
   static ref STREAM_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htst"));
+  static ref CLIENT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htcl"));
   static ref STREAM_TYPE_VEC: Vec<Type> = vec![*STREAM_TYPE];
   static ref STREAM_TYPE_VAR: Type = Type::context_variable(&STREAM_TYPE_VEC);
   static ref ALL_OUTPUT_TYPES: Vec<Type> = vec![
@@ -145,12 +147,6 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("KeepAlive"),
-      shccstr!("If the client instance should be kept alive, allowing connection reuse for multiple requests. The client won't be closed until this shard cleans up."),
-      BOOL_TYPES_SLICE
-    )
-      .into(),
-    (
       cstr!("Streaming"),
       shccstr!("If the response should be streamed, in which case the output will be an object to use with the Http.Stream shard."),
       BOOL_TYPES_SLICE
@@ -172,8 +168,25 @@ lazy_static! {
   ];
 }
 
-struct OurResponse(Response);
-ref_counted_object_type_impl!(OurResponse);
+mod our_response {
+  use reqwest::Response;
+  pub struct OurResponse(pub Response);
+  ref_counted_object_type_impl!(OurResponse);
+}
+
+mod our_client {
+  use reqwest::Client;
+
+  #[derive(Clone)]
+  pub struct OurClient(pub Client);
+  ref_counted_object_type_impl!(OurClient);
+
+  impl Drop for OurClient {
+    fn drop(&mut self) {
+      shlog_trace!("Dropping our http client");
+    }
+  }
+}
 
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
@@ -182,10 +195,8 @@ static HEADERS_TYPES: &[Type] = &[
   common_type::string_table_var,
 ];
 
-type Client = reqwest::Client;
-
 struct RequestBase {
-  client: Option<Client>,
+  client: Option<our_client::OurClient>,
   url: ParamVar,
   headers: ParamVar,
   output: ClonedVar,
@@ -195,11 +206,11 @@ struct RequestBase {
   as_bytes: bool,
   full_response: bool,
   invalid_certs: bool,
-  keep_alive: bool,
   required: ExposedTypes,
   streaming: bool,
   task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
   connection_timeout: u64,
+  global_client: Option<VarRef>,
 }
 
 impl Default for RequestBase {
@@ -215,11 +226,11 @@ impl Default for RequestBase {
       as_bytes: false,
       full_response: false,
       invalid_certs: false,
-      keep_alive: false,
       required: Vec::new(),
       streaming: false,
       connection_timeout: 10,
       task_cancel: None,
+      global_client: None,
     }
   }
 }
@@ -250,10 +261,9 @@ impl RequestBase {
           .map_err(|_x| "Failed to set invalid_certs")?,
       ),
       6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
-      7 => Ok(self.keep_alive = value.try_into().map_err(|_x| "Failed to set keep_alive")?),
-      8 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
-      9 => Ok(self.backoff = value.try_into().map_err(|_x| "Failed to set backoff")?),
-      10 => Ok(
+      7 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
+      8 => Ok(self.backoff = value.try_into().map_err(|_x| "Failed to set backoff")?),
+      9 => Ok(
         self.connection_timeout = value
           .try_into()
           .map_err(|_x| "Failed to set connection_timeout")?,
@@ -271,10 +281,9 @@ impl RequestBase {
       4 => self.full_response.into(),
       5 => self.invalid_certs.into(),
       6 => self.retry.try_into().expect("A valid integer in range"),
-      7 => self.keep_alive.into(),
-      8 => self.streaming.into(),
-      9 => self.backoff.try_into().expect("A valid integer in range"),
-      10 => self
+      7 => self.streaming.into(),
+      8 => self.backoff.try_into().expect("A valid integer in range"),
+      9 => self
         .connection_timeout
         .try_into()
         .expect("A valid integer in range"),
@@ -307,32 +316,37 @@ impl RequestBase {
     Some(&self.required)
   }
 
-  fn _open_client(&mut self) -> Result<(), &'static str> {
-    if self.client.is_none() {
-      self.client = Some(
-        reqwest::Client::builder()
-          .danger_accept_invalid_certs(self.invalid_certs)
-          .read_timeout(Duration::from_secs(self.timeout))
-          .connect_timeout(Duration::from_secs(self.connection_timeout))
-          .build()
-          .map_err(|e| {
-            print_error(&e);
-            "Failed to create client"
-          })?,
-      );
-    }
-    Ok(())
-  }
-
   fn _close_client(&mut self) {
     self.client = None;
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &'static str> {
-    if self.keep_alive {
-      // open client early in this case
-      self._open_client()?;
+    let mut global_client = VarRef::referenceGlobal(context, "Http.Client");
+    if global_client.as_mut().is_none() {
+      // Create a new client
+      let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(self.invalid_certs)
+        .read_timeout(Duration::from_secs(self.timeout))
+        .connect_timeout(Duration::from_secs(self.connection_timeout))
+        .build()
+        .map_err(|e| {
+          print_error(&e);
+          "Failed to create client"
+        })?;
+      let client = our_client::OurClient(client);
+      let client_var = Var::new_ref_counted(client.clone(), &*CLIENT_TYPE);
+      cloneVar(&mut global_client.as_mut(), &client_var);
+      self.client = Some(client); // internally already Arc-ed
+      self.global_client = Some(global_client);
+    } else {
+      let client = unsafe {
+        Var::from_ref_counted_object::<our_client::OurClient>(global_client.as_mut(), &*CLIENT_TYPE)
+      };
+      let client = unsafe { &*(client? as *const our_client::OurClient) };
+      self.client = Some(client.clone());
+      self.global_client = Some(global_client);
     }
+
     self.url.warmup(context);
     self.headers.warmup(context);
     Ok(())
@@ -353,6 +367,9 @@ impl RequestBase {
     self.headers.cleanup(ctx);
     self._close_client();
     self.output = ClonedVar::default();
+
+    // release the global mesh client reference
+    self.global_client = None;
   }
 
   fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &'static str> {
@@ -426,7 +443,8 @@ impl RequestBase {
 
             if streaming {
               // When streaming, we return a ref counted object with the response it self
-              let response_object = Var::new_ref_counted(OurResponse(response), &*STREAM_TYPE);
+              let response_object =
+                Var::new_ref_counted(our_response::OurResponse(response), &*STREAM_TYPE);
               return Ok(response_object.into());
             }
 
@@ -602,13 +620,9 @@ macro_rules! get_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
-        if !self.rb.keep_alive {
-          self.rb._open_client()?;
-        }
-
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
-        let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
+        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
 
         let headers = self.rb.headers.get();
         if !headers.is_none() {
@@ -775,14 +789,10 @@ macro_rules! post_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
-        if !self.rb.keep_alive {
-          self.rb._open_client()?;
-        }
-
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
 
-        let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
+        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
 
         let headers = self.rb.headers.get();
 
@@ -961,7 +971,9 @@ impl Shard for HttpStreamShard {
     let result = run_future(
       context,
       async move {
-        let stream = unsafe { Var::from_ref_counted_object::<OurResponse>(&stream, &*STREAM_TYPE) };
+        let stream = unsafe {
+          Var::from_ref_counted_object::<our_response::OurResponse>(&stream, &*STREAM_TYPE)
+        };
         let response = unsafe { &mut (*stream?).0 };
         let runtime = TOKIO_RUNTIME.clone();
         let task = {

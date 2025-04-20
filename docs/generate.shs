@@ -571,7 +571,7 @@
               }
             }]
         } | ToJson
-        Http.Post(@url Headers: @headers Retry: 3 KeepAlive: true)
+        Http.Post(@url Headers: @headers Retry: 3)
       })
     }
     

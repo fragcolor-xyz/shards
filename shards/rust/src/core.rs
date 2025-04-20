@@ -347,33 +347,53 @@ macro_rules! shccstr {
   };
 }
 
-pub fn referenceMutVariable(context: &SHContext, name: SHStringWithLen) -> &mut SHVar {
-  unsafe {
-    let ctx = context as *const SHContext as *mut SHContext;
-    let shptr = (*Core).referenceVariable.unwrap_unchecked()(ctx, name);
-    shptr.as_mut().unwrap()
+pub struct VarRef {
+  var: *mut SHVar,
+}
+
+impl VarRef {
+  pub fn reference(context: &SHContext, name: &str) -> Self {
+    let name = SHStringWithLen {
+      string: name.as_ptr() as *const c_char,
+      len: name.len() as u64,
+    };
+    VarRef {
+      var: unsafe {
+        (*Core).referenceVariable.unwrap_unchecked()(
+          context as *const SHContext as *mut SHContext,
+          name,
+        )
+      },
+    }
+  }
+
+  pub fn referenceGlobal(context: &SHContext, name: &str) -> Self {
+    let name = SHStringWithLen {
+      string: name.as_ptr() as *const c_char,
+      len: name.len() as u64,
+    };
+    VarRef {
+      var: unsafe {
+        (*Core).referenceGlobalVariable.unwrap_unchecked()(
+          context as *const SHContext as *mut SHContext,
+          name,
+        )
+      },
+    }
+  }
+
+  pub fn as_mut(&mut self) -> &mut SHVar {
+    unsafe { self.var.as_mut().unwrap() }
+  }
+
+  pub fn as_ptr(&self) -> *mut SHVar {
+    self.var
   }
 }
 
-pub fn referenceVariable(context: &SHContext, name: SHStringWithLen) -> &SHVar {
-  unsafe {
-    let ctx = context as *const SHContext as *mut SHContext;
-    let shptr = (*Core).referenceVariable.unwrap_unchecked()(ctx, name);
-    shptr.as_mut().unwrap()
-  }
-}
-
-pub fn releaseMutVariable(var: &mut SHVar) {
-  unsafe {
-    let v = var as *mut SHVar;
-    (*Core).releaseVariable.unwrap_unchecked()(v);
-  }
-}
-
-pub fn releaseVariable(var: &SHVar) {
-  unsafe {
-    let v = var as *const SHVar as *mut SHVar;
-    (*Core).releaseVariable.unwrap_unchecked()(v);
+impl Drop for VarRef {
+  fn drop(&mut self) {
+    unsafe { (*Core).releaseVariable.unwrap_unchecked()(self.var) };
   }
 }
 
