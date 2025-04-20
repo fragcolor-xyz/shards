@@ -941,8 +941,7 @@ ALWAYS_INLINE void coroSuspended(SHContext *context) {
 
   auto &logTs = shards::logging::ThreadState::get();
   if (context->linkedLogContext) {
-    shassert(context->prevLogContext != &*context->linkedLogContext &&
-             "Prev log context should not be linked log context");
+    shassert(context->prevLogContext != &*context->linkedLogContext && "Prev log context should not be linked log context");
     context->linkedLogContext->unlink();
   }
   std::swap(context->prevLogContext, logTs.current);
@@ -2888,6 +2887,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->referenceVariable = [](SHContext *context, SHStringWithLen name) noexcept {
     std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceVariable(context, nameView);
+  };
+
+  result->referenceGlobalVariable = [](SHContext *context, SHStringWithLen name) noexcept {
+    std::string_view nameView{name.string, size_t(name.len)};
+    return shards::referenceGlobalVariable(context, nameView);
   };
 
   result->referenceWireVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {

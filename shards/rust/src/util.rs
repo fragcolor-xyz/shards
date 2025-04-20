@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 
 use crate::{
-  core::{deriveType, referenceVariable, releaseVariable},
+  core::{deriveType, VarRef},
   types::{
     Context, DerivedType, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Type,
     Var,
@@ -118,20 +118,13 @@ pub fn expose_shards_contents(exposed: &mut ExposedTypes, contents: &ShardsVar) 
 }
 
 /// Use to resolve variables for ContextVars nested inside parameters
+/// (Very ugly but works, don't use it in other places)
 pub fn get_or_var<'a: 'c, 'b: 'c, 'c>(v: &'a Var, ctx: &'b Context) -> &'c Var {
-  if v.is_context_var() {
-    unsafe {
-      let str = v.payload.__bindgen_anon_1.__bindgen_anon_2;
-      let result = referenceVariable(
-        ctx,
-        crate::SHStringWithLen {
-          string: str.stringValue,
-          len: str.stringLen as u64,
-        },
-      );
-      releaseVariable(result);
-      result
-    }
+  let maybeStr: Result<&str, _> = v.try_into();
+  if let Ok(str) = maybeStr {
+    let var_ref = VarRef::reference(ctx, str); // this triggers a lot of lookups etc
+    let ptr = var_ref.as_ptr();
+    unsafe { ptr.as_mut().unwrap() }
   } else {
     &v
   }
@@ -157,8 +150,8 @@ pub fn merge_exposed_types(exposed: &mut ExposedTypes, types: &SHExposedTypesInf
 #[inline]
 pub unsafe fn from_raw_parts_allow_null<'a, T>(data: *const T, len: usize) -> &'a [T] {
   if len == 0 {
-      &[]
+    &[]
   } else {
-      std::slice::from_raw_parts(data, len)
+    std::slice::from_raw_parts(data, len)
   }
 }
