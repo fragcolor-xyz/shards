@@ -709,6 +709,10 @@ struct SHInstanceData {
   struct SHPrivateContext *privateContext;
 };
 
+struct SHContextInternal {
+  ShardPtr currentShard;
+};
+
 typedef struct Shard *(__cdecl *SHShardConstructor)();
 typedef void(__cdecl *SHCallback)();
 
@@ -781,6 +785,8 @@ struct Shard {
 
   // internal use only, to optionally identify the shard
   uint64_t id;
+  // internal use only, to optionally identify the shard sequence inside a wire
+  uint64_t seqId;
 
   // Optional compile time defined metadata
   struct ShardMetadata *metadata;

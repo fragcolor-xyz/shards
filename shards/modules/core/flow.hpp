@@ -57,14 +57,18 @@ struct Cond {
   void warmup(SHContext *ctx) {
     for (auto &blks : _conditions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
+        if (blk->warmup) {
+          ctx->internal.currentShard = blk;
           blk->warmup(blk, ctx);
+        }
       }
     }
     for (auto &blks : _actions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
+        if (blk->warmup) {
+          ctx->internal.currentShard = blk;
           blk->warmup(blk, ctx);
+        }
       }
     }
   }

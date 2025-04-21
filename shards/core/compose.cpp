@@ -380,10 +380,13 @@ ComposedWire::ShardInfo &CompositionContext::currentShardInfo() {
   auto currentShard = this->currentShard();
   if (currentShard) {
     shassert(currentShard->id != 0);
-    auto &shardInfo = scope.wire->shardSeqId[currentShard->id];
-    shardInfo.shard = currentShard;
-    shardInfo.seqId = scope.wire->shardSeqId.size();
-    return shardInfo;
+    auto it = scope.wire->shardSeqId.find(currentShard->id);
+    if (it == scope.wire->shardSeqId.end()) {
+      it = scope.wire->shardSeqId.emplace(currentShard->id, ComposedWire::ShardInfo{}).first;
+      it->second.shard = currentShard;
+      currentShard->seqId = it->second.seqId = scope.wire->shardSeqId.size();
+    }
+    return it->second;
   } else {
     auto &shardInfo = scope.wire->shardSeqId[0];
     shardInfo.seqId = 0;
@@ -516,10 +519,11 @@ void CompositionContext::flowAnnotateNextShard(Shard *shard) {
     // SPDLOG_LOGGER_DEBUG(logger, "non-instrumented shard: {} ({})", c.shardName, c.shardIndex);
     flowClearUndeterministic();
   }
-  c.shardIndex = size_t(shard->id);
-  // c.shardIndex++;
   c.shardName = shard->name(shard);
   c.annotations.reset();
+
+  // Force creation of shard info/seqid
+  currentShardInfo();
   SPDLOG_LOGGER_DEBUG(logger, "Annotating next shard: {} ({})", c.shardName, c.shardIndex);
 }
 
@@ -631,7 +635,6 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         throw std::logic_error(fmt::format("Wire {} is already composed/being composed", sourceWire->name));
       runtimeVariableInfo = sourceWire->runtimeVariableInfo = std::make_shared<WireRuntimeVariableInfo>();
 
-      // auto &numExtVariables = composeWireRoot->numExtVariables;
       for (const auto &[key, pVar] : scope.wire->source->getExternalVariables()) {
         const SHExternalVariable &extVar = pVar;
         const SHVar &var = *extVar.var;
@@ -743,7 +746,6 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     SHComposeResult result = {scope.previousOutputType};
 
     // Check referenced variables, not declared locally
-
     pmr::unordered_set<size_t> usedVariables(ctx.getAllocator());
     for (auto &v : scope.usedVariables) {
       auto &var = ctx.variables[v];
@@ -788,6 +790,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         orderedShards.emplace(v.seqId, &v);
       }
 
+      // First pass: collect required & references wire variables
       for (auto &[k, shardInfo] : orderedShards) {
         // Ignore wire root (seqid == 0) since it's only used to populate inherited variables, and we only want to collect usages
         if (k == 0) {
@@ -807,10 +810,31 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         }
 
         auto shard = shardInfo->shard;
-        SPDLOG_LOGGER_DEBUG(compose::logger, " [{}] Shard {}, Id: {}", k, ctx.shardContextStr(shard), shard ? shard->id : 0);
+        SPDLOG_LOGGER_DEBUG(compose::logger, " [{}] Shard {}, Id: {}, SId: {}", k, ctx.shardContextStr(shard),
+                            shard ? shard->id : 0, shardInfo->seqId);
         pmr::set<size_t> uniqueRefs(ctx.getAllocator());
         for (auto &v : shardInfo->variableRefs) {
-          uniqueRefs.insert(v);
+          if (!uniqueRefs.contains(v)) {
+            auto &var = ctx.variables[v];
+            auto &vs = runtimeVariableInfo->variableScopes.emplace(shardInfo->seqId, WireRuntimeVariableInfo::VariableScope{})
+                           .first->second;
+            if (var.kind == VariableKind::Required || var.kind == VariableKind::External) {
+              size_t newVarIndex = runtimeVariableInfo->externalVariables.size();
+              vs.variableLookup[var.exposed.name] = newVarIndex | WireRuntimeVariableInfo::IdFlagsExternal;
+              runtimeVariableInfo->externalVariables.emplace_back(WireRuntimeVariableInfo::External{
+                  .name = var.exposed.name,
+                  .type = var.exposed.exposedType,
+              });
+            } else if (var.kind == VariableKind::Local) {
+              size_t newVarIndex = runtimeVariableInfo->localVariables.size();
+              vs.variableLookup[var.exposed.name] = newVarIndex;
+              runtimeVariableInfo->localVariables.emplace_back(WireRuntimeVariableInfo::Local{
+                  .name = var.exposed.name,
+                  .type = var.exposed.exposedType,
+              });
+            }
+            uniqueRefs.insert(v);
+          }
         }
         for (auto &v : uniqueRefs) {
           auto &var = ctx.variables[v];
@@ -823,14 +847,17 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         }
       }
 
+      // Second pass: remap variable indices
+      size_t extVarIdx{};
+
       for (auto &v : allRequiredVariables) {
         auto &var = ctx.variables[v];
         SPDLOG_LOGGER_DEBUG(compose::logger, " Wire required variable: {} (id: {}, type: {})", var.exposed.name, var.id,
                             var.exposed.exposedType);
-        runtimeVariableInfo->externalVariables.emplace_back(var.exposed.name, var.exposed.exposedType);
       }
 
       SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis done", scope.wireName());
+      runtimeVariableInfo->initStorage();
     }
 
     return result;

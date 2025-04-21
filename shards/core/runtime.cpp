@@ -297,7 +297,7 @@ Shard *createShard(std::string_view name) {
   shard->nameLength = uint32_t(name.length());
 
   // Pre-allocated ID range implementation (512 IDs per batch)
-  static std::atomic_uint64_t shardIdRangeCounter = 0;
+  static std::atomic_uint64_t shardIdRangeCounter = 1;
   static thread_local uint64_t nextLocalId = 0;
   static thread_local uint64_t localIdEnd = 0;
   static constexpr uint64_t ID_RANGE_SIZE = 512;
@@ -656,6 +656,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       blk = nullptr;
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
+
+    context->internal.currentShard = blk;
 
     {
 #ifdef TRACY_ENABLE
@@ -1861,6 +1863,7 @@ void SHWire::warmup(SHContext *context) {
     context->wireStack.push_back(this);
     DEFER({ context->wireStack.pop_back(); });
     for (auto blk : shards) {
+      context->internal.currentShard = blk;
       try {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);

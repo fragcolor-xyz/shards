@@ -841,7 +841,8 @@ struct ForEachShard {
       arrayPush(dataCopy.shared, _tmpInfo0);
     }
     // $1 always any type as it's always for table case
-    if (data.inputType.basicType == SHType::Table) {
+    _isTable = data.inputType.basicType == SHType::Table;
+    if (_isTable) {
       auto &tableType = data.inputType.table;
       // Wildcard table type
       if (tableType.types.len == 1 && tableType.keys.len == 1 && tableType.keys.elements[0].valueType == SHType::None) {
@@ -859,7 +860,7 @@ struct ForEachShard {
 
     _shards.compose(dataCopy);
 
-    if (data.inputType.basicType == SHType::Table) {
+    if (_isTable) {
       OVERRIDE_ACTIVATE1(data, activateTable);
     } else {
       OVERRIDE_ACTIVATE1(data, activateSeq);
@@ -870,7 +871,8 @@ struct ForEachShard {
 
   void warmup(SHContext *ctx) {
     _tmp0 = referenceVariable(ctx, "$0");
-    _tmp1 = referenceVariable(ctx, "$1");
+    if(_isTable)
+      _tmp1 = referenceVariable(ctx, "$1");
     _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
@@ -950,6 +952,7 @@ private:
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
   SHVar *_tmpIndex = nullptr; // New member for index reference
+  bool _isTable{};
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
   SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index

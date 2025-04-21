@@ -20,16 +20,61 @@ struct SHComposeInterface {
 namespace shards {
 
 struct WireRuntimeVariableInfo {
-  struct Local {
-    std::string name;
-    SHTypeInfo type;
-  };
-  std::vector<Local> localVariables;
+  static inline const uint32_t IdNone = 0;
+  static inline const uint32_t IdFlagsExternal = 1 << 31;
+  static inline const uint32_t IdFlagMask = IdFlagsExternal;
+  static inline const uint32_t IdValueMask = IdFlagsExternal - 1;
+  std::vector<SHVar *> externalRefs;
+  std::vector<OwnedVar> localVariableStorage;
   struct External {
     std::string name;
     TypeInfo type;
   };
   std::vector<External> externalVariables;
+  struct Local {
+    std::string name;
+    SHTypeInfo type;
+  };
+  std::vector<Local> localVariables;
+
+  struct VariableScope {
+    std::unordered_map<std::string_view, size_t> variableLookup;
+  };
+  // Maps shard sequence id to variable a given variable scope
+  // sorted for bounds search
+  std::map<size_t, VariableScope> variableScopes;
+
+  void initStorage() {
+    externalRefs.resize(externalVariables.size());
+    localVariableStorage.resize(localVariables.size());
+    for (auto &v : localVariableStorage) {
+      // Make them ref-counted
+      v.flags = SHVAR_FLAGS_REF_COUNTED;
+      v.refcount = 1;
+    }
+  }
+
+  SHVar *findReference(Shard *shard, std::string_view name) {
+    auto it = variableScopes.upper_bound(shard->seqId);
+    if (it == variableScopes.end()) {
+      return nullptr;
+    }
+    while (it != variableScopes.begin()) {
+      --it;
+      // Now try to find the variable in the scope, or any that came before
+      auto &scope = it->second;
+      auto search = scope.variableLookup.find(name);
+      if (search != scope.variableLookup.end()) {
+        auto &vid = search->second;
+        if (vid & IdFlagsExternal) {
+          return externalRefs[vid & IdValueMask];
+        } else {
+          return &localVariableStorage[vid];
+        }
+      }
+    }
+    return nullptr;
+  }
 };
 
 namespace compose {

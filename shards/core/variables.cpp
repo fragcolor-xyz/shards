@@ -41,8 +41,16 @@ SHVar *findVariable(SHContext *ctx, std::string_view name) {
   {
     auto rit = ctx->wireStack.rbegin();
     for (; rit != ctx->wireStack.rend(); ++rit) {
-      // prioritize local variables
       auto wire = *rit;
+      shassert(wire->runtimeVariableInfo);
+      auto v = wire->runtimeVariableInfo->findReference(ctx->internal.currentShard, name);
+      if (v) {
+        if (v->flags & SHVAR_FLAGS_REF_COUNTED)
+          v->refcount++;
+        return v;
+      }
+      /*
+      // prioritize local variables
       auto ov = wire->getVariableIfExists(toSWL(name));
       if (ov) {
         // found, lets get out here
@@ -59,6 +67,7 @@ SHVar *findVariable(SHContext *ctx, std::string_view name) {
         shassert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
         return &cv;
       }
+      */
       // if this wire is pure we break here and do not look further
       if (wire->pure) {
         break; // exit early, continue with mesh lookup
@@ -103,6 +112,8 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
   SHVar *var = findVariable(ctx, name);
   if (var)
     return var;
+
+  shassert(false);
 
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);

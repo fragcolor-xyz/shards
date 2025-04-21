@@ -428,6 +428,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   constexpr auto &getExternalVariables() { return externalVariables; }
 
   std::optional<std::reference_wrapper<SHVar>> getVariableIfExists(const SHStringWithLen name) {
+    // runtimeVariableInfo->findReference(name);
     auto key = shards::OwnedVar::Foreign(name);
     auto it = variables.find(key);
     if (it != variables.end()) {

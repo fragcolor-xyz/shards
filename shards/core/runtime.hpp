@@ -105,6 +105,9 @@ struct SHContext {
     wireStack.push_back(const_cast<SHWire *>(starter));
   }
 
+  // Needs to come first, users can cast SHContext to SHContextShared
+  SHContextInternal internal;
+
   const SHWire *main;
   SHContext *parent{nullptr};
   std::vector<SHWire *> wireStack;
