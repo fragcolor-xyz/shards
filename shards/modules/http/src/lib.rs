@@ -90,9 +90,21 @@ lazy_static! {
     shstr!("headers").into(),
     shstr!("body").into()
   ];
+  static ref STREAM_FULL_OUTPUT_KEYS: Vec<Var> = vec![
+    shstr!("status").into(),
+    shstr!("headers").into(),
+    shstr!("stream").into()
+  ];
+  static ref _STREAM_FULL_OUTPUT_TYPES: Vec<Type> = vec![
+    common_type::int,
+    common_type::string_table,
+    *STREAM_TYPE
+  ];
   static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(&FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
     Type::table(&FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
+  static ref STREAM_FULL_OUTPUT_TTYPE: Type =
+    Type::table(&STREAM_FULL_OUTPUT_KEYS, &_STREAM_FULL_OUTPUT_TYPES);
   static ref STREAM_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htst"));
   static ref CLIENT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htcl"));
   static ref STREAM_TYPE_VEC: Vec<Type> = vec![*STREAM_TYPE];
@@ -102,7 +114,8 @@ lazy_static! {
     common_type::bytes,
     *STR_FULL_OUTPUT_TTYPE,
     common_type::string,
-    *STREAM_TYPE
+    *STREAM_TYPE,
+    *STREAM_FULL_OUTPUT_TTYPE
   ];
   static ref GET_PARAMETERS: Parameters = vec![
     (cstr!("URL"), shccstr!("The url to request to."), URL_TYPES).into(),
@@ -127,7 +140,7 @@ lazy_static! {
     (
       cstr!("FullResponse"),
       shccstr!(
-        "If the output should be a table with the full response, including headers and status."
+        "If the output should be a table with the full response, including headers and status. This also implies that Retry and Backoff will be ignored."
       ),
       BOOL_TYPES_SLICE
     )
@@ -148,13 +161,13 @@ lazy_static! {
       .into(),
     (
       cstr!("Streaming"),
-      shccstr!("If the response should be streamed, in which case the output will be an object to use with the Http.Stream shard."),
+      shccstr!("If the response should be streamed, in which case the output will be an object to use with the Http.Stream shard. If full response is also requested, the body will be empty and a field 'stream' will be added to the table with the response object."),
       BOOL_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Backoff"),
-      shccstr!("How many seconds to wait between retries. Defaults to 1 second."),
+      shccstr!("Initial backoff time in seconds (will increase exponentially with each retry). Defaults to 1 second."),
       INT_TYPES_SLICE
     )
       .into(),
@@ -376,9 +389,10 @@ impl RequestBase {
     let output_type = if self.streaming {
       // for now don't support full response for streaming
       if self.full_response {
-        return Err("Full response not supported when streaming");
+        *STREAM_FULL_OUTPUT_TTYPE
+      } else {
+        *STREAM_TYPE_VAR
       }
-      *STREAM_TYPE_VAR
     } else if self.as_bytes {
       if self.full_response {
         *BYTES_FULL_OUTPUT_TTYPE
@@ -441,7 +455,7 @@ impl RequestBase {
               return Err(err_text);
             }
 
-            if streaming {
+            if streaming && !full_response {
               // When streaming, we return a ref counted object with the response it self
               let response_object =
                 Var::new_ref_counted(our_response::OurResponse(response), &*STREAM_TYPE);
@@ -451,6 +465,7 @@ impl RequestBase {
             let mut output_table = AutoTableVar::new();
 
             if full_response {
+              // we need to collect status and headers as well
               output_table
                 .0
                 .insert_fast_static("status", &response.status().as_u16().into());
@@ -468,6 +483,17 @@ impl RequestBase {
                     .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?,
                 );
                 headers.insert_fast(key, &value);
+              }
+
+              if streaming {
+                // When streaming, we return a ref counted object with the response it self
+                let response_object =
+                  Var::new_ref_counted(our_response::OurResponse(response), &*STREAM_TYPE);
+                output_table
+                  .0
+                  .insert_fast_static("stream", &response_object);
+
+                return Ok(output_table.to_cloned());
               }
             }
 
@@ -669,8 +695,13 @@ macro_rules! get_like {
               return Err("Request failed");
             } else {
               if shards::core::cancel_abort(context) {
-                shlog_debug!("Retrying request, {} tries left", retries);
-                shards::core::suspend(context, self.rb.backoff as f64); // use backoff instead of hardcoded 1.0
+                // Calculate exponential backoff: initial_backoff * (2 ^ (retry_count - retries_left))
+                let retry_count = self.rb.retry;
+                let retry_attempt = retry_count - retries;
+                let backoff_time = self.rb.backoff as f64 * (2.0_f64.powf(retry_attempt as f64));
+
+                shlog_debug!("Retrying request, {} tries left, waiting {:.2}s", retries, backoff_time);
+                shards::core::suspend(context, backoff_time);
                 retries -= 1;
               } else {
                 return Err("Cannot retry request, wire might have been aborted");
@@ -874,8 +905,13 @@ macro_rules! post_like {
               return Err("Request failed");
             } else {
               if shards::core::cancel_abort(context) {
-                shlog_debug!("Retrying request, {} tries left", retries);
-                shards::core::suspend(context, self.rb.backoff as f64); // use backoff instead of hardcoded 1.0
+                // Calculate exponential backoff: initial_backoff * (2 ^ (retry_count - retries_left))
+                let retry_count = self.rb.retry;
+                let retry_attempt = retry_count - retries;
+                let backoff_time = self.rb.backoff as f64 * (2.0_f64.powf(retry_attempt as f64));
+
+                shlog_debug!("Retrying request, {} tries left, waiting {:.2}s", retries, backoff_time);
+                shards::core::suspend(context, backoff_time);
                 retries -= 1;
               } else {
                 return Err("Cannot retry request, wire might have been aborted");
@@ -1036,6 +1072,6 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<HttpStreamShard>();
 
   let mut info = shards::SHObjectInfo::default();
-  info.name = cstr!("Stream").as_ptr() as shards::SHString;
+  info.name = cstr!("Http.Stream").as_ptr() as shards::SHString;
   register_object_type_internal(FRAG_CC, fourCharacterCode(*b"htst"), info);
 }
