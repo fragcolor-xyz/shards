@@ -102,6 +102,7 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
 SHVar *findVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceVariable(SHContext *ctx, std::string_view name);
 void releaseVariable(SHVar *variable);
+void releaseVariableRef(SHVar *&variable);
 void setSharedVariable(std::string_view name, const SHVar &value);
 void unsetSharedVariable(std::string_view name);
 SHVar getSharedVariable(std::string_view name);
@@ -1267,7 +1268,7 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 #define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
   DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
-  
+
 #ifdef __COUNTER__
 #define SH_GENSYM(str) SH_CAT(str, __COUNTER__)
 #else

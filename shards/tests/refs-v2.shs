@@ -13,18 +13,38 @@
 Once({
   2 >= v
 })
-v
+v | Assert.Is(2)
 
 @wire(a {
   v | Log("v 0")
 })
 Do(a)
 
+; Test forwarding levels deep
+@wire(q0 {
+  @wire(q1 {
+    v | Log("v value")
+  })
+  Do(q1)
+})
+Do(q0)
+
+{a: {b: ""}} >= var
+
+var:a = ref
+"second" | Update(ref "b")
+
+var:a >= sub
+"second" | Update(sub "b")
+sub | Update(var "a")
+
+"second" | Update(var ["a" "b"])
+
 @wire(b {
   "hello" >= v
   v | Log("v 1")
   s0 | ForEach({
-    ["hello" $0] | String.Format | Log("f0")
+    ["hello " $0] | String.Format | Log("f0")
   })
   ForEach({
     [$0 $i] | String.Format | Log("f1")

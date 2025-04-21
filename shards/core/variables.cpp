@@ -38,42 +38,59 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
 SHVar *findVariable(SHContext *ctx, std::string_view name) {
   // try find a wire variable
   // from top to bottom of wire stack
-  {
-    auto rit = ctx->wireStack.rbegin();
-    for (; rit != ctx->wireStack.rend(); ++rit) {
-      auto wire = *rit;
-      shassert(wire->runtimeVariableInfo);
-      auto v = wire->runtimeVariableInfo->findReference(ctx->internal.currentShard, name);
-      if (v) {
-        if (v->flags & SHVAR_FLAGS_REF_COUNTED)
-          v->refcount++;
-        return v;
-      }
-      /*
-      // prioritize local variables
-      auto ov = wire->getVariableIfExists(toSWL(name));
-      if (ov) {
-        // found, lets get out here
-        SHVar &cv = (*ov).get();
-        cv.refcount++;
-        cv.flags |= SHVAR_FLAGS_REF_COUNTED;
-        return &cv;
-      }
-      // try external variables
-      auto ev = wire->getExternalVariableIfExists(toSWL(name));
-      if (ev) {
-        // found, lets get out here
-        SHVar &cv = *ev;
-        shassert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
-        return &cv;
-      }
-      */
-      // if this wire is pure we break here and do not look further
-      if (wire->pure) {
-        break; // exit early, continue with mesh lookup
-      }
+
+  auto wire = ctx->wireStack.back();
+  shassert(wire->runtimeVariableInfo);
+  auto v = wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name);
+  if (v) {
+    if (v->flags & SHVAR_FLAGS_REF_COUNTED)
+      v->refcount++;
+    else {
+      shassert(v->flags & SHVAR_FLAGS_EXTERNAL);
     }
+    return v;
   }
+
+  //   auto rit = ctx->wireStack.rbegin();
+  //   bool first = true;
+  //   for (; rit != ctx->wireStack.rend(); ++rit, first = false) {
+  //     auto wire = *rit;
+  //     shassert(wire->runtimeVariableInfo);
+  //     auto v = first ? wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name)
+  //                    : wire->runtimeVariableInfo->findReference(ctx->internal.currentShard, name);
+  //     if (v) {
+  //       if (v->flags & SHVAR_FLAGS_REF_COUNTED)
+  //         v->refcount++;
+  //       else {
+  //         shassert(v->flags & SHVAR_FLAGS_EXTERNAL);
+  //       }
+  //       return v;
+  //     }
+  //     /*
+  //     // prioritize local variables
+  //     auto ov = wire->getVariableIfExists(toSWL(name));
+  //     if (ov) {
+  //       // found, lets get out here
+  //       SHVar &cv = (*ov).get();
+  //       cv.refcount++;
+  //       cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+  //       return &cv;
+  //     }
+  //     // try external variables
+  //     auto ev = wire->getExternalVariableIfExists(toSWL(name));
+  //     if (ev) {
+  //       // found, lets get out here
+  //       SHVar &cv = *ev;
+  //       shassert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
+  //       return &cv;
+  //     }
+  //     */
+  //     // if this wire is pure we break here and do not look further
+  //     if (wire->pure) {
+  //       break; // exit early, continue with mesh lookup
+  //     }
+  //   }
+  // }
 
   // try using mesh
   {
@@ -113,22 +130,23 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
   if (var)
     return var;
 
-  shassert(false);
+  auto shard = ctx->internal.currentShard;
+  throw std::logic_error(
+      fmt::format("Variable not found {}, shard: {} (Id: {}, SId: {})", name, shard->name(shard), shard->id, shard->seqId));
 
-  // worst case create in current top wire!
-  SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-  SHVar &cv = ctx->wireStack.back()->getVariable(toSWL(name));
-  shassert(cv.refcount == 0);
-  cv.refcount++;
-  // can safely set this here, as we are creating a new variable
-  cv.flags = SHVAR_FLAGS_REF_COUNTED;
-  return &cv;
+  // shassert(false);
+
+  // // worst case create in current top wire!
+  // SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
+  // SHVar &cv = ctx->wireStack.back()->getVariable(toSWL(name));
+  // shassert(cv.refcount == 0);
+  // cv.refcount++;
+  // // can safely set this here, as we are creating a new variable
+  // cv.flags = SHVAR_FLAGS_REF_COUNTED;
+  // return &cv;
 }
 
-void releaseVariable(SHVar *variable) {
-  if (!variable)
-    return;
-
+static ALWAYS_INLINE void releaseVariableNoCheck(SHVar *variable) {
   if ((variable->flags & SHVAR_FLAGS_EXTERNAL) != 0) {
     return;
   }
@@ -141,5 +159,18 @@ void releaseVariable(SHVar *variable) {
     SHLOG_TRACE("Destroying a variable (0 ref count), type: {}", type2Name(variable->valueType));
     destroyVar(*variable);
   }
+}
+
+void releaseVariableRef(SHVar *&variable) {
+  if (variable) {
+    releaseVariableNoCheck(variable);
+    variable = nullptr;
+  }
+}
+
+void releaseVariable(SHVar *variable) {
+  if (!variable)
+    return;
+  releaseVariableNoCheck(variable);
 }
 } // namespace shards

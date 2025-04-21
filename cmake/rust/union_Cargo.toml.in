@@ -9,9 +9,9 @@ edition = "2021"
 tracy = []
 
 [dependencies]
-${CARGO_CRATE_DEPS} 
+${CARGO_CRATE_DEPS}  
 
-[patch.crates-io]
+[patch.crates-io] 
 chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }
 tar = { git = "https://github.com/shards-lang/tar-rs", rev = "6d26c0d1724326c8c1b06eaafc25a19253afbcdc" }
 libc = { git = "https://github.com/shards-lang/libc.git", version = "=0.2.155", rev = "406373322b93012c21b6567ac5e4b2abd379ae2a" }

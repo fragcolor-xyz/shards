@@ -249,7 +249,8 @@ void CompositionContext::step() {
 
     std::string_view name(required_param.name);
 
-    auto foundInherited = findVariablePrivate(name);
+    // Was findVariablePrivate? why does it not need to track?
+    auto foundInherited = findVariable(name);
     std::optional<SHExposedTypeInfo> found;
     if (foundInherited) {
       found = foundInherited->exposed;
@@ -681,7 +682,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
           auto &v = ctx.insertVariable(v1->exposed.name, v1->exposed);
           SPDLOG_LOGGER_DEBUG(compose::logger, "Forwarding variable: {} (id: {}) to wire {}", v.exposed.name, v.id,
                               scope.wireName());
-          v.kind = VariableKind::Required;
+          v.kind = VariableKind::Inherited;
         } else {
           // Just forward the same instance
           scope.variableMap[v1->exposed.name] = v1->id;
@@ -786,6 +787,10 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis", scope.wireName());
       pmr::set<size_t> allRequiredVariables(ctx.getAllocator());
       pmr::map<size_t, compose::ComposedWire::ShardInfo *> orderedShards(ctx.getAllocator());
+      pmr::vector<WireRuntimeVariableInfo::VariableDecl> externalVariables(ctx.getAllocator());
+      pmr::vector<WireRuntimeVariableInfo::VariableDecl> inheritedVariables(ctx.getAllocator());
+      pmr::unordered_map<size_t, size_t> variableRemapping(ctx.getAllocator());
+      using VarDecl = WireRuntimeVariableInfo::VariableDecl;
       for (auto &[k, v] : composeWireRoot->shardSeqId) {
         orderedShards.emplace(v.seqId, &v);
       }
@@ -812,43 +817,71 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         auto shard = shardInfo->shard;
         SPDLOG_LOGGER_DEBUG(compose::logger, " [{}] Shard {}, Id: {}, SId: {}", k, ctx.shardContextStr(shard),
                             shard ? shard->id : 0, shardInfo->seqId);
-        pmr::set<size_t> uniqueRefs(ctx.getAllocator());
+        pmr::set<size_t> logUniqueRefs(ctx.getAllocator());
         for (auto &v : shardInfo->variableRefs) {
-          if (!uniqueRefs.contains(v)) {
-            auto &var = ctx.variables[v];
+          auto &var = ctx.variables[v];
+          if (!logUniqueRefs.contains(v)) {
+            SPDLOG_LOGGER_DEBUG(compose::logger, " - Variable: {} (id: {}, kind: {}, type: {})", var.exposed.name, var.id,
+                                magic_enum::enum_name(var.kind), var.exposed.exposedType);
+            logUniqueRefs.insert(v);
+          }
+
+          auto targetIt = variableRemapping.find(v);
+          if (targetIt == variableRemapping.end()) {
+            VarDecl vd{
+                .name = var.exposed.name,
+                .type = var.exposed.exposedType,
+            };
             auto &vs = runtimeVariableInfo->variableScopes.emplace(shardInfo->seqId, WireRuntimeVariableInfo::VariableScope{})
                            .first->second;
-            if (var.kind == VariableKind::Required || var.kind == VariableKind::External) {
-              size_t newVarIndex = runtimeVariableInfo->externalVariables.size();
-              vs.variableLookup[var.exposed.name] = newVarIndex | WireRuntimeVariableInfo::IdFlagsExternal;
-              runtimeVariableInfo->externalVariables.emplace_back(WireRuntimeVariableInfo::External{
-                  .name = var.exposed.name,
-                  .type = var.exposed.exposedType,
-              });
+            if (var.kind == VariableKind::Inherited) {
+              size_t newVarId = inheritedVariables.size() | WireRuntimeVariableInfo::IdFlagsInherited;
+              vs.variableLookup[var.exposed.name] = newVarId;
+              inheritedVariables.emplace_back(std::move(vd));
+              targetIt = variableRemapping.emplace(v, newVarId).first;
+
+              allRequiredVariables.insert(v);
+            } else if (var.kind == VariableKind::External) {
+              size_t newVarId = externalVariables.size() | WireRuntimeVariableInfo::IdFlagsExternal;
+              vs.variableLookup[var.exposed.name] = newVarId;
+              externalVariables.emplace_back(std::move(vd));
+              targetIt = variableRemapping.emplace(v, newVarId).first;
+            } else if (var.kind == VariableKind::Global) {
+              size_t newVarId = runtimeVariableInfo->globalVariables.size() | WireRuntimeVariableInfo::IdFlagsGlobal;
+              vs.variableLookup[var.exposed.name] = newVarId;
+              runtimeVariableInfo->globalVariables.emplace_back(std::move(vd));
+              targetIt = variableRemapping.emplace(v, newVarId).first;
             } else if (var.kind == VariableKind::Local) {
-              size_t newVarIndex = runtimeVariableInfo->localVariables.size();
-              vs.variableLookup[var.exposed.name] = newVarIndex;
-              runtimeVariableInfo->localVariables.emplace_back(WireRuntimeVariableInfo::Local{
-                  .name = var.exposed.name,
-                  .type = var.exposed.exposedType,
-              });
+              size_t newVarId = runtimeVariableInfo->localVariables.size();
+              vs.variableLookup[var.exposed.name] = newVarId;
+              runtimeVariableInfo->localVariables.emplace_back(std::move(vd));
+              targetIt = variableRemapping.emplace(v, newVarId).first;
             }
-            uniqueRefs.insert(v);
           }
+
+          auto &vs = runtimeVariableInfo->variableScopes.emplace(shardInfo->seqId, WireRuntimeVariableInfo::VariableScope{})
+                         .first->second;
+          vs.variableLookup[var.exposed.name] = targetIt->second;
         }
-        for (auto &v : uniqueRefs) {
-          auto &var = ctx.variables[v];
-          SPDLOG_LOGGER_DEBUG(compose::logger, " - Variable: {} (id: {}, kind: {}, type: {})", var.exposed.name, var.id,
-                              magic_enum::enum_name(var.kind), var.exposed.exposedType);
-          // Ignore SeqId 0 since it's the wire root, and will always have required variables defined through it's environment
-          if (var.kind == VariableKind::Required) {
-            allRequiredVariables.insert(v);
+
+        // Populate wire->requirements
+        if (data.wire) {
+          auto &outReqs = data.wire->requirements;
+          outReqs.clear();
+          for (auto &req : allRequiredVariables) {
+            auto &v = ctx.variables[req];
+            outReqs.emplace(v.exposed.name, v.exposed);
           }
         }
       }
 
-      // Second pass: remap variable indices
-      size_t extVarIdx{};
+      runtimeVariableInfo->numExternalVariables = externalVariables.size();
+      for (auto &v : externalVariables) {
+        runtimeVariableInfo->externalAndInheritedVariables.emplace_back(std::move(v));
+      }
+      for (auto &v : inheritedVariables) {
+        runtimeVariableInfo->externalAndInheritedVariables.emplace_back(std::move(v));
+      }
 
       for (auto &v : allRequiredVariables) {
         auto &var = ctx.variables[v];

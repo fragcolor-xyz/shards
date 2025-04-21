@@ -22,20 +22,28 @@ namespace shards {
 struct WireRuntimeVariableInfo {
   static inline const uint32_t IdNone = 0;
   static inline const uint32_t IdFlagsExternal = 1 << 31;
-  static inline const uint32_t IdFlagMask = IdFlagsExternal;
-  static inline const uint32_t IdValueMask = IdFlagsExternal - 1;
+  static inline const uint32_t IdFlagsInherited = 1 << 30;
+  static inline const uint32_t IdFlagsGlobal = 1 << 29;
+  static inline const uint32_t IdFlagMask = IdFlagsExternal | IdFlagsInherited | IdFlagsGlobal;
+  static inline const uint32_t IdValueMask = IdFlagsGlobal - 1;
+  // External + inherited
   std::vector<SHVar *> externalRefs;
-  std::vector<OwnedVar> localVariableStorage;
-  struct External {
+  // Local only
+  std::vector<SHVar> localVariableStorage;
+
+  struct VariableDecl {
     std::string name;
     TypeInfo type;
   };
-  std::vector<External> externalVariables;
-  struct Local {
-    std::string name;
-    SHTypeInfo type;
-  };
-  std::vector<Local> localVariables;
+
+  // External + inherited
+  std::vector<VariableDecl> externalAndInheritedVariables;
+  // Local
+  std::vector<VariableDecl> localVariables;
+  // Global
+  std::vector<VariableDecl> globalVariables;
+  // External
+  size_t numExternalVariables;
 
   struct VariableScope {
     std::unordered_map<std::string_view, size_t> variableLookup;
@@ -44,34 +52,76 @@ struct WireRuntimeVariableInfo {
   // sorted for bounds search
   std::map<size_t, VariableScope> variableScopes;
 
+  size_t numInheritedVariables() const { return externalAndInheritedVariables.size() - numExternalVariables; }
+
+  WireRuntimeVariableInfo() = default;
+  WireRuntimeVariableInfo(const WireRuntimeVariableInfo &) = delete;
+  WireRuntimeVariableInfo &operator=(const WireRuntimeVariableInfo &) = delete;
+  // WireRuntimeVariableInfo(WireRuntimeVariableInfo && other) = default;
+  ~WireRuntimeVariableInfo() { cleanupStorage(); }
+
+  void cleanupStorage() {
+    // for (auto &v : localVariableStorage) {
+    //   releaseVariable(&v);
+    // }
+    // localVariableStorage.clear();
+  }
+
   void initStorage() {
-    externalRefs.resize(externalVariables.size());
+    externalRefs.resize(externalAndInheritedVariables.size());
     localVariableStorage.resize(localVariables.size());
     for (auto &v : localVariableStorage) {
       // Make them ref-counted
       v.flags = SHVAR_FLAGS_REF_COUNTED;
-      v.refcount = 1;
+      v.refcount = 0; 
     }
   }
 
-  SHVar *findReference(Shard *shard, std::string_view name) {
-    auto it = variableScopes.upper_bound(shard->seqId);
-    if (it == variableScopes.end()) {
-      return nullptr;
+  SHVar *variableFromId(size_t vid) {
+    if (vid & IdFlagsExternal) {
+      return externalRefs[vid & IdValueMask];
+    } else if (vid & IdFlagsInherited) {
+      return externalRefs[vid & IdValueMask];
+    } else {
+      shassert((vid & IdFlagsGlobal) == 0 && "Global variables are not stored in wire storage");
+      shassert(vid < localVariables.size() && "Invalid local variable id");
+      return &localVariableStorage[vid];
     }
-    while (it != variableScopes.begin()) {
+  }
+
+  SHVar *findReferenceStrict(Shard *shard, std::string_view name) {
+    auto it = variableScopes.find(shard->seqId);
+    if (it == variableScopes.end())
+      return nullptr;
+    auto search = it->second.variableLookup.find(name);
+    if (search == it->second.variableLookup.end())
+      return nullptr;
+    return variableFromId(search->second);
+  }
+
+  SHVar *findReference(Shard *shard, std::string_view name) {
+    // Start at or just after shard->seqId
+    auto it = variableScopes.lower_bound(shard->seqId);
+
+    // Handle empty case
+    if (variableScopes.empty())
+      return nullptr;
+
+    // If we got something past shard->seqId and it's not the first element, move back one
+    if (it == variableScopes.end() || (it->first > shard->seqId && it != variableScopes.begin()))
       --it;
-      // Now try to find the variable in the scope, or any that came before
+
+    // Now search through scopes from this point backward
+    while (true) {
       auto &scope = it->second;
       auto search = scope.variableLookup.find(name);
       if (search != scope.variableLookup.end()) {
-        auto &vid = search->second;
-        if (vid & IdFlagsExternal) {
-          return externalRefs[vid & IdValueMask];
-        } else {
-          return &localVariableStorage[vid];
-        }
+        return variableFromId(search->second);
       }
+
+      if (it == variableScopes.begin())
+        break;
+      --it;
     }
     return nullptr;
   }
@@ -150,7 +200,7 @@ struct FlowAnalysis {
 enum VariableKind {
   Local,
   External,
-  Required,
+  Inherited,
   Global,
 };
 

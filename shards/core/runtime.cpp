@@ -301,7 +301,7 @@ Shard *createShard(std::string_view name) {
   static thread_local uint64_t nextLocalId = 0;
   static thread_local uint64_t localIdEnd = 0;
   static constexpr uint64_t ID_RANGE_SIZE = 512;
-  
+
   // Check if we need a new range of IDs
   if (nextLocalId >= localIdEnd) {
     // Claim a new range of IDs with a single atomic operation
@@ -309,7 +309,7 @@ Shard *createShard(std::string_view name) {
     nextLocalId = rangeStart;
     localIdEnd = rangeStart + ID_RANGE_SIZE;
   }
-  
+
   shard->id = nextLocalId++;
 
 #ifndef NDEBUG
@@ -780,8 +780,7 @@ void coroSuspended(SHContext *context) {
 
   auto &logTs = shards::logging::ThreadState::get();
   if (context->linkedLogContext) {
-    shassert(context->prevLogContext != &*context->linkedLogContext &&
-             "Prev log context should not be linked log context");
+    shassert(context->prevLogContext != &*context->linkedLogContext && "Prev log context should not be linked log context");
     context->linkedLogContext->unlink();
   }
   std::swap(context->prevLogContext, logTs.current);
@@ -1859,6 +1858,24 @@ void SHWire::warmup(SHContext *context) {
     // we likely need this early!
     mesh = context->main->mesh;
     warmedUp = true;
+
+    size_t numInheritedVariables = runtimeVariableInfo->numInheritedVariables();
+    if (numInheritedVariables > 0) {
+      auto ownedShard = context->internal.currentShard;
+      shassert(ownedShard);
+      shassert(context->wireStack.size() > 0);
+      auto parentWire = context->wireStack.back();
+      for (size_t i = runtimeVariableInfo->numExternalVariables; i < runtimeVariableInfo->externalAndInheritedVariables.size();
+           i++) {
+        auto &v = runtimeVariableInfo->externalAndInheritedVariables[i];
+        auto linkedVar = parentWire->runtimeVariableInfo->findReference(ownedShard, v.name);
+        if (!linkedVar) {
+          throw WarmupError(fmt::format("Failed to find required variable: {} in wire: {}, shard: {}", v.name, parentWire->name,
+                                        ownedShard->name(ownedShard)));
+        }
+        runtimeVariableInfo->externalRefs[i] = linkedVar;
+      }
+    }
 
     context->wireStack.push_back(this);
     DEFER({ context->wireStack.pop_back(); });

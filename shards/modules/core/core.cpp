@@ -881,30 +881,18 @@ struct ForEachShard {
     _shards.cleanup(context);
     if (_tmp0) {
       // _tmp0 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp0->refcount;
-      const auto flags = _tmp0->flags;
-      memset(_tmp0, 0x0, sizeof(SHVar));
-      _tmp0->refcount = rc;
-      _tmp0->flags = flags;
+      assignVariableValue(*_tmp0, Var::Empty);
       releaseVariable(_tmp0);
       _tmp0 = nullptr;
     }
     if (_tmp1) {
       // _tmp1 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp1->refcount;
-      const auto flags = _tmp1->flags;
-      memset(_tmp1, 0x0, sizeof(SHVar));
-      _tmp1->refcount = rc;
-      _tmp1->flags = flags;
+      assignVariableValue(*_tmp1, Var::Empty);
       releaseVariable(_tmp1);
       _tmp1 = nullptr;
     }
     if (_tmpIndex) {
-      const auto rc = _tmpIndex->refcount;
-      const auto flags = _tmpIndex->flags;
-      memset(_tmpIndex, 0x0, sizeof(SHVar));
-      _tmpIndex->refcount = rc;
-      _tmpIndex->flags = flags;
+      assignVariableValue(*_tmpIndex, Var::Empty);
       releaseVariable(_tmpIndex);
       _tmpIndex = nullptr;
     }
