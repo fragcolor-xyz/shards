@@ -1503,47 +1503,47 @@ inline void printWireGraph(const SHWire *wire) {
   std::vector<shards::WireNode> nodes;
   shards::gatherWires(wire, nodes);
   for (auto &node : nodes) {
-    SHLOG_DEBUG("Wire: {}, parent: {}", node.wire->name, node.previous ? node.previous->name : "none");
+    SHLOG_INFO("Wire: {}, parent: {}", node.wire->name, node.previous ? node.previous->name : "none");
     // eventsSent
     if (!node.eventsSent.empty()) {
-      SHLOG_DEBUG("  Events Sent: ");
+      SHLOG_INFO("  Events Sent: ");
       for (auto &event : node.eventsSent) {
-        SHLOG_DEBUG("    {}", event);
+        SHLOG_INFO("    {}", event);
       }
     }
     // eventsReceived
     if (!node.eventsReceived.empty()) {
-      SHLOG_DEBUG("  Events Received: ");
+      SHLOG_INFO("  Events Received: ");
       for (auto &event : node.eventsReceived) {
-        SHLOG_DEBUG("    {}", event);
+        SHLOG_INFO("    {}", event);
       }
     }
     // Channels Produced
     if (!node.channelsProduced.empty()) {
-      SHLOG_DEBUG("  Channels Produced: ");
+      SHLOG_INFO("  Channels Produced: ");
       for (auto &channel : node.channelsProduced) {
-        SHLOG_DEBUG("    {}", channel);
+        SHLOG_INFO("    {}", channel);
       }
     }
     // Channels Consumed
     if (!node.channelsConsumed.empty()) {
-      SHLOG_DEBUG("  Channels Consumed: ");
+      SHLOG_INFO("  Channels Consumed: ");
       for (auto &channel : node.channelsConsumed) {
-        SHLOG_DEBUG("    {}", channel);
+        SHLOG_INFO("    {}", channel);
       }
     }
     // Channels Broadcasted
     if (!node.channelsBroadcasted.empty()) {
-      SHLOG_DEBUG("  Channels Broadcasted: ");
+      SHLOG_INFO("  Channels Broadcasted: ");
       for (auto &channel : node.channelsBroadcasted) {
-        SHLOG_DEBUG("    {}", channel);
+        SHLOG_INFO("    {}", channel);
       }
     }
     // Channels Listened
     if (!node.channelsListened.empty()) {
-      SHLOG_DEBUG("  Channels Listened: ");
+      SHLOG_INFO("  Channels Listened: ");
       for (auto &channel : node.channelsListened) {
-        SHLOG_DEBUG("    {}", channel);
+        SHLOG_INFO("    {}", channel);
       }
     }
   }
