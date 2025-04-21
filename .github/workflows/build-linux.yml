@@ -189,9 +189,8 @@ jobs:
         env:
           RUST_BACKTRACE: full
         run: |
-          cmake --build build --target shards
           SH=`pwd`/build/shards
-
+          
           echo "Running language formatter tests"
           cd shards/lang/src/tests
           $SH test
