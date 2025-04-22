@@ -35,16 +35,20 @@ struct IfTranslator {
     auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
     std::string ifResultVarName;
-    Type outputType;
+    std::optional<Type> outputType;
     if (!shard->_passth) {
       SHTypeInfo ta = shard->_then.composeResult().outputType;
       SHTypeInfo tb = shard->_else.composeResult().outputType;
       if (ta != tb)
         throw std::runtime_error(
             fmt::format("If block with different output types is not supported in shaders, got {} and {}", ta, tb));
-      outputType = shardsTypeToFieldType(ta);
-      ifResultVarName = context.getUniqueVariableName("if");
-      context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
+      // Ignore none return value
+      if (ta.basicType != SHType::None) {
+        outputType = shardsTypeToFieldType(ta);
+        ifResultVarName = context.getUniqueVariableName("if");
+        context.addNew(
+            blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(*outputType)), ";\n"));
+      }
     }
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
@@ -54,7 +58,7 @@ struct IfTranslator {
     // Then block
     context.enterNew(blocks::makeCompoundBlock());
     processShardsVar(shard->_then, context);
-    if (!shard->_passth)
+    if (outputType)
       context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
     context.leave();
 
@@ -65,7 +69,7 @@ struct IfTranslator {
       context.enterNew(blocks::makeCompoundBlock());
       context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
       processShardsVar(shard->_else, context);
-      if (!shard->_passth)
+      if (outputType)
         context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
 
       context.leave();
@@ -73,6 +77,60 @@ struct IfTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>("}\n"));
 
     if (shard->_passth) {
+      context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
+    } else if (outputType) {
+      context.setWGSLTop<WGSLBlock>(*outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
+    } else {
+      context.clearWGSLTop();
+    }
+  }
+};
+
+struct CondTranslator {
+  static void translate(Cond *shard, TranslationContext &context) {
+    Type inputType = context.wgslTop->getType();
+    BlockPtr inputBlock = context.wgslTop->toBlock();
+
+    std::string ifResultVarName;
+    Type outputType;
+    if (!shard->_passthrough) {
+      SHTypeInfo ta = shard->_wireValidation.outputType;
+      outputType = shardsTypeToFieldType(ta);
+      ifResultVarName = context.getUniqueVariableName("cond");
+      context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
+    }
+
+    for (int i = 0; i < shard->_conditions.size(); i++) {
+      const char *en{};
+      if (i == 0)
+        en = "if(";
+      else {
+        en = "else if(";
+      }
+
+      auto condShards = shard->_conditions[i];
+      SHComposeResult condResult{};
+      condResult.requiredInfo = SHExposedTypesInfo(shard->_requiredInfo);
+      condResult.outputType = shards::CoreInfo::BoolType;
+      auto func = context.processShards(condShards, condResult, inputType, "condition");
+      auto cmp = generateFunctionCall(func, std::make_unique<WGSLBlock>(inputType, inputBlock->clone()), context);
+
+      context.enterNew(blocks::makeCompoundBlock());
+      context.addNew(blocks::makeBlock<blocks::Direct>(en));
+      context.addNew(cmp->toBlock());
+      context.addNew(blocks::makeBlock<blocks::Direct>(") {\n"));
+
+      auto actionShards = shard->_actions[i];
+      context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
+      processShards(actionShards, context);
+
+      if (!shard->_passthrough)
+        context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
+      context.addNew(blocks::makeBlock<blocks::Direct>("}\n"));
+      context.leave();
+    }
+
+    if (shard->_passthrough) {
       context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
     } else {
       context.setWGSLTop<WGSLBlock>(outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
@@ -148,6 +206,9 @@ struct LogicOrTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(") { return true; }"));
+    if (auto inp = context.getInput()) {
+      context.wgslTop = std::move(inp);
+    }
   }
 };
 
@@ -158,12 +219,16 @@ struct LogicAndTranslator {
     context.addNew(blocks::makeBlock<blocks::Direct>("if(!("));
     context.addNew(context.wgslTop->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(")) { return false; }"));
+    if (auto inp = context.getInput()) {
+      context.wgslTop = std::move(inp);
+    }
   }
 };
 
 void registerFlowShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "_SubFlow", shards::Sub);
   REGISTER_EXTERNAL_SHADER_SHARD(IfTranslator, "If", shards::IfBlock);
+  REGISTER_EXTERNAL_SHADER_SHARD(CondTranslator, "Cond", shards::Cond);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "When", shards::When<true>);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "WhenNot", shards::When<false>);
   REGISTER_EXTERNAL_SHADER_SHARD(ForRangeTranslator, "ForRange", shards::ForRangeShard);

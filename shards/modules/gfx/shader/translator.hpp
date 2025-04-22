@@ -15,9 +15,17 @@ template <typename T> using UniquePtr = std::unique_ptr<T>;
 
 struct ShaderComposeError : public std::runtime_error {
   Shard *shard;
+  std::string originalMessage;
 
-  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(what), shard(shard) {};
-  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(std::move(what)), shard(shard) {};
+  static std::string reformat(const std::string &originalMessage, Shard* shard) {
+    if (shard) {
+      return fmt::format("{} (line {}, column: {}): {}", shard->name(shard), shard->line, shard->column, originalMessage);
+    }
+    return originalMessage;
+  }
+
+  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(reformat(what, shard)), shard(shard) {};
+  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(reformat(what, shard)), shard(shard) {};
 };
 
 struct IAppender {
@@ -134,6 +142,7 @@ struct TranslationBlockRef {
   blocks::Block *block{};
   IAppender *appender{};
   VariableStorage variables;
+  std::unique_ptr<IWGSLGenerated> input;
 
   std::map<std::string, VirtualSeq> virtualSequences;
 
@@ -210,6 +219,8 @@ public:
   }
 
   TempVariableAllocator &getTempVariableAllocator() { return tempVariableAllocator; }
+
+  std::unique_ptr<IWGSLGenerated> getInput();
 
   // Add a new generated shader blocks without entering it
   template <typename T> void addNew(std::unique_ptr<T> &&ptr) {

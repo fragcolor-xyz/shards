@@ -223,8 +223,9 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
           return Broadcast;
         } else {
           if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
-            throw ComposeError(
-                fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
+            throw ComposeError(fmt::format("Can not multiply vector of size {} ({}) and {} ({})", _lhsVecType->dimension,
+                                           magic_enum::enum_name(_lhsVecType->numberType), _rhsVecType->dimension,
+                                           magic_enum::enum_name(_rhsVecType->numberType)));
           }
           return Direct;
         }
@@ -1450,6 +1451,7 @@ struct Lerp final {
   ParamVar _first;
   ParamVar _second;
   Var _result;
+  ExposedInfo _required;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -1480,6 +1482,8 @@ struct Lerp final {
     _second.warmup(context);
   }
 
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
+
   void cleanup(SHContext *context) {
     _first.cleanup();
     _second.cleanup();
@@ -1490,6 +1494,9 @@ struct Lerp final {
     SHType secondType{};
     firstType = _first.isVariable() ? findParamVarExposedTypeChecked(data, _first).exposedType.basicType : _first->valueType;
     secondType = _second.isVariable() ? findParamVarExposedTypeChecked(data, _second).exposedType.basicType : _second->valueType;
+
+    collectRequiredVariables(data, _required, (SHVar&)_first);
+    collectRequiredVariables(data, _required, (SHVar&)_second);
 
     if (firstType != secondType)
       throw ComposeError("Types should match");

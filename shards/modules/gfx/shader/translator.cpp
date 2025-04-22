@@ -23,6 +23,15 @@ TranslationContext::TranslationContext() : translationRegistry(getTranslationReg
   stack.push_back(TranslationBlockRef::make(root));
 }
 
+std::unique_ptr<IWGSLGenerated> TranslationContext::getInput() {
+  if (!stack.empty()) {
+    auto &v = stack.back().input;
+    if (v)
+      return std::make_unique<WGSLBlock>(v->getType(), v->toBlock());
+  }
+  return nullptr;
+}
+
 void TranslationContext::processShard(ShardPtr shard) {
   ITranslationHandler *handler = translationRegistry.resolve(shard);
   if (!handler) {
@@ -85,17 +94,19 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   auto &functionHeader = *functionHeaderBlock.get();
   functionBody->children.emplace_back(std::move(functionHeaderBlock));
 
+  // Process wire/function contents
+  TranslationBlockRef functionScope = TranslationBlockRef::make(functionBody);
+
   // Setup input
   if (translated.inputType) {
     inputVarName = getUniqueVariableName("arg");
     argsDecl = fmt::format("{} : {}", inputVarName, getWGSLTypeName(translated.inputType.value()));
 
     // Set the stack value from input
-    setWGSLTop<WGSLBlock>(translated.inputType.value(), blocks::makeBlock<blocks::Direct>(inputVarName));
+    auto b = std::make_unique<WGSLBlock>(translated.inputType.value(), blocks::makeBlock<blocks::Direct>(inputVarName));
+    wgslTop = b->clone();
+    functionScope.input = std::move(b);
   }
-
-  // Process wire/function contents
-  TranslationBlockRef functionScope = TranslationBlockRef::make(functionBody);
 
   // Setup required variable
   if (composeResult.requiredInfo.len > 0) {

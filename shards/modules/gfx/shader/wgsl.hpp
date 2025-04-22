@@ -38,6 +38,7 @@ struct WGSLBlock : public IWGSLGenerated {
 
   const Type &getType() const { return fieldType; }
   blocks::BlockPtr toBlock() const { return block->clone(); }
+  std::unique_ptr<IWGSLGenerated> clone() const { return std::make_unique<WGSLBlock>(getType(), toBlock()); }
 };
 
 } // namespace shader

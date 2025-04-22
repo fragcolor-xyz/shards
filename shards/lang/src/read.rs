@@ -19,6 +19,7 @@ use shards::{
 use std::borrow::Cow;
 use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::iter::Cloned;
 use std::mem::swap;
 use std::ops::Sub;
 use std::path::{Path, PathBuf};
@@ -666,6 +667,15 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let script_dir = RcStrWrapper::new(env.script_directory.to_string());
             Ok(FunctionValue::Const(Value::String(script_dir)))
           }
+          "include-dirs" => {
+            let include_dirs = env.include_directories.clone();
+            Ok(FunctionValue::Const(Value::Seq(
+              include_dirs
+                .into_iter()
+                .map(|x| Value::String(x.into()))
+                .collect(),
+            )))
+          }
           _ => convert_to_function_value(identifier, &mut inner, env, pos),
         }
       } else {
@@ -1208,7 +1218,22 @@ lazy_static! {
   pub static ref AST_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"ASTa")); // last letter used as version
   pub static ref AST_TYPE_VEC: Vec<Type> = vec![*AST_TYPE];
   pub static ref AST_VAR_TYPE: Type = Type::context_variable(&AST_TYPE_VEC);
-  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE];
+  pub static ref READ_ADVANCED_OUTPUT_KEYS_AST: Vec<Var> = vec![
+    shards::shstr!("ast").into(),
+    shards::shstr!("dependencies").into(),
+  ];
+  pub static ref READ_ADVANCED_OUTPUT_VALUES_AST: Vec<Type> = vec![*AST_TYPE, common_type::strings];
+  pub static ref READ_ADVANCED_OUTPUT_TYPE_AST: Type = Type::table(&READ_ADVANCED_OUTPUT_KEYS_AST, &READ_ADVANCED_OUTPUT_VALUES_AST);
+  pub static ref READ_ADVANCED_OUTPUT_KEYS_BYTES: Vec<Var> = vec![
+    shards::shstr!("bytes").into(),
+    shards::shstr!("dependencies").into(),
+  ];
+
+  pub static ref READ_ADVANCED_OUTPUT_VALUES_BYTES: Vec<Type> = vec![common_type::bytes, common_type::strings];
+  pub static ref READ_ADVANCED_OUTPUT_TYPE_BYTES: Type = Type::table(&READ_ADVANCED_OUTPUT_KEYS_BYTES, &READ_ADVANCED_OUTPUT_VALUES_BYTES);
+  pub static ref READ_ADVANCED_OUTPUT_TYPES: Vec<Type> = vec![*READ_ADVANCED_OUTPUT_TYPE_AST, *READ_ADVANCED_OUTPUT_TYPE_BYTES];
+  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE, *READ_ADVANCED_OUTPUT_TYPE_AST, *READ_ADVANCED_OUTPUT_TYPE_BYTES];
+  pub static ref AST_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes, *AST_TYPE];
 }
 
 #[derive(shards::shards_enum)]
@@ -1224,6 +1249,10 @@ pub enum AstType {
   Json = 0x1,
   #[enum_value("Live Object AST to be used within a live environment")]
   Object = 0x2,
+  #[enum_value("Binary AST as Bytes type + additional output values.")]
+  AdvancedBytes = 0x3,
+  #[enum_value("Live Object AST to be used within a live environment + additional output values.")]
+  AdvancedObject = 0x4,
 }
 
 lazy_static! {
@@ -1300,6 +1329,8 @@ impl Shard for ReadShard {
       Ok(AstType::Bytes) => Ok(common_type::bytes),
       Ok(AstType::Json) => Ok(common_type::string),
       Ok(AstType::Object) => Ok(*AST_TYPE),
+      Ok(AstType::AdvancedBytes) => Ok(*READ_ADVANCED_OUTPUT_TYPE_BYTES),
+      Ok(AstType::AdvancedObject) => Ok(*READ_ADVANCED_OUTPUT_TYPE_AST),
       Err(_) => {
         shlog_error!("Invalid output type for ReadShard");
         Err("Invalid output type for ReadShard")
@@ -1329,9 +1360,10 @@ impl Shard for ReadShard {
       includes.push((&inc).try_into()?);
     }
 
+    let mut env = ReadEnv::new("", base_path.to_string(), includes);
     let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
-      &mut ReadEnv::new("", base_path.to_string(), includes),
+      &mut env,
     )
     .map_err(|e| {
       shlog_error!("Failed to process shards code: {:?}", e);
@@ -1360,6 +1392,57 @@ impl Shard for ReadShard {
       }
       Ok(AstType::Object) => {
         self.output = Var::new_ref_counted(prog, &AST_TYPE).into();
+      }
+      Ok(AstType::AdvancedBytes) => {
+        let mut output_table = AutoTableVar::new();
+
+        // Serialize AST using flexbuffers
+        let encoded_bin: Vec<u8> = flexbuffers::to_vec(&prog).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
+        let ast_output = encoded_bin.as_slice().into();
+
+        // Get dependencies and convert to Var
+        let deps = get_dependencies(&env);
+        let mut deps_var = AutoSeqVar::new();
+        for dep in deps.iter() {
+          deps_var.0.emplace(ClonedVar::new_string(dep));
+        }
+
+        // Set table values
+        output_table.0.insert_fast_static("bytes", &ast_output);
+        output_table
+          .0
+          .insert_fast_static("dependencies", &deps_var.0 .0);
+
+        self.output = output_table.to_cloned();
+      }
+      Ok(AstType::AdvancedObject) => {
+        let mut output_table = AutoTableVar::new();
+
+        // Serialize AST using flexbuffers
+        let encoded_bin: Vec<u8> = flexbuffers::to_vec(&prog).map_err(|e| {
+          shlog_error!("Failed to serialize shards code: {}", e);
+          "Failed to serialize Shards code"
+        })?;
+
+        let ast_output = encoded_bin.as_slice().into();
+
+        // Get dependencies and convert to Var
+        let deps = get_dependencies(&env);
+        let mut deps_var = AutoSeqVar::new();
+        for dep in deps.iter() {
+          deps_var.0.emplace(ClonedVar::new_string(dep));
+        }
+
+        // Set table values
+        output_table.0.insert_fast_static("ast", &ast_output);
+        output_table
+          .0
+          .insert_fast_static("dependencies", &deps_var.0 .0);
+
+        self.output = output_table.to_cloned();
       }
       Err(_) => {
         shlog_error!("Invalid output type for ReadShard");

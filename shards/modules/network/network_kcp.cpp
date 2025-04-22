@@ -1030,6 +1030,7 @@ struct ClientShard : public NetworkBase {
     ExposedInfo shared{data.shared};
     shared.push_back(endpointInfo);
     SHInstanceData innerData{data};
+    innerData.inputType = CoreInfo::AnyType;
     innerData.shared = (SHExposedTypesInfo)shared;
     _blks.compose(innerData);
     return PeerType;

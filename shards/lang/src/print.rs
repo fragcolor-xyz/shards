@@ -369,7 +369,7 @@ impl Default for ShardsPrintShard {
 #[shards::shard_impl]
 impl Shard for ShardsPrintShard {
   fn input_types(&mut self) -> &Types {
-    &read::READ_OUTPUT_TYPES
+    &read::AST_TYPES
   }
 
   fn output_types(&mut self) -> &Types {

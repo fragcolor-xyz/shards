@@ -122,6 +122,28 @@ struct BaseOpsBin {
     return SHExposedTypesInfo(_requiredVariables);
   }
 
+  SHTypeInfo composeEqualTypes(const SHInstanceData &data, SHTypeInfo outType) {
+    SHType otherBasicType;
+    SHType inBasicType = data.inputType.basicType;
+    if (_operand.isVariable()) {
+      if (auto vt = findExposedVariablePtr(data.shared, _operand.variableName())) {
+        otherBasicType = vt->exposedType.basicType;
+      } else {
+        throw ComposeError(fmt::format("Variable {} not found", _operand.variableName()));
+      }
+    } else {
+      otherBasicType = _operand->valueType;
+    }
+
+    if (inBasicType != SHType::Any && otherBasicType != SHType::Any) {
+      if (inBasicType != otherBasicType) {
+        throw ComposeError(
+            fmt::format("Cannot compare {} with {}", magic_enum::enum_name(inBasicType), magic_enum::enum_name(otherBasicType)));
+      }
+    }
+    return outType;
+  }
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
@@ -149,6 +171,9 @@ struct BaseOpsBin {
 
 #define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                                   \
   struct NAME : public BaseOpsBin {                                                       \
+    SHTypeInfo compose(const SHInstanceData &data) {                                      \
+      return composeEqualTypes(data, CoreInfo::BoolType);                                 \
+    }                                                                                     \
     FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) { \
       const auto &value = _operand.get();                                                 \
       if (input OP value) {                                                               \
@@ -161,8 +186,7 @@ struct BaseOpsBin {
     static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
     static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }     \
     static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
-  };                                                                                      \
-  RUNTIME_CORE_SHARD_TYPE(NAME);
+  };
 
 // Now use the updated macro with help text for each operation
 LOGIC_OP(Is, ==, "Checks if the input is equal to the operand.",
