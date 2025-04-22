@@ -25,6 +25,7 @@ set(SOURCES
   gizmos/highlight.cpp
   gizmos/shapes.cpp
   text/text.cpp
+  objects.cpp
 )
 
 if(HAS_WGPU_NATIVE)
