@@ -17,7 +17,7 @@ struct Schedule {
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data); 
 
     if (_mesh->valueType == SHType::None) {
       throw ComposeError("Schedule: Mesh parameter is required");
@@ -251,5 +251,5 @@ struct Run {
 SHARDS_REGISTER_FN(run) {
   using namespace shards::run_;
   REGISTER_SHARD("Schedule", Schedule);
-  REGISTER_SHARD("Run", Run);
+  REGISTER_SHARD("Run", Run);  
 }

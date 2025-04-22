@@ -1013,6 +1013,8 @@ void run(SHWire *wire, shards::Coroutine *coro) {
     context.wireStack.push_back(wire);
     // also set parent
     context.parent = wire->context;
+    // Used for warmup context (owning shard, e.g. Step, Branch)
+    context.internal.currentShard = wire->context->internal.currentShard;
   }
 
   // also populate context in wire
@@ -1046,6 +1048,10 @@ void run(SHWire *wire, shards::Coroutine *coro) {
   // And call warmup on all the shards!
   try {
     wire->warmup(&context);
+  } catch(std::exception &e) {
+    SHLOG_ERROR("Wire {} warmup failed with error: {}", wire->name, e.what());
+    wire->state = SHWire::State::Failed;
+    goto endOfWire;
   } catch (...) {
     // inside warmup we re-throw, we handle logging and such there
     wire->state = SHWire::State::Failed;
@@ -1851,6 +1857,17 @@ void SHWire::destroy() {
 #endif
 }
 
+SHWire* getParentWire(SHContext* context, SHWire* wire) {
+  auto it = context->wireStack.rbegin();
+  while(it != context->wireStack.rend()) {
+    if (*it != wire) {
+      return *it;
+    }
+    ++it;
+  }
+  return nullptr;
+}
+
 void SHWire::warmup(SHContext *context) {
   if (!warmedUp) {
     SHLOG_TRACE("Running warmup on wire: {}", name);
@@ -1863,8 +1880,8 @@ void SHWire::warmup(SHContext *context) {
     if (numInheritedVariables > 0) {
       auto ownedShard = context->internal.currentShard;
       shassert(ownedShard);
-      shassert(context->wireStack.size() > 0);
-      auto parentWire = context->wireStack.back();
+      auto parentWire = getParentWire(context, this);
+      shassert(parentWire);
       for (size_t i = runtimeVariableInfo->numExternalVariables; i < runtimeVariableInfo->externalAndInheritedVariables.size();
            i++) {
         auto &v = runtimeVariableInfo->externalAndInheritedVariables[i];

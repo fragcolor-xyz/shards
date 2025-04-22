@@ -1527,10 +1527,10 @@ struct Update : public SetUpdateBase {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    auto &ctx = CompositionContext::get(data);
     _self = data.shard;
 
-    setBaseCompose(data, false, false, false);
+    _exposedInfo.clear();
+    auto existingVariable = setBaseCompose(data, false, false, false);
 
     SHTypeInfo *originalTableType{};
 
@@ -1541,7 +1541,6 @@ struct Update : public SetUpdateBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      auto existingVariable = ctx.findVariable(_name);
       if (existingVariable) {
         auto &exposed = existingVariable->exposed;
         if (exposed.exposedType.basicType == SHType::Table) {
@@ -1610,7 +1609,6 @@ struct Update : public SetUpdateBase {
         _tableTypeInfo = *originalTableType;
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
       } else {
-        auto existingVariable = ctx.findVariable(_name);
         if (!existingVariable) {
           throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
         }
@@ -1624,13 +1622,16 @@ struct Update : public SetUpdateBase {
         const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
 
         // just a variable, keep unchanged!
-        _exposedInfo =
-            ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), exposed.exposedType, true));
+        _exposedInfo.push_back(existingVariable->exposed);
       }
+    } else {
+      _exposedInfo.push_back(existingVariable->exposed);
     }
 
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
+    _exposedInfo._innerInfo.elements[0].declared = false;
+    _exposedInfo._innerInfo.elements[0].internalId = existingVariable->id;
 
     return data.inputType;
   }

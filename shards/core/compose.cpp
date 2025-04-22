@@ -715,8 +715,12 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         }
 
         if (!done) {
-          SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared in shard {}",
-                              data.shared.elements[i].name, ctx.shardContextStr(1));
+          if(ctx.stack.size() > 1) {
+            SPDLOG_LOGGER_TRACE(compose::logger, "Internally scoped variable '{}' declared in shard {}",
+                                data.shared.elements[i].name, ctx.shardContextStr(1));
+          } else {
+            SPDLOG_LOGGER_TRACE(compose::logger, "Internally defined variable '{}' declared to wire {} composition", data.shared.elements[i].name, scope.wireName());
+          }
           ctx.insertVariable(info.name, info);
         }
       }
@@ -805,17 +809,17 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         // Ignore wire root (seqid == 0) since it's only used to populate inherited variables, and we only want to collect usages
         if (k == 0) {
           bool okay = true;
-          for (auto &v : shardInfo->variableRefs) {
-            auto &var = ctx.variables[v];
-            if (var.kind == VariableKind::Local) {
-              okay = false;
-              SPDLOG_LOGGER_ERROR(compose::logger, "Wire root must not have local variables, found {} (id: {}, type: {})",
-                                  var.exposed.name, var.id, var.exposed.exposedType);
-            }
-          }
-          if (!okay) {
-            throw std::logic_error("Wire root must not have local variables");
-          }
+          // for (auto &v : shardInfo->variableRefs) {
+          //   auto &var = ctx.variables[v];
+          //   if (var.kind == VariableKind::Local) {
+          //     okay = false;
+          //     SPDLOG_LOGGER_ERROR(compose::logger, "Wire root must not have local variables, found {} (id: {}, type: {})",
+          //                         var.exposed.name, var.id, var.exposed.exposedType);
+          //   }
+          // }
+          // if (!okay) {
+          //   throw std::logic_error("Wire root must not have local variables");
+          // }
           continue;
         }
 

@@ -103,6 +103,7 @@ struct SHStateSnapshot {
 struct SHContext {
   SHContext(shards::Coroutine *coro, const SHWire *starter) : main(starter), continuation(coro) {
     wireStack.push_back(const_cast<SHWire *>(starter));
+    internal.currentShard = nullptr;
   }
 
   // Needs to come first, users can cast SHContext to SHContextShared
