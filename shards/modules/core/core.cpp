@@ -2392,93 +2392,93 @@ RUNTIME_SHARD_compose(IsAlmost);
 RUNTIME_SHARD_activate(IsAlmost);
 RUNTIME_SHARD_END(IsAlmost);
 
-// // Register Set
-// RUNTIME_CORE_SHARD_FACTORY(Set);
-// RUNTIME_SHARD_cleanup(Set);
-// RUNTIME_SHARD_warmup(Set);
-// RUNTIME_SHARD_help(Set);
-// RUNTIME_SHARD_inputTypes(Set);
-// RUNTIME_SHARD_inputHelp(Set);
-// RUNTIME_SHARD_outputTypes(Set);
-// RUNTIME_SHARD_outputHelp(Set);
-// RUNTIME_SHARD_parameters(Set);
-// RUNTIME_SHARD_composeV2(Set);
-// RUNTIME_SHARD_exposedVariables(Set);
-// RUNTIME_SHARD_setParam(Set);
-// RUNTIME_SHARD_getParam(Set);
-// RUNTIME_SHARD_activate(Set);
-// RUNTIME_SHARD_END(Set);
+// Register Set
+RUNTIME_CORE_SHARD_FACTORY(Set);
+RUNTIME_SHARD_cleanup(Set);
+RUNTIME_SHARD_warmup(Set);
+RUNTIME_SHARD_help(Set);
+RUNTIME_SHARD_inputTypes(Set);
+RUNTIME_SHARD_inputHelp(Set);
+RUNTIME_SHARD_outputTypes(Set);
+RUNTIME_SHARD_outputHelp(Set);
+RUNTIME_SHARD_parameters(Set);
+RUNTIME_SHARD_composeV2(Set);
+RUNTIME_SHARD_exposedVariables(Set);
+RUNTIME_SHARD_setParam(Set);
+RUNTIME_SHARD_getParam(Set);
+RUNTIME_SHARD_activate(Set);
+RUNTIME_SHARD_END(Set);
 
-// // Register Ref
-// RUNTIME_CORE_SHARD_FACTORY(Ref);
-// RUNTIME_SHARD_cleanup(Ref);
-// RUNTIME_SHARD_warmup(Ref);
-// RUNTIME_SHARD_help(Ref);
-// RUNTIME_SHARD_inputTypes(Ref);
-// RUNTIME_SHARD_inputHelp(Ref);
-// RUNTIME_SHARD_outputTypes(Ref);
-// RUNTIME_SHARD_outputHelp(Ref);
-// RUNTIME_SHARD_parameters(Ref);
-// RUNTIME_SHARD_composeV2(Ref);
-// RUNTIME_SHARD_exposedVariables(Ref);
-// RUNTIME_SHARD_setParam(Ref);
-// RUNTIME_SHARD_getParam(Ref);
-// RUNTIME_SHARD_activate(Ref);
-// RUNTIME_SHARD_END(Ref);
+// Register Ref
+RUNTIME_CORE_SHARD_FACTORY(Ref);
+RUNTIME_SHARD_cleanup(Ref);
+RUNTIME_SHARD_warmup(Ref);
+RUNTIME_SHARD_help(Ref);
+RUNTIME_SHARD_inputTypes(Ref);
+RUNTIME_SHARD_inputHelp(Ref);
+RUNTIME_SHARD_outputTypes(Ref);
+RUNTIME_SHARD_outputHelp(Ref);
+RUNTIME_SHARD_parameters(Ref);
+RUNTIME_SHARD_composeV2(Ref);
+RUNTIME_SHARD_exposedVariables(Ref);
+RUNTIME_SHARD_setParam(Ref);
+RUNTIME_SHARD_getParam(Ref);
+RUNTIME_SHARD_activate(Ref);
+RUNTIME_SHARD_END(Ref);
 
-// // Register Update
-// RUNTIME_CORE_SHARD_FACTORY(Update);
-// RUNTIME_SHARD_cleanup(Update);
-// RUNTIME_SHARD_warmup(Update);
-// RUNTIME_SHARD_help(Update);
-// RUNTIME_SHARD_inputTypes(Update);
-// RUNTIME_SHARD_inputHelp(Update);
-// RUNTIME_SHARD_outputTypes(Update);
-// RUNTIME_SHARD_outputHelp(Update);
-// RUNTIME_SHARD_parameters(Update);
-// RUNTIME_SHARD_composeV2(Update);
-// RUNTIME_SHARD_requiredVariables(Update);
-// RUNTIME_SHARD_setParam(Update);
-// RUNTIME_SHARD_getParam(Update);
-// RUNTIME_SHARD_activate(Update);
-// RUNTIME_SHARD_END(Update);
+// Register Update
+RUNTIME_CORE_SHARD_FACTORY(Update);
+RUNTIME_SHARD_cleanup(Update);
+RUNTIME_SHARD_warmup(Update);
+RUNTIME_SHARD_help(Update);
+RUNTIME_SHARD_inputTypes(Update);
+RUNTIME_SHARD_inputHelp(Update);
+RUNTIME_SHARD_outputTypes(Update);
+RUNTIME_SHARD_outputHelp(Update);
+RUNTIME_SHARD_parameters(Update);
+RUNTIME_SHARD_composeV2(Update);
+RUNTIME_SHARD_requiredVariables(Update);
+RUNTIME_SHARD_setParam(Update);
+RUNTIME_SHARD_getParam(Update);
+RUNTIME_SHARD_activate(Update);
+RUNTIME_SHARD_END(Update);
 
-// // Register Push
-// RUNTIME_CORE_SHARD_FACTORY(Push);
-// RUNTIME_SHARD_cleanup(Push);
-// RUNTIME_SHARD_destroy(Push);
-// RUNTIME_SHARD_warmup(Push);
-// RUNTIME_SHARD_help(Push);
-// RUNTIME_SHARD_inputTypes(Push);
-// RUNTIME_SHARD_inputHelp(Push);
-// RUNTIME_SHARD_outputTypes(Push);
-// RUNTIME_SHARD_outputHelp(Push);
-// RUNTIME_SHARD_parameters(Push);
-// RUNTIME_SHARD_composeV2(Push);
-// RUNTIME_SHARD_exposedVariables(Push);
-// RUNTIME_SHARD_requiredVariables(Push);
-// RUNTIME_SHARD_setParam(Push);
-// RUNTIME_SHARD_getParam(Push);
-// RUNTIME_SHARD_activate(Push);
-// RUNTIME_SHARD_END(Push);
+// Register Push
+RUNTIME_CORE_SHARD_FACTORY(Push);
+RUNTIME_SHARD_cleanup(Push);
+RUNTIME_SHARD_destroy(Push);
+RUNTIME_SHARD_warmup(Push);
+RUNTIME_SHARD_help(Push);
+RUNTIME_SHARD_inputTypes(Push);
+RUNTIME_SHARD_inputHelp(Push);
+RUNTIME_SHARD_outputTypes(Push);
+RUNTIME_SHARD_outputHelp(Push);
+RUNTIME_SHARD_parameters(Push);
+RUNTIME_SHARD_composeV2(Push);
+RUNTIME_SHARD_exposedVariables(Push);
+RUNTIME_SHARD_requiredVariables(Push);
+RUNTIME_SHARD_setParam(Push);
+RUNTIME_SHARD_getParam(Push);
+RUNTIME_SHARD_activate(Push);
+RUNTIME_SHARD_END(Push);
 
-// // Register Sequence
-// RUNTIME_CORE_SHARD_FACTORY(Sequence);
-// RUNTIME_SHARD_cleanup(Sequence);
-// RUNTIME_SHARD_destroy(Sequence);
-// RUNTIME_SHARD_warmup(Sequence);
-// RUNTIME_SHARD_help(Sequence);
-// RUNTIME_SHARD_inputTypes(Sequence);
-// RUNTIME_SHARD_inputHelp(Sequence);
-// RUNTIME_SHARD_outputTypes(Sequence);
-// RUNTIME_SHARD_outputHelp(Sequence);
-// RUNTIME_SHARD_parameters(Sequence);
-// RUNTIME_SHARD_compose(Sequence);
-// RUNTIME_SHARD_exposedVariables(Sequence);
-// RUNTIME_SHARD_setParam(Sequence);
-// RUNTIME_SHARD_getParam(Sequence);
-// RUNTIME_SHARD_activate(Sequence);
-// RUNTIME_SHARD_END(Sequence);
+// Register Sequence
+RUNTIME_CORE_SHARD_FACTORY(Sequence);
+RUNTIME_SHARD_cleanup(Sequence);
+RUNTIME_SHARD_destroy(Sequence);
+RUNTIME_SHARD_warmup(Sequence);
+RUNTIME_SHARD_help(Sequence);
+RUNTIME_SHARD_inputTypes(Sequence);
+RUNTIME_SHARD_inputHelp(Sequence);
+RUNTIME_SHARD_outputTypes(Sequence);
+RUNTIME_SHARD_outputHelp(Sequence);
+RUNTIME_SHARD_parameters(Sequence);
+RUNTIME_SHARD_compose(Sequence);
+RUNTIME_SHARD_exposedVariables(Sequence);
+RUNTIME_SHARD_setParam(Sequence);
+RUNTIME_SHARD_getParam(Sequence);
+RUNTIME_SHARD_activate(Sequence);
+RUNTIME_SHARD_END(Sequence);
 
 // Register Pop
 RUNTIME_CORE_SHARD_FACTORY(Pop);
@@ -2580,23 +2580,23 @@ RUNTIME_SHARD_activate(DropFront);
 RUNTIME_SHARD_composeV2(DropFront);
 RUNTIME_SHARD_END(DropFront);
 
-// // Register Get
-// RUNTIME_CORE_SHARD_FACTORY(Get);
-// RUNTIME_SHARD_cleanup(Get);
-// RUNTIME_SHARD_warmup(Get);
-// RUNTIME_SHARD_destroy(Get);
-// RUNTIME_SHARD_help(Get);
-// RUNTIME_SHARD_inputTypes(Get);
-// RUNTIME_SHARD_inputHelp(Get);
-// RUNTIME_SHARD_outputTypes(Get);
-// RUNTIME_SHARD_outputHelp(Get);
-// RUNTIME_SHARD_parameters(Get);
-// RUNTIME_SHARD_composeV2(Get);
-// RUNTIME_SHARD_requiredVariables(Get);
-// RUNTIME_SHARD_setParam(Get);
-// RUNTIME_SHARD_getParam(Get);
-// RUNTIME_SHARD_activate(Get);
-// RUNTIME_SHARD_END(Get);
+// Register Get
+RUNTIME_CORE_SHARD_FACTORY(Get);
+RUNTIME_SHARD_cleanup(Get);
+RUNTIME_SHARD_warmup(Get);
+RUNTIME_SHARD_destroy(Get);
+RUNTIME_SHARD_help(Get);
+RUNTIME_SHARD_inputTypes(Get);
+RUNTIME_SHARD_inputHelp(Get);
+RUNTIME_SHARD_outputTypes(Get);
+RUNTIME_SHARD_outputHelp(Get);
+RUNTIME_SHARD_parameters(Get);
+RUNTIME_SHARD_composeV2(Get);
+RUNTIME_SHARD_requiredVariables(Get);
+RUNTIME_SHARD_setParam(Get);
+RUNTIME_SHARD_getParam(Get);
+RUNTIME_SHARD_activate(Get);
+RUNTIME_SHARD_END(Get);
 
 // Register Swap
 RUNTIME_CORE_SHARD_FACTORY(Swap);
@@ -3290,9 +3290,9 @@ struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::String
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };
 
-void registerCore2();
+// void registerCore2();
 SHARDS_REGISTER_FN(core) {
-  registerCore2();
+  // registerCore2();
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
   REGISTER_SHARD("Const", Const);

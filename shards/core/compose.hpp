@@ -304,11 +304,8 @@ struct CompositionContext {
   std::string_view shardContextStr(size_t scopeOffset = 0) const;
   std::string_view shardContextStr(Shard *shard) const;
 
-  VariableRef findVariablePrivate(std::string_view name, size_t scopeOffset = 0);
-  VariableRef findVariablePrivate(uint32_t id, size_t scopeOffset = 0);
-
-  // Find variable and reference it as used in the current context
-  VariableRef findVariable(std::string_view id, size_t scopeOffset = 0);
+  VariableRef findVariable(std::string_view name, size_t scopeOffset = 0);
+  VariableRef findVariable(uint32_t id, size_t scopeOffset = 0);
 
   Variable &insertVariable(std::string_view name, SHExposedTypeInfo type);
   Variable &insertAnonymousVariable(SHExposedTypeInfo type);

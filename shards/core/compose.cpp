@@ -31,7 +31,7 @@ void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, cons
   case SHType::ContextVar: {
     auto sv = SHSTRVIEW(var);
     auto &ctx = compose::CompositionContext::get(data);
-    auto info = ctx.findVariablePrivate(sv);
+    auto info = ctx.findVariable(sv);
     if (info) {
       out.push_back(info->exposed);
       break;
@@ -249,7 +249,7 @@ void CompositionContext::step() {
 
     std::string_view name(required_param.name);
 
-    // Was findVariablePrivate? why does it not need to track?
+    // Was findVariable? why does it not need to track?
     auto foundInherited = findVariable(name);
     std::optional<SHExposedTypeInfo> found;
     if (foundInherited) {
@@ -313,7 +313,7 @@ std::string_view CompositionContext::shardContextStr(Shard *shard) const {
   return shardContextStrBuf;
 }
 
-VariableRef CompositionContext::findVariablePrivate(std::string_view name, size_t scopeOffset) {
+VariableRef CompositionContext::findVariable(std::string_view name, size_t scopeOffset) {
   size_t ss = stack.size();
   for (size_t i0 = scopeOffset; i0 < ss; i0++) {
     size_t idx0 = ss - i0 - 1;
@@ -331,7 +331,7 @@ VariableRef CompositionContext::findVariablePrivate(std::string_view name, size_
   return VariableRef{};
 }
 
-VariableRef CompositionContext::findVariablePrivate(uint32_t id_, size_t scopeOffset) {
+VariableRef CompositionContext::findVariable(uint32_t id_, size_t scopeOffset) {
   auto &scope = *stack[stack.size() - 1 - scopeOffset];
   auto &wire = *scope.wire;
   shassert((id_ & InternalIdFlagsInternal) == InternalIdFlagsInternal && "Invalid internal variable ID");
@@ -342,21 +342,10 @@ VariableRef CompositionContext::findVariablePrivate(uint32_t id_, size_t scopeOf
   return VariableRef{&variables[id], &wire};
 }
 
-VariableRef CompositionContext::findVariable(std::string_view name, size_t scopeOffset) {
-  auto v = findVariablePrivate(name, scopeOffset);
-  if (v) {
-    auto &scope = currentScope();
-    scope.usedVariables.push_back(v->id);
-    currentShardInfo().variableRefs.push_back(v->id);
-    SPDLOG_LOGGER_TRACE(logger, "Referencing used variable: {} (id: {}) in shard {}", name, v->id, shardContextStr());
-  }
-  return v;
-}
-
 Variable &CompositionContext::insertVariable(std::string_view name, SHExposedTypeInfo type) {
   auto &scope = currentScope();
 
-  bool wasExisting = findVariablePrivate(name);
+  bool wasExisting = findVariable(name);
   if (!wasExisting)
     scope.estimatedNumVariables++;
 
@@ -693,7 +682,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         bool done = false;
         VariableRef variable{};
         if (info.internalId != 0) {
-          variable = ctx.findVariablePrivate(info.internalId, 1);
+          variable = ctx.findVariable(info.internalId, 1);
           if (!variable)
             throw std::logic_error(
                 fmt::format("Variable '{}' (as id: {}) not found in wire '{}'", info.name, info.internalId, scope.wireName()));
@@ -702,7 +691,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         }
 
         if (!done && info.internalId == 0) {
-          variable = ctx.findVariablePrivate(info.name, 1);
+          variable = ctx.findVariable(info.name, 1);
           if (variable && variable->exposed.exposedType == info.exposedType) {
             insertExistingVariable(variable);
             done = true;
