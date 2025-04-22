@@ -18,7 +18,7 @@
 
 using namespace shards;
 
-namespace gfx { 
+namespace gfx {
 
 Context &GraphicsContext::getContext() { return *context.get(); }
 Window &GraphicsContext::getWindow() { return *window.get(); }
@@ -137,10 +137,8 @@ extern void registerRenderStepShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
-} // namespace gfx
-
+void registerObjectTypes();
 SHARDS_REGISTER_FN(gfx) {
-  using namespace gfx;
   REGISTER_ENUM(ShardsTypes::WindingOrderEnumInfo);
   REGISTER_ENUM(ShardsTypes::ShaderFieldBaseTypeEnumInfo);
   REGISTER_ENUM(ShardsTypes::ProgrammableGraphicsStageEnumInfo);
@@ -161,6 +159,8 @@ SHARDS_REGISTER_FN(gfx) {
   REGISTER_ENUM(ShardsTypes::TextureSampleTypeEnumInfo);
   REGISTER_ENUM(ShardsTypes::BufferAddressSpaceEnumInfo);
 
+  registerObjectTypes();
+
   registerMainWindowShards();
   registerRendererShards();
   registerMeshShards();
@@ -175,3 +175,4 @@ SHARDS_REGISTER_FN(gfx) {
   shader::registerTranslatorShards();
   REGISTER_SHARD("GFX.Render", RenderShard);
 }
+} // namespace gfx
