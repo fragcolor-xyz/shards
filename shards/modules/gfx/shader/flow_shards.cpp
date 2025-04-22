@@ -35,16 +35,20 @@ struct IfTranslator {
     auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
     std::string ifResultVarName;
-    Type outputType;
+    std::optional<Type> outputType;
     if (!shard->_passth) {
       SHTypeInfo ta = shard->_then.composeResult().outputType;
       SHTypeInfo tb = shard->_else.composeResult().outputType;
       if (ta != tb)
         throw std::runtime_error(
             fmt::format("If block with different output types is not supported in shaders, got {} and {}", ta, tb));
-      outputType = shardsTypeToFieldType(ta);
-      ifResultVarName = context.getUniqueVariableName("if");
-      context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
+      // Ignore none return value
+      if (ta.basicType != SHType::None) {
+        outputType = shardsTypeToFieldType(ta);
+        ifResultVarName = context.getUniqueVariableName("if");
+        context.addNew(
+            blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(*outputType)), ";\n"));
+      }
     }
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
@@ -54,7 +58,7 @@ struct IfTranslator {
     // Then block
     context.enterNew(blocks::makeCompoundBlock());
     processShardsVar(shard->_then, context);
-    if (!shard->_passth)
+    if (outputType)
       context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
     context.leave();
 
@@ -65,7 +69,7 @@ struct IfTranslator {
       context.enterNew(blocks::makeCompoundBlock());
       context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
       processShardsVar(shard->_else, context);
-      if (!shard->_passth)
+      if (outputType)
         context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
 
       context.leave();
@@ -74,8 +78,10 @@ struct IfTranslator {
 
     if (shard->_passth) {
       context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
+    } else if (outputType) {
+      context.setWGSLTop<WGSLBlock>(*outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
     } else {
-      context.setWGSLTop<WGSLBlock>(outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
+      context.clearWGSLTop();
     }
   }
 };

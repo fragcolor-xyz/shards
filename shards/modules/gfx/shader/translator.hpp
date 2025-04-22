@@ -15,9 +15,17 @@ template <typename T> using UniquePtr = std::unique_ptr<T>;
 
 struct ShaderComposeError : public std::runtime_error {
   Shard *shard;
+  std::string originalMessage;
 
-  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(what), shard(shard) {};
-  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(std::move(what)), shard(shard) {};
+  static std::string reformat(const std::string &originalMessage, Shard* shard) {
+    if (shard) {
+      return fmt::format("{} (line {}, column: {}): {}", shard->name(shard), shard->line, shard->column, originalMessage);
+    }
+    return originalMessage;
+  }
+
+  ShaderComposeError(const char *what, Shard *shard = nullptr) : std::runtime_error(reformat(what, shard)), shard(shard) {};
+  ShaderComposeError(std::string &&what, Shard *shard = nullptr) : std::runtime_error(reformat(what, shard)), shard(shard) {};
 };
 
 struct IAppender {

@@ -1,55 +1,71 @@
 @define(timestep #(1.0 | Math.Divide(120.0)))
 
 @wire(gfx {
-  Once ({
+  Once({
     0.0 >= time
-
+    
     GFX.EffectPass(
       EntryPoint: {
-        Shader.ReadInput("texCoord0") >= uv |
-        {uv | Take(0) >= u} |
+        Shader.ReadInput("texCoord0") >= uv
+        {uv | Take(0) >= u}
         {uv | Take(1) >= v}
-
+        
         0.0 >= f-0
-        u |
+        u
         If(IsMore(0.75) {
           v > f-0
         } Passthrough: true)
-
+        
         0.0 >= f-1
         u | If(IsLess(v)
-               Then: {u > f-1}
-               Else: {v > f-1}
-               Passthrough: true)
-
-        0.0 >= f-2
-        u | Math.Subtract(v) | Math.Abs |
-        If(IsLessEqual(0.1)
-           Then: {1.0 > f-2}
-           Else: {When(IsMoreEqual(0.8)
-                       {0.5 > f-2})}
-           Passthrough: true)
-
-        v | Math.Multiply(20.0) | Math.Floor | ToInt >= i
-        i | When(Is(10)
-                 {1.0 > f-0 1.0 > f-1 1.0 > f-2})
-
-        i | When({i | IsMore(15) | And | i | IsNot(18)} {0.0 > f-0 0.0 > f-1 0.0 > f-2}) |
-
-        When({i | Is(2)} {1.0 > f-0 1.0 > f-2 0.0 > f-1})
-
-        @f4(f-0 f-1 f-2 1.0) |
-        Shader.WriteOutput("color") ; End shader
+          Then: {u > f-1}
+          Else: {v > f-1}
+          Passthrough: true
+        )
+        
+        u | If({IsMore(0.4) | And | IsLess(0.6)} {
+            Sub(0.4) | Div(0.2) | Mul(16.0) | ToInt | Math.Mod(4)
+            Cond([
+              {Is(0)} {@f3(1.0 0.0 0.0)}
+              {Is(1)} {@f3(0.0 1.0 0.0)}
+              {Is(2)} {@f3(0.0 0.0 1.0)}
+              {true} {@f3(1.0 1.0 1.0)}]
+            Passthrough: false)
+            ToFloat4 | Add(@f4(0 0 0 1))
+            Shader.WriteOutput("color")
+          } {
+            0.0 >= f-2
+            u | Math.Subtract(v) | Math.Abs
+            If(IsLessEqual(0.1)
+              Then: {1.0 > f-2}
+              Else: {When(IsMoreEqual(0.8)
+                {0.5 > f-2})
+              }
+              Passthrough: true
+            )
+            
+            v | Math.Multiply(20.0) | Math.Floor | ToInt >= i
+            i | When(Is(10)
+            {1.0 > f-0 | 1.0 > f-1 | 1.0 > f-2})
+            
+            i | When({i | IsMore(15) | And | i | IsNot(18)} {0.0 > f-0 | 0.0 > f-1 | 0.0 > f-2})
+            
+            When({i | Is(2)} {1.0 > f-0 | 1.0 > f-2 | 0.0 > f-1})
+            
+            @f4(f-0 f-1 f-2 1.0)
+            Shader.WriteOutput("color") ; End shader
+          }
+        )
       }
     ) >> render-steps
   })
-
+  
   GFX.Render(Steps: render-steps)
 } Looped: true)
 
 @wire(main-loop-wire {
   GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720
-                 Contents: {Step(gfx)})
+  Contents: {Step(gfx)})
 } Looped: true LStack: 4194304)
 
 @mesh(root)
