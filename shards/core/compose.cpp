@@ -249,7 +249,6 @@ void CompositionContext::step() {
 
     std::string_view name(required_param.name);
 
-    // Was findVariable? why does it not need to track?
     auto foundInherited = findVariable(name);
     std::optional<SHExposedTypeInfo> found;
     if (foundInherited) {
@@ -262,6 +261,9 @@ void CompositionContext::step() {
       SPDLOG_LOGGER_ERROR(logger, "Required variable not found: {}", name);
       throw ComposeError(err);
     } else {
+      // Add tracking information
+      currentShardInfo().variableRefs.push_back(foundInherited->id);
+
       auto exposedType = found->exposedType;
       auto requiredType = required_param.exposedType;
       if (!matchTypes(exposedType, requiredType, false, true, false)) {

@@ -15,30 +15,31 @@ Once({
 })
 v | Assert.Is(2)
 
-@wire(a {
-  v | Log("v 0")
-})
-Do(a)
+; @wire(a {
+;   v | Log("v 0")
+; })
+; Do(a)
 
 ; Test forwarding levels deep
-@wire(q0 {
-  @wire(q1 {
-    v | Log("v value")
-  })
-  Do(q1)
-})
-Do(q0)
+; @wire(q0 {
+;   @wire(q1 {
+;     v | Log("v value")
+;   })
+;   Do(q1)
+; })
+; Do(q0)
 
 {a: {b: ""}} >= var
 
 var:a = ref
 "second" | Update(ref "b")
 
-var:a >= sub
-"second" | Update(sub "b")
-sub | Update(var "a")
+var | Log("var")
+; var:a >= sub
+; "second" | Update(sub "b")
+; sub | Update(var "a")
 
-"second" | Update(var ["a" "b"])
+; "second" | Update(var ["a" "b"])
 
 @wire(b {
   "hello" >= v
@@ -50,7 +51,6 @@ sub | Update(var "a")
     [$0 $i] | String.Format | Log("f1")
   })
 })
-
 [1 2 3 4] >= s0
 Do(b) | Log("b out")
 

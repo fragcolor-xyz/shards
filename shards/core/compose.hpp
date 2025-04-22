@@ -73,7 +73,7 @@ struct WireRuntimeVariableInfo {
     for (auto &v : localVariableStorage) {
       // Make them ref-counted
       v.flags = SHVAR_FLAGS_REF_COUNTED;
-      v.refcount = 0; 
+      v.refcount = 0;
     }
   }
 
@@ -209,6 +209,8 @@ struct Variable {
   size_t declaredIn;
   VariableKind kind;
   SHExposedTypeInfo exposed;
+  bool isMutable : 1;
+  bool isReference : 1;
 };
 
 struct ComposedWire;
