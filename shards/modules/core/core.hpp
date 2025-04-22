@@ -1197,11 +1197,11 @@ struct SetUpdateBase : public SetBase {
   SHVar activate(SHContext *context, const SHVar &input) { SHLOG_FATAL("Invalid code path, this should never be called"); }
 };
 
-struct Set_old : public SetUpdateBase {
+struct Set : public SetUpdateBase {
   bool _tracked{false};
   entt::scoped_connection _onStartConnection{};
   struct OnStartHandler {
-    Set_old *shard;
+    Set *shard;
     SHWire *targetWire;
     void handle(SHWire::OnStartEvent &ev) {
       if (targetWire == ev.wire) {
@@ -1385,7 +1385,7 @@ struct Set_old : public SetUpdateBase {
   }
 };
 
-struct Ref_old : public SetBase {
+struct Ref : public SetBase {
   bool _overwrite{false};
 
   static SHOptionalString help() {
@@ -1513,7 +1513,7 @@ struct Ref_old : public SetBase {
   }
 };
 
-struct Update_old : public SetUpdateBase {
+struct Update : public SetUpdateBase {
   bool _isGlobal{false};
 
   static SHOptionalString help() { return SHCCSTR("Modifies the value of an existing mutable variable."); }
@@ -1687,7 +1687,7 @@ struct Update_old : public SetUpdateBase {
   }
 };
 
-struct Get_old : public VariableBase {
+struct Get : public VariableBase {
   OwnedVar _defaultValue{};
   SHTypeInfo _defaultType{};
   std::vector<SHTypeInfo> _tableTypes{};
@@ -2093,7 +2093,7 @@ struct SeqBase : public VariableBase {
   }
 };
 
-struct Push_old : public SeqBase {
+struct Push : public SeqBase {
   bool _firstPush = false;
   SHTypeInfo _seqInfo{};
 
@@ -2264,7 +2264,7 @@ struct Push_old : public SeqBase {
   }
 };
 
-struct Sequence_old : public SeqBase {
+struct Sequence : public SeqBase {
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
 
@@ -2396,7 +2396,7 @@ struct Sequence_old : public SeqBase {
   }
 };
 
-struct TableDecl_old : public VariableBase {
+struct TableDecl : public VariableBase {
   SHTypeInfo _tableInfo{};
 
   void initTable() {
@@ -4314,18 +4314,18 @@ RUNTIME_CORE_SHARD_TYPE(Restart);
 RUNTIME_CORE_SHARD_TYPE(Return);
 RUNTIME_CORE_SHARD_TYPE(IsValidNumber);
 RUNTIME_CORE_SHARD_TYPE(IsAlmost);
-// RUNTIME_CORE_SHARD_TYPE(Set);
-// RUNTIME_CORE_SHARD_TYPE(Ref);
-// RUNTIME_CORE_SHARD_TYPE(Update);
-// RUNTIME_CORE_SHARD_TYPE(Get);
+RUNTIME_CORE_SHARD_TYPE(Set);
+RUNTIME_CORE_SHARD_TYPE(Ref);
+RUNTIME_CORE_SHARD_TYPE(Update);
+RUNTIME_CORE_SHARD_TYPE(Get);
 RUNTIME_CORE_SHARD_TYPE(Swap);
 RUNTIME_CORE_SHARD_TYPE(Take);
 RUNTIME_CORE_SHARD_TYPE(RTake);
 RUNTIME_CORE_SHARD_TYPE(Slice);
 RUNTIME_CORE_SHARD_TYPE(Limit);
 RUNTIME_CORE_SHARD_TYPE(RLimit);
-// RUNTIME_CORE_SHARD_TYPE(Push);
-// RUNTIME_CORE_SHARD_TYPE(Sequence);
+RUNTIME_CORE_SHARD_TYPE(Push);
+RUNTIME_CORE_SHARD_TYPE(Sequence);
 RUNTIME_CORE_SHARD_TYPE(Pop);
 RUNTIME_CORE_SHARD_TYPE(PopFront);
 RUNTIME_CORE_SHARD_TYPE(Clear);

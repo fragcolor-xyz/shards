@@ -1,6 +1,6 @@
 #include "core2.hpp"
 
-namespace shards {
+namespace shards::new_core {
 
 // Set implementation
 SHTypesInfo Set::inputTypes() { return CoreInfo::AnyType; }
@@ -119,9 +119,9 @@ SHTypeInfo Get::composeV2(SHInstanceData &data) {
 SHVar Get::activate(SHContext *ctx, const SHVar &input) { return *_slot; }
 
 void registerCore2() {
-  REGISTER_SHARD("Set", Set);
-  REGISTER_SHARD("Update", Update);
-  REGISTER_SHARD("Ref", Ref);
-  REGISTER_SHARD("Get", Get);
+  // REGISTER_SHARD("Set", Set);
+  // REGISTER_SHARD("Update", Update);
+  // REGISTER_SHARD("Ref", Ref);
+  // REGISTER_SHARD("Get", Get);
 }
 } // namespace shards
