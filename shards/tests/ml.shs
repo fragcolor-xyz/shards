@@ -1,4 +1,4 @@
-@define(has-models false IgnoreRedefined: true)
+@define(has-models "false" IgnoreRedefined: true)
 
 @mesh(main)
 
