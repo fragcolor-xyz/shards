@@ -5,33 +5,33 @@
 using namespace shards;
 namespace gfx::shader {
 
-// struct PushTranslator {
-//   static void translate(Push *shard, TranslationContext &context) {
-//     auto &scope = context.getTop();
+struct PushTranslator {
+  static void translate(Push *shard, TranslationContext &context) {
+    auto &scope = context.getTop();
 
-//     auto value = context.takeWGSLTop();
-//     if (!value)
-//       throw std::runtime_error("Missing value to push");
+    auto value = context.takeWGSLTop();
+    if (!value)
+      throw std::runtime_error("Missing value to push");
 
-//     NumType elementType = std::get<NumType>(value->getType());
+    NumType elementType = std::get<NumType>(value->getType());
 
-//     auto it = scope.virtualSequences.find(shard->_name);
-//     if (it == scope.virtualSequences.end()) {
-//       it = scope.virtualSequences.emplace(std::make_pair(shard->_name, VirtualSeq())).first;
-//       it->second.elementType = elementType;
-//     } else {
-//       if (it->second.elementType != elementType)
-//         throw std::runtime_error(
-//             fmt::format("Sequence value type mismatch {} (old) != {} (new)", it->second.elementType, elementType));
-//     }
+    auto it = scope.virtualSequences.find(shard->_name);
+    if (it == scope.virtualSequences.end()) {
+      it = scope.virtualSequences.emplace(std::make_pair(shard->_name, VirtualSeq())).first;
+      it->second.elementType = elementType;
+    } else {
+      if (it->second.elementType != elementType)
+        throw std::runtime_error(
+            fmt::format("Sequence value type mismatch {} (old) != {} (new)", it->second.elementType, elementType));
+    }
 
-//     auto &virtualSeq = it->second;
-//     virtualSeq.elements.emplace_back(std::make_unique<WGSLBlock>(elementType, value->toBlock()));
+    auto &virtualSeq = it->second;
+    virtualSeq.elements.emplace_back(std::make_unique<WGSLBlock>(elementType, value->toBlock()));
 
-//     // Restore / passthrough
-//     context.wgslTop = std::move(value);
-//   }
-// };
+    // Restore / passthrough
+    context.wgslTop = std::move(value);
+  }
+};
 
 struct PassTranslator {
   static void translate(std::monostate *shard, TranslationContext &context) {}
@@ -68,7 +68,7 @@ void registerCoreShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(UpdateTranslator, "Update", shards::Update);
   REGISTER_EXTERNAL_SHADER_SHARD(TakeTranslator, "Take", shards::Take);
 
-  // REGISTER_EXTERNAL_SHADER_SHARD(PushTranslator, "Push", shards::Push);
+  REGISTER_EXTERNAL_SHADER_SHARD(PushTranslator, "Push", shards::Push);
 
   REGISTER_EXTERNAL_SHADER_SHARD(PassTranslator, "Pass", std::monostate);
   REGISTER_EXTERNAL_SHADER_SHARD(PassTranslator, "Debug.Noop", std::monostate);
