@@ -33,13 +33,9 @@ v | Assert.Is(2)
 
 var:a = ref
 "second" | Update(ref "b")
-
 var | Log("var")
-; var:a >= sub
-; "second" | Update(sub "b")
-; sub | Update(var "a")
-
-; "second" | Update(var ["a" "b"])
+"third" | Update(ref "b")
+var | Log("var")
 
 @wire(b {
   "hello" >= v

@@ -218,9 +218,10 @@ struct VariableRef {
   Variable *variable;
   ComposedWire *wire;
 
-  operator bool() { return isValid(); }
+  operator bool() const { return isValid(); }
   bool isValid() const { return variable; }
   const Variable *operator->() const { return variable; }
+  Variable& mutate() { return *variable; }
 };
 
 struct Scope {
@@ -321,6 +322,7 @@ struct CompositionContext {
   // Annotates a sub-path of an input variable (e.g. array index or table key)
   // The magic key none is reserved for dynamic keys in table context
   void annotateSubPath(const SHVar &key);
+  void annotateRef(std::string_view name);
   // Clears the currently tracked variable
   void annotateClearVariable();
   // Annotates that the current shards is pass-through

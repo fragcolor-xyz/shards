@@ -330,6 +330,7 @@ struct BaseSubFlow {
   }
 
   SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+  SHExposedTypesInfo requiredVariables() { return _composition.requiredInfo; }
 
 protected:
   ShardsVar _shards{};
@@ -1002,6 +1003,7 @@ struct Sub {
   }
 
   SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+  SHExposedTypesInfo requiredVariables() { return _composition.requiredInfo; }
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 

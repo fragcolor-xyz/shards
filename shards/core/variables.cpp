@@ -11,10 +11,22 @@
 namespace shards {
 
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name) {
-  SHVar &v = wire->getVariable(toSWL(name));
-  v.refcount++;
-  v.flags |= SHVAR_FLAGS_REF_COUNTED;
-  return &v;
+  // SHVar &v = wire->getVariable(toSWL(name));
+  // v.refcount++;
+  // v.flags |= SHVAR_FLAGS_REF_COUNTED;
+  // return &v;
+  // auto wire = ctx->wireStack.back();
+  // shassert(wire->runtimeVariableInfo);
+  // auto v = wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name);
+  // if (v) {
+  //   if (v->flags & SHVAR_FLAGS_REF_COUNTED)
+  //     v->refcount++;
+  //   else {
+  //     shassert(v->flags & SHVAR_FLAGS_EXTERNAL);
+  //   }
+  //   return v;
+  // }
+  throw std::logic_error("TODO");
 }
 
 SHVar *referenceWireVariable(SHWireRef wire, std::string_view name) {

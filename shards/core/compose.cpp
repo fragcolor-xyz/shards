@@ -123,7 +123,7 @@ void CompositionContext::step() {
       copyComposeShared(data);
 
       for (size_t si = 0; si < stack.size(); si++) {
-        auto &scope = stack[si];
+        auto &scope = stack[stack.size() - 1 - si];
         for (auto &[k, v] : scope->variableMap) {
           if (!exposedSet.contains(k)) {
             sharedStorage.push_back(variables[v].exposed);
@@ -207,7 +207,8 @@ void CompositionContext::step() {
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
     std::string_view name(exposed_param.name);
-    if (exposed_param.declared && scope->wire) {
+    if (exposed_param.declared) {
+      shassert(scope->wire && "Wire should be valid");
       if (exposed_param.internalId != 0) {
         auto id = exposed_param.internalId & InternalIdValueMask;
         if (id >= variables.size()) {
@@ -220,12 +221,25 @@ void CompositionContext::step() {
                                          scope->wireName(), shardContextStr()));
         }
 
-        auto existing = findVariable(name);
-        if (!existing)
-          scope->estimatedNumVariables++;
+        auto &shard = currentShardInfo();
+        // When this variable comes from a scope inside the current shard (scope id will be higher than current, assuming
+        // composition happens within this shard's compose)
+        bool isForwardedInternally = v.declaredIn > scope->id;
+        if (isForwardedInternally) {
+          SPDLOG_LOGGER_DEBUG(logger, "Forwarding exposed variable: {} (id: {}) type: {} in {}", name, v.id,
+                              exposed_param.exposedType, shardContextStr());
+        } else {
+          SPDLOG_LOGGER_DEBUG(logger, "Updating exposed variable: {} (id: {}) type: {} in {}", name, v.id,
+                              exposed_param.exposedType, shardContextStr());
+          if (v.exposed.exposedType != exposed_param.exposedType) {
+            SPDLOG_LOGGER_DEBUG(logger, "  variable: {} (id: {}), updated type: {}", name, v.id, exposed_param.exposedType);
+          }
+          v.exposed = exposed_param;
+        }
+
         scope->variableMap[name] = v.id;
-        SPDLOG_LOGGER_DEBUG(logger, "Forward exposed variable: {} (id: {}) type: {} in {}", name, v.id, exposed_param.exposedType,
-                            shardContextStr());
+
+        shard.variableRefs.push_back(v.id);
       } else {
         auto &v = insertVariable(name, exposed_param);
         SPDLOG_LOGGER_DEBUG(logger, "Declared variable: {} (id: {}) mutable: {}, type: {} in {}", name, v.id,

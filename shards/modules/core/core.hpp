@@ -1463,7 +1463,7 @@ struct Ref : public SetBase {
     if (_global)
       _target = referenceGlobalVariable(context, _name.c_str());
     else
-      _target = referenceWireVariable(context->currentWire(), _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -2135,13 +2135,14 @@ struct Push : public SeqBase {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    // auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    auto& ctx = compose::CompositionContext::get(data);
 
     // check if this type is already exposed
-    auto type = findExposedVariablePtr(inherited->inherited, _name);
-    auto global = _global || (type && type->global);
+    auto existingVariable = ctx.findVariable(_name);
+    auto global = _global || (existingVariable && existingVariable->exposed.global);
 
-    const auto updateSeqInfo = [this, &data, global](const SHTypeInfo *existingSeqType = nullptr) {
+    const auto updateSeqInfo = [this, &data, global, existingVariable](const SHTypeInfo *existingSeqType = nullptr) {
       updateSeqType(_seqInfo, data.inputType, existingSeqType);
 
       if (global) {
@@ -2149,9 +2150,13 @@ struct Push : public SeqBase {
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed sequence."), _seqInfo, true));
       }
+      if(existingVariable) {
+        _exposedInfo._innerInfo.elements[0].internalId = existingVariable->exposed.internalId;
+        _exposedInfo._innerInfo.elements[0].declared = true;
+      }
     };
 
-    const auto updateTableInfo = [this, &data, global](bool firstPush, const SHTypeInfo *existingTableType = nullptr) {
+    const auto updateTableInfo = [this, &data, global, existingVariable](bool firstPush, const SHTypeInfo *existingTableType = nullptr) {
       SHTypeInfo *existingSeqType{};
       if (existingTableType) {
         for (size_t i = 0; i < existingTableType->table.keys.len; i++) {
@@ -2171,26 +2176,31 @@ struct Push : public SeqBase {
         _exposedInfo =
             ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
       }
+      if(existingVariable) {
+        _exposedInfo._innerInfo.elements[0].internalId = existingVariable->exposed.internalId;
+        _exposedInfo._innerInfo.elements[0].declared = true;
+      }
     };
 
     if (_isTable) {
-      if (type) {
-        if (type->exposedType.basicType != SHType::Table) {
+      if (existingVariable) {
+        auto& exposed = existingVariable->exposed;
+        if (exposed.exposedType.basicType != SHType::Table) {
           throw ComposeError("Expected a table variable.");
         }
 
-        if (type->tracked) {
+        if (exposed.tracked) {
           // cannot push into exposed variables
           throw ComposeError("Cannot push into exposed variables");
         }
 
-        if (type->exposedType.table.types.elements) {
-          auto &tableKeys = type->exposedType.table.keys;
-          auto &tableTypes = type->exposedType.table.types;
+        if (exposed.exposedType.table.types.elements) {
+          auto &tableKeys = exposed.exposedType.table.keys;
+          auto &tableTypes = exposed.exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
             if (_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
-              updateTableInfo(false, &type->exposedType);
+              updateTableInfo(false, &exposed.exposedType);
               return data.inputType; // found lets escape
             }
           }
@@ -2202,23 +2212,24 @@ struct Push : public SeqBase {
         _firstPush = true;
       }
     } else {
-      if (type) {
-        if (type->exposedType.basicType != SHType::Seq)
+      if (existingVariable) {
+        auto& exposed = existingVariable->exposed;
+        if (exposed.exposedType.basicType != SHType::Seq)
           throw ComposeError(fmt::format("Push: error, variable {} is not a sequence.", _name));
         // found, can we mutate it?
-        if (!type->isMutable) {
+        if (!exposed.isMutable) {
           throw ComposeError(fmt::format("Cannot mutate a non-mutable variable: {}", _name));
-        } else if (type->isProtected) {
+        } else if (exposed.isProtected) {
           throw ComposeError(fmt::format("Cannot mutate a protected variable: {}", _name));
         }
 
-        if (type->tracked) {
+        if (exposed.tracked) {
           // cannot push into exposed variables
           throw ComposeError(fmt::format("Cannot push into exposed variables: {}", _name));
         }
 
         // ok now update into
-        updateSeqInfo(&type->exposedType);
+        updateSeqInfo(&exposed.exposedType);
         return data.inputType; // found lets escape
       } else {
         // not found
