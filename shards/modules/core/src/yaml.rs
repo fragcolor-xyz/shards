@@ -16,7 +16,7 @@ impl Default for YamlToJsonShard {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
-      output: ClonedVar::default(),
+      output: ClonedVar::default(), 
     }
   }
 }

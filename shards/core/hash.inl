@@ -212,18 +212,18 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
   } break;
   case SHType::ShardRef: {
     auto blk = var.payload.shardValue;
-    auto name = blk->name(blk);
+    auto name = blk->iface->name(blk);
     auto error = hashUpdate<TDigest>(state, name, strlen(name));
     shassert(error == XXH_OK);
 
-    auto params = blk->parameters(blk);
+    auto params = blk->iface->parameters(blk);
     for (uint32_t i = 0; i < params.len; i++) {
-      auto pval = blk->getParam(blk, int(i));
+      auto pval = blk->iface->getParam(blk, int(i));
       updateHash(pval, state);
     }
 
-    if (blk->getState) {
-      auto bstate = blk->getState(blk);
+    if (blk->iface->getState) {
+      auto bstate = blk->iface->getState(blk);
       updateHash(bstate, state);
     }
   } break;

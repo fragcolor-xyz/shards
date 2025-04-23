@@ -19,7 +19,7 @@ struct ShaderComposeError : public std::runtime_error {
 
   static std::string reformat(const std::string &originalMessage, Shard* shard) {
     if (shard) {
-      return fmt::format("{} (line {}, column: {}): {}", shard->name(shard), shard->line, shard->column, originalMessage);
+      return fmt::format("{} (line {}, column: {}): {}", shard->iface->name(shard), shard->line, shard->column, originalMessage);
     }
     return originalMessage;
   }

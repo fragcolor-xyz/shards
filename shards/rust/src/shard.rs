@@ -19,7 +19,9 @@ use crate::shardsc::SHTypesInfo;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHWire;
 use crate::shardsc::Shard as CShard;
+use crate::shardsc::ShardMetadata;
 use crate::shardsc::ShardPtr;
+use crate::shardsc::ShardStaticInterface as CShardStaticInterface;
 use crate::types::ComposeResult;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -32,6 +34,8 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::Wire;
+use crate::SHHelpProc;
+use crate::SHNameProc;
 use crate::SHStringWithLen;
 use core::convert::TryInto;
 use core::result::Result;
@@ -39,6 +43,8 @@ use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 pub trait ParameterSet {
   fn parameters() -> &'static Parameters;
@@ -239,13 +245,109 @@ pub trait LegacyShard {
   fn resetState(&mut self) {}
 }
 
+// Container for the static interface with reference counting and cached strings
+#[repr(C, align(16))] // ensure alignment is 16 bytes
+pub struct ShardInterfaceContainer {
+  pub interface: CShardStaticInterface,
+  ref_count: AtomicUsize,
+  cached_name: Option<CString>,
+  cached_help: Option<CString>,
+  raw_name_fn: Option<unsafe fn(*mut CShard) -> *const str>,
+  raw_help_fn: Option<unsafe fn(*mut CShard) -> SHOptionalString>,
+  error: Option<CString>,
+}
+
+impl ShardInterfaceContainer {
+  pub fn new(interface: CShardStaticInterface) -> Self {
+    ShardInterfaceContainer {
+      interface,
+      ref_count: AtomicUsize::new(1), // Initial ref count
+      cached_name: None,
+      cached_help: None,
+      raw_name_fn: None,
+      raw_help_fn: None,
+      error: None,
+    }
+  }
+
+  pub fn inc_ref(&self) {
+    self.ref_count.fetch_add(1, Ordering::SeqCst);
+  }
+
+  pub fn dec_ref(&self) -> bool {
+    self.ref_count.fetch_sub(1, Ordering::SeqCst) == 1
+  }
+
+  pub fn get_name(&mut self, shard: *mut CShard) -> *const ::std::os::raw::c_char {
+    if let Some(ref name) = self.cached_name {
+      name.as_ptr()
+    } else {
+      if let Some(name_fn) = self.raw_name_fn {
+        let owned_name = unsafe {
+          let src: &'static str = &*name_fn(shard);
+          CString::new(src).expect("CString::new failed")
+        };
+        self.cached_name = Some(owned_name);
+        self.cached_name.as_ref().unwrap().as_ptr()
+      } else {
+        // Fallback to empty string if no name function
+        static EMPTY: &[u8] = b"\0";
+        EMPTY.as_ptr() as *const c_char
+      }
+    }
+  }
+
+  pub fn get_help(&mut self, shard: *mut CShard) -> SHOptionalString {
+    if let Some(ref help) = self.cached_help {
+      SHOptionalString {
+        string: help.as_ptr(),
+        crc: 0,
+      }
+    } else {
+      if let Some(help_fn) = self.raw_help_fn {
+        let result = unsafe { help_fn(shard) };
+        if result.string.is_null() {
+          return result;
+        }
+        let help = unsafe { CStr::from_ptr(result.string) };
+        let owned_help = CString::new(help.to_bytes()).expect("CString::new failed");
+        self.cached_help = Some(owned_help);
+        SHOptionalString {
+          string: self.cached_help.as_ref().unwrap().as_ptr(),
+          crc: 0,
+        }
+      } else {
+        // Empty help
+        SHOptionalString {
+          string: std::ptr::null(),
+          crc: 0,
+        }
+      }
+    }
+  }
+}
+
+// Implement shared reference functions for the interface container
+pub unsafe extern "C" fn shared_iface_inc_ref(iface: *mut CShardStaticInterface) {
+  let container =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>(iface);
+  (*container).inc_ref();
+}
+
+pub unsafe extern "C" fn shared_iface_dec_ref(iface: *mut CShardStaticInterface) {
+  let container =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>(iface);
+  if (*container).dec_ref() {
+    // If ref count reaches zero, deallocate
+    drop(Box::from_raw(container));
+  }
+}
+
+// Simplified wrapper without name/help, using the container
 #[repr(C, align(16))] // ensure alignment is 16 bytes
 pub struct LegacyShardWrapper<T: LegacyShard> {
   header: CShard,
   pub shard: T,
-  name: Option<CString>,
-  help: Option<CString>,
-  error: Option<CString>,
   pub outputStorage: Var,
 }
 
@@ -253,41 +355,23 @@ pub struct LegacyShardWrapper<T: LegacyShard> {
 pub struct ShardWrapper<T: Shard + ShardGenerated + ShardGeneratedOverloads> {
   header: CShard,
   pub shard: T,
-  name: Option<CString>,
-  help: Option<CString>,
-  error: Option<CString>,
   pub outputStorage: Var,
 }
 
 /// # Safety
 ///
 /// Used internally actually
-pub unsafe extern "C" fn legacy_shard_construct<T: Default + LegacyShard>() -> *mut CShard {
+pub unsafe extern "C" fn legacy_shard_construct<T: Default + LegacyShard>(
+  iface: *mut CShardStaticInterface,
+) -> *mut CShard {
   let wrapper: Box<LegacyShardWrapper<T>> = Box::new(create());
-  let wptr = Box::into_raw(wrapper);
+  let wptr: *mut LegacyShardWrapper<T> = Box::into_raw(wrapper);
+  (*wptr).header.iface = iface;
   wptr as *mut CShard
-}
-
-unsafe extern "C" fn legacy_shard_name<T: LegacyShard>(
-  arg1: *mut CShard,
-) -> *const ::std::os::raw::c_char {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  if (*blk).name.is_some() {
-    return (*blk).name.as_ref().unwrap().as_ptr();
-  } else {
-    let name = (*blk).shard.name();
-    (*blk).name = Some(CString::new(name).expect("CString::new failed"));
-    (*blk).name.as_ref().unwrap().as_ptr()
-  }
 }
 
 unsafe extern "C" fn legacy_shard_hash<T: LegacyShard>(_arg1: *mut CShard) -> u32 {
   T::hash()
-}
-
-unsafe extern "C" fn legacy_shard_help<T: LegacyShard>(arg1: *mut CShard) -> SHOptionalString {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.help().0
 }
 
 unsafe extern "C" fn legacy_shard_inputHelp<T: LegacyShard>(arg1: *mut CShard) -> SHOptionalString {
@@ -505,108 +589,38 @@ unsafe extern "C" fn legacy_shard_resetState<T: LegacyShard>(arg1: *mut CShard) 
 }
 
 pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
-  let mut shard = LegacyShardWrapper::<T> {
+  let shard: LegacyShardWrapper<T> = LegacyShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
-      nameLength: 0,
+      owned: 0,
       line: 0,
       column: 0,
       id: 0,
-      name: Some(legacy_shard_name::<T>),
-      hash: Some(legacy_shard_hash::<T>),
-      help: Some(legacy_shard_help::<T>),
-      inputHelp: Some(legacy_shard_inputHelp::<T>),
-      outputHelp: Some(legacy_shard_outputHelp::<T>),
-      properties: Some(legacy_shard_properties::<T>),
-      inputTypes: Some(legacy_shard_inputTypes::<T>),
-      outputTypes: Some(legacy_shard_outputTypes::<T>),
-      setup: Some(legacy_shard_setup::<T>),
-      destroy: Some(legacy_shard_destroy::<T>),
-      exposedVariables: Some(legacy_shard_exposedVariables::<T>),
-      requiredVariables: Some(legacy_shard_requiredVariables::<T>),
-      compose: if T::hasCompose() {
-        Some(legacy_shard_compose::<T>)
-      } else {
-        None
-      },
-      composeV2: None,
-      parameters: Some(legacy_shard_parameters::<T>),
-      setParam: Some(legacy_shard_setParam::<T>),
-      getParam: Some(legacy_shard_getParam::<T>),
-      warmup: Some(legacy_shard_warmup::<T>),
       activate: Some(legacy_shard_activate::<T>),
-      cleanup: Some(legacy_shard_cleanup::<T>),
-      mutate: if T::hasMutate() {
-        Some(legacy_shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::hasCrossover() {
-        Some(legacy_shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::hasState() {
-        Some(legacy_shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::hasState() {
-        Some(legacy_shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::hasState() {
-        Some(legacy_shard_resetState::<T>)
-      } else {
-        None
-      },
-      metadata: core::ptr::null_mut(),
+      iface: core::ptr::null_mut(),
     },
     shard: T::default(),
-    name: None,
-    help: None,
-    error: None,
     outputStorage: Var::default(),
   };
-  shard.header.nameLength = shard.shard.name().len() as u32;
   return shard;
 }
 
 pub unsafe extern "C" fn shard_construct<
   T: Default + Shard + ShardGenerated + ShardGeneratedOverloads,
->() -> *mut CShard {
+>(
+  iface: *mut CShardStaticInterface,
+) -> *mut CShard {
   let wrapper: Box<ShardWrapper<T>> = Box::new(create2());
   let wptr = Box::into_raw(wrapper);
+  (*wptr).header.iface = iface;
   wptr as *mut CShard
-}
-
-unsafe extern "C" fn shard_name<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) -> *const ::std::os::raw::c_char {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  if (*blk).name.is_some() {
-    return (*blk).name.as_ref().unwrap().as_ptr();
-  } else {
-    let name = (*blk).shard.name();
-    (*blk).name = Some(CString::new(name).expect("CString::new failed"));
-    (*blk).name.as_ref().unwrap().as_ptr()
-  }
 }
 
 unsafe extern "C" fn shard_hash<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   _arg1: *mut CShard,
 ) -> u32 {
   T::hash()
-}
-
-unsafe extern "C" fn shard_help<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) -> SHOptionalString {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.help().0
 }
 
 unsafe extern "C" fn shard_requiredVariables<
@@ -848,77 +862,20 @@ unsafe extern "C" fn shard_resetState<T: Shard + ShardGenerated + ShardGenerated
 }
 
 pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() -> ShardWrapper<T> {
-  let mut shard = ShardWrapper::<T> {
+  let shard = ShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
-      nameLength: 0,
+      owned: 0,
       line: 0,
       column: 0,
       id: 0,
-      name: Some(shard_name::<T>),
-      hash: Some(shard_hash::<T>),
-      help: Some(shard_help::<T>),
-      inputHelp: Some(shard_inputHelp::<T>),
-      outputHelp: Some(shard_outputHelp::<T>),
-      properties: Some(shard_properties::<T>),
-      inputTypes: Some(shard_inputTypes::<T>),
-      outputTypes: Some(shard_outputTypes::<T>),
-      setup: Some(shard_setup::<T>),
-      destroy: Some(shard_destroy::<T>),
-      exposedVariables: Some(shard_exposedVariables::<T>),
-      requiredVariables: Some(shard_requiredVariables::<T>),
-      compose: if T::has_compose() {
-        Some(shard_compose::<T>)
-      } else {
-        None
-      },
-      composeV2: None,
-      parameters: Some(shard_parameters::<T>),
-      setParam: Some(shard_setParam::<T>),
-      getParam: Some(shard_getParam::<T>),
-      warmup: if T::has_warmup() {
-        Some(shard_warmup::<T>)
-      } else {
-        None
-      },
       activate: Some(shard_activate::<T>),
-      cleanup: Some(shard_cleanup::<T>),
-      mutate: if T::has_mutate() {
-        Some(shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::has_crossover() {
-        Some(shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::has_get_state() {
-        Some(shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::has_set_state() {
-        Some(shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::has_reset_state() {
-        Some(shard_resetState::<T>)
-      } else {
-        None
-      },
-      metadata: core::ptr::null_mut(),
+      iface: core::ptr::null_mut(),
     },
     shard: T::default(),
-    name: None,
-    help: None,
-    error: None,
     outputStorage: Var::default(),
   };
-  shard.header.nameLength = shard.shard.name().len() as u32;
   return shard;
 }
 
@@ -1035,4 +992,216 @@ macro_rules! impl_override_activate {
       }
     }
   };
+}
+
+unsafe fn legacy_shard_name<T: LegacyShard>(arg1: *mut CShard) -> *const str {
+  let blk = arg1 as *mut LegacyShardWrapper<T>;
+  &*((*blk).shard.name() as *const str)
+}
+
+unsafe fn legacy_shard_help<T: LegacyShard>(arg1: *mut CShard) -> SHOptionalString {
+  let blk = arg1 as *mut LegacyShardWrapper<T>;
+  (*blk).shard.help().0
+}
+
+unsafe extern "C" fn legacy_wrapper_shard_name<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> *const ::std::os::raw::c_char {
+  // Get the container from the parent pointer
+  let container_ptr =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>((*arg1).iface);
+  (*container_ptr).get_name(arg1)
+}
+
+unsafe extern "C" fn legacy_wrapper_shard_help<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
+  // Get the container from the parent pointer
+  let container_ptr =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>((*arg1).iface);
+  (*container_ptr).get_help(arg1)
+}
+
+pub fn create_legacy_shard_interface<T: Default + LegacyShard>(
+  _core: *mut crate::shardsc::SHCore,
+) -> *mut CShardStaticInterface {
+  let interface = CShardStaticInterface {
+    create: Some(legacy_shard_construct::<T>),
+    nameLength: T::registerName().len() as u32,
+    name: Some(legacy_wrapper_shard_name::<T>),
+    hash: Some(legacy_shard_hash::<T>),
+    help: Some(legacy_wrapper_shard_help::<T>),
+    inputHelp: Some(legacy_shard_inputHelp::<T>),
+    outputHelp: Some(legacy_shard_outputHelp::<T>),
+    properties: Some(legacy_shard_properties::<T>),
+    inputTypes: Some(legacy_shard_inputTypes::<T>),
+    outputTypes: Some(legacy_shard_outputTypes::<T>),
+    setup: Some(legacy_shard_setup::<T>),
+    destroy: Some(legacy_shard_destroy::<T>),
+    exposedVariables: Some(legacy_shard_exposedVariables::<T>),
+    requiredVariables: Some(legacy_shard_requiredVariables::<T>),
+    compose: if T::hasCompose() {
+      Some(legacy_shard_compose::<T>)
+    } else {
+      None
+    },
+    composeV2: None,
+    parameters: Some(legacy_shard_parameters::<T>),
+    setParam: Some(legacy_shard_setParam::<T>),
+    getParam: Some(legacy_shard_getParam::<T>),
+    warmup: Some(legacy_shard_warmup::<T>),
+    activate: Some(legacy_shard_activate::<T>),
+    cleanup: Some(legacy_shard_cleanup::<T>),
+    mutate: if T::hasMutate() {
+      Some(legacy_shard_mutate::<T>)
+    } else {
+      None
+    },
+    crossover: if T::hasCrossover() {
+      Some(legacy_shard_crossover::<T>)
+    } else {
+      None
+    },
+    getState: if T::hasState() {
+      Some(legacy_shard_getState::<T>)
+    } else {
+      None
+    },
+    setState: if T::hasState() {
+      Some(legacy_shard_setState::<T>)
+    } else {
+      None
+    },
+    resetState: if T::hasState() {
+      Some(legacy_shard_resetState::<T>)
+    } else {
+      None
+    },
+    incRef: Some(shared_iface_inc_ref),
+    decRef: Some(shared_iface_dec_ref),
+    metadata: ShardMetadata {
+      ..Default::default()
+    },
+  };
+
+  // Create the container with reference counting
+  let mut container = Box::new(ShardInterfaceContainer::new(interface));
+  container.raw_name_fn = Some(legacy_shard_name::<T>);
+  container.raw_help_fn = Some(legacy_shard_help::<T>);
+
+  // Get the pointer to the interface within the container
+  unsafe {
+    std::mem::transmute::<*mut ShardInterfaceContainer, *mut CShardStaticInterface>(Box::into_raw(
+      container,
+    ))
+  }
+}
+
+unsafe fn shard_name<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> *const str {
+  let blk = arg1 as *mut ShardWrapper<T>;
+  (*blk).shard.name() as *const str
+}
+
+unsafe fn shard_help<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
+  let blk = arg1 as *mut ShardWrapper<T>;
+  (*blk).shard.help().0
+}
+
+unsafe extern "C" fn wrapper_shard_name<T: Shard>(
+  arg1: *mut CShard,
+) -> *const ::std::os::raw::c_char {
+  // Get the container from the parent pointer
+  let container_ptr =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>((*arg1).iface);
+  (*container_ptr).get_name(arg1)
+}
+
+unsafe extern "C" fn wrapper_shard_help<T: Shard>(arg1: *mut CShard) -> SHOptionalString {
+  // Get the container from the parent pointer
+  let container_ptr =
+    std::mem::transmute::<*mut CShardStaticInterface, *mut ShardInterfaceContainer>((*arg1).iface);
+  (*container_ptr).get_help(arg1)
+}
+
+pub fn create_shard_interface<T: Default + ShardGenerated + Shard + ShardGeneratedOverloads>(
+  core: *mut crate::shardsc::SHCore,
+) -> *mut CShardStaticInterface {
+  let iface = CShardStaticInterface {
+    create: Some(shard_construct::<T>),
+    nameLength: T::register_name().len() as u32,
+    name: Some(wrapper_shard_name::<T>),
+    hash: Some(shard_hash::<T>),
+    help: Some(wrapper_shard_help::<T>),
+    inputHelp: Some(shard_inputHelp::<T>),
+    outputHelp: Some(shard_outputHelp::<T>),
+    properties: Some(shard_properties::<T>),
+    inputTypes: Some(shard_inputTypes::<T>),
+    outputTypes: Some(shard_outputTypes::<T>),
+    setup: Some(shard_setup::<T>),
+    destroy: Some(shard_destroy::<T>),
+    exposedVariables: Some(shard_exposedVariables::<T>),
+    requiredVariables: Some(shard_requiredVariables::<T>),
+    compose: if T::has_compose() {
+      Some(shard_compose::<T>)
+    } else {
+      None
+    },
+    composeV2: None,
+    parameters: Some(shard_parameters::<T>),
+    setParam: Some(shard_setParam::<T>),
+    getParam: Some(shard_getParam::<T>),
+    warmup: if T::has_warmup() {
+      Some(shard_warmup::<T>)
+    } else {
+      None
+    },
+    activate: Some(shard_activate::<T>),
+    cleanup: Some(shard_cleanup::<T>),
+    mutate: if T::has_mutate() {
+      Some(shard_mutate::<T>)
+    } else {
+      None
+    },
+    crossover: if T::has_crossover() {
+      Some(shard_crossover::<T>)
+    } else {
+      None
+    },
+    getState: if T::has_get_state() {
+      Some(shard_getState::<T>)
+    } else {
+      None
+    },
+    setState: if T::has_set_state() {
+      Some(shard_setState::<T>)
+    } else {
+      None
+    },
+    resetState: if T::has_reset_state() {
+      Some(shard_resetState::<T>)
+    } else {
+      None
+    },
+    incRef: Some(shared_iface_inc_ref),
+    decRef: Some(shared_iface_dec_ref),
+    metadata: ShardMetadata {
+      ..Default::default()
+    },
+  };
+
+  // Create the container with reference counting
+  let mut container = Box::new(ShardInterfaceContainer::new(iface));
+  container.raw_name_fn = Some(shard_name::<T>);
+  container.raw_help_fn = Some(shard_help::<T>);
+
+  // Get the pointer to the interface within the container
+  unsafe {
+    std::mem::transmute::<*mut ShardInterfaceContainer, *mut CShardStaticInterface>(Box::into_raw(
+      container,
+    ))
+  }
 }

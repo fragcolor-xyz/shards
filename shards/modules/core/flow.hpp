@@ -57,14 +57,14 @@ struct Cond {
   void warmup(SHContext *ctx) {
     for (auto &blks : _conditions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
-          blk->warmup(blk, ctx);
+        if (blk->iface->warmup)
+          blk->iface->warmup(blk, ctx);
       }
     }
     for (auto &blks : _actions) {
       for (auto &blk : blks) {
-        if (blk->warmup)
-          blk->warmup(blk, ctx);
+        if (blk->iface->warmup)
+          blk->iface->warmup(blk, ctx);
       }
     }
   }
@@ -74,14 +74,14 @@ struct Cond {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
-        shard->cleanup(shard, context);
+        shard->iface->cleanup(shard, context);
       }
     }
     for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
-        shard->cleanup(shard, context);
+        shard->iface->cleanup(shard, context);
       }
     }
   }
@@ -120,7 +120,7 @@ struct Cond {
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
-                assert(!blk->owned);
+                assert(blk->owned == 0);
                 blk->owned = true;
                 _actions[idx].push_back(blk);
               }
@@ -136,7 +136,7 @@ struct Cond {
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
-                assert(!blk->owned);
+                assert(blk->owned == 0);
                 blk->owned = true;
                 _conditions[idx].push_back(blk);
               }

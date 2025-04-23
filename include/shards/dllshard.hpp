@@ -64,8 +64,8 @@ struct CoreLoader {
 
 class Core {
 public:
-  static void registerShard(const char *fullName, SHShardConstructor constructor) {
-    sCore._core->registerShard(fullName, constructor);
+  static void registerShard(const char *fullName, ShardStaticInterface* iface) {
+    sCore._core->registerShard(fullName, iface);
   }
 
   static void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
@@ -453,8 +453,8 @@ public:
       : TEnumInfo<Core, E, Name_, Help_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
 };
 
-inline void registerShard(const char *fullName, SHShardConstructor constructor, std::string_view _) {
-  Core::registerShard(fullName, constructor);
+inline void registerShard(const char *fullName, ShardStaticInterface* iface, std::string_view _) {
+  Core::registerShard(fullName, iface);
 }
 
 inline void abortWire(SHContext *ctx, struct SHStringWithLen msg) { Core::abortWire(ctx, msg); }

@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 use crate::error::FastError;
-use crate::shard::legacy_shard_construct;
-use crate::shard::shard_construct;
 use crate::shard::LegacyShard;
+use crate::shard::ShardInterfaceContainer;
 use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::Shard as SHShard;
 use crate::shardsc::*;
@@ -205,26 +204,6 @@ extern "C" {
 #[inline(always)]
 pub fn cancel_abort(context: &SHContext) -> bool {
   unsafe { shards_cancel_abort(context as *const SHContext as *mut SHContext) }
-}
-
-#[inline(always)]
-pub fn register_legacy_shard<T: Default + LegacyShard>() {
-  unsafe {
-    (*Core).registerShard.unwrap_unchecked()(
-      T::registerName().as_ptr() as *const c_char,
-      Some(legacy_shard_construct::<T>),
-    );
-  }
-}
-
-#[inline(always)]
-pub fn register_shard<T: Default + ShardGenerated + Shard + ShardGeneratedOverloads>() {
-  unsafe {
-    (*Core).registerShard.unwrap_unchecked()(
-      T::register_name().as_ptr() as *const c_char,
-      Some(shard_construct::<T>),
-    );
-  }
 }
 
 pub trait EnumRegister {
@@ -826,4 +805,30 @@ impl<F: FnOnce()> Drop for Defer<F> {
 /// Helper function to create a Defer instance.
 pub fn defer<F: FnOnce()>(cleanup: F) -> Defer<F> {
   Defer::new(cleanup)
+}
+
+#[inline(always)]
+pub fn register_legacy_shard<T: Default + LegacyShard>() {
+  unsafe {
+    let interface = crate::shard::create_legacy_shard_interface::<T>(Core);
+
+    // Register the shard with the interface
+    (*Core).registerShard.unwrap_unchecked()(
+      T::registerName().as_ptr() as *const c_char,
+      interface,
+    );
+  }
+}
+
+#[inline(always)]
+pub fn register_shard<T: Default + ShardGenerated + Shard + ShardGeneratedOverloads>() {
+  unsafe {
+    let interface = crate::shard::create_shard_interface::<T>(Core);
+
+    // Register the shard with the interface
+    (*Core).registerShard.unwrap_unchecked()(
+      T::register_name().as_ptr() as *const c_char,
+      interface,
+    );
+  }
 }

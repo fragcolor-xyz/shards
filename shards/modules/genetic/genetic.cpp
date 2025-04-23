@@ -610,9 +610,9 @@ struct Mutant {
                    "modified is specified Indices parameter and how they are modified is specified in the Mutations parameter. "
                    "This shard should be used in conjunction with the Evolve shard to evolve the wire.");
   }
-  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -668,11 +668,11 @@ struct Mutant {
       for (auto &mut : _mutations) {
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
-          blk->cleanup(blk, context);
+          blk->iface->cleanup(blk, context);
         } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
-            blk->cleanup(blk, context);
+            blk->iface->cleanup(blk, context);
           }
         }
       }
@@ -684,13 +684,13 @@ struct Mutant {
       for (auto &mut : _mutations) {
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
-          if (blk->warmup)
-            blk->warmup(blk, ctx);
+          if (blk->iface->warmup)
+            blk->iface->warmup(blk, ctx);
         } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
-            if (blk->warmup)
-              blk->warmup(blk, ctx);
+            if (blk->iface->warmup)
+              blk->iface->warmup(blk, ctx);
           }
         }
       }
@@ -712,16 +712,16 @@ struct Mutant {
     if (_mutations.valueType == SHType::Seq && inner) {
       auto dataCopy = data;
       int idx = 0;
-      auto innerParams = inner->parameters(inner);
+      auto innerParams = inner->iface->parameters(inner);
       for (auto &mut : _mutations) {
         if (idx >= int(innerParams.len))
           break;
-        TypeInfo ptype(inner->getParam(inner, idx), data);
+        TypeInfo ptype(inner->iface->getParam(inner, idx), data);
         dataCopy.inputType = ptype;
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
-          if (blk->compose) {
-            auto res0 = blk->compose(blk, &dataCopy);
+          if (blk->iface->compose) {
+            auto res0 = blk->iface->compose(blk, &dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
               std::string_view err(res0.error.message.string, size_t(res0.error.message.len));
               throw ComposeError(err);
@@ -753,7 +753,7 @@ struct Mutant {
       return {};
 
     auto blks = _shard.shards();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
+    return blks.elements[0]->iface->exposedVariables(blks.elements[0]);
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -761,7 +761,7 @@ struct Mutant {
       return {};
 
     auto blks = _shard.shards();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
+    return blks.elements[0]->iface->exposedVariables(blks.elements[0]);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -863,7 +863,7 @@ inline void Evolve::gatherMutants(SHWire *wire, std::vector<MutantInfo> &out) {
       if (mutator->shard._indices.valueType == SHType::Seq) {
         for (auto &idx : mutator->shard._indices) {
           auto i = int(idx.payload.intValue);
-          minfo.originalParams.emplace_back(i, mutant->getParam(mutant, i));
+          minfo.originalParams.emplace_back(i, mutant->iface->getParam(mutant, i));
         }
       }
     });
@@ -881,10 +881,10 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
     auto p1b = p1muts->shard.get().mutant();
     if (cb && p0b && p1b) {
       // use crossover proc if avail
-      if (cb->crossover) {
-        auto p0s = p0b->getState(p0b);
-        auto p1s = p1b->getState(p1b);
-        cb->crossover(cb, &p0s, &p1s);
+      if (cb->iface->crossover) {
+        auto p0s = p0b->iface->getState(p0b);
+        auto p1s = p1b->iface->getState(p1b);
+        cb->iface->crossover(cb, &p0s, &p1s);
       }
       // check if we have mutant params and cross them over
       auto &indices = cmuts->shard.get()._indices;
@@ -894,12 +894,12 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
           const auto r = Random::nextDouble();
           if (r < 0.33) {
             // take from 0
-            auto val = p0b->getParam(p0b, i);
-            cb->setParam(cb, i, &val);
+            auto val = p0b->iface->getParam(p0b, i);
+            cb->iface->setParam(cb, i, &val);
           } else if (r < 0.66) {
             // take from 1
-            auto val = p1b->getParam(p1b, i);
-            cb->setParam(cb, i, &val);
+            auto val = p1b->iface->getParam(p1b, i);
+            cb->iface->setParam(cb, i, &val);
           } // else we keep
         }
       }
@@ -923,16 +923,16 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
     if (info.shard.get().mutant()) {
       auto mutant = info.shard.get().mutant();
       auto &indices = mutator._indices;
-      if (mutant->mutate && (indices.valueType == SHType::None || rand() < 0.5)) {
+      if (mutant->iface->mutate && (indices.valueType == SHType::None || rand() < 0.5)) {
         // In the case the shard has `mutate`
         auto table = options.valueType == SHType::Table ? options.payload.tableValue : SHTable();
-        mutant->mutate(mutant, table);
+        mutant->iface->mutate(mutant, table);
       } else if (indices.valueType == SHType::Seq) {
         auto &iseq = indices.payload.seqValue;
         // do stuff on the param
         // select a random one
         auto rparam = Random::nextInt() % iseq.len;
-        auto current = mutant->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
+        auto current = mutant->iface->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
         // if we have mutation shards use them
         // if not use default operation
         if (mutator._mutations.valueType == SHType::Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
@@ -956,7 +956,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
         } else {
           mutateVar(current);
         }
-        mutant->setParam(mutant, int(iseq.elements[rparam].payload.intValue), &current);
+        mutant->iface->setParam(mutant, int(iseq.elements[rparam].payload.intValue), &current);
       }
     }
   });
@@ -969,11 +969,11 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
     if (!mutant)
       return;
 
-    if (mutant->resetState)
-      mutant->resetState(mutant);
+    if (mutant->iface->resetState)
+      mutant->iface->resetState(mutant);
 
     for (auto [idx, val] : info.originalParams) {
-      mutant->setParam(mutant, idx, &val);
+      mutant->iface->setParam(mutant, idx, &val);
     }
   });
 }
@@ -997,13 +997,13 @@ struct DShard {
 
       // destroy if we had a shard already
       if (_wrapped)
-        _wrapped->destroy(_wrapped);
+        _wrapped->iface->destroy(_wrapped);
       // create the shard directly here
       _wrapped = createShard(_name.c_str());
       // and setup if successful
       if (_wrapped) {
         incRef(_wrapped);
-        _wrapped->setup(_wrapped);
+        _wrapped->iface->setup(_wrapped);
       }
     } break;
     case 1: {
@@ -1040,22 +1040,22 @@ struct DShard {
       return {};
 
     // set the wrapped params here
-    auto params = _wrapped->parameters(_wrapped);
+    auto params = _wrapped->iface->parameters(_wrapped);
     for (uint32_t i = 0; i < params.len; i++) {
       if (!validateSetParam(_wrapped, i, _wrappedParams[i]))
         throw SHException("Failed to validate a parameter within a wrapped DShard.");
-      _wrapped->setParam(_wrapped, int(i), &_wrappedParams[i]);
+      _wrapped->iface->setParam(_wrapped, int(i), &_wrappedParams[i]);
     }
     // and compose finally
-    if (_wrapped->compose) {
-      auto res = _wrapped->compose(_wrapped, &data);
+    if (_wrapped->iface->compose) {
+      auto res = _wrapped->iface->compose(_wrapped, &data);
       if (res.error.code != 0) {
         throw SHException("Failed to compose a wrapped DShard.");
       }
       return res.result;
     } else {
       // need to return something valid following runtime validation
-      auto outputTypes = _wrapped->outputTypes(_wrapped);
+      auto outputTypes = _wrapped->iface->outputTypes(_wrapped);
       if (outputTypes.len == 1 && outputTypes.elements[0].basicType != SHType::Any) {
         return outputTypes.elements[0];
       } else {
@@ -1073,40 +1073,40 @@ struct DShard {
 
   SHTypesInfo inputTypes() {
     if (_wrapped)
-      return _wrapped->inputTypes(_wrapped);
+      return _wrapped->iface->inputTypes(_wrapped);
     else
       return CoreInfo::NoneType;
   }
 
   SHTypesInfo outputTypes() {
     if (_wrapped)
-      return _wrapped->outputTypes(_wrapped);
+      return _wrapped->iface->outputTypes(_wrapped);
     else
       return CoreInfo::NoneType;
   }
 
   SHExposedTypesInfo exposedVariables() {
     if (_wrapped)
-      return _wrapped->exposedVariables(_wrapped);
+      return _wrapped->iface->exposedVariables(_wrapped);
     else
       return {};
   }
 
   SHExposedTypesInfo requiredVariables() {
     if (_wrapped)
-      return _wrapped->requiredVariables(_wrapped);
+      return _wrapped->iface->requiredVariables(_wrapped);
     else
       return {};
   }
 
   void warmup(SHContext *context) {
-    if (_wrapped && _wrapped->warmup) // it's optional!
-      _wrapped->warmup(_wrapped, context);
+    if (_wrapped && _wrapped->iface->warmup) // it's optional!
+      _wrapped->iface->warmup(_wrapped, context);
   }
 
   void cleanup(SHContext *context) {
     if (_wrapped)
-      _wrapped->cleanup(_wrapped, context);
+      _wrapped->iface->cleanup(_wrapped, context);
   }
 
   const SHVar &activate(SHContext *context, const SHVar &input) {
@@ -1114,34 +1114,34 @@ struct DShard {
       throw ActivationError("Wrapped shard was null!");
     }
 
-    return *_wrapped->activate(_wrapped, context, &input);
+    return *_wrapped->iface->activate(_wrapped, context, &input);
   }
 
   void mutate(SHTable options) {
-    if (_wrapped && _wrapped->mutate)
-      _wrapped->mutate(_wrapped, options);
+    if (_wrapped && _wrapped->iface->mutate)
+      _wrapped->iface->mutate(_wrapped, options);
   }
 
   void crossover(SHVar state0, SHVar state1) {
-    if (_wrapped && _wrapped->crossover)
-      _wrapped->crossover(_wrapped, &state0, &state1);
+    if (_wrapped && _wrapped->iface->crossover)
+      _wrapped->iface->crossover(_wrapped, &state0, &state1);
   }
 
   SHVar getState() {
-    if (_wrapped && _wrapped->getState)
-      return _wrapped->getState(_wrapped);
+    if (_wrapped && _wrapped->iface->getState)
+      return _wrapped->iface->getState(_wrapped);
     else
       return {};
   }
 
   void setState(SHVar state) {
-    if (_wrapped && _wrapped->setState)
-      _wrapped->setState(_wrapped, &state);
+    if (_wrapped && _wrapped->iface->setState)
+      _wrapped->iface->setState(_wrapped, &state);
   }
 
   void resetState() {
-    if (_wrapped && _wrapped->resetState)
-      _wrapped->resetState(_wrapped);
+    if (_wrapped && _wrapped->iface->resetState)
+      _wrapped->iface->resetState(_wrapped);
   }
 
 private:

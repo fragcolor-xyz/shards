@@ -15,7 +15,7 @@ fn generate_shardsc() {
 
   let mut builder = bindgen::Builder::default()
     .header(main_header_path)
-    .clang_arg("-DSH_NO_ANON")
+    .clang_arg("-DSH_NO_ANON") 
     .clang_arg("-DSH_USE_ENUMS")
     .clang_arg("-DRUST_BINDGEN")
     .allowlist_type("SHImage")
@@ -29,7 +29,7 @@ fn generate_shardsc() {
     .clang_arg(format!("-I{}/shards/core", shards_dir))
     .derive_default(true)
     .layout_tests(false)
-    .use_core();
+    .use_core(); 
 
   // Check if the profile is not debug and add the SH_RELWITHDEBINFO define to set stack max size
   // cannot use rel-with-deb-info because it's not supported by cargo, PROFILE is buggy...
@@ -44,7 +44,7 @@ fn generate_shardsc() {
     .write_to_file(out_path.join("shardsc.rs"))
     .expect("Couldn't write bindings!");
 
-  println!("Done processing shards.h");
+  println!("Done processing shards.h"); 
 }
 
 fn main() {

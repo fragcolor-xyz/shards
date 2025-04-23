@@ -2644,7 +2644,7 @@ fn create_shard_inner(
   )?;
 
   let mut idx = 0i32;
-  let mut as_idx = true;
+  let mut as_idx = true; 
   if let Some(ref params) = shard.params {
     for param in params {
       // Refresh parameter info on each iteration, as parameters can be dynamic (once a parameter is set, it may change others)

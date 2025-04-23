@@ -706,7 +706,10 @@ struct SHInstanceData {
   void *privateContext;
 };
 
-typedef struct Shard *(__cdecl *SHShardConstructor)();
+struct ShardStaticInterface;
+
+typedef struct Shard *(__cdecl *SHCreateProc)(struct ShardStaticInterface* iface);
+typedef void(__cdecl *SHShardInterfaceRef)(struct ShardStaticInterface *iface);
 typedef void(__cdecl *SHCallback)();
 
 typedef SHString(__cdecl *SHNameProc)(struct Shard *);
@@ -757,33 +760,9 @@ struct ShardMetadata {
   SHString aliasOf;
 };
 
-struct Shard {
-  // \-- Internal stuff, do not directly use! --/
-
-  // magic tricks to make some shards inline
-  SHInlineShards inlineShardId;
-
-  // used to manage the lifetime of this shard, should be set to 0
-  uint32_t refCount;
-
-  // flag to ensure shards are unique when flows/wires
-  SHBool owned;
-
-  // name length, used for profiling and more
-  uint32_t nameLength;
-
-  // some debug/utility info
-  uint32_t line;
-  uint32_t column;
-
-  // internal use only, to optionally identify the shard
-  uint64_t id;
-
-  // Optional compile time defined metadata
-  struct ShardMetadata *metadata;
-
-  // \-- The interface to fill --/
-
+// Static shard interface for stuff that stays the same for every instance of the shard
+struct ShardStaticInterface {
+  SHCreateProc create;   // Construct a new shard instance
   SHNameProc name;             // Returns the name of the shard, do not free the string,
                                // generally const
   SHHashProc hash;             // Returns the hash of the shard, useful for serialization
@@ -832,6 +811,41 @@ struct Shard {
   SHGetStateProc getState;
   SHSetStateProc setState;
   SHResetStateProc resetState;
+
+  // Optional memory management for shard interface
+  SHShardInterfaceRef incRef;
+  SHShardInterfaceRef decRef;
+
+  // name length, used for profiling and more
+  uint32_t nameLength;
+
+  // Optional compile time defined metadata
+  struct ShardMetadata metadata;
+};
+
+// Shard instance data
+struct Shard {
+  // magic tricks to make some shards inline
+  SHInlineShards inlineShardId;
+
+  // used to manage the lifetime of this shard, should be set to 0
+  uint32_t refCount;
+
+  // Activate procedure for shard
+  SHActivateProc activate;
+
+  // The pointer to the static shard interface for this shard
+  struct ShardStaticInterface *iface;
+
+  // some debug/utility info
+  uint32_t line;
+  uint16_t column;
+
+  // flag to ensure shards are unique when flows/wires
+  uint16_t owned;
+
+  // internal use only, to optionally identify the shard
+  uint64_t id;
 };
 
 struct SHWireProviderUpdate {
@@ -863,7 +877,7 @@ struct SHWireProvider {
   void *userData;
 };
 
-typedef void(__cdecl *SHRegisterShard)(SHString fullName, SHShardConstructor constructor);
+typedef void(__cdecl *SHRegisterShard)(SHString fullName, struct ShardStaticInterface *iface);
 
 typedef void(__cdecl *SHRegisterObjectType)(int32_t vendorId, int32_t typeId, struct SHObjectInfo info);
 

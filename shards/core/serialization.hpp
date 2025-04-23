@@ -339,39 +339,39 @@ struct Serialization {
       buf[len] = 0;
       blk = createShard(&buf[0]);
       if (!blk) {
-        throw shards::SHException("Shard not found! name: " + std::string(&buf[0]));
+        throw shards::SHException("Shard not found! name: " + std::string(buf.data()));
       }
 
       // validate the hash of the shard
       uint32_t crc;
       read((uint8_t *)&crc, sizeof(uint32_t));
-      if (blk->hash(blk) != crc) {
+      if (blk->iface->hash(blk) != crc) {
         throw shards::SHException("Shard hash mismatch, the serialized version is "
                                   "probably different: " +
                                   std::string(&buf[0]));
       }
 
-      blk->setup(blk);
+      blk->iface->setup(blk);
 
-      auto params = blk->parameters(blk).len;
+      auto params = blk->iface->parameters(blk).len;
       for (uint32_t i = 0; i < params; i++) {
         SHVar tmp{};
         deserialize(read, tmp);
-        blk->setParam(blk, i, &tmp);
+        blk->iface->setParam(blk, i, &tmp);
         destroyVar(tmp);
       }
 
-      if (blk->setState) {
+      if (blk->iface->getState) {
         SHVar state{};
         deserialize(read, state);
-        blk->setState(blk, &state);
+        blk->iface->setState(blk, &state);
         destroyVar(state);
       }
 
       if (private_internal) {
         // also get line and column
         read((uint8_t *)&blk->line, sizeof(uint32_t));
-        read((uint8_t *)&blk->column, sizeof(uint32_t));
+        read((uint8_t *)&blk->column, sizeof(uint16_t));
         // read shard id
         read((uint8_t *)&blk->id, sizeof(uint64_t));
       }
@@ -641,7 +641,7 @@ struct Serialization {
     case SHType::ShardRef: {
       auto blk = input.payload.shardValue;
       // name
-      auto name = blk->name(blk);
+      auto name = blk->iface->name(blk);
       uint32_t len = uint32_t(strlen(name));
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
@@ -649,21 +649,21 @@ struct Serialization {
       total += len;
 
       // serialize the hash of the shard as well
-      auto crc = blk->hash(blk);
+      auto crc = blk->iface->hash(blk);
       write((const uint8_t *)&crc, sizeof(uint32_t));
       total += sizeof(uint32_t);
 
       // params
-      auto params = blk->parameters(blk);
+      auto params = blk->iface->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
         auto idx = int32_t(i);
-        auto pval = blk->getParam(blk, idx);
+        auto pval = blk->iface->getParam(blk, idx);
         total += serialize(pval, write);
       }
 
       // optional state
-      if (blk->getState) {
-        auto state = blk->getState(blk);
+      if (blk->iface->getState) {
+        auto state = blk->iface->getState(blk);
         total += serialize(state, write);
       }
 
@@ -671,7 +671,7 @@ struct Serialization {
         // line and column
         write((const uint8_t *)&blk->line, sizeof(uint32_t));
         total += sizeof(uint32_t);
-        write((const uint8_t *)&blk->column, sizeof(uint32_t));
+        write((const uint8_t *)&blk->column, sizeof(uint16_t));
         total += sizeof(uint32_t);
         // serialize shard id
         write((const uint8_t *)&blk->id, sizeof(uint64_t));

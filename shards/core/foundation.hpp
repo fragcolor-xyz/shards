@@ -109,7 +109,7 @@ entt::id_type findId(SHContext *ctx) noexcept;
 
 Shard *createShard(std::string_view name);
 void registerShards();
-void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName = std::string_view());
+void registerShard(std::string_view name, ShardStaticInterface *iface, std::string_view fullTypeName = std::string_view());
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info);
 const SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
@@ -128,7 +128,7 @@ uint32_t imageGetPixelSize(SHImage *img);
 uint32_t imageGetRowStride(SHImage *img);
 
 struct RuntimeObserver {
-  virtual void registerShard(const char *fullName, SHShardConstructor constructor) {}
+  virtual void registerShard(const char *fullName, ShardStaticInterface *iface) {}
   virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {}
   virtual void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {}
 };
@@ -356,8 +356,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // Also the wire takes ownership of the shard!
   void addShard(Shard *blk) {
-    shassert(!blk->owned);
-    blk->owned = true;
+    shassert(blk->owned == 0);
+    blk->owned = 1;
     shards::incRef(blk);
     shards.push_back(blk);
   }
@@ -733,6 +733,64 @@ struct CrashHandlerBase {
   virtual void crash() {}
 };
 
+struct ShardStaticInterfaceRef {
+  ShardStaticInterface *iface{};
+  ShardStaticInterfaceRef(const ShardStaticInterfaceRef &other) {
+    if (other.iface) {
+      this->iface = other.iface;
+      incRef();
+    }
+  }
+  ShardStaticInterfaceRef(ShardStaticInterface *iface) : iface(iface) {
+    incRef();
+  }
+  ShardStaticInterfaceRef(ShardStaticInterfaceRef&& other) noexcept : iface(other.iface) {
+    other.iface = nullptr;
+  }
+  ShardStaticInterfaceRef &operator=(ShardStaticInterfaceRef &&other) noexcept {
+    if (this != &other) {
+      decRef();
+      iface = other.iface;
+      other.iface = nullptr;
+    }
+    return *this;
+  } 
+  ~ShardStaticInterfaceRef() { decRef(); }
+  ShardStaticInterfaceRef &operator=(const ShardStaticInterfaceRef &other) {
+    if (this != &other) {
+      decRef();
+      iface = other.iface;
+      incRef();
+    }
+    return *this;
+  }
+
+  ShardStaticInterfaceRef &operator=(ShardStaticInterface *iface) {
+    if (this->iface != iface) {
+      decRef();
+      this->iface = iface;
+      incRef();
+    }
+    return *this;
+  }
+
+  ShardStaticInterface * get() const { return iface; }
+  ShardStaticInterface *operator->() const { return iface; }
+  ShardStaticInterface &operator*() const { return *iface; }
+
+  void incRef() {
+    if (iface && iface->incRef) {
+      iface->incRef(iface);
+    }
+  }
+
+  void decRef() {
+    if (iface && iface->decRef) {
+      iface->decRef(iface);
+    }
+  }
+};
+
 struct Globals {
 public:
   std::unordered_map<std::string, OwnedVar> Settings;
@@ -740,7 +798,7 @@ public:
   CrashHandlerBase *CrashHandler{nullptr};
 
   int SigIntTerm{0};
-  std::unordered_map<std::string_view, SHShardConstructor> ShardsRegister;
+  std::unordered_map<std::string_view, ShardStaticInterfaceRef> ShardsRegister;
   std::unordered_map<std::string_view, std::string_view> ShardNamesToFullTypeNames;
   std::unordered_map<int64_t, SHObjectInfo> ObjectTypesRegister;
   std::unordered_map<std::string_view, int64_t> ObjectTypesRegisterByName;

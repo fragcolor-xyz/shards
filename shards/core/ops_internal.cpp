@@ -149,7 +149,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
        << int(var.payload.colorValue.b) << " " << int(var.payload.colorValue.a) << ")";
     break;
   case SHType::ShardRef:
-    os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
+    os << "Shard: " << var.payload.shardValue->iface->name(var.payload.shardValue);
     break;
   case SHType::String: {
     auto sView = SHSTRVIEW(var);

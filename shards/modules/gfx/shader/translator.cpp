@@ -35,7 +35,7 @@ std::unique_ptr<IWGSLGenerated> TranslationContext::getInput() {
 void TranslationContext::processShard(ShardPtr shard) {
   ITranslationHandler *handler = translationRegistry.resolve(shard);
   if (!handler) {
-    throw ShaderComposeError(fmt::format("No shader translation available for shard {}", shard->name(shard)), shard);
+    throw ShaderComposeError(fmt::format("No shader translation available for shard {}", shard->iface->name(shard)), shard);
   }
   try {
     handler->translate(shard, *this);
@@ -394,7 +394,7 @@ void TranslationRegistry::registerHandler(const char *blockName, ITranslationHan
 }
 
 ITranslationHandler *TranslationRegistry::resolve(ShardPtr shard) {
-  auto it = handlers.find((const char *)shard->name(shard));
+  auto it = handlers.find((const char *)shard->iface->name(shard));
   if (it != handlers.end())
     return it->second;
   return nullptr;

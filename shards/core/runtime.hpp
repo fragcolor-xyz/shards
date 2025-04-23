@@ -433,7 +433,7 @@ inline void sleep(double seconds = -1.0) {
 
 struct RuntimeCallbacks {
   // TODO, turn them into filters maybe?
-  virtual void registerShard(const char *fullName, SHShardConstructor constructor) = 0;
+  virtual void registerShard(const char *fullName, ShardStaticInterface* iface) = 0;
   virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) = 0;
   virtual void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) = 0;
 };

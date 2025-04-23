@@ -35,7 +35,7 @@ struct Name {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   SHVar activate(SHContext *context, const SHVar &input) {
     Shard *blk = input.payload.shardValue;
-    _name.assign(blk->name(blk));
+    _name.assign(blk->iface->name(blk));
     return Var(_name);
   }
   std::string _name;

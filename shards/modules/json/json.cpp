@@ -164,17 +164,17 @@ void to_json(json &j, const SHVar &var) {
   case SHType::ShardRef: {
     auto blk = var.payload.shardValue;
     std::vector<json> params;
-    auto paramsDesc = blk->parameters(blk);
+    auto paramsDesc = blk->iface->parameters(blk);
     for (uint32_t i = 0; i < paramsDesc.len; i++) {
       auto &desc = paramsDesc.elements[i];
-      auto value = blk->getParam(blk, i);
+      auto value = blk->iface->getParam(blk, i);
       json param_obj = {{"name", desc.name}, {"value", value}};
       params.push_back(param_obj);
     }
-    if (blk->getState) {
-      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}, {"state", blk->getState(blk)}};
+    if (blk->iface->getState) {
+      j = json{{"type", valType}, {"name", blk->iface->name(blk)}, {"params", params}, {"state", blk->iface->getState(blk)}};
     } else {
-      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
+      j = json{{"type", valType}, {"name", blk->iface->name(blk)}, {"params", params}};
     }
     break;
   }
@@ -411,11 +411,11 @@ void from_json(const json &j, SHVar &var) {
     var.payload.shardValue = blk;
 
     // Setup
-    blk->setup(blk);
+    blk->iface->setup(blk);
 
     // Set params
     auto jparams = j.at("params");
-    auto blkParams = blk->parameters(blk);
+    auto blkParams = blk->iface->parameters(blk);
     for (auto jparam : jparams) {
       auto paramName = jparam.at("name").get<std::string_view>();
       auto value = jparam.at("value").get<SHVar>();
@@ -423,7 +423,7 @@ void from_json(const json &j, SHVar &var) {
         for (uint32_t i = 0; blkParams.len > i; i++) {
           auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
-            blk->setParam(blk, i, &value);
+            blk->iface->setParam(blk, i, &value);
             break;
           }
         }
@@ -432,9 +432,9 @@ void from_json(const json &j, SHVar &var) {
       shards::destroyVar(value);
     }
 
-    if (blk->setState) {
+    if (blk->iface->setState) {
       auto state = j.at("state").get<SHVar>();
-      blk->setState(blk, &state);
+      blk->iface->setState(blk, &state);
       shards::destroyVar(state);
     }
     break;

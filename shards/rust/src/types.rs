@@ -5,7 +5,7 @@
 use crate::core::{cloneVar, destroyVar, Core};
 use crate::{
   fourCharacterCode, shlog, shlog_error, shlog_warn, SHAudio, SHExtendedObjectTypeInfo,
-  SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, SHVAR_FLAGS_WEAK_OBJECT,
+  SHType_Audio, SHVarPayload__bindgen_ty_1__bindgen_ty_3, ShardStaticInterface, SHVAR_FLAGS_WEAK_OBJECT,
 };
 
 // Shard Constants
@@ -622,7 +622,8 @@ unsafe extern "C" fn error_cb(
   nonfatalWarning: SHBool,
   userData: *mut c_void,
 ) {
-  let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
+  let shard_ref = ShardRef(errorShard as *mut Shard);
+  let shard_name = shard_ref.name();
   let msg = std::str::from_utf8(unsafe {
     if errorTxt.len == 0 {
       &[]
@@ -632,15 +633,11 @@ unsafe extern "C" fn error_cb(
   })
   .unwrap();
   if !nonfatalWarning {
-    shlog_error!(
-      "Fatal error: {} shard: {}",
-      msg,
-      shard_name.to_str().unwrap()
-    );
+    shlog_error!("Fatal error: {} shard: {}", msg, shard_name);
     let failed = userData as *mut bool;
     *failed = true;
   } else {
-    shlog_warn!("Warning: {} shard: {}", msg, shard_name.to_str().unwrap());
+    shlog_warn!("Warning: {} shard: {}", msg, shard_name);
   }
 }
 
@@ -656,9 +653,9 @@ impl AutoShardRef {
       } else {
         if let Some(debug_info) = debug_info {
           (*ptr).line = debug_info.0;
-          (*ptr).column = debug_info.1;
+          (*ptr).column = debug_info.1 as u16;
         }
-        (*ptr).setup.unwrap_unchecked()(ptr);
+        (*(*ptr).iface).setup.unwrap_unchecked()(ptr);
         Some(AutoShardRef(ShardRef(ptr)))
       }
     }
@@ -670,9 +667,13 @@ extern "C" {
 }
 
 impl ShardRef {
+  pub fn interface(&self) -> &ShardStaticInterface {
+    unsafe { &*(*self.0).iface }
+  }
+
   pub fn output_types(&self) -> &[Type] {
     unsafe {
-      let info = (*self.0).outputTypes.unwrap_unchecked()(self.0);
+      let info = self.interface().outputTypes.unwrap_unchecked()(self.0);
       if info.len == 0 {
         return &[];
       }
@@ -682,7 +683,7 @@ impl ShardRef {
 
   pub fn input_types(&self) -> &[Type] {
     unsafe {
-      let info = (*self.0).inputTypes.unwrap_unchecked()(self.0);
+      let info = self.interface().inputTypes.unwrap_unchecked()(self.0);
       if info.len == 0 {
         return &[];
       }
@@ -692,7 +693,7 @@ impl ShardRef {
 
   pub fn input_help(&self) -> Option<&str> {
     unsafe {
-      let help = (*self.0).inputHelp.unwrap_unchecked()(self.0);
+      let help = self.interface().inputHelp.unwrap_unchecked()(self.0);
       if help.crc != 0 {
         let c_str = shards_get_compressed_string(help.crc);
         if c_str.is_null() {
@@ -714,7 +715,7 @@ impl ShardRef {
 
   pub fn output_help(&self) -> Option<&str> {
     unsafe {
-      let help = (*self.0).outputHelp.unwrap_unchecked()(self.0);
+      let help = self.interface().outputHelp.unwrap_unchecked()(self.0);
       if help.crc != 0 {
         let c_str = shards_get_compressed_string(help.crc);
         if c_str.is_null() {
@@ -736,7 +737,7 @@ impl ShardRef {
 
   pub fn help(&self) -> Option<&str> {
     unsafe {
-      let help = (*self.0).help.unwrap_unchecked()(self.0);
+      let help = self.interface().help.unwrap_unchecked()(self.0);
       if help.crc != 0 {
         let c_str = shards_get_compressed_string(help.crc);
         if c_str.is_null() {
@@ -758,7 +759,7 @@ impl ShardRef {
 
   pub fn name(&self) -> &str {
     unsafe {
-      let c_name = (*self.0).name.unwrap_unchecked()(self.0);
+      let c_name = self.interface().name.unwrap_unchecked()(self.0);
       CStr::from_ptr(c_name).to_str().unwrap()
     }
   }
@@ -771,7 +772,7 @@ impl ShardRef {
 
   pub fn cleanup(&self, context: Option<&Context>) -> Result<(), &'static str> {
     unsafe {
-      let result = (*self.0).cleanup.unwrap_unchecked()(
+      let result = self.interface().cleanup.unwrap_unchecked()(
         self.0,
         if let Some(_ref) = context {
           &_ref as *const _ as *mut _
@@ -796,8 +797,9 @@ impl ShardRef {
 
   pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     unsafe {
-      if (*self.0).warmup.is_some() {
-        let result = (*self.0).warmup.unwrap_unchecked()(self.0, context as *const _ as *mut _);
+      if self.interface().warmup.is_some() {
+        let result =
+          self.interface().warmup.unwrap_unchecked()(self.0, context as *const _ as *mut _);
         if result.code == 0 {
           Ok(())
         } else {
@@ -818,7 +820,7 @@ impl ShardRef {
 
   pub fn parameters(&self) -> &[ParameterInfo] {
     unsafe {
-      let params = (*self.0).parameters.unwrap_unchecked()(self.0);
+      let params = self.interface().parameters.unwrap_unchecked()(self.0);
       if params.len == 0 {
         return &[];
       } else {
@@ -833,12 +835,12 @@ impl ShardRef {
       if !success {
         Err("Set parameter validation failed")
       } else {
-        let err = (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
+        let err = self.interface().setParam.unwrap_unchecked()(self.0, index, &value);
 
         #[cfg(debug_assertions)]
         {
           // In debug mode, verify that the shard has properly copied the value
-          let written_value = (*self.0).getParam.unwrap_unchecked()(self.0, index);
+          let written_value = self.interface().getParam.unwrap_unchecked()(self.0, index);
           match written_value.valueType {
             SHType_String | SHType_ContextVar | SHType_Bytes | SHType_Path => {
               let ptr = written_value
@@ -873,16 +875,16 @@ impl ShardRef {
   }
 
   pub fn get_parameter(&self, index: i32) -> Var {
-    unsafe { (*self.0).getParam.unwrap_unchecked()(self.0, index) }
+    unsafe { self.interface().getParam.unwrap_unchecked()(self.0, index) }
   }
 
   pub fn get_line_info(&self) -> (u32, u32) {
-    unsafe { ((*self.0).line, (*self.0).column) }
+    unsafe { ((*self.0).line as u32, (*self.0).column as u32) }
   }
 
   pub fn properties(&self) -> Option<Table> {
-    if unsafe { (*self.0).properties.is_some() } {
-      let sh_table_ptr = unsafe { (*self.0).properties.unwrap_unchecked()(self.0) };
+    if self.interface().properties.is_some() {
+      let sh_table_ptr = unsafe { self.interface().properties.unwrap_unchecked()(self.0) };
       unsafe { Some(Table::from_sh_table(*sh_table_ptr)) }
     } else {
       None
@@ -6889,13 +6891,8 @@ impl std::fmt::Display for Var {
         unsafe {
           let shard_ptr = self.payload.__bindgen_anon_1.shardValue;
           if !shard_ptr.is_null() {
-            let name_fn = (*shard_ptr).name;
-            if let Some(name_fn) = name_fn {
-              let name = std::ffi::CStr::from_ptr(name_fn(shard_ptr)).to_string_lossy();
-              write!(f, "Shard: {}", name)
-            } else {
-              write!(f, "Shard: <unnamed>")
-            }
+            let shard: ShardRef = ShardRef(shard_ptr);
+            write!(f, "Shard: {}", shard.name())
           } else {
             write!(f, "Shard: <null>")
           }

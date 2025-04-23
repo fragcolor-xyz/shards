@@ -193,7 +193,7 @@ struct UUIDToBytes {
 impl LegacyShard for UUIDToBytes {
   fn registerName() -> &'static str {
     cstr!("UUID.ToBytes")
-  }
+  } 
 
   fn hash() -> u32 {
     compile_time_crc32::crc32!("UUID.ToBytes-rust-0x20200101")

@@ -10,13 +10,13 @@ Weave &Weave::shard(std::string_view name, std::vector<Var> params) {
     throw SHException("Shard not found");
   }
 
-  blk->setup(blk);
+  blk->iface->setup(blk);
 
   const auto psize = params.size();
   for (size_t i = 0; i < psize; i++) {
     // skip Any, as they mean default value
     if (params[i] != Var::Any)
-      blk->setParam(blk, int(i), &params[i]);
+      blk->iface->setParam(blk, int(i), &params[i]);
   }
 
   _shards.emplace_back(blk);
@@ -25,8 +25,8 @@ Weave &Weave::shard(std::string_view name, std::vector<Var> params) {
 
 Weave &Weave::let(Var value) {
   auto blk = createShard("Const");
-  blk->setup(blk);
-  blk->setParam(blk, 0, &value);
+  blk->iface->setup(blk);
+  blk->iface->setParam(blk, 0, &value);
   _shards.emplace_back(blk);
   return *this;
 }
@@ -62,13 +62,13 @@ Wire &Wire::shard(std::string_view name, std::vector<Var> params) {
     throw SHException("Shard not found");
   }
 
-  blk->setup(blk);
+  blk->iface->setup(blk);
 
   const auto psize = params.size();
   for (size_t i = 0; i < psize; i++) {
     // skip Any, as they mean default value
     if (params[i] != Var::Any)
-      blk->setParam(blk, int(i), &params[i]);
+      blk->iface->setParam(blk, int(i), &params[i]);
   }
 
   _wire->addShard(blk);
@@ -77,8 +77,8 @@ Wire &Wire::shard(std::string_view name, std::vector<Var> params) {
 
 Wire &Wire::let(Var value) {
   auto blk = createShard("Const");
-  blk->setup(blk);
-  blk->setParam(blk, 0, &value);
+  blk->iface->setup(blk);
+  blk->iface->setParam(blk, 0, &value);
   _wire->addShard(blk);
   return *this;
 }

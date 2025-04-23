@@ -294,7 +294,7 @@ private:
   void destroy() {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
-      auto errors = blk->cleanup(blk, nullptr);
+      auto errors = blk->iface->cleanup(blk, nullptr);
       if (errors.code != SH_ERROR_NONE) {
         auto msg = std::string_view(errors.message.string, errors.message.len);
         auto fullMsg = fmt::format("TShardsVar: Error during blocks cleanup: {}", msg);
@@ -319,7 +319,7 @@ public:
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
 
-      auto errors = blk->cleanup(blk, context);
+      auto errors = blk->iface->cleanup(blk, context);
       if (errors.code != SH_ERROR_NONE) {
         auto msg = std::string_view(errors.message.string, errors.message.len);
         auto fullMsg = fmt::format("TShardsVar: Error during blocks cleanup: {}", msg);
@@ -330,11 +330,11 @@ public:
 
   void warmup(SHContext *context) {
     for (auto &blk : _shardsArray) {
-      if (blk->warmup) {
-        auto errors = blk->warmup(blk, context);
+      if (blk->iface->warmup) {
+        auto errors = blk->iface->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
           std::string msg =
-              fmt::format("{} shard: {} (line: {}, column: {})", errors.message.string, blk->name(blk), blk->line, blk->column);
+              fmt::format("{} shard: {} (line: {}, column: {})", errors.message.string, blk->iface->name(blk), blk->line, blk->column);
           throw WarmupError(msg);
         }
       }

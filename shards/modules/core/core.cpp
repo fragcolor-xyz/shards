@@ -1885,7 +1885,7 @@ struct GetShards {
         auto cat = SHSTRVIEW(_category);
         // sadly we need to create it to check the category but whatever
         auto shard = createShard(name);
-        if (shard->metadata && std::string_view(shard->metadata->category) == cat) {
+        if (std::string_view(shard->iface->metadata.category) == cat) {
           _output.emplace_back(Var(name));
         }
       } else {
@@ -1977,35 +1977,33 @@ struct GetShardHelp {
     if (!shard) {
       throw ActivationError(fmt::format("Shard {} creation failed, likely does not exist", blkname));
     }
-    DEFER(shard->destroy(shard));
+    DEFER(shard->iface->destroy(shard));
 
-    shard->setup(shard);
+    shard->iface->setup(shard);
 
     _output.clear();
 
-    if (shard->metadata) {
-      if (shard->metadata->aliasOf) {
-        _output.insert(Var("aliasOf"), Var(shard->metadata->aliasOf, 0));
-      }
-      if (shard->metadata->category) {
-        _output.insert(Var("category"), Var(shard->metadata->category, 0));
-      }
+    if (shard->iface->metadata.aliasOf) {
+      _output.insert(Var("aliasOf"), Var(shard->iface->metadata.aliasOf, 0));
+    }
+    if (shard->iface->metadata.category) {
+      _output.insert(Var("category"), Var(shard->iface->metadata.category, 0));
     }
 
-    auto help = shard->help(shard);
+    auto help = shard->iface->help(shard);
     _output.insert(Var("help"), ostr(help));
 
-    auto inputTypes = shard->inputTypes(shard);
+    auto inputTypes = shard->iface->inputTypes(shard);
     _output.insert(Var("inputTypes"), richTypeInfo(inputTypes, false));
-    auto inputHelp = shard->inputHelp(shard);
+    auto inputHelp = shard->iface->inputHelp(shard);
     _output.insert(Var("inputHelp"), ostr(inputHelp));
 
-    auto outputTypes = shard->outputTypes(shard);
+    auto outputTypes = shard->iface->outputTypes(shard);
     _output.insert(Var("outputTypes"), richTypeInfo(outputTypes, false));
-    auto outputHelp = shard->outputHelp(shard);
+    auto outputHelp = shard->iface->outputHelp(shard);
     _output.insert(Var("outputHelp"), ostr(outputHelp));
 
-    auto params = shard->parameters(shard);
+    auto params = shard->iface->parameters(shard);
     if (params.len > 0) {
       SeqVar paramsSeq{};
       for (uint32_t i = 0; i < params.len; i++) {
@@ -2014,7 +2012,7 @@ struct GetShardHelp {
         paramTable.insert(Var("name"), Var(param.name, 0)); // 0 to force strlen, in this case OK
         paramTable.insert(Var("help"), ostr(param.help));
         paramTable.insert(Var("types"), richTypeInfo(param.valueTypes, false));
-        paramTable.insert(Var("default"), shard->getParam(shard, i));
+        paramTable.insert(Var("default"), shard->iface->getParam(shard, i));
         paramsSeq.emplace_back(std::move(paramTable));
       }
       _output.insert(Var("parameters"), std::move(paramsSeq));
@@ -2022,7 +2020,7 @@ struct GetShardHelp {
       _output.insert(Var("parameters"), SeqVar{});
     }
 
-    auto properties = shard->properties(shard);
+    auto properties = shard->iface->properties(shard);
     if (properties) {
       TableVar propertiesTable{};
       ForEach(*properties, [&](auto &key, auto &val) { propertiesTable[key] = val; });
