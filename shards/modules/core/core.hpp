@@ -169,23 +169,21 @@ struct BaseOpsBin {
   shards::Var _output;
 };
 
-#define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                                   \
-  struct NAME : public BaseOpsBin {                                                       \
-    SHTypeInfo compose(const SHInstanceData &data) {                                      \
-      return composeEqualTypes(data, CoreInfo::BoolType);                                 \
-    }                                                                                     \
-    FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) { \
-      const auto &value = _operand.get();                                                 \
-      if (input OP value) {                                                               \
-        _output = shards::Var::True;                                                      \
-        return _output;                                                                   \
-      }                                                                                   \
-      _output = shards::Var::False;                                                       \
-      return _output;                                                                     \
-    }                                                                                     \
-    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                         \
-    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }     \
-    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }            \
+#define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                                                    \
+  struct NAME : public BaseOpsBin {                                                                        \
+    SHTypeInfo compose(const SHInstanceData &data) { return composeEqualTypes(data, CoreInfo::BoolType); } \
+    FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {                  \
+      const auto &value = _operand.get();                                                                  \
+      if (input OP value) {                                                                                \
+        _output = shards::Var::True;                                                                       \
+        return _output;                                                                                    \
+      }                                                                                                    \
+      _output = shards::Var::False;                                                                        \
+      return _output;                                                                                      \
+    }                                                                                                      \
+    static SHOptionalString help() { return SHCCSTR(HELP_TEXT); }                                          \
+    static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }                      \
+    static SHOptionalString outputHelp() { return SHCCSTR(OUTPUT_HELP_TEXT); }                             \
   };
 
 // Now use the updated macro with help text for each operation
@@ -2480,9 +2478,15 @@ struct TableDecl : public VariableBase {
 
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
+  bool _clear = true;
 
   static inline Parameters tableParams{
-      setterParams, {{"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
+      setterParams,
+      {{"Clear",
+        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        {CoreInfo::BoolType}},
+       {"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}},
+  };
 
   static SHParametersInfo parameters() { return tableParams; }
 
@@ -2490,6 +2494,8 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
+      _clear = value.payload.boolValue;
+    } else if (index == variableParamsInfoLen + 1) {
       _typeDesc = value;
     }
   }
@@ -2498,6 +2504,8 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
+      return Var(_clear);
+    else if (index == variableParamsInfoLen + 1)
       return _typeDesc;
     throw SHException("Param index out of range.");
   }
@@ -2581,6 +2589,11 @@ struct TableDecl : public VariableBase {
       }
     }
 
+    if (_clear) {
+      TableVar &table = asTable(*_cell);
+      table.clear();
+    }
+
     return input;
   }
 };
@@ -2658,10 +2671,11 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard counts the sequence, string or table variable specified in the Name parameter. If the variable specified is "
-        "a string, it will count the number of characters. If the variable specified is a sequence, it will count the number of "
-        "elements. If the variable specified is a table, it will count the number of key-value pairs.");
+    return SHCCSTR("This shard counts the sequence, string or table variable specified in the Name parameter. If the variable "
+                   "specified is "
+                   "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
+                   "the number of "
+                   "elements. If the variable specified is a table, it will count the number of key-value pairs.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }

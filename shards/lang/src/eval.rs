@@ -2629,7 +2629,7 @@ fn create_shard_inner(
     stored
   } else {
     shard
-  };
+  };  
 
   let s = AutoShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
