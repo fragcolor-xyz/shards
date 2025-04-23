@@ -164,6 +164,35 @@ inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const SHExposedTypesInfo 
     outInfo.push_back(otherTypes.elements[i]);
 }
 
+inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
+  if (var.valueType != SHType::ContextVar)
+    return nullptr;
+
+  auto& ctx = CompositionContext::get(data);
+  auto varI = ctx.inherited.find(SHSTRVIEW(var));
+  if(varI != ctx.inherited.end()) {
+    return &varI->second;
+  }
+
+  return nullptr;
+}
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  return findContextVarExposedType(data, var);
+}
+template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
+  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
+  if (!ti)
+    throw ComposeError(
+        fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
+  return *ti;
+}
+
+inline const SHExposedTypeInfo *findExposedVariablePtr(const SHInstanceData &data, std::string_view variableName) {
+  auto& ctx = shards::CompositionContext::get(data);
+  return findExposedVariablePtr(ctx.inherited, variableName);
+}
+
 inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type) {
   switch (type.basicType) {
   case SHType::Object:

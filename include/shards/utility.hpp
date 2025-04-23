@@ -831,29 +831,6 @@ template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> 
 
 template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
 
-inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &data, const SHVar &var) {
-  if (var.valueType != SHType::ContextVar)
-    return nullptr;
-
-  for (const auto &share : data.shared) {
-    if (!strcmp(share.name, var.payload.stringValue)) { // safe cos ParamVar should be null terminated
-      return &share;
-    }
-  }
-  return nullptr;
-}
-
-template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
-  return findContextVarExposedType(data, var);
-}
-template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
-  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
-  if (!ti)
-    throw ComposeError(
-        fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
-  return *ti;
-}
-
 // Assigns only the variable value, not it's flags and internal properties
 ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.valueType = other.valueType;

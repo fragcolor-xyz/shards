@@ -292,7 +292,7 @@ struct MatMul : public BinaryBase {
     return OpType::Invalid;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return this->genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return this->genericCompose(*this, data); }
 
   SHVar activate(SHContext *context, const SHVar &input);
 };

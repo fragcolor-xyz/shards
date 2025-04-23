@@ -48,6 +48,7 @@ add_shards_module(core SOURCES ${SOURCES}
     CoreIsTrue
     CoreIsFalse
     CoreIsNone
+    CoreIsNotNone
     CoreAnd
     CoreOr
     CoreNot

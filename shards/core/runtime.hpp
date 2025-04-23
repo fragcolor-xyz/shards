@@ -446,6 +446,11 @@ struct CompositionContext {
   shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
 
   CompositionContext() : visitedWires(tempAllocator.getAllocator()) {}
+
+  static CompositionContext& get(const SHInstanceData& data) {
+    shassert(data.privateContext != nullptr);
+    return *reinterpret_cast<CompositionContext*>(data.privateContext);
+  }
 };
 }; // namespace shards
 

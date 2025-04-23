@@ -4,7 +4,6 @@
 #include <shards/shards.hpp>
 
 namespace shards {
-ALWAYS_INLINE FLATTEN void setInlineShardId(Shard *shard, std::string_view name);
 ALWAYS_INLINE FLATTEN const SHVar *activateShardInline(Shard *blk, SHContext *context, const SHVar &input);
 } // namespace shards
 

@@ -297,7 +297,6 @@ Shard *createShard(std::string_view name) {
 
   auto shard = it->second();
 
-  shards::setInlineShardId(shard, name);
   shard->nameLength = uint32_t(name.length());
 
 #ifndef NDEBUG
@@ -1018,7 +1017,28 @@ void validateConnection(InternalCompositionContext &ctx) {
 
   // infer and specialize types if we need to
   // If we don't we assume our output will be of the same type of the previous!
-  if (ctx.bottom->compose) {
+  if (ctx.bottom->composeV2) {
+    SHInstanceData data{};
+    data.shard = ctx.bottom;
+    data.wire = ctx.wire;
+    data.inputType = previousOutput;
+    data.requiredVariables = ctx.fullRequired;
+    data.privateContext = ctx.sharedContext;
+    if (ctx.next) {
+      data.outputTypes = ctx.next->inputTypes(ctx.next);
+    }
+    data.onWorkerThread = ctx.onWorkerThread;
+
+    // this ensures e.g. SetVariable exposedVars have right type from the actual
+    // input type (previousOutput)!
+    auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
+    if (composeResult.error.code != SH_ERROR_NONE) {
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
+      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
+      throw ComposeError(msg);
+    }
+    ctx.previousOutputType = composeResult.result;
+  } else if (ctx.bottom->compose) {
     SHInstanceData data{};
     {
       pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
@@ -1054,27 +1074,6 @@ void validateConnection(InternalCompositionContext &ctx) {
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
-    if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(msg);
-    }
-    ctx.previousOutputType = composeResult.result;
-  } else if (ctx.bottom->composeV2) {
-    SHInstanceData data{};
-    data.shard = ctx.bottom;
-    data.wire = ctx.wire;
-    data.inputType = previousOutput;
-    data.requiredVariables = ctx.fullRequired;
-    data.privateContext = ctx.sharedContext;
-    if (ctx.next) {
-      data.outputTypes = ctx.next->inputTypes(ctx.next);
-    }
-    data.onWorkerThread = ctx.onWorkerThread;
-
-    // this ensures e.g. SetVariable exposedVars have right type from the actual
-    // input type (previousOutput)!
-    auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
       SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");

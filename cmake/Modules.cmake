@@ -418,28 +418,6 @@ function(shards_generate_union UNION_TARGET_NAME)
   file(APPEND ${GENERATED_TEMP} "\n"
     "namespace shards {\n")
 
-  # Set inline ID declaration (when not inlining)
-  if(NOT SHARDS_INLINE_EVERYTHING)
-    foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
-      file(APPEND ${GENERATED_TEMP}
-        "ALWAYS_INLINE bool setInlineShardId_${MODULE_ID}(Shard*, std::string_view);\n"
-      )
-    endforeach()
-
-    file(APPEND ${GENERATED_TEMP} "\n")
-  endif()
-
-  file(APPEND ${GENERATED_TEMP}
-    "ALWAYS_INLINE void setInlineShardId(Shard *shard, std::string_view name) {\n")
-
-  foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
-    file(APPEND ${GENERATED_TEMP}
-      "  if (setInlineShardId_${MODULE_ID}(shard, name))\n"
-      "    return;\n")
-  endforeach()
-
-  file(APPEND ${GENERATED_TEMP} "}\n\n")
-
   # Activation declaration (when not inlining)
   if(NOT SHARDS_INLINE_EVERYTHING)
     foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
