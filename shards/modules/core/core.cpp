@@ -2578,23 +2578,6 @@ RUNTIME_SHARD_getParam(Get);
 RUNTIME_SHARD_activate(Get);
 RUNTIME_SHARD_END(Get);
 
-// Register Swap
-RUNTIME_CORE_SHARD_FACTORY(Swap);
-RUNTIME_SHARD_inputTypes(Swap);
-RUNTIME_SHARD_warmup(Swap);
-RUNTIME_SHARD_cleanup(Swap);
-RUNTIME_SHARD_help(Swap);
-RUNTIME_SHARD_inputTypes(Swap);
-RUNTIME_SHARD_inputHelp(Swap);
-RUNTIME_SHARD_outputTypes(Swap);
-RUNTIME_SHARD_outputHelp(Swap);
-RUNTIME_SHARD_parameters(Swap);
-RUNTIME_SHARD_requiredVariables(Swap);
-RUNTIME_SHARD_setParam(Swap);
-RUNTIME_SHARD_getParam(Swap);
-RUNTIME_SHARD_activate(Swap);
-RUNTIME_SHARD_END(Swap);
-
 // Register Take
 RUNTIME_CORE_SHARD_FACTORY(Take);
 RUNTIME_SHARD_destroy(Take);
@@ -2677,23 +2660,6 @@ RUNTIME_SHARD_setParam(RLimit);
 RUNTIME_SHARD_getParam(RLimit);
 RUNTIME_SHARD_activate(RLimit);
 RUNTIME_SHARD_END(RLimit);
-
-// Register Repeat
-RUNTIME_CORE_SHARD_FACTORY(Repeat);
-RUNTIME_SHARD_help(Repeat);
-RUNTIME_SHARD_inputTypes(Repeat);
-RUNTIME_SHARD_inputHelp(Repeat);
-RUNTIME_SHARD_outputTypes(Repeat);
-RUNTIME_SHARD_outputHelp(Repeat);
-RUNTIME_SHARD_parameters(Repeat);
-RUNTIME_SHARD_setParam(Repeat);
-RUNTIME_SHARD_getParam(Repeat);
-RUNTIME_SHARD_activate(Repeat);
-RUNTIME_SHARD_cleanup(Repeat);
-RUNTIME_SHARD_warmup(Repeat);
-RUNTIME_SHARD_requiredVariables(Repeat);
-RUNTIME_SHARD_compose(Repeat);
-RUNTIME_SHARD_END(Repeat);
 
 // Register Sort
 RUNTIME_CORE_SHARD(Sort);
@@ -3238,8 +3204,12 @@ struct PassShard : public LambdaShard<unreachableActivation, CoreInfo::AnyType, 
     return SHCCSTR("This shard is a \"no operation\" shard. It simply passes through the input without modifying it.");
   }
 
-  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::NoopShard;
+    return data.inputType;
+  }
 
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };
 
@@ -3279,17 +3249,17 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(DropFront);
   REGISTER_CORE_SHARD(Count);
   REGISTER_CORE_SHARD(Get);
-  REGISTER_CORE_SHARD(Swap);
-  REGISTER_CORE_SHARD(And);
-  REGISTER_CORE_SHARD(Or);
-  REGISTER_CORE_SHARD(Not);
+  REGISTER_SHARD("Swap", Swap);
+  REGISTER_SHARD("And", And);
+  REGISTER_SHARD("Or", Or);
+  REGISTER_SHARD("Not", Not);
   REGISTER_CORE_SHARD(IsValidNumber);
   REGISTER_CORE_SHARD(Take);
   REGISTER_CORE_SHARD(RTake);
   REGISTER_CORE_SHARD(Slice);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
-  REGISTER_CORE_SHARD(Repeat);
+  REGISTER_SHARD("Repeat", Repeat);
   REGISTER_CORE_SHARD(Sort);
   REGISTER_CORE_SHARD(Remove);
 

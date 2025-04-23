@@ -12,6 +12,7 @@
 #include <shards/shards.hpp>
 #include <shards/common_types.hpp>
 #include <shards/number_types.hpp>
+#include <shards/inlined.hpp>
 #include <sstream>
 #include <stdexcept>
 #include <variant>
@@ -138,14 +139,13 @@ struct BinaryBase : public Base {
     SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == SHType::ContextVar) {
+      auto &ctx = CompositionContext::get(data);
       bool variableFound = false;
-      for (uint32_t i = 0; i < data.shared.len; i++) {
-        // normal variable
-        if (data.shared.elements[i].name == SHSTRVIEW(operandSpec)) {
-          _opType = validator.validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
-          variableFound = true;
-          break;
-        }
+
+      auto varIt = ctx.inherited.find(SHSTRVIEW(operandSpec));
+      if (varIt != ctx.inherited.end()) {
+        _opType = validator.validateTypes(data.inputType, varIt->second.exposedType.basicType, resultType);
+        variableFound = true;
       }
       if (!variableFound)
         throw ComposeError(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
@@ -160,7 +160,7 @@ struct BinaryBase : public Base {
     return resultType;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
 
   SHExposedTypesInfo requiredVariables() {
     // operandSpec should be null terminated cos cloned over
@@ -294,9 +294,10 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
     return opType;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return this->genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return this->genericCompose(*this, data); }
 
   void operate(OpType opType, SHVar &output, const SHVar &a, const SHVar &b) {
+    shassert(opType != OpType::Invalid);
     if (opType == Broadcast) {
       op.operateBroadcast(output, a, b);
     } else if (opType == SeqSeq) {
@@ -548,17 +549,13 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
   ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) { this->operate(_value.get(), _value.get()); }
 };
 
-#define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)      \
-  using NAME = BinaryOperation<BasicBinaryOperation<NAME##Op>>; \
-  RUNTIME_SHARD_TYPE(Math, NAME);
+#define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO) using NAME = BinaryOperation<BasicBinaryOperation<NAME##Op>>;
 
-#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                                          \
-  using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntTypes>>; \
-  RUNTIME_SHARD_TYPE(Math, NAME);
+#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR) \
+  using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntTypes>>;
 
-#define MATH_BINARY_INT_BOOL_OPERATION(NAME, OPERATOR)                                           \
-  using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntOrBoolTypes>>; \
-  RUNTIME_SHARD_TYPE(Math, NAME);
+#define MATH_BINARY_INT_BOOL_OPERATION(NAME, OPERATOR) \
+  using NAME = BinaryIntOperation<BasicBinaryOperation<NAME##Op, DispatchType::IntOrBoolTypes>>;
 
 struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
   static SHOptionalString help() {
@@ -576,8 +573,12 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to add to the input."), MathTypesOrVar));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathAdd;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Add);
 
 struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
   static SHOptionalString help() {
@@ -595,8 +596,12 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to subtract from the input."), MathTypesOrVar));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathSubtract;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Subtract);
 
 struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
   static SHOptionalString help() {
@@ -614,8 +619,12 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to multiply the input by."), MathTypesOrVar));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathMultiply;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Multiply);
 
 struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
   static SHOptionalString help() {
@@ -633,8 +642,12 @@ struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to divide the input by."), MathTypesOrVar));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathDivide;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Divide);
 
 struct Mod : public BinaryOperation<BasicBinaryOperation<ModOp>> {
   static SHOptionalString help() {
@@ -653,8 +666,12 @@ struct Mod : public BinaryOperation<BasicBinaryOperation<ModOp>> {
         "Operand", SHCCSTR("The value or sequence of values to divide the input by and get the remainder of."), MathTypesOrVar));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathMod;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Mod);
 
 struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType::IntOrBoolTypes>> {
   static SHOptionalString help() {
@@ -676,8 +693,12 @@ struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType:
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathXor;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Xor);
 
 struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType::IntOrBoolTypes>> {
   static SHOptionalString help() {
@@ -699,8 +720,12 @@ struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType:
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathAnd;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, And);
 
 struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::IntOrBoolTypes>> {
   static SHOptionalString help() {
@@ -723,8 +748,12 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to compare the input with."), IntOrSeqTypesOrBool));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathOr;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, Or);
 
 struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, DispatchType::IntTypes>> {
   static SHOptionalString help() {
@@ -742,8 +771,12 @@ struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, Dispatc
         "Operand", SHCCSTR("The number of positions to shift the bits of the input value to the left by."), IntOrSeqTypes));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathLShift;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, LShift);
 
 struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, DispatchType::IntTypes>> {
   static SHOptionalString help() {
@@ -761,8 +794,12 @@ struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, Dispatc
         "Operand", SHCCSTR("The number of positions to shift the bits of the input value to the right by."), IntOrSeqTypes));
     return SHParametersInfo(customParams);
   }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::MathRShift;
+    return genericCompose(*this, data);
+  }
 };
-RUNTIME_SHARD_TYPE(Math, RShift);
 
 #define MATH_UNARY_OPERATION(NAME, FUNCI, FUNCF)    \
   struct NAME##Op final {                           \
@@ -824,7 +861,6 @@ struct Abs : public UnaryOperation<BasicUnaryOperation<AbsOp, DispatchType::Numb
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the absolute value of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Abs);
 
 struct Exp : public UnaryFloatOperation<BasicUnaryOperation<ExpOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -838,7 +874,6 @@ struct Exp : public UnaryFloatOperation<BasicUnaryOperation<ExpOp, DispatchType:
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
-RUNTIME_SHARD_TYPE(Math, Exp);
 
 struct Exp2 : public UnaryFloatOperation<BasicUnaryOperation<Exp2Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -852,7 +887,6 @@ struct Exp2 : public UnaryFloatOperation<BasicUnaryOperation<Exp2Op, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
-RUNTIME_SHARD_TYPE(Math, Exp2);
 
 struct Expm1 : public UnaryFloatOperation<BasicUnaryOperation<Expm1Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -866,7 +900,6 @@ struct Expm1 : public UnaryFloatOperation<BasicUnaryOperation<Expm1Op, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the result of the exponential operation."); }
 };
-RUNTIME_SHARD_TYPE(Math, Expm1);
 
 struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -881,7 +914,6 @@ struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType:
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Log);
 
 struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -896,7 +928,6 @@ struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the base 10 logarithm of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Log10);
 
 struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -911,7 +942,6 @@ struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the base 2 logarithm."); }
 };
-RUNTIME_SHARD_TYPE(Math, Log2);
 
 struct Log1p : public UnaryFloatOperation<BasicUnaryOperation<Log1pOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -924,7 +954,6 @@ struct Log1p : public UnaryFloatOperation<BasicUnaryOperation<Log1pOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the natural logarithm of the input plus 1."); }
 };
-RUNTIME_SHARD_TYPE(Math, Log1p);
 
 struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard calculates the square root of the given input."); }
@@ -936,7 +965,6 @@ struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the square root of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Sqrt);
 
 struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard calculates the square root of the given input."); }
@@ -948,7 +976,6 @@ struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, Dis
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the square root of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, FastSqrt);
 
 struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse square root of the given input."); }
@@ -960,7 +987,6 @@ struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtO
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the inverse square root of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, FastInvSqrt);
 
 struct Cbrt : public UnaryFloatOperation<BasicUnaryOperation<CbrtOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard calculates the cube root of the given input."); }
@@ -969,7 +995,6 @@ struct Cbrt : public UnaryFloatOperation<BasicUnaryOperation<CbrtOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cube root of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Cbrt);
 
 struct Sin : public UnaryFloatOperation<BasicUnaryOperation<SinOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -980,7 +1005,6 @@ struct Sin : public UnaryFloatOperation<BasicUnaryOperation<SinOp, DispatchType:
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the sine of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Sin);
 
 struct Cos : public UnaryFloatOperation<BasicUnaryOperation<CosOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -991,7 +1015,6 @@ struct Cos : public UnaryFloatOperation<BasicUnaryOperation<CosOp, DispatchType:
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the cosine of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Cos);
 
 struct Tan : public UnaryFloatOperation<BasicUnaryOperation<TanOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1002,7 +1025,6 @@ struct Tan : public UnaryFloatOperation<BasicUnaryOperation<TanOp, DispatchType:
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the tangent of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Tan);
 
 struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1016,7 +1038,6 @@ struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose sine is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Asin);
 
 struct Acos : public UnaryFloatOperation<BasicUnaryOperation<AcosOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1030,7 +1051,6 @@ struct Acos : public UnaryFloatOperation<BasicUnaryOperation<AcosOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose cosine is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Acos);
 
 struct Atan : public UnaryFloatOperation<BasicUnaryOperation<AtanOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1044,7 +1064,6 @@ struct Atan : public UnaryFloatOperation<BasicUnaryOperation<AtanOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the angle in radians whose tangent is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Atan);
 
 struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1059,7 +1078,6 @@ struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic sine of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Sinh);
 
 struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1074,7 +1092,6 @@ struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic cosine of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Cosh);
 
 struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1089,7 +1106,6 @@ struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the hyperbolic tangent of the input."); }
 };
-RUNTIME_SHARD_TYPE(Math, Tanh);
 
 struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1103,7 +1119,6 @@ struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic sine is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Asinh);
 
 struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1117,7 +1132,6 @@ struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic cosine is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Acosh);
 
 struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1131,7 +1145,6 @@ struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the real number whose hyperbolic tangent is the input value."); }
 };
-RUNTIME_SHARD_TYPE(Math, Atanh);
 
 struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1149,7 +1162,6 @@ struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType:
     return SHCCSTR("Outputs probability result of the error function of the input. The output is always between -1 and 1.");
   }
 };
-RUNTIME_SHARD_TYPE(Math, Erf);
 
 struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1169,7 +1181,6 @@ struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchTyp
         "Outputs the probability result of the complementary error function of the input. The output is always between 0 and 2.");
   }
 };
-RUNTIME_SHARD_TYPE(Math, Erfc);
 
 struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1183,7 +1194,6 @@ struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, Dispatc
     return SHCCSTR("Outputs the gamma function of the input. The output is always positive for positive inputs.");
   }
 };
-RUNTIME_SHARD_TYPE(Math, TGamma);
 
 struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1199,7 +1209,6 @@ struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, Dispatc
     return SHCCSTR("Outputs the log gamma function of the input. The output is always positive for positive inputs.");
   }
 };
-RUNTIME_SHARD_TYPE(Math, LGamma);
 
 struct Ceil : public UnaryFloatOperation<BasicUnaryOperation<CeilOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard rounds up the input to the nearest integer."); }
@@ -1208,7 +1217,6 @@ struct Ceil : public UnaryFloatOperation<BasicUnaryOperation<CeilOp, DispatchTyp
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded up to the nearest integer (as a float)."); }
 };
-RUNTIME_SHARD_TYPE(Math, Ceil);
 
 struct Floor : public UnaryFloatOperation<BasicUnaryOperation<FloorOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard rounds down the input to the nearest integer."); }
@@ -1217,7 +1225,6 @@ struct Floor : public UnaryFloatOperation<BasicUnaryOperation<FloorOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded down to the nearest integer (as a float)."); }
 };
-RUNTIME_SHARD_TYPE(Math, Floor);
 
 struct Trunc : public UnaryFloatOperation<BasicUnaryOperation<TruncOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() {
@@ -1229,7 +1236,6 @@ struct Trunc : public UnaryFloatOperation<BasicUnaryOperation<TruncOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input truncated to the nearest integer (as a float)."); }
 };
-RUNTIME_SHARD_TYPE(Math, Trunc);
 
 struct Round : public UnaryFloatOperation<BasicUnaryOperation<RoundOp, DispatchType::FloatTypes>> {
   static SHOptionalString help() { return SHCCSTR("This shard rounds the input floating-point number to the nearest integer."); }
@@ -1238,7 +1244,6 @@ struct Round : public UnaryFloatOperation<BasicUnaryOperation<RoundOp, DispatchT
 
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input rounded to the nearest integer (as a float)."); }
 };
-RUNTIME_SHARD_TYPE(Math, Round);
 
 struct Mean {
   struct ArithMean {
@@ -1335,7 +1340,6 @@ struct Inc : public UnaryVarOperation<BasicUnaryOperation<IncOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input increased by 1."); }
 };
-RUNTIME_SHARD_TYPE(Math, Inc);
 
 struct DecOp {
   template <typename T> T apply(const T &a) { return a - 1; }
@@ -1350,7 +1354,6 @@ struct Dec : public UnaryVarOperation<BasicUnaryOperation<DecOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input decreased by 1."); }
 };
-RUNTIME_SHARD_TYPE(Math, Dec);
 
 struct NegateOp {
   template <typename T> T apply(const T &a) { return -a; }
@@ -1367,7 +1370,6 @@ struct Negate : public UnaryOperation<BasicUnaryOperation<NegateOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input with its sign reversed."); }
 };
-RUNTIME_SHARD_TYPE(Math, Negate);
 
 struct MaxOp {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::max(lhs, rhs); }
@@ -1382,7 +1384,6 @@ struct Max : public BinaryOperation<BasicBinaryOperation<MaxOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The larger value between the input and the operand."); }
 };
-RUNTIME_SHARD_TYPE(Math, Max);
 
 struct MinOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::min(lhs, rhs); }
@@ -1397,7 +1398,6 @@ struct Min : public BinaryOperation<BasicBinaryOperation<MinOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The smaller value between the input and the operand."); }
 };
-RUNTIME_SHARD_TYPE(Math, Min);
 
 struct PowOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::pow(lhs, rhs); }
@@ -1411,7 +1411,6 @@ struct Pow : public BinaryOperation<BasicBinaryOperation<PowOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The result of raising the input to the power of the operand."); }
 };
-RUNTIME_SHARD_TYPE(Math, Pow);
 
 struct LerpOp final {
   template <typename T> T apply(const T &lhs, const T &rhs, double t) { return T((double)lhs + (double(rhs) - double(lhs)) * t); }
@@ -1489,14 +1488,14 @@ struct Lerp final {
     _second.cleanup();
   }
 
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo composeV2(SHInstanceData &data) {
     SHType firstType{};
     SHType secondType{};
     firstType = _first.isVariable() ? findParamVarExposedTypeChecked(data, _first).exposedType.basicType : _first->valueType;
     secondType = _second.isVariable() ? findParamVarExposedTypeChecked(data, _second).exposedType.basicType : _second->valueType;
 
-    collectRequiredVariables(data, _required, (SHVar&)_first);
-    collectRequiredVariables(data, _required, (SHVar&)_second);
+    collectRequiredVariables(data, _required, (SHVar &)_first);
+    collectRequiredVariables(data, _required, (SHVar &)_second);
 
     if (firstType != secondType)
       throw ComposeError("Types should match");
@@ -1676,7 +1675,6 @@ struct Not : public UnaryIntOperation<BasicUnaryOperation<NotOp, DispatchType::I
 
   static SHOptionalString outputHelp() { return SHCCSTR("The result of the bitwise NOT operation."); }
 };
-RUNTIME_SHARD_TYPE(Math, Not);
 
 } // namespace Math
 } // namespace shards

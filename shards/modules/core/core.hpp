@@ -63,6 +63,8 @@ struct Const {
   SHVar getParam(int index) { return _value; }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreConst;
+
     freeDerivedInfo(_innerInfo);
     _dependencies.clear();
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
@@ -126,7 +128,7 @@ struct BaseOpsBin {
     SHType otherBasicType;
     SHType inBasicType = data.inputType.basicType;
     if (_operand.isVariable()) {
-      if (auto vt = findExposedVariablePtr(data.shared, _operand.variableName())) {
+      if (auto vt = findExposedVariablePtr(data, _operand.variableName())) {
         otherBasicType = vt->exposedType.basicType;
       } else {
         throw ComposeError(fmt::format("Variable {} not found", _operand.variableName()));
@@ -171,7 +173,8 @@ struct BaseOpsBin {
 
 #define LOGIC_OP(NAME, OP, HELP_TEXT, OUTPUT_HELP_TEXT)                                   \
   struct NAME : public BaseOpsBin {                                                       \
-    SHTypeInfo compose(const SHInstanceData &data) {                                      \
+    SHTypeInfo composeV2(const SHInstanceData &data) {                                    \
+      data.shard->inlineShardId = InlineShard::Core##NAME;                                \
       return composeEqualTypes(data, CoreInfo::BoolType);                                 \
     }                                                                                     \
     FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) { \
@@ -451,7 +454,10 @@ struct Input {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The input value of the wire."); }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return data.wire->inputType; }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreInput;
+    return data.wire->inputType;
+  }
 
   FLATTEN ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     return context->wireStack.back()->currentInput;
@@ -568,6 +574,11 @@ struct Comment {
 
   SHVar getParam(int index) { return shards::Var(_comment); }
 
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::NoopShard;
+    return data.inputType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     // We are a NOOP shard
     SHLOG_FATAL("invalid state");
@@ -588,6 +599,11 @@ struct And {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
+  }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreAnd;
+    return CoreInfo::BoolType;
   }
 
   const SHVar &activate(SHContext *context, const SHVar &input) {
@@ -619,6 +635,11 @@ struct Or {
     return SHCCSTR("The output of this shard will be the input of the current conditional flow or wire.");
   }
 
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreOr;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Stop the flow and succeed
@@ -642,6 +663,12 @@ struct Not {
   static SHOptionalString outputHelp() { return SHCCSTR("The negation of the input."); }
 
   shards::Var output;
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreNot;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(!input.payload.boolValue);
     return output;
@@ -658,6 +685,12 @@ struct IsNone {
   static SHOptionalString outputHelp() { return SHCCSTR("`true` is the type of input is `None`; otherwise, `false`."); }
 
   shards::Var output;
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreIsNone;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(input.valueType == SHType::None);
     return output;
@@ -676,6 +709,12 @@ struct IsNotNone {
   }
 
   shards::Var output;
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreIsNotNone;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(input.valueType != SHType::None);
     return output;
@@ -692,6 +731,12 @@ struct IsTrue {
   static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `true`; otherwise, `false`."); }
 
   shards::Var output;
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreIsTrue;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(input.payload.boolValue);
     return output;
@@ -708,6 +753,12 @@ struct IsFalse {
   static SHOptionalString outputHelp() { return SHCCSTR("`true` if the input is `false`; otherwise, `false`."); }
 
   shards::Var output;
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreIsFalse;
+    return CoreInfo::BoolType;
+  }
+
   const SHVar &activate(SHContext *context, const SHVar &input) {
     output = shards::Var(!input.payload.boolValue);
     return output;
@@ -2017,6 +2068,11 @@ struct Swap {
 
   OwnedVar _cache;
 
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreSwap;
+    return data.inputType;
+  }
+
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     _cache = _first.get();
     cloneVar(_first.get(), _second.get());
@@ -2125,6 +2181,8 @@ struct Push : public SeqBase {
 
   static SHParametersInfo parameters() { return pushParams; }
 
+  ExposedInfo _requiredInfo{};
+
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
@@ -2141,9 +2199,9 @@ struct Push : public SeqBase {
     throw SHException("Param index out of range.");
   }
 
-  ExposedInfo _requiredInfo{};
-
   SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CorePush;
+
     shassert(data.privateContext && "Private context should be valid");
     auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
 
@@ -2480,9 +2538,15 @@ struct TableDecl : public VariableBase {
 
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
+  bool _clear = true;
 
   static inline Parameters tableParams{
-      setterParams, {{"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
+      setterParams,
+      {{"Clear",
+        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        {CoreInfo::BoolType}},
+       {"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}},
+  };
 
   static SHParametersInfo parameters() { return tableParams; }
 
@@ -2490,6 +2554,8 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
+      _clear = value.payload.boolValue;
+    } else if (index == variableParamsInfoLen + 1) {
       _typeDesc = value;
     }
   }
@@ -2498,6 +2564,8 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
+      return Var(_clear);
+    else if (index == variableParamsInfoLen + 1)
       return _typeDesc;
     throw SHException("Param index out of range.");
   }
@@ -2581,6 +2649,11 @@ struct TableDecl : public VariableBase {
       }
     }
 
+    if (_clear) {
+      TableVar &table = asTable(*_cell);
+      table.clear();
+    }
+
     return input;
   }
 };
@@ -2658,10 +2731,11 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard counts the sequence, string or table variable specified in the Name parameter. If the variable specified is "
-        "a string, it will count the number of characters. If the variable specified is a sequence, it will count the number of "
-        "elements. If the variable specified is a table, it will count the number of key-value pairs.");
+    return SHCCSTR("This shard counts the sequence, string or table variable specified in the Name parameter. If the variable "
+                   "specified is "
+                   "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
+                   "the number of "
+                   "elements. If the variable specified is a table, it will count the number of key-value pairs.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -4228,7 +4302,9 @@ struct Repeat {
     throw SHException("Parameter out of range.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    data.shard->inlineShardId = InlineShard::CoreRepeat;
+
     _blks.compose(data);
     const auto predres = _pred.compose(data);
     if (_pred && predres.outputType.basicType != SHType::Bool)
