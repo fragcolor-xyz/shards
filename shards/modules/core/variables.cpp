@@ -1,6 +1,6 @@
-#include "core2.hpp"
+#include "variables.hpp"
 
-namespace shards::new_core {
+namespace shards::variables {
 
 // Set implementation
 SHTypesInfo Set::inputTypes() { return CoreInfo::AnyType; }

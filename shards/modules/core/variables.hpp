@@ -5,7 +5,7 @@
 #include <shards/core/compose.hpp>
 #include <shards/common_types.hpp>
 
-namespace shards::new_core {
+namespace shards::variables {
 
 struct Set {
   PARAM_PARAMVAR(_name, "Name", "The name of the variable to set.", {CoreInfo::StringOrAnyVar});
