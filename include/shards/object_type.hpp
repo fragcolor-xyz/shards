@@ -4,7 +4,7 @@
 #include <shards/shards.hpp>
 
 #ifndef SH_NO_INTERNAL_CORE
-#include "foundation.hpp"
+#include <shards/core/foundation.hpp>
 #endif
 
 namespace shards {
