@@ -1661,7 +1661,7 @@ extension IShard {}
 @inlinable public func bridgeDestroy<T: IShard>(_: T.Type, shard: ShardPtr) {
     let swiftShardPtr = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self)
     let instance = unsafeBitCast(swiftShardPtr.pointee.swiftClass, to: UnsafeMutableRawPointer.self)
-    _ = unsafeBitCast(instance, to: T.self)
+    let _ = Unmanaged<T>.fromOpaque(instance).takeRetainedValue()
     shard!.deallocate()
 }
 
