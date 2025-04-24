@@ -4302,7 +4302,8 @@ struct Repeat {
     throw SHException("Parameter out of range.");
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
+  // Ideally use composeV2 instead but for now we had some suspicious crashes with it and we reverted to this
+  SHTypeInfo compose(const SHInstanceData &data) {
     data.shard->inlineShardId = InlineShard::CoreRepeat;
 
     _blks.compose(data);
