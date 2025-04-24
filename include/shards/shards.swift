@@ -2204,11 +2204,11 @@ class Shards {
 
         // Read the AST
         let success = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0, &ast)
+        defer { G.Core.pointee.freeAst(&ast) }
         guard success, ast.error.message == nil else {
             let errorMessage = String(cString: ast.error.message)
             let line = ast.error.line
             let column = ast.error.column
-            G.Core.pointee.freeAst(&ast)
             return .failure(ShardError(message: "Failed to read AST: \(errorMessage) at line \(line), column \(column)"))
         }
         // ast will have refcount of 0, need to bump it with a clone
@@ -2220,20 +2220,21 @@ class Shards {
 
         // Create error struct for eval
         var evalError = SHLError()
+        defer { G.Core.pointee.freeError(&evalError) }
 
         // Evaluate the AST
-        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
+        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)
         guard evalSuccess else {
             let errorMessage = String(cString: evalError.message)
             let line = evalError.line
             let column = evalError.column
             G.Core.pointee.freeEvalEnv(env)
-            G.Core.pointee.freeError(&evalError)
             return .failure(ShardError(message: "Failed to evaluate AST: \(errorMessage) at line \(line), column \(column)"))
         }
 
         // Create output wire struct
         var outWire = SHLWire()
+        defer { G.Core.pointee.freeWire(&outWire) }
 
         // Transform environment into a wire
         let transformSuccess = G.Core.pointee.transformEnv(
@@ -2243,7 +2244,6 @@ class Shards {
             let errorMessage = String(cString: outWire.error.message)
             let line = outWire.error.line
             let column = outWire.error.column
-            G.Core.pointee.freeWire(&outWire)
             return .failure(
                 ShardError(
                     message:
@@ -2253,7 +2253,6 @@ class Shards {
 
         // Create WireController from the resulting wire
         let wireController = WireController(native: outWire.wire.pointee!)
-        G.Core.pointee.freeWire(&outWire)
         return .success(wireController)
     }
 
@@ -2273,11 +2272,12 @@ class Shards {
 
         // Read the AST
         var outAst = SHLAst()
+        defer { G.Core.pointee.freeAst(&outAst) }
+
         let success = ast.withUnsafeBufferPointer { buffer in
             G.Core.pointee.loadAst(buffer.baseAddress!, UInt32(buffer.count), &outAst)
         }
         guard success, outAst.error.message == nil else {
-            G.Core.pointee.freeAst(&outAst)
             return nil
         }
         // ast will have refcount of 0, need to bump it with a clone
@@ -2289,28 +2289,27 @@ class Shards {
 
         // Create error struct for eval
         var evalError = SHLError()
+        defer { G.Core.pointee.freeError(&evalError) }
 
         // Evaluate the AST
         let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
         guard evalSuccess else {
-            G.Core.pointee.freeError(&evalError)
             G.Core.pointee.freeEvalEnv(env)
             return nil
         }
 
         // Create output wire struct
         var outWire = SHLWire()
+        defer { G.Core.pointee.freeWire(&outWire) }
 
         // Transform environment into a wire
         let transformSuccess = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen(), &outWire) // consumes env
         guard transformSuccess, outWire.error.message == nil else {
-            G.Core.pointee.freeWire(&outWire)
             return nil
         }
 
         // Create WireController from the resulting wire
         let wireController = WireController(native: outWire.wire.pointee!)
-        G.Core.pointee.freeWire(&outWire)
         return wireController
     }
 
