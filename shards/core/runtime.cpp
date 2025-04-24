@@ -1040,36 +1040,35 @@ void validateConnection(InternalCompositionContext &ctx) {
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
     SHInstanceData data{};
-    {
-      pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
-      sharedStorage.reserve(ctx.exposed.size() + ctx.sharedContext->inherited.size());
 
-      data.shard = ctx.bottom;
-      data.wire = ctx.wire;
-      data.inputType = previousOutput;
-      data.requiredVariables = ctx.fullRequired;
-      data.privateContext = ctx.sharedContext;
-      if (ctx.next) {
-        data.outputTypes = ctx.next->inputTypes(ctx.next);
-      }
-      data.onWorkerThread = ctx.onWorkerThread;
+    pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
+    sharedStorage.reserve(ctx.exposed.size() + ctx.sharedContext->inherited.size());
 
-      // Pass all we got in the context!
-      // notice that shards might add new records to this array
-      for (auto &pair : ctx.exposed) {
-        sharedStorage.push_back(pair.second);
-      }
-
-      // and inherited
-      for (auto &pair : ctx.sharedContext->inherited) {
-        if (ctx.exposed.find(pair.first) != ctx.exposed.end())
-          continue; // Let exposed override inherited
-        sharedStorage.push_back(pair.second);
-      }
-
-      data.shared.elements = sharedStorage.data();
-      data.shared.len = sharedStorage.size();
+    data.shard = ctx.bottom;
+    data.wire = ctx.wire;
+    data.inputType = previousOutput;
+    data.requiredVariables = ctx.fullRequired;
+    data.privateContext = ctx.sharedContext;
+    if (ctx.next) {
+      data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
+    data.onWorkerThread = ctx.onWorkerThread;
+
+    // Pass all we got in the context!
+    // notice that shards might add new records to this array
+    for (auto &pair : ctx.exposed) {
+      sharedStorage.push_back(pair.second);
+    }
+
+    // and inherited
+    for (auto &pair : ctx.sharedContext->inherited) {
+      if (ctx.exposed.find(pair.first) != ctx.exposed.end())
+        continue; // Let exposed override inherited
+      sharedStorage.push_back(pair.second);
+    }
+
+    data.shared.elements = sharedStorage.data();
+    data.shared.len = sharedStorage.size();
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -1540,8 +1539,9 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
     }
   }
 
-  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}, shard: {}",
-                         param.name, value, varType, param.valueTypes, shard->line, shard->column, shard->name(shard));
+  auto err = fmt::format(
+      "Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}, shard: {}",
+      param.name, value, varType, param.valueTypes, shard->line, shard->column, shard->name(shard));
 #if SH_DEBUG_TYPE_MATCHING
   // Put a breakpoint here to debug
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
