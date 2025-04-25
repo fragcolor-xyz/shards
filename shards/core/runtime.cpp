@@ -846,7 +846,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 struct InternalCompositionContext {
   pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   pmr::unordered_set<SHExposedTypeInfo> required;
-  boost::container::flat_set<SHExposedTypeInfo, std::less<SHExposedTypeInfo>, boost::container::vector<SHExposedTypeInfo>>
+  boost::container::flat_set<SHExposedTypeInfo, std::less<SHExposedTypeInfo>, pmr::vector<SHExposedTypeInfo>>
       sharedStorage;
   CompositionContext *sharedContext{};
 
@@ -864,7 +864,7 @@ struct InternalCompositionContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
-  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator) {}
+  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator), sharedStorage(allocator) {}
 };
 
 void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
