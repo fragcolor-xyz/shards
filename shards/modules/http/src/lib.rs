@@ -680,7 +680,7 @@ macro_rules! get_like {
           let mut retries = self.rb.retry;
           loop {
             let request = request.try_clone().ok_or_else(|| {
-              shlog_error!("Failed to clone the request");
+              shlog_error!("Failed to clone the request, url: {}", request_string);
               "Failed to clone the request"
             })?;
 
