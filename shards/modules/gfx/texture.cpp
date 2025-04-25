@@ -268,9 +268,6 @@ struct TextureShard {
     if (format.pixelFormat == WGPUTextureFormat_Undefined)
       throw TextureFormatException(componentType, asType);
 
-    auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
-    size_t imageSize = inputFormat.pixelSize * image.width * image.height;
-
     // Copy the data since we can't keep a reference to the image variable
     ImmutableSharedBuffer isb(std::make_shared<ImageRefTextureBuffer>(const_cast<SHImage *>(&image)));
     texture->init(TextureDesc{

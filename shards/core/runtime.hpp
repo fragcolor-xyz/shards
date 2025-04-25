@@ -447,9 +447,9 @@ struct CompositionContext {
 
   CompositionContext() : visitedWires(tempAllocator.getAllocator()) {}
 
-  static CompositionContext& get(const SHInstanceData& data) {
+  static CompositionContext &get(const SHInstanceData &data) {
     shassert(data.privateContext != nullptr);
-    return *reinterpret_cast<CompositionContext*>(data.privateContext);
+    return *reinterpret_cast<CompositionContext *>(data.privateContext);
   }
 };
 }; // namespace shards

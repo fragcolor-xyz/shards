@@ -846,6 +846,8 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 struct InternalCompositionContext {
   pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   pmr::unordered_set<SHExposedTypeInfo> required;
+  boost::container::flat_set<SHExposedTypeInfo, std::less<SHExposedTypeInfo>, pmr::vector<SHExposedTypeInfo>>
+      sharedStorage;
   CompositionContext *sharedContext{};
 
   SHTypeInfo previousOutputType{};
@@ -857,10 +859,12 @@ struct InternalCompositionContext {
 
   bool onWorkerThread{false};
 
+  bool invalidateShared{true};
+
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
-  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator) {}
+  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator), sharedStorage(allocator) {}
 };
 
 void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
@@ -1041,9 +1045,6 @@ void validateConnection(InternalCompositionContext &ctx) {
   } else if (ctx.bottom->compose) {
     SHInstanceData data{};
 
-    pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
-    sharedStorage.reserve(ctx.exposed.size() + ctx.sharedContext->inherited.size());
-
     data.shard = ctx.bottom;
     data.wire = ctx.wire;
     data.inputType = previousOutput;
@@ -1054,21 +1055,11 @@ void validateConnection(InternalCompositionContext &ctx) {
     }
     data.onWorkerThread = ctx.onWorkerThread;
 
-    // Pass all we got in the context!
-    // notice that shards might add new records to this array
-    for (auto &pair : ctx.exposed) {
-      sharedStorage.push_back(pair.second);
-    }
+    // just pass the backing std vector storage to our C type
+    data.shared.elements = ctx.sharedStorage.tree().get_sequence_ref().data();
+    data.shared.len = ctx.sharedStorage.tree().get_sequence_ref().size();
 
-    // and inherited
-    for (auto &pair : ctx.sharedContext->inherited) {
-      if (ctx.exposed.find(pair.first) != ctx.exposed.end())
-        continue; // Let exposed override inherited
-      sharedStorage.push_back(pair.second);
-    }
-
-    data.shared.elements = sharedStorage.data();
-    data.shared.len = sharedStorage.size();
+    shassert(ctx.sharedStorage.tree().get_sequence_ref().size() == ctx.sharedStorage.size());
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -1160,6 +1151,12 @@ void validateConnection(InternalCompositionContext &ctx) {
 
     ctx.exposed[name] = exposed_param;
     ctx.sharedContext->inherited.insert(name, exposed_param);
+    if (ctx.sharedStorage.contains(exposed_param)) {
+      // override existing if we have it
+      ctx.sharedStorage.erase(exposed_param);
+    }
+    // incrementally add to our storage
+    ctx.sharedStorage.insert(exposed_param);
   }
 
   // Finally do checks on what we consume
@@ -1317,6 +1314,10 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       std::string_view sName(info.name);
       ctx.sharedContext->inherited.insert(sName, info);
     }
+  }
+
+  for (auto &[_name, item] : ctx.sharedContext->inherited) {
+    ctx.sharedStorage.insert(item);
   }
 
   size_t chsize = wire.size();

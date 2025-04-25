@@ -394,7 +394,8 @@ struct Maybe : public BaseSubFlow {
     SHTypeInfo outputType = _composition.outputType;
     if (_elseBlks && !nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
       outputType = CoreInfo::AnyType;
-      SHLOG_DEBUG("Maybe: Branches return different types, setting output type to Any!");
+      SHLOG_WARNING("Maybe: Branches return different types, setting output type to Any!, wire: {}, line: {}, column: {}",
+                    data.wire ? data.wire->name : "unknown", _self->line, _self->column);
     }
 
     // Maybe won't expose
@@ -773,7 +774,9 @@ struct IfBlock {
     if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
         outputType = CoreInfo::AnyType;
-        SHLOG_DEBUG("If: Branches return different types, setting output type to Any!");
+        auto self = data.shard;
+        SHLOG_WARNING("If: Branches return different types, setting output type to Any!, wire: {}, line: {}, column: {}",
+                      data.wire ? data.wire->name : "unknown", self->line, self->column);
       }
     }
     return _passth ? data.inputType : outputType;

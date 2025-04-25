@@ -100,7 +100,7 @@ struct CondTranslator {
       context.addNew(blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getWGSLTypeName(outputType)), ";\n"));
     }
 
-    for (int i = 0; i < shard->_conditions.size(); i++) {
+    for (size_t i = 0; i < shard->_conditions.size(); i++) {
       const char *en{};
       if (i == 0)
         en = "if(";
