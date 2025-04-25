@@ -16,7 +16,7 @@ if(APPLE)
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-xros${CMAKE_OSX_DEPLOYMENT_TARGET}")
   else()
     set(MACOSX TRUE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "Minimum macOS deployment version" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum macOS deployment version" FORCE)
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
   endif()
 
