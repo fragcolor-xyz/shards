@@ -6,6 +6,7 @@
 
 #include <shards/core/shards_macros.hpp>
 #include <shards/core/foundation.hpp>
+#include <shards/core/ops_internal.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <shards/common_types.hpp>
@@ -769,9 +770,8 @@ struct Restart {
   // Ensures the input type matches the wire root input type.
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.wire->inputType->basicType != SHType::None && !matchTypes(data.inputType, data.wire->inputType, false, true, true)) {
-      throw ComposeError("Restart input and wire input type mismatch, Restart "
-                         "feeds back to the wire input, wire: " +
-                         data.wire->name + " expected: " + type2Name(data.wire->inputType->basicType));
+      throw ComposeError(fmt::format("Restart input and wire input type mismatch, wire: {} receives {}, shard receives: {}",
+                         data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
     }
     return data.inputType; // Actually, we are a flow stopper.
   }
