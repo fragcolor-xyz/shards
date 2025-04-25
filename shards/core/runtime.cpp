@@ -1045,9 +1045,6 @@ void validateConnection(InternalCompositionContext &ctx) {
   } else if (ctx.bottom->compose) {
     SHInstanceData data{};
 
-    // pmr::vector<SHExposedTypeInfo> sharedStorage{ctx.sharedContext->tempAllocator.getAllocator()};
-    // sharedStorage.reserve(ctx.exposed.size() + ctx.sharedContext->inherited.size());
-
     data.shard = ctx.bottom;
     data.wire = ctx.wire;
     data.inputType = previousOutput;
