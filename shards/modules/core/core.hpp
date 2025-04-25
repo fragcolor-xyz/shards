@@ -2735,10 +2735,11 @@ struct Count : SeqUser {
                    "specified is "
                    "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
                    "the number of "
-                   "elements. If the variable specified is a table, it will count the number of key-value pairs.");
+                   "elements. If the variable specified is a table, it will count the number of key-value pairs."
+                   "If the variable is left empty and instead an input is provided, the input will be counted instead.");
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
@@ -2747,8 +2748,31 @@ struct Count : SeqUser {
                    "If the variable type does not match, it outputs 0.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::IntType; }
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_name.empty()) {
+      OVERRIDE_ACTIVATE(data, activateFromInput);
+    }
+    return CoreInfo::IntType;
+  }
 
+  SHVar operateOn(const SHVar &value) {
+    switch (value.valueType) {
+    case SHType::Seq:
+      return shards::Var(int64_t(value.payload.seqValue.len));
+    case SHType::Table:
+      return shards::Var(int64_t(value.payload.tableValue.api->tableSize(value.payload.tableValue)));
+    case SHType::Bytes:
+      return shards::Var(int64_t(value.payload.bytesSize));
+    case SHType::String:
+      return shards::Var(int64_t(value.payload.stringLen > 0 || value.payload.stringValue == nullptr
+                                     ? value.payload.stringLen
+                                     : strlen(value.payload.stringValue)));
+    default:
+      return shards::Var(0);
+    }
+  }
+
+  SHVar activateFromInput(SHContext *context, const SHVar &input) { return operateOn(input); }
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable)) {
       checkIfTableChanged();
@@ -2757,20 +2781,7 @@ struct Count : SeqUser {
       }
     }
 
-    switch (_cell->valueType) {
-    case SHType::Seq:
-      return shards::Var(int64_t(_cell->payload.seqValue.len));
-    case SHType::Table:
-      return shards::Var(int64_t(_cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
-    case SHType::Bytes:
-      return shards::Var(int64_t(_cell->payload.bytesSize));
-    case SHType::String:
-      return shards::Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
-                                     ? _cell->payload.stringLen
-                                     : strlen(_cell->payload.stringValue)));
-    default:
-      return shards::Var(0);
-    }
+    return operateOn(*_cell);
   }
 };
 

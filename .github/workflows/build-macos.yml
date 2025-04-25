@@ -68,10 +68,6 @@ jobs:
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
-      - uses: Swatinem/rust-cache@v2
-        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
-        with:
-          key: ${{ steps.setup.outputs.build-type }}
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DSPDLOG_ACTIVE_LEVEL="SPDLOG_LEVEL_DEBUG" -DSHARDS_DEFAULT_LOG_LEVEL="SPDLOG_LEVEL_DEBUG" -DSKIP_HEAVY_INLINE=1 -DWITH_SQLITE_VEC=ON -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
