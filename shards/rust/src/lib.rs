@@ -35,6 +35,8 @@ pub mod types;
 
 pub mod util;
 
+pub mod error;
+
 #[macro_use]
 pub mod logging;
 
