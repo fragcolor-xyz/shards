@@ -16,14 +16,20 @@ if(APPLE)
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-xros${CMAKE_OSX_DEPLOYMENT_TARGET}")
   else()
     set(MACOSX TRUE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum macOS deployment version" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.5" CACHE STRING "Minimum macOS deployment version" FORCE)
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
   endif()
 
+  # Remove any existing target flags to avoid duplication
+  if(CMAKE_Swift_FLAGS)
+    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_Swift_FLAGS "${CMAKE_Swift_FLAGS}")
+  endif()
+  
   # Add the deployment target flag to Swift compiler options
   set(CMAKE_Swift_FLAGS "${CMAKE_Swift_FLAGS} ${deployment_target_flag}" CACHE STRING "Swift compiler flags" FORCE)
   
-  set(CMAKE_Swift_COMPILER /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc)
+  # Find Swift compiler instead of hardcoding the Xcode path
+  find_program(CMAKE_Swift_COMPILER swiftc REQUIRED)
   enable_language(Swift)
   set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
