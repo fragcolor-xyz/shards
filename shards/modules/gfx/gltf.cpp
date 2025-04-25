@@ -63,6 +63,9 @@ static OwnedVar getGltfBuiltinTargetPath(animation::BuiltinTarget target) {
   case animation::BuiltinTarget::Translation:
     pathStr[1] = 't';
     break;
+  default:
+    SHLOG_ERROR("Ignoring builtin target: {}", target);
+    break;
   }
   pathStr[2] = 0;
   cloneVar(result, Var(pathStr, 2));
@@ -368,6 +371,9 @@ struct GLTFShard {
       break;
     case animation::BuiltinTarget::Translation:
       node->trs.translation = toVec<float3>(value);
+      break;
+    default:
+      SHLOG_WARNING("Ignoring builtin target: {}", target);
       break;
     }
     node->update();

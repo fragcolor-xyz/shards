@@ -269,7 +269,7 @@ struct MainWindow final {
       });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
-        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event.event)) {
+        if (std::holds_alternative<RequestCloseEvent>(event.event)) {
           bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
           if (handleClose) {
             throw MainWindowQuitException();

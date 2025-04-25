@@ -579,6 +579,13 @@ template <> struct hash<SHExposedTypeInfo> {
     return res;
   }
 };
+
+template <> struct less<SHExposedTypeInfo> {
+  bool operator()(const SHExposedTypeInfo &lhs, const SHExposedTypeInfo &rhs) const {
+    return std::string_view(lhs.name) < std::string_view(rhs.name);
+  }
+};
+
 } // namespace std
 
 #endif
