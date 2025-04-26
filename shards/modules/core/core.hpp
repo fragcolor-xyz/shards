@@ -2020,6 +2020,7 @@ struct Swap {
   ExposedInfo _exposedInfo;
 
   void cleanup(SHContext *context) {
+    _cache = OwnedVar();
     _first.cleanup();
     _second.cleanup();
   }
