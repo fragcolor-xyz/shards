@@ -1009,7 +1009,7 @@ struct Chunk {
   static inline Types PostInTypes{CoreInfo::StringType, CoreInfo::BytesType};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard processes and packages outgoing Http response date into smaller manageable pieces and "
+    return SHCCSTR("This shard processes and packages outgoing Http response data into smaller manageable pieces and "
                    "subsequently writes them to the socket while managing the chunked transfer encoding process.");
   }
 
