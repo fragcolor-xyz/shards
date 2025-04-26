@@ -127,7 +127,7 @@ lazy_static! {
       .into(),
     (
       cstr!("Timeout"),
-      shccstr!("How many seconds to wait for the request to complete."),
+      shccstr!("How many seconds to wait for the request to complete, including the connection and any read operations."),
       INT_TYPES_SLICE
     )
       .into(),
@@ -171,13 +171,6 @@ lazy_static! {
       INT_TYPES_SLICE
     )
       .into(),
-    (
-      cstr!("ConnectionTimeout"),
-      shccstr!("How many seconds to wait for a connection to be established. Defaults to 10 seconds."),
-      INT_TYPES_SLICE
-    )
-      .into(),
-
   ];
 }
 
@@ -222,7 +215,6 @@ struct RequestBase {
   required: ExposedTypes,
   streaming: bool,
   task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
-  connection_timeout: u64,
   global_client: Option<VarRef>,
 }
 
@@ -241,7 +233,6 @@ impl Default for RequestBase {
       invalid_certs: false,
       required: Vec::new(),
       streaming: false,
-      connection_timeout: 10,
       task_cancel: None,
       global_client: None,
     }
@@ -276,11 +267,6 @@ impl RequestBase {
       6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
       7 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
       8 => Ok(self.backoff = value.try_into().map_err(|_x| "Failed to set backoff")?),
-      9 => Ok(
-        self.connection_timeout = value
-          .try_into()
-          .map_err(|_x| "Failed to set connection_timeout")?,
-      ),
       _ => unreachable!(),
     }
   }
@@ -296,10 +282,6 @@ impl RequestBase {
       6 => self.retry.try_into().expect("A valid integer in range"),
       7 => self.streaming.into(),
       8 => self.backoff.try_into().expect("A valid integer in range"),
-      9 => self
-        .connection_timeout
-        .try_into()
-        .expect("A valid integer in range"),
       _ => unreachable!(),
     }
   }
@@ -339,8 +321,6 @@ impl RequestBase {
       // Create a new client
       let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(self.invalid_certs)
-        .read_timeout(Duration::from_secs(self.timeout))
-        .connect_timeout(Duration::from_secs(self.connection_timeout))
         .build()
         .map_err(|e| {
           print_error(&e);
@@ -672,6 +652,9 @@ macro_rules! get_like {
             request = request.query(&[(key, value)]);
           }
         }
+
+        let timeout = Duration::from_secs(self.rb.timeout);
+        request = request.timeout(timeout);
 
         if self.rb.retry == 0 {
           let _ = self.rb._finalize(context, request)?;
