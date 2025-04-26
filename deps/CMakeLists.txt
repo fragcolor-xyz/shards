@@ -134,6 +134,10 @@ endif()
 if(NOT EMSCRIPTEN)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  if(LINUX) 
+    # disable pipewire as it has some build issues with GCC 15
+    set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
+  endif()
   add_subdirectory(SDL3)
 endif()
 
