@@ -2393,7 +2393,7 @@ impl From<u64> for Var {
       valueType: SHType_Int,
       ..Default::default()
     };
-    res.payload.__bindgen_anon_1.intValue = i64::from_ne_bytes((v).to_ne_bytes());
+    res.payload.__bindgen_anon_1.intValue = v as i64;
     res
   }
 }
@@ -2407,8 +2407,8 @@ impl From<(u64, u64)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int2Value[0] = i64::from_ne_bytes((v.0).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int2Value[1] = i64::from_ne_bytes((v.1).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
     }
     res
   }
@@ -2615,8 +2615,8 @@ impl From<(u32, u32)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int2Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes()) as i64;
-      res.payload.__bindgen_anon_1.int2Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
     }
     res
   }
@@ -2631,9 +2631,9 @@ impl From<(u32, u32, u32)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int3Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int3Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int3Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2 as i32;
     }
     res
   }
@@ -2648,10 +2648,10 @@ impl From<(u32, u32, u32, u32)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int4Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int4Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int4Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
-      res.payload.__bindgen_anon_1.int4Value[3] = i32::from_ne_bytes((v.3).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2 as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3 as i32;
     }
     res
   }
@@ -2801,8 +2801,8 @@ impl From<(u16, u16)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int2Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i64;
-      res.payload.__bindgen_anon_1.int2Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
     }
     res
   }
@@ -2817,9 +2817,9 @@ impl From<(u16, u16, u16)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int3Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
-      res.payload.__bindgen_anon_1.int3Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
-      res.payload.__bindgen_anon_1.int3Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2 as i32;
     }
     res
   }
@@ -2834,10 +2834,10 @@ impl From<(u16, u16, u16, u16)> for Var {
       ..Default::default()
     };
     unsafe {
-      res.payload.__bindgen_anon_1.int4Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
-      res.payload.__bindgen_anon_1.int4Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
-      res.payload.__bindgen_anon_1.int4Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
-      res.payload.__bindgen_anon_1.int4Value[3] = i16::from_ne_bytes((v.3).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2 as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3 as i32;
     }
     res
   }
@@ -3953,11 +3953,7 @@ impl TryFrom<&Var> for u64 {
     if var.valueType != SHType_Int {
       Err("Expected Int variable, but casting failed.")
     } else {
-      unsafe {
-        Ok(u64::from_ne_bytes(
-          (var.payload.__bindgen_anon_1.intValue).to_ne_bytes(),
-        ))
-      }
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u64) }
     }
   }
 }
@@ -4081,8 +4077,8 @@ impl TryFrom<&Var> for (u64, u64) {
     } else {
       unsafe {
         Ok((
-          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0]).to_ne_bytes()),
-          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1]).to_ne_bytes()),
+          var.payload.__bindgen_anon_1.int2Value[0] as u64,
+          var.payload.__bindgen_anon_1.int2Value[1] as u64,
         ))
       }
     }
