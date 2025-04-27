@@ -819,6 +819,65 @@ struct FromUTF16 {
     return Var(_utf8Str);
   }
 };
+
+struct ToUTF16 {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString help() { return SHCCSTR("Converts a UTF-8 encoded string to UTF-16 encoded little endian bytes."); }
+
+  std::vector<uint8_t> utf8_to_utf16(const char *utf8_str, size_t length) {
+    std::vector<uint8_t> result;
+    result.reserve(length * 2); // Initial reservation (might need to grow)
+
+    const char *end = utf8_str + length;
+    utf8_int32_t codepoint;
+
+    while (utf8_str < end) {
+      // Get next codepoint
+      utf8_str = (const char *)utf8codepoint(utf8_str, &codepoint);
+
+      if (codepoint <= 0xFFFF) {
+        // Basic Multilingual Plane - directly encode as UTF-16
+        if (codepoint >= 0xD800 && codepoint <= 0xDFFF) {
+          // Invalid surrogate range - replace with replacement character
+          codepoint = 0xFFFD;
+        }
+
+        // Add as little-endian UTF-16
+        result.push_back(codepoint & 0xFF);
+        result.push_back((codepoint >> 8) & 0xFF);
+      } else if (codepoint <= 0x10FFFF) {
+        // Supplementary Planes - encode as surrogate pair
+        char32_t adjusted = codepoint - 0x10000;
+        char16_t high_surrogate = 0xD800 | ((adjusted >> 10) & 0x3FF);
+        char16_t low_surrogate = 0xDC00 | (adjusted & 0x3FF);
+
+        // Add high surrogate (little-endian)
+        result.push_back(high_surrogate & 0xFF);
+        result.push_back((high_surrogate >> 8) & 0xFF);
+
+        // Add low surrogate (little-endian)
+        result.push_back(low_surrogate & 0xFF);
+        result.push_back((low_surrogate >> 8) & 0xFF);
+      }
+    }
+
+    return result;
+  }
+
+  std::vector<uint8_t> _utf16Bytes;
+
+  void cleanup(SHContext *ctx) { _utf16Bytes = {}; }
+
+  SHVar activate(SHContext *ctx, const SHVar &input) {
+    const char *utf8Str = input.payload.stringValue;
+    size_t length = SHSTRLEN(input);
+
+    _utf16Bytes = utf8_to_utf16(utf8Str, length);
+
+    return Var(_utf16Bytes);
+  }
+};
 } // namespace shards
 
 SHARDS_REGISTER_FN(strings) {
@@ -843,4 +902,5 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.CodePoints", CodePointsShard);
   REGISTER_SHARD("String.FromCodePoints", FromCodePointsShard);
   REGISTER_SHARD("String.FromUTF16", shards::FromUTF16);
+  REGISTER_SHARD("String.ToUTF16", shards::ToUTF16);
 }

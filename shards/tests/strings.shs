@@ -79,7 +79,9 @@ Something else"""
   "_@abc.c" | Regex.Match("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is([])
   
   ; UTF16 bytes, don't fix this...
-  @read("utf16str.dat" Bytes: true) | String.FromUTF16 | Assert.Is("Advanced Early Bird’s Grace")
+  @read("utf16str.dat" Bytes: true) = utf16bytes
+  utf16bytes | String.FromUTF16 | Assert.Is("Advanced Early Bird’s Grace")
+  String.ToUTF16 | Assert.Is(utf16bytes)
 })
 
 @mesh(root)
