@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
+use crate::error::FastError;
 use crate::shard::legacy_shard_construct;
 use crate::shard::shard_construct;
 use crate::shard::LegacyShard;
@@ -534,13 +535,14 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
 
 // First, let's create a struct to hold both the future and cancel callback
 struct FutureCallData<F, C> {
-  future: F,
+  future: Option<F>,
   cancel: Option<C>,
+  error: Option<FastError>,
 }
 
 // Create a cancel callback handler similar to the one in run_blocking
 unsafe extern "C" fn cancel_future_c_call<
-  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  F: Future<Output = Result<R, FastError>> + Send + 'static,
   R: Into<ClonedVar>,
   C: Fn(),
 >(
@@ -555,7 +557,7 @@ unsafe extern "C" fn cancel_future_c_call<
 
 // Update the existing activate function to work with our new data structure
 unsafe extern "C" fn activate_future_c_call<
-  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  F: Future<Output = Result<R, FastError>> + Send + 'static,
   R: Into<ClonedVar>,
   C: Fn(),
 >(
@@ -563,7 +565,7 @@ unsafe extern "C" fn activate_future_c_call<
   arg2: *mut c_void,
 ) -> SHVar {
   let data = arg2 as *mut FutureCallData<F, C>;
-  let f = std::ptr::read(&(*data).future); // Move out the future
+  let f = (*data).future.take().unwrap_unchecked(); // Move out the future
   let res = futures::executor::block_on(f);
 
   match res {
@@ -578,10 +580,15 @@ unsafe extern "C" fn activate_future_c_call<
       shlog_debug!("activate_future failure detected");
       shlog_debug!("activate_future failure: {}", error);
       // we fail on another thread so we cannot call abortWire directly as it would race
-      let error = Var::ephemeral_string(error);
-      let mut strongClone = Var::default();
-      cloneVar(&mut strongClone, &error);
-      strongClone.flags = SHVAR_FLAGS_ABORT as u16;
+      let strongClone = {
+        let error = Var::ephemeral_string(error.str());
+        let mut v = Var::default();
+        cloneVar(&mut v, &error);
+        v.flags = SHVAR_FLAGS_ABORT as u16;
+        v
+      };
+      // Store the error for later return value
+      (*data).error = Some(error);
       strongClone
     }
   }
@@ -590,21 +597,22 @@ unsafe extern "C" fn activate_future_c_call<
 // Update run_future to use our new approach
 pub fn run_future<
   'a,
-  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  F: Future<Output = Result<R, FastError>> + Send + 'static,
   R: Into<ClonedVar>,
   C: Fn() + 'a,
 >(
   context: &'a SHContext,
   f: F,
   onCancel: C,
-) -> Result<ClonedVar, &'static str> {
+) -> Result<ClonedVar, FastError> {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
 
     // Create a data structure to hold both the future and cancel callback
     let data = FutureCallData {
-      future: f,
+      future: Some(f),
       cancel: Some(onCancel),
+      error: None,
     };
 
     let data_ptr = &data as *const _ as *mut c_void;
@@ -617,11 +625,11 @@ pub fn run_future<
       Some(cancel_future_c_call::<F, R, C>),
     ));
 
-    // Ensure we don't drop the data since it's now owned by the callbacks
-    std::mem::forget(data);
-
     if result.0.flags & SHVAR_FLAGS_ABORT as u16 != 0 {
-      Err("Failed to run future")
+      match data.error {
+        Some(error) => Err(error),
+        None => Err("Failed to run future".into()),
+      }
     } else {
       Ok(result)
     }

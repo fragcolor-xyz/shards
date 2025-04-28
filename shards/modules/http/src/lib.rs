@@ -18,6 +18,7 @@ use shards::core::register_object_type_internal;
 use shards::core::register_shard;
 use shards::core::run_future;
 use shards::core::VarRef;
+use shards::error::FastError;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
@@ -506,14 +507,10 @@ impl RequestBase {
         };
 
         // Await the spawned task outside the lock
-        let result: Result<ClonedVar, String> = task.await.map_err(|e| {
-          print_error(&e);
-          "Failed to join task"
-        })?;
-
-        result.map_err(|e| {
-          shlog_error!("HTTP request failed: {}", e);
-          "HTTP request failed"
+        task.await.map_err(|e| {
+          FastError::Dynamic(e.to_string())
+        })?.map_err(|s| {
+          FastError::Dynamic(s)
         })
       },
       move || {
@@ -525,7 +522,13 @@ impl RequestBase {
           let _ = tx.send(());
         }
       },
-    )?;
+    );
+
+    if let Err(e) = result {
+      shlog_error!("HTTP request failed: {}", e);
+      return Err("HTTP request failed");
+    }
+    let result = result.unwrap();
 
     if !streaming {
       // We are done here if we are not streaming, might as well clear this up
@@ -995,16 +998,15 @@ impl Shard for HttpStreamShard {
         };
         let response = unsafe { &mut (*stream?).0 };
         let runtime = TOKIO_RUNTIME.clone();
-        let task = {
+        let task: tokio::task::JoinHandle<Result<ClonedVar, FastError>> = {
           let runtime = runtime.lock().unwrap();
           runtime.spawn(async move {
             // Use tokio::select! to race between the request and cancellation
             let bytes_result = tokio::select! {
               chunk = response.chunk() => chunk.map_err(|e| {
-                print_error(&e);
-                "Failed to read from stream"
+                FastError::Dynamic(e.to_string())
               }),
-              _ = cancel_rx => return Err("Stream read cancelled")
+              _ = cancel_rx => return Err(FastError::Static("Stream read cancelled"))
             };
 
             let bytes = bytes_result?;
@@ -1017,8 +1019,7 @@ impl Shard for HttpStreamShard {
         };
         // Await the spawned task outside the lock
         task.await.map_err(|e| {
-          print_error(&e);
-          "Failed to join task"
+          FastError::Dynamic(e.to_string())
         })?
       },
       || {
@@ -1030,7 +1031,13 @@ impl Shard for HttpStreamShard {
           let _ = tx.send(());
         }
       },
-    )?;
+    );
+
+    if let Err(e) = result {
+      shlog_error!("HTTP request failed: {}", e);
+      return Err("HTTP request failed");
+    }
+    let result = result.unwrap();
 
     // We're done with this task
     self.task_cancel = None;
