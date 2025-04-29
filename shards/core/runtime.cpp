@@ -859,8 +859,6 @@ struct InternalCompositionContext {
 
   bool onWorkerThread{false};
 
-  bool invalidateShared{true};
-
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
@@ -1249,13 +1247,16 @@ thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
+
+  SHLOG_TRACE("Composing wire: {}, shard: {}, line: {}", data.wire ? data.wire->name : "(unwired)",
+              data.shard ? data.shard->name(data.shard) : "(null shard)", data.shard ? data.shard->line : 0);
+
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
   }
 
   std::optional<CompositionContext> ownedContext{};
   if (!data.privateContext) {
-    ZoneScopedN("new CompositionContext");
     ownedContext.emplace();
     data.privateContext = &ownedContext.value();
   }
@@ -1288,6 +1289,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
       }
 
+      shassert(key.payload.stringValue && "Key must be a valid string");
       SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
       expInfo.tracked = var.flags & SHVAR_FLAGS_TRACKED;
       std::string_view sName(key.payload.stringValue, key.payload.stringLen);
@@ -1301,6 +1303,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         // only add variables with metadata basically
         auto metadata = mesh->getMetadata(&v.second);
         if (metadata) {
+          shassert(v.first.payload.stringValue && "Key must be a valid string");
           std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
           ctx.sharedContext->inherited.insert(sName, *metadata);
         }
@@ -1311,6 +1314,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &info = data.shared.elements[i];
+      shassert(info.name && "Key must be a valid string");
       std::string_view sName(info.name);
       ctx.sharedContext->inherited.insert(sName, info);
     }
