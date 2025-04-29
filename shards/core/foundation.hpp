@@ -1415,6 +1415,8 @@ struct ExposedTypeInfo {
   const SHExposedTypeInfo &operator*() const { return _innerInfo; }
 
 private:
+  friend struct ::SHMesh;
+
   void initFrom(const SHExposedTypeInfo &other) {
     _innerInfo.exposedType = cloneTypeInfo(other.exposedType);
     if (other.name) {

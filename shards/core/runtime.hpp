@@ -680,8 +680,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       if (var.second.refcount > 0) {
         SHLOG_ERROR("Found a dangling global variable: {}", var.first);
       }
+      auto it = variablesMetadata.find(&var.second);
+      if (it != variablesMetadata.end()) {
+        it->second.clean();
+      }
     }
     variables.clear();
+    variablesMetadata.clear();
   }
 
   void terminate() {
@@ -733,7 +738,15 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   SHVar &getVariable(const SHStringWithLen name) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
-    return variables[key];
+    auto &vPtr = variables[key];
+    if (vPtr.refcount == 0) {
+      auto it = variablesMetadata.find(&vPtr);
+      if (it != variablesMetadata.end()) {
+        it->second.clean();
+      }
+      variablesMetadata.erase(it);
+    }
+    return vPtr;
   }
 
   constexpr auto &getVariables() { return variables; }
@@ -741,8 +754,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void setMetadata(SHVar *var, SHExposedTypeInfo info) {
     auto it = variablesMetadata.find(var);
     if (it != variablesMetadata.end()) {
-      if (info != *it->second) {
-        SHLOG_WARNING("Metadata for global variable {} already exists and is different!", info.name);
+      if (!shards::matchTypes(info.exposedType, it->second._innerInfo.exposedType, false, true, true)) {
+        throw shards::WarmupError(fmt::format("Metadata for global variable {} already exists and is different!", info.name));
+      } else {
+        return;
       }
     }
     variablesMetadata[var] = info;
