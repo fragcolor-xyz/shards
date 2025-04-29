@@ -760,7 +760,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         return;
       }
     }
-    variablesMetadata[var] = info;
+    variablesMetadata.emplace(var, info);
   }
 
   std::optional<SHExposedTypeInfo> getMetadata(SHVar *var) {

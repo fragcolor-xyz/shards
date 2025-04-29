@@ -1399,11 +1399,7 @@ struct ExposedTypeInfo {
     initFrom(other._innerInfo);
   }
   ExposedTypeInfo(ExposedTypeInfo &&other) { std::swap(_innerInfo, other._innerInfo); }
-  ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) {
-    clean();
-    initFrom(other);
-    return *this;
-  }
+  ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) = delete;
   ExposedTypeInfo &operator=(ExposedTypeInfo &&other) {
     std::swap(_innerInfo, other._innerInfo);
     return *this;
