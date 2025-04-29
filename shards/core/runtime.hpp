@@ -743,8 +743,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       auto it = variablesMetadata.find(&vPtr);
       if (it != variablesMetadata.end()) {
         it->second.clean();
+        variablesMetadata.erase(it);
       }
-      variablesMetadata.erase(it);
     }
     return vPtr;
   }
