@@ -2,11 +2,10 @@
 
 use crate::{custom_state::CustomStateContainer, RcBytesWrapper, RcStrWrapper};
 use core::{fmt, hash::Hash};
-use pest::Position;
+use pest::{iterators::Pair, Position};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
-  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None,
-  SHType_String,
+  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
 
@@ -77,6 +76,17 @@ impl<'a> Into<LineInfo> for Position<'a> {
   fn into(self) -> LineInfo {
     let line = self.line_col().0;
     let column = self.line_col().1;
+    LineInfo {
+      line: line as u32,
+      column: column as u32,
+    }
+  }
+}
+
+impl<'a> Into<LineInfo> for &Pair<'a, Rule> {
+  fn into(self) -> LineInfo {
+    // let pos = self.as_span().start_pos();
+    let (line, column) = self.line_col();
     LineInfo {
       line: line as u32,
       column: column as u32,

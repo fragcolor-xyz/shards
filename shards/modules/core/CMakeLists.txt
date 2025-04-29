@@ -19,9 +19,22 @@ else()
   list(APPEND CORE_RUST_FEATURES "default")
 endif()
 
+# Manually add shards core source files as dependencies
+set(CORE_PATH0 ../../rust)
+set(CORE_PATH1 ../../rust_macro)
+file(GLOB_RECURSE CORE_DEPS ${CORE_PATH0}/*.rs ${CORE_PATH0}/Cargo.toml ${CORE_PATH1}/*.rs ${CORE_PATH1}/Cargo.toml)
+file(GLOB_RECURSE CORE_DEPS_REMOVE ${CORE_PATH0}/target/*.rs ${CORE_PATH1}/target/*.rs)
+message(DEBUG ${CORE_DEPS_REMOVE})
+list(REMOVE_ITEM CORE_DEPS_REMOVE ${CORE_DEPS_REMOVE})
+
+# Add shards.h since lots of bindings depend on it
+list(APPEND CORE_DEPS ${SHARDS_DIR}/include/shards/shards.h)
+
 add_rust_library(NAME shards-core
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-  FEATURES ${CORE_RUST_FEATURES})
+  FEATURES ${CORE_RUST_FEATURES}
+  DEPENDS ${CORE_DEPS}
+)
 
 add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS
