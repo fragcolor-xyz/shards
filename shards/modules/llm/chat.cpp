@@ -1,6 +1,6 @@
 #include "shared.hpp"
 
-#include "../../../deps/llama.cpp/examples/llava/clip.h"
+#include "../../../deps/llama.cpp/examples/llava/clip-impl.h"
 #include "../../../deps/llama.cpp/common/sampling.h"
 
 #include <string>
@@ -305,9 +305,9 @@ struct ChatAddImage {
     }
 
     // Calculate the actual number of image patches based on the image and patch size
-    const int patch_size = clip_patch_size(chatData.clip_ctx);
+    const int patch_size = clip_get_patch_size(chatData.clip_ctx);
     // Get dimensions post-preprocessing (should be square as per CLIP preprocessing)
-    int image_size = clip_image_size(chatData.clip_ctx);
+    int image_size = clip_get_image_size(chatData.clip_ctx);
     // Calculate the number of patches (this is the actual number of tokens CLIP will produce)
     int actual_n_patches = (image_size / patch_size) * (image_size / patch_size);
     // Add 1 for the class embedding token (common in CLIP models)
