@@ -160,8 +160,47 @@ struct Chat {
 };
 
 // Add text to the conversation
+struct ChatAddBos {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+
+  PARAM_PARAMVAR(_chat, "Chat", "The chat context to add text to", {Chat::VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat));
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
+    std::lock_guard<std::mutex> lock(*chatData._mutex);
+
+    auto model = llama_get_model(chatData.ctx.get());
+    auto vocab = llama_model_get_vocab(model);
+    auto bos = llama_vocab_bos(vocab);
+
+    // Get the input text
+    common_batch_add(chatData.batch, bos, chatData.n_past++, {0}, false);
+
+    // Process the batch
+    if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+      throw ActivationError("Failed to decode input");
+    }
+  }
+};
+
+// Add text to the conversation
 struct ChatAddText {
-  ChatAddText() { _logitsLast = Var(false); }
+  ChatAddText() {
+    _logitsLast = Var(false);
+    _ignoreSpecial = Var(false);
+  }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
@@ -174,7 +213,10 @@ struct ChatAddText {
                  {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
   PARAM_PARAMVAR(_suffixTokens, "SuffixTokens", "Optional raw tokens to add to the end",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_prefixTokens), PARAM_IMPL_FOR(_suffixTokens));
+  PARAM_PARAMVAR(_ignoreSpecial, "IgnoreSpecial", "Whether to ignore special tokens (true) or not (false)",
+                 {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_prefixTokens), PARAM_IMPL_FOR(_suffixTokens),
+             PARAM_IMPL_FOR(_ignoreSpecial));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
@@ -201,35 +243,87 @@ struct ChatAddText {
     _text.assign(view.data(), view.size());
 
     // Tokenize the input
-    llama_tokens tokens = common_tokenize(chatData.ctx.get(), _text, false, true);
-    common_batch_clear(chatData.batch);
+    auto parse_special = !_ignoreSpecial.get().payload.boolValue;
+    llama_tokens tokens = common_tokenize(chatData.ctx.get(), _text, false, parse_special);
 
+    // Get max batch size
+    auto n_batch = size_t(chatData.params.n_batch);
+    if (n_batch <= 0) {
+      throw ActivationError("Invalid batch size");
+    }
+
+    // Process prefix tokens if provided
     if (_prefixTokens.get().valueType != SHType::None) {
       auto prefixTokens = _prefixTokens.get().payload.seqValue;
-      for (auto &t : prefixTokens) {
-        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      // Process in batches
+      common_batch_clear(chatData.batch);
+      size_t batchCount = 0;
+
+      for (size_t i = 0; i < prefixTokens.len; i++) {
+        common_batch_add(chatData.batch, prefixTokens.elements[i].payload.intValue, chatData.n_past++, {0}, false);
+        batchCount++;
+
+        // Process the batch if we've reached the max size
+        if (batchCount == n_batch) {
+          if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+            throw ActivationError("Failed to decode prefix tokens");
+          }
+          common_batch_clear(chatData.batch);
+          batchCount = 0;
+        }
+      }
+
+      // Process any remaining tokens
+      if (batchCount > 0) {
+        if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+          throw ActivationError("Failed to decode prefix tokens");
+        }
       }
     }
 
-    for (llama_token &t : tokens) {
-      common_batch_add(chatData.batch, t, chatData.n_past++, {0}, false);
+    // Process text tokens in batches that don't exceed n_batch
+    for (size_t i = 0; i < tokens.size(); i += n_batch) {
+      common_batch_clear(chatData.batch);
+      for (size_t j = 0; j < n_batch && i + j < tokens.size(); j++) {
+        bool is_last = (i + j == tokens.size() - 1) && (_suffixTokens.get().valueType == SHType::None) &&
+                       (_logitsLast.get().payload.boolValue);
+        common_batch_add(chatData.batch, tokens[i + j], chatData.n_past++, {0}, is_last);
+      }
+
+      // Process the batch
+      if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+        throw ActivationError("Failed to decode input tokens");
+      }
     }
 
+    // Process suffix tokens if provided
     if (_suffixTokens.get().valueType != SHType::None) {
       auto suffixTokens = _suffixTokens.get().payload.seqValue;
-      for (auto &t : suffixTokens) {
-        common_batch_add(chatData.batch, t.payload.intValue, chatData.n_past++, {0}, false);
+      // Process in batches
+      common_batch_clear(chatData.batch);
+      size_t batchCount = 0;
+
+      for (size_t i = 0; i < suffixTokens.len; i++) {
+        bool is_last = (i == suffixTokens.len - 1) && (_logitsLast.get().payload.boolValue);
+        common_batch_add(chatData.batch, suffixTokens.elements[i].payload.intValue, chatData.n_past++, {0}, is_last);
+        batchCount++;
+
+        // Process the batch if we've reached the max size
+        if (batchCount == n_batch) {
+          if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+            throw ActivationError("Failed to decode suffix tokens");
+          }
+          common_batch_clear(chatData.batch);
+          batchCount = 0;
+        }
       }
-    }
 
-    // Add logits for the last token if it's user input (for continuing with generation)
-    if (_logitsLast.get().payload.boolValue) {
-      chatData.batch.logits[chatData.batch.n_tokens - 1] = true;
-    }
-
-    // Process the batch
-    if (llama_decode(chatData.ctx.get(), chatData.batch)) {
-      throw ActivationError("Failed to decode input");
+      // Process any remaining tokens
+      if (batchCount > 0) {
+        if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+          throw ActivationError("Failed to decode suffix tokens");
+        }
+      }
     }
   }
 };
@@ -423,6 +517,8 @@ struct ChatGenerate {
   std::string _output;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    // TODO, Wrap in awaitne and support cancellation!
+
     _output.clear();
     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
     std::lock_guard<std::mutex> lock(*chatData._mutex);
@@ -476,26 +572,6 @@ struct ChatGenerate {
   }
 };
 
-// // Stop generation if it's in progress
-// struct ChatStopGeneration {
-//   static SHTypesInfo inputTypes() { return Chat::Type; }
-//   static SHTypesInfo outputTypes() { return Chat::Type; }
-
-//   void cleanup(SHContext *context) {}
-
-//   void warmup(SHContext *context) {}
-
-//   SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
-
-//   SHVar activate(SHContext *context, const SHVar &input) {
-//     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
-//     std::lock_guard<std::mutex> lock(*chatData._mutex);
-
-//     chatData.is_generating = false;
-//     return Var();
-//   }
-// };
-
 // Reset the conversation history
 struct ChatReset {
   static SHTypesInfo inputTypes() { return Chat::Type; }
@@ -523,7 +599,7 @@ SHARDS_REGISTER_FN(llm_chat) {
   REGISTER_SHARD("LLM.AddText", llm::ChatAddText);
   REGISTER_SHARD("LLM.AddImage", llm::ChatAddImage);
   REGISTER_SHARD("LLM.Generate", llm::ChatGenerate);
-  // REGISTER_SHARD("LLM.Chat.StopGeneration", llm::ChatStopGeneration);
   REGISTER_SHARD("LLM.Reset", llm::ChatReset);
+  REGISTER_SHARD("LLM.AddBos", llm::ChatAddBos);
 }
 } // namespace shards
