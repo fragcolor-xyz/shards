@@ -24,10 +24,13 @@ struct DeltaTimer {
   void reset() { lastActivation = Clock::now(); }
 
   template <typename TDur = DoubleSecDuration> typename TDur::rep update() {
+    return std::min<TDur>(std::chrono::duration_cast<TDur>(MaxDeltaTime), updateRaw()).count();
+  }
+  template <typename TDur = DoubleSecDuration> TDur updateRaw() {
     auto now = Clock::now();
-    TDur delta = std::min<TDur>(std::chrono::duration_cast<TDur>(MaxDeltaTime), (now - lastActivation));
+    TDur delta = (now - lastActivation);
     lastActivation = now;
-    return delta.count();
+    return delta;
   }
 };
 

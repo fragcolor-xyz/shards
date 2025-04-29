@@ -53,12 +53,25 @@ struct Delta {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  void warmup(SHContext *context) { _deltaTimer.reset(); }
+  PARAM_VAR(_uncapped, "Uncapped", "If true, returns uncapped delta time", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_uncapped))
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    float dt = _deltaTimer.update();
-    return Var{dt};
+  SHTypeInfo composeV2(SHInstanceData &data) {
+    if (_uncapped.payload.boolValue) {
+      OVERRIDE_ACTIVATE(data, activateUncapped);
+    }
+    return CoreInfo::FloatType;
   }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _deltaTimer.reset();
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activateUncapped(SHContext *shContext, const SHVar &input) { return Var(_deltaTimer.updateRaw().count()); }
+  SHVar activate(SHContext *shContext, const SHVar &input) { return Var(_deltaTimer.update()); }
 };
 
 struct DeltaMs : public Delta {
