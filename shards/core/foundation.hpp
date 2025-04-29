@@ -1262,7 +1262,7 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _HELP_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
 #define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _HELP_, _CC_) \
   DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _HELP_, shards::CoreCC, _CC_)
-  
+
 #ifdef __COUNTER__
 #define SH_GENSYM(str) SH_CAT(str, __COUNTER__)
 #else
@@ -1389,6 +1389,56 @@ struct ParamsInfo {
   explicit operator SHParametersInfo() const { return _innerInfo; }
 
   SHParametersInfo _innerInfo{};
+};
+
+struct ExposedTypeInfo {
+  SHExposedTypeInfo _innerInfo{};
+  ExposedTypeInfo() = default;
+  ExposedTypeInfo(const SHExposedTypeInfo &other) { initFrom(other); }
+  ExposedTypeInfo(const ExposedTypeInfo &other) {
+    initFrom(other._innerInfo);
+  }
+  ExposedTypeInfo(ExposedTypeInfo &&other) { std::swap(_innerInfo, other._innerInfo); }
+  ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) {
+    clean();
+    initFrom(other);
+    return *this;
+  }
+  ExposedTypeInfo &operator=(ExposedTypeInfo &&other) {
+    std::swap(_innerInfo, other._innerInfo);
+    return *this;
+  }
+  ~ExposedTypeInfo() { clean(); }
+
+  operator const SHExposedTypeInfo &() const { return _innerInfo; }
+  const SHExposedTypeInfo &operator->() const { return _innerInfo; }
+  const SHExposedTypeInfo &operator*() const { return _innerInfo; }
+
+private:
+  void initFrom(const SHExposedTypeInfo &other) {
+    _innerInfo.exposedType = cloneTypeInfo(other.exposedType);
+    if (other.name) {
+      _innerInfo.name = strdup(other.name);
+    } else {
+      _innerInfo.name = nullptr;
+    }
+    // These are typically static strings, so we can just copy the pointer
+    _innerInfo.help = other.help;
+    _innerInfo.isMutable = other.isMutable;
+    _innerInfo.isProtected = other.isProtected;
+    _innerInfo.global = other.global;
+    _innerInfo.tracked = other.tracked;
+    _innerInfo.declared = other.declared;
+  }
+
+  void clean() {
+    if (_innerInfo.name) {
+      free((void *)_innerInfo.name);
+      _innerInfo.name = nullptr;
+    }
+    freeTypeInfo(_innerInfo.exposedType);
+    _innerInfo.exposedType = {};
+  }
 };
 
 struct ExposedInfo {

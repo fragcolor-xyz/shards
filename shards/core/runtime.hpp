@@ -741,23 +741,17 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void setMetadata(SHVar *var, SHExposedTypeInfo info) {
     auto it = variablesMetadata.find(var);
     if (it != variablesMetadata.end()) {
-      if (info != it->second) {
+      if (info != *it->second) {
         SHLOG_WARNING("Metadata for global variable {} already exists and is different!", info.name);
       }
     }
     variablesMetadata[var] = info;
   }
 
-  void releaseMetadata(SHVar *var) {
-    if (var->refcount == 0) {
-      variablesMetadata.erase(var);
-    }
-  }
-
   std::optional<SHExposedTypeInfo> getMetadata(SHVar *var) {
     auto it = variablesMetadata.find(var);
     if (it != variablesMetadata.end()) {
-      return it->second;
+      return *it->second;
     } else {
       return std::nullopt;
     }
@@ -836,7 +830,7 @@ private:
       variables;
 
   // this is used for the above global variables, not refs
-  std::unordered_map<SHVar *, SHExposedTypeInfo> variablesMetadata;
+  std::unordered_map<SHVar *, shards::ExposedTypeInfo> variablesMetadata;
 
   // variables with lifetime managed externally
   std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,

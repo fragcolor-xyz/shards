@@ -1398,7 +1398,7 @@ struct Set : public SetUpdateBase {
 
     if (_global) {
       // need to add metadata to the global variable in the mesh
-      mesh = context->main->mesh.lock();
+      std::shared_ptr<SHMesh> mesh = context->main->mesh.lock();
       if (!mesh) {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
         throw WarmupError("Cannot add metadata to global variable because mesh is not available");
@@ -1408,16 +1408,7 @@ struct Set : public SetUpdateBase {
     }
   }
 
-  std::shared_ptr<SHMesh> mesh;
-
   void cleanup(SHContext *context) {
-    if (mesh) {
-      // this is not perfect because will run only during Set,
-      // but for now it's not an issue as we go thru all variables when composing
-      // and then check if metadata is there or not
-      mesh->releaseMetadata(_target);
-      mesh.reset();
-    }
 
     SetBase::cleanup(context);
 
