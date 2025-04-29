@@ -46,10 +46,14 @@ pub fn find_exposed_variable(
 ) -> Result<Option<SHExposedTypeInfo>, &'static str> {
   let var_name: &str = var
     .try_into()
-    .map_err(|_x| "Invalid context variable name")?;
+    .map_err(|_x| "find_exposed_variable: Invalid context variable name")?;
   for entry in shared {
     let cstr = unsafe { CStr::from_ptr(entry.name) };
-    if var_name == cstr.to_str().map_err(|_x| "invalid string")? {
+    if var_name
+      == cstr
+        .to_str()
+        .map_err(|_x| "find_exposed_variable: Invalid string")?
+    {
       return Ok(Some(ExposedInfo::new(
         unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue },
         entry.exposedType,

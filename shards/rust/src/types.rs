@@ -833,6 +833,35 @@ impl ShardRef {
         Err("Set parameter validation failed")
       } else {
         let err = (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
+
+        #[cfg(debug_assertions)]
+        {
+          // In debug mode, verify that the shard has properly copied the value
+          let written_value = (*self.0).getParam.unwrap_unchecked()(self.0, index);
+          match written_value.valueType {
+            SHType_String | SHType_ContextVar | SHType_Bytes | SHType_Path => {
+              let ptr = written_value
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_2
+                .stringValue;
+              let ptr2 = value.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue;
+              assert_ne!(ptr, ptr2);
+            }
+            SHType_Seq => {
+              let len = written_value.payload.__bindgen_anon_1.seqValue.len;
+              let len2 = value.payload.__bindgen_anon_1.seqValue.len;
+              assert_eq!(len, len2);
+              if len > 0 {
+                let ptr = written_value.payload.__bindgen_anon_1.seqValue.elements;
+                let ptr2 = value.payload.__bindgen_anon_1.seqValue.elements;
+                assert_ne!(ptr, ptr2);
+              }
+            }
+            _ => {}
+          }
+        }
+
         if err.code != 0 {
           Err(err.message.into())
         } else {
