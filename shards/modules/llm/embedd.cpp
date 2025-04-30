@@ -21,15 +21,14 @@ struct Model {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     if (_data) {
+      SHLOG_DEBUG("Releasing existing ModelData, refcount: {}", ModelData::ObjectVar.GetRefCount(_data));
+
       ModelData::ObjectVar.Release(_data);
       _data = nullptr;
     }
   }
 
-  void warmup(SHContext *context) {
-    PARAM_WARMUP(context);
-    _data = ModelData::ObjectVar.New();
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -43,6 +42,14 @@ struct Model {
     auto params = llama_model_default_params();
     params.use_mmap = _useMmap.get().payload.boolValue;
     params.n_gpu_layers = _gpuLayers.get().payload.intValue;
+
+    if (_data) {
+      SHLOG_DEBUG("Releasing existing ModelData, refcount: {}", ModelData::ObjectVar.GetRefCount(_data));
+
+      ModelData::ObjectVar.Release(_data);
+      _data = nullptr;
+    }
+    _data = ModelData::ObjectVar.New();
 
     _data->model = std::shared_ptr<llama_model>(llama_model_load_from_file(path.c_str(), params), llama_model_free);
 

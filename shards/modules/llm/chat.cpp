@@ -23,7 +23,11 @@ struct ChatData {
   common_params params{};
   llama_batch batch;
 
-  ChatData() { batch = llama_batch_init(params.n_batch, 0, 1); }
+  ChatData() {
+    SHLOG_DEBUG("ChatData constructor called");
+
+    batch = llama_batch_init(params.n_batch, 0, 1);
+  }
 
   // CLIP model components
   struct clip_ctx *clip_ctx = nullptr;
@@ -34,6 +38,8 @@ struct ChatData {
   llama_pos n_past = 0;
 
   ~ChatData() {
+    SHLOG_DEBUG("ChatData destructor called");
+
     if (clip_ctx) {
       clip_free(clip_ctx);
       clip_ctx = nullptr;
@@ -107,14 +113,14 @@ struct Chat {
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     if (_data) {
+      SHLOG_DEBUG("Releasing existing ChatData, refcount: {}", ObjectVar.GetRefCount(_data));
+
       ObjectVar.Release(_data);
       _data = nullptr;
     }
   }
 
-  void warmup(SHContext *context) {
-    PARAM_WARMUP(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -128,6 +134,8 @@ struct Chat {
     auto model = modelData.model.get();
 
     if (_data) {
+      SHLOG_DEBUG("Releasing existing ChatData, refcount: {}", ObjectVar.GetRefCount(_data));
+      
       ObjectVar.Release(_data);
       _data = nullptr;
     }

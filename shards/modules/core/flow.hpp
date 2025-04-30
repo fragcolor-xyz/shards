@@ -510,6 +510,8 @@ struct Await : public BaseSubFlow {
   }
 
   void cleanup(SHContext *context) {
+    _output = Var::Empty; // Important as it might hold ref counted objects
+
     BaseSubFlow::cleanup(context);
     if (_context.has_value()) {
       // this will trigger benign TSAN race condition warning

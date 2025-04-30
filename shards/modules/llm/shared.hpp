@@ -22,6 +22,8 @@ struct ModelData {
   static inline std::atomic_uint32_t usageCounter;
 
   ModelData() {
+    SHLOG_DEBUG("ModelData constructor called");
+
     uint32_t expected = usageCounter.load(std::memory_order_acquire);
     uint32_t desired;
     do {
@@ -35,6 +37,8 @@ struct ModelData {
   }
 
   ~ModelData() {
+    SHLOG_DEBUG("ModelData destructor called");
+
     uint32_t prev = usageCounter.fetch_sub(1, std::memory_order_acq_rel);
     if (prev == 1) {
       SHLOG_DEBUG("Freeing llama backend");
