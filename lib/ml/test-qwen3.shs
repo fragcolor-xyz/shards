@@ -26,11 +26,6 @@ From now on you will be connected with another entity (maybe human or maybe not.
   LLM.AddText(chat-context NeedLogits: true)
 })
 
-@define(add-model-response {
-  LLM.AddText(chat-context)
-  "<|im_end|>" | LLM.AddText(chat-context)
-})
-
 @user-turn("Hello, how are you?")
 
 Sequence(tokens Type: @type([Type::String]))
@@ -39,5 +34,4 @@ Repeat({
   If(Is("") Return Pass) >> tokens
 } Times: 512)
 
-tokens | String.Join | String.Trim | Log("First response")
-@add-model-response
+tokens | String.Join | String.Trim | Log("Response")

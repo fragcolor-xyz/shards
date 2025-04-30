@@ -391,7 +391,6 @@ struct ChatAddImage {
 
     // Preprocess the image
     clip_image_f32_batch batch_f32{};
-    DEFER({ clip_image_f32_batch_free(&batch_f32); });
     auto ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
     if (!ok) {
       throw ActivationError("Failed to preprocess image");
