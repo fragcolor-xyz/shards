@@ -32,7 +32,6 @@ struct ChatData {
 
   // State tracking
   llama_pos n_past = 0;
-  bool is_generating = false;
 
   ~ChatData() {
     if (clip_ctx) {
@@ -480,24 +479,27 @@ struct ChatGenerate {
   static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
 
   ChatGenerate() {
-    _maxTokens = Var(512);
-    // as per llama default
+    // as per llama.cpp default
     _temperature = Var(0.80f);
     _topP = Var(0.95f);
     _minP = Var(0.05f);
   }
 
-  PARAM_PARAMVAR(_maxTokens, "MaxTokens", "Maximum number of tokens to generate",
-                 {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_PARAMVAR(_temperature, "Temperature", "Sampling temperature",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_topP, "TopP", "Top-p sampling threshold", {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_minP, "MinP", "Min-p sampling threshold", {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_maxTokens), PARAM_IMPL_FOR(_temperature), PARAM_IMPL_FOR(_topP), PARAM_IMPL_FOR(_minP));
+  PARAM_IMPL(PARAM_IMPL_FOR(_temperature), PARAM_IMPL_FOR(_topP), PARAM_IMPL_FOR(_minP));
 
   void cleanup(SHContext *context) {
+    if (sampling_ctx) {
+      common_sampler_free(sampling_ctx);
+      sampling_ctx = nullptr;
+    }
+
+    _output = {};
+
     PARAM_CLEANUP(context);
-    _output.clear();
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -516,10 +518,9 @@ struct ChatGenerate {
 
   std::string _output;
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    // TODO, Wrap in awaitne and support cancellation!
+  common_sampler *sampling_ctx = nullptr;
 
-    _output.clear();
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
     std::lock_guard<std::mutex> lock(*chatData._mutex);
 
@@ -527,57 +528,58 @@ struct ChatGenerate {
       throw ActivationError("Chat context is not initialized");
     }
 
-    // Get the max tokens to generate
-    int n_predict = _maxTokens.get().payload.intValue;
-
-    // Set up sampling parameters
-    common_params params{};
-    params.sampling.temp = _temperature.get().payload.floatValue;
-    params.sampling.top_p = _topP.get().payload.floatValue;
-    params.sampling.min_p = _minP.get().payload.floatValue;
-
-    // Create the sampler
     auto model = llama_get_model(chatData.ctx.get());
     auto vocab = llama_model_get_vocab(model);
-    common_sampler *sampling_ctx = common_sampler_init(model, params.sampling);
-    DEFER({ common_sampler_free(sampling_ctx); });
 
-    // Ensure logits are enabled for the last token before generation
-    if (chatData.n_past > 0) {
-      // Check if logits were computed for the last token in context
-      auto *logits = llama_get_logits(chatData.ctx.get());
-      if (!logits) {
-        throw ActivationError("Logits not available for the last token - make sure to set the NeedLogits parameter to true in "
-                              "your last AddText/AddImage call");
-      }
-    } else {
-      throw ActivationError("Context is empty - add some text before generating");
-    }
+    if (!sampling_ctx) {
+      // Set up sampling parameters
+      common_params params{};
+      params.sampling.temp = _temperature.get().payload.floatValue;
+      params.sampling.top_p = _topP.get().payload.floatValue;
+      params.sampling.min_p = _minP.get().payload.floatValue;
 
-    // Generate tokens
-    chatData.is_generating = true;
-    for (int i = 0; i < n_predict && chatData.is_generating; i++) {
-      llama_token token_id = common_sampler_sample(sampling_ctx, chatData.ctx.get(), -1);
-      common_sampler_accept(sampling_ctx, token_id, true);
+      // Create the sampler
+      sampling_ctx = common_sampler_init(model, params.sampling);
 
-      // Check for special tokens that indicate end of generation
-      if (llama_vocab_is_eog(vocab, token_id)) {
-        break;
-      }
-
-      // Convert token to string
-      std::string piece = common_token_to_piece(chatData.ctx.get(), token_id);
-      _output += piece;
-
-      common_batch_clear(chatData.batch);
-      common_batch_add(chatData.batch, token_id, chatData.n_past++, {0}, true);
-
-      if (llama_decode(chatData.ctx.get(), chatData.batch)) {
-        throw ActivationError("Failed to decode token during generation");
+      // Ensure logits are enabled for the last token before generation
+      // Notice this will still ABORT on relwithdebinfo...
+      if (chatData.n_past > 0) {
+        // Check if logits were computed for the last token in context
+        auto *logits = llama_get_logits(chatData.ctx.get());
+        if (!logits) {
+          throw ActivationError("Logits not available for the last token - make sure to set the NeedLogits parameter to true in "
+                                "your last AddText/AddImage call");
+        }
+      } else {
+        throw ActivationError("Context is empty - add some text before generating");
       }
     }
 
-    chatData.is_generating = false;
+    _output.clear();
+
+    // Generate a token
+    llama_token token_id = common_sampler_sample(sampling_ctx, chatData.ctx.get(), -1);
+    common_sampler_accept(sampling_ctx, token_id, true);
+
+    // Check for special tokens that indicate end of generation
+    if (llama_vocab_is_eog(vocab, token_id)) {
+      // free the sampler, we start fresh from next call
+      common_sampler_free(sampling_ctx);
+      sampling_ctx = nullptr;
+      // output the empty string to flag end of generation
+      return Var(_output);
+    }
+
+    // Convert token to string
+    _output = common_token_to_piece(chatData.ctx.get(), token_id);
+
+    common_batch_clear(chatData.batch);
+    common_batch_add(chatData.batch, token_id, chatData.n_past++, {0}, true);
+
+    if (llama_decode(chatData.ctx.get(), chatData.batch)) {
+      throw ActivationError("Failed to decode token during generation");
+    }
+
     return Var(_output);
   }
 };

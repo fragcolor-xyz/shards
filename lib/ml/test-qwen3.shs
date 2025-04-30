@@ -33,5 +33,11 @@ From now on you will be connected with another entity (maybe human or maybe not.
 
 @user-turn("Hello, how are you?")
 
-chat-context | LLM.Generate(Temperature: 0.5) | String.Trim | Log("First response") 
+Sequence(tokens Type: @type([Type::String]))
+Repeat({
+  chat-context | LLM.Generate(Temperature: 0.5) | Log("Generated token")
+  If(Is("") Return Pass) >> tokens
+} Times: 512)
+
+tokens | String.Join | String.Trim | Log("First response")
 @add-model-response
