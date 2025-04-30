@@ -542,7 +542,17 @@ struct ChatGenerate {
     common_sampler *sampling_ctx = common_sampler_init(model, params.sampling);
     DEFER({ common_sampler_free(sampling_ctx); });
 
-    // TODO MUST CHECK IF LOGITS ARE SET PROPERLY OR LLAMA JUST ABORTS LOL
+    // Ensure logits are enabled for the last token before generation
+    if (chatData.n_past > 0) {
+      // Check if logits were computed for the last token in context
+      auto *logits = llama_get_logits(chatData.ctx.get());
+      if (!logits) {
+        throw ActivationError("Logits not available for the last token - make sure to set the NeedLogits parameter to true in "
+                              "your last AddText/AddImage call");
+      }
+    } else {
+      throw ActivationError("Context is empty - add some text before generating");
+    }
 
     // Generate tokens
     chatData.is_generating = true;
