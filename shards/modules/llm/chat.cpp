@@ -114,7 +114,6 @@ struct Chat {
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _data = ObjectVar.New();
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -127,6 +126,12 @@ struct Chat {
     // Extract the LLM model from input
     auto &modelData = varAsObjectChecked<ModelData>(input, ModelData::Type);
     auto model = modelData.model.get();
+
+    if (_data) {
+      ObjectVar.Release(_data);
+      _data = nullptr;
+    }
+    _data = ObjectVar.New();
 
     // Create a new LLama context from the model
     auto ctx_params = llama_context_default_params();
