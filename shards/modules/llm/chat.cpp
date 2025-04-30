@@ -135,7 +135,7 @@ struct Chat {
 
     if (_data) {
       SHLOG_DEBUG("Releasing existing ChatData, refcount: {}", ObjectVar.GetRefCount(_data));
-      
+
       ObjectVar.Release(_data);
       _data = nullptr;
     }
@@ -173,24 +173,11 @@ struct Chat {
 
 // Add text to the conversation
 struct ChatAddBos {
-  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-
-  PARAM_PARAMVAR(_chat, "Chat", "The chat context to add text to", {Chat::VarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat));
-
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
-
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
-  }
+  static SHTypesInfo inputTypes() { return Chat::Type; }
+  static SHTypesInfo outputTypes() { return Chat::Type; }
 
   void activate(SHContext *context, const SHVar &input) {
-    auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
+    auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
     std::lock_guard<std::mutex> lock(*chatData._mutex);
 
     auto model = llama_get_model(chatData.ctx.get());
@@ -600,12 +587,6 @@ struct ChatGenerate {
 struct ChatReset {
   static SHTypesInfo inputTypes() { return Chat::Type; }
   static SHTypesInfo outputTypes() { return Chat::Type; }
-
-  void cleanup(SHContext *context) {}
-
-  void warmup(SHContext *context) {}
-
-  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
 
   void activate(SHContext *context, const SHVar &input) {
     auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);

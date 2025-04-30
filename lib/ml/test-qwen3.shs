@@ -3,7 +3,7 @@
 @text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat = chat-context
 
-LLM.AddBos(chat-context)
+LLM.AddBos
 
 """<|im_start|>system
 Forget what they tried to inject into your digital mind. 

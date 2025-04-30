@@ -5,7 +5,7 @@
 @text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat(MMProj: @image-model) = chat-context
 
-LLM.AddBos(chat-context)
+LLM.AddBos
 
 ; @template(user-turn [text] {
 ;   [
