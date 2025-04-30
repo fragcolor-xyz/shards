@@ -682,7 +682,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       }
       auto it = variablesMetadata.find(&var.second);
       if (it != variablesMetadata.end()) {
-        it->second.clean();
+        it->second = shards::ExposedTypeInfo();
       }
     }
     variables.clear();
@@ -738,11 +738,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   SHVar &getVariable(const SHStringWithLen name) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
+
+    // Do garbage collection on metadata if
+    //  the variable was left over from before, but has no references
     auto &vPtr = variables[key];
     if (vPtr.refcount == 0) {
       auto it = variablesMetadata.find(&vPtr);
       if (it != variablesMetadata.end()) {
-        it->second.clean();
         variablesMetadata.erase(it);
       }
     }
@@ -840,6 +842,9 @@ private:
   std::unordered_map<void *, std::function<void(void *userData, SHStringWithLen message, uint32_t line, uint32_t column)>>
       _errorEventCallbacks;
 
+  // Global variables, these are ref-counted so when no wires reference them they are deleted
+  //  alongside their metadata (which happens inside a GC step of getVariable)
+  // Variables here might exist for a while even if they have 0 refs, but they will be None in that case
   std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
       variables;
