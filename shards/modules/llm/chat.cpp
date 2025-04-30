@@ -185,6 +185,7 @@ struct ChatAddBos {
     auto bos = llama_vocab_bos(vocab);
 
     // Get the input text
+    common_batch_clear(chatData.batch);
     common_batch_add(chatData.batch, bos, chatData.n_past++, {0}, false);
 
     // Process the batch
