@@ -433,7 +433,9 @@ struct Query : public Base {
 
   PARAM_PARAMVAR(_query, "Query", "The database query to execute every activation.",
                  {CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_PARAMVAR(_dbName, "Database", "The sqlite database filename. If left empty, it will first check for an exposed variable named 'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
+  PARAM_PARAMVAR(_dbName, "Database",
+                 "The sqlite database filename. If left empty, it will first check for an exposed variable named "
+                 "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_VAR(_asRows, "AsRows", "Return the result as rows.", {CoreInfo::BoolType});
   PARAM_VAR(_retry, "Retry", "Retry the query if the database was locked.", {CoreInfo::BoolType});
@@ -708,7 +710,9 @@ struct Transaction : public Base {
   void setup() {}
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
-  PARAM_PARAMVAR(_dbName, "Database", "The sqlite database filename. If left empty, it will first check for an exposed variable named 'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
+  PARAM_PARAMVAR(_dbName, "Database",
+                 "The sqlite database filename. If left empty, it will first check for an exposed variable named "
+                 "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
@@ -718,6 +722,10 @@ struct Transaction : public Base {
 
   SHTypeInfo compose(SHInstanceData &data) {
     Base::compose(data, _dbName);
+    if (_withinTransaction) {
+      throw ComposeError("Transaction already exists, cannot nest transactions.");
+    }
+
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     // we need to edit a copy of data
@@ -746,9 +754,9 @@ struct Transaction : public Base {
   const SHVar &activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, false);
 
-    // avoid transaction nesting
+    // avoid interleaving queries during a transaction
     std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
-    // try to lock, if we can't we suspend
+    // try to lock, if we can't we suspend until the lock is available
     while (!lock.try_lock()) {
       SH_SUSPEND(context, 0);
     }
@@ -808,7 +816,9 @@ struct LoadExtension : public Base {
   }
 
   PARAM_PARAMVAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_PARAMVAR(_dbName, "Database", "The sqlite database filename. If left empty, it will first check for an exposed variable named 'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
+  PARAM_PARAMVAR(_dbName, "Database",
+                 "The sqlite database filename. If left empty, it will first check for an exposed variable named "
+                 "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_entryPoint, "EntryPoint", "The entry point of the extension.",
                  {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::NoneType});
@@ -863,7 +873,9 @@ struct RawQuery : public Base {
 
   void setup() { _readOnly = Var(false); }
 
-  PARAM_PARAMVAR(_dbName, "Database", "The sqlite database filename. If left empty, it will first check for an exposed variable named 'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
+  PARAM_PARAMVAR(_dbName, "Database",
+                 "The sqlite database filename. If left empty, it will first check for an exposed variable named "
+                 "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_readOnly, "ReadOnly", "If true, the database will be opened in read only mode.",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
@@ -921,7 +933,9 @@ struct Backup : public Base {
   }
 
   PARAM_PARAMVAR(_dest, "Destination", "The destination database filename.", {CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_PARAMVAR(_dbName, "Database", "The sqlite database filename. If left empty, it will first check for an exposed variable named 'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
+  PARAM_PARAMVAR(_dbName, "Database",
+                 "The sqlite database filename. If left empty, it will first check for an exposed variable named "
+                 "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_pages, "Pages", "The number of pages to copy at once.", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_VAR(_fast, "Unthrottled", "If true, the backup will not be throttled and it might lock the DB while copying.",
