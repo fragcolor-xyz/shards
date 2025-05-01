@@ -3,7 +3,7 @@
   "/Users/sugar/tmp/Qwen3-235B-A22B-UD-Q2_K_XL-00002-of-00002.gguf" 
 ]
 LLM.Model(UseMmap: true GPULayers: 1000) = model
-LLM.Chat = chat-context
+LLM.Chat(ContextSize: 16000) = chat-context
 
 LLM.AddBos
 
