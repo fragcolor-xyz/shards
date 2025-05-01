@@ -364,10 +364,17 @@ if(USE_TSAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
-  add_link_options(
-    $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
-    $<$<COMPILE_LANGUAGE:CXX,C>:-g>
-  )
+  if(CMAKE_GENERATOR STREQUAL "Xcode")
+    add_link_options(
+      -fsanitize=thread
+      -g
+    )
+  else()
+    add_link_options(
+      $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
+      $<$<COMPILE_LANGUAGE:CXX,C>:-g>
+    )
+  endif()
   if(USE_TSAN GREATER 1)
     add_compile_options(
       $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
