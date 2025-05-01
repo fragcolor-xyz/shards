@@ -598,6 +598,47 @@ struct ChatReset {
     llama_kv_self_clear(chatData.ctx.get());
   }
 };
+
+struct ChatTemplate {
+  static SHTypesInfo inputTypes() { return Chat::Type; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
+
+  std::string _template;
+
+  void cleanup(SHContext *context) { _template = {}; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
+    std::lock_guard<std::mutex> lock(*chatData._mutex);
+
+    auto model = llama_get_model(chatData.ctx.get());
+    auto template_ = llama_model_chat_template(model, NULL);
+    _template = std::string(template_);
+
+    return Var(_template);
+  }
+};
+
+struct ChatBos {
+  static SHTypesInfo inputTypes() { return Chat::Type; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::StringType; }
+
+  std::string _output;
+
+  void cleanup(SHContext *context) { _output = {}; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &chatData = varAsObjectChecked<ChatData>(input, Chat::Type);
+    std::lock_guard<std::mutex> lock(*chatData._mutex);
+
+    auto model = llama_get_model(chatData.ctx.get());
+    auto vocab = llama_model_get_vocab(model);
+    auto bos = llama_vocab_bos(vocab);
+    _output = common_token_to_piece(chatData.ctx.get(), bos);
+
+    return Var(_output);
+  }
+};
 } // namespace llm
 
 SHARDS_REGISTER_FN(llm_chat) {
@@ -607,5 +648,7 @@ SHARDS_REGISTER_FN(llm_chat) {
   REGISTER_SHARD("LLM.Generate", llm::ChatGenerate);
   REGISTER_SHARD("LLM.Reset", llm::ChatReset);
   REGISTER_SHARD("LLM.AddBos", llm::ChatAddBos);
+  REGISTER_SHARD("LLM.Template", llm::ChatTemplate);
+  REGISTER_SHARD("LLM.Bos", llm::ChatBos);
 }
 } // namespace shards

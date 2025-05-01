@@ -22,12 +22,19 @@ struct JinjaShard {
 
 impl Default for JinjaShard {
   fn default() -> Self {
+    let mut env = minijinja::Environment::new();
+    
+    // Add raise_exception function to allow users to raise custom errors from templates
+    env.add_function("raise_exception", |msg: String| -> Result<(), minijinja::Error> {
+      Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, msg))
+    });
+    
     Self {
       required: ExposedTypes::new(),
       template: ParamVar::default(),
       previous_template_hash: None,
       output: ClonedVar::default(),
-      env: minijinja::Environment::new(),
+      env,
     }
   }
 }
