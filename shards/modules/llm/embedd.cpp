@@ -10,7 +10,7 @@ struct Model {
 
   ModelData *_data{};
 
-  static SHTypesInfo inputTypes() { return shards::CoreInfo::StringType; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::StringOrStringSeq; }
   static SHTypesInfo outputTypes() { return ModelData::Type; }
 
   PARAM_PARAMVAR(_useMmap, "UseMmap", "Use mmap to load the model", {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
@@ -37,8 +37,6 @@ struct Model {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto path = SHSTRING_PREFER_SHSTRVIEW(input);
-
     auto params = llama_model_default_params();
     params.use_mmap = _useMmap.get().payload.boolValue;
     params.n_gpu_layers = _gpuLayers.get().payload.intValue;
@@ -51,7 +49,23 @@ struct Model {
     }
     _data = ModelData::ObjectVar.New();
 
-    _data->model = std::shared_ptr<llama_model>(llama_model_load_from_file(path.c_str(), params), llama_model_free);
+    if (input.valueType == SHType::String) {
+      auto path = SHSTRING_PREFER_SHSTRVIEW(input); // to ensure null termination
+
+      _data->model = std::shared_ptr<llama_model>(llama_model_load_from_file(path.c_str(), params), llama_model_free);
+    } else {
+      std::vector<std::string> paths;
+      for (const auto &item : input.payload.seqValue) {
+        auto path = SHSTRING_PREFER_SHSTRVIEW(item); // to ensure null termination
+        paths.push_back(path);
+      }
+      std::vector<const char *> cpaths;
+      for (const auto &path : paths) {
+        cpaths.push_back(path.c_str());
+      }
+      _data->model =
+          std::shared_ptr<llama_model>(llama_model_load_from_splits(cpaths.data(), cpaths.size(), params), llama_model_free);
+    }
 
     return ModelData::ObjectVar.Get(_data);
   }

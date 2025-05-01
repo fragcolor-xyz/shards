@@ -151,6 +151,8 @@ struct CoreInfo {
 
   static inline Types StringOrStringVar{{StringType, StringVarType}};
 
+  static inline Types StringOrStringSeq{{StringType, StringSeqType}};
+
   static inline Types StringOrAnyVar{{StringType, AnyVarType}};
 
   static inline Types ColorOrNone{{ColorType, NoneType}};
