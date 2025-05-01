@@ -1,0 +1,16 @@
+@wire(jinja/template-1 {
+  ; keep template in a stateful wire for faster re-use
+  Jinja.Apply("""Name: {{ name[1] }}
+Values: {% for value in values[1] %}{{ value[1] }}{% if not loop.last %}, {% endif %}{% endfor %}
+""")
+})
+
+{
+  name: "test"
+  values: [1 2 3 4]
+} | Do(jinja/template-1) | Log
+
+{
+  name: "test2"
+  values: [1 22 3 4]
+} | Do(jinja/template-1) | Log

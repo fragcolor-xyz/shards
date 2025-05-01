@@ -7,6 +7,7 @@ extern crate lazy_static;
 pub mod casting;
 pub mod date;
 pub mod env;
+pub mod jinja;
 pub mod uuid;
 
 #[cfg(feature = "ffi")]
@@ -31,4 +32,5 @@ pub extern "C" fn shardsRegister_core_rust(core: *mut shards::shardsc::SHCore) {
   }
 
   yaml::register_shards();
+  jinja::register_shards();
 }
