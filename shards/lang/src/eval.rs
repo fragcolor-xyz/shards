@@ -362,6 +362,10 @@ impl EvalEnv {
   }
 
   fn find_replacement<'a>(&self, name: &'a Identifier) -> Option<&'a Value> {
+    // Ignore explicitly qualified variables like ext/base-url
+    if name.namespaces.len() > 0  {
+      return None;
+    }
     self.lookup(|env| {
       let name = &name.name;
       if let Some(replacement) = env.replacements.get(name) {
