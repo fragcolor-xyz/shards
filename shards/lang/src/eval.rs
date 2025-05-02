@@ -1639,7 +1639,7 @@ impl<'e> VariableResolver<'e> {
       Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
       Value::Identifier(ref name) => {
         if !self.visit_once(name) {
-          return Err(("Recursive variable definition", line_info).into());
+          return Err((format!("Recursive variable definition \"{}\"", name), line_info).into());
         }
 
         // could be wire, trait or mesh as "special" cases
