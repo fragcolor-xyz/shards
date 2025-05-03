@@ -545,10 +545,16 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
+  std::deque<SHVar *> injectedVariables;
 
   ~Peer() { cleanup(); }
 
-  void cleanup() { socket.reset(); }
+  void cleanup() {
+    socket.reset();
+
+    // injectedVariables are cleaned up separately in wireOnStop
+    // to avoid double-free issues
+  }
 };
 
 struct PeerError {
@@ -582,6 +588,11 @@ struct Server {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ParamVar _port;
+  std::deque<ParamVar> _vars;
+  SeqVar _cache;
+  SHExposedTypesInfo _mergedReqs;
+
+  void destroy() { arrayFree(_mergedReqs); }
 
   void setParam(int idx, const SHVar &val) {
     switch (idx) {
@@ -613,12 +624,50 @@ struct Server {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_handlerMaster.valueType == SHType::Wire)
-      _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
+    if (_handlerMaster.valueType != SHType::Wire) {
+      throw ComposeError("Handler must be a wire");
+    }
+
+    auto wire = SHWire::sharedFromRef(_handlerMaster.payload.wireValue);
+
+    // Wire needs to capture all it needs, so we need deeper information
+    auto dataCopy = data;
+    dataCopy.requiredVariables = &wire->requirements;
+    for (auto &req : dataCopy.shared) {
+      if (!req.global)
+        req.tracked = false;
+    }
+
+    wire->composeResult = composeWire(wire.get(), dataCopy);
 
     const IterableExposedInfo shared(data.shared);
     // copy shared
     _sharedCopy = shared;
+
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    arrayResize(_mergedReqs, 0);
+
+    for (auto &avail : data.shared) {
+      auto it = wire->requirements.find(avail.name);
+      if (it != wire->requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("Http.Server: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = SHType::ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          ctxVar.payload.stringLen = strlen(avail.name);
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
+
+        arrayPush(_mergedReqs, it->second);
+      }
+    }
+
+    _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
+
     return data.inputType;
   }
 
@@ -630,7 +679,15 @@ struct Server {
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       SHLOG_DEBUG("Releasing peer for wire {}", e.wire->name);
-      _pool->release(it->second);
+
+      // Clean up injected variables
+      auto peer = it->second;
+      for (auto var : peer->injectedVariables) {
+        releaseVariable(var);
+      }
+      peer->injectedVariables.clear();
+
+      _pool->release(peer);
       _wireContainers.erase(it);
     }
   }
@@ -640,6 +697,18 @@ struct Server {
     auto peer = _pool->acquire(_composer, context);
     _wireContainers[peer->wire.get()] = peer;
 
+    // Clone required variables for this wire
+    peer->injectedVariables.clear();
+    // We should always have the cache populated from activate()
+    shassert(!_cache.empty() || _vars.empty());
+
+    auto idx = 0;
+    for (auto &v : _vars) {
+      SHVar *refVar = peer->injectedVariables.emplace_back(referenceWireVariable(peer->wire.get(), v.variableName()));
+      cloneVar(*refVar, _cache[idx]);
+      idx++;
+    }
+
     peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
       if (!ec) {
@@ -648,9 +717,19 @@ struct Server {
           peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
           mesh->schedule(peer->wire, Var::Empty, false);
         } else {
+          // Clean up injected variables
+          for (auto var : peer->injectedVariables) {
+            releaseVariable(var);
+          }
+          peer->injectedVariables.clear();
           _pool->release(peer);
         }
       } else {
+        // Clean up injected variables
+        for (auto var : peer->injectedVariables) {
+          releaseVariable(var);
+        }
+        peer->injectedVariables.clear();
         _pool->release(peer);
       }
       // continue accepting the next
@@ -667,6 +746,12 @@ struct Server {
 
     _onStopConnection = context->main->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
 
+    // Warm up captured variables
+    for (auto &v : _vars) {
+      SHLOG_TRACE("Http.Server: warming up variable: {}", v.variableName());
+      v.warmup(context);
+    }
+
     _port.warmup(context);
   }
 
@@ -675,6 +760,13 @@ struct Server {
       _pool->stopAll();
 
     _onStopConnection.release();
+
+    // Cleanup captured variables
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
+    _cache = {}; // ensure it's really all freed, not just cleared
 
     // Close acceptor first to stop accepting new connections
     if (_acceptor) {
@@ -695,7 +787,15 @@ struct Server {
     _is_running = false;
   }
 
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    // Keep variables captured up to date every activation
+    _cache.clear();
+    for (auto &v : _vars) {
+      _cache.push_back(v.get());
+    }
+
     if (!_is_running) {
       _ioc.reset(new net::io_context());
       auto addr = net::ip::make_address(_endpoint);
