@@ -546,6 +546,7 @@ struct Peer : public std::enable_shared_from_this<Peer> {
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
   std::deque<SHVar *> injectedVariables;
+  entt::scoped_connection _onCleanupConnection;
 
   ~Peer() { cleanup(); }
 
@@ -638,6 +639,8 @@ struct Server {
         req.tracked = false;
     }
 
+    dataCopy.wire = wire.get();
+    wire->mesh = data.wire->mesh;
     wire->composeResult = composeWire(wire.get(), dataCopy);
 
     const IterableExposedInfo shared(data.shared);
@@ -673,9 +676,7 @@ struct Server {
 
   std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
-  entt::scoped_connection _onStopConnection;
-
-  void wireOnStop(const SHWire::OnStopEvent &e) {
+  void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
       SHLOG_DEBUG("Releasing peer for wire {}", e.wire->name);
@@ -707,6 +708,11 @@ struct Server {
       SHVar *refVar = peer->injectedVariables.emplace_back(referenceWireVariable(peer->wire.get(), v.variableName()));
       cloneVar(*refVar, _cache[idx]);
       idx++;
+    }
+
+    // Connect the cleanup event
+    if (!peer->_onCleanupConnection) {
+      peer->_onCleanupConnection = peer->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Server::wireOnCleanup>(this);
     }
 
     peer->socket.reset(new tcp::socket(*_ioc));
@@ -744,8 +750,6 @@ struct Server {
       throw ComposeError("Peer wires pool not valid!");
     }
 
-    _onStopConnection = context->main->mesh.lock()->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
-
     // Warm up captured variables
     for (auto &v : _vars) {
       SHLOG_TRACE("Http.Server: warming up variable: {}", v.variableName());
@@ -758,8 +762,6 @@ struct Server {
   void cleanup(SHContext *context) {
     if (_pool)
       _pool->stopAll();
-
-    _onStopConnection.release();
 
     // Cleanup captured variables
     for (auto &v : _vars) {
