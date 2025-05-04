@@ -3180,13 +3180,13 @@ struct GlobalOnce {
     auto mesh = context->main->mesh.lock();
     auto actionHash = shards::hash(_blks);
     auto storageKey = fmt::format("GlobalOnce_{}", actionHash);
-    auto refCount = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return std::make_shared<uint64_t>(0); });
+    referenceCount = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return std::make_shared<uint64_t>(0); });
     SHVar output{};
 
-    (*refCount->get())++;
+    (*referenceCount)++;
 
     // if we have more than one reference, we don't need to activate
-    if (*(refCount->get()) > 1) {
+    if (*referenceCount > 1) {
       goto global_once_done;
     }
 

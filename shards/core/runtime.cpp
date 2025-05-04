@@ -846,8 +846,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 struct InternalCompositionContext {
   pmr::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
   pmr::unordered_set<SHExposedTypeInfo> required;
-  boost::container::flat_set<SHExposedTypeInfo, std::less<SHExposedTypeInfo>, pmr::vector<SHExposedTypeInfo>>
-      sharedStorage;
+  boost::container::flat_set<SHExposedTypeInfo, std::less<SHExposedTypeInfo>, pmr::vector<SHExposedTypeInfo>> sharedStorage;
   CompositionContext *sharedContext{};
 
   SHTypeInfo previousOutputType{};
@@ -862,7 +861,8 @@ struct InternalCompositionContext {
   std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
-  InternalCompositionContext(pmr::memory_resource *allocator) : exposed(allocator), required(allocator), sharedStorage(allocator) {}
+  InternalCompositionContext(pmr::memory_resource *allocator)
+      : exposed(allocator), required(allocator), sharedStorage(allocator) {}
 };
 
 void collectRequiredVariables(const SHInstanceData &data, ExposedInfo &out, const SHVar &var) {
@@ -1474,7 +1474,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
       if (!matchTypes(type, res.outputType, true, true, true)) {
         std::string err =
             fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
-        throw ComposeError(err);
+        throw ComposeError(std::move(err));
       }
     }
   }
