@@ -1,6 +1,12 @@
+use shards::types::TableVar;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncWrite;
 use tokio_tungstenite::WebSocketStream;
+use tungstenite::handshake::client::generate_key;
+use tungstenite::handshake::client::Request;
+use tungstenite::http::HeaderMap;
+use tungstenite::http::HeaderName;
+use tungstenite::http::HeaderValue;
 use tungstenite::protocol::Message;
 
 use super::*;
@@ -148,6 +154,78 @@ impl PollnetContext {
 
       info!("WS client attempting to connect to {}", url);
       match connect_async(real_url).await {
+        Ok((ws_stream, _)) => {
+          websocket_poll_loop(ws_stream, reactor_io).await;
+        }
+        Err(err) => {
+          error!("WS client connection error: {}", err);
+          send_error(reactor_io.tx, err);
+        }
+      }
+    });
+
+    let socket = Box::new(PollnetSocket {
+      io: Some(host_io),
+      status: SocketStatus::Opening,
+      data: None,
+      last_client_handle: SocketHandle::null(),
+    });
+    self.sockets.insert(socket)
+  }
+
+  pub fn open_ws_with_headers(&mut self, url: &str, headers: &TableVar) -> SocketHandle {
+    let url = url.to_string();
+    let (host_io, reactor_io) = create_channels();
+
+    let mut headers_map = HeaderMap::new();
+    for (key, value) in headers.iter() {
+      let key = key.to_string();
+      let value = value.to_string();
+      headers_map.insert(
+        HeaderName::from_bytes(key.as_bytes()).unwrap(),
+        HeaderValue::from_bytes(value.as_bytes()).unwrap(),
+      );
+    }
+
+    self.rt_handle.spawn(async move {
+      info!("WS client spawned");
+      let real_url = match url::Url::parse(&url) {
+        Ok(v) => v,
+        Err(url_err) => {
+          error!("Invalid URL: {}", url);
+          send_error(reactor_io.tx, url_err);
+          return;
+        }
+      };
+
+      let authority = real_url.authority();
+      let host = authority
+        .find('@')
+        .map(|idx| authority.split_at(idx + 1).1)
+        .unwrap_or_else(|| authority);
+      let mut req_builder = Request::builder()
+        .method("GET")
+        .header("Host", host)
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "websocket")
+        .header("Sec-WebSocket-Version", "13")
+        .header("Sec-WebSocket-Key", generate_key());
+
+      // Add all custom headers from the headers map
+      for (name, value) in headers_map.iter() {
+        req_builder = req_builder.header(name, value);
+      }
+
+      let req = req_builder.uri(&url).body(());
+
+      if let Err(e) = req {
+        error!("Invalid request: {}", e);
+        send_error(reactor_io.tx, e);
+        return;
+      }
+
+      info!("WS client attempting to connect to {}", url);
+      match connect_async(req.unwrap()).await {
         Ok((ws_stream, _)) => {
           websocket_poll_loop(ws_stream, reactor_io).await;
         }

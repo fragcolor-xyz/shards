@@ -29,7 +29,7 @@
       })
       "Ok!" | Network.SendRaw
       Math.Inc(done)
-    } Raw: true) = ws-client
+    } Raw: true Headers: {"Test": "TestValue"}) = ws-client
     
     Once({
       Log("ws-client")

@@ -65,6 +65,7 @@ void pollnet_shutdown(pollnet_ctx *ctx);
  * Secure websockets are supported; use "wss://".
  */
 sockethandle_t pollnet_open_ws(pollnet_ctx *ctx, SHStringWithLen url);
+sockethandle_t pollnet_open_ws_with_headers(pollnet_ctx *ctx, SHStringWithLen url, const SHVar *headers);
 
 /*
  * Close a socket. After closing, the handle can no longer be used.
@@ -159,6 +160,5 @@ sockethandle_t pollnet_get_connected_client_handle(pollnet_ctx *ctx, sockethandl
  * Note! This is a TCP address like "0.0.0.0:9090" and NOT a URL.
  */
 sockethandle_t pollnet_listen_ws(pollnet_ctx *ctx, SHStringWithLen addr);
-
 
 #endif /* B5DD25D9_8885_4263_B18F_B6F810D95746 */

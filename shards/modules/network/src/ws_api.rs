@@ -1,6 +1,7 @@
 use crate::pollnet_context::PollnetContext;
 use crate::pollnet_context::SocketHandle;
 use crate::pollnet_context::SocketStatus;
+use shards::types::TableVar;
 use shards::SHStringWithLen;
 use slotmap::Key;
 
@@ -51,6 +52,16 @@ pub unsafe extern "C" fn pollnet_open_ws(ctx: *mut PollnetContext, url: SHString
   let ctx: &mut PollnetContext = unsafe { &mut *ctx };
   let url = c_str_to_string(url);
   ctx.open_ws(url).into()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn pollnet_open_ws_with_headers(ctx: *mut PollnetContext, url: SHStringWithLen, headers: &TableVar) -> u64 {
+  let ctx: &mut PollnetContext = unsafe { &mut *ctx };
+  let url = c_str_to_string(url);
+  ctx.open_ws_with_headers(url, headers).into()
 }
 
 /// # Safety

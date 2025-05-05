@@ -426,7 +426,8 @@ struct WSClientShard {
   PARAM(ShardsVar, _handler, "Handler", ("The shards to execute when a packet is received."), {CoreInfo::ShardsOrNone});
   PARAM_VAR(_raw, "Raw", ("If set to true, the client will receive raw byte packets instead of serialized objects."),
             {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw));
+  PARAM_PARAMVAR(_headers, "Headers", ("The headers to send to the server."), {CoreInfo::NoneType, CoreInfo::StringTableType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw), PARAM_IMPL_FOR(_headers));
 
   std::shared_ptr<WSClient> _client;
   SHVar _peerVar;
@@ -510,7 +511,12 @@ struct WSClientShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_client) {
       _client = std::make_shared<WSClient>();
-      _client->peer.init(_client->ctx, pollnet_open_ws(_client->ctx, toSWL(SHSTRVIEW(_address.get()))), false);
+      if (_headers.get().valueType == SHType::Table) {
+        _client->peer.init(_client->ctx,
+                           pollnet_open_ws_with_headers(_client->ctx, toSWL(SHSTRVIEW(_address.get())), &_headers.get()), false);
+      } else {
+        _client->peer.init(_client->ctx, pollnet_open_ws(_client->ctx, toSWL(SHSTRVIEW(_address.get()))), false);
+      }
       _peerVar = Var::Object(&_client->peer, Types::Peer);
       assignVariableValue(*_peerVarRef, _peerVar);
     }

@@ -165,15 +165,6 @@ jobs:
           ./shards new ../shards/tests/table-recurse.shs
           ./shards new ../shards/tests/global-init.shs
           ./shards new ../shards/tests/jinja.shs
-      - name: Test (Debug)
-        # Test that only works in Debug build go there
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: full
-        run: |
-          cd build
-          ./shards new ../shards/tests/audio.shs test-device:true
-          ./shards new ../shards/tests/audio2.shs test-device:true
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

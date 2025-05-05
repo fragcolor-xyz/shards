@@ -132,6 +132,10 @@ jobs:
           echo "Running hot-reload test"
           build/shards new shards/tests/hot-reload.shs
 
+          echo "Running audio tests"
+          build/shards new shards/tests/audio.shs test-device:true
+          build/shards new shards/tests/audio2.shs test-device:true
+
       - name: Test Physics
         env:
           RUST_BACKTRACE: full
