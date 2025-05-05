@@ -247,6 +247,10 @@ struct KCPPeer final : public Peer {
 
   bool disconnected() const override { return disconnected_; }
 
+  void send_text(std::string_view data) override {
+    send(boost::span<const uint8_t>(reinterpret_cast<const uint8_t *>(data.data()), data.size()));
+  }
+
   void send(boost::span<const uint8_t> data) override {
     std::scoped_lock lock(mutex); // prevent concurrent sends
     auto size = data.size();

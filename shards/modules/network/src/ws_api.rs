@@ -58,7 +58,11 @@ pub unsafe extern "C" fn pollnet_open_ws(ctx: *mut PollnetContext, url: SHString
 ///
 /// ctx must be valid
 #[no_mangle]
-pub unsafe extern "C" fn pollnet_open_ws_with_headers(ctx: *mut PollnetContext, url: SHStringWithLen, headers: &TableVar) -> u64 {
+pub unsafe extern "C" fn pollnet_open_ws_with_headers(
+  ctx: *mut PollnetContext,
+  url: SHStringWithLen,
+  headers: &TableVar,
+) -> u64 {
   let ctx: &mut PollnetContext = unsafe { &mut *ctx };
   let url = c_str_to_string(url);
   ctx.open_ws_with_headers(url, headers).into()
@@ -119,6 +123,16 @@ pub unsafe extern "C" fn pollnet_send_binary(
   let ctx = unsafe { &mut *ctx };
   let slice = unsafe { std::slice::from_raw_parts(msg, msgsize as usize) };
   ctx.send_binary(handle.into(), slice)
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn pollnet_send(ctx: *mut PollnetContext, handle: u64, msg: SHStringWithLen) {
+  let ctx = unsafe { &mut *ctx };
+  let msg = c_str_to_string(msg);
+  ctx.send(handle.into(), msg.to_string())
 }
 
 /// # Safety

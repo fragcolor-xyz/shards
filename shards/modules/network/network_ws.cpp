@@ -71,6 +71,7 @@ struct WSPeer : public Peer {
   }
 
   void send(boost::span<const uint8_t> data) override { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
+  void send_text(std::string_view data) override { pollnet_send(ctx, socket, toSWL(data)); }
   bool disconnected() const override { return disconnected_; }
 };
 struct WSHandler : public WSPeer {
