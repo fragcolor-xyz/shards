@@ -644,6 +644,18 @@ struct WSPeer : public Peer {
       emscripten_websocket_send_binary(socket, const_cast<uint8_t *>(data.data()), data.size());
     }
   }
+
+  void send_text(std::string_view data) override {
+    if (disconnected_)
+      return;
+    if (!connected_) {
+      SPDLOG_LOGGER_ERROR(getLogger(), "{}> Defering send until connection, {} bytes", debugName, data.size());
+      sendQueue.push(new Message{std::vector<uint8_t>(data.begin(), data.end()), true});
+    } else {
+      emscripten_websocket_send_utf8_text(socket, data.data());
+    }
+  }
+
   bool disconnected() const override { return disconnected_; }
 };
 
@@ -660,7 +672,8 @@ struct WSClientShard {
   PARAM(ShardsVar, _handler, "Handler", ("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone});
   PARAM_VAR(_raw, "Raw", ("If set to true, the client will receive raw byte packets instead of serialized objects."),
             {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw));
+  PARAM_PARAMVAR(_headers, "Headers", ("The headers to send to the server."), {CoreInfo::NoneType, CoreInfo::StringTableType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_address), PARAM_IMPL_FOR(_handler), PARAM_IMPL_FOR(_raw), PARAM_IMPL_FOR(_headers));
 
   std::shared_ptr<WSClient> _client;
   SHVar _peerVar;
