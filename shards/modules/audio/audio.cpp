@@ -123,7 +123,15 @@ struct Device {
             "platforms. A value of 0 means the device's default buffer size will be used.",
             {CoreInfo::IntType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_inChannels), PARAM_IMPL_FOR(_outChannels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bufferSize));
+  PARAM_VAR(_deviceNameIn, "InputDevice",
+            "An optional name of the input device to use, otherwise the default input device will be used.",
+            {CoreInfo::NoneType, CoreInfo::StringType})
+  PARAM_VAR(_deviceNameOut, "OutputDevice",
+            "An optional name of the input device to use, otherwise the default input device will be used.",
+            {CoreInfo::NoneType, CoreInfo::StringType})
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_inChannels), PARAM_IMPL_FOR(_outChannels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bufferSize),
+             PARAM_IMPL_FOR(_deviceNameIn), PARAM_IMPL_FOR(_deviceNameOut));
 
   void setup() {
     _inChannels = Var(0);
@@ -140,6 +148,7 @@ struct Device {
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
+  ma_context _context;
   mutable ma_device _device;
   mutable bool _open{false};
   bool _started{false};
@@ -316,15 +325,52 @@ struct Device {
     _deviceVarDsp->payload.objectTypeId = DeviceCC;
     _deviceVarDsp->payload.objectValue = this;
 
+    _context = {};
+    if (ma_context_init(NULL, 0, NULL, &_context) != MA_SUCCESS) {
+      throw WarmupError("Failed to create ma_context");
+    }
+
+    ma_device_id *in_device_id = NULL;
+    ma_device_id *out_device_id = NULL;
+    if (!_deviceNameIn->isNone() || !_deviceNameOut->isNone()) {
+      ma_device_info *pPlaybackInfos;
+      ma_uint32 playbackCount;
+      ma_device_info *pCaptureInfos;
+      ma_uint32 captureCount;
+      if (ma_context_get_devices(&_context, &pPlaybackInfos, &playbackCount, &pCaptureInfos, &captureCount) != MA_SUCCESS) {
+        throw WarmupError("Failed to enumerate audio devices");
+      }
+
+      if (!_deviceNameIn->isNone()) {
+        for (ma_uint32 i = 0; i < playbackCount; i++) {
+          if (strcmp(pPlaybackInfos[i].name, _deviceNameIn->payload.stringValue) == 0) {
+            out_device_id = &pPlaybackInfos[i].id;
+            break;
+          }
+        }
+      }
+
+      if (!_deviceNameOut->isNone()) {
+        for (ma_uint32 i = 0; i < captureCount; i++) {
+          if (strcmp(pCaptureInfos[i].name, _deviceNameOut->payload.stringValue) == 0) {
+            in_device_id = &pCaptureInfos[i].id;
+            break;
+          }
+        }
+      }
+    }
+
     ma_device_config deviceConfig{};
     deviceConfig = ma_device_config_init(_inChannels.payload.intValue > 0 ? ma_device_type_duplex : ma_device_type_playback);
 
-    deviceConfig.playback.pDeviceID = NULL;
-    deviceConfig.playback.format = ma_format_f32;
-    deviceConfig.playback.channels = decltype(deviceConfig.playback.channels)(_outChannels.payload.intValue);
+    if (_outChannels.payload.intValue > 0) {
+      deviceConfig.playback.pDeviceID = out_device_id;
+      deviceConfig.playback.format = ma_format_f32;
+      deviceConfig.playback.channels = decltype(deviceConfig.playback.channels)(_outChannels.payload.intValue);
+    }
 
     if (_inChannels.payload.intValue > 0) {
-      deviceConfig.capture.pDeviceID = NULL;
+      deviceConfig.capture.pDeviceID = in_device_id;
       deviceConfig.capture.format = ma_format_f32;
       deviceConfig.capture.channels = decltype(deviceConfig.capture.channels)(_inChannels.payload.intValue);
       deviceConfig.capture.shareMode = ma_share_mode_shared;
@@ -341,7 +387,7 @@ struct Device {
     deviceConfig.coreaudio.allowNominalSampleRateChange = 1;
 #endif
 
-    if (ma_device_init(NULL, &deviceConfig, &_device) != MA_SUCCESS) {
+    if (ma_device_init(&_context, &deviceConfig, &_device) != MA_SUCCESS) {
       throw WarmupError("Failed to open default audio device");
     }
 
