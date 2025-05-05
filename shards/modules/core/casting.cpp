@@ -1192,31 +1192,86 @@ struct ImageToBytes {
 };
 
 struct AudioToBytes {
+  PARAM_PARAMVAR(_bits, "Bits", "The bit format to use (32=F32 floating point, 24=I24 integer, 16=I16 PCM integer).",
+                 {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_bits));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Accepts an audio buffer as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The input audio buffer represented as a byte array."); }
 
-  static SHOptionalString help() { return SHCCSTR("Converts an audio buffer into a byte array."); }
+  static SHOptionalString help() { return SHCCSTR("Converts an audio buffer into a byte array with specified bit format."); }
 
   std::vector<uint8_t> _output;
 
-  size_t audioDeriveDataLength(const SHAudio &audio) { return audio.nsamples * audio.channels * sizeof(float); }
+  AudioToBytes() {
+    _bits = Var(32); // Default to 32-bit float (F32)
+  }
+
+  size_t audioDeriveDataLength(const SHAudio &audio, int bits) {
+    int bytesPerSample = bits / 8;
+    return audio.nsamples * audio.channels * bytesPerSample;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &audio = input.payload.audioValue;
-    uint32_t audioDataLength = audioDeriveDataLength(audio);
+    int bits = (int)_bits.get().payload.intValue;
+
+    if (bits != 32 && bits != 24 && bits != 16) {
+      throw ActivationError("Supported bit formats are 32 (F32), 24 (I24), and 16 (I16)");
+    }
+
+    uint32_t audioDataLength = audioDeriveDataLength(audio, bits);
     _output.resize(audioDataLength);
-    memcpy(_output.data(), audio.samples, audioDataLength);
+
+    if (bits == 32) {
+      // F32 format - direct copy
+      memcpy(_output.data(), audio.samples, audioDataLength);
+    } else if (bits == 24) {
+      // I24 format - convert float to 24-bit integer
+      const float *samples = audio.samples;
+      for (uint32_t i = 0; i < audio.nsamples * audio.channels; i++) {
+        int32_t sample = static_cast<int32_t>(samples[i] * 8388607.0f); // 2^23-1
+        sample = std::min(std::max(sample, -8388608), 8388607);
+
+        // Store as 3 bytes in little-endian
+        _output[i * 3] = sample & 0xFF;
+        _output[i * 3 + 1] = (sample >> 8) & 0xFF;
+        _output[i * 3 + 2] = (sample >> 16) & 0xFF;
+      }
+    } else if (bits == 16) {
+      // I16 format - convert float to 16-bit integer
+      const float *samples = audio.samples;
+      for (uint32_t i = 0; i < audio.nsamples * audio.channels; i++) {
+        int16_t sample = static_cast<int16_t>(samples[i] * 32767.0f); // 2^15-1
+
+        // Store as 2 bytes in little-endian
+        _output[i * 2] = sample & 0xFF;
+        _output[i * 2 + 1] = (sample >> 8) & 0xFF;
+      }
+    }
+
     return Var(_output.data(), audioDataLength);
   }
 };
 
 struct BytesToAudio {
-  PARAM_PARAMVAR(_channels, "Channels", "The number of channels.", {CoreInfo::IntType});
-  PARAM_PARAMVAR(_sampleRate, "SampleRate", "The sample rate in Hz.", {CoreInfo::IntType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate));
+  PARAM_PARAMVAR(_channels, "Channels", "The number of channels.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_sampleRate, "SampleRate", "The sample rate in Hz.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_bits, "Bits", "The bit format used (32=F32 floating point, 24=I24 integer, 16=I16 PCM integer).",
+                 {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bits));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
@@ -1228,32 +1283,79 @@ struct BytesToAudio {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("Accepts a byte array containing float samples."); }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Accepts a byte array containing audio samples in the specified bit format.");
+  }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the constructed audio buffer."); }
 
-  static SHOptionalString help() { return SHCCSTR("Converts a byte array containing float samples back into an audio buffer."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a byte array containing audio samples in the specified format back into an audio buffer.");
+  }
 
   std::vector<float> _samples;
 
   BytesToAudio() {
     _channels = Var(1);
     _sampleRate = Var(44100);
+    _bits = Var(32); // Default to 32-bit float (F32)
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto channels = uint32_t(_channels.get().payload.intValue);
     auto sampleRate = uint32_t(_sampleRate.get().payload.intValue);
-    size_t dataLen = input.payload.bytesSize / sizeof(float);
-    size_t nsamples = dataLen / channels;
+    auto bits = int(_bits.get().payload.intValue);
+
+    if (bits != 32 && bits != 24 && bits != 16) {
+      throw ActivationError("Supported bit formats are 32 (F32), 24 (I24), and 16 (I16)");
+    }
+
+    int bytesPerSample = bits / 8;
+    size_t nsamples = input.payload.bytesSize / (bytesPerSample * channels);
 
     if (nsamples > UINT16_MAX) {
       throw ActivationError("Audio data exceeds the maximum number of samples (65535)");
     }
 
-    _samples.resize(dataLen);
-    memcpy(_samples.data(), input.payload.bytesValue, input.payload.bytesSize);
+    size_t totalSamples = nsamples * channels;
+    _samples.resize(totalSamples);
+
+    if (bits == 32) {
+      // F32 format - direct copy
+      if (input.payload.bytesSize != totalSamples * sizeof(float)) {
+        throw ActivationError("Byte array size does not match expected size for F32 format");
+      }
+      memcpy(_samples.data(), input.payload.bytesValue, input.payload.bytesSize);
+    } else if (bits == 24) {
+      // I24 format - convert 24-bit integer to float
+      if (input.payload.bytesSize != totalSamples * 3) {
+        throw ActivationError("Byte array size does not match expected size for I24 format");
+      }
+      const uint8_t *bytes = input.payload.bytesValue;
+      for (size_t i = 0; i < totalSamples; i++) {
+        // Read 3 bytes in little-endian as signed 24-bit integer
+        int32_t sample = bytes[i * 3] | (bytes[i * 3 + 1] << 8) | (bytes[i * 3 + 2] << 16);
+        // Sign extension for negative values
+        if (sample & 0x800000) {
+          sample |= 0xFF000000;
+        }
+        // Convert to float in range [-1.0, 1.0]
+        _samples[i] = float(sample) / 8388608.0f;
+      }
+    } else if (bits == 16) {
+      // I16 format - convert 16-bit integer to float
+      if (input.payload.bytesSize != totalSamples * 2) {
+        throw ActivationError("Byte array size does not match expected size for I16 format");
+      }
+      const uint8_t *bytes = input.payload.bytesValue;
+      for (size_t i = 0; i < totalSamples; i++) {
+        // Read 2 bytes in little-endian as signed 16-bit integer
+        int16_t sample = bytes[i * 2] | (bytes[i * 2 + 1] << 8);
+        // Convert to float in range [-1.0, 1.0]
+        _samples[i] = float(sample) / 32768.0f;
+      }
+    }
 
     SHAudio outAudio;
     outAudio.channels = channels;
