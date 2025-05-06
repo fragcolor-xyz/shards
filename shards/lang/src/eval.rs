@@ -165,6 +165,7 @@ pub struct EvalEnv {
   meshes: HashMap<Identifier, MeshVar>,
 
   extensions: HashMap<Identifier, Arc<dyn ShardsExtension>>,
+  default_line_info: Option<LineInfo>,
 
   complexity: u64,
   context_type: ContextType,
@@ -210,6 +211,7 @@ impl EvalEnv {
       traits: HashMap::new(),
       complexity: 0,
       context_type: ContextType::Source,
+      default_line_info: None,
     };
 
     if let Some(parent) = parent {
@@ -259,6 +261,7 @@ impl EvalEnv {
       traits: HashMap::new(),
       complexity: 0,
       context_type: ContextType::Source,
+      default_line_info: None,
     };
 
     // Convert ClonedDefinition to Definition
@@ -363,7 +366,7 @@ impl EvalEnv {
 
   fn find_replacement<'a>(&self, name: &'a Identifier) -> Option<&'a Value> {
     // Ignore explicitly qualified variables like ext/base-url
-    if name.namespaces.len() > 0  {
+    if name.namespaces.len() > 0 {
       return None;
     }
     self.lookup(|env| {
@@ -392,6 +395,21 @@ impl EvalEnv {
 
   fn find_extension<'a>(&self, name: &'a Identifier) -> Option<&'a Arc<dyn ShardsExtension>> {
     self.lookup(|env| env.extensions.get(name))
+  }
+
+  fn find_default_line_info(&self) -> Option<LineInfo> {
+    self.lookup(|env| env.default_line_info.clone())
+  }
+
+  fn with_line_info<R, F>(&mut self, line_info: LineInfo, f: F) -> R
+  where
+    F: FnOnce(&mut Self) -> R,
+  {
+    let prev = self.default_line_info;
+    self.default_line_info = Some(line_info);
+    let result = f(self);
+    self.default_line_info = prev;
+    result
   }
 
   fn with_context_mut<R, F>(&mut self, context_type: ContextType, f: F) -> R
@@ -1643,7 +1661,13 @@ impl<'e> VariableResolver<'e> {
       Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
       Value::Identifier(ref name) => {
         if !self.visit_once(name) {
-          return Err((format!("Recursive variable definition \"{}\"", name), line_info).into());
+          return Err(
+            (
+              format!("Recursive variable definition \"{}\"", name),
+              line_info,
+            )
+              .into(),
+          );
         }
 
         // could be wire, trait or mesh as "special" cases
@@ -2566,7 +2590,7 @@ fn process_type_enum(value: &Value, line_info: LineInfo) -> Result<SVar, ShardsE
 }
 
 fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let s = create_shard(shard, line_info, e)?;
+  let s: AutoShardRef = create_shard(shard, line_info, e)?;
   let s = shard_with_id(s, e, shard);
   e.shards.push(s);
   Ok(())
@@ -2633,7 +2657,7 @@ fn create_shard_inner(
     stored
   } else {
     shard
-  };  
+  };
 
   let s = AutoShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
@@ -2644,7 +2668,7 @@ fn create_shard_inner(
   )?;
 
   let mut idx = 0i32;
-  let mut as_idx = true; 
+  let mut as_idx = true;
   if let Some(ref params) = shard.params {
     for param in params {
       // Refresh parameter info on each iteration, as parameters can be dynamic (once a parameter is set, it may change others)
@@ -3364,7 +3388,7 @@ fn eval_pipeline(
                   Param {
                     value: Value::Identifier(name),
                     ..
-                  }, 
+                  },
                   types,
                 ) => {
                   let make_trait_shards = Sequence {
@@ -3949,12 +3973,14 @@ fn eval_pipeline(
                     .into()
                 })?;
 
-                e.with_context_mut(ContextType::Generated, |e| {
-                  // which we directly evaluate
-                  for stmt in &decoded_json.statements {
-                    eval_statement(stmt, e, cancellation_token.clone())?;
-                  }
-                  Ok(())
+                e.with_line_info(block.line_info.unwrap_or_default(), |e| {
+                  e.with_context_mut(ContextType::Generated, |e| {
+                    // which we directly evaluate
+                    for stmt in &decoded_json.statements {
+                      eval_statement(stmt, e, cancellation_token.clone())?;
+                    }
+                    Ok(())
+                  })
                 })?;
 
                 Ok(())

@@ -204,7 +204,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
       process_pipeline(
         inner
           .next()
-          .ok_or_else(||("Expected a Pipeline in Assignment, but found none.", pos).into())?,
+          .ok_or_else(|| ("Expected a Pipeline in Assignment, but found none.", pos).into())?,
         env,
       )?
     } else {
@@ -222,18 +222,18 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
 
   let assignment_op = inner
     .next()
-    .ok_or_else(||
+    .ok_or_else(|| {
       (
         "Expected an AssignmentOp in Assignment, but found none.",
         pos,
       )
-        .into(),
-    )?
+        .into()
+    })?
     .as_str();
 
   let iden = inner
     .next()
-    .ok_or_else(||("Expected an Identifier in Assignment, but found none.", pos).into())?;
+    .ok_or_else(|| ("Expected an Identifier in Assignment, but found none.", pos).into())?;
 
   let identifier = extract_identifier(iden)?;
 
@@ -320,7 +320,7 @@ fn convert_to_function_value<'a>(
     let itempl = itempl.clone();
     let mut prog: Program =
       env.with_inline_template_scope(ReadEnvType::InlineTemplateSubstitution, |env| {
-        let params = params.ok_or_else(||("Expected parameters", pos).into())?;
+        let params = params.ok_or_else(|| ("Expected parameters", pos).into())?;
 
         // Insert substitutions into environment
         if params.len() != itempl.args.len() {
@@ -346,7 +346,7 @@ fn convert_to_function_value<'a>(
           .map_err(|e| (format!("Failed to parse template: {}\n{}", e, src_str), pos).into())?;
         let root = successful_parse
           .next()
-          .ok_or_else(||("Expected a sequence", pos).into())?;
+          .ok_or_else(|| ("Expected a sequence", pos).into())?;
 
         process_program(root, env)
       })?;
@@ -367,7 +367,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   let mut inner = pair.into_inner();
   let exp = inner
     .next()
-    .ok_or_else(||("Expected a Name or Const in Shard", pos).into())?;
+    .ok_or_else(|| ("Expected a Name or Const in Shard", pos).into())?;
 
   let pos = exp.as_span().start_pos();
 
@@ -408,19 +408,19 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           "inline-template" => {
             let params = inner.next();
             let mut inner = params
-              .ok_or_else(||("Expected parameters", pos).into())?
+              .ok_or_else(|| ("Expected parameters", pos).into())?
               .into_inner();
 
             let param1 = process_param(
               inner
                 .next()
-                .ok_or_else(||("Expected first parameter", pos).into())?,
+                .ok_or_else(|| ("Expected first parameter", pos).into())?,
               env,
             )?;
             let param2 = process_param(
               inner
                 .next()
-                .ok_or_else(||("Expected second parameter", pos).into())?,
+                .ok_or_else(|| ("Expected second parameter", pos).into())?,
               env,
             )?;
             let remaining = inner.next();
@@ -430,7 +430,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             } else {
               None
             };
-            let func_name = func_name.ok_or_else(||("Expected a function name", pos).into())?;
+            let func_name = func_name.ok_or_else(|| ("Expected a function name", pos).into())?;
             let func_name = match &func_name.value {
               Value::Identifier(s) => Ok(s),
               _ => Err(("Expected a string value for function name", pos).into()),
@@ -441,25 +441,26 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             } else {
               None
             };
-            let args = args.ok_or_else(||("Expected an argument list", pos).into())?;
+            let args = args.ok_or_else(|| ("Expected an argument list", pos).into())?;
             let args = match &args.value {
               Value::Seq(s) => Ok(s),
               _ => Err(("Expected a sequence value for Args", pos).into()),
             }?;
 
-            let shards = remaining.ok_or_else(||("Expected a shards sequence (Shards:)", pos).into())?;
+            let shards =
+              remaining.ok_or_else(|| ("Expected a shards sequence (Shards:)", pos).into())?;
             let contents = shards
               .into_inner()
               .next()
-              .ok_or_else(||("Expected a shards sequence (Shards:)", pos).into())?; // (Param)
+              .ok_or_else(|| ("Expected a shards sequence (Shards:)", pos).into())?; // (Param)
             let contents = contents
               .into_inner()
               .next()
-              .ok_or_else(||("Expected a shards sequence (Shards:)", pos).into())?; // (Sequence)
+              .ok_or_else(|| ("Expected a shards sequence (Shards:)", pos).into())?; // (Sequence)
             let contents = contents
               .into_inner()
               .next()
-              .ok_or_else(||("Expected a shards sequence (Shards:)", pos).into())?; // (Shards)
+              .ok_or_else(|| ("Expected a shards sequence (Shards:)", pos).into())?; // (Shards)
             let contents = contents.as_str().to_owned();
 
             env.inline_templates.insert(
@@ -473,7 +474,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           }
           "include" => {
             let params = extract_params_from_pairs(&mut inner, env, pos)?;
-            let params = params.ok_or_else(||("Expected 2-3 parameters", pos).into())?;
+            let params = params.ok_or_else(|| ("Expected 2-3 parameters", pos).into())?;
             let n_params = params.len();
 
             let file_name = if n_params > 0 && params[0].name.is_none() {
@@ -483,7 +484,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .iter()
                 .find(|param| param.name.as_deref() == Some("File"))
             };
-            let file_name = file_name.ok_or_else(||("Expected a file name (File:)", pos).into())?;
+            let file_name =
+              file_name.ok_or_else(|| ("Expected a file name (File:)", pos).into())?;
             let file_name = match &file_name.value {
               Value::String(s) => Ok(s),
               _ => Err(("Expected a string value for File", pos).into()),
@@ -534,7 +536,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             let file_path_str = file_path
               .to_str()
-              .ok_or_else(||("Failed to convert file path to string", pos).into())?
+              .ok_or_else(|| ("Failed to convert file path to string", pos).into())?
               .to_owned();
 
             let rc_path = file_path_str.into();
@@ -564,13 +566,13 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               file_path.to_str().unwrap(), // should be qed...
               parent
                 .to_str()
-                .ok_or_else(||
+                .ok_or_else(|| {
                   (
                     format!("Failed to convert file path {:?} to string", parent),
                     pos,
                   )
-                    .into(),
-                )?
+                    .into()
+                })?
                 .into(),
               Vec::new(),
             );
@@ -588,7 +590,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           "env" => {
             // read from environment variable
             let params = extract_params_from_pairs(&mut inner, env, pos)?;
-            let params = params.ok_or_else(||("Expected 1 parameter", pos).into())?;
+            let params = params.ok_or_else(|| ("Expected 1 parameter", pos).into())?;
             let n_params = params.len();
 
             let name = if n_params > 0 && params[0].name.is_none() {
@@ -598,7 +600,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .iter()
                 .find(|param| param.name.as_deref() == Some("Name"))
             };
-            let name = name.ok_or_else(||("Expected an environment variable name", pos).into())?;
+            let name = name.ok_or_else(|| ("Expected an environment variable name", pos).into())?;
             let name = match &name.value {
               Value::String(s) => Ok(s),
               _ => Err(("Expected a string value", pos).into()),
@@ -610,7 +612,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           }
           "read" => {
             let params = extract_params_from_pairs(&mut inner, env, pos)?;
-            let params = params.ok_or_else(||("Expected 2 parameters", pos).into())?;
+            let params = params.ok_or_else(|| ("Expected 2 parameters", pos).into())?;
             let n_params = params.len();
 
             let file_name = if n_params > 0 && params[0].name.is_none() {
@@ -620,7 +622,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .iter()
                 .find(|param| param.name.as_deref() == Some("File"))
             };
-            let file_name = file_name.ok_or_else(||("Expected a file name (File:)", pos).into())?;
+            let file_name =
+              file_name.ok_or_else(|| ("Expected a file name (File:)", pos).into())?;
             let file_name = match &file_name.value {
               Value::String(s) => Ok(s),
               _ => Err(("Expected a string value for File", pos).into()),
@@ -704,7 +707,7 @@ fn process_take_table(
   let mut inner = pair.into_inner();
   let identity = inner
     .next()
-    .ok_or_else(||("Expected an identifier in TakeTable", pos).into())?;
+    .ok_or_else(|| ("Expected an identifier in TakeTable", pos).into())?;
 
   let identifier = extract_identifier(identity)?;
 
@@ -732,7 +735,7 @@ fn process_take_seq(
   let mut inner = pair.into_inner();
   let identity = inner
     .next()
-    .ok_or_else(||("Expected an identifier in TakeSeq", pos).into())?;
+    .ok_or_else(|| ("Expected an identifier in TakeSeq", pos).into())?;
 
   let identifier = extract_identifier(identity)?;
 
@@ -772,7 +775,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           pair
             .into_inner()
             .next()
-            .ok_or_else(||("Expected an eval time expression, but found none.", pos).into())?,
+            .ok_or_else(|| ("Expected an eval time expression, but found none.", pos).into())?,
           env,
         )?),
         line_info: Some(line_info),
@@ -783,29 +786,34 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           pair
             .into_inner()
             .next()
-            .ok_or_else(||("Expected an expression, but found none.", pos).into())?,
+            .ok_or_else(|| ("Expected an expression, but found none.", pos).into())?,
           env,
         )?),
         line_info: Some(line_info),
         custom_state: CustomStateContainer::new(),
       }),
-      Rule::Shard => match process_function(pair, env)? {
-        FunctionValue::Const(value) => blocks.push(Block {
-          content: BlockContent::Const(value),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Function(func) => blocks.push(Block {
-          content: BlockContent::Shard(func),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Program(program) => blocks.push(Block {
-          content: BlockContent::Program(program),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-      },
+      Rule::Shard => {
+        if line_info.line == 0 && line_info.column == 0 {
+          eprintln!("heee");
+        }
+        match process_function(pair, env)? {
+          FunctionValue::Const(value) => blocks.push(Block {
+            content: BlockContent::Const(value),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          }),
+          FunctionValue::Function(func) => blocks.push(Block {
+            content: BlockContent::Shard(func),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          }),
+          FunctionValue::Program(program) => blocks.push(Block {
+            content: BlockContent::Program(program),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          }),
+        }
+      }
       Rule::Func => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
@@ -855,7 +863,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           pair
             .into_inner()
             .next()
-            .ok_or_else(||("Expected an expression, but found none.", pos).into())?,
+            .ok_or_else(|| ("Expected an expression, but found none.", pos).into())?,
           env,
         )?),
         line_info: Some(line_info),
@@ -946,7 +954,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       pair
         .into_inner()
         .next()
-        .ok_or_else(||("Expected a Number value", pos).into())?,
+        .ok_or_else(|| ("Expected a Number value", pos).into())?,
       env,
     )
     .map(Value::Number),
@@ -965,7 +973,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
               // we need to check the next character
               let c = chars
                 .next()
-                .ok_or_else(||("Unexpected end of string", pos).into())?;
+                .ok_or_else(|| ("Unexpected end of string", pos).into())?;
               match c {
                 'n' => new_str.push('\n'),
                 'r' => new_str.push('\r'),
@@ -1002,7 +1010,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             value
               .into_inner()
               .next()
-              .ok_or_else(||("Expected a Value in the sequence", pos).into())?,
+              .ok_or_else(|| ("Expected a Value in the sequence", pos).into())?,
             env,
           )
         })
@@ -1023,7 +1031,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let key = key
             .into_inner()
             .next()
-            .ok_or_else(||("Expected a Table key", pos).into())?;
+            .ok_or_else(|| ("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
             Rule::None => Value::None(()),
             Rule::Iden => Value::String(key.as_str().to_owned().into()),
@@ -1058,7 +1066,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       pair
         .into_inner()
         .next()
-        .ok_or_else(||("Expected a Sequence in Value", pos).into())?,
+        .ok_or_else(|| ("Expected a Sequence in Value", pos).into())?,
       env,
     )
     .map(Value::Shards),
@@ -1070,7 +1078,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       pair
         .into_inner()
         .next()
-        .ok_or_else(||("Expected a Sequence in Value", pos).into())?,
+        .ok_or_else(|| ("Expected a Sequence in Value", pos).into())?,
       env,
     )
     .map(Value::EvalExpr),
@@ -1078,7 +1086,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       pair
         .into_inner()
         .next()
-        .ok_or_else(||("Expected a Sequence in Value", pos).into())?,
+        .ok_or_else(|| ("Expected a Sequence in Value", pos).into())?,
       env,
     )
     .map(Value::Expr),
@@ -1134,7 +1142,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
   let mut inner = pair.into_inner();
   let first = inner
     .next()
-    .ok_or_else(||("Expected a ParamName or Value in Param", pos).into())?;
+    .ok_or_else(|| ("Expected a ParamName or Value in Param", pos).into())?;
   let pos = first.as_span().start_pos();
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
     let name = first.as_str().to_owned();
@@ -1142,10 +1150,10 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
     let value = process_value(
       inner
         .next()
-        .ok_or_else(||("Expected a Value in Param", pos).into())?
+        .ok_or_else(|| ("Expected a Value in Param", pos).into())?
         .into_inner()
         .next()
-        .ok_or_else(||("Expected a Value in Param", pos).into())?,
+        .ok_or_else(|| ("Expected a Value in Param", pos).into())?,
       env,
     )?;
     (Some(name), value)
@@ -1156,7 +1164,7 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
         first
           .into_inner()
           .next()
-          .ok_or_else(||("Expected a Value in Param", pos).into())?,
+          .ok_or_else(|| ("Expected a Value in Param", pos).into())?,
         env,
       )?,
     )
