@@ -686,9 +686,6 @@ pub(crate) struct SpeechToTextShard {
   #[shard_param("Timestamps", "Whether to include timestamps in output.", [common_type::bool])]
   timestamps: ClonedVar,
 
-  #[shard_param("BeamSize", "Beam size for decoding (default: 5).", [common_type::int])]
-  beam_size: ClonedVar,
-
   #[shard_param("Seed", "The seed to use for the generation.", [common_type::int, common_type::int_var])]
   seed: ParamVar,
 
@@ -704,7 +701,6 @@ impl Default for SpeechToTextShard {
       language: ParamVar::default(),
       task: ParamVar::default(),
       timestamps: false.into(),
-      beam_size: 5i64.into(),
       seed: ParamVar::new(42i64.into()),
       output: ClonedVar::default(),
     }

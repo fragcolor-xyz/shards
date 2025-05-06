@@ -153,7 +153,7 @@ impl Decoder {
     }
     let sample_len = model.config().max_target_positions / 2;
     let mut sum_logprob = 0f64;
-    let mut no_speech_prob = f64::NAN;
+    let mut no_speech_prob = m::NO_SPEECH_THRESHOLD;
     let mut tokens = vec![self.sot_token];
     if let Some(language_token) = self.language_token {
       tokens.push(language_token);
@@ -227,7 +227,7 @@ impl Decoder {
       avg_logprob,
       no_speech_prob,
       temperature: t,
-      compression_ratio: f64::NAN,
+      compression_ratio: m::COMPRESSION_RATIO_THRESHOLD,
     })
   }
 
