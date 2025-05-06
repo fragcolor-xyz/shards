@@ -2,7 +2,7 @@ if(NOT EMSCRIPTEN)
   set(SOURCES
     embedd.cpp
     chat.cpp
-    whisper.cpp
+    sh_whisper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/sampling.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/log.cpp
