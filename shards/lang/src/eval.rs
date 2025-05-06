@@ -424,6 +424,12 @@ impl EvalEnv {
   }
 }
 
+fn get_line_info(e: &EvalEnv, block: &Block) -> LineInfo {
+  block.line_info.unwrap_or_else(|| {
+    e.find_default_line_info().unwrap_or_default()
+  })
+}
+
 impl ShardsGroup {
   fn without_pointers(&self) -> Self {
     match self {
