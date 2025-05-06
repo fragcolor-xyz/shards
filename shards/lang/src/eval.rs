@@ -362,6 +362,10 @@ impl EvalEnv {
   }
 
   fn find_replacement<'a>(&self, name: &'a Identifier) -> Option<&'a Value> {
+    // Ignore explicitly qualified variables like ext/base-url
+    if name.namespaces.len() > 0  {
+      return None;
+    }
     self.lookup(|env| {
       let name = &name.name;
       if let Some(replacement) = env.replacements.get(name) {
@@ -1639,7 +1643,7 @@ impl<'e> VariableResolver<'e> {
       Value::Boolean(value) => Ok(ResolvedVar::new_const(SVar::NotCloned((*value).into()))),
       Value::Identifier(ref name) => {
         if !self.visit_once(name) {
-          return Err(("Recursive variable definition", line_info).into());
+          return Err((format!("Recursive variable definition \"{}\"", name), line_info).into());
         }
 
         // could be wire, trait or mesh as "special" cases
