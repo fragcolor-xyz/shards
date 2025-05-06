@@ -1,5 +1,6 @@
 set(SOURCES
   dsp.cpp
+  compressor.cpp
 )
 
 add_shards_module(audio SOURCES ${SOURCES}

@@ -341,21 +341,33 @@ struct Device {
         throw WarmupError("Failed to enumerate audio devices");
       }
 
-      if (!_deviceNameIn->isNone()) {
+      if (!_deviceNameOut->isNone()) {
         for (ma_uint32 i = 0; i < playbackCount; i++) {
-          if (strcmp(pPlaybackInfos[i].name, _deviceNameIn->payload.stringValue) == 0) {
+          SHLOG_DEBUG("Output device: {}", pPlaybackInfos[i].name);
+          if (strcmp(pPlaybackInfos[i].name, _deviceNameOut->payload.stringValue) == 0) {
             out_device_id = &pPlaybackInfos[i].id;
             break;
           }
         }
+        if (out_device_id == NULL) {
+          throw WarmupError("Input device not found");
+        } else {
+          SHLOG_INFO("Output device found: {}", _deviceNameOut);
+        }
       }
 
-      if (!_deviceNameOut->isNone()) {
+      if (!_deviceNameIn->isNone()) {
         for (ma_uint32 i = 0; i < captureCount; i++) {
-          if (strcmp(pCaptureInfos[i].name, _deviceNameOut->payload.stringValue) == 0) {
+          SHLOG_DEBUG("Input device: {}", pCaptureInfos[i].name);
+          if (strcmp(pCaptureInfos[i].name, _deviceNameIn->payload.stringValue) == 0) {
             in_device_id = &pCaptureInfos[i].id;
             break;
           }
+        }
+        if (in_device_id == NULL) {
+          throw WarmupError("Output device not found");
+        } else {
+          SHLOG_INFO("Input device found: {}", _deviceNameIn);
         }
       }
     }
@@ -1970,6 +1982,8 @@ struct SetVelocity {
   }
 };
 
+void registerCompressorShards();
+
 } // namespace Audio
 } // namespace shards
 
@@ -2001,4 +2015,6 @@ SHARDS_REGISTER_FN(audio) {
   shards::registerObjectType(shards::CoreCC, shards::Audio::Device::DeviceCC, SHObjectInfo{"Device"});
   shards::registerObjectType(shards::CoreCC, shards::Audio::Engine::EngineCC, SHObjectInfo{"Engine"});
   shards::registerObjectType(shards::CoreCC, shards::Audio::Sound::SoundCC, SHObjectInfo{"Sound"});
+
+  registerCompressorShards();
 }
