@@ -424,10 +424,10 @@ impl EvalEnv {
   }
 }
 
-fn get_line_info(e: &EvalEnv, block: &Block) -> LineInfo {
-  block.line_info.unwrap_or_else(|| {
-    e.find_default_line_info().unwrap_or_default()
-  })
+fn get_block_line_info(e: &EvalEnv, block: &Block) -> LineInfo {
+  block
+    .line_info
+    .unwrap_or_else(|| e.find_default_line_info().unwrap_or_default())
 }
 
 impl ShardsGroup {
@@ -3024,18 +3024,22 @@ fn get_mesh<'a>(
   e: &'a mut EvalEnv,
   block: &Block,
 ) -> Result<&'a mut MeshVar, ShardsError> {
+  let line_info = get_block_line_info(e, block);
   match &param.value {
-    Value::Identifier(name) => find_mesh(name, e).ok_or_else(|| {
-      (
-        "run built-in function requires a valid mesh parameter",
-        block.line_info.unwrap_or_default(),
-      )
-        .into()
-    }),
+    Value::Identifier(name) => match find_mesh(name, e) {
+      Some(mesh) => Ok(mesh),
+      None => Err(
+        (
+          "run built-in function requires a valid mesh parameter",
+          line_info,
+        )
+          .into(),
+      ),
+    },
     _ => Err(
       (
         "run built-in function requires a mesh parameter",
-        block.line_info.unwrap_or_default(),
+        get_block_line_info(e, block),
       )
         .into(),
     ),
@@ -3301,7 +3305,7 @@ fn eval_pipeline(
   for block in &pipeline.blocks {
     let _ = match &block.content {
       BlockContent::Empty => Ok(()),
-      BlockContent::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e),
+      BlockContent::Shard(shard) => add_shard(shard, get_block_line_info(e, block), e),
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(&seq, Some(e), cancellation_token.clone())?;
 
@@ -3314,7 +3318,7 @@ fn eval_pipeline(
           finalize_env(&mut sub_env)?;
           let sub = make_sub_shard(
             sub_env.shards.drain(..).collect(),
-            block.line_info.unwrap_or_default(),
+            get_block_line_info(e, block),
           )?;
           // we do not really need to add the sub shard to debug info here, as the errors are likely to be inside
           e.shards.push(sub);
@@ -3322,12 +3326,12 @@ fn eval_pipeline(
 
         Ok(())
       }
-      BlockContent::Const(value) => add_const_shard(value, block.line_info.unwrap_or_default(), e),
+      BlockContent::Const(value) => add_const_shard(value, get_block_line_info(e, block), e),
       BlockContent::TakeTable(name, path) => {
-        create_take_table_chain(name, path, block.line_info.unwrap_or_default(), e)
+        create_take_table_chain(name, path, get_block_line_info(e, block), e)
       }
       BlockContent::TakeSeq(name, path) => {
-        create_take_seq_chain(name, path, block.line_info.unwrap_or_default(), e)
+        create_take_seq_chain(name, path, get_block_line_info(e, block), e)
       }
       BlockContent::EvalExpr(seq) => {
         let value = eval_eval_expr(&seq, e)?;
@@ -3350,7 +3354,7 @@ fn eval_pipeline(
           return Err(
             (
               format!("Forbidden function {}", func.name),
-              block.line_info.unwrap_or_default(),
+              get_block_line_info(e, block),
             )
               .into(),
           );
@@ -3376,7 +3380,7 @@ fn eval_pipeline(
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "trait built-in function requires Name parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3384,7 +3388,7 @@ fn eval_pipeline(
               let types = param_helper.get_param_by_name_or_index("Types", 1).ok_or(
                 (
                   "trait built-in function requires Types parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3432,7 +3436,7 @@ fn eval_pipeline(
                 _ => Err(
                   (
                     "trait built-in function requires Name parameter to be an identifier",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 ),
@@ -3441,7 +3445,7 @@ fn eval_pipeline(
               Err(
                 (
                   "trait built-in function requires proper parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3454,7 +3458,7 @@ fn eval_pipeline(
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "define built-in function requires Name parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3462,7 +3466,7 @@ fn eval_pipeline(
               let value = param_helper.get_param_by_name_or_index("Value", 1).ok_or(
                 (
                   "define built-in function requires Value parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3502,7 +3506,7 @@ fn eval_pipeline(
                       return Err(
                         (
                           format!("{} already defined", name.name),
-                          block.line_info.unwrap_or_default(),
+                          get_block_line_info(e, block),
                         )
                           .into(),
                       );
@@ -3516,7 +3520,7 @@ fn eval_pipeline(
 
                   // resolve into var if value is a constant
                   if is_compile_time_constant(&value.value, e) {
-                    let value = as_var(&value.value, block.line_info.unwrap_or_default(), None, e)?;
+                    let value = as_var(&value.value, get_block_line_info(e, block), None, e)?;
                     e.definitions
                       .insert(name.clone(), Definition::Constant(value));
                   } else if let ContextType::Generated = e.context_type {
@@ -3534,7 +3538,7 @@ fn eval_pipeline(
                 _ => Err(
                   (
                     "define built-in function requires Name parameter to be an identifier",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 ),
@@ -3543,7 +3547,7 @@ fn eval_pipeline(
               Err(
                 (
                   "define built-in function requires proper parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3558,7 +3562,7 @@ fn eval_pipeline(
                 .ok_or(
                   (
                     "wire built-in function requires a Name parameter",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 )?
@@ -3567,7 +3571,7 @@ fn eval_pipeline(
                 .ok_or(
                   (
                     "wire built-in function requires a Name parameter",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 )?;
@@ -3578,7 +3582,7 @@ fn eval_pipeline(
                   .ok_or(
                     (
                       "wire built-in function requires a Name parameter",
-                      block.line_info.unwrap_or_default(),
+                      get_block_line_info(e, block),
                     )
                       .into(),
                   )?
@@ -3590,14 +3594,14 @@ fn eval_pipeline(
               let params_ptr = func.params.as_ref().ok_or(
                 (
                   "wire built-in function requires a Params parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )? as *const Vec<Param>;
               let (wire_name, _) = get_full_name(
                 &name,
                 e,
-                block.line_info.unwrap_or_default(),
+                get_block_line_info(e, block),
                 name.namespaces.is_empty(),
               )?;
               shlog_trace!("Adding deferred wire {}", wire_name);
@@ -3623,7 +3627,7 @@ fn eval_pipeline(
                       .unwrap_or(0)
                   }),
                   params,
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 ),
               );
               Ok(())
@@ -3631,7 +3635,7 @@ fn eval_pipeline(
               Err(
                 (
                   "wire built-in function requires proper parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3644,7 +3648,7 @@ fn eval_pipeline(
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "shards built-in function requires a Name parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3652,7 +3656,7 @@ fn eval_pipeline(
               let args = param_helper.get_param_by_name_or_index("Args", 1).ok_or(
                 (
                   "shards built-in function requires an Args parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3660,7 +3664,7 @@ fn eval_pipeline(
               let shards = param_helper.get_param_by_name_or_index("Shards", 2).ok_or(
                 (
                   "shards built-in function requires a Shards parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3671,7 +3675,7 @@ fn eval_pipeline(
                     return Err(
                       (
                         format!("template {} already exists", name.name),
-                        block.line_info.unwrap_or_default(),
+                        get_block_line_info(e, block),
                       )
                         .into(),
                     );
@@ -3698,7 +3702,7 @@ fn eval_pipeline(
                 _ => Err(
                   (
                     "shards built-in function requires valid parameters",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 ),
@@ -3707,7 +3711,7 @@ fn eval_pipeline(
               Err(
                 (
                   "shards built-in function requires a Name, Args and Shards parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3720,7 +3724,7 @@ fn eval_pipeline(
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "mesh built-in function requires a name parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3731,7 +3735,7 @@ fn eval_pipeline(
                     return Err(
                       (
                         format!("mesh {} already exists", name.name),
-                        block.line_info.unwrap_or_default(),
+                        get_block_line_info(e, block),
                       )
                         .into(),
                     );
@@ -3747,7 +3751,7 @@ fn eval_pipeline(
                 _ => Err(
                   (
                     "mesh built-in function requires an identifier parameter",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 ),
@@ -3756,7 +3760,7 @@ fn eval_pipeline(
               Err(
                 (
                   "mesh built-in function requires a parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3766,13 +3770,13 @@ fn eval_pipeline(
             if let Some(ref _params) = func.params {
               let mut other_fn = func.clone();
               other_fn.name.name = RcStrWrapper::new("Schedule");
-              add_shard(&other_fn, block.line_info.unwrap_or_default(), e)?;
+              add_shard(&other_fn, get_block_line_info(e, block), e)?;
               Ok(())
             } else {
               Err(
                 (
                   "schedule built-in function requires 2 parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3782,44 +3786,44 @@ fn eval_pipeline(
             if let Some(ref params) = func.params {
               let mut otherFn = func.clone();
               otherFn.name.name = RcStrWrapper::new("Run");
-              add_shard(&otherFn, block.line_info.unwrap_or_default(), e)?;
+              add_shard(&otherFn, get_block_line_info(e, block), e)?;
               Ok(())
             } else {
               Err(
                 (
                   "run built-in function requires a parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
             }
           }
           ("color", true) => {
-            process_color_built_in_function(func, block.line_info.unwrap_or_default(), e)
+            process_color_built_in_function(func, get_block_line_info(e, block), e)
           }
           ("i2", true) => {
-            process_vector_built_in_ints_block::<2>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<2>(func, get_block_line_info(e, block), e)
           }
           ("i3", true) => {
-            process_vector_built_in_ints_block::<3>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<3>(func, get_block_line_info(e, block), e)
           }
           ("i4", true) => {
-            process_vector_built_in_ints_block::<4>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<4>(func, get_block_line_info(e, block), e)
           }
           ("i8", true) => {
-            process_vector_built_in_ints_block::<8>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<8>(func, get_block_line_info(e, block), e)
           }
           ("i16", true) => {
-            process_vector_built_in_ints_block::<16>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<16>(func, get_block_line_info(e, block), e)
           }
           ("f2", true) => {
-            process_vector_built_in_floats_block::<2>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<2>(func, get_block_line_info(e, block), e)
           }
           ("f3", true) => {
-            process_vector_built_in_floats_block::<3>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<3>(func, get_block_line_info(e, block), e)
           }
           ("f4", true) => {
-            process_vector_built_in_floats_block::<4>(func, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<4>(func, get_block_line_info(e, block), e)
           }
           ("macro", true) => {
             if let Some(ref params) = func.params {
@@ -3828,7 +3832,7 @@ fn eval_pipeline(
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "macro built-in function requires a Name parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3836,7 +3840,7 @@ fn eval_pipeline(
               let args = param_helper.get_param_by_name_or_index("Args", 1).ok_or(
                 (
                   "macro built-in function requires an Args parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3844,7 +3848,7 @@ fn eval_pipeline(
               let shards = param_helper.get_param_by_name_or_index("Shards", 2).ok_or(
                 (
                   "macro built-in function requires a Shards parameter",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )?;
@@ -3872,7 +3876,7 @@ fn eval_pipeline(
                 _ => Err(
                   (
                     "macro built-in function requires a Name, Args and Shards parameters",
-                    block.line_info.unwrap_or_default(),
+                    get_block_line_info(e, block),
                   )
                     .into(),
                 ),
@@ -3881,7 +3885,7 @@ fn eval_pipeline(
               Err(
                 (
                   "macro built-in function requires parameters",
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               )
@@ -3889,40 +3893,40 @@ fn eval_pipeline(
           }
           ("platform", true) => {
             let info = process_platform_built_in();
-            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
+            add_const_shard2(func, *info.as_ref(), get_block_line_info(e, block), e)
           }
           ("type", true) => {
-            let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
-            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
+            let info = process_type(func, get_block_line_info(e, block), e)?;
+            add_const_shard2(func, *info.as_ref(), get_block_line_info(e, block), e)
           }
           ("ast", true) => {
-            let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
-            add_const_shard2(func, *info.as_ref(), block.line_info.unwrap_or_default(), e)
+            let info = process_ast(func, get_block_line_info(e, block), e)?;
+            add_const_shard2(func, *info.as_ref(), get_block_line_info(e, block), e)
           }
           ("eval-context", true) => {
             let ctx = capture_eval_context(e);
-            add_const_shard2(func, ctx.0, block.line_info.unwrap_or_default(), e)
+            add_const_shard2(func, ctx.0, get_block_line_info(e, block), e)
           }
           ("namespace", true) => {
             let namespace = e.full_namespace.clone();
             add_const_shard2(
               func,
               Var::ephemeral_string(namespace.as_str()),
-              block.line_info.unwrap_or_default(),
+              get_block_line_info(e, block),
               e,
             )
           }
           _ => {
+            let line_info = get_block_line_info(e, block);
             match (
               // Notice, By precedence!
               find_defined(&func.name, e).map(|v| v.clone()),
-              process_template(func, block.line_info.unwrap_or_default(), e)?,
-              process_macro(func, block.line_info.unwrap_or_default(), e)?,
+              process_template(func, line_info, e)?,
+              process_macro(func, line_info, e)?,
               find_extension(&func.name, e),
             ) {
               (None, None, None, Some(extension)) => {
-                let shard =
-                  extension.process_to_shard(func, block.line_info.unwrap_or_default())?;
+                let shard = extension.process_to_shard(func, line_info)?;
                 let shard = shard_with_id(shard, e, func);
                 e.shards.push(shard);
                 Ok(())
@@ -3962,24 +3966,24 @@ fn eval_pipeline(
                 let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
                   (
                     "macro built-in function Shards should return a Json string",
-                    block.line_info.unwrap_or_default(),
+                    line_info,
                   )
                     .into()
                 })?;
 
                 // in this case we expect the ast to be a sequence of statements
-                let decoded_json: Sequence = serde_json::from_str(ast_json).map_err(|e| {
+                let decoded_json: Sequence = serde_json::from_str(ast_json).map_err(|err| {
                   (
                     format!(
                       "macro built-in function Shards should return a valid Json string: {}",
-                      e
+                      err
                     ),
-                    block.line_info.unwrap_or_default(),
+                    line_info,
                   )
                     .into()
                 })?;
 
-                e.with_line_info(block.line_info.unwrap_or_default(), |e| {
+                e.with_line_info(line_info, |e| {
                   e.with_context_mut(ContextType::Generated, |e| {
                     // which we directly evaluate
                     for stmt in &decoded_json.statements {
@@ -4022,7 +4026,7 @@ fn eval_pipeline(
                     | Value::TakeTable(_, _)
                     | Value::TakeSeq(_, _)
                     | Value::Table(_) => {
-                      add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard(replacement, get_block_line_info(e, block), e)?
                     }
                     Value::Shards(seq) => {
                       // purely include the ast of the sequence
@@ -4032,22 +4036,20 @@ fn eval_pipeline(
                     }
                     Value::EvalExpr(seq) => {
                       let value = eval_eval_expr(&seq, e)?;
-                      add_const_shard2(func, value.0 .0, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard2(func, value.0 .0, get_block_line_info(e, block), e)?
                     }
                     Value::Expr(seq) => eval_expr(seq, e, block, start_idx, cancellation_token)?,
-                    Value::Shard(shard) => {
-                      add_shard(shard, block.line_info.unwrap_or_default(), e)?
-                    }
+                    Value::Shard(shard) => add_shard(shard, get_block_line_info(e, block), e)?,
                   }
                   Ok(())
                 }
                 match value {
                   Definition::Constant(value) => match value {
                     SVar::Cloned(value) => {
-                      add_const_shard2(func, value.0, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard2(func, value.0, get_block_line_info(e, block), e)?
                     }
                     SVar::NotCloned(value) => {
-                      add_const_shard2(func, value, block.line_info.unwrap_or_default(), e)?
+                      add_const_shard2(func, value, get_block_line_info(e, block), e)?
                     }
                   },
                   Definition::ValueSource(value) => eval_def(
@@ -4072,7 +4074,7 @@ fn eval_pipeline(
               _ => Err(
                 (
                   format!("unknown built-in function or definition: {}", func.name),
-                  block.line_info.unwrap_or_default(),
+                  get_block_line_info(e, block),
                 )
                   .into(),
               ),
@@ -4101,20 +4103,20 @@ fn eval_expr(
     add_assignment_shard_no_suffix(
       "Ref",
       &tmp_name,
-      block.line_info.unwrap_or_default(),
+      get_block_line_info(e, block),
       &mut sub_env,
     )
-    .map_err(|e| (format!("{:?}", e), block.line_info.unwrap_or_default()).into())?;
+    .map_err(|err| (format!("{:?}", err), get_block_line_info(e, block)).into())?;
     // wrap into a Sub Shard
     finalize_env(&mut sub_env)?;
     let sub = make_sub_shard(
       sub_env.shards.drain(..).collect(),
-      block.line_info.unwrap_or_default(),
+      get_block_line_info(e, block),
     )?;
     // add this sub shard before the start of this pipeline!
     e.shards.insert(start_idx, sub);
     // now add a get shard to get the temporary at the end of the pipeline
-    add_get_shard_no_suffix(&tmp_name, block.line_info.unwrap_or_default(), e)?;
+    add_get_shard_no_suffix(&tmp_name, get_block_line_info(e, block), e)?;
   })
 }
 
