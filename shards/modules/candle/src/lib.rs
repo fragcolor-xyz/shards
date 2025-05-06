@@ -7,13 +7,10 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
 use candle_core::{DType, Device, Tensor as CandleTensor};
 
-mod audio;
 pub mod model;
-pub mod moondream;
 mod tensor;
-mod umap;
 pub mod tokenizer;
-pub mod whisper;
+mod umap;
 
 use once_cell::sync::OnceCell;
 
@@ -121,8 +118,6 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_enum::<model::Formats>();
   register_shard::<tensor::TensorZerosLikeShard>();
   register_shard::<model::ForwardShard>();
-  register_shard::<model::SpeechToTextShard>();
-  register_shard::<moondream::VisionToTextShard>();
 
   register_shard::<tensor::TensorMulShard>();
   register_shard::<tensor::TensorSubShard>();
@@ -144,8 +139,6 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorToFloat2sShard>();
   register_shard::<tensor::TensorToFloat3sShard>();
   register_shard::<tensor::TensorToFloat4sShard>();
-
-  register_shard::<audio::MLAudioToMel>();
 
   register_object_type::<Tensor>(FRAG_CC, fourCharacterCode(*b"cTEN"));
   register_object_type::<tokenizer::Tokenizer>(FRAG_CC, fourCharacterCode(*b"TOKn"));

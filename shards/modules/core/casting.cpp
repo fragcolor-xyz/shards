@@ -1266,6 +1266,131 @@ struct AudioToBytes {
   }
 };
 
+struct AudioToFloats {
+  static inline Type _outputElemType{{SHType::Float}};
+  static inline Type _outputType{{SHType::Seq, {.seqTypes = _outputElemType}}};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes an audio buffer as input."); }
+
+  static SHTypesInfo outputTypes() { return _outputType; }
+  static SHOptionalString outputHelp() { 
+    return SHCCSTR("Outputs the input audio represented as a sequence of float values."); 
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts an audio buffer into a sequence of float values. Each sample in the audio buffer "
+                  "is converted to a float value in the range [-1.0, 1.0] and stored in the sequence.");
+  }
+
+  std::vector<Var> _output;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType != SHType::Audio)
+      throw ActivationError("Expected Audio type.");
+
+    auto &audio = input.payload.audioValue;
+    const int totalSamples = audio.nsamples * audio.channels;
+
+    _output.resize(totalSamples, Var(0.0));
+
+    // Audio samples are already floats in range [-1.0, 1.0], so just copy them
+    for (int i = 0; i < totalSamples; i++) {
+      _output[i].payload.floatValue = audio.samples[i];
+    }
+
+    return Var(_output);
+  }
+};
+
+struct FloatsToAudio {
+  PARAM_PARAMVAR(_channels, "Channels", "The number of channels.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_sampleRate, "SampleRate", "The sample rate in Hz.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  static inline Type _inputElemType{{SHType::Float}};
+  static inline Type _inputType{{SHType::Seq, {.seqTypes = _inputElemType}}};
+
+  static SHTypesInfo inputTypes() { return _inputType; }
+  static SHOptionalString inputHelp() { 
+    return SHCCSTR("Takes a sequence of float values in the range [-1.0, 1.0] as input."); 
+  }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Returns the constructed audio buffer."); }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a sequence of float values in the range [-1.0, 1.0] into an audio buffer. "
+                   "The 'Channels' parameter specifies how many audio channels to create, and 'SampleRate' "
+                   "defines the sample rate of the output audio.");
+  }
+
+  std::vector<float> _samples;
+
+  FloatsToAudio() {
+    _channels = Var(1);      // Default to mono
+    _sampleRate = Var(44100); // Default to CD quality
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType != SHType::Seq)
+      throw ActivationError("Expected sequence type.");
+
+    auto channels = uint32_t(_channels.get().payload.intValue);
+    auto sampleRate = uint32_t(_sampleRate.get().payload.intValue);
+
+    if (channels == 0)
+      throw ActivationError("Number of channels must be greater than zero.");
+
+    uint32_t totalSamples = input.payload.seqValue.len;
+    
+    // Check that the sample count is divisible by the number of channels
+    if (totalSamples % channels != 0) {
+      throw ActivationError("Sequence length must be divisible by the number of channels.");
+    }
+
+    uint32_t nsamples = totalSamples / channels;
+    
+    if (nsamples > UINT16_MAX) {
+      throw ActivationError("Audio data exceeds the maximum number of samples (65535)");
+    }
+
+    _samples.resize(totalSamples);
+
+    // Copy the float values from the sequence to the samples array
+    for (uint32_t i = 0; i < totalSamples; i++) {
+      const auto& elem = input.payload.seqValue.elements[i];
+      if (elem.valueType != SHType::Float) {
+        throw ActivationError("All elements in the sequence must be of type Float.");
+      }
+      
+      float value = elem.payload.floatValue;
+      
+      // Clamp values to [-1.0, 1.0] range
+      value = std::min(std::max(value, -1.0f), 1.0f);
+      
+      _samples[i] = value;
+    }
+
+    SHAudio outAudio;
+    outAudio.channels = channels;
+    outAudio.nsamples = nsamples;
+    outAudio.sampleRate = sampleRate;
+    outAudio.samples = _samples.data();
+
+    return Var(outAudio);
+  }
+};
+
 struct BytesToAudio {
   PARAM_PARAMVAR(_channels, "Channels", "The number of channels.", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_PARAMVAR(_sampleRate, "SampleRate", "The sample rate in Hz.", {CoreInfo::IntType, CoreInfo::IntVarType});
@@ -1530,6 +1655,8 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("StringToBytes", StringToBytes);
   REGISTER_SHARD("ImageToBytes", ImageToBytes);
   REGISTER_SHARD("AudioToBytes", AudioToBytes);
+  REGISTER_SHARD("AudioToFloats", AudioToFloats);
+  REGISTER_SHARD("FloatsToAudio", FloatsToAudio);
   REGISTER_SHARD("BytesToAudio", BytesToAudio);
 
   REGISTER_SHARD("ToBase64", ToBase64);

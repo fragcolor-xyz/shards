@@ -34,8 +34,6 @@ pub enum Model {
   Bert(BertModel),
   Whisper(Whisper::model::Whisper),
   WhisperQuantized(Whisper::quantized_model::Whisper),
-  Moondream2(moondream::Model),
-  MoondreamQuantized(quantized_moondream::Model),
 }
 
 ref_counted_object_type_impl!(Model);
@@ -53,8 +51,6 @@ pub enum ModelType {
   Bert = 0x1,
   #[enum_value("A Whisper speech recognition model.")]
   Whisper = 0x2,
-  #[enum_value("Moondream2 vision-language model.")]
-  Moondream2 = 0x3,
 }
 
 #[derive(shards::shards_enum)]
@@ -232,52 +228,6 @@ impl Shard for ModelShard {
           "Failed to load model"
         })?;
         Model::WhisperQuantized(model)
-      }
-      (ModelType::Moondream2, Formats::SafeTensor) => {
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb = unsafe {
-          candle_nn::VarBuilder::from_mmaped_safetensors(
-            &[std::path::Path::new(model_path)],
-            DTYPE,
-            device,
-          )
-        }
-        .map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        let config = MoondreamConfig::default();
-        let model = moondream::Model::new(&config.0, vb).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::Moondream2(model)
-      }
-      (ModelType::Moondream2, Formats::GGUF) => {
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb =
-          quantized_var_builder::VarBuilder::from_gguf(std::path::Path::new(model_path), device)
-            .map_err(|e| {
-              shlog_error!("Failed to load model: {}", e);
-              "Failed to load model"
-            })?;
-
-        let config = MoondreamConfig::default();
-        let model = quantized_moondream::Model::new(&config.0, vb).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::MoondreamQuantized(model)
       }
       _ => return Err("Unsupported model/format combination"),
     };
@@ -624,209 +574,8 @@ impl Shard for ForwardShard {
         let output = Var::new_ref_counted(Tensor(encoder_output), &*TENSOR_TYPE);
         self.outputs.0.push(&output);
       }
-      Model::Moondream2(model) => {
-        if tensors.len() != 1 {
-          return Err("Moondream expects a single image tensor");
-        }
-
-        let image =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let image_embeddings = image.0.apply(model.vision_encoder()).map_err(|e| {
-          shlog_error!("Failed to encode image: {}", e);
-          "Failed to encode image"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(image_embeddings), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
-      }
-      Model::MoondreamQuantized(model) => {
-        if tensors.len() != 1 {
-          return Err("Moondream expects a single image tensor");
-        }
-
-        let image =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let image_embeddings = image.0.apply(model.vision_encoder()).map_err(|e| {
-          shlog_error!("Failed to encode image: {}", e);
-          "Failed to encode image"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(image_embeddings), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
-      }
     }
 
     Ok(Some(self.outputs.0 .0))
-  }
-}
-
-#[derive(shards::shard)]
-#[shard_info(
-    "ML.SpeechToText",
-    "Complete speech-to-text pipeline using Whisper model. Takes a MEL spectrogram tensor as input and outputs transcribed text."
-)]
-pub(crate) struct SpeechToTextShard {
-  #[shard_required]
-  required: ExposedTypes,
-
-  #[shard_param("Model", "The Whisper model to use.", [*MODEL_VAR_TYPE])]
-  model: ParamVar,
-
-  #[shard_param("Tokenizer", "The tokenizer to use.", [*TOKENIZER_VAR_TYPE])]
-  tokenizer: ParamVar,
-
-  #[shard_param("Language", "Optional language code (e.g. 'en', 'fr'). If not specified, language will be auto-detected.", [common_type::string])]
-  language: ParamVar,
-
-  #[shard_param("Task", "The task type ('transcribe' or 'translate').", [common_type::string])]
-  task: ParamVar,
-
-  #[shard_param("Timestamps", "Whether to include timestamps in output.", [common_type::bool])]
-  timestamps: ClonedVar,
-
-  #[shard_param("Seed", "The seed to use for the generation.", [common_type::int, common_type::int_var])]
-  seed: ParamVar,
-
-  output: ClonedVar,
-}
-
-impl Default for SpeechToTextShard {
-  fn default() -> Self {
-    Self {
-      required: ExposedTypes::new(),
-      model: ParamVar::default(),
-      tokenizer: ParamVar::default(),
-      language: ParamVar::default(),
-      task: ParamVar::default(),
-      timestamps: false.into(),
-      seed: ParamVar::new(42i64.into()),
-      output: ClonedVar::default(),
-    }
-  }
-}
-
-#[shards::shard_impl]
-impl Shard for SpeechToTextShard {
-  fn input_types(&mut self) -> &Types {
-    &TENSOR_TYPE_VEC
-  }
-
-  fn output_types(&mut self) -> &Types {
-    &STRING_TYPES
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.warmup_helper(ctx)?;
-    Ok(())
-  }
-
-  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.cleanup_helper(ctx)?;
-    self.output = ClonedVar::default();
-    Ok(())
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    self.compose_helper(data)?;
-
-    if self.model.is_none() {
-      return Err("Model is required");
-    }
-    if self.tokenizer.is_none() {
-      return Err("Tokenizer is required");
-    }
-
-    Ok(STRING_TYPES[0])
-  }
-
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let model_var = self.model.get();
-    let model = unsafe { &mut *Var::from_ref_counted_object::<Model>(&model_var, &*MODEL_TYPE)? };
-
-    let tokenizer_var = self.tokenizer.get();
-    let tokenizer = unsafe {
-      &mut *Var::from_ref_counted_object::<crate::tokenizer::Tokenizer>(
-        &tokenizer_var,
-        &*TOKENIZER_TYPE,
-      )?
-    };
-
-    let mel_tensor = unsafe { &*Var::from_ref_counted_object::<Tensor>(input, &*TENSOR_TYPE)? };
-
-    // Convert to f32 before processing
-    let mel_tensor = mel_tensor
-      .0
-      .to_dtype(candle_core::DType::F32)
-      .map_err(|e| {
-        shlog_error!("Failed to convert tensor to f32: {}", e);
-        "Failed to convert tensor to f32"
-      })?;
-
-    // Get language token if specified
-    let language_token = if !self.language.get().is_none() {
-      let lang: &str = self.language.get().as_ref().try_into()?;
-      Some(tokenizer.get_language_token(lang)?)
-    } else {
-      None
-    };
-
-    // Get task type if specified
-    let task = if !self.task.get().is_none() {
-      let task_str: &str = self.task.get().as_ref().try_into()?;
-      match task_str {
-        "translate" => Some(crate::whisper::Task::Translate),
-        "transcribe" => Some(crate::whisper::Task::Transcribe),
-        _ => return Err("Invalid task type"),
-      }
-    } else {
-      None
-    };
-
-    let timestamps: bool = self.timestamps.as_ref().try_into()?;
-
-    // Extract the underlying TokenizerPure from our Tokenizer enum
-    let tokenizer_pure = match tokenizer {
-      crate::tokenizer::Tokenizer::Normal(t) | crate::tokenizer::Tokenizer::Quantized(t) => t,
-    };
-
-    // Create decoder
-    let mut decoder = crate::whisper::Decoder::new(
-      match model {
-        Model::Whisper(m) => crate::whisper::Model::Normal(m.clone()),
-        Model::WhisperQuantized(m) => crate::whisper::Model::Quantized(m.clone()),
-        _ => return Err("Model must be a Whisper model"),
-      },
-      tokenizer_pure.clone(),
-      self.seed.get().as_ref().try_into()?,
-      mel_tensor.device(),
-      language_token,
-      task,
-      timestamps,
-      false, // verbose
-    )
-    .map_err(|e| {
-      shlog_error!("Failed to create decoder: {}", e);
-      "Failed to create decoder"
-    })?;
-
-    // Run the decoder
-    let segments = decoder.run(&mel_tensor).map_err(|e| {
-      shlog_error!("Failed to run decoder: {}", e);
-      "Failed to run decoder"
-    })?;
-
-    // Collect all text segments
-    let mut final_text = String::new();
-    for segment in segments {
-      if !final_text.is_empty() {
-        final_text.push(' ');
-      }
-      final_text.push_str(&segment.dr.text);
-    }
-
-    self.output = final_text.into();
-    Ok(Some(self.output.0))
   }
 }

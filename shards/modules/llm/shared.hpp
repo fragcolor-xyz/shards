@@ -8,6 +8,7 @@
 
 #include <llama.h>
 #include <ggml.h>
+#include <whisper.h>
 
 namespace shards {
 namespace llm {
