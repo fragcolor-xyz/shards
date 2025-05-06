@@ -34,8 +34,6 @@ pub enum Model {
   Bert(BertModel),
   Whisper(Whisper::model::Whisper),
   WhisperQuantized(Whisper::quantized_model::Whisper),
-  Moondream2(moondream::Model),
-  MoondreamQuantized(quantized_moondream::Model),
 }
 
 ref_counted_object_type_impl!(Model);
@@ -53,8 +51,6 @@ pub enum ModelType {
   Bert = 0x1,
   #[enum_value("A Whisper speech recognition model.")]
   Whisper = 0x2,
-  #[enum_value("Moondream2 vision-language model.")]
-  Moondream2 = 0x3,
 }
 
 #[derive(shards::shards_enum)]
@@ -232,52 +228,6 @@ impl Shard for ModelShard {
           "Failed to load model"
         })?;
         Model::WhisperQuantized(model)
-      }
-      (ModelType::Moondream2, Formats::SafeTensor) => {
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb = unsafe {
-          candle_nn::VarBuilder::from_mmaped_safetensors(
-            &[std::path::Path::new(model_path)],
-            DTYPE,
-            device,
-          )
-        }
-        .map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        let config = MoondreamConfig::default();
-        let model = moondream::Model::new(&config.0, vb).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::Moondream2(model)
-      }
-      (ModelType::Moondream2, Formats::GGUF) => {
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb =
-          quantized_var_builder::VarBuilder::from_gguf(std::path::Path::new(model_path), device)
-            .map_err(|e| {
-              shlog_error!("Failed to load model: {}", e);
-              "Failed to load model"
-            })?;
-
-        let config = MoondreamConfig::default();
-        let model = quantized_moondream::Model::new(&config.0, vb).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::MoondreamQuantized(model)
       }
       _ => return Err("Unsupported model/format combination"),
     };
@@ -622,38 +572,6 @@ impl Shard for ForwardShard {
         })?;
 
         let output = Var::new_ref_counted(Tensor(encoder_output), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
-      }
-      Model::Moondream2(model) => {
-        if tensors.len() != 1 {
-          return Err("Moondream expects a single image tensor");
-        }
-
-        let image =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let image_embeddings = image.0.apply(model.vision_encoder()).map_err(|e| {
-          shlog_error!("Failed to encode image: {}", e);
-          "Failed to encode image"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(image_embeddings), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
-      }
-      Model::MoondreamQuantized(model) => {
-        if tensors.len() != 1 {
-          return Err("Moondream expects a single image tensor");
-        }
-
-        let image =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let image_embeddings = image.0.apply(model.vision_encoder()).map_err(|e| {
-          shlog_error!("Failed to encode image: {}", e);
-          "Failed to encode image"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(image_embeddings), &*TENSOR_TYPE);
         self.outputs.0.push(&output);
       }
     }

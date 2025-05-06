@@ -88,17 +88,6 @@
       })
     })
     
-    [@env("HOME") "/devel/tmp/moondream2-gguf/tokenizer.json"] | String.Join
-    FS.Read | ML.Tokenizer = moondream-tokenizer
-    
-    [@env("HOME") "/devel/tmp/moondream2-gguf/model-q4_0.gguf"] | String.Join
-    ML.Model(Model: MLModels::Moondream2 Format: MLFormats::GGUF GPU: true) = model
-    
-    ; LoadImage("data/RGB.png") 
-    LoadImage("../../assets/simple1.PNG")
-    StripAlpha | ResizeImage(Width: 378 Height: 378)
-    Log("Activating model")
-    ML.VisionToText(Model: model Tokenizer: moondream-tokenizer Prompt: "Whats the text in the button?" GPU: true)
     Log("Done")
   })
   
