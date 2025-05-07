@@ -2222,7 +2222,7 @@ struct DoMany : public TryMany {
         // When an error happens during inline execution, propagate the error to the parent wire
         SHLOG_ERROR("Wire {} failed", wire->name);
         context->cancelFlow("Wire failed");
-        return cref->wire->previousOutput; // doesn't matter actually
+        return Var::Empty;
       } else {
         // we don't want to propagate a (Return)
         if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {

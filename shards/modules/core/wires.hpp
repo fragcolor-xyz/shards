@@ -460,7 +460,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
-      _outputClone = runRes.output;
+      _outputClone = Var::Empty;
       context->stopFlow(_outputClone);
       return _outputClone;
     } else {
@@ -513,7 +513,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         // When an error happens during inline execution, propagate the error to the parent wire
         SHLOG_ERROR("Wire {} failed", wire->name);
         context->cancelFlow("Wire failed");
-        _outputClone = runRes.output;
+        _outputClone = Var::Empty;
         return _outputClone;
       } else {
         // we don't want to propagate a (Return)

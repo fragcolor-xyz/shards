@@ -1706,7 +1706,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
     case SHWireState::Error:
       // shardsActivation handles error logging and such
       shassert(context->failed());
-      return {wire->previousOutput, SHRunWireOutputState::Failed};
+      return {Var::Empty, SHRunWireOutputState::Failed};
     case SHWireState::Stop:
       shassert(!context->failed());
       return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
@@ -1725,7 +1725,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
 #endif
   catch (...) {
     // shardsActivation handles error logging and such
-    return {wire->previousOutput, SHRunWireOutputState::Failed};
+    return {Var::Empty, SHRunWireOutputState::Failed};
   }
 
   return {wire->previousOutput, SHRunWireOutputState::Running};
@@ -1821,7 +1821,7 @@ void run(SHWire *wire, shards::Coroutine *coro) {
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       wire->state = SHWire::State::Failed;
       failed = true;
-      context.stopFlow(runRes.output);
+      context.stopFlow(Var::Empty);
       break;
     } else if (unlikely(runRes.state == SHRunWireOutputState::Stopped || runRes.state == SHRunWireOutputState::Returned)) {
       SHLOG_DEBUG("Wire {} stopped", wire->name);
