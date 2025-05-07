@@ -109,7 +109,7 @@ if(WIN32)
   endif()
 endif()
 
-if(WIN32)
+if(WIN32 OR EMSCRIPTEN)
   # Prevent Boost::uuid from linking against -latomic
   set(BOOST_UUID_LINK_LIBATOMIC OFF CACHE BOOL "" FORCE)
 endif()
