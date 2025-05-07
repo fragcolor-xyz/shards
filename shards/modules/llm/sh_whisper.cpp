@@ -103,8 +103,9 @@ struct WhisperTranscribe {
     _translate = Var(false);
     _threads = Var(4);
     _beamSize = Var(-1);
-    _maxTokens = Var(32);
+    _maxTokens = Var(256); // Increased from 32 to handle ~30 seconds of audio
     _printTimestamps = Var(false);
+    _keepPreviousSec = Var(0.0f); // Seconds of audio to keep from previous activation
   }
 
   PARAM_PARAMVAR(_model, "Model", "The whisper model to use", {WhisperData::VarType});
@@ -118,12 +119,16 @@ struct WhisperTranscribe {
                  {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_PARAMVAR(_printTimestamps, "PrintTimestamps", "Include timestamps in output",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_keepPreviousSec, "KeepPreviousSec", "Seconds of audio to keep from previous activation for better overlap",
+                 {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_model), PARAM_IMPL_FOR(_language), PARAM_IMPL_FOR(_translate), PARAM_IMPL_FOR(_threads),
-             PARAM_IMPL_FOR(_beamSize), PARAM_IMPL_FOR(_maxTokens), PARAM_IMPL_FOR(_printTimestamps));
+             PARAM_IMPL_FOR(_beamSize), PARAM_IMPL_FOR(_maxTokens), PARAM_IMPL_FOR(_printTimestamps),
+             PARAM_IMPL_FOR(_keepPreviousSec));
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _result = "";
+    _previousSamples.clear();
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -135,6 +140,7 @@ struct WhisperTranscribe {
   }
 
   std::string _result;
+  std::vector<float> _previousSamples; // Store samples from previous activation
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &data = varAsObjectChecked<WhisperData>(_model.get(), WhisperData::Type);
@@ -144,12 +150,39 @@ struct WhisperTranscribe {
       throw ActivationError("Whisper context is null");
     }
 
+    // Calculate how many previous samples to keep (based on sample rate of 16000 Hz)
+    const int sampleRate = 16000; // Whisper uses 16kHz audio
+    const int samplesToKeep = static_cast<int>(_keepPreviousSec.get().payload.floatValue * sampleRate);
+
     // Convert input sequence to float array
-    std::vector<float> samples;
-    samples.reserve(input.payload.seqValue.len);
+    std::vector<float> currentSamples;
+    currentSamples.reserve(input.payload.seqValue.len);
     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-      samples.push_back(input.payload.seqValue.elements[i].payload.floatValue);
+      currentSamples.push_back(input.payload.seqValue.elements[i].payload.floatValue);
     }
+
+    // Combine previous samples with current samples if needed
+    std::vector<float> samples;
+    if (samplesToKeep > 0 && !_previousSamples.empty()) {
+      // Keep only the requested amount from previous samples
+      size_t keepCount = std::min(static_cast<size_t>(samplesToKeep), _previousSamples.size());
+      size_t startIdx = _previousSamples.size() - keepCount;
+
+      // Allocate space for combined samples
+      samples.reserve(keepCount + currentSamples.size());
+
+      // Copy previous samples (overlap)
+      samples.insert(samples.end(), _previousSamples.begin() + startIdx, _previousSamples.end());
+
+      // Add current samples
+      samples.insert(samples.end(), currentSamples.begin(), currentSamples.end());
+    } else {
+      // No overlap, just use current samples
+      samples = std::move(currentSamples);
+    }
+
+    // Store current samples for next activation
+    _previousSamples = std::move(currentSamples);
 
     // Set up parameters for transcription
     whisper_full_params wparams = whisper_full_default_params(_beamSize.get().payload.intValue > 1 ? WHISPER_SAMPLING_BEAM_SEARCH
