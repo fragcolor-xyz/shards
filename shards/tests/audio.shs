@@ -17,6 +17,14 @@
     AudioToBytes | Log
     BytesToAudio(SampleRate: 16000 Channels: 2) | Log
   } ; FOR COVERAGE
+  {
+    Audio.Compress(Bitrate: 128000) | Log("Audio packet")
+    ForEach({
+      Audio.Decompress(SampleRate: 16000) | Log("Decompressed audio packet")
+      Audio.WriteFile(@tmp-path("example-decompressed.wav") SampleRate: 16000)
+    })
+  } ; FOR COVERAGE
+  ; Audio.Decompress(SampleRate: 16000) | Log
   Audio.WriteFile(@tmp-path("example-resampled.wav") SampleRate: 16000)
 } Looped: true)
 

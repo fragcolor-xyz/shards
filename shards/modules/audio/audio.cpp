@@ -1983,6 +1983,7 @@ struct SetVelocity {
 };
 
 void registerCompressorShards();
+void registerCodecShards();
 
 } // namespace Audio
 } // namespace shards
@@ -2017,4 +2018,5 @@ SHARDS_REGISTER_FN(audio) {
   shards::registerObjectType(shards::CoreCC, shards::Audio::Sound::SoundCC, SHObjectInfo{"Sound"});
 
   registerCompressorShards();
+  registerCodecShards();
 }
