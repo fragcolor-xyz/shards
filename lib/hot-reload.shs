@@ -1,3 +1,4 @@
+@include("std/if.shs" Once: true)
 @define(script-hot-reload false IgnoreRedefined: true)
 
 ; Builds wrapper wires around imported hot-reloadable wires
@@ -143,26 +144,6 @@
   })
   
   hr-root-seq | ToJson
-})
-
-@macro(if-root [cond yes no] {
-  @template(filter-ast [] {
-    If({ExpectTable | Take("shs") | IsSeq} {
-        ExpectTable | Take("shs")
-      } {
-        = in
-        [in]
-      }
-    )
-  })
-  
-  Sequence(pipelines)
-  cond | If(IsAny([true "true" 1]) {
-      @ast(yes) | FromJson | @filter-ast()
-    } {
-      @ast(no) | FromJson | @filter-ast()
-    }
-  ) | ToJson
 })
 
 @inline-template(maybe-hot-reload [script-path wires] {
