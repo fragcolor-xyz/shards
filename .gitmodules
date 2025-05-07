@@ -110,3 +110,6 @@
 [submodule "deps/whisper.cpp"]
 	path = deps/whisper.cpp
 	url = https://github.com/ggml-org/whisper.cpp.git
+[submodule "deps/opus"]
+	path = deps/opus
+	url = https://github.com/xiph/opus.git

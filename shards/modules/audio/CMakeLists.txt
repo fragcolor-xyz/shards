@@ -1,6 +1,7 @@
 set(SOURCES
   dsp.cpp
   compressor.cpp
+  codec.cpp
 )
 
 add_shards_module(audio SOURCES ${SOURCES}
@@ -8,7 +9,7 @@ add_shards_module(audio SOURCES ${SOURCES}
   EXPERIMENTAL)
 
 target_link_libraries(shards-module-audio
-  kissfft miniaudio shards-logging
+  kissfft miniaudio shards-logging opus
 )
 
 # Need to compile specific files as objective-c
