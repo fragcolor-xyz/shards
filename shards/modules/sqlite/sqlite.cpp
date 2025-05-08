@@ -391,10 +391,10 @@ struct Base {
   }
 
   void _ensureDb(SHContext *context, bool readOnly) {
-    try {
-      if (!ready) {
+    if (!ready) {
+      auto dbName = SHSTRVIEW(_dbNameStr);
+      try {
         auto mesh = context->main->mesh.lock();
-        auto dbName = SHSTRVIEW(_dbNameStr);
         if (readOnly) {
           auto storageKey = fmt::format("DB.Connection_{}", dbName);
           _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), true); });
@@ -403,9 +403,9 @@ struct Base {
           _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(dbName.data(), false); });
         }
         ready = true;
+      } catch (std::exception &e) {
+        throw ActivationError(fmt::format("Failed to connect to database {}: {}", dbName, e.what()));
       }
-    } catch (std::exception &e) {
-      throw ActivationError(fmt::format("Failed to connect: {}", e.what()));
     }
   }
 };
@@ -500,7 +500,7 @@ struct Query : public Base {
 
     bool empty = true;
     int rc;
-    bool retry = _retry.payload.boolValue;
+    bool retry = true;//_retry.payload.boolValue;
     do {
       rc = sqlite3_step(prepared->get());
       if (rc == SQLITE_ROW) {

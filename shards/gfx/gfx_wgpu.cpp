@@ -1,3 +1,4 @@
+#include <shards/core/platform.hpp>
 #include "gfx_wgpu.hpp"
 #include "stdio.h"
 
@@ -49,4 +50,7 @@ WGPULimits wgpuGetUndefinedLimits() {
   };
 }
 
+// Defined in js side on emscripten
+#if !SH_EMSCRIPTEN
 void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits) { wgpuDeviceGetLimits(device, outLimits); }
+#endif

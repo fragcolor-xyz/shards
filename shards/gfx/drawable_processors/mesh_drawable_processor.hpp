@@ -164,7 +164,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   MeshDrawableProcessor(Context &context)
       : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),
         samplerCache(context.wgpuDevice) {
-    wgpuDeviceGetLimits(context.wgpuDevice, &limits);
+    gfxWgpuDeviceGetLimits(context.wgpuDevice, &limits);
   }
 
   static std::function<WGPUBuffer(size_t)> getStorageBufferInitializer(Context &context) {

@@ -1330,9 +1330,9 @@ fn finalize_wire(
     .get_param_by_name_or_index("Shards", 1)
     .map(|param| match &param.value {
       Value::Shards(seq) => eval_sequence(&seq, Some(env), new_cancellation_token()),
-      _ => Err(("Shards parameter must be shards", line_info).into()),
+      _ => Err((format!("Shards parameter must be shards, got {}", name), line_info).into()),
     })
-    .ok_or(("Wire must have a Shards parameter", line_info).into())??;
+    .ok_or((format!("Wire {:?} must have a Shards parameter", name), line_info).into())??;
   finalize_env(&mut sub_env)?;
   for shard in sub_env.shards.drain(..) {
     wire.add_shard(shard.0);
@@ -1342,7 +1342,7 @@ fn finalize_wire(
     .get_param_by_name_or_index("Traits", 2)
     .map(|param| match &param.value {
       Value::Seq(s) => Ok(s.clone()),
-      _ => Err(("Traits parameter must be a sequence", line_info).into()),
+      _ => Err((format!("Traits parameter to wire {} must be a sequence", name), line_info).into()),
     })
     .unwrap_or(Ok(Vec::new()))?;
   let mut s = AutoSeqVar::new();
@@ -1352,8 +1352,8 @@ fn finalize_wire(
       return Err(
         (
           format!(
-            "Traits parameter must be a sequence of traits ({:?} is invalid)",
-            value
+            "Traits parameter to wire {} must be a sequence of traits ({:?} is invalid)",
+            name, value
           ),
           line_info,
         )
@@ -4568,12 +4568,12 @@ impl Shard for EvalShard {
       let wire = if name.is_string() {
         let name: &str = name.try_into()?;
         transform_env(&mut env, name).map_err(|e| {
-          shlog_error!("failed to transform shards into wire: {:?}", e);
+          shlog_error!("failed to transform shards into wire: {:?}, name: {:?}", e, name);
           "failed to transform shards into wire"
         })?
       } else {
         transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
-          shlog_error!("failed to transform shards into wire: {:?}", e);
+          shlog_error!("failed to transform shards into wire: {:?} name: {:?}", e, name);
           "failed to transform shards into wire"
         })?
       };

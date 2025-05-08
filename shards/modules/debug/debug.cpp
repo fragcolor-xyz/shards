@@ -28,7 +28,7 @@ struct DebugNoop {
     if (!_tag.isNone()) {
       SHVar &tagValue = _tag.get();
       SHLOG_TRACE("Triggered debug noop ({})", tagValue);
-    } else {
+    } else { 
       SHLOG_TRACE("Triggered debug noop");
     }
     if (input.valueType == SHType::Table) {

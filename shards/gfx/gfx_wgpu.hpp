@@ -47,8 +47,6 @@ inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
 
-// workaround for emscripten not implementing limits
-void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 
 // When copying textures into buffers the bytesPerRow should be aligned to this number
 inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
@@ -60,7 +58,11 @@ void gfxWgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offs
 // Custom function implemented in javascript that reads a mapped buffer directly into the given address
 // faster that the default implementation that copies the data into a temporary buffer
 void gfxWgpuBufferReadInto(WGPUBuffer buffer, void* dst, size_t offset, size_t size);
+void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 }
+#else 
+// Wrapper around wgpuDeviceGetLimits
+void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 #endif
 
 #if WEBGPU_NATIVE && !RUST_BINDGEN
