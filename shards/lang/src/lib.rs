@@ -105,9 +105,9 @@ impl RcBytesWrapper {
   }
 }
 
-impl From<&'static [u8]> for RcBytesWrapper {
-  fn from(s: &'static [u8]) -> Self {
-    RcBytesWrapper::new(Cow::Borrowed(s))
+impl From<Cow<'static, [u8]>> for RcBytesWrapper {
+  fn from(s: Cow<'static, [u8]>) -> Self {
+    RcBytesWrapper::new(s)
   }
 }
 
@@ -177,6 +177,10 @@ impl RcStrWrapper {
     RcStrWrapper(Rc::new(s.into()))
   }
 
+  pub fn from_const(s: &'static str) -> Self {
+    RcStrWrapper(Rc::new(Cow::Borrowed(s)))
+  }
+
   pub fn to_string(&self) -> String {
     self.0.to_string()
   }
@@ -191,15 +195,27 @@ impl RcStrWrapper {
   }
 }
 
-impl From<&'static str> for RcStrWrapper {
-  fn from(s: &'static str) -> Self {
-    RcStrWrapper::new(Cow::Borrowed(s))
+impl<'a> RcStrWrapper {
+  pub fn new_clone(s: &'a str) -> Self {
+    RcStrWrapper::new(Cow::Owned(s.to_string()))
   }
 }
 
 impl From<String> for RcStrWrapper {
   fn from(s: String) -> Self {
     RcStrWrapper::new(Cow::Owned(s))
+  }
+}
+
+impl From<Cow<'static, str>> for RcStrWrapper {
+  fn from(s: Cow<'static, str>) -> Self {
+    RcStrWrapper::new(s)
+  }
+}
+
+impl From<&'static str> for RcStrWrapper {
+  fn from(s: &'static str) -> Self {
+    RcStrWrapper::from_const(s)
   }
 }
 

@@ -7,7 +7,7 @@ use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
   types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
 };
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
@@ -237,11 +237,11 @@ impl TryFrom<Var> for Value {
       ))),
       SHType_String => {
         let s: &str = value.as_ref().try_into().unwrap();
-        Ok(Value::String(s.into()))
+        Ok(Value::String(RcStrWrapper::from(Cow::Owned(s.into()))))
       }
       SHType_Bytes => {
         let b: &[u8] = value.as_ref().try_into().unwrap();
-        Ok(Value::Bytes(b.into()))
+        Ok(Value::Bytes(RcBytesWrapper::from(Cow::Owned(b.into()))))
       }
       _ => Err("Unsupported type"),
     }

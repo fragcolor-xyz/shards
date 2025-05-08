@@ -5,7 +5,7 @@
 use directory::{get_global_map, get_global_name_btree};
 use egui::*;
 use nanoid::nanoid;
-use std::cell::RefCell;
+use std::{borrow::Cow, cell::RefCell};
 use std::sync::mpsc;
 
 use crate::{
@@ -27,12 +27,7 @@ use shards::{
 };
 
 use shards_lang::{
-  ast::*,
-  ast_visitor::*,
-  custom_state::*,
-  directory,
-  read::{AST_TYPE, AST_VAR_TYPE},
-  ParamHelperMut, RcStrWrapper,
+  ast::*, ast_visitor::*, custom_state::*, directory, read::{AST_TYPE, AST_VAR_TYPE}, ParamHelperMut, RcBytesWrapper, RcStrWrapper
 };
 
 use num_traits::{Float, FromPrimitive, PrimInt, Zero};
@@ -120,7 +115,7 @@ fn var_to_value(var: &Var) -> Result<Value, String> {
           var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
         )
       };
-      Ok(Value::Bytes(bytes.into()))
+      Ok(Value::Bytes(RcBytesWrapper::from(Cow::Owned(bytes.into()))))
     }
     SHType_Float2 => {
       let float2 = unsafe { var.payload.__bindgen_anon_1.float2Value };
@@ -2398,7 +2393,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
   let mut blocks = vec![Block {
     content: BlockContent::Shard(Function {
       name: Identifier {
-        name: "Get".into(),
+        name: RcStrWrapper::from_const("Get"),
         namespaces: Vec::new(),
         custom_state: CustomStateContainer::new(),
       },
@@ -2418,7 +2413,7 @@ fn transform_take_table(x: &mut Identifier, y: &mut Vec<RcStrWrapper>) -> Sequen
     blocks.push(Block {
       content: BlockContent::Shard(Function {
         name: Identifier {
-          name: "Take".into(),
+          name: RcStrWrapper::from_const("Take"),
           namespaces: Vec::new(),
           custom_state: CustomStateContainer::new(),
         },
@@ -2447,7 +2442,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
   let mut blocks = vec![Block {
     content: BlockContent::Shard(Function {
       name: Identifier {
-        name: "Get".into(),
+        name: RcStrWrapper::from_const("Get"),
         namespaces: Vec::new(),
         custom_state: CustomStateContainer::new(),
       },
@@ -2467,7 +2462,7 @@ fn transform_take_seq(x: &mut Identifier, y: &mut Vec<u32>) -> Sequence {
     blocks.push(Block {
       content: BlockContent::Shard(Function {
         name: Identifier {
-          name: "Take".into(),
+          name: RcStrWrapper::from_const("Take"),
           namespaces: Vec::new(),
           custom_state: CustomStateContainer::new(),
         },

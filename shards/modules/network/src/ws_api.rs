@@ -9,10 +9,6 @@ use log::{error, info};
 
 const VERSION_STR: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
-fn c_str_to_string(s: SHStringWithLen) -> &'static str {
-  s.into()
-}
-
 #[no_mangle]
 pub extern "C" fn pollnet_init() -> *mut PollnetContext {
   Box::into_raw(Box::new(PollnetContext::new()))
@@ -50,8 +46,7 @@ pub unsafe extern "C" fn pollnet_shutdown(ctx: *mut PollnetContext) {
 #[no_mangle]
 pub unsafe extern "C" fn pollnet_open_ws(ctx: *mut PollnetContext, url: SHStringWithLen) -> u64 {
   let ctx: &mut PollnetContext = unsafe { &mut *ctx };
-  let url = c_str_to_string(url);
-  ctx.open_ws(url).into()
+  ctx.open_ws(url.str()).into()
 }
 
 /// # Safety
@@ -64,7 +59,7 @@ pub unsafe extern "C" fn pollnet_open_ws_with_headers(
   headers: &TableVar,
 ) -> u64 {
   let ctx: &mut PollnetContext = unsafe { &mut *ctx };
-  let url = c_str_to_string(url);
+  let url = url.str();
   ctx.open_ws_with_headers(url, headers).into()
 }
 
@@ -74,7 +69,7 @@ pub unsafe extern "C" fn pollnet_open_ws_with_headers(
 #[no_mangle]
 pub unsafe extern "C" fn pollnet_listen_ws(ctx: *mut PollnetContext, addr: SHStringWithLen) -> u64 {
   let ctx = unsafe { &mut *ctx };
-  let addr = c_str_to_string(addr);
+  let addr = addr.str();
   ctx.listen_ws(addr).into()
 }
 
@@ -131,7 +126,7 @@ pub unsafe extern "C" fn pollnet_send_binary(
 #[no_mangle]
 pub unsafe extern "C" fn pollnet_send(ctx: *mut PollnetContext, handle: u64, msg: SHStringWithLen) {
   let ctx = unsafe { &mut *ctx };
-  let msg = c_str_to_string(msg);
+  let msg = msg.str();
   ctx.send(handle.into(), msg.to_string())
 }
 

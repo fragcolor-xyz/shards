@@ -385,7 +385,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void *)ref, pref->use_count());
+    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void *)pref->get(), pref->use_count());
     delete pref;
   }
 
@@ -395,11 +395,12 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   }
 
   static SHWireRef addRef(SHWireRef ref) {
-    auto cref = sharedFromRef(ref);
+    auto cref = sharedFromRef(ref); 
+    shassert(cref.use_count() > 0);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
     auto res = new std::shared_ptr<SHWire>(cref);
-    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void *)res, cref.use_count());
+    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void *)cref.get(), cref.use_count());
     return reinterpret_cast<SHWireRef>(res);
   }
 
