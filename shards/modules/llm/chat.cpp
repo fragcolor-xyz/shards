@@ -1,6 +1,7 @@
 #include "shared.hpp"
 
 #include "../../../deps/llama.cpp/examples/llava/clip-impl.h"
+#include "../../../deps/llama.cpp/examples/llava/mtmd.h"
 #include "../../../deps/llama.cpp/common/sampling.h"
 
 #include <string>
@@ -50,36 +51,96 @@ struct ChatData {
 
 // Helper for handling embedded images
 struct decode_embd_batch {
+  int n_pos_per_embd = 1;
+  int n_mmproj_embd = 0;
   std::vector<llama_pos> pos;
+  std::vector<llama_pos> pos_view; // used by mrope
   std::vector<int32_t> n_seq_id;
   std::vector<llama_seq_id> seq_id_0;
   std::vector<llama_seq_id *> seq_ids;
   std::vector<int8_t> logits;
   llama_batch batch;
 
-  decode_embd_batch(float *embd, int32_t n_tokens, llama_pos pos_0, llama_seq_id seq_id) {
-    pos.resize(n_tokens);
+  // Constructor with support for M-RoPE and multiple position dimensions
+  decode_embd_batch(float *embd, int32_t n_tokens, int n_pos_per_embd, int n_mmproj_embd)
+      : n_pos_per_embd(n_pos_per_embd), n_mmproj_embd(n_mmproj_embd) {
+    pos.resize(n_tokens * n_pos_per_embd);
     n_seq_id.resize(n_tokens);
     seq_ids.resize(n_tokens + 1);
     logits.resize(n_tokens);
     seq_id_0.resize(1);
-    seq_id_0[0] = seq_id;
     seq_ids[n_tokens] = nullptr;
     batch = {
-        /*n_tokens      =*/n_tokens,
-        /*tokens        =*/nullptr,
-        /*embd          =*/embd,
-        /*pos           =*/pos.data(),
-        /*n_seq_id      =*/n_seq_id.data(),
-        /*seq_id        =*/seq_ids.data(),
-        /*logits        =*/logits.data(),
+        /*n_tokens       =*/n_tokens,
+        /*tokens         =*/nullptr,
+        /*embd           =*/embd,
+        /*pos            =*/pos.data(),
+        /*n_seq_id       =*/n_seq_id.data(),
+        /*seq_id         =*/seq_ids.data(),
+        /*logits         =*/logits.data(),
     };
-    for (int i = 0; i < n_tokens; i++) {
+  }
+
+  // Set positions for standard (non-M-RoPE) models
+  void set_position_normal(llama_pos pos_0, llama_seq_id seq_id) {
+    seq_id_0[0] = seq_id;
+    for (int i = 0; i < batch.n_tokens; i++) {
       batch.pos[i] = pos_0 + i;
       batch.n_seq_id[i] = 1;
       batch.seq_id[i] = seq_id_0.data();
       batch.logits[i] = false;
     }
+  }
+
+  // Set positions for M-RoPE models (used by Qwen2VL)
+  void set_position_mrope(llama_pos pos_0, int nx, int ny, llama_seq_id seq_id) {
+    if (n_pos_per_embd != 4) {
+      throw std::runtime_error("M-RoPE requires 4 position dimensions");
+    }
+    seq_id_0[0] = seq_id;
+    for (int y = 0; y < ny; y++) {
+      for (int x = 0; x < nx; x++) {
+        int i = y * nx + x;
+        pos[i] = pos_0;
+        pos[i + batch.n_tokens] = pos_0 + y;
+        pos[i + batch.n_tokens * 2] = pos_0 + x;
+        pos[i + batch.n_tokens * 3] = 0; // last pos dim is unused
+      }
+    }
+    for (int i = 0; i < batch.n_tokens; i++) {
+      batch.n_seq_id[i] = 1;
+      batch.seq_id[i] = seq_id_0.data();
+      batch.logits[i] = false;
+    }
+  }
+
+  // Get a view of a subset of the batch
+  llama_batch get_view(int offset, int n_tokens) {
+    llama_pos *pos_ptr;
+    pos_view.clear();
+    pos_view.resize(n_tokens * n_pos_per_embd);
+    if (n_pos_per_embd > 1) {
+      // mrope
+      // for example, with layout of src: 1234...1234...1234...1234...
+      //       offset 2 will give us dst: 34...34...34...34...
+      for (int i = 0; i < n_pos_per_embd; i++) {
+        auto src = pos.begin() + i * batch.n_tokens + offset;
+        pos_view.insert(pos_view.end(), src, src + n_tokens);
+      }
+      pos_ptr = pos_view.data();
+    } else {
+      // normal
+      pos_ptr = pos.data() + offset;
+    }
+    return {
+        /*n_tokens       =*/n_tokens,
+        /*tokens         =*/nullptr,
+        /*embd           =*/batch.embd + offset * n_mmproj_embd,
+        /*pos            =*/pos_ptr,
+        /*n_seq_id       =*/batch.n_seq_id + offset,
+        /*seq_id         =*/batch.seq_id + offset,
+        /*logits         =*/batch.logits + offset,
+    };
   }
 };
 
@@ -378,47 +439,65 @@ struct ChatAddImage {
 
     // Get the model for embedding dimensions
     auto model = llama_get_model(chatData.ctx.get());
-    const int n_embd = llama_model_n_embd(model);
     const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
 
     // Calculate the maximum tokens we'll allow for the image
     // This is limited by both the user-specified ImageTokens parameter and the context size
     const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
 
-    // Load the image
-    struct clip_image_u8 *img_u8 = clip_image_u8_init();
-    DEFER({ clip_image_u8_free(img_u8); });
-    clip_build_img_from_pixels(image->data, image->width, image->height, img_u8);
+    // Create a mtmd_bitmap from the image data
+    mtmd_bitmap bitmap;
+    bitmap.nx = image->width;
+    bitmap.ny = image->height;
+    bitmap.data.resize(image->width * image->height * 3);
+    std::memcpy(bitmap.data.data(), image->data, bitmap.data.size());
 
-    // Preprocess the image
-    clip_image_f32_batch batch_f32{};
-    auto ok = clip_image_preprocess(chatData.clip_ctx, img_u8, &batch_f32);
-    if (!ok) {
-      throw ActivationError("Failed to preprocess image");
+    // Create a mtmd_context from the CLIP model
+    mtmd_context_params ctx_params{};
+    ctx_params.use_gpu = true; // Use GPU if available
+    ctx_params.print_timings = false;
+    ctx_params.n_threads = chatData.n_threads;
+    ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
+
+    // Create a temporary mtmd_context for this operation
+    mtmd_context *ctx_vision = mtmd_init_from_file(chatData.mmproj_path.c_str(), model, ctx_params);
+    if (!ctx_vision) {
+      throw ActivationError("Failed to initialize vision context");
+    }
+    DEFER({ mtmd_free(ctx_vision); });
+
+    // Create input text and chunks for tokenization
+    mtmd_input_text text;
+    text.text = "<__image__>"; // Just the image marker
+    text.add_special = false;
+    text.parse_special = true;
+
+    std::vector<mtmd_bitmap> bitmaps = {bitmap};
+    mtmd_input_chunks chunks;
+
+    // Tokenize the input with the image
+    if (mtmd_tokenize(ctx_vision, chunks, text, bitmaps) != 0) {
+      throw ActivationError("Failed to tokenize image input");
     }
 
-    // Calculate the actual number of image patches based on the image and patch size
-    const int patch_size = clip_get_patch_size(chatData.clip_ctx);
-    // Get dimensions post-preprocessing (should be square as per CLIP preprocessing)
-    int image_size = clip_get_image_size(chatData.clip_ctx);
-    // Calculate the number of patches (this is the actual number of tokens CLIP will produce)
-    int actual_n_patches = (image_size / patch_size) * (image_size / patch_size);
-    // Add 1 for the class embedding token (common in CLIP models)
-    actual_n_patches += 1;
-
-    // Allocate space for the full embedding output from CLIP
-    // We need to allocate the full size that CLIP might write
-    std::vector<float> image_embd_v;
-    image_embd_v.resize(actual_n_patches * n_embd);
-
-    // Encode the image
-    ok = clip_image_batch_encode(chatData.clip_ctx, chatData.n_threads, &batch_f32, image_embd_v.data());
-    if (!ok) {
-      throw ActivationError("Failed to encode image");
+    // Find the image chunk
+    mtmd_input_chunk *image_chunk = nullptr;
+    for (auto &chunk : chunks) {
+      if (chunk.type == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
+        image_chunk = &chunk;
+        break;
+      }
     }
+
+    if (!image_chunk || !image_chunk->tokens_image) {
+      throw ActivationError("No image tokens found after tokenization");
+    }
+
+    // Get the number of tokens in the image
+    size_t n_image_tokens = mtmd_image_tokens_get_n_tokens(image_chunk->tokens_image.get());
 
     // Ensure we don't exceed our maximum token count for the LLM
-    int actual_n_tokens = std::min(actual_n_patches, max_tokens);
+    int actual_n_tokens = std::min((int)n_image_tokens, max_tokens);
 
     // Prefix tokens if provided
     if (_prefixTokens.get().valueType != SHType::None) {
@@ -429,18 +508,49 @@ struct ChatAddImage {
       }
       // Process the batch
       if (llama_decode(chatData.ctx.get(), chatData.batch)) {
-        throw ActivationError("Failed to decode input");
+        throw ActivationError("Failed to decode prefix tokens");
       }
     }
 
+    // Encode the image
+    if (mtmd_encode(ctx_vision, image_chunk->tokens_image.get()) != 0) {
+      throw ActivationError("Failed to encode image");
+    }
+
+    // Get the embeddings
+    float *image_embd = mtmd_get_output_embd(ctx_vision);
+
     // Process the image embeddings
     {
-      llama_set_causal_attn(chatData.ctx.get(), false);
-      DEFER({ llama_set_causal_attn(chatData.ctx.get(), true); });
+      // Check if we need to use non-causal attention for this model
+      bool use_non_causal = mtmd_decode_use_non_causal(ctx_vision);
+      if (use_non_causal) {
+        llama_set_causal_attn(chatData.ctx.get(), false);
+      }
+      DEFER({
+        if (use_non_causal) {
+          llama_set_causal_attn(chatData.ctx.get(), true);
+        }
+      });
 
-      // Use the actual token count for the embedding batch
-      decode_embd_batch batch_img(image_embd_v.data(), actual_n_tokens, chatData.n_past, 0);
+      // Determine if we need to use M-RoPE positions
+      bool use_mrope = mtmd_decode_use_mrope(ctx_vision);
+      int n_pos_per_embd = use_mrope ? 4 : 1;
+      int n_mmproj_embd = clip_n_mmproj_embd(chatData.clip_ctx);
 
+      // Create embedding batch with proper positioning
+      decode_embd_batch batch_img(image_embd, actual_n_tokens, n_pos_per_embd, n_mmproj_embd);
+
+      // Set positions based on whether we're using M-RoPE or not
+      if (use_mrope) {
+        size_t nx = mtmd_image_tokens_get_nx(image_chunk->tokens_image.get());
+        size_t ny = mtmd_image_tokens_get_ny(image_chunk->tokens_image.get());
+        batch_img.set_position_mrope(chatData.n_past, nx, ny, 0);
+      } else {
+        batch_img.set_position_normal(chatData.n_past, 0);
+      }
+
+      // Set logits for the last token if needed
       if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
         batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
       }
@@ -449,7 +559,11 @@ struct ChatAddImage {
       if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
         throw ActivationError("Failed to decode image");
       }
-      chatData.n_past += actual_n_tokens;
+
+      // Update n_past based on whether we're using M-RoPE or not
+      // For M-RoPE, the whole image counts as a single position
+      llama_pos n_pos = mtmd_image_tokens_get_n_pos(image_chunk->tokens_image.get());
+      chatData.n_past += n_pos;
     }
 
     // Suffix tokens if provided
@@ -467,7 +581,7 @@ struct ChatAddImage {
 
       // Process the batch
       if (llama_decode(chatData.ctx.get(), chatData.batch)) {
-        throw ActivationError("Failed to decode input");
+        throw ActivationError("Failed to decode suffix tokens");
       }
     }
   }

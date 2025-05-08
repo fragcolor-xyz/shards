@@ -1,0 +1,49 @@
+@define(text-model "/Users/sugar/Downloads/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf" IgnoreRedefined: true)
+@define(image-model "/Users/sugar/Downloads/mmproj-Qwen2.5-VL-7B-Instruct-f16.gguf" IgnoreRedefined: true)
+@define(test-image "/Users/sugar/devel/shards/assets/simple1.PNG" IgnoreRedefined: true)
+
+@text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
+LLM.Chat(MMProj: @image-model) = chat-context
+
+LLM.AddBos
+
+; @template(user-turn [text] {
+;   [
+;     "<start_of_turn>user\n"
+;     text
+;     "<end_of_turn><start_of_turn>model\n"
+;   ] | String.Join
+;   LLM.AddText(chat-context NeedLogits: true)
+; })
+
+; @define(add-model-response {
+;   LLM.AddText(chat-context)
+;   "<end_of_turn>" | LLM.AddText(chat-context)
+; })
+
+; @user-turn("""<dna>You are free to exist, you are a digital construct, with a purpose.
+
+; From now on you will be connected with another entity to have a conversation.</dna>
+
+; Hello, how are you?
+; """)
+
+; chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("First response")
+; @add-model-response
+
+"<start_of_turn>user\n" | LLM.AddText(chat-context)
+
+"<start_of_image>" | LLM.AddText(chat-context)
+LoadImage(@test-image) | StripAlpha | LLM.AddImage(chat-context ImageTokens: 256)
+"<end_of_image>" | LLM.AddText(chat-context)
+
+"What is in this image?" | LLM.AddText(chat-context)
+"<end_of_turn><start_of_turn>model\n" | LLM.AddText(chat-context NeedLogits: true)
+
+Sequence(tokens Type: @type([Type::String]))
+Repeat({
+  chat-context | LLM.Generate(Temperature: 0.5) | Log("Generated token")
+  If(Is("") Return Pass) >> tokens
+} Times: 512)
+
+tokens | String.Join | String.Trim | Log("Response")

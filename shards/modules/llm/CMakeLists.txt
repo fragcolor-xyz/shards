@@ -7,7 +7,7 @@ if(NOT EMSCRIPTEN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/sampling.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava/clip.cpp
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava/mtmd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/whisper.cpp/src/whisper.cpp
   )
 
