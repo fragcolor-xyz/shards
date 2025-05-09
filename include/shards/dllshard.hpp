@@ -9,6 +9,7 @@ At runtime just dlopen the dll, that's it!
 
 #ifndef SH_DLLSHARD_HPP
 #define SH_DLLSHARD_HPP
+#define SH_NO_INTERNAL_CORE
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -22,8 +23,7 @@ At runtime just dlopen the dll, that's it!
 #include "shardwrapper.hpp"
 #include "common_types.hpp"
 
-#define SH_NO_INTERNAL_CORE
-#include "../shards/core/object_type.hpp"
+#include "object_type.hpp"
 
 namespace shards {
 // this must be defined in the external

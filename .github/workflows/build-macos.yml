@@ -16,8 +16,8 @@ on:
         required: false
         default: false
         type: boolean
-      rust-cache:
-        description: Use existing rust cache?
+      run-subproject-tests:
+        description: Run the subproject tests?
         required: false
         default: false
         type: boolean
@@ -31,9 +31,9 @@ on:
         required: false
         default: false
         type: boolean
-      rust-cache:
+      run-subproject-tests:
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -45,7 +45,9 @@ jobs:
     runs-on: macos-latest
     outputs:
       run-tests: ${{ steps.setup.outputs.run-tests }}
-      artifact-name: shards-macos ${{ steps.setup.outputs.build-type }}
+      run-subproject-tests: ${{ steps.setup.outputs.run-subproject-tests }}
+      artifact-name: shards-macos-${{ steps.setup.outputs.build-type }}
+      build-type: ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
@@ -53,7 +55,7 @@ jobs:
         run: |
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
           echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
-          echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
+          echo "run-subproject-tests=${{ github.event.inputs.run-subproject-tests || inputs.run-subproject-tests }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -76,7 +78,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: shards-macos ${{ steps.setup.outputs.build-type }}
+          name: shards-macos-${{ steps.setup.outputs.build-type }}
           path: |
             build/shards
             build/test-runtime
@@ -167,3 +169,173 @@ jobs:
             echo "Running sample $i";
             ../../build/shards new run-sample.shs file:"$i" looped:false;
           done
+  macOS-dll-shard:
+    if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
+    needs: macOS
+    name: Subproject tests
+    runs-on: macos-latest
+    steps:
+      - name: Download shards artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.macOS.outputs.artifact-name }}
+          path: shards-bin
+      - name: Make shards executable
+        run: |
+          chmod +x shards-bin/shards
+          chmod +x shards-bin/test-runtime
+      - name: Checkout shards for headers
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards
+          path: shards-source
+          fetch-depth: 1
+          submodules: recursive
+      - name: Checkout external-base
+        uses: actions/checkout@v4
+        with:
+          repository: sinkingsugar/shards-external-base
+          path: shards-external-base
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          brew install cmake ninja
+      - name: Build DLL
+        run: |
+          cd shards-external-base
+          cmake -GNinja -Bbuild -DSHARDS_DIR=$GITHUB_WORKSPACE/shards-source
+          cmake --build build
+      - name: Setup test environment
+        run: |
+          mkdir -p externals
+          BUILD=$GITHUB_WORKSPACE/shards-external-base/build
+          ls -la $BUILD
+          cp $BUILD/*.dll externals/ || true
+          cp $BUILD/*.dylib externals/ || true
+          cp $BUILD/*.so externals/ || true
+          ls -la externals
+          cp -r externals $GITHUB_WORKSPACE/shards-external-base/
+      - name: Run test
+        env:
+          RUST_BACKTRACE: full
+          LOG_SHARDS: debug
+        run: |
+          cd shards-external-base
+          ls -la 
+          ls -la ./externals
+          $GITHUB_WORKSPACE/shards-bin/shards ./test.shs
+      - name: Create artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shards-external-base-${{ needs.macOS.outputs.build-type }}
+          path: externals
+          retention-days: 7
+          if-no-files-found: error
+
+  macOS-prometheus-shard:
+    if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
+    needs: macOS
+    name: Build Prometheus Library
+    runs-on: macos-latest
+    steps:
+      - name: Download shards artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.macOS.outputs.artifact-name }}
+          path: shards-bin
+      - name: Make shards executable
+        run: |
+          chmod +x shards-bin/shards
+          chmod +x shards-bin/test-runtime
+      - name: Checkout shards for headers
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards
+          path: shards-source
+          fetch-depth: 1
+          submodules: recursive
+      - name: Checkout shards-prometheus
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards-prometheus
+          path: shards-prometheus
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          brew install cmake ninja zlib
+      - name: Build prometheus library
+        run: |
+          cd shards-prometheus
+          cmake -GNinja -Bbuild -DCMAKE_BUILD_TYPE=RelDebInfo -DSHARDS_DIR=$GITHUB_WORKSPACE/shards-source
+          cmake --build build
+      - name: Test prometheus library
+        env:
+          RUST_BACKTRACE: full
+          LOG_SHARDS: debug
+        run: |
+          mkdir -p externals
+          BUILD=$GITHUB_WORKSPACE/shards-prometheus/build
+          ls -la $BUILD
+          cp $BUILD/*.dll externals/ || true
+          cp $BUILD/*.dylib externals/ || true
+          cp $BUILD/*.so externals/ || true
+          ls -la externals
+      - name: Create artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shards-prometheus-${{ needs.macOS.outputs.build-type }}
+          path: externals/
+          retention-days: 7
+          if-no-files-found: error
+
+  macOS-memflow-shards:
+    if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
+    needs: macOS
+    name: Build Memflow Shards
+    runs-on: macos-latest
+    steps:
+      - name: Download shards artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.macOS.outputs.artifact-name }}
+          path: shards-bin
+      - name: Make shards executable
+        run: |
+          chmod +x shards-bin/shards
+          chmod +x shards-bin/test-runtime
+      - name: Checkout shards for Rust modules
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards
+          path: shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Checkout memflow-shards
+        uses: actions/checkout@v4
+        with:
+          repository: sinkingsugar/memflow-shards
+          path: memflow-shards
+          fetch-depth: 1
+      - name: Set up dependencies
+        run: |
+          brew install cmake ninja
+          RUSTUP_TOOLCHAIN=`cat shards/rust.version`
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup default $RUSTUP_TOOLCHAIN
+      - name: Create output directory
+        run: |
+      - name: Build memflow-shards
+        run: |
+          cd memflow-shards
+          # Need to create the externals directory first, since we build to that using custom build.rs parameters
+          mkdir -p tests/externals
+          SHARDS_PATH=$GITHUB_WORKSPACE/shards cargo build
+      - name: Create artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memflow-shards-${{ needs.macOS.outputs.build-type }}
+          path: memflow-shards/tests/externals/memflow.dylib
+          retention-days: 7
+          if-no-files-found: error

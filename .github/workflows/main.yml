@@ -31,6 +31,8 @@ jobs:
     with:
       build-type: Debug
       run-tests: true
+      run-subproject-tests: true
+  
   macOS-Release:
     needs: Setup
     uses: ./.github/workflows/build-macos.yml
@@ -38,6 +40,7 @@ jobs:
     with:
       build-type: Release
       run-tests: true
+      run-subproject-tests: true
 
   #
   # Build shards for emscripten
