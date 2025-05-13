@@ -127,7 +127,7 @@ struct Search : public Common {
 };
 
 struct Replace : public Common {
-  ParamVar _replacement;
+  ParamVar _replacement{Var("")};
   std::string _replacementStr;
   std::string _output;
 
