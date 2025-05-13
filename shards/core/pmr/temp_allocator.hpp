@@ -93,9 +93,20 @@ public:
 #endif
 
     if (_Align > boost::container::pmr::memory_resource::max_align) {
-      totalRequestedBytes += _Bytes + _Align;
-      size_t blk = (size_t)baseAllocator->allocate(_Bytes, boost::container::pmr::memory_resource::max_align);
-      return (void *)gfx::alignTo((size_t)blk, _Align);
+      // When we need a higher alignment than default, we need to allocate extra
+      // to ensure we can align the pointer without overflowing
+      size_t extraSpace = _Align - 1;
+      size_t sizeAllocated = _Bytes + extraSpace;
+      totalRequestedBytes +=  sizeAllocated;
+      char* p = static_cast<char*>(baseAllocator->allocate( sizeAllocated, boost::container::pmr::memory_resource::max_align));
+      
+      // Calculate aligned pointer within our allocated block
+      void* alignedPtr = reinterpret_cast<void*>(gfx::alignTo(reinterpret_cast<size_t>(p), _Align));
+      
+      // Ensure we didn't overflow our allocation
+      shassert(static_cast<char*>(alignedPtr) + _Bytes <= p +  sizeAllocated);
+      
+      return alignedPtr;
     } else {
       totalRequestedBytes += _Bytes;
       return baseAllocator->allocate(_Bytes, _Align);
