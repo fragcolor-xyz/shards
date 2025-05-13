@@ -31,7 +31,7 @@ impl Default for JinjaShard {
     });
     
     // Add tojson function to serialize an object to JSON and mark it safe for HTML
-    env.add_function("tojson", |value: minijinja::Value| -> minijinja::Value {
+    env.add_filter("tojson", |value: minijinja::Value| -> minijinja::Value {
       let json = serde_json::to_string(&value).unwrap_or_else(|_| "null".to_string());
       minijinja::Value::from_safe_string(json)
     });

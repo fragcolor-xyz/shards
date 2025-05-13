@@ -1,7 +1,7 @@
 #include "shared.hpp"
 
-#include "../../../deps/llama.cpp/examples/llava/clip-impl.h"
-#include "../../../deps/llama.cpp/examples/llava/mtmd.h"
+#include "../../../deps/llama.cpp/tools/mtmd/clip-impl.h"
+#include "../../../deps/llama.cpp/tools/mtmd/mtmd.h"
 #include "../../../deps/llama.cpp/common/sampling.h"
 
 #include <string>
@@ -351,6 +351,8 @@ struct ChatAddText {
         common_batch_add(chatData.batch, tokens[i + j], chatData.n_past++, {0}, is_last);
       }
 
+      SHLOG_DEBUG("Decoding batch: {}", chatData.batch.n_tokens);
+
       // Process the batch
       if (llama_decode(chatData.ctx.get(), chatData.batch)) {
         throw ActivationError("Failed to decode input tokens");
@@ -446,11 +448,11 @@ struct ChatAddImage {
     const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
 
     // Create a mtmd_bitmap from the image data
-    mtmd_bitmap bitmap;
-    bitmap.nx = image->width;
-    bitmap.ny = image->height;
-    bitmap.data.resize(image->width * image->height * 3);
-    std::memcpy(bitmap.data.data(), image->data, bitmap.data.size());
+    mtmd_bitmap* bitmap = mtmd_bitmap_init(image->width, image->height, image->data);
+    if (!bitmap) {
+      throw ActivationError("Failed to create image bitmap");
+    }
+    DEFER({ mtmd_bitmap_free(bitmap); });
 
     // Create a mtmd_context from the CLIP model
     mtmd_context_params ctx_params{};
@@ -458,6 +460,7 @@ struct ChatAddImage {
     ctx_params.print_timings = false;
     ctx_params.n_threads = chatData.n_threads;
     ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
+    ctx_params.image_marker = MTMD_DEFAULT_IMAGE_MARKER;
 
     // Create a temporary mtmd_context for this operation
     mtmd_context *ctx_vision = mtmd_init_from_file(chatData.mmproj_path.c_str(), model, ctx_params);
@@ -468,33 +471,41 @@ struct ChatAddImage {
 
     // Create input text and chunks for tokenization
     mtmd_input_text text;
-    text.text = "<__image__>"; // Just the image marker
+    text.text = MTMD_DEFAULT_IMAGE_MARKER;
     text.add_special = false;
     text.parse_special = true;
 
-    std::vector<mtmd_bitmap> bitmaps = {bitmap};
-    mtmd_input_chunks chunks;
+    // Create input chunks container
+    mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+    if (!chunks) {
+      throw ActivationError("Failed to create input chunks");
+    }
+    DEFER({ mtmd_input_chunks_free(chunks); });
 
     // Tokenize the input with the image
-    if (mtmd_tokenize(ctx_vision, chunks, text, bitmaps) != 0) {
+    const mtmd_bitmap* bitmap_ptr = bitmap;
+    if (mtmd_tokenize(ctx_vision, chunks, &text, &bitmap_ptr, 1) != 0) {
       throw ActivationError("Failed to tokenize image input");
     }
 
     // Find the image chunk
-    mtmd_input_chunk *image_chunk = nullptr;
-    for (auto &chunk : chunks) {
-      if (chunk.type == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
-        image_chunk = &chunk;
+    const mtmd_input_chunk* image_chunk = nullptr;
+    size_t chunks_size = mtmd_input_chunks_size(chunks);
+    
+    for (size_t i = 0; i < chunks_size; i++) {
+      const mtmd_input_chunk* chunk = mtmd_input_chunks_get(chunks, i);
+      if (chunk && mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
+        image_chunk = chunk;
         break;
       }
     }
 
-    if (!image_chunk || !image_chunk->tokens_image) {
+    if (!image_chunk || !mtmd_input_chunk_get_tokens_image(image_chunk)) {
       throw ActivationError("No image tokens found after tokenization");
     }
 
     // Get the number of tokens in the image
-    size_t n_image_tokens = mtmd_image_tokens_get_n_tokens(image_chunk->tokens_image.get());
+    size_t n_image_tokens = mtmd_image_tokens_get_n_tokens(mtmd_input_chunk_get_tokens_image(image_chunk));
 
     // Ensure we don't exceed our maximum token count for the LLM
     int actual_n_tokens = std::min((int)n_image_tokens, max_tokens);
@@ -513,7 +524,7 @@ struct ChatAddImage {
     }
 
     // Encode the image
-    if (mtmd_encode(ctx_vision, image_chunk->tokens_image.get()) != 0) {
+    if (mtmd_encode(ctx_vision, mtmd_input_chunk_get_tokens_image(image_chunk)) != 0) {
       throw ActivationError("Failed to encode image");
     }
 
@@ -543,8 +554,8 @@ struct ChatAddImage {
 
       // Set positions based on whether we're using M-RoPE or not
       if (use_mrope) {
-        size_t nx = mtmd_image_tokens_get_nx(image_chunk->tokens_image.get());
-        size_t ny = mtmd_image_tokens_get_ny(image_chunk->tokens_image.get());
+        size_t nx = mtmd_image_tokens_get_nx(mtmd_input_chunk_get_tokens_image(image_chunk));
+        size_t ny = mtmd_image_tokens_get_ny(mtmd_input_chunk_get_tokens_image(image_chunk));
         batch_img.set_position_mrope(chatData.n_past, nx, ny, 0);
       } else {
         batch_img.set_position_normal(chatData.n_past, 0);
@@ -562,7 +573,7 @@ struct ChatAddImage {
 
       // Update n_past based on whether we're using M-RoPE or not
       // For M-RoPE, the whole image counts as a single position
-      llama_pos n_pos = mtmd_image_tokens_get_n_pos(image_chunk->tokens_image.get());
+      llama_pos n_pos = mtmd_image_tokens_get_n_pos(mtmd_input_chunk_get_tokens_image(image_chunk));
       chatData.n_past += n_pos;
     }
 
