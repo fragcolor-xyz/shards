@@ -21,10 +21,8 @@ struct JinjaShard {
   env: minijinja::Environment<'static>,
 }
 
-impl Default for JinjaShard {
-  fn default() -> Self {
-    let mut env = minijinja::Environment::new();
-    
+impl JinjaShard {
+  fn initialize_environment(env: &mut minijinja::Environment<'static>) {
     // Add raise_exception function to allow users to raise custom errors from templates
     env.add_function("raise_exception", |msg: String| -> Result<(), minijinja::Error> {
       Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, msg))
@@ -35,6 +33,14 @@ impl Default for JinjaShard {
       let json = serde_json::to_string(&value).unwrap_or_else(|_| "null".to_string());
       minijinja::Value::from_safe_string(json)
     });
+  }
+}
+
+impl Default for JinjaShard {
+  fn default() -> Self {
+    let mut env = minijinja::Environment::new();
+    
+    JinjaShard::initialize_environment(&mut env);
     
     Self {
       required: ExposedTypes::new(),
@@ -64,6 +70,7 @@ impl Shard for JinjaShard {
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
     self.env = minijinja::Environment::new();
+    JinjaShard::initialize_environment(&mut self.env);
     self.previous_template_hash = None;
     Ok(())
   }
