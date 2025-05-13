@@ -4,6 +4,7 @@ use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::{common_type, TableVar, ANY_TABLE_TYPES, STRING_TYPES};
 use shards::types::{ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
+use serde_json;
 
 #[derive(shards::shard)]
 #[shard_info("Jinja.Apply", "Apply a Jinja template to an input")]
@@ -27,6 +28,12 @@ impl Default for JinjaShard {
     // Add raise_exception function to allow users to raise custom errors from templates
     env.add_function("raise_exception", |msg: String| -> Result<(), minijinja::Error> {
       Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, msg))
+    });
+    
+    // Add tojson function to serialize an object to JSON and mark it safe for HTML
+    env.add_function("tojson", |value: minijinja::Value| -> minijinja::Value {
+      let json = serde_json::to_string(&value).unwrap_or_else(|_| "null".to_string());
+      minijinja::Value::from_safe_string(json)
     });
     
     Self {
