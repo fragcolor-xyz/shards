@@ -13,5 +13,5 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1"
-pulldown-cmark = { version = "0.12", default-features = false }
-htmd = "0.1"
+pulldown-cmark = { version = "0.13", default-features = false }
+htmd = "0.2.1"

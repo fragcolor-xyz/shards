@@ -1,9 +1,5 @@
 use candle_transformers::models::bert::BertModel;
 use candle_transformers::models::bert::DTYPE;
-use candle_transformers::models::moondream::{self};
-use candle_transformers::models::quantized_moondream;
-use candle_transformers::models::whisper::{self as Whisper, Config as WhisperConfigType};
-use candle_transformers::quantized_var_builder;
 use shards::fourCharacterCode;
 use shards::ref_counted_object_type_impl;
 use shards::shard::Shard;
@@ -23,17 +19,12 @@ use std::collections::HashMap;
 use candle_core::Device;
 
 use crate::get_global_device;
-use crate::tokenizer::TOKENIZER_TYPE;
-use crate::tokenizer::TOKENIZER_VAR_TYPE;
 use crate::Tensor;
 use crate::TENSORS_TYPE_VEC;
 use crate::TENSOR_TYPE;
-use crate::TENSOR_TYPE_VEC;
 
 pub enum Model {
   Bert(BertModel),
-  Whisper(Whisper::model::Whisper),
-  WhisperQuantized(Whisper::quantized_model::Whisper),
 }
 
 ref_counted_object_type_impl!(Model);
@@ -49,8 +40,6 @@ lazy_static! {
 pub enum ModelType {
   #[enum_value("A BERT model.")]
   Bert = 0x1,
-  #[enum_value("A Whisper speech recognition model.")]
-  Whisper = 0x2,
 }
 
 #[derive(shards::shards_enum)]
@@ -172,62 +161,6 @@ impl Shard for ModelShard {
           "Failed to load model"
         })?;
         Model::Bert(model)
-      }
-      (ModelType::Whisper, Formats::SafeTensor) => {
-        if self.configuration.is_none() {
-          return Err("Configuration is required");
-        }
-
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb = unsafe {
-          candle_nn::VarBuilder::from_mmaped_safetensors(
-            &[std::path::Path::new(model_path)],
-            DTYPE,
-            device,
-          )
-        }
-        .map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        let config: TableVar = self.configuration.get().as_ref().try_into()?;
-        let config = WhisperConfig::try_from(&config)?;
-        let model = Whisper::model::Whisper::load(&vb, config.0).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::Whisper(model)
-      }
-      (ModelType::Whisper, Formats::GGUF) => {
-        if self.configuration.is_none() {
-          return Err("Configuration is required");
-        }
-
-        let device = if self.gpu.as_ref().try_into()? {
-          get_global_device()
-        } else {
-          &Device::Cpu
-        };
-
-        let vb =
-          quantized_var_builder::VarBuilder::from_gguf(std::path::Path::new(model_path), device)
-            .map_err(|e| {
-              shlog_error!("Failed to load model: {}", e);
-              "Failed to load model"
-            })?;
-
-        let config: TableVar = self.configuration.get().as_ref().try_into()?;
-        let config = WhisperConfig::try_from(&config)?;
-        let model = Whisper::quantized_model::Whisper::load(&vb, config.0).map_err(|e| {
-          shlog_error!("Failed to load model: {}", e);
-          "Failed to load model"
-        })?;
-        Model::WhisperQuantized(model)
       }
       _ => return Err("Unsupported model/format combination"),
     };
@@ -354,115 +287,6 @@ impl TryFrom<&TableVar> for BertConfig {
   }
 }
 
-struct WhisperConfig(WhisperConfigType);
-
-impl TryFrom<&TableVar> for WhisperConfig {
-  type Error = &'static str;
-
-  fn try_from(value: &TableVar) -> Result<Self, Self::Error> {
-    let mut config_map = HashMap::new();
-    for (ref key, ref value) in value.iter() {
-      let key: &str = key.try_into()?;
-      match key {
-        "vocab_size" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("vocab_size", value);
-        }
-        "num_mel_bins" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("num_mel_bins", value);
-        }
-        "max_source_positions" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("max_source_positions", value);
-        }
-        "max_target_positions" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("max_target_positions", value);
-        }
-        "encoder_attention_heads" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("encoder_attention_heads", value);
-        }
-        "encoder_layers" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("encoder_layers", value);
-        }
-        "decoder_attention_heads" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("decoder_attention_heads", value);
-        }
-        "decoder_layers" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("decoder_layers", value);
-        }
-        "encoder_ffn_dim" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("encoder_ffn_dim", value);
-        }
-        "decoder_ffn_dim" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("decoder_ffn_dim", value);
-        }
-        "d_model" => {
-          let value: usize = value.try_into()?;
-          let value =
-            serde_json::to_value(value).map_err(|_| "Failed to convert value to usize")?;
-          config_map.insert("d_model", value);
-        }
-        _ => {} // ignore unknown keys
-      }
-    }
-    let json =
-      serde_json::to_string(&config_map).map_err(|_| "Failed to convert config to JSON")?;
-    let config: WhisperConfigType =
-      serde_json::from_str(&json).map_err(|_| "Failed to convert JSON to config")?;
-    Ok(WhisperConfig(config))
-  }
-}
-
-struct MoondreamConfig(moondream::Config);
-
-impl Default for MoondreamConfig {
-  fn default() -> Self {
-    Self(moondream::Config::v2())
-  }
-}
-
-impl TryFrom<&TableVar> for MoondreamConfig {
-  type Error = &'static str;
-
-  fn try_from(_value: &TableVar) -> Result<Self, Self::Error> {
-    // Create default config
-    let config = moondream::Config::v2();
-
-    // For now, we'll just use the default config since Moondream has a fixed architecture
-    // In the future, we could add support for custom configurations if needed
-
-    Ok(MoondreamConfig(config))
-  }
-}
-
 #[derive(shards::shard)]
 #[shard_info("ML.Forward", "Forward a tensor through a model.")]
 pub(crate) struct ForwardShard {
@@ -541,38 +365,6 @@ impl Shard for ForwardShard {
         } else {
           return Err("Invalid number of tensors");
         }
-      }
-      Model::Whisper(model) => {
-        if tensors.len() != 1 {
-          return Err("Whisper expects a single mel spectrogram tensor");
-        }
-
-        let mel =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let encoder_output = model.encoder.forward(&mel.0, true).map_err(|e| {
-          shlog_error!("Failed to encode: {}", e);
-          "Failed to encode audio"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(encoder_output), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
-      }
-      Model::WhisperQuantized(model) => {
-        if tensors.len() != 1 {
-          return Err("Whisper expects a single mel spectrogram tensor");
-        }
-
-        let mel =
-          unsafe { &mut *Var::from_ref_counted_object::<Tensor>(&tensors[0], &*TENSOR_TYPE)? };
-
-        let encoder_output = model.encoder.forward(&mel.0, true).map_err(|e| {
-          shlog_error!("Failed to encode: {}", e);
-          "Failed to encode audio"
-        })?;
-
-        let output = Var::new_ref_counted(Tensor(encoder_output), &*TENSOR_TYPE);
-        self.outputs.0.push(&output);
       }
     }
 

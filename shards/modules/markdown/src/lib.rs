@@ -310,6 +310,10 @@ impl Shard for MarkdownParseShard {
                 let c = Var::ephemeral_string("Email");
                 self.output.0.push(&c);
               }
+              LinkType::WikiLink { .. } => {
+                let c = Var::ephemeral_string("WikiLink");
+                self.output.0.push(&c);
+              }
             }
             let d = Var::ephemeral_string(&dest_url);
             self.output.0.push(&d);
@@ -365,6 +369,10 @@ impl Shard for MarkdownParseShard {
                 let c = Var::ephemeral_string("Email");
                 self.output.0.push(&c);
               }
+              LinkType::WikiLink { .. } => {
+                let c = Var::ephemeral_string("WikiLink");
+                self.output.0.push(&c);
+              }
             }
             let d = Var::ephemeral_string(&dest_url);
             self.output.0.push(&d);
@@ -388,6 +396,18 @@ impl Shard for MarkdownParseShard {
                 self.output.0.push(&c);
               }
             }
+          }
+          Tag::Superscript => {
+            let a = Var::ephemeral_string("Start");
+            let b = Var::ephemeral_string("Superscript");
+            self.output.0.push(&a);
+            self.output.0.push(&b);
+          }
+          Tag::Subscript => {
+            let a = Var::ephemeral_string("Start");
+            let b = Var::ephemeral_string("Subscript");
+            self.output.0.push(&a);
+            self.output.0.push(&b);
           }
         },
         Event::End(tag) => match tag {
@@ -543,6 +563,18 @@ impl Shard for MarkdownParseShard {
           TagEnd::MetadataBlock(_) => {
             let a = Var::ephemeral_string("End");
             let b = Var::ephemeral_string("MetadataBlock");
+            self.output.0.push(&a);
+            self.output.0.push(&b);
+          }
+          TagEnd::Superscript => {
+            let a = Var::ephemeral_string("End");
+            let b = Var::ephemeral_string("Superscript");
+            self.output.0.push(&a);
+            self.output.0.push(&b);
+          }
+          TagEnd::Subscript => {
+            let a = Var::ephemeral_string("End");
+            let b = Var::ephemeral_string("Subscript");
             self.output.0.push(&a);
             self.output.0.push(&b);
           }
