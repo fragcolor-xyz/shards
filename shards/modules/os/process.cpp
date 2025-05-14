@@ -108,11 +108,6 @@ struct Run {
       if (std::chrono::system_clock::now() > endTime) {
         cmd.terminate();
         throw ActivationError("Process timed out");
-      } else {
-        // give a further 1 second to terminate
-        if (!cmd.wait_for(std::chrono::seconds(1))) {
-          cmd.terminate();
-        }
       }
     }
 
@@ -243,7 +238,9 @@ struct Shell {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_VAR(_shell_path, "Shell", "The shell executable path", {CoreInfo::StringType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_shell_path));
+  PARAM_PARAMVAR(_wait_seconds, "Wait", "The number of seconds to wait for the shell to finish.",
+                 {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_shell_path), PARAM_IMPL_FOR(_wait_seconds));
 
   Shell() : _readBuffer(bufferSize) {
 #ifdef _WIN32
@@ -251,6 +248,8 @@ struct Shell {
 #else
     _shell_path = shards::Var("/bin/bash");
 #endif
+
+    _wait_seconds = shards::Var(30);
   }
 
   void warmup(SHContext *context) {
@@ -371,7 +370,11 @@ struct Shell {
         context,
         [&]() {
           std::string cmd = SHSTRING_PREFER_SHSTRVIEW(input);
+#ifndef _WIN32
           cmd += "\n";
+#else
+          cmd += "\r\n";
+#endif
 
 #ifdef _WIN32
           DWORD bytesWritten;
@@ -381,7 +384,7 @@ struct Shell {
 #endif
 
           // Small sleep to allow output to be ready
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          std::this_thread::sleep_for(std::chrono::seconds(_wait_seconds.get().payload.intValue));
 
           _outputBuffer = readAvailable();
           return Var(_outputBuffer);

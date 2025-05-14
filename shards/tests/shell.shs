@@ -29,7 +29,7 @@
 @run(root) | Assert.Is(true)
 
 @wire(shell-instance {
-  Process.Shell
+  Process.Shell(Wait: 2)
 })
 
 @wire(shell-test {
