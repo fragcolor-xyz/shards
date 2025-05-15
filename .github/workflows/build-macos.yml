@@ -290,10 +290,10 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  macOS-memflow-shards:
+  macOS-shards-bg3:
     if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
     needs: macOS
-    name: Build Memflow Shards
+    name: Build BG3 Shards
     runs-on: macos-latest
     steps:
       - name: Download shards artifact
@@ -312,11 +312,11 @@ jobs:
           path: shards
           fetch-depth: 1
           submodules: recursive
-      - name: Checkout memflow-shards
+      - name: Checkout shards-bg3
         uses: actions/checkout@v4
         with:
-          repository: sinkingsugar/memflow-shards
-          path: memflow-shards
+          repository: sinkingsugar/shards-bg3
+          path: shards-bg3
           fetch-depth: 1
       - name: Set up dependencies
         run: |
@@ -324,18 +324,16 @@ jobs:
           RUSTUP_TOOLCHAIN=`cat shards/rust.version`
           rustup toolchain install $RUSTUP_TOOLCHAIN
           rustup default $RUSTUP_TOOLCHAIN
-      - name: Create output directory
+      - name: Build shards-bg3
         run: |
-      - name: Build memflow-shards
-        run: |
-          cd memflow-shards
+          cd shards-bg3
           # Need to create the externals directory first, since we build to that using custom build.rs parameters
           mkdir -p tests/externals
           SHARDS_PATH=$GITHUB_WORKSPACE/shards cargo build
       - name: Create artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memflow-shards-${{ needs.macOS.outputs.build-type }}
-          path: memflow-shards/tests/externals/memflow.dylib
+          name: shards-bg3-${{ needs.macOS.outputs.build-type }}
+          path: shards-bg3/tests/externals/bg3.dylib
           retention-days: 7
           if-no-files-found: error
