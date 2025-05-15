@@ -328,12 +328,12 @@ jobs:
         run: |
           cd shards-bg3
           # Need to create the externals directory first, since we build to that using custom build.rs parameters
-          mkdir -p tests/externals
+          mkdir -p test/externals
           SHARDS_PATH=$GITHUB_WORKSPACE/shards cargo build
       - name: Create artifact
         uses: actions/upload-artifact@v4
         with:
           name: shards-bg3-${{ needs.macOS.outputs.build-type }}
-          path: shards-bg3/tests/externals/bg3.dylib
+          path: shards-bg3/test/externals/bg3.dylib
           retention-days: 7
           if-no-files-found: error
