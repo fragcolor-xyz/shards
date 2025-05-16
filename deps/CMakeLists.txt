@@ -21,6 +21,9 @@ add_subdirectory(nameof)
 add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
+set(LV_CONF_PATH "${SHARDS_DIR}/shards/modules/lvgl/lv_internal/lv_conf.h" CACHE FILEPATH "Path to lv_conf.h" FORCE)
+add_subdirectory(lvgl)
+
 set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
 
 # Don't enable these ones

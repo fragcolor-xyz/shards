@@ -1,0 +1,15 @@
+@mesh(root)
+@wire(test-wire {
+  GFX.MainWindow(
+    Title: "Shards Window" Width: 1280 Height: 720 Contents: {
+      Pass
+      LVGL.Context
+      Log("The context")
+    }
+  )
+} Looped: true)
+
+
+@schedule(root test-wire)
+; @run(root FPS: 120 Iterations: 1) | Assert.Is(true)
+@run(root FPS: 120)

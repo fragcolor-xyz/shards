@@ -113,3 +113,6 @@
 [submodule "deps/opus"]
 	path = deps/opus
 	url = https://github.com/xiph/opus.git
+[submodule "deps/lvgl"]
+	path = deps/lvgl
+	url = https://github.com/shards-lang/lvgl.git

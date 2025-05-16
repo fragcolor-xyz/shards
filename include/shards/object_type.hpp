@@ -10,22 +10,17 @@
 namespace shards {
 namespace detail {
 
-template <typename T, typename = void>
-struct has_static_match : std::false_type {};
+template <typename T, typename = void> struct has_static_match : std::false_type {};
 
 template <typename T>
-struct has_static_match<T, 
-    std::void_t<decltype(T::match(std::declval<const T&>(), std::declval<const T&>()))>> 
+struct has_static_match<T, std::void_t<decltype(T::match(std::declval<const T &>(), std::declval<const T &>()))>>
     : std::true_type {};
 
-template <typename T, typename = void>
-struct has_static_hash : std::false_type {};
+template <typename T, typename = void> struct has_static_hash : std::false_type {};
 
 template <typename T>
 struct has_static_hash<T,
-    std::void_t<decltype(T::hash(std::declval<const T&>(), 
-                                std::declval<void*>(), 
-                                std::declval<size_t>()))>>
+                       std::void_t<decltype(T::hash(std::declval<const T &>(), std::declval<void *>(), std::declval<size_t>()))>>
     : std::true_type {};
 
 } // namespace detail
@@ -124,7 +119,7 @@ public:
     return &r->shared;
   }
 
-  void Release(E *obj) {
+  void Release(E *const &obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
     if (r->refcount.release()) {
       if constexpr (BeforeDelete != nullptr) {
@@ -132,6 +127,17 @@ public:
       }
       delete r;
     }
+  }
+
+  void Release(E *&obj) {
+    if (obj)
+      Release(obj);
+    obj = nullptr;
+  }
+
+  void Init(E *&obj) {
+    Release(obj);
+    obj = New();
   }
 
   uint32_t GetRefCount(E *obj) {
@@ -206,7 +212,7 @@ public:
   static inline T &makeExtended(TypeInfo &dst) {
     TypeInfo old;
     std::swap(old, dst);
-    return makeExtended(dst, &(SHTypeInfo&)old);
+    return makeExtended(dst, &(SHTypeInfo &)old);
   }
 
   static inline T &makeExtended(TypeInfo &dst, const SHTypeInfo *original) {
