@@ -17,7 +17,14 @@ struct LVGLContext {
 
   lv_display_t *display{};
 
-  LVGLContext() { display = lv_display_create(1024, 1024); }
+  LVGLContext() {
+    static int _initMarker = []() {
+      lv_init();
+      return 0;
+    }();
+    (void)_initMarker;
+    display = lv_display_create(1024, 1024);
+  }
   ~LVGLContext() { lv_display_delete(display); }
 };
 

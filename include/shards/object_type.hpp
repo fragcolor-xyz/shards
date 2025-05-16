@@ -119,7 +119,7 @@ public:
     return &r->shared;
   }
 
-  void Release(E *const &obj) {
+  void ReleasePtr(E *const &obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
     if (r->refcount.release()) {
       if constexpr (BeforeDelete != nullptr) {
@@ -129,9 +129,10 @@ public:
     }
   }
 
+  void Release(E *const &obj) { return ReleasePtr(obj); }
   void Release(E *&obj) {
     if (obj)
-      Release(obj);
+      ReleasePtr(obj);
     obj = nullptr;
   }
 
