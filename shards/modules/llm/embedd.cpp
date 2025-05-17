@@ -424,14 +424,8 @@ struct Embed {
 
     llama_kv_self_clear(llmContext.ctx.get());
 
-    if (llama_model_has_encoder(model)) {
-      if (llama_encode(llmContext.ctx.get(), batch) < 0) {
-        throw ActivationError("Failed to encode input");
-      }
-    } else {
-      if (llama_decode(llmContext.ctx.get(), batch) < 0) {
-        throw ActivationError("Failed to decode input");
-      }
+    if (llama_encode(llmContext.ctx.get(), batch) < 0) {
+      throw ActivationError("Failed to encode input");
     }
 
     _embeddings.clear();
