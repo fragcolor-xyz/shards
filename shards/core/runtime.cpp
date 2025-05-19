@@ -1209,9 +1209,12 @@ void validateConnection(InternalCompositionContext &ctx) {
         matching = true;
       }
 #endif
-      throw ComposeError(
-          fmt::format("Required types do not match currently exposed ones for variable '{}' required type: (\"{}\", {})",
-                      required.first, required.second.name, required.second.exposedType));
+      if (found) {
+        throw ComposeError(fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+                                       required.second.exposedType, found->exposedType, required.first));
+      } else {
+        throw ComposeError(fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+      }
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())
