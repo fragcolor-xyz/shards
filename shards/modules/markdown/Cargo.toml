@@ -15,3 +15,4 @@ shards = { path = "../../rust" }
 compile-time-crc32 = "0.1"
 pulldown-cmark = { version = "0.13", default-features = false }
 htmd = "0.2.1"
+codex-apply-patch = { path = "../../../deps/codex/codex-rs/apply-patch" }

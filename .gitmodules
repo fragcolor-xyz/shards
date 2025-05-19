@@ -113,3 +113,6 @@
 [submodule "deps/opus"]
 	path = deps/opus
 	url = https://github.com/xiph/opus.git
+[submodule "deps/codex"]
+	path = deps/codex
+	url = https://github.com/openai/codex.git
