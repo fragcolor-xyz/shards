@@ -4,10 +4,10 @@
 #include <shards/core/module.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/object_type.hpp>
+#include "lv_renderer.hpp"
 #include "lvgl.h"
 
 namespace shards::lvgl {
-
 struct LVGLContext {
   static inline const char VariableName[] = "LVGL.Context";
   static constexpr uint32_t TypeId = 'LVGL';
@@ -15,15 +15,16 @@ struct LVGLContext {
   static inline const SHOptionalString VariableDescription = SHCCSTR("The LVGL context.");
   static inline shards::ObjectVar<LVGLContext> ObjectVar{VariableName, shards::CoreCC, TypeId};
 
+  int _initMarker = []() {
+    lv_init();
+    return 0;
+  }();
   lv_display_t *display{};
+  draw::DrawUnit drawUnit{};
 
   LVGLContext() {
-    static int _initMarker = []() {
-      lv_init();
-      return 0;
-    }();
-    (void)_initMarker;
     display = lv_display_create(1024, 1024);
+    // lv_display_set_draw_buffers(lv_display_t *disp, lv_draw_buf_t *buf1, lv_draw_buf_t *buf2)
   }
   ~LVGLContext() { lv_display_delete(display); }
 };

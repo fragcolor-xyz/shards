@@ -10,7 +10,6 @@
 #include <gfx/texture.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
-#include <gfx/sized_item_pool.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/view.hpp>
 #include <gfx/context.hpp>
