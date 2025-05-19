@@ -3,9 +3,40 @@
 
 #include <shards/shards.hpp>
 #include <shards/iterator.hpp>
+#include <shards/defer.hpp>
+#include <boost/container/small_vector.hpp>
+#include <string>
+#include <spdlog/spdlog.h>
+#include "ops_internal.hpp"
 
 namespace shards {
-struct TypeMatcher {
+struct TypeMatcherErrorFormatter {
+  static constexpr std::true_type type_matcher_error_interface{};
+
+  boost::container::small_vector<std::string, 8> path;
+  std::vector<std::string> errors;
+
+  void formatPath(std::string &output) {
+    if (path.empty()) {
+      return;
+    }
+
+    output += path[0];
+    for (size_t i = 1; i < path.size(); i++) {
+      output += ":";
+      output += path[i];
+    }
+  }
+};
+
+template <typename T>
+concept ErrorFormatterInterface = requires(T t, std::string outStr) {
+  { t.errors } -> std::same_as<std::vector<std::string> &>;
+  { t.path } -> std::same_as<boost::container::small_vector<std::string, 8> &>;
+  { t.formatPath(outStr) };
+};
+
+template <typename ErrorFormatter = std::monostate> struct TypeMatcher {
   // This will automatically allow extra keys in the input table
   // e.g. Input type {a: Int b: Float} will match against receiver type {a: Int}
   bool isParameter = true;
@@ -15,7 +46,79 @@ struct TypeMatcher {
   bool checkVarTypes = false;
   bool ignoreFixedSeq = false;
 
+  TypeMatcherErrorFormatter errorFormatter;
+
+  void logTypeMismatch(const SHTypeInfo &expected, const SHTypesInfo &actual) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      std::string err;
+      errorFormatter.formatPath(err);
+      if (!err.empty())
+        err += ", ";
+      fmt::format_to(std::back_inserter(err), "type mismatch, was: {}, expected: {}", expected, actual);
+      errorFormatter.errors.emplace_back(std::move(err));
+    }
+  }
+
+  void logTypeMismatch(const SHTypeInfo &expected, const SHTypeInfo &actual) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      std::string err;
+      errorFormatter.formatPath(err);
+      if (!err.empty())
+        err += ", ";
+      fmt::format_to(std::back_inserter(err), "type mismatch, was: {}, expected: {}", expected, actual);
+      errorFormatter.errors.emplace_back(std::move(err));
+    }
+  }
+
+  void logKeysMissing(const std::set<SHVar> &keys) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      std::string err;
+      errorFormatter.formatPath(err);
+      if (!err.empty())
+        err += ", ";
+
+      fmt::format_to(std::back_inserter(err), "input is missing keys: ");
+      size_t nk = 0;
+      for (auto &k : keys) {
+        if (nk > 0)
+          fmt::format_to(std::back_inserter(err), ", ");
+        fmt::format_to(std::back_inserter(err), "{}", k);
+        nk++;
+      }
+      errorFormatter.errors.emplace_back(std::move(err));
+    }
+  }
+
+  void appendPath(std::string_view path) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      errorFormatter.path.emplace_back(path);
+    }
+  }
+  void appendPath(const char *path) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      appendPath(std::string_view(path));
+    }
+  }
+  void appendPath(const SHVar &v) {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      appendPath(fmt::format("{}", v));
+    }
+  }
+  void popPath() {
+    if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+      errorFormatter.path.pop_back();
+    }
+  }
+
   bool match(const SHTypeInfo &inputType, const SHTypeInfo &receiverType) {
+    if (!matchInner(inputType, receiverType)) {
+      logTypeMismatch(inputType, receiverType);
+      return false;
+    }
+    return true;
+  }
+
+  bool matchInner(const SHTypeInfo &inputType, const SHTypeInfo &receiverType) {
     if (receiverType.basicType == SHType::Any)
       return true;
 
@@ -60,6 +163,7 @@ struct TypeMatcher {
                   match(inputType.seqTypes.elements[i], receiverType.seqTypes.elements[j]))
                 goto matched;
             }
+            logTypeMismatch(inputType.seqTypes.elements[i], receiverType.seqTypes);
             return false;
           matched:
             continue;
@@ -115,6 +219,8 @@ struct TypeMatcher {
               return true; // both Any
             auto matched = false;
             SHTypeInfo anyType{SHType::Any};
+            appendPath("<any>");
+            DEFER({ popPath(); });
             for (uint32_t y = 0; y < numReceiverTypes; y++) {
               auto btype = receiverType.table.types.elements[y];
               if (match(anyType, btype)) {
@@ -133,6 +239,8 @@ struct TypeMatcher {
                 // with the consumer
                 auto atype = inputType.table.types.elements[i];
                 auto matched = false;
+                appendPath("<any>");
+                DEFER({ popPath(); });
                 for (uint32_t y = 0; y < numReceiverTypes; y++) {
                   auto btype = receiverType.table.types.elements[y];
                   if (match(atype, btype)) {
@@ -141,6 +249,7 @@ struct TypeMatcher {
                   }
                 }
                 if (!matched) {
+                  logTypeMismatch(atype, receiverType.table.types);
                   return false;
                 }
               }
@@ -159,6 +268,13 @@ struct TypeMatcher {
             return false;
           }
 
+          std::set<SHVar> missingReceiverKeys{};
+          if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+            for (uint32_t i = 0; i < numReceiverKeys; i++) {
+              missingReceiverKeys.insert(receiverType.table.keys.elements[i]);
+            }
+          }
+
           auto missingRecvMatches = lastElementEmpty ? numReceiverKeys - 1 : numReceiverKeys;
           for (uint32_t i = 0; i < numInputKeys; i++) {
             auto inputEntryType = inputType.table.types.elements[i];
@@ -168,24 +284,37 @@ struct TypeMatcher {
               auto receiverEntryKey = receiverType.table.keys.elements[y];
               // Try to compare against the wildcard type first
               if (lastElementEmpty && y == (numReceiverKeys - 1)) {
+                appendPath("<any>");
+                DEFER({ popPath(); });
+
                 if (match(inputEntryType, receiverEntryType)) {
                   y = numReceiverKeys; // break
-                } else
+                } else {
+                  logTypeMismatch(inputEntryType, receiverEntryType);
                   return false;
+                }
               } else if (inputEntryKey == receiverEntryKey) {
+                appendPath(inputEntryKey);
+                DEFER({ popPath(); });
+
                 if (match(inputEntryType, receiverEntryType)) {
                   missingRecvMatches--;
+                  if constexpr (ErrorFormatterInterface<ErrorFormatter>) {
+                    missingReceiverKeys.erase(receiverEntryKey);
+                  }
                   y = numReceiverKeys; // break
-                } else
+                } else {
+                  logTypeMismatch(inputEntryType, receiverEntryType);
                   return false;
-              } else if (ignoreExtra) {
-                continue;
+                }
               }
             }
           }
 
-          if (missingRecvMatches)
+          if (missingRecvMatches) {
+            logKeysMissing(missingReceiverKeys);
             return false;
+          }
         }
       }
       break;

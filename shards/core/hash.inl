@@ -73,6 +73,47 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
     }
 
   } break;
+  case SHType::String:
+  case SHType::Path:
+  case SHType::ContextVar: {
+    hashUpdate<TDigest>(state, var.payload.stringValue, var.payload.stringLen);
+  } break;
+  case SHType::Bool: {
+    hashUpdate<TDigest>(state, &var.payload.boolValue, sizeof(SHBool));
+  } break;
+  case SHType::Int: {
+    hashUpdate<TDigest>(state, &var.payload.intValue, sizeof(SHInt));
+  } break;
+  case SHType::Int2: {
+    hashUpdate<TDigest>(state, &var.payload.int2Value, sizeof(SHInt2));
+  } break;
+  case SHType::Int3: {
+    hashUpdate<TDigest>(state, &var.payload.int3Value, sizeof(SHInt3));
+  } break;
+  case SHType::Int4: {
+    hashUpdate<TDigest>(state, &var.payload.int4Value, sizeof(SHInt4));
+  } break;
+  case SHType::Int8: {
+    hashUpdate<TDigest>(state, &var.payload.int8Value, sizeof(SHInt8));
+  } break;
+  case SHType::Int16: {
+    hashUpdate<TDigest>(state, &var.payload.int16Value, sizeof(SHInt16));
+  } break;
+  case SHType::Float: {
+    hashUpdate<TDigest>(state, &var.payload.floatValue, sizeof(SHFloat));
+  } break;
+  case SHType::Float2: {
+    hashUpdate<TDigest>(state, &var.payload.float2Value, sizeof(SHFloat2));
+  } break;
+  case SHType::Float3: {
+    hashUpdate<TDigest>(state, &var.payload.float3Value, sizeof(SHFloat3));
+  } break;
+  case SHType::Float4: {
+    hashUpdate<TDigest>(state, &var.payload.float4Value, sizeof(SHFloat4));
+  } break;
+  case SHType::Color: {
+    hashUpdate<TDigest>(state, &var.payload.colorValue, sizeof(SHColor));
+  } break;
   default:
     break;
   };
