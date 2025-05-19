@@ -210,8 +210,8 @@ void loadExternalShards(std::string from) {
         if (!handle) {
           SHLOG_ERROR("LoadLibrary failed, error: {}", dlerror());
         }
-        loaded.insert(filename);
 #endif
+        loaded.insert(filename);
       }
     }
   }
