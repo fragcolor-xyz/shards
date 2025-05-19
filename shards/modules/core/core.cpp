@@ -2509,7 +2509,7 @@ RUNTIME_SHARD_parameters(Count);
 RUNTIME_SHARD_setParam(Count);
 RUNTIME_SHARD_getParam(Count);
 RUNTIME_SHARD_activate(Count);
-RUNTIME_SHARD_compose(Count);
+RUNTIME_SHARD_composeV2(Count);
 RUNTIME_SHARD_END(Count);
 
 // Register Clear

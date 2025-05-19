@@ -771,7 +771,7 @@ struct Restart {
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.wire->inputType->basicType != SHType::None && !matchTypes(data.inputType, data.wire->inputType, false, true, true)) {
       throw ComposeError(fmt::format("Restart input and wire input type mismatch, wire: {} receives {}, shard receives: {}",
-                         data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
+                                     data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
     }
     return data.inputType; // Actually, we are a flow stopper.
   }
@@ -2740,9 +2740,12 @@ struct Count : SeqUser {
                    "If the variable type does not match, it outputs 0.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo composeV2(const SHInstanceData &data) {
     if (_name.empty()) {
+      // shortcut, don't run full compose in this case!
       OVERRIDE_ACTIVATE(data, activateFromInput);
+    } else {
+      SeqUser::composeV2(data);
     }
     return CoreInfo::IntType;
   }
