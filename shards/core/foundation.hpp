@@ -395,7 +395,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   }
 
   static SHWireRef addRef(SHWireRef ref) {
-    auto cref = sharedFromRef(ref); 
+    auto cref = sharedFromRef(ref);
     shassert(cref.use_count() > 0);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
@@ -1396,9 +1396,7 @@ struct ExposedTypeInfo {
   SHExposedTypeInfo _innerInfo{};
   ExposedTypeInfo() = default;
   ExposedTypeInfo(const SHExposedTypeInfo &other) { initFrom(other); }
-  ExposedTypeInfo(const ExposedTypeInfo &other) {
-    initFrom(other._innerInfo);
-  }
+  ExposedTypeInfo(const ExposedTypeInfo &other) { initFrom(other._innerInfo); }
   ExposedTypeInfo(ExposedTypeInfo &&other) { std::swap(_innerInfo, other._innerInfo); }
   ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) = delete;
   ExposedTypeInfo &operator=(ExposedTypeInfo &&other) {
@@ -1715,7 +1713,7 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
   std::vector<SHExposedTypeInfo> expInfo;
   TypeInfo ti(var, data, &expInfo, false);
   for (auto &type : validTypes) {
-    if (TypeMatcher{
+    if (TypeMatcher<>{
             .isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}
             .match(ti, type)) {
       for (auto &it : expInfo) {

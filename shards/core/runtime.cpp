@@ -838,7 +838,7 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck, bool ignoreFixedSeq) {
-  return TypeMatcher{
+  return TypeMatcher<>{
       .isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck, .ignoreFixedSeq = ignoreFixedSeq}
       .match(inputType, receiverType);
 }

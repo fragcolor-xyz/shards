@@ -49,7 +49,7 @@ template <typename S, typename... Args> inline auto formatLineInto(std::string &
 }
 
 bool TraitMatcher::operator()(SHExposedTypesInfo exposedVariables, const SHTrait &trait) {
-  TypeMatcher tm;
+  TypeMatcher<> tm;
   tm.ignoreFixedSeq = true;
 
   error.clear();
