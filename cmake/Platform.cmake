@@ -24,10 +24,10 @@ if(APPLE)
   if(CMAKE_Swift_FLAGS)
     string(REGEX REPLACE "-target [^ ]+" "" CMAKE_Swift_FLAGS "${CMAKE_Swift_FLAGS}")
   endif()
-  
+
   # Add the deployment target flag to Swift compiler options
   set(CMAKE_Swift_FLAGS "${CMAKE_Swift_FLAGS} ${deployment_target_flag}" CACHE STRING "Swift compiler flags" FORCE)
-  
+
   # Find Swift compiler instead of hardcoding the Xcode path
   find_program(CMAKE_Swift_COMPILER swiftc REQUIRED)
   enable_language(Swift)
@@ -44,10 +44,12 @@ if(APPLE)
 
   if(XCODE_SDK)
     string(REGEX MATCH "simulator" IS_SIMULATOR ${XCODE_SDK})
+
     if(IS_SIMULATOR)
       message(STATUS "Building for simulator: ${XCODE_SDK}")
+
       # Generic simulator settings here
-      
+
       # Optionally detect specific simulator type
       if(XCODE_SDK MATCHES "iphonesimulator")
         message(STATUS "iOS Simulator detected")
@@ -121,6 +123,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(SH_DEBUG=1)
 endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # define SH_RELWITHDEBINFO to enable some extra debug asserts
   add_compile_definitions(SH_RELWITHDEBINFO=1)
@@ -205,12 +208,20 @@ endif()
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
   set(WINDOWS_ABI "msvc")
 
-  # We can not keep iterators in memory without freeing with iterator debugging
-  # See SHTable/Set iterator internals
+  set(ITERATOR_DEBUG_LEVEL 0)
+
   if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
-    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
+    set(ITERATOR_DEBUG_LEVEL 1)
   endif()
+
+  # This is required for ASAN to work correctly under LLVM/MSVC
+  if(USE_ASAN)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+    set(ITERATOR_DEBUG_LEVEL 0) # Needed to match clang_rt.asan lib
+  endif()
+
+  add_compile_definitions(_ITERATOR_DEBUG_LEVEL=${ITERATOR_DEBUG_LEVEL})
+  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=${ITERATOR_DEBUG_LEVEL}")
 else()
   set(WINDOWS_ABI "gnu")
 endif()
@@ -322,6 +333,7 @@ if(USE_ASAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
+
   if(CMAKE_GENERATOR STREQUAL "Xcode")
     add_link_options(
       -DBOOST_USE_ASAN
@@ -364,6 +376,7 @@ if(USE_TSAN)
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=thread>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
+
   if(CMAKE_GENERATOR STREQUAL "Xcode")
     add_link_options(
       -fsanitize=thread
@@ -375,6 +388,7 @@ if(USE_TSAN)
       $<$<COMPILE_LANGUAGE:CXX,C>:-g>
     )
   endif()
+
   if(USE_TSAN GREATER 1)
     add_compile_options(
       $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
@@ -383,6 +397,7 @@ if(USE_TSAN)
       $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
     )
   endif()
+
   add_compile_definitions($<$<COMPILE_LANGUAGE:CXX,C>:SH_USE_TSAN>)
 endif()
 
@@ -430,4 +445,9 @@ if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
 else()
   set(LIB_PREFIX "lib")
   set(LIB_SUFFIX ".a")
+endif()
+
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  # Workaround for tbb sometimes linking #pragma comment(lib, "tbb12.lib")
+  add_compile_definitions(__TBB_SOURCE_DIRECTLY_INCLUDED=1)
 endif()
