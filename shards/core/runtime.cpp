@@ -858,7 +858,7 @@ struct InternalCompositionContext {
 
   bool onWorkerThread{false};
 
-  std::unordered_map<std::string_view, ExposedTypeInfo> *fullRequired{nullptr};
+  std::unordered_map<std::string, ExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
   InternalCompositionContext(pmr::memory_resource *allocator)

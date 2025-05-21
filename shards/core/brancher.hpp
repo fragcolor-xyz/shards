@@ -29,14 +29,14 @@ public:
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
 
 private:
-  std::unordered_map<std::string_view, ExposedTypeInfo> _collectedRequirements;
+  decltype(SHWire::requirements) _collectedRequirements;
   std::unordered_set<std::string_view> _copyBySerialize;
   ExposedInfo _mergedRequirements;
   ExposedInfo _shared;
   mutable std::vector<SHTypeInfo> _cachedObjectTypes;
 
 public:
-  Brancher() { mesh->inheritLogContext = true; } 
+  Brancher() { mesh->inheritLogContext = true; }
   ~Brancher() { cleanup(nullptr); }
 
   // Adds a single wire or sequence of shards as a looped wire
@@ -86,6 +86,7 @@ public:
     _collectedRequirements.clear();
     _copyBySerialize.clear();
 
+    decltype(SHWire::requirements) required;
     SHInstanceData tmpData = data;
     tmpData.privateContext = nullptr; // null this, in order to create a new context!
     ExposedInfo shared{shared_};

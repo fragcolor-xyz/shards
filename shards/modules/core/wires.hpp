@@ -64,7 +64,7 @@ struct WireBase {
 
   std::unordered_set<const SHWire *> &gatheringWires();
 
-  void verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared);
+  void verifyAlreadyComposed(const SHInstanceData &data, const IterableExposedInfo &shared);
 
   SHTypeInfo compose(const SHInstanceData &data);
 

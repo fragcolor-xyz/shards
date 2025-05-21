@@ -561,7 +561,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;
   // used sometimes in wires.cpp and .hpp when capturing variables is needed
-  mutable std::unordered_map<std::string_view, shards::ExposedTypeInfo> requirements;
+  mutable std::unordered_map<std::string, shards::ExposedTypeInfo> requirements;
 
   SHContext *context{nullptr};
 
