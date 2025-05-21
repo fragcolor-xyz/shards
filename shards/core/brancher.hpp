@@ -29,7 +29,7 @@ public:
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
 
 private:
-  std::unordered_map<std::string_view, SHExposedTypeInfo> _collectedRequirements;
+  std::unordered_map<std::string_view, ExposedTypeInfo> _collectedRequirements;
   std::unordered_set<std::string_view> _copyBySerialize;
   ExposedInfo _mergedRequirements;
   ExposedInfo _shared;

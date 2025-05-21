@@ -11,6 +11,7 @@ set(core_SOURCES
   taskflow.cpp
   pmr/shared_temp_allocator.cpp
   log_api.cpp
+  wires.cpp
 )
 
 if(EMSCRIPTEN)

@@ -156,8 +156,8 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   auto dataCopy = data;
   dataCopy.wire = wire.get();
-  IterableExposedInfo shared(data.shared);
-  IterableExposedInfo sharedCopy;
+  ExposedInfo shared(data.shared);
+  ExposedInfo sharedCopy;
   if (!wire->pure) {
     if (mode == RunWireMode::Async && !capturing) {
       // keep only globals
