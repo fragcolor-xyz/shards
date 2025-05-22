@@ -100,7 +100,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   if (wire.get() == data.wire) {
     SHLOG_DEBUG("WireBase::compose early return, data.wire == wire, name: {}", wire->name);
-    return data.inputType; // we don't know yet...
+    return CoreInfo::AnyType; // we don't know yet...
   }
 
   auto mesh = data.wire->mesh.lock();
@@ -131,7 +131,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // avoid stack-overflow
   if (wire->isRoot || gatheringWires().count(wire.get())) {
     SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
-    return data.inputType; // we don't know yet...
+    return CoreInfo::AnyType; // we don't know yet...
   }
 
   SHLOG_TRACE("WireBase::compose, source: {} composing: {} inputType: {}", data.wire->name, wire->name, data.inputType);

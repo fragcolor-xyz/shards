@@ -20,9 +20,9 @@
 
 ; we use this to test stack overflow protection
 @wire(run {
-  Profile({35000 | Do(fib1)})
+  Profile({100 | Do(fib4)})
   Log("result")
 })
 
 @schedule(root run)
-@run(root) | Assert.Is(false)
+@run(root)

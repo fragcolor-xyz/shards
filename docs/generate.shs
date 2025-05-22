@@ -373,7 +373,7 @@
           
           ")\n```\n" | AppendTo(usage-example)
         } {
-          ["```shards\n" shard-name "\n```\n"] | String.Join >= usage-example
+          ["```shards\n" shard-name "\n```\n"] | String.Join > usage-example
         }
       )
       
