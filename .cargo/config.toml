@@ -11,3 +11,11 @@ inherits = "release"
 
 [profile.debug-tracy]
 inherits = "dev"  
+
+[profile.small]
+inherits = "release"
+opt-level = "z"
+codegen-units = 1
+panic = "abort"
+# This saves like 2MB (from 52 to 50MB on formabble)
+# lto = true
