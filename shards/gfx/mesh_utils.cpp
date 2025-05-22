@@ -159,6 +159,6 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
     outAttribs.push_back({&srcAttributes[i], srcFormat.vertexAttributes[i].name});
   }
   outAttribs.push_back({&tangentBuffer, "tangent"});
-  return generateMesh(std::nullopt, outAttribs);
+  return generateMesh(std::nullopt, outAttribs, "<tangent-mesh>");
 }
 } // namespace gfx
