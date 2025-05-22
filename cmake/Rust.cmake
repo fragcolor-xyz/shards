@@ -83,8 +83,8 @@ elseif(RUST_BUILD_TYPE STREQUAL "Small")
   set(RUST_BUILD_SUBDIR_CONFIGURATION small)
   list(APPEND RUST_FLAGS -Zlocation-detail=none)
   list(APPEND RUSTC_FLAGS 
-    -Zbuild-std=std,panic_abort
-    -Zbuild-std-features=optimize_for_size,panic_immediate_abort
+    -Zbuild-std=std
+    -Zbuild-std-features=optimize_for_size
   )
 else()
   set(RUST_CARGO_FLAGS_INT --release)
