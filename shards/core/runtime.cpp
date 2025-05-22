@@ -976,7 +976,7 @@ ALWAYS_INLINE void coroExtSuspend(SHWire *wire) {
 #ifdef SH_VERBOSE_COROUTINES_LOGGING
   SHLOG_TRACE("Suspending wire {}", wire->name);
 #endif
-}
+} 
 
 void validateConnection(InternalCompositionContext &ctx) {
   ZoneScopedN("validateConnection");
