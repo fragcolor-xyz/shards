@@ -34,7 +34,6 @@ jobs:
           ninja shards
           ninja test-runtime
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/hello.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/bug1.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/general.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/strings.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-compose.shs
@@ -42,7 +41,6 @@ jobs:
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/flows.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/linalg.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/return.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/kdtree.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/channels.shs
           SH_IGNORE_CONSISTENT_RESUMER= valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/genetic.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/wasm.shs

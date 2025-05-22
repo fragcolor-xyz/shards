@@ -245,8 +245,6 @@ jobs:
           ./shards new ../shards/tests/struct.shs
           echo "Running flows"
           ./shards new ../shards/tests/flows.shs
-          echo "Running kdtree"
-          ./shards new ../shards/tests/kdtree.shs
           echo "Running channels"
           ./shards new ../shards/tests/channels.shs
           echo "Running http"

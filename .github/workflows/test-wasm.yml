@@ -99,7 +99,6 @@ jobs:
             queue_test network-ws.shs
             queue_test struct.shs
             queue_test flows.shs
-            queue_test kdtree.shs
             queue_test channels.shs
             queue_test imaging.shs
             queue_test http.shs@/tmp

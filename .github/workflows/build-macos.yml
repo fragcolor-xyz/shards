@@ -130,7 +130,6 @@ jobs:
           ./shards new ../shards/tests/network-ws.shs
           ./shards new ../shards/tests/struct.shs
           ./shards new ../shards/tests/flows.shs
-          ./shards new ../shards/tests/kdtree.shs
           ./shards new ../shards/tests/channels.shs
           ./shards new ../shards/tests/imaging.shs
           ./shards new ../shards/tests/http.shs

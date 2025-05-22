@@ -1038,97 +1038,6 @@ struct SwitchTo : public WireBase {
   }
 };
 
-struct Recur : public WireBase {
-  std::weak_ptr<SHWire> _wwire;
-  SHWire *_wire;
-  std::deque<ParamVar> _vars;
-  std::vector<SHSeq> _storage;
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR(
-        "After the first cycle of Recur, the output of the Wire that calls Recur will be fed back as input for the next cycle.");
-  }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output of Recur will be the output of the Wire that calls it."); }
-
-  SHOptionalString help() {
-    return SHCCSTR("The Recur shard executes the Wire that calls it recursively, using the output of the Wire as input again, "
-                   "until the base cases are "
-                   "reached. It then combines the results to produce the final result. For the shard not to Recur endlessly, a "
-                   "base case needs to be defined, usually through a When or If shard.");
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    // set current wire as `wire`
-    _wwire = data.wire->shared_from_this();
-
-    // find all variables to store in current wire
-    // use vector in the end.. cos slightly faster
-    _vars.clear();
-    for (auto &shared : data.shared) {
-      if (!shared.global) {
-        SHVar ctxVar{};
-        ctxVar.valueType = SHType::ContextVar;
-        ctxVar.payload.stringValue = shared.name;
-        ctxVar.payload.stringLen = strlen(shared.name);
-        auto &p = _vars.emplace_back();
-        p = ctxVar;
-      }
-    }
-    return WireBase::compose(data);
-  }
-
-  void warmup(SHContext *ctx) {
-    _storage.resize(_vars.size());
-    for (auto &v : _vars) {
-      v.warmup(ctx);
-    }
-    auto swire = _wwire.lock();
-    assert(swire);
-    _wire = swire.get();
-  }
-
-  void cleanup(SHContext *context) {
-    for (auto &v : _vars) {
-      v.cleanup();
-    }
-    // force releasing resources
-    for (size_t i = 0; i < _storage.size(); i++) {
-      // must release on capacity
-      for (uint32_t j = 0; j < _storage[i].cap; j++) {
-        destroyVar(_storage[i].elements[j]);
-      }
-      arrayFree(_storage[i]);
-    }
-    _storage.resize(0);
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    // store _vars
-    for (size_t i = 0; i < _vars.size(); i++) {
-      const auto len = _storage[i].len;
-      arrayResize(_storage[i], len + 1);
-      cloneVar(_storage[i].elements[len], _vars[i].get());
-    }
-
-    // (Do self)
-    // Run within the root flow
-    auto runRes = runSubWire(_wire, context, input);
-    if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
-      return Var::Empty;
-    }
-
-    // restore _vars
-    for (size_t i = 0; i < _vars.size(); i++) {
-      auto pops = arrayPop<SHSeq, SHVar>(_storage[i]);
-      cloneVar(_vars[i].get(), pops);
-    }
-
-    return runRes.output;
-  }
-};
-
 struct WireNotFound : public ActivationError {
   WireNotFound() : ActivationError("Could not find a wire to run") {}
 };
@@ -2461,7 +2370,6 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("Detach", RunWireDetach);
   REGISTER_SHARD("Step", RunWireStep);
   REGISTER_SHARD("WireRunner", WireRunner); // Forbidden for FBL
-  REGISTER_SHARD("Recur", Recur);
   REGISTER_SHARD("TryMany", TryMany);
   REGISTER_SHARD("Spawn", Spawn);
   REGISTER_SHARD("Expand", Expand);
