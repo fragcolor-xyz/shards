@@ -13,7 +13,7 @@
     ToJson | Http.Put(URL: control-url Headers: hdrs)
   }
   "shutdown" {
-    {action: @action}
+    {action: @action data: ""}
     ToJson | Http.Put(URL: control-url Headers: hdrs)
   }
   ; Command to preload a given folder, which is required for it to be available in the file system
