@@ -1743,7 +1743,9 @@ impl<'e> VariableResolver<'e> {
         Number::Hexadecimal(s) => {
           let s = s.as_str();
           let s = &s[2..]; // remove 0x
-          let z = i64::from_str_radix(s, 16).expect("Invalid hexadecimal number"); // read should have caught this
+          let z = u64::from_str_radix(s, 16)
+            .map_err(|e| (format!("Invalid hexadecimal number: {}", e), line_info).into())?
+            as i64; // read should have caught this
           Ok(ResolvedVar::new_const(SVar::NotCloned(z.into())))
         }
       },
