@@ -142,6 +142,117 @@ using OwnedVar = TOwnedVar<InternalCore>;
 void decRef(ShardPtr shard);
 void incRef(ShardPtr shard);
 
+
+template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
+  // safety check to make sure this is not a borrowed foreign array!
+  shassert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
+
+  size_t min_len = arr.len + addlen;
+
+  // compute the minimum capacity needed
+  if (min_len > min_cap)
+    min_cap = min_len;
+
+  if (min_cap <= arr.cap)
+    return;
+
+  // increase needed capacity to guarantee O(1) amortized
+  if (min_cap < 2 * arr.cap)
+    min_cap = 2 * arr.cap;
+
+  // realloc would be nice here but clashes with our alignment requirements, in the end this is the fastest way without a custom
+  // allocator
+  auto newbuf = new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
+  if (arr.elements) {
+    memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
+    ::operator delete[](arr.elements, std::align_val_t{16});
+  }
+  arr.elements = (decltype(arr.elements))newbuf;
+
+  // also memset to 0 new memory in order to make cloneVars valid on new items
+  size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
+  memset(arr.elements + arr.len, 0x0, size);
+
+  if (min_cap > UINT32_MAX) {
+    // this is the case for now for many reasons, but should be just fine
+    SHLOG_FATAL("Int array overflow, we don't support more then UINT32_MAX.");
+  }
+  arr.cap = uint32_t(min_cap);
+}
+
+template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
+  if ((arr.len + 1) > arr.cap) {
+    shards::arrayGrow(arr, 1);
+  }
+  shassert(arr.elements && "array elements cannot be null");
+  arr.elements[arr.len++] = val;
+}
+
+template <typename T> inline void arrayResize(T &arr, uint32_t size) {
+  if (arr.cap < size) {
+    shards::arrayGrow(arr, size - arr.len);
+  }
+  arr.len = size;
+}
+
+template <typename T> inline void arrayShuffle(T &arr) {
+  // Check if the array is empty
+  if (arr.len == 0)
+    return;
+
+  // Random number generator
+  static thread_local std::random_device rd;
+  static thread_local std::mt19937 gen(rd());
+
+  // Fisher-Yates shuffle
+  for (uint32_t i = arr.len - 1; i > 0; i--) {
+    std::uniform_int_distribution<uint32_t> dis(0, i);
+    uint32_t j = dis(gen);
+    std::swap(arr.elements[i], arr.elements[j]);
+  }
+}
+
+template <typename T, typename V> inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+  if ((arr.len + 1) > arr.cap) {
+    arrayGrow(arr, 1);
+  }
+  memmove(&arr.elements[index + 1], &arr.elements[index], sizeof(V) * (arr.len - index));
+  arr.len++;
+  arr.elements[index] = val;
+}
+
+template <typename T, typename V> inline V arrayPop(T &arr) {
+  shassert(arr.len > 0);
+  arr.len--;
+  return arr.elements[arr.len];
+}
+
+template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
+  shassert(arr.len > 0);
+  arr.len--;
+  // this allows eventual destroyVar/cloneVar magic
+  // avoiding allocations even in nested seqs
+  std::swap(arr.elements[index], arr.elements[arr.len]);
+}
+
+template <typename T> inline void arrayDel(T &arr, uint32_t index) {
+  shassert(arr.len > 0);
+  // this allows eventual destroyVar/cloneVar magic
+  // avoiding allocations even in nested seqs
+  arr.len--;
+  while (index < arr.len) {
+    std::swap(arr.elements[index], arr.elements[index + 1]);
+    index++;
+  }
+}
+
+template <typename T> inline void arrayFree(T &arr) {
+  if (arr.elements) {
+    ::operator delete[](arr.elements, std::align_val_t{16});
+  }
+  memset(&arr, 0x0, sizeof(T));
+}
+
 template <std::size_t Size = 512> struct bumping_memory_resource {
   char buffer[Size];
   std::size_t _used = 0;
@@ -220,6 +331,131 @@ struct TypeInfo {
 private:
   SHTypeInfo _info{};
 };
+
+
+struct ExposedTypeInfo {
+  SHExposedTypeInfo _innerInfo{};
+  ExposedTypeInfo() = default;
+  ExposedTypeInfo(const SHExposedTypeInfo &other) { initFrom(other); }
+  ExposedTypeInfo(const ExposedTypeInfo &other) { initFrom(other._innerInfo); }
+  ExposedTypeInfo(ExposedTypeInfo &&other) { std::swap(_innerInfo, other._innerInfo); }
+  ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) = delete;
+  ExposedTypeInfo &operator=(ExposedTypeInfo &&other) {
+    std::swap(_innerInfo, other._innerInfo);
+    return *this;
+  }
+  ~ExposedTypeInfo() { clean(); }
+
+  operator const SHExposedTypeInfo &() const { return _innerInfo; }
+  const SHExposedTypeInfo &operator->() const { return _innerInfo; }
+  const SHExposedTypeInfo &operator*() const { return _innerInfo; }
+
+private:
+  void initFrom(const SHExposedTypeInfo &other) {
+    _innerInfo.exposedType = cloneTypeInfo(other.exposedType);
+    if (other.name) {
+      _innerInfo.name = strdup(other.name);
+    } else {
+      _innerInfo.name = nullptr;
+    }
+    // These are typically static strings, so we can just copy the pointer
+    _innerInfo.help = other.help;
+    _innerInfo.isMutable = other.isMutable;
+    _innerInfo.isProtected = other.isProtected;
+    _innerInfo.global = other.global;
+    _innerInfo.tracked = other.tracked;
+    _innerInfo.declared = other.declared;
+  }
+
+  void clean() {
+    if (_innerInfo.name) {
+      free((void *)_innerInfo.name);
+      _innerInfo.name = nullptr;
+    }
+    freeTypeInfo(_innerInfo.exposedType);
+    _innerInfo.exposedType = {};
+  }
+};
+
+struct ExposedInfo {
+  /*
+   DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
+   IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
+   BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
+ */
+  ExposedInfo() {}
+
+  ExposedInfo(const ExposedInfo &other) {
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      push_back(other._innerInfo.elements[i]);
+    }
+  }
+
+  ExposedInfo &operator=(const ExposedInfo &other) {
+    shards::arrayResize(_innerInfo, 0);
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      push_back(other._innerInfo.elements[i]);
+    }
+    return *this;
+  }
+
+  template <typename... Types> explicit ExposedInfo(const ExposedInfo &other, Types... types) {
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      push_back(other._innerInfo.elements[i]);
+    }
+
+    std::vector<SHExposedTypeInfo> vec = {types...};
+    for (auto pi : vec) {
+      push_back(pi);
+    }
+  }
+
+  template <typename... Types> explicit ExposedInfo(const SHExposedTypesInfo other, Types... types) {
+    for (uint32_t i = 0; i < other.len; i++) {
+      push_back(other.elements[i]);
+    }
+
+    std::vector<SHExposedTypeInfo> vec = {types...};
+    for (auto pi : vec) {
+      push_back(pi);
+    }
+  }
+
+  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo &first, Types... types) {
+    std::vector<SHExposedTypeInfo> vec = {first, types...};
+    for (auto pi : vec) {
+      push_back(pi);
+    }
+  }
+
+  constexpr static SHExposedTypeInfo Variable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false) {
+    SHExposedTypeInfo res = {name, help, type, isMutable};
+    return res;
+  }
+
+  constexpr static SHExposedTypeInfo ProtectedVariable(SHString name, SHOptionalString help, SHTypeInfo type,
+                                                       bool isMutable = false) {
+    SHExposedTypeInfo res = {name, help, type, isMutable, true};
+    return res;
+  }
+
+  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type,
+                                                    bool isMutable = false) {
+    SHExposedTypeInfo res = {name, help, type, isMutable, false, true};
+    return res;
+  }
+
+  ~ExposedInfo() { shards::arrayFree(_innerInfo); }
+
+  void push_back(const SHExposedTypeInfo &info) { shards::arrayPush(_innerInfo, info); }
+
+  void clear() { shards::arrayResize(_innerInfo, 0); }
+
+  explicit operator SHExposedTypesInfo() const { return _innerInfo; }
+
+  SHExposedTypesInfo _innerInfo{};
+};
+
 } // namespace shards
 
 struct SHTableImpl : public ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar> {
@@ -325,7 +561,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   // used in wires.cpp to store exposed/required types from compose operations
   mutable std::optional<SHComposeResult> composeResult;
   // used sometimes in wires.cpp and .hpp when capturing variables is needed
-  mutable std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+  mutable std::unordered_map<std::string, shards::ExposedTypeInfo> requirements;
 
   SHContext *context{nullptr};
 
@@ -345,10 +581,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   size_t stackSize{SH_BASE_STACK_SIZE};
 #endif
 
-  ~SHWire() {
-    SHLOG_TRACE("Destroying wire {}", name);
-    destroy();
-  }
+  ~SHWire();
 
   void warmup(SHContext *context);
 
@@ -385,7 +618,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
-    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void *)ref, pref->use_count());
+    SHLOG_TRACE("{} wire deleteRef ({}) - use_count: {}", (*pref)->name, (void *)pref->get(), pref->use_count());
     delete pref;
   }
 
@@ -396,10 +629,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   static SHWireRef addRef(SHWireRef ref) {
     auto cref = sharedFromRef(ref);
+    shassert(cref.use_count() > 0);
     // if your screen is spammed by the under, don't you dare think of removing this line...
     // likely a red flag and not a red herring, stop going into kernel land...
     auto res = new std::shared_ptr<SHWire>(cref);
-    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void *)res, cref.use_count());
+    SHLOG_TRACE("{} wire addRef ({}) - use_count: {}", cref->name, (void *)cref.get(), cref.use_count());
     return reinterpret_cast<SHWireRef>(res);
   }
 
@@ -835,116 +1069,6 @@ public:
 void parseArguments(int argc, const char **argv);
 Globals &GetGlobals();
 EventDispatcher &getEventDispatcher(const std::string &name);
-
-template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
-  // safety check to make sure this is not a borrowed foreign array!
-  shassert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
-
-  size_t min_len = arr.len + addlen;
-
-  // compute the minimum capacity needed
-  if (min_len > min_cap)
-    min_cap = min_len;
-
-  if (min_cap <= arr.cap)
-    return;
-
-  // increase needed capacity to guarantee O(1) amortized
-  if (min_cap < 2 * arr.cap)
-    min_cap = 2 * arr.cap;
-
-  // realloc would be nice here but clashes with our alignment requirements, in the end this is the fastest way without a custom
-  // allocator
-  auto newbuf = new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
-  if (arr.elements) {
-    memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
-    ::operator delete[](arr.elements, std::align_val_t{16});
-  }
-  arr.elements = (decltype(arr.elements))newbuf;
-
-  // also memset to 0 new memory in order to make cloneVars valid on new items
-  size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
-  memset(arr.elements + arr.len, 0x0, size);
-
-  if (min_cap > UINT32_MAX) {
-    // this is the case for now for many reasons, but should be just fine
-    SHLOG_FATAL("Int array overflow, we don't support more then UINT32_MAX.");
-  }
-  arr.cap = uint32_t(min_cap);
-}
-
-template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
-  if ((arr.len + 1) > arr.cap) {
-    shards::arrayGrow(arr, 1);
-  }
-  shassert(arr.elements && "array elements cannot be null");
-  arr.elements[arr.len++] = val;
-}
-
-template <typename T> inline void arrayResize(T &arr, uint32_t size) {
-  if (arr.cap < size) {
-    shards::arrayGrow(arr, size - arr.len);
-  }
-  arr.len = size;
-}
-
-template <typename T> inline void arrayShuffle(T &arr) {
-  // Check if the array is empty
-  if (arr.len == 0)
-    return;
-
-  // Random number generator
-  static thread_local std::random_device rd;
-  static thread_local std::mt19937 gen(rd());
-
-  // Fisher-Yates shuffle
-  for (uint32_t i = arr.len - 1; i > 0; i--) {
-    std::uniform_int_distribution<uint32_t> dis(0, i);
-    uint32_t j = dis(gen);
-    std::swap(arr.elements[i], arr.elements[j]);
-  }
-}
-
-template <typename T, typename V> inline void arrayInsert(T &arr, uint32_t index, const V &val) {
-  if ((arr.len + 1) > arr.cap) {
-    arrayGrow(arr, 1);
-  }
-  memmove(&arr.elements[index + 1], &arr.elements[index], sizeof(V) * (arr.len - index));
-  arr.len++;
-  arr.elements[index] = val;
-}
-
-template <typename T, typename V> inline V arrayPop(T &arr) {
-  shassert(arr.len > 0);
-  arr.len--;
-  return arr.elements[arr.len];
-}
-
-template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
-  shassert(arr.len > 0);
-  arr.len--;
-  // this allows eventual destroyVar/cloneVar magic
-  // avoiding allocations even in nested seqs
-  std::swap(arr.elements[index], arr.elements[arr.len]);
-}
-
-template <typename T> inline void arrayDel(T &arr, uint32_t index) {
-  shassert(arr.len > 0);
-  // this allows eventual destroyVar/cloneVar magic
-  // avoiding allocations even in nested seqs
-  arr.len--;
-  while (index < arr.len) {
-    std::swap(arr.elements[index], arr.elements[index + 1]);
-    index++;
-  }
-}
-
-template <typename T> inline void arrayFree(T &arr) {
-  if (arr.elements) {
-    ::operator delete[](arr.elements, std::align_val_t{16});
-  }
-  memset(&arr, 0x0, sizeof(T));
-}
 
 template <typename T> class PtrIterator {
 public:
@@ -1391,131 +1515,6 @@ struct ParamsInfo {
   SHParametersInfo _innerInfo{};
 };
 
-struct ExposedTypeInfo {
-  SHExposedTypeInfo _innerInfo{};
-  ExposedTypeInfo() = default;
-  ExposedTypeInfo(const SHExposedTypeInfo &other) { initFrom(other); }
-  ExposedTypeInfo(const ExposedTypeInfo &other) {
-    initFrom(other._innerInfo);
-  }
-  ExposedTypeInfo(ExposedTypeInfo &&other) { std::swap(_innerInfo, other._innerInfo); }
-  ExposedTypeInfo &operator=(const SHExposedTypeInfo &other) = delete;
-  ExposedTypeInfo &operator=(ExposedTypeInfo &&other) {
-    std::swap(_innerInfo, other._innerInfo);
-    return *this;
-  }
-  ~ExposedTypeInfo() { clean(); }
-
-  operator const SHExposedTypeInfo &() const { return _innerInfo; }
-  const SHExposedTypeInfo &operator->() const { return _innerInfo; }
-  const SHExposedTypeInfo &operator*() const { return _innerInfo; }
-
-private:
-  void initFrom(const SHExposedTypeInfo &other) {
-    _innerInfo.exposedType = cloneTypeInfo(other.exposedType);
-    if (other.name) {
-      _innerInfo.name = strdup(other.name);
-    } else {
-      _innerInfo.name = nullptr;
-    }
-    // These are typically static strings, so we can just copy the pointer
-    _innerInfo.help = other.help;
-    _innerInfo.isMutable = other.isMutable;
-    _innerInfo.isProtected = other.isProtected;
-    _innerInfo.global = other.global;
-    _innerInfo.tracked = other.tracked;
-    _innerInfo.declared = other.declared;
-  }
-
-  void clean() {
-    if (_innerInfo.name) {
-      free((void *)_innerInfo.name);
-      _innerInfo.name = nullptr;
-    }
-    freeTypeInfo(_innerInfo.exposedType);
-    _innerInfo.exposedType = {};
-  }
-};
-
-struct ExposedInfo {
-  /*
-   DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
-   IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
-   BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
- */
-  ExposedInfo() {}
-
-  ExposedInfo(const ExposedInfo &other) {
-    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      push_back(other._innerInfo.elements[i]);
-    }
-  }
-
-  ExposedInfo &operator=(const ExposedInfo &other) {
-    shards::arrayResize(_innerInfo, 0);
-    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      push_back(other._innerInfo.elements[i]);
-    }
-    return *this;
-  }
-
-  template <typename... Types> explicit ExposedInfo(const ExposedInfo &other, Types... types) {
-    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      push_back(other._innerInfo.elements[i]);
-    }
-
-    std::vector<SHExposedTypeInfo> vec = {types...};
-    for (auto pi : vec) {
-      push_back(pi);
-    }
-  }
-
-  template <typename... Types> explicit ExposedInfo(const SHExposedTypesInfo other, Types... types) {
-    for (uint32_t i = 0; i < other.len; i++) {
-      push_back(other.elements[i]);
-    }
-
-    std::vector<SHExposedTypeInfo> vec = {types...};
-    for (auto pi : vec) {
-      push_back(pi);
-    }
-  }
-
-  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo &first, Types... types) {
-    std::vector<SHExposedTypeInfo> vec = {first, types...};
-    for (auto pi : vec) {
-      push_back(pi);
-    }
-  }
-
-  constexpr static SHExposedTypeInfo Variable(SHString name, SHOptionalString help, SHTypeInfo type, bool isMutable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable};
-    return res;
-  }
-
-  constexpr static SHExposedTypeInfo ProtectedVariable(SHString name, SHOptionalString help, SHTypeInfo type,
-                                                       bool isMutable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable, true};
-    return res;
-  }
-
-  constexpr static SHExposedTypeInfo GlobalVariable(SHString name, SHOptionalString help, SHTypeInfo type,
-                                                    bool isMutable = false) {
-    SHExposedTypeInfo res = {name, help, type, isMutable, false, true};
-    return res;
-  }
-
-  ~ExposedInfo() { shards::arrayFree(_innerInfo); }
-
-  void push_back(const SHExposedTypeInfo &info) { shards::arrayPush(_innerInfo, info); }
-
-  void clear() { shards::arrayResize(_innerInfo, 0); }
-
-  explicit operator SHExposedTypesInfo() const { return _innerInfo; }
-
-  SHExposedTypesInfo _innerInfo{};
-};
-
 using ShardsCollection = std::variant<const SHWire *, ShardPtr, Shards, SHVar>;
 
 struct ShardInfo {
@@ -1714,7 +1713,7 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
   std::vector<SHExposedTypeInfo> expInfo;
   TypeInfo ti(var, data, &expInfo, false);
   for (auto &type : validTypes) {
-    if (TypeMatcher{
+    if (TypeMatcher<>{
             .isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}
             .match(ti, type)) {
       for (auto &it : expInfo) {

@@ -44,7 +44,7 @@ std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 #endif
 }
 
-void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
+void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableExposedInfo &shared) {
   SHLOG_TRACE("WireBase::verifyAlreadyComposed, source: {} composing: {} inputType: {}", data.wire ? data.wire->name : nullptr,
               wire->name, data.inputType);
   // verify input type
@@ -58,11 +58,11 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
   for (auto &req : wire->composeResult->requiredInfo) {
     // find each in shared
     auto name = req.name;
-    auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
+    auto res = std::find_if(shared.cbegin(), shared.cend(), [name](const SHExposedTypeInfo &x) {
       std::string_view xNameView(x.name);
       return name == xNameView;
     });
-    if (res == shared.end()) {
+    if (res == shared.cend()) {
       throw ComposeError(
           fmt::format("Attempted to call an already composed wire ({}) with a missing required variable: {}", wire->name, name));
     }
@@ -156,20 +156,24 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   auto dataCopy = data;
   dataCopy.wire = wire.get();
-  IterableExposedInfo shared(data.shared);
-  IterableExposedInfo sharedCopy;
+  ExposedInfo sharedCopy;
   if (!wire->pure) {
     if (mode == RunWireMode::Async && !capturing) {
       // keep only globals
-      auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
-      sharedCopy = IterableExposedInfo(shared.begin(), end);
+      for (auto &x : IterableExposedInfo(data.shared)) {
+        if(x.global) {
+          sharedCopy.push_back(x);
+        }
+      }
+      dataCopy.shared = SHExposedTypesInfo(sharedCopy);
     } else {
       // we allow Detached but they need to be referenced during warmup
-      sharedCopy = shared;
+      sharedCopy = ExposedInfo(data.shared);
+      dataCopy.shared = data.shared;
     }
+  } else {
+    dataCopy.shared = {};
   }
-
-  dataCopy.shared = sharedCopy;
 
   // make sure to compose only once...
   if (!wire->composeResult) {
@@ -192,7 +196,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   } else {
     SHLOG_TRACE("Skipping {} compose", wire->name);
 
-    verifyAlreadyComposed(data, shared);
+    verifyAlreadyComposed(data, IterableExposedInfo(data.shared));
   }
 
   // write output type

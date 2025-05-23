@@ -331,11 +331,11 @@ struct Detached {
 
     auto mainInstanceData = data;
     mainInstanceData.inputType = mainDataSeqType;
+
     auto mainCr = _mainShards.compose(mainInstanceData);
     for (auto req : mainCr.requiredInfo) {
       _requiredVariables.push_back(req);
     }
-
     return mainDataSeqType;
   }
 

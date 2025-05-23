@@ -54,7 +54,7 @@ MeshPtr WireframeMeshGenerator::generate() {
     size_t srcAttribIdx = attributesToCopy[i];
     outAttributes.push_back({&attributes[i], srcFormat.vertexAttributes[srcAttribIdx].name});
   }
-  return generateMesh(std::nullopt, boost::span(outAttributes));
+  return generateMesh(std::nullopt, boost::span(outAttributes), "<wireframe>");
 }
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) {

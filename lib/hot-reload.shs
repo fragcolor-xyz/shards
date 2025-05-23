@@ -15,7 +15,7 @@
   [base-path script-path] | FS.Join = script-path-abs
   script-path-abs | Regex.Replace("\\\\" "\\\\\\\\") = script-path-escaped
   
-  script-path-abs | Log("Setting up hot reload for script")
+  [script-path-abs namespace] | Log("Setting up hot reload for script")
   
   [
     "\"seq\":["
@@ -81,6 +81,7 @@
     } Pure: true)
   ) = loader-ast
   Regex.Replace("""\{"id":\{"name":"loader"\}\}""" wrapper-name-id-json)
+  Regex.Replace("""\{"id":\{"name":"namespace"\}\}""" (["{\"str\": \"" namespace "\"}"] | String.Format))
   Regex.Replace("""\{"id":\{"name":"script-path"\}\}""" (["{\"str\": \"" script-path-escaped "\"}"] | String.Format))
   Regex.Replace(""""id":\{"name":"include-dirs"\}""" include-dirs-json)
   

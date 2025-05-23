@@ -63,7 +63,8 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
     while (t.api->tableNext(t, &tit, &k, &v)) {
       XXH3_state_t subState{};
       hashReset<TDigest>(&subState);
-      updateTypeHash(k, &subState);
+      // NOTE: this is by value, since we're talking about the keys
+      updateHash(k, &subState);
       updateTypeHash(v, &subState);
       TMP_HASH_SET.insert(hashDigest<TDigest>(&subState));
     }
@@ -127,7 +128,8 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         XXH3_state_t subState{};
         hashReset<TDigest>(&subState);
-        updateTypeHash(t.table.keys.elements[i], &subState);
+        // NOTE: this is by value, since we're talking about the keys
+        updateHash(t.table.keys.elements[i], &subState);
         updateTypeHash(t.table.types.elements[i], &subState);
         TMP_HASH_SET.insert(hashDigest<TDigest>(&subState));
       }

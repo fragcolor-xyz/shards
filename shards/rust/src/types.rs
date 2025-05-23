@@ -864,7 +864,7 @@ impl ShardRef {
         }
 
         if err.code != 0 {
-          Err(err.message.into())
+          Err(err.message.static_str())
         } else {
           Ok(())
         }
@@ -1196,20 +1196,22 @@ impl From<SHTypeInfo> for ClonedVar {
   }
 }
 
-impl From<SHStringWithLen> for &str {
-  fn from(s: SHStringWithLen) -> Self {
-    unsafe {
-      if s.len == 0 {
-        return "";
-      }
-      let slice = slice::from_raw_parts(s.string as *const u8, s.len as usize);
-      let s = std::str::from_utf8(slice);
-      match s {
-        Ok(s) => s,
-        Err(e) => {
-          let valid = e.valid_up_to();
-          std::str::from_utf8(&slice[..valid]).unwrap()
-        }
+impl<'a> SHStringWithLen {
+  pub fn str(&'a self) -> &'a str {
+    unsafe { self.static_str() }
+  }
+
+  pub unsafe fn static_str(&self) -> &'static str {
+    if self.len == 0 {
+      return "";
+    }
+    let slice = slice::from_raw_parts(self.string as *const u8, self.len as usize);
+    let s = std::str::from_utf8(slice);
+    match s {
+      Ok(s) => s,
+      Err(e) => {
+        let valid = e.valid_up_to();
+        std::str::from_utf8(&slice[..valid]).unwrap()
       }
     }
   }

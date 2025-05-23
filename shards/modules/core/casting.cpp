@@ -460,7 +460,19 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
         it = typeCache.emplace(inputTypeHash, TypeInfo{input, SHInstanceData{}}).first;
       }
       if (!matchTypes(it->second, expectedType, true, true, true)) {
-        throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, expectedType));
+        TypeMatcher<TypeMatcherErrorFormatter> tm{
+            .isParameter = true,
+            .strict = true,
+            .relaxEmptySeqCheck = true,
+            .ignoreFixedSeq = false,
+        };
+        tm.match(it->second, expectedType);
+        if (tm.errorFormatter.errors.empty()) {
+          throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, expectedType));
+        } else {
+          const std::string &err = tm.errorFormatter.errors.front();
+          throw ActivationError(fmt::format("Unexpected value: {} expected type: {}\n{}", input, expectedType, err));
+        }
       }
     }
   }
@@ -1274,13 +1286,11 @@ struct AudioToFloats {
   static SHOptionalString inputHelp() { return SHCCSTR("Takes an audio buffer as input."); }
 
   static SHTypesInfo outputTypes() { return _outputType; }
-  static SHOptionalString outputHelp() { 
-    return SHCCSTR("Outputs the input audio represented as a sequence of float values."); 
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input audio represented as a sequence of float values."); }
 
   static SHOptionalString help() {
     return SHCCSTR("Converts an audio buffer into a sequence of float values. Each sample in the audio buffer "
-                  "is converted to a float value in the range [-1.0, 1.0] and stored in the sequence.");
+                   "is converted to a float value in the range [-1.0, 1.0] and stored in the sequence.");
   }
 
   std::vector<Var> _output;
@@ -1321,9 +1331,7 @@ struct FloatsToAudio {
   static inline Type _inputType{{SHType::Seq, {.seqTypes = _inputElemType}}};
 
   static SHTypesInfo inputTypes() { return _inputType; }
-  static SHOptionalString inputHelp() { 
-    return SHCCSTR("Takes a sequence of float values in the range [-1.0, 1.0] as input."); 
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a sequence of float values in the range [-1.0, 1.0] as input."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Returns the constructed audio buffer."); }
@@ -1337,7 +1345,7 @@ struct FloatsToAudio {
   std::vector<float> _samples;
 
   FloatsToAudio() {
-    _channels = Var(1);      // Default to mono
+    _channels = Var(1);       // Default to mono
     _sampleRate = Var(44100); // Default to CD quality
   }
 
@@ -1352,14 +1360,14 @@ struct FloatsToAudio {
       throw ActivationError("Number of channels must be greater than zero.");
 
     uint32_t totalSamples = input.payload.seqValue.len;
-    
+
     // Check that the sample count is divisible by the number of channels
     if (totalSamples % channels != 0) {
       throw ActivationError("Sequence length must be divisible by the number of channels.");
     }
 
     uint32_t nsamples = totalSamples / channels;
-    
+
     if (nsamples > UINT16_MAX) {
       throw ActivationError("Audio data exceeds the maximum number of samples (65535)");
     }
@@ -1368,16 +1376,16 @@ struct FloatsToAudio {
 
     // Copy the float values from the sequence to the samples array
     for (uint32_t i = 0; i < totalSamples; i++) {
-      const auto& elem = input.payload.seqValue.elements[i];
+      const auto &elem = input.payload.seqValue.elements[i];
       if (elem.valueType != SHType::Float) {
         throw ActivationError("All elements in the sequence must be of type Float.");
       }
-      
+
       float value = elem.payload.floatValue;
-      
+
       // Clamp values to [-1.0, 1.0] range
       value = std::min(std::max(value, -1.0f), 1.0f);
-      
+
       _samples[i] = value;
     }
 
@@ -1664,5 +1672,8 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_SHARD("HexToBytes", HexToBytes);
 
   REGISTER_SHARD("VarPtr!", VarPtr);
+
+  static_assert(shards::ErrorFormatterInterface<TypeMatcherErrorFormatter>,
+                "TypeMatcherErrorFormatter must implement ErrorFormatterInterface");
 }
 }; // namespace shards

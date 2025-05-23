@@ -639,11 +639,12 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         ++it;
       }
 
-      // unschedule at the end
-      for (const auto &item : _pendingUnschedule) {
+      // unschedule at the end, double buffer sets because they might be modified during iteration
+      std::swap(_pendingUnschedule, _pendingUnschedule1);
+      for (const auto &item : _pendingUnschedule1) {
         _scheduled.erase(item);
       }
-      _pendingUnschedule.clear();
+      _pendingUnschedule1.clear();
     }
 
     return noErrors;
@@ -870,6 +871,7 @@ private:
   std::unordered_set<SHWire *> _scheduledSet;
   ScheduledSet _pendingSchedule;
   ScheduledSet _pendingUnschedule;
+  ScheduledSet _pendingUnschedule1;
 
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;

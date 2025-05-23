@@ -7,6 +7,7 @@ use crate::RcStrWrapper;
 use crate::ShardsExtension;
 
 use core::convert::TryInto;
+use std::borrow::Cow;
 
 use nanoid::nanoid;
 use shards::fourCharacterCode;
@@ -191,8 +192,8 @@ impl EvalEnv {
     let mut env = EvalEnv {
       program,
       parent: None,
-      namespace: RcStrWrapper::from(""),
-      full_namespace: RcStrWrapper::from(""),
+      namespace: RcStrWrapper::from_const(""),
+      full_namespace: RcStrWrapper::from_const(""),
       qualified_cache: HashMap::new(),
       shards: Vec::new(),
       deferred_wires: HashMap::new(),
@@ -2044,6 +2045,11 @@ impl<'e> VariableResolver<'e> {
             let ctx: ClonedVar = capture_eval_context(self.e);
             Ok(ResolvedVar::new_const(SVar::Cloned(ctx)))
           }
+          ("namespace", true) => {
+            let namespace = self.e.full_namespace.clone();
+            let namespace = namespace.as_str();
+            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar::from(Var::ephemeral_string(namespace)))))
+          }
           _ => {
             if let Some(defined_value) = find_defined(&func.name, self.e).map(|x| x.clone()) {
               match defined_value {
@@ -3408,7 +3414,7 @@ fn eval_pipeline(
                       blocks: vec![Block {
                         content: BlockContent::Shard(Function {
                           name: Identifier {
-                            name: "_MakeTrait".into(),
+                            name: RcStrWrapper::from_const("_MakeTrait"),
                             namespaces: vec![],
                             custom_state: CustomStateContainer::new(),
                           },
@@ -4513,7 +4519,7 @@ impl Shard for EvalShard {
     let mut env = if namespace.is_string() {
       let namespace: &str = namespace.try_into()?;
       EvalEnv::new(
-        Some(namespace.into()),
+        Some(RcStrWrapper::from(Cow::Owned(namespace.into()))),
         parent_ptr,
         Some(prog as *const Program),
       )
@@ -4534,7 +4540,7 @@ impl Shard for EvalShard {
     for (k, v) in &defines_storage {
       env.definitions.insert(
         Identifier {
-          name: (*k).into(),
+          name: RcStrWrapper::new(Cow::Owned((*k).into())),
           namespaces: Vec::new(),
           custom_state: CustomStateContainer::new(),
         },
@@ -4547,7 +4553,7 @@ impl Shard for EvalShard {
       for shard in seq.iter() {
         let shard_name: &str = shard.as_ref().try_into()?;
         env.forbidden_funcs.insert(Identifier {
-          name: RcStrWrapper::from(shard_name),
+          name: RcStrWrapper::from(Cow::Owned(shard_name.into())),
           namespaces: Vec::new(),
           custom_state: CustomStateContainer::new(),
         });

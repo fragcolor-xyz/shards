@@ -838,7 +838,7 @@ SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireI
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck, bool ignoreFixedSeq) {
-  return TypeMatcher{
+  return TypeMatcher<>{
       .isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck, .ignoreFixedSeq = ignoreFixedSeq}
       .match(inputType, receiverType);
 }
@@ -858,7 +858,7 @@ struct InternalCompositionContext {
 
   bool onWorkerThread{false};
 
-  std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
+  std::unordered_map<std::string, ExposedTypeInfo> *fullRequired{nullptr};
 
   InternalCompositionContext() = default;
   InternalCompositionContext(pmr::memory_resource *allocator)
@@ -976,7 +976,7 @@ ALWAYS_INLINE void coroExtSuspend(SHWire *wire) {
 #ifdef SH_VERBOSE_COROUTINES_LOGGING
   SHLOG_TRACE("Suspending wire {}", wire->name);
 #endif
-}
+} 
 
 void validateConnection(InternalCompositionContext &ctx) {
   ZoneScopedN("validateConnection");
@@ -1209,9 +1209,12 @@ void validateConnection(InternalCompositionContext &ctx) {
         matching = true;
       }
 #endif
-      throw ComposeError(
-          fmt::format("Required types do not match currently exposed ones for variable '{}' required type: (\"{}\", {})",
-                      required.first, required.second.name, required.second.exposedType));
+      if (found) {
+        throw ComposeError(fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+                                       required.second.exposedType, found->exposedType, required.first));
+      } else {
+        throw ComposeError(fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+      }
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())
@@ -1372,7 +1375,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   if (ctx.fullRequired) {
     for (auto &req : ctx.required) {
       shards::arrayPush(result.requiredInfo, req);
-      (*ctx.fullRequired)[req.name] = req;
+      (*ctx.fullRequired).insert_or_assign(req.name,  ExposedTypeInfo(req));
     }
   } else {
     for (auto &req : ctx.required) {
@@ -2552,143 +2555,6 @@ void stringFree(SHStringPayload *str) { arrayFree(*str); }
 extern "C" void shards_install_signal_handlers() { installSignalHandlers(); }
 
 // NO NAMESPACE here!
-
-void SHWire::addTrait(SHTrait inTrait) {
-  auto it = std::find_if(traits.begin(), traits.end(), [&](const shards::Trait &t) { return t.sameIdAs(inTrait); });
-  if (it == traits.end()) {
-    SHLOG_TRACE("Adding <{}> to wire \"{}\"", SHVar{.payload = {.traitValue = &inTrait}, .valueType = SHType::Trait}, name);
-    traits.emplace_back(inTrait);
-
-    // Make sure to register the trait
-    TraitRegister::instance().insertUnique(inTrait);
-  }
-}
-
-void SHWire::destroy() {
-  for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-    (*it)->cleanup(*it, nullptr);
-  }
-  for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-    decRef(*it);
-  }
-
-  // find dangling variables, notice but do not destroy
-  for (auto var : variables) {
-    if (var.second.refcount > 0) {
-      SHLOG_ERROR("Found a dangling variable: {}, wire: {}", var.first, name);
-    }
-  }
-
-  if (composeResult) {
-    shards::arrayFree(composeResult->requiredInfo);
-    shards::arrayFree(composeResult->exposedInfo);
-  }
-
-  // finally reset the mesh
-  mesh.reset();
-
-#if SH_CORO_NEED_STACK_MEM
-  if (stackMem) {
-    ::operator delete[](stackMem, std::align_val_t{16});
-  }
-#endif
-}
-
-void SHWire::warmup(SHContext *context) {
-  if (!warmedUp) {
-    SHLOG_TRACE("Running warmup on wire: {}", name);
-
-    // we likely need this early!
-    mesh = context->main->mesh;
-    warmedUp = true;
-
-    context->wireStack.push_back(this);
-    DEFER({ context->wireStack.pop_back(); });
-    for (auto blk : shards) {
-      try {
-        if (blk->warmup) {
-          auto status = blk->warmup(blk, context);
-          if (status.code != SH_ERROR_NONE) {
-            std::string_view msg(status.message.string, size_t(status.message.len));
-            SHLOG_ERROR("Warmup failed on wire: {}, shard: {} (line: {}, column: {})", name, blk->name(blk), blk->line,
-                        blk->column);
-            throw shards::WarmupError(msg);
-          }
-        }
-        if (context->failed()) {
-          throw shards::WarmupError(context->getErrorMessage());
-        }
-      } catch (const std::exception &e) {
-        SHLOG_ERROR("Shard warmup error, failed shard: {}", blk->name(blk));
-        SHLOG_ERROR(e.what());
-        // if the failure is from an exception context might not be uptodate
-        if (!context->failed()) {
-          context->cancelFlow(e.what());
-        }
-        throw;
-      } catch (...) {
-        SHLOG_ERROR("Shard warmup error, failed shard: {}", blk->name(blk));
-        if (!context->failed()) {
-          context->cancelFlow("foreign exception failure, check logs");
-        }
-        throw;
-      }
-    }
-
-    SHLOG_TRACE("Ran warmup on wire: {}", name);
-  } else {
-    SHLOG_TRACE("Warmup already run on wire: {}", name);
-  }
-}
-
-void SHWire::cleanup(bool force) {
-  if (force || (warmedUp && wireUsers.size() == 0)) {
-    SHLOG_TRACE("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
-
-    warmedUp = false;
-    previousOutput = {};
-
-    dispatcher.trigger(SHWire::OnCleanupEvent{this});
-
-    // Run cleanup on all shards, prepare them for a new start if necessary
-    // Do this in reverse to allow a safer cleanup
-    for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-      auto blk = *it;
-      try {
-        blk->cleanup(blk, context);
-      }
-#if SH_BOOST_COROUTINE
-      catch (boost::context::detail::forced_unwind const &e) {
-        SHLOG_WARNING("Shard cleanup boost forced unwind, failed shard: {}", blk->name(blk));
-        throw; // required for Boost Coroutine!
-      }
-#endif
-      catch (const std::exception &e) {
-        SHLOG_ERROR("Shard cleanup error, failed shard: {}, error: {}", blk->name(blk), e.what());
-      } catch (...) {
-        SHLOG_ERROR("Shard cleanup error, failed shard: {}", blk->name(blk));
-      }
-    }
-
-    // Also clear all variables reporting dangling ones
-    for (auto var : variables) {
-      if (var.second.refcount > 0) {
-        SHLOG_ERROR("Found a dangling variable: {} in wire: {}", var.first, name);
-      }
-    }
-    variables.clear();
-
-    auto mesh_ = mesh.lock();
-    if (mesh_) {
-      mesh_->unschedule(shared_from_this());
-    }
-    mesh.reset();
-
-    resumer = nullptr;
-
-    SHLOG_TRACE("Ran cleanup on wire: {}", name);
-  }
-}
 
 void shInit() {
   static bool globalInitDone = false;

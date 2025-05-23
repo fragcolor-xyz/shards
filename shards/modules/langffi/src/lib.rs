@@ -48,9 +48,9 @@ pub extern "C" fn shards_read(
   out_ast: *mut SHLAst,
 ) -> bool {
   profiling::scope!("shards_read");
-  let name: &str = name.into();
-  let code = code.into();
-  let base_path: &str = base_path.into();
+  let name: &str = name.str();
+  let code = code.str();
+  let base_path: &str = base_path.str();
   let include_dirs = unsafe {
     if num_include_dirs > 0 {
       std::slice::from_raw_parts(include_dirs, num_include_dirs as usize)
@@ -61,7 +61,7 @@ pub extern "C" fn shards_read(
   let include_dirs: Vec<std::string::String> = include_dirs
     .iter()
     .map(|x| {
-      let str: &str = (*x).into();
+      let str: &str = (*x).str();
       str.to_string()
     })
     .collect();
@@ -149,8 +149,8 @@ pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv 
   if namespace.len == 0 {
     Box::into_raw(Box::new(EvalEnv::new(None, None, None)))
   } else {
-    let namespace: &str = namespace.into();
-    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None, None)))
+    let namespace: &str = namespace.str();
+    Box::into_raw(Box::new(EvalEnv::new(Some(RcStrWrapper::new_clone(namespace)), None, None)))
   }
 }
 
@@ -158,9 +158,8 @@ pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv 
 pub extern "C" fn shards_forbid_shard(env: *mut EvalEnv, name: SHStringWithLen) {
   profiling::scope!("shards_forbid_shard");
   let env = unsafe { &mut *env };
-  let name: &str = name.into();
   env.forbidden_funcs.insert(Identifier {
-    name: RcStrWrapper::from(name),
+    name: RcStrWrapper::new_clone(name.str()),
     namespaces: Vec::new(),
     custom_state: CustomStateContainer::new(),
   });
@@ -183,9 +182,9 @@ pub extern "C" fn shards_create_sub_env(
   if namespace.len == 0 {
     Box::into_raw(Box::new(EvalEnv::new(None, Some(env), None)))
   } else {
-    let namespace: &str = namespace.into();
+    let namespace: &str = namespace.str();
     Box::into_raw(Box::new(EvalEnv::new(
-      Some(namespace.into()),
+      Some(RcStrWrapper::new_clone(namespace)),
       Some(env),
       None,
     )))
@@ -225,7 +224,7 @@ pub extern "C" fn shards_transform_env(
   out_wire: *mut SHLWire,
 ) -> bool {
   profiling::scope!("shards_transform_env");
-  let name = name.into();
+  let name = name.str();
   let mut env = unsafe { Box::from_raw(env) };
   let res = eval::transform_env(&mut env, name);
   match res {
@@ -260,7 +259,7 @@ pub extern "C" fn shards_transform_envs(
   out_wire: *mut SHLWire,
 ) -> bool {
   profiling::scope!("shards_transform_envs");
-  let name = name.into();
+  let name = name.str();
   let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
   let mut deref_envs = Vec::with_capacity(len);
   for &env in envs.iter() {
@@ -299,7 +298,7 @@ pub extern "C" fn shards_eval_ast(
   out_wire: *mut SHLWire,
 ) -> bool {
   profiling::scope!("shards_eval_ast");
-  let name = name.into();
+  let name = name.str();
   // we just want a reference to the sequence, not ownership
   let ast = unsafe {
     &mut *Var::from_ref_counted_object::<Program>(ast, &AST_TYPE).expect("A valid AST variable.")

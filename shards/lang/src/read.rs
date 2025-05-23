@@ -281,7 +281,7 @@ fn substitute_inline_template<'a>(
   pos: Position<'a>,
 ) -> Result<String, ShardsError> {
   // Foreach param, match against InlineTemplate and substitute value in string
-  let templ_args = unsafe { &*itempl.args };
+  let templ_args = &*itempl.args;
   let mut str = itempl.shards.clone();
   let mut i = 0;
   loop {
@@ -318,7 +318,7 @@ fn convert_to_function_value<'a>(
   let itc: Option<InlineTemplate> = env.find_inline_template(&identifier).cloned();
   if let Some(itempl) = itc {
     let itempl = itempl.clone();
-    let mut prog: Program =
+    let prog: Program =
       env.with_inline_template_scope(ReadEnvType::InlineTemplateSubstitution, |env| {
         let params = params.ok_or_else(|| ("Expected parameters", pos).into())?;
 
