@@ -81,23 +81,53 @@ template <typename TIn> struct TNumberConversionTable : public NumberConversionT
 template <typename TIn> struct TNumberStringOperations {};
 
 template <> struct TNumberStringOperations<uint8_t> {
-  static void parse(uint8_t *out, const char *input, char **inputEnd) { out[0] = (uint8_t)std::strtoul(input, inputEnd, 10); }
+  static void parse(uint8_t *out, const char *input, char **inputEnd) {
+    if (input[0] == '0' && input[1] == 'x') {
+      out[0] = std::strtoul(input + 2, inputEnd, 16);
+    } else {
+      out[0] = std::strtoul(input, inputEnd, 10);
+    }
+  }
 };
 
 template <> struct TNumberStringOperations<int8_t> {
-  static void parse(int8_t *out, const char *input, char **inputEnd) { out[0] = (int8_t)std::strtol(input, inputEnd, 10); }
+  static void parse(int8_t *out, const char *input, char **inputEnd) {
+    if (input[0] == '0' && input[1] == 'x') {
+      out[0] = std::strtoul(input + 2, inputEnd, 16);
+    } else {
+      out[0] = std::strtol(input, inputEnd, 10);
+    }
+  }
 };
 
 template <> struct TNumberStringOperations<int16_t> {
-  static void parse(int16_t *out, const char *input, char **inputEnd) { out[0] = (int16_t)std::strtoul(input, inputEnd, 10); }
+  static void parse(int16_t *out, const char *input, char **inputEnd) {
+    if (input[0] == '0' && input[1] == 'x') {
+      out[0] = std::strtoul(input + 2, inputEnd, 16);
+    } else {
+      out[0] = std::strtol(input, inputEnd, 10);
+    }
+  }
 };
 
 template <> struct TNumberStringOperations<int32_t> {
-  static void parse(int32_t *out, const char *input, char **inputEnd) { out[0] = std::strtol(input, inputEnd, 10); }
+  static void parse(int32_t *out, const char *input, char **inputEnd) {
+    if (input[0] == '0' && input[1] == 'x') {
+      out[0] = std::strtoul(input + 2, inputEnd, 16);
+    } else {
+      out[0] = std::strtol(input, inputEnd, 10);
+    }
+  }
 };
 
 template <> struct TNumberStringOperations<int64_t> {
-  static void parse(int64_t *out, const char *input, char **inputEnd) { out[0] = std::strtoll(input, inputEnd, 10); }
+  static void parse(int64_t *out, const char *input, char **inputEnd) {
+    if (input[0] == '0' && input[1] == 'x') {
+      out[0] = std::strtoull(input + 2, inputEnd, 16);
+    } else {
+      out[0] = std::strtoll(input, inputEnd, 10);
+    }
+  }
 };
 
 template <> struct TNumberStringOperations<float> {
@@ -117,16 +147,16 @@ template <> struct TNumberStringOperations<bool> {
 
 template <NumberType Type> struct TNumberTypeTraits {};
 
-#define NUMBER_TYPE_TRAITS(_Type, _CType)                                         \
-  template <> struct TNumberTypeTraits<_Type> : public NumberTypeTraits {         \
-    typedef _CType TInner;                                                        \
-    TNumberTypeTraits() {                                                         \
-      type = _Type;                                                               \
-      isInteger = std::is_integral<_CType>::value;                                \
-      size = sizeof(_CType);                                                      \
-      conversionTable = TNumberConversionTable<_CType>();                         \
-      convertParse = (NumberConvertParse)&TNumberStringOperations<_CType>::parse; \
-    }                                                                             \
+#define NUMBER_TYPE_TRAITS(_Type, _CType)                                           \
+  template <> struct TNumberTypeTraits<_Type> : public NumberTypeTraits {           \
+    typedef _CType TInner;                                                          \
+    TNumberTypeTraits() {                                                           \
+      type = _Type;                                                                 \
+      isInteger = std::is_integral<_CType>::value;                                  \
+      size = sizeof(_CType);                                                        \
+      conversionTable = TNumberConversionTable<_CType>();                           \
+      convertParse = (NumberConvertParse) & TNumberStringOperations<_CType>::parse; \
+    }                                                                               \
   };
 
 NUMBER_TYPE_TRAITS(NumberType::Bool, bool);
