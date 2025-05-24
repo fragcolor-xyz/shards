@@ -458,29 +458,6 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(value: inout ContiguousArray<CChar>) {
-        var v = SHVar()
-        v.valueType = String
-        value.withUnsafeBufferPointer {
-            v.payload.stringValue = $0.baseAddress
-            v.payload.stringLen = UInt32(value.count - 1) // assumes \0 terminator
-            v.payload.stringCapacity = UInt32(value.capacity)
-        }
-        self = v
-    }
-
-    init(value: inout ContiguousArray<UInt8>) {
-        var v = SHVar()
-        v.valueType = VarType.Bytes.asSHType()
-        let size = value.count
-        value.withUnsafeMutableBufferPointer {
-            v.payload.bytesValue = $0.baseAddress
-            v.payload.bytesSize = UInt32(size)
-            v.payload.bytesCapacity = UInt32(size)
-        }
-        self = v
-    }
-
     init(string: StaticString) {
         var v = SHVar()
         v.valueType = String
