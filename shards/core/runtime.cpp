@@ -976,7 +976,7 @@ ALWAYS_INLINE void coroExtSuspend(SHWire *wire) {
 #ifdef SH_VERBOSE_COROUTINES_LOGGING
   SHLOG_TRACE("Suspending wire {}", wire->name);
 #endif
-} 
+}
 
 void validateConnection(InternalCompositionContext &ctx) {
   ZoneScopedN("validateConnection");
@@ -1375,7 +1375,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   if (ctx.fullRequired) {
     for (auto &req : ctx.required) {
       shards::arrayPush(result.requiredInfo, req);
-      (*ctx.fullRequired).insert_or_assign(req.name,  ExposedTypeInfo(req));
+      (*ctx.fullRequired).insert_or_assign(req.name, ExposedTypeInfo(req));
     }
   } else {
     for (auto &req : ctx.required) {
@@ -1953,7 +1953,6 @@ Globals &GetGlobals() {
 static std::unordered_map<std::string, EventDispatcher> dispatchers;
 static std::shared_mutex mutex;
 EventDispatcher &getEventDispatcher(const std::string &name) {
-
   std::shared_lock<decltype(mutex)> _l(mutex);
   auto it = dispatchers.find(name);
   if (it == dispatchers.end()) {
@@ -1968,10 +1967,10 @@ EventDispatcher &getEventDispatcher(const std::string &name) {
 }
 
 void EventDispatcher::assignType(SHTypeInfo type) {
-  if (this->type.basicType != SHType::None) {
+  if (this->type->basicType != SHType::None) {
     bool matching = matchTypes(type, this->type, false, true, true);
     if (!matching)
-      throw std::runtime_error(fmt::format("Event type mismatch, expected {} got {}", this->type, type));
+      throw std::runtime_error(fmt::format("Event type mismatch, expected {} got {}", *this->type, type));
   } else {
     this->type = type;
   }

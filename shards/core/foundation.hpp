@@ -142,7 +142,6 @@ using OwnedVar = TOwnedVar<InternalCore>;
 void decRef(ShardPtr shard);
 void incRef(ShardPtr shard);
 
-
 template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!
   shassert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
@@ -331,7 +330,6 @@ struct TypeInfo {
 private:
   SHTypeInfo _info{};
 };
-
 
 struct ExposedTypeInfo {
   SHExposedTypeInfo _innerInfo{};
@@ -956,11 +954,11 @@ struct EventDispatcher {
   std::string name;
 
   entt::dispatcher *operator->() { return &dispatcher; }
-  SHTypeInfo getType() const { return type; }
+  SHTypeInfo getType() const { return *type; }
   void assignType(SHTypeInfo type);
 
 private:
-  SHTypeInfo type;
+  TypeInfo type;
 };
 
 struct CrashHandlerBase {
