@@ -20,102 +20,115 @@ void *SDL_AndroidGetActivity(void);
 namespace shards {
 
 struct JointOp {
-  std::vector<SHVar *> _multiSortColumns;
+  static inline Type anyVarSeq = Type::VariableOf(CoreInfo::AnySeqType);
+  static inline Type anyVarSeqSeq = Type::SeqOf(anyVarSeq);
 
-  SHVar _inputVar{};
-  SHVar *_input = nullptr;
-  SHVar _columns{};
+  PARAM_PARAMVAR(from, "From", "The name of the sequence variable to edit in place.", {anyVarSeq})
+  PARAM_PARAMVAR(join, "Join", "Other columns to join sort/filter using the input (they must be of the same length).", {anyVarSeq, anyVarSeqSeq})
+  
+  PARAM_IMPL(
+    PARAM_IMPL_FOR(from),
+    PARAM_IMPL_FOR(join)
+  )
+
+  std::vector<ParamVar> _multiSortColumns;
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  static inline Type anyVarSeq = Type::VariableOf(CoreInfo::AnySeqType);
-  static inline Type anyVarSeqSeq = Type::SeqOf(anyVarSeq);
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    return outputTypes().elements[0];
+  }
 
-  static inline Parameters joinOpParams{{"From", SHCCSTR("The name of the sequence variable to edit in place."), {anyVarSeq}},
-                                        {"Join",
-                                         SHCCSTR("Other columns to join sort/filter using the input (they "
-                                                 "must be of the same length)."),
-                                         {anyVarSeq, anyVarSeqSeq}}};
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      cloneVar(_inputVar, value);
-      break;
-    case 1:
-      cloneVar(_columns, value);
-      cleanup(nullptr);
-      break;
-    default:
-      break;
+  void warmup(SHContext *ctx) {
+    // Setup multi-sort columns based on join parameter
+    if (!join.isNone()) {
+      if (join.get().valueType == SHType::Seq) {
+        // Multiple columns case
+        for (const auto &col : join.get()) {
+          if (col.valueType == SHType::ContextVar) {
+            ParamVar columnVar;
+            columnVar = col;
+            columnVar.warmup(ctx);
+            _multiSortColumns.emplace_back(std::move(columnVar));
+          }
+        }
+      } else if (join.get().valueType == SHType::ContextVar) {
+        // Single column case
+        ParamVar columnVar;
+        columnVar = join.get();
+        columnVar.warmup(ctx);
+        _multiSortColumns.emplace_back(std::move(columnVar));
+      }
     }
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _inputVar;
-    case 1:
-      return _columns;
-    default:
-      break;
-    }
-    throw SHException("Parameter out of range.");
-  }
-
-  void cleanup(SHContext *context) {
-    for (auto ref : _multiSortColumns) {
-      releaseVariable(ref);
+  void cleanup(SHContext *ctx) {
+    for (auto &col : _multiSortColumns) {
+      col.cleanup(ctx);
     }
     _multiSortColumns.clear();
-
-    if (_input) {
-      releaseVariable(_input);
-      _input = nullptr;
-    }
-  }
-
-  void warmup(SHContext *context) {
-    if (!_input) {
-      _input = referenceVariable(context, SHSTRVIEW(_inputVar));
-    }
   }
 
   void ensureJoinSetup(SHContext *context) {
-    if (_columns.valueType != SHType::None) {
-      auto len = _input->payload.seqValue.len;
+    if (!join.isNone()) {
+      auto &inputSeq = from.get();
+      if (inputSeq.valueType != SHType::Seq) {
+        throw ActivationError("JointOp: Input must be a sequence.");
+      }
+      
+      auto len = inputSeq.payload.seqValue.len;
+      
+      // Setup multi-sort columns if not already done
       if (_multiSortColumns.size() == 0) {
-        if (_columns.valueType == SHType::Seq) {
-          for (const auto &col : _columns) {
-            auto target = referenceVariable(context, SHSTRVIEW(col));
-            if (target && target->valueType == SHType::Seq) {
-              auto mseqLen = target->payload.seqValue.len;
-              if (len != mseqLen) {
-                throw ActivationError("JointOp: All the sequences to be processed must have "
-                                      "the same length as the input sequence.");
+        if (join.get().valueType == SHType::Seq) {
+          // Multiple columns case
+          for (const auto &col : join.get()) {
+            if (col.valueType == SHType::ContextVar) {
+              ParamVar columnVar;
+              columnVar = col;
+              columnVar.warmup(context);
+              
+              // Validate the column sequence length
+              if (columnVar.get().valueType == SHType::Seq) {
+                auto mseqLen = columnVar.get().payload.seqValue.len;
+                if (len != mseqLen) {
+                  throw ActivationError("JointOp: All the sequences to be processed must have "
+                                        "the same length as the input sequence.");
+                }
               }
-              _multiSortColumns.push_back(target);
+              
+              _multiSortColumns.emplace_back(std::move(columnVar));
             }
           }
-        } else if (_columns.valueType == SHType::ContextVar) { // normal single context var
-          auto target = referenceVariable(context, SHSTRVIEW(_columns));
-          if (target && target->valueType == SHType::Seq) {
-            auto mseqLen = target->payload.seqValue.len;
+        } else if (join.get().valueType == SHType::ContextVar) {
+          // Single column case
+          ParamVar columnVar;
+          columnVar = join.get();
+          columnVar.warmup(context);
+          
+          // Validate the column sequence length
+          if (columnVar.get().valueType == SHType::Seq) {
+            auto mseqLen = columnVar.get().payload.seqValue.len;
             if (len != mseqLen) {
               throw ActivationError("JointOp: All the sequences to be processed must have "
                                     "the same length as the input sequence.");
             }
-            _multiSortColumns.push_back(target);
           }
+          
+          _multiSortColumns.emplace_back(std::move(columnVar));
         }
       } else {
-        for (const auto &seqVar : _multiSortColumns) {
-          const auto &seq = seqVar->payload.seqValue;
-          auto mseqLen = seq.len;
-          if (len != mseqLen) {
-            throw ActivationError("JointOp: All the sequences to be processed must have "
-                                  "the same length as the input sequence.");
+        // Validate existing columns
+        for (const auto &colVar : _multiSortColumns) {
+          const auto &colSeq = colVar.get();
+          if (colSeq.valueType == SHType::Seq) {
+            auto mseqLen = colSeq.payload.seqValue.len;
+            if (len != mseqLen) {
+              throw ActivationError("JointOp: All the sequences to be processed must have "
+                                    "the same length as the input sequence.");
+            }
           }
         }
       }
@@ -123,22 +136,16 @@ struct JointOp {
   }
 };
 
-struct ActionJointOp : public JointOp {
-  ShardsVar _blks{};
-  void cleanup(SHContext *context) {
-    _blks.cleanup(context);
-    JointOp::cleanup(context);
-  }
+struct Sort : public JointOp {
+  PARAM(bool, desc, "Desc", "If sorting should be in descending order, defaults ascending.", {CoreInfo::BoolType})
+  PARAM(ShardsVar, key, "Key", "The shards to use to transform the collection's items before they are compared. Can be None.", {CoreInfo::ShardsOrNone})
+  
+  PARAM_IMPL_DERIVED(JointOp,
+    PARAM_IMPL_FOR(desc),
+    PARAM_IMPL_FOR(key)
+  )
 
-  void warmup(SHContext *ctx) {
-    JointOp::warmup(ctx);
-    _blks.warmup(ctx);
-  }
-};
-
-struct Sort : public ActionJointOp {
   std::vector<SHVar> _multiSortKeys;
-  bool _desc = false;
 
   void setup() { shardsKeyFn._bu = this; }
 
@@ -151,55 +158,27 @@ struct Sort : public ActionJointOp {
 
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
 
-  static inline Parameters paramsInfo{
-      joinOpParams,
-      {{"Desc", SHCCSTR("If sorting should be in descending order, defaults ascending."), {CoreInfo::BoolType}},
-       {"Key",
-        SHCCSTR("The shards to use to transform the collection's items "
-                "before they are compared. Can be None."),
-        {CoreInfo::ShardsOrNone}}}};
-
-  static SHParametersInfo parameters() { return paramsInfo; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-    case 1:
-      return JointOp::setParam(index, value);
-    case 2:
-      _desc = value.payload.boolValue;
-      break;
-    case 3:
-      _blks = value;
-      break;
-    default:
-      break;
-    }
+  void warmup(SHContext *ctx) {
+    JointOp::warmup(ctx);
+    PARAM_WARMUP(ctx);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-    case 1:
-      return JointOp::getParam(index);
-    case 2:
-      return Var(_desc);
-    case 3:
-      return _blks;
-    default:
-      break;
-    }
-    throw SHException("Parameter out of range.");
+  void cleanup(SHContext *ctx) {
+    PARAM_CLEANUP(ctx);
+    JointOp::cleanup(ctx);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_inputVar.valueType != SHType::ContextVar)
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    
+    if (from.isNone()) {
       throw SHException("From variable was empty!");
+    }
 
     SHExposedTypeInfo info{};
     for (auto &reference : data.shared) {
       std::string_view name(reference.name);
-      if (name == SHSTRVIEW(_inputVar)) {
+      if (name == from.variableNameView()) {
         info = reference;
         goto found;
       }
@@ -210,12 +189,12 @@ struct Sort : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar),
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", from.variableNameView(),
                                     info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    _blks.compose(data);
+    key.compose(data);
     return inputType;
   }
 
@@ -237,7 +216,7 @@ struct Sort : public ActionJointOp {
     SHVar _o;
 
     const SHVar &operator()(const SHVar &a) {
-      _bu->_blks.activate(_ctx, a, _o);
+      _bu->key.activate(_ctx, a, _o);
       return _o;
     }
   } shardsKeyFn;
@@ -251,7 +230,7 @@ struct Sort : public ActionJointOp {
       // joined seqs
       _multiSortKeys.clear();
       for (const auto &seqVar : _multiSortColumns) {
-        const auto &col = seqVar->payload.seqValue;
+        const auto &col = seqVar.get().payload.seqValue;
         if (col.len != n) {
           throw ActivationError("Sort: All the sequences to be processed must have "
                                 "the same length as the input sequence.");
@@ -266,7 +245,7 @@ struct Sort : public ActionJointOp {
         seq[j + 1] = seq[j];
         // joined seqs
         for (const auto &seqVar : _multiSortColumns) {
-          const auto &col = seqVar->payload.seqValue;
+          const auto &col = seqVar.get().payload.seqValue;
           col.elements[j + 1] = col.elements[j];
         }
         // main + join
@@ -277,7 +256,7 @@ struct Sort : public ActionJointOp {
       // joined seq
       auto z = 0;
       for (const auto &seqVar : _multiSortColumns) {
-        const auto &col = seqVar->payload.seqValue;
+        const auto &col = seqVar.get().payload.seqValue;
         col.elements[j + 1] = _multiSortKeys[z++];
       }
     }
@@ -285,28 +264,35 @@ struct Sort : public ActionJointOp {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     JointOp::ensureJoinSetup(context);
-    // Sort in plac
-    int64_t len = int64_t(_input->payload.seqValue.len);
-    if (_blks) {
+    // Sort in place
+    auto &inputSeq = from.get();
+    int64_t len = int64_t(inputSeq.payload.seqValue.len);
+    if (key) {
       shardsKeyFn._ctx = context;
-      if (!_desc) {
-        insertSort(_input->payload.seqValue.elements, len, sortAsc, shardsKeyFn);
+      if (!desc) {
+        insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, shardsKeyFn);
       } else {
-        insertSort(_input->payload.seqValue.elements, len, sortDesc, shardsKeyFn);
+        insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, shardsKeyFn);
       }
     } else {
-      if (!_desc) {
-        insertSort(_input->payload.seqValue.elements, len, sortAsc, noopKeyFn);
+      if (!desc) {
+        insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, noopKeyFn);
       } else {
-        insertSort(_input->payload.seqValue.elements, len, sortDesc, noopKeyFn);
+        insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, noopKeyFn);
       }
     }
-    return *_input;
+    return inputSeq;
   }
 };
 
-struct Remove : public ActionJointOp {
-  bool _fast = false;
+struct Remove : public JointOp {
+  PARAM(ShardsVar, _predicate, "Predicate", "The shards to use as predicate, if true the item will be popped from the sequence.", {CoreInfo::Shards})
+  PARAM_VAR(_fast, "Unordered", "Turn on to remove items very quickly but will not preserve the sequence items order.", {CoreInfo::BoolType})
+  
+  PARAM_IMPL_DERIVED(JointOp,
+    PARAM_IMPL_FOR(_predicate),
+    PARAM_IMPL_FOR(_fast)
+  )
 
   static SHOptionalString help() {
     return SHCCSTR("Removes all elements from a sequence that match the given condition. Can also take these matched indices and "
@@ -317,57 +303,27 @@ struct Remove : public ActionJointOp {
 
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
-  static inline Parameters paramsInfo{joinOpParams,
-                                      {{"Predicate",
-                                        SHCCSTR("The shards to use as predicate, if true the "
-                                                "item will be popped from the sequence."),
-                                        {CoreInfo::Shards}},
-                                       {"Unordered",
-                                        SHCCSTR("Turn on to remove items very quickly but will "
-                                                "not preserve the sequence items order."),
-                                        {CoreInfo::BoolType}}}};
-
-  static SHParametersInfo parameters() { return paramsInfo; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-    case 1:
-      return JointOp::setParam(index, value);
-    case 2:
-      _blks = value;
-      break;
-    case 3:
-      _fast = value.payload.boolValue;
-      break;
-    default:
-      break;
-    }
+  void warmup(SHContext *ctx) {
+    JointOp::warmup(ctx);
+    PARAM_WARMUP(ctx);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-    case 1:
-      return JointOp::getParam(index);
-    case 2:
-      return _blks;
-    case 3:
-      return Var(_fast);
-    default:
-      break;
-    }
-    throw SHException("Parameter out of range.");
+  void cleanup(SHContext *ctx) {
+    PARAM_CLEANUP(ctx);
+    JointOp::cleanup(ctx);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_inputVar.valueType != SHType::ContextVar)
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    
+    if (from.isNone()) {
       throw SHException("From variable was empty!");
+    }
 
     SHExposedTypeInfo info{};
     for (auto &reference : data.shared) {
       std::string_view name(reference.name);
-      if (name == SHSTRVIEW(_inputVar)) {
+      if (name == from.variableNameView()) {
         info = reference;
         goto found;
       }
@@ -378,12 +334,12 @@ struct Remove : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", SHSTRVIEW(_inputVar),
+      throw SHException(fmt::format("From variable \"{}\" is not a single type SHType::Seq ({}).", from.variableNameView(),
                                     info.exposedType.seqTypes));
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    const auto pres = _blks.compose(data);
+    const auto pres = _predicate.compose(data);
     if (pres.outputType.basicType != SHType::Bool) {
       throw ComposeError("Remove Predicate should output a boolean value.");
     }
@@ -394,27 +350,28 @@ struct Remove : public ActionJointOp {
     JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
     SHVar output{};
-    const uint32_t len = _input->payload.seqValue.len;
+    auto &inputSeq = from.get();
+    const uint32_t len = inputSeq.payload.seqValue.len;
     for (uint32_t i = len; i > 0; i--) {
-      const auto &var = _input->payload.seqValue.elements[i - 1];
+      const auto &var = inputSeq.payload.seqValue.elements[i - 1];
       // conditional flow so we might have "returns" form (And) (Or)
-      if (unlikely(_blks.activate<true>(context, var, output) > SHWireState::Return))
-        return *_input;
+      if (unlikely(_predicate.activate<true>(context, var, output) > SHWireState::Return))
+        return inputSeq;
 
       if (output == Var::True) {
         // this is acceptable cos del ops don't call free or grow
-        if (_fast)
-          arrayDelFast(_input->payload.seqValue, i - 1);
+        if (*_fast)
+          arrayDelFast(inputSeq.payload.seqValue, i - 1);
         else
-          arrayDel(_input->payload.seqValue, i - 1);
+          arrayDel(inputSeq.payload.seqValue, i - 1);
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
-          auto &seq = seqVar->payload.seqValue;
-          if (seq.elements == _input->payload.seqValue.elements) // avoid removing from same seq as input!
+          auto &seq = seqVar.get().payload.seqValue;
+          if (seq.elements == inputSeq.payload.seqValue.elements) // avoid removing from same seq as input!
             continue;
 
           if (seq.len >= i) {
-            if (_fast)
+            if (*_fast)
               arrayDelFast(seq, i - 1);
             else
               arrayDel(seq, i - 1);
@@ -422,18 +379,21 @@ struct Remove : public ActionJointOp {
         }
       }
     }
-    return *_input;
+    return inputSeq;
   }
 };
 
 struct Profile {
-  ShardsVar _shards{};
+  PARAM(ShardsVar, action, "Action", "The action shards to profile.", {CoreInfo::Shards})
+  PARAM(std::string, label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
+  
+  PARAM_IMPL(
+    PARAM_IMPL_FOR(action),
+    PARAM_IMPL_FOR(label)
+  )
+
   SHExposedTypesInfo _exposed{};
   SHExposedTypesInfo _required{};
-  std::string _label{"<no label>"};
-
-  static inline Parameters _params{{"Action", SHCCSTR("The action shards to profile."), {CoreInfo::Shards}},
-                                   {"Label", SHCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
   static SHOptionalString help() {
     return SHCCSTR("This shard outputs the amount of time it took to execute the shards provided in the Action parameter, "
@@ -450,47 +410,25 @@ struct Profile {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static SHParametersInfo parameters() { return _params; }
+  PARAM_REQUIRED_VARIABLES();
 
-  void cleanup(SHContext *context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) { 
+    PARAM_CLEANUP(context);
+  }
 
-  void warmup(SHContext *ctx) { _shards.warmup(ctx); }
+  void warmup(SHContext *ctx) { 
+    PARAM_WARMUP(ctx);
+  }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    auto res = _shards.compose(data);
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    auto res = action.compose(data);
     _exposed = res.exposedInfo;
     _required = res.requiredInfo;
     return res.outputType;
   }
 
   SHExposedTypesInfo exposedVariables() { return _exposed; }
-
-  SHExposedTypesInfo requiredVariables() { return _required; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _shards = value;
-      break;
-    case 1:
-      _label = SHSTRVIEW(value);
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _shards;
-    case 1:
-      return Var(_label);
-    default:
-      break;
-    }
-    throw SHException("Parameter out of range.");
-  }
 
   std::string formatDuration(int64_t nanoseconds) {
     if (nanoseconds < 1000) {
@@ -507,10 +445,10 @@ struct Profile {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto start = std::chrono::high_resolution_clock::now();
-    _shards.activate(context, input, output);
+    action.activate(context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    SHLOG_INFO("{} took {}", _label, formatDuration(dur));
+    SHLOG_INFO("{} took {}", label, formatDuration(dur));
     return output;
   }
 };
