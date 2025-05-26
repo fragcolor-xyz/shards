@@ -171,7 +171,7 @@ std::optional<float2> toOutputScale(const SHVar &input) {
 }
 
 void applyOutputScale(SHContext *context, RenderStepOutput::OutputSizing &sizing, const SHVar &input) {
-  ReferencedVar v(context, input);
+  VarOrReference v(context, input);
 
   if (input.valueType == SHType::Table) {
     SHTable &table = v.get().payload.tableValue;

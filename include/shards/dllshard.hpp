@@ -80,6 +80,10 @@ public:
     return sCore._core->referenceVariable(context, name);
   }
 
+  static SHVar *findVariable(SHContext *context, struct SHStringWithLen name) {
+    return sCore._core->findVariable(context, name);
+  }
+
   static void releaseVariable(SHVar *variable) { return sCore._core->releaseVariable(variable); }
 
   static SHWireState suspend(SHContext *context, double seconds) { return sCore._core->suspend(context, seconds); }

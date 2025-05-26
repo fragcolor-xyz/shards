@@ -842,6 +842,61 @@ ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.version = other.version;
 }
 
+template <class SH_CORE> struct TVarOrReference {
+  const SHVar *ptr;
+  SHVar *owned = nullptr;
+
+  TVarOrReference(SHContext *context, const SHVar &v) : ptr(&v) {
+    if (v.valueType == SHType::ContextVar) {
+      if (auto var = SH_CORE::findVariable(context, SHSTRVIEW(v))) {
+        ptr = var;
+        owned = var;
+      }
+    }
+  }
+
+  TVarOrReference(SHContext *context, const char *varName) : ptr(nullptr) {
+    if (auto var = SH_CORE::findVariable(context, varName)) {
+      ptr = var;
+      owned = var;
+    } else {
+      throw std::runtime_error(fmt::format("Variable {} not found", varName));
+    }
+  }
+
+  ~TVarOrReference() {
+    if (owned) {
+      SH_CORE::releaseVariable(const_cast<SHVar *>(owned));
+    }
+  }
+
+  TVarOrReference(const TVarOrReference &) = delete;
+  TVarOrReference &operator=(const TVarOrReference &) = delete;
+  TVarOrReference(TVarOrReference &&) = delete;
+  TVarOrReference &operator=(TVarOrReference &&) = delete;
+
+  bool isVariable() const { return owned != nullptr; }
+
+  const SHVar &get() const { return *ptr; }
+  operator const SHVar &() const { return *ptr; }
+  SHVar &get() { return const_cast<SHVar &>(*ptr); }
+  operator SHVar &() { return const_cast<SHVar &>(*ptr); }
+};
+
+template <class SH_CORE> struct TReferencedVar : public TVarOrReference<SH_CORE> {
+  SHVar *ptr = nullptr;
+  TReferencedVar(SHContext *context, const SHVar &v) : TVarOrReference<SH_CORE>(context, v) {
+    ptr = SH_CORE::referenceVariable(context, SHSTRVIEW(v));
+    shassert(ptr && "Invalid variable");
+  }
+  TReferencedVar(SHContext *context, const char *varName) : TVarOrReference<SH_CORE>(context, varName) {
+    ptr = SH_CORE::findVariable(context, varName);
+    if (!ptr) {
+      throw std::runtime_error(fmt::format("Variable {} not found", varName));
+    }
+  }
+};
+
 }; // namespace shards
 
 // specialize hash for TOwnedVar
