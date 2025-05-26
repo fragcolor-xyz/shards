@@ -878,6 +878,7 @@ typedef void(__cdecl *SHUnregisterRunLoopCallback)(SHString eventName);
 typedef void(__cdecl *SHUnregisterExitCallback)(SHString eventName);
 
 typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, struct SHStringWithLen name);
+typedef struct SHVar *(__cdecl *SHFindVariable)(struct SHContext *context, struct SHStringWithLen name);
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
 typedef struct SHExternalVariable {
@@ -1291,6 +1292,8 @@ typedef struct _SHCore {
   // To be used within shards, to reference global variables
   // We never needed it before but actually useful to expose for rust and swift shards
   SHReferenceVariable referenceGlobalVariable;
+
+  SHFindVariable findVariable;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

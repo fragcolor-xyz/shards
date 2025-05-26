@@ -283,7 +283,7 @@ struct RenderIntoShard {
 
   TextureSubResource applyAttachment(SHContext *shContext, const SHVar &input) {
     if (input.valueType == SHType::ContextVar) {
-      ReferencedVar var(shContext, input);
+      VarOrReference var(shContext, input);
       return varAsObjectChecked<TexturePtr>(var.get(), ShardsTypes::Texture);
     } else {
       checkType(input.valueType, SHType::Table, "Attachment");

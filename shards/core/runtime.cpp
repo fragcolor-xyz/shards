@@ -2768,6 +2768,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return shards::referenceWireVariable(wire, nameView);
   };
 
+  result->findVariable = [](SHContext *context, SHStringWithLen name) noexcept {
+    std::string_view nameView{name.string, size_t(name.len)};
+    return shards::findVariable(context, nameView);
+  };
+
   result->releaseVariable = [](SHVar *variable) noexcept { return shards::releaseVariable(variable); };
 
   result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHExternalVariable *extVar) noexcept {
