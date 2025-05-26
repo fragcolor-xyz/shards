@@ -1314,11 +1314,13 @@ struct InternalCore {
   }
 
   static SHVar *referenceVariable(SHContext *context, SHStringWithLen name) {
-    return shards::referenceVariable(context, std::string_view(name.string, name.len));
+    return shards::referenceVariable(context, toStringView(name));
   }
 
   static void stringGrow(SHStringPayload *str, uint32_t size) { shards::stringGrow(str, size); }
   static void stringFree(SHStringPayload *str) { shards::stringFree(str); }
+
+  static SHVar *findVariable(SHContext *context, SHStringWithLen name) { return shards::findVariable(context, toStringView(name)); }
 
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
@@ -1361,6 +1363,7 @@ struct InternalCore {
 };
 
 typedef TParamVar<InternalCore> ParamVar;
+typedef TVarOrReference<InternalCore> VarOrReference;
 
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
