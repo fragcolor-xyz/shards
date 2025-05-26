@@ -24,12 +24,10 @@ struct JointOp {
   static inline Type anyVarSeqSeq = Type::SeqOf(anyVarSeq);
 
   PARAM_PARAMVAR(from, "From", "The name of the sequence variable to edit in place.", {anyVarSeq})
-  PARAM_PARAMVAR(join, "Join", "Other columns to join sort/filter using the input (they must be of the same length).", {anyVarSeq, anyVarSeqSeq})
-  
-  PARAM_IMPL(
-    PARAM_IMPL_FOR(from),
-    PARAM_IMPL_FOR(join)
-  )
+  PARAM_PARAMVAR(join, "Join", "Other columns to join sort/filter using the input (they must be of the same length).",
+                 {CoreInfo::NoneType, anyVarSeq, anyVarSeqSeq})
+
+  PARAM_IMPL(PARAM_IMPL_FOR(from), PARAM_IMPL_FOR(join))
 
   std::vector<ParamVar> _multiSortColumns;
 
@@ -37,9 +35,7 @@ struct JointOp {
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    return outputTypes().elements[0];
-  }
+  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
 
   void warmup(SHContext *ctx) {
     // Setup multi-sort columns based on join parameter
@@ -77,9 +73,9 @@ struct JointOp {
       if (inputSeq.valueType != SHType::Seq) {
         throw ActivationError("JointOp: Input must be a sequence.");
       }
-      
+
       auto len = inputSeq.payload.seqValue.len;
-      
+
       // Setup multi-sort columns if not already done
       if (_multiSortColumns.size() == 0) {
         if (join.get().valueType == SHType::Seq) {
@@ -89,7 +85,7 @@ struct JointOp {
               ParamVar columnVar;
               columnVar = col;
               columnVar.warmup(context);
-              
+
               // Validate the column sequence length
               if (columnVar.get().valueType == SHType::Seq) {
                 auto mseqLen = columnVar.get().payload.seqValue.len;
@@ -98,7 +94,7 @@ struct JointOp {
                                         "the same length as the input sequence.");
                 }
               }
-              
+
               _multiSortColumns.emplace_back(std::move(columnVar));
             }
           }
@@ -107,7 +103,7 @@ struct JointOp {
           ParamVar columnVar;
           columnVar = join.get();
           columnVar.warmup(context);
-          
+
           // Validate the column sequence length
           if (columnVar.get().valueType == SHType::Seq) {
             auto mseqLen = columnVar.get().payload.seqValue.len;
@@ -116,7 +112,7 @@ struct JointOp {
                                     "the same length as the input sequence.");
             }
           }
-          
+
           _multiSortColumns.emplace_back(std::move(columnVar));
         }
       } else {
@@ -137,15 +133,15 @@ struct JointOp {
 };
 
 struct Sort : public JointOp {
-  PARAM(bool, desc, "Desc", "If sorting should be in descending order, defaults ascending.", {CoreInfo::BoolType})
-  PARAM(ShardsVar, key, "Key", "The shards to use to transform the collection's items before they are compared. Can be None.", {CoreInfo::ShardsOrNone})
-  
-  PARAM_IMPL_DERIVED(JointOp,
-    PARAM_IMPL_FOR(desc),
-    PARAM_IMPL_FOR(key)
-  )
+  PARAM_VAR(_desc, "Desc", "If sorting should be in descending order, defaults ascending.", {CoreInfo::BoolType})
+  PARAM(ShardsVar, _key, "Key", "The shards to use to transform the collection's items before they are compared. Can be None.",
+        {CoreInfo::ShardsOrNone})
+
+  PARAM_IMPL_DERIVED(JointOp, PARAM_IMPL_FOR(_desc), PARAM_IMPL_FOR(_key))
 
   std::vector<SHVar> _multiSortKeys;
+
+  Sort() { _desc = Var(false); }
 
   void setup() { shardsKeyFn._bu = this; }
 
@@ -159,18 +155,18 @@ struct Sort : public JointOp {
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
 
   void warmup(SHContext *ctx) {
-    JointOp::warmup(ctx);
     PARAM_WARMUP(ctx);
+    JointOp::warmup(ctx);
   }
 
   void cleanup(SHContext *ctx) {
-    PARAM_CLEANUP(ctx);
     JointOp::cleanup(ctx);
+    PARAM_CLEANUP(ctx);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    
+
     if (from.isNone()) {
       throw SHException("From variable was empty!");
     }
@@ -194,7 +190,7 @@ struct Sort : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    key.compose(data);
+    _key.compose(data);
     return inputType;
   }
 
@@ -216,7 +212,7 @@ struct Sort : public JointOp {
     SHVar _o;
 
     const SHVar &operator()(const SHVar &a) {
-      _bu->key.activate(_ctx, a, _o);
+      _bu->_key.activate(_ctx, a, _o);
       return _o;
     }
   } shardsKeyFn;
@@ -267,15 +263,15 @@ struct Sort : public JointOp {
     // Sort in place
     auto &inputSeq = from.get();
     int64_t len = int64_t(inputSeq.payload.seqValue.len);
-    if (key) {
+    if (_key) {
       shardsKeyFn._ctx = context;
-      if (!desc) {
+      if (!*_desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, shardsKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, shardsKeyFn);
       }
     } else {
-      if (!desc) {
+      if (!*_desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, noopKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, noopKeyFn);
@@ -286,13 +282,12 @@ struct Sort : public JointOp {
 };
 
 struct Remove : public JointOp {
-  PARAM(ShardsVar, _predicate, "Predicate", "The shards to use as predicate, if true the item will be popped from the sequence.", {CoreInfo::Shards})
-  PARAM_VAR(_fast, "Unordered", "Turn on to remove items very quickly but will not preserve the sequence items order.", {CoreInfo::BoolType})
-  
-  PARAM_IMPL_DERIVED(JointOp,
-    PARAM_IMPL_FOR(_predicate),
-    PARAM_IMPL_FOR(_fast)
-  )
+  PARAM(ShardsVar, _predicate, "Predicate", "The shards to use as predicate, if true the item will be popped from the sequence.",
+        {CoreInfo::Shards})
+  PARAM_VAR(_fast, "Unordered", "Turn on to remove items very quickly but will not preserve the sequence items order.",
+            {CoreInfo::BoolType})
+
+  PARAM_IMPL_DERIVED(JointOp, PARAM_IMPL_FOR(_predicate), PARAM_IMPL_FOR(_fast))
 
   static SHOptionalString help() {
     return SHCCSTR("Removes all elements from a sequence that match the given condition. Can also take these matched indices and "
@@ -303,9 +298,11 @@ struct Remove : public JointOp {
 
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
+  Remove() { _fast = Var(false); }
+
   void warmup(SHContext *ctx) {
-    JointOp::warmup(ctx);
     PARAM_WARMUP(ctx);
+    JointOp::warmup(ctx);
   }
 
   void cleanup(SHContext *ctx) {
@@ -315,7 +312,7 @@ struct Remove : public JointOp {
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    
+
     if (from.isNone()) {
       throw SHException("From variable was empty!");
     }
@@ -365,7 +362,7 @@ struct Remove : public JointOp {
         else
           arrayDel(inputSeq.payload.seqValue, i - 1);
         // remove from joined
-        for (const auto &seqVar : _multiSortColumns) {
+        for (auto &seqVar : _multiSortColumns) {
           auto &seq = seqVar.get().payload.seqValue;
           if (seq.elements == inputSeq.payload.seqValue.elements) // avoid removing from same seq as input!
             continue;
@@ -384,13 +381,10 @@ struct Remove : public JointOp {
 };
 
 struct Profile {
-  PARAM(ShardsVar, action, "Action", "The action shards to profile.", {CoreInfo::Shards})
-  PARAM(std::string, label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
-  
-  PARAM_IMPL(
-    PARAM_IMPL_FOR(action),
-    PARAM_IMPL_FOR(label)
-  )
+  PARAM(ShardsVar, _action, "Action", "The action shards to profile.", {CoreInfo::Shards})
+  PARAM_VAR(_label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_label))
 
   SHExposedTypesInfo _exposed{};
   SHExposedTypesInfo _required{};
@@ -412,17 +406,13 @@ struct Profile {
 
   PARAM_REQUIRED_VARIABLES();
 
-  void cleanup(SHContext *context) { 
-    PARAM_CLEANUP(context);
-  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  void warmup(SHContext *ctx) { 
-    PARAM_WARMUP(ctx);
-  }
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    auto res = action.compose(data);
+    auto res = _action.compose(data);
     _exposed = res.exposedInfo;
     _required = res.requiredInfo;
     return res.outputType;
@@ -445,10 +435,10 @@ struct Profile {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto start = std::chrono::high_resolution_clock::now();
-    action.activate(context, input, output);
+    _action.activate(context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    SHLOG_INFO("{} took {}", label, formatDuration(dur));
+    SHLOG_INFO("{} took {}", _label, formatDuration(dur));
     return output;
   }
 };
@@ -2603,39 +2593,6 @@ RUNTIME_SHARD_getParam(RLimit);
 RUNTIME_SHARD_activate(RLimit);
 RUNTIME_SHARD_END(RLimit);
 
-// Register Sort
-RUNTIME_CORE_SHARD(Sort);
-RUNTIME_SHARD_setup(Sort);
-RUNTIME_SHARD_help(Sort);
-RUNTIME_SHARD_inputTypes(Sort);
-RUNTIME_SHARD_inputHelp(Sort);
-RUNTIME_SHARD_outputTypes(Sort);
-RUNTIME_SHARD_outputHelp(Sort);
-RUNTIME_SHARD_compose(Sort);
-RUNTIME_SHARD_activate(Sort);
-RUNTIME_SHARD_parameters(Sort);
-RUNTIME_SHARD_setParam(Sort);
-RUNTIME_SHARD_getParam(Sort);
-RUNTIME_SHARD_cleanup(Sort);
-RUNTIME_SHARD_warmup(Sort);
-RUNTIME_SHARD_END(Sort);
-
-// Register Remove
-RUNTIME_CORE_SHARD(Remove);
-RUNTIME_SHARD_help(Remove);
-RUNTIME_SHARD_inputTypes(Remove);
-RUNTIME_SHARD_inputHelp(Remove);
-RUNTIME_SHARD_outputTypes(Remove);
-RUNTIME_SHARD_outputHelp(Remove);
-RUNTIME_SHARD_parameters(Remove);
-RUNTIME_SHARD_setParam(Remove);
-RUNTIME_SHARD_getParam(Remove);
-RUNTIME_SHARD_activate(Remove);
-RUNTIME_SHARD_cleanup(Remove);
-RUNTIME_SHARD_warmup(Remove);
-RUNTIME_SHARD_compose(Remove);
-RUNTIME_SHARD_END(Remove);
-
 LOGIC_OP_DESC(IsAny);
 LOGIC_OP_DESC(IsAll);
 LOGIC_OP_DESC(IsAnyNot);
@@ -3203,8 +3160,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
   REGISTER_SHARD("Repeat", Repeat);
-  REGISTER_CORE_SHARD(Sort);
-  REGISTER_CORE_SHARD(Remove);
+  REGISTER_SHARD("Sort", Sort);
+  REGISTER_SHARD("Remove", Remove);
 
   REGISTER_SHARD("Is", Is);
   REGISTER_SHARD("IsAlmost", IsAlmost);
