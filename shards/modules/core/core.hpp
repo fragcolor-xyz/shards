@@ -3966,6 +3966,198 @@ struct Limit {
   }
 };
 
+struct Split {
+  PARAM_PARAMVAR(_size, "Size", "The size of each chunk to split the input into.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_size));
+
+  SHSeq _cachedResult{};
+  std::vector<SHSeq> _cachedChunks{};
+  std::vector<std::vector<uint8_t>> _cachedByteChunks{};
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
+    shards::arrayFree(_cachedResult);
+    for (auto &chunk : _cachedChunks) {
+      shards::arrayFree(chunk);
+    }
+    _cachedChunks.clear();
+    _cachedByteChunks.clear();
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Splits the input sequence, string, or bytes into chunks of the specified size. "
+                   "Returns a sequence of subsequences/substrings.");
+  }
+
+  static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
+  static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence, string, or bytes to split into chunks."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing the split chunks."); }
+
+  Types _seqTypes;
+  Type _seqTypeInfo;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (data.inputType.basicType == SHType::Seq) {
+      OVERRIDE_ACTIVATE(data, activateSeq);
+      if (data.inputType.seqTypes.len == 1) {
+        _seqTypes = Types({data.inputType});
+        _seqTypeInfo = Type::SeqOf(_seqTypes);
+        return _seqTypeInfo;
+      } else {
+        return CoreInfo::AnySeqType;
+      }
+    } else if (data.inputType.basicType == SHType::Bytes) {
+      OVERRIDE_ACTIVATE(data, activateBytes);
+      return CoreInfo::BytesSeqType;
+    } else if (data.inputType.basicType == SHType::String) {
+      OVERRIDE_ACTIVATE(data, activateString);
+      return CoreInfo::StringSeqType;
+    }
+
+    throw ComposeError("Split expects a sequence, string, or bytes as input.");
+  }
+
+  SHVar activateSeq(SHContext *context, const SHVar &input) {
+    const auto inputLen = input.payload.seqValue.len;
+
+    if (inputLen == 0) {
+      // Return empty sequence
+      SHVar emptySeq;
+      emptySeq.valueType = SHType::Seq;
+      emptySeq.payload.seqValue.elements = nullptr;
+      emptySeq.payload.seqValue.len = 0;
+      return emptySeq;
+    }
+
+    auto size = _size.get().payload.intValue;
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
+    // Prepare cached chunks
+    _cachedChunks.resize(numChunks);
+
+    // Prepare result sequence
+    shards::arrayResize(_cachedResult, numChunks);
+
+    for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
+      const auto chunkSize = endIdx - startIdx;
+
+      // Allocate chunk
+      shards::arrayResize(_cachedChunks[chunkIdx], chunkSize);
+
+      // Copy elements to chunk
+      for (uint32_t i = 0; i < chunkSize; i++) {
+        cloneVar(_cachedChunks[chunkIdx].elements[i], input.payload.seqValue.elements[startIdx + i]);
+      }
+
+      // Set chunk as element in result
+      _cachedResult.elements[chunkIdx] = shards::Var(_cachedChunks[chunkIdx]);
+    }
+
+    return shards::Var(_cachedResult);
+  }
+
+  SHVar activateBytes(SHContext *context, const SHVar &input) {
+    const auto inputLen = input.payload.bytesSize;
+
+    if (inputLen == 0) {
+      // Return empty sequence
+      SHVar emptySeq;
+      emptySeq.valueType = SHType::Seq;
+      emptySeq.payload.seqValue.elements = nullptr;
+      emptySeq.payload.seqValue.len = 0;
+      return emptySeq;
+    }
+
+    auto size = _size.get().payload.intValue;
+
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
+    // Prepare cached byte chunks
+    _cachedByteChunks.resize(numChunks);
+
+    // Prepare result sequence
+    shards::arrayResize(_cachedResult, numChunks);
+
+    for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
+      const auto chunkSize = endIdx - startIdx;
+
+      // Resize byte chunk
+      _cachedByteChunks[chunkIdx].resize(chunkSize);
+
+      // Copy bytes to chunk
+      for (uint32_t i = 0; i < chunkSize; i++) {
+        _cachedByteChunks[chunkIdx][i] = input.payload.bytesValue[startIdx + i];
+      }
+
+      // Set chunk as element in result
+      _cachedResult.elements[chunkIdx] = shards::Var(_cachedByteChunks[chunkIdx].data(), chunkSize);
+    }
+
+    return shards::Var(_cachedResult);
+  }
+
+  SHVar activateString(SHContext *context, const SHVar &input) {
+    if (input.payload.stringValue == nullptr) {
+      throw ActivationError("Input string is null.");
+    }
+
+    const auto inputLen = input.payload.stringLen > 0 ? input.payload.stringLen : uint32_t(strlen(input.payload.stringValue));
+
+    if (inputLen == 0) {
+      // Return empty sequence
+      SHVar emptySeq;
+      emptySeq.valueType = SHType::Seq;
+      emptySeq.payload.seqValue.elements = nullptr;
+      emptySeq.payload.seqValue.len = 0;
+      return emptySeq;
+    }
+
+    auto size = _size.get().payload.intValue;
+
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
+    // Prepare cached byte chunks (reuse for string storage)
+    _cachedByteChunks.resize(numChunks);
+
+    // Prepare result sequence
+    shards::arrayResize(_cachedResult, numChunks);
+
+    for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
+      const auto chunkSize = endIdx - startIdx;
+
+      // Resize byte chunk with space for null terminator
+      _cachedByteChunks[chunkIdx].resize(chunkSize + 1);
+
+      // Copy string characters to chunk
+      for (uint32_t i = 0; i < chunkSize; i++) {
+        _cachedByteChunks[chunkIdx][i] = input.payload.stringValue[startIdx + i];
+      }
+      _cachedByteChunks[chunkIdx][chunkSize] = '\0'; // Null terminate
+
+      // Set chunk as element in result
+      _cachedResult.elements[chunkIdx] = shards::Var((const char *)_cachedByteChunks[chunkIdx].data(), chunkSize);
+    }
+
+    return shards::Var(_cachedResult);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Split: unreachable code path"); }
+};
+
 struct RLimit {
   static inline shards::ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
       "Max", SHCCSTR("The maximum number of elements to take from the end of the input sequence."), CoreInfo::IntType));
