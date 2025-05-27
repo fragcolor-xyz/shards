@@ -142,6 +142,8 @@ struct Sort : public JointOp {
 
   std::vector<SHVar> _multiSortKeys;
 
+  Sort() { _desc = Var(false); }
+
   void setup() { shardsKeyFn._bu = this; }
 
   static SHOptionalString help() {
@@ -154,13 +156,13 @@ struct Sort : public JointOp {
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
 
   void warmup(SHContext *ctx) {
-    JointOp::warmup(ctx);
     PARAM_WARMUP(ctx);
+    JointOp::warmup(ctx);
   }
 
   void cleanup(SHContext *ctx) {
-    PARAM_CLEANUP(ctx);
     JointOp::cleanup(ctx);
+    PARAM_CLEANUP(ctx);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -189,7 +191,7 @@ struct Sort : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    key.compose(data);
+    _key.compose(data);
     return inputType;
   }
 
@@ -211,7 +213,7 @@ struct Sort : public JointOp {
     SHVar _o;
 
     const SHVar &operator()(const SHVar &a) {
-      _bu->key.activate(_ctx, a, _o);
+      _bu->_key.activate(_ctx, a, _o);
       return _o;
     }
   } shardsKeyFn;
@@ -262,15 +264,15 @@ struct Sort : public JointOp {
     // Sort in place
     auto &inputSeq = from.get();
     int64_t len = int64_t(inputSeq.payload.seqValue.len);
-    if (key) {
+    if (_key) {
       shardsKeyFn._ctx = context;
-      if (!desc) {
+      if (!*_desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, shardsKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, shardsKeyFn);
       }
     } else {
-      if (!desc) {
+      if (!*_desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, noopKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, noopKeyFn);
@@ -297,9 +299,11 @@ struct Remove : public JointOp {
 
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
+  Remove() { _fast = Var(false); }
+
   void warmup(SHContext *ctx) {
-    JointOp::warmup(ctx);
     PARAM_WARMUP(ctx);
+    JointOp::warmup(ctx);
   }
 
   void cleanup(SHContext *ctx) {
@@ -359,7 +363,7 @@ struct Remove : public JointOp {
         else
           arrayDel(inputSeq.payload.seqValue, i - 1);
         // remove from joined
-        for (const auto &seqVar : _multiSortColumns) {
+        for (auto &seqVar : _multiSortColumns) {
           auto &seq = seqVar.get().payload.seqValue;
           if (seq.elements == inputSeq.payload.seqValue.elements) // avoid removing from same seq as input!
             continue;
@@ -378,10 +382,10 @@ struct Remove : public JointOp {
 };
 
 struct Profile {
-  PARAM(ShardsVar, action, "Action", "The action shards to profile.", {CoreInfo::Shards})
-  PARAM(std::string, label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
+  PARAM(ShardsVar, _action, "Action", "The action shards to profile.", {CoreInfo::Shards})
+  PARAM_VAR(_label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
 
-  PARAM_IMPL(PARAM_IMPL_FOR(action), PARAM_IMPL_FOR(label))
+  PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_label))
 
   SHExposedTypesInfo _exposed{};
   SHExposedTypesInfo _required{};
@@ -409,7 +413,7 @@ struct Profile {
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    auto res = action.compose(data);
+    auto res = _action.compose(data);
     _exposed = res.exposedInfo;
     _required = res.requiredInfo;
     return res.outputType;
@@ -432,10 +436,10 @@ struct Profile {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto start = std::chrono::high_resolution_clock::now();
-    action.activate(context, input, output);
+    _action.activate(context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    SHLOG_INFO("{} took {}", label, formatDuration(dur));
+    SHLOG_INFO("{} took {}", _label, formatDuration(dur));
     return output;
   }
 };
@@ -2586,39 +2590,6 @@ RUNTIME_SHARD_getParam(RLimit);
 RUNTIME_SHARD_activate(RLimit);
 RUNTIME_SHARD_END(RLimit);
 
-// Register Sort
-RUNTIME_CORE_SHARD(Sort);
-RUNTIME_SHARD_setup(Sort);
-RUNTIME_SHARD_help(Sort);
-RUNTIME_SHARD_inputTypes(Sort);
-RUNTIME_SHARD_inputHelp(Sort);
-RUNTIME_SHARD_outputTypes(Sort);
-RUNTIME_SHARD_outputHelp(Sort);
-RUNTIME_SHARD_compose(Sort);
-RUNTIME_SHARD_activate(Sort);
-RUNTIME_SHARD_parameters(Sort);
-RUNTIME_SHARD_setParam(Sort);
-RUNTIME_SHARD_getParam(Sort);
-RUNTIME_SHARD_cleanup(Sort);
-RUNTIME_SHARD_warmup(Sort);
-RUNTIME_SHARD_END(Sort);
-
-// Register Remove
-RUNTIME_CORE_SHARD(Remove);
-RUNTIME_SHARD_help(Remove);
-RUNTIME_SHARD_inputTypes(Remove);
-RUNTIME_SHARD_inputHelp(Remove);
-RUNTIME_SHARD_outputTypes(Remove);
-RUNTIME_SHARD_outputHelp(Remove);
-RUNTIME_SHARD_parameters(Remove);
-RUNTIME_SHARD_setParam(Remove);
-RUNTIME_SHARD_getParam(Remove);
-RUNTIME_SHARD_activate(Remove);
-RUNTIME_SHARD_cleanup(Remove);
-RUNTIME_SHARD_warmup(Remove);
-RUNTIME_SHARD_compose(Remove);
-RUNTIME_SHARD_END(Remove);
-
 LOGIC_OP_DESC(IsAny);
 LOGIC_OP_DESC(IsAll);
 LOGIC_OP_DESC(IsAnyNot);
@@ -3172,10 +3143,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(Update);
   REGISTER_CORE_SHARD(Push);
   REGISTER_CORE_SHARD(Sequence);
-  REGISTER_SHARD("Table", TableDecl);
-
-  REGISTER_CORE_SHARD(Take);
-  REGISTER_CORE_SHARD(RTake);
   REGISTER_CORE_SHARD(Clear);
   REGISTER_CORE_SHARD(Pop);
   REGISTER_CORE_SHARD(PopFront);
@@ -3188,12 +3155,15 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Or", Or);
   REGISTER_SHARD("Not", Not);
   REGISTER_CORE_SHARD(IsValidNumber);
-  REGISTER_CORE_SHARD(Slice);
+  REGISTER_CORE_SHARD(Take);
+  REGISTER_CORE_SHARD(RTake);
+  REGISTER_SHARD("Split", Split);
+  REGISTER_SHARD("Slice", Slice);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
   REGISTER_SHARD("Repeat", Repeat);
-  REGISTER_CORE_SHARD(Sort);
-  REGISTER_CORE_SHARD(Remove);
+  REGISTER_SHARD("Sort", Sort);
+  REGISTER_SHARD("Remove", Remove);
 
   REGISTER_SHARD("Is", Is);
   REGISTER_SHARD("IsAlmost", IsAlmost);
@@ -3228,6 +3198,7 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
   REGISTER_SHARD("GlobalOnce", GlobalOnce);
+  REGISTER_SHARD("Table", TableDecl);
 
   REGISTER_SHARD("Pause", Pause);
   REGISTER_SHARD("PauseMs", PauseMs);
