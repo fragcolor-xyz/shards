@@ -768,7 +768,8 @@ struct ForEachShard {
       arrayPush(dataCopy.shared, _tmpInfo0);
     }
     // $1 always any type as it's always for table case
-    if (data.inputType.basicType == SHType::Table) {
+    _isTable = data.inputType.basicType == SHType::Table;
+    if (_isTable) {
       auto &tableType = data.inputType.table;
       // Wildcard table type
       if (tableType.types.len == 1 && tableType.keys.len == 1 && tableType.keys.elements[0].valueType == SHType::None) {
@@ -1125,7 +1126,7 @@ struct Fold {
     if (_initial.isVariable()) {
       shassert(data.privateContext && "Private context should be valid");
       auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(inherited->inherited, _initial.variableNameView());
+      const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(data, _initial.variableNameView());
       _outputSingleType = existingExposedType->exposedType;
       _ownedTypeInfo = false;
     } else {
@@ -1267,8 +1268,7 @@ struct Erase : SeqUser {
     SeqUser::composeV2(data);
 
     shassert(data.privateContext && "Private context should be valid");
-    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
-    auto info = findExposedVariablePtr(inherited->inherited, _name);
+    auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
 
@@ -1291,7 +1291,7 @@ struct Erase : SeqUser {
     } else if (_indices->valueType == SHType::Int) {
       valid = true;
     } else { // SHType::ContextVar && !isTable
-      auto info = findExposedVariable(inherited->inherited, SHSTRVIEW((*_indices)));
+      auto info = findExposedVariable(data, SHSTRVIEW((*_indices)));
       if (info) {
         if (info->exposedType.basicType == SHType::Seq && info->exposedType.seqTypes.len == 1 &&
             info->exposedType.seqTypes.elements[0].basicType == SHType::Int) {
@@ -1555,7 +1555,7 @@ struct Replace {
     if (data.inputType.basicType == SHType::String) {
       // we need to make sure that the parameters are all strings
       if (_patterns.isVariable()) {
-        auto expInfo = findExposedVariable(data.shared, _patterns);
+        auto expInfo = findExposedVariable(data, _patterns);
         if (expInfo.has_value()) {
           if (expInfo->exposedType.basicType != SHType::String &&             // must be a string
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true) // or a sequence of strings
@@ -1577,7 +1577,7 @@ struct Replace {
       }
 
       if (_replacements.isVariable()) {
-        auto expInfo = findExposedVariable(data.shared, _replacements);
+        auto expInfo = findExposedVariable(data, _replacements);
         if (expInfo.has_value()) {
           if (expInfo->exposedType.basicType != SHType::String &&
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true)) {

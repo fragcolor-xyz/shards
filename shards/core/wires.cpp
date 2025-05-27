@@ -54,6 +54,17 @@ void SHWire::destroy() {
 #endif
 }
 
+SHWire *getParentWire(SHContext *context, SHWire *wire) {
+  auto it = context->wireStack.rbegin();
+  while (it != context->wireStack.rend()) {
+    if (*it != wire) {
+      return *it;
+    }
+    ++it;
+  }
+  return nullptr;
+}
+
 void SHWire::warmup(SHContext *context) {
   if (!warmedUp) {
     SHLOG_TRACE("Running warmup on wire: {}", name);
