@@ -848,7 +848,7 @@ template <class SH_CORE> struct TVarOrReference {
 
   TVarOrReference(SHContext *context, const SHVar &v) : ptr(&v) {
     if (v.valueType == SHType::ContextVar) {
-      if (auto var = SH_CORE::findVariable(context, SHSTRVIEW(v))) {
+      if (auto var = SH_CORE::findVariable(context, toSWL(SHSTRVIEW(v)))) {
         ptr = var;
         owned = var;
       }
@@ -856,7 +856,7 @@ template <class SH_CORE> struct TVarOrReference {
   }
 
   TVarOrReference(SHContext *context, const char *varName) : ptr(nullptr) {
-    if (auto var = SH_CORE::findVariable(context, varName)) {
+    if (auto var = SH_CORE::findVariable(context, toSWL(varName))) {
       ptr = var;
       owned = var;
     } else {
@@ -905,5 +905,10 @@ template <typename T> struct hash<shards::TOwnedVar<T>> {
   size_t operator()(const shards::TOwnedVar<T> &v) const { return std::hash<SHVar>()(v); }
 };
 } // namespace std
+
+template<typename SH_CORE>
+auto format_as(const shards::TOwnedVar<SH_CORE>& ov) {
+  return (SHVar&)ov;
+}
 
 #endif

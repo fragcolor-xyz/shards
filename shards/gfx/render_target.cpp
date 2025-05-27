@@ -1,5 +1,6 @@
 #include "render_target.hpp"
 #include "fwd.hpp"
+#include <fast_string/fmt.hpp>
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {

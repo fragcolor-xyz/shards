@@ -1619,7 +1619,7 @@ void error_handler(int err_sig) {
 
   if (crashed) {
 #ifndef __EMSCRIPTEN__
-    SHLOG_ERROR(boost::stacktrace::stacktrace());
+    SHLOG_ERROR("{}", boost::stacktrace::to_string(boost::stacktrace::stacktrace()));
 #endif
 
     auto handler = GetGlobals().CrashHandler;

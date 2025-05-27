@@ -1314,13 +1314,13 @@ struct InternalCore {
   }
 
   static SHVar *referenceVariable(SHContext *context, SHStringWithLen name) {
-    return shards::referenceVariable(context, std::string_view(name.string, name.len));
+    return shards::referenceVariable(context, toStringView(name));
   }
 
   static void stringGrow(SHStringPayload *str, uint32_t size) { shards::stringGrow(str, size); }
   static void stringFree(SHStringPayload *str) { shards::stringFree(str); }
 
-  static SHVar *findVariable(SHContext *context, SHStringWithLen name) { return shards::findVariable(context, name); }
+  static SHVar *findVariable(SHContext *context, SHStringWithLen name) { return shards::findVariable(context, toStringView(name)); }
 
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
@@ -1755,5 +1755,17 @@ inline void swlFree(SHStringWithLen &in) {
 }
 
 }; // namespace shards
+
+inline auto format_as(SHWire::State state) {
+  return magic_enum::enum_name(state);
+}
+
+inline auto format_as(const shards::SeqVar& v) {
+  return (SHVar&)v;
+}
+
+inline auto format_as(const shards::TableVar& v) {
+  return (SHVar&)v;
+}
 
 #endif // SH_CORE_FOUNDATION

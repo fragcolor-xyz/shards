@@ -20,6 +20,12 @@
 namespace fs = boost::filesystem;
 using ErrorCode = boost::system::error_code;
 
+namespace boost::filesystem {
+auto format_as(const path& p) {
+  return p.string();
+}
+}
+
 namespace shards {
 namespace FS {
 

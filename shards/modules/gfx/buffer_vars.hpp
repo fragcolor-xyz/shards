@@ -35,7 +35,7 @@ inline void validateVertexFormat(const std::vector<MeshVertexAttribute> &format,
 
   if ((seq.len % format.size()) != 0) {
     throw formatException("Invalid number of vertices ({}), needs to be a "
-                          "multiple of {} (based on layout)",
+                          "multiple of {} (based on layout)", seq.len,
                           format.size());
   }
 

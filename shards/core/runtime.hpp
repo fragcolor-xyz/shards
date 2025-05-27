@@ -24,6 +24,7 @@
 #include "inline.hpp"
 #include "utils.hpp"
 #include "platform.hpp"
+#include "ops_internal.hpp"
 
 #include <chrono>
 #include <iostream>

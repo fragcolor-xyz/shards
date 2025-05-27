@@ -89,7 +89,7 @@ const TextureFormatDesc &getTextureFormatDescription(WGPUTextureFormat pixelForm
   auto &textureFormatMap = getTextureFormatMap();
   auto it = textureFormatMap.find(pixelFormat);
   if (it == textureFormatMap.end()) {
-    throw formatException("Unsupported texture input format", magic_enum::enum_name(pixelFormat));
+    throw formatException("Unsupported texture input format: {}", magic_enum::enum_name(pixelFormat));
   }
   return it->second;
 }
