@@ -591,19 +591,9 @@ public:
     }
   }
 
-  static ShaderParamVariant paramVarToShaderParameter(SHContext *context, SHVar v) {
-    SHVar *ref{};
-    if (v.valueType == SHType::ContextVar) {
-      ref = referenceVariable(context, SHSTRVIEW(v));
-      v = *ref;
-    }
-
-    auto shaderParam = varToShaderParameter(v);
-
-    if (ref)
-      releaseVariable(ref);
-
-    return shaderParam;
+  static ShaderParamVariant paramVarToShaderParameter(SHContext *context, SHVar v_) {
+    VarOrReference v(context, v_);
+    return varToShaderParameter(v);
   }
 
   // Returns the field type, or std::monostate if not specified
