@@ -5,8 +5,9 @@
 #include <stdexcept>
 
 namespace gfx {
-template <typename... TArgs> std::runtime_error formatException(const char *format, TArgs... args) {
-  return std::runtime_error(fmt::format(format, args...));
+template <typename... TArgs> 
+std::runtime_error formatException(fmt::format_string<TArgs...> format, TArgs&&... args) {
+  return std::runtime_error(fmt::format(format, std::forward<TArgs>(args)...));
 }
 } // namespace gfx
 

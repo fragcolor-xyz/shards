@@ -7,6 +7,7 @@
 #include "wgpu_handle.hpp"
 #include "renderer_cache.hpp"
 #include "texture.hpp"
+#include "fmt.hpp"
 #include "gfx_wgpu.hpp"
 #include "log.hpp"
 #include <compare>

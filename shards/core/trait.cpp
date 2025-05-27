@@ -42,10 +42,10 @@ SHTrait cloneTrait(const SHTrait &other) {
   return result;
 }
 
-template <typename S, typename... Args> inline auto formatLineInto(std::string &str, const S &format_str, Args &&...args) {
+template <typename... TArgs> inline auto formatLineInto(std::string &str, fmt::format_string<TArgs...> format_str, TArgs &&...args) {
   if (!str.empty())
     str.push_back('\n');
-  fmt::format_to(std::back_inserter(str), format_str, std::forward<Args>(args)...);
+  fmt::format_to(std::back_inserter(str), format_str, std::forward<TArgs>(args)...);
 }
 
 bool TraitMatcher::operator()(SHExposedTypesInfo exposedVariables, const SHTrait &trait) {

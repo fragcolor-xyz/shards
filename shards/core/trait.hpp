@@ -21,7 +21,7 @@ struct TraitMatcher {
 
 struct Trait : public SHTrait {
   ~Trait() { reset(); }
-  Trait() { memset(this, 0, sizeof(SHTrait)); }
+  Trait() { memset((SHTrait*)this, 0, sizeof(SHTrait)); }
   Trait(const SHTrait &other) : SHTrait(cloneTrait(other)) {}
   Trait(const Trait &other) : SHTrait(cloneTrait(other)) {}
   Trait &operator=(const SHTrait &other) {
@@ -101,5 +101,9 @@ public:
 };
 
 } // namespace shards
+
+inline auto format_as(const shards::Trait &trait) {
+  return (SHTrait&)trait;
+}
 
 #endif /* B7638520_BA4D_4989_BDC2_7F3533FE84B5 */

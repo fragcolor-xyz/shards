@@ -14,16 +14,9 @@
 #include <boost/iterator/reverse_iterator.hpp>
 #include <boost/tti/has_member_data.hpp>
 
-template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
-
+template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> : fmt::formatter<std::string_view> {
   template <typename FormatContext>
-  auto format(const gfx::detail::graph_build_data::FrameSizing &size, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(const gfx::detail::graph_build_data::FrameSizing &size, FormatContext &ctx) const -> decltype(ctx.out()) {
     using namespace linalg::ostream_overloads;
     std::stringstream ss;
     std::visit(
@@ -757,7 +750,7 @@ public:
     auto copyStep = steps::Copy::create(RenderStepInput::make(copy.src->name),
                                         RenderStepOutput::make(RenderStepOutput::Named(copy.dst->name, copy.dst->format)));
     std::get<RenderFullscreenStep>(*copyStep.get()).name =
-        fmt::format("Copy {} {}=>{}", copy.src->name, copy.src->format, copy.dst->format);
+        fmt::format("Copy {} {}=>{}", copy.src->name, magic_enum::enum_name(copy.src->format), magic_enum::enum_name(copy.dst->format));
     NodeBuildData &copyNode = generatedNodes.emplace_back(copyStep, size_t(~0));
     copyNode.inputs.emplace_back(copy.src);
     copyNode.outputs.emplace_back(copy.dst);

@@ -5,6 +5,7 @@
 #include <shards/core/params.hpp>
 #include <shards/core/platform.hpp>
 #include <shards/log/log.hpp>
+#include <magic_enum.hpp>
 
 #if !SH_EMSCRIPTEN
 #define BOOST_ERROR_CODE_HEADER_ONLY
@@ -20,6 +21,12 @@ namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
 using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+
+namespace boost::beast::http {
+inline auto format_as(const verb& v) {
+  return magic_enum::enum_name(v);
+}
+}
 
 #include <cctype>
 #include <deque>

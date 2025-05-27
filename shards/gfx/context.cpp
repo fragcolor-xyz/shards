@@ -240,7 +240,7 @@ struct ContextMainOutput {
     }
 
     if (preferredFormat == WGPUTextureFormat_Undefined) {
-      throw formatException("Failed to reconfigure Surface with format {}", preferredFormat);
+      throw formatException("Failed to reconfigure Surface with format {}", magic_enum::enum_name(preferredFormat));
     }
 
     if (preferredFormat != swapchainFormat) {
@@ -253,7 +253,7 @@ struct ContextMainOutput {
     shassert(wgpuSurface);
     shassert(swapchainFormat != WGPUTextureFormat_Undefined);
 
-    SPDLOG_LOGGER_DEBUG(logger, "Configuring surface width: {}, height: {}, format: {}", newSize.x, newSize.y, swapchainFormat);
+    SPDLOG_LOGGER_DEBUG(logger, "Configuring surface width: {}, height: {}, format: {}", newSize.x, newSize.y, magic_enum::enum_name(swapchainFormat));
     currentSize = newSize;
 
     // Force flush all texture references before resizing
@@ -368,7 +368,7 @@ void Context::init(Window &window, const ContextCreationOptions &inOptions) {
 
 void Context::init(const ContextCreationOptions &inOptions) {
   options = inOptions;
-  if (inOptions.overrideNativeWindowHandle) { 
+  if (inOptions.overrideNativeWindowHandle) {
     mainOutput = std::make_shared<ContextMainOutput>(inOptions.overrideNativeWindowHandle, onFlushTextureReferences);
   }
 
@@ -730,10 +730,10 @@ void Context::requestAdapter() {
     }
     extras.backends = instanceBackends;
 
-    if (const char *debug = SDL_getenv("SHARDS_GFX_DEBUG")) {
+    if (SDL_getenv("SHARDS_GFX_DEBUG")) {
       extras.flags |= WGPUInstanceFlag_Debug;
     }
-    if (const char *debug = SDL_getenv("SHARDS_GFX_VALIDATION")) {
+    if (SDL_getenv("SHARDS_GFX_VALIDATION")) {
       extras.flags |= WGPUInstanceFlag_Validation;
     }
     desc.nextInChain = &extras.chain;
@@ -771,8 +771,8 @@ void Context::requestAdapter() {
   adapterType: {}
   backendType: {}
 }})",
-                        props.vendorID, props.architecture, props.deviceID, props.description, props.adapterType,
-                        props.backendType);
+                        props.vendorID, props.architecture, props.deviceID, props.description,
+                        magic_enum::enum_name(props.adapterType), magic_enum::enum_name(props.backendType));
     if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
       adapterToUse = adapter;
       backendType = props.backendType;

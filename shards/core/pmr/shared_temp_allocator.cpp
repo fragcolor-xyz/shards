@@ -14,6 +14,14 @@ static shards::logging::Logger getLogger() {
 #define STA_TRACE(...)
 #endif
 
+namespace std {
+inline auto format_as(const std::thread::id& id) {
+  std::stringstream ss;
+  ss << id;
+  return (std::string)ss.str();
+}
+}
+
 namespace shards::pmr {
 struct SharedTempAllocatorImpl {
   TempAllocator allocator;

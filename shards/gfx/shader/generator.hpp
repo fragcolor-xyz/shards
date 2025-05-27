@@ -33,8 +33,8 @@ struct IGeneratorDynamicHandler {
   virtual bool createDynamicOutput(FastString name, NumType requestedType) { return false; }
 };
 
-template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
-  return GeneratorError(fmt::format(format, args...));
+template <typename... TArgs> static GeneratorError formatError(fmt::format_string<TArgs...> format, TArgs&&... args) {
+  return GeneratorError(fmt::format(format, std::forward<TArgs>(args)...));
 }
 
 struct GeneratorDefinitions {

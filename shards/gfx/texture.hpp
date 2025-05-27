@@ -136,7 +136,7 @@ public:
 
 #if SH_GFX_CONTEXT_DATA_LOG_LIFETIME
   ~Texture() {
-    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} ({}) destroyed", label, id);
+    SPDLOG_LOGGER_DEBUG(getContextDataLogger(), "Texture {} ({}) destroyed", label, id.value);
   }
 #endif
 

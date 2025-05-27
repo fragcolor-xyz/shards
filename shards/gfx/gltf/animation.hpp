@@ -2,6 +2,7 @@
 #define A234D1C4_5FF6_468F_826F_BC431A25D754
 
 #include "linalg.h"
+#include <magic_enum.hpp>
 #include <functional>
 #include <shards/core/assert.hpp>
 #include <gfx/drawables/mesh_tree_drawable.hpp>
@@ -20,6 +21,14 @@ enum class BuiltinTarget {
   Scale,
   None,
 };
+
+inline auto format_as(const gfx::animation::BuiltinTarget& v) {
+  return magic_enum::enum_name(v);
+}
+
+inline auto format_as(const gfx::animation::Interpolation& v) {
+  return magic_enum::enum_name(v);
+}
 
 using Value = std::variant<float3, float4>;
 
@@ -101,5 +110,6 @@ inline float Animation::getDuration() const {
 }
 
 } // namespace gfx
+
 
 #endif /* A234D1C4_5FF6_468F_826F_BC431A25D754 */
