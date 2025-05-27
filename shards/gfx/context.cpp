@@ -754,7 +754,7 @@ void Context::requestAdapter() {
   SPDLOG_LOGGER_DEBUG(logger, "Enumerating {} adapters", adapters.size());
 
   bool useAnyAdapter = {};
-  if (const char *v = SDL_getenv("GFX_ANY_ADAPTER")) {
+  if (SDL_getenv("GFX_ANY_ADAPTER")) {
     useAnyAdapter = true;
   }
   for (size_t i = 0; i < adapters.size(); i++) {
