@@ -3967,30 +3967,21 @@ struct Limit {
 };
 
 struct Split {
-  static inline shards::ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Size", SHCCSTR("The size of each chunk to split the input into."), CoreInfo::IntType));
+  PARAM_PARAMVAR(_size, "Size", "The size of each chunk to split the input into.", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_size));
 
   SHSeq _cachedResult{};
   std::vector<SHSeq> _cachedChunks{};
   std::vector<std::vector<uint8_t>> _cachedByteChunks{};
-  int64_t _size = 1;
 
-  void destroy() {
-    cleanup(nullptr);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   void cleanup(SHContext *context) {
-    if (_cachedResult.elements) {
-      for (uint32_t i = 0; i < _cachedResult.len; i++) {
-        destroyVar(_cachedResult.elements[i]);
-      }
-      shards::arrayFree(_cachedResult);
-    }
-    
+    PARAM_CLEANUP(context);
+
+    shards::arrayFree(_cachedResult);
     for (auto &chunk : _cachedChunks) {
-      if (chunk.elements) {
-        shards::arrayFree(chunk);
-      }
+      shards::arrayFree(chunk);
     }
     _cachedChunks.clear();
     _cachedByteChunks.clear();
@@ -4003,25 +3994,26 @@ struct Split {
 
   static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
   static SHTypesInfo inputTypes() { return InputTypes; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The sequence, string, or bytes to split into chunks.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The sequence, string, or bytes to split into chunks."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
-  static SHOptionalString outputHelp() { 
-    return SHCCSTR("A sequence containing the split chunks."); 
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing the split chunks."); }
 
-  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
+  Types _seqTypes;
+  Type _seqTypeInfo;
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_size <= 0) {
-      throw ComposeError("Split size must be greater than 0.");
-    }
-
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
-      return CoreInfo::AnySeqType;
+      if (data.inputType.seqTypes.len == 1) {
+        _seqTypes = Types({data.inputType});
+        _seqTypeInfo = Type::SeqOf(_seqTypes);
+        return _seqTypeInfo;
+      } else {
+        return CoreInfo::AnySeqType;
+      }
     } else if (data.inputType.basicType == SHType::Bytes) {
       OVERRIDE_ACTIVATE(data, activateBytes);
       return CoreInfo::BytesSeqType;
@@ -4033,27 +4025,9 @@ struct Split {
     throw ComposeError("Split expects a sequence, string, or bytes as input.");
   }
 
-  void setParam(int index, const SHVar &value) {
-    if (index == 0) {
-      _size = value.payload.intValue;
-      if (_size <= 0) {
-        throw SHException("Split size must be greater than 0.");
-      }
-    } else {
-      throw SHException("Split: Parameter index out of range.");
-    }
-  }
-
-  SHVar getParam(int index) {
-    if (index == 0) {
-      return shards::Var(_size);
-    }
-    throw SHException("Split: Parameter index out of range.");
-  }
-
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     const auto inputLen = input.payload.seqValue.len;
-    
+
     if (inputLen == 0) {
       // Return empty sequence
       SHVar emptySeq;
@@ -4063,37 +4037,38 @@ struct Split {
       return emptySeq;
     }
 
-    const auto numChunks = (inputLen + _size - 1) / _size; // Ceiling division
-    
+    auto size = _size.get().payload.intValue;
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
     // Prepare cached chunks
     _cachedChunks.resize(numChunks);
-    
+
     // Prepare result sequence
     shards::arrayResize(_cachedResult, numChunks);
-    
+
     for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
-      const auto startIdx = chunkIdx * _size;
-      const auto endIdx = std::min(startIdx + _size, inputLen);
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
       const auto chunkSize = endIdx - startIdx;
-      
+
       // Allocate chunk
       shards::arrayResize(_cachedChunks[chunkIdx], chunkSize);
-      
+
       // Copy elements to chunk
       for (uint32_t i = 0; i < chunkSize; i++) {
         cloneVar(_cachedChunks[chunkIdx].elements[i], input.payload.seqValue.elements[startIdx + i]);
       }
-      
+
       // Set chunk as element in result
       _cachedResult.elements[chunkIdx] = shards::Var(_cachedChunks[chunkIdx]);
     }
-    
+
     return shards::Var(_cachedResult);
   }
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
     const auto inputLen = input.payload.bytesSize;
-    
+
     if (inputLen == 0) {
       // Return empty sequence
       SHVar emptySeq;
@@ -4103,31 +4078,33 @@ struct Split {
       return emptySeq;
     }
 
-    const auto numChunks = (inputLen + _size - 1) / _size; // Ceiling division
-    
+    auto size = _size.get().payload.intValue;
+
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
     // Prepare cached byte chunks
     _cachedByteChunks.resize(numChunks);
-    
+
     // Prepare result sequence
     shards::arrayResize(_cachedResult, numChunks);
-    
+
     for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
-      const auto startIdx = chunkIdx * _size;
-      const auto endIdx = std::min(startIdx + _size, inputLen);
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
       const auto chunkSize = endIdx - startIdx;
-      
+
       // Resize byte chunk
       _cachedByteChunks[chunkIdx].resize(chunkSize);
-      
+
       // Copy bytes to chunk
       for (uint32_t i = 0; i < chunkSize; i++) {
         _cachedByteChunks[chunkIdx][i] = input.payload.bytesValue[startIdx + i];
       }
-      
+
       // Set chunk as element in result
       _cachedResult.elements[chunkIdx] = shards::Var(_cachedByteChunks[chunkIdx].data(), chunkSize);
     }
-    
+
     return shards::Var(_cachedResult);
   }
 
@@ -4137,7 +4114,7 @@ struct Split {
     }
 
     const auto inputLen = input.payload.stringLen > 0 ? input.payload.stringLen : uint32_t(strlen(input.payload.stringValue));
-    
+
     if (inputLen == 0) {
       // Return empty sequence
       SHVar emptySeq;
@@ -4147,38 +4124,38 @@ struct Split {
       return emptySeq;
     }
 
-    const auto numChunks = (inputLen + _size - 1) / _size; // Ceiling division
-    
+    auto size = _size.get().payload.intValue;
+
+    const auto numChunks = (inputLen + size - 1) / size; // Ceiling division
+
     // Prepare cached byte chunks (reuse for string storage)
     _cachedByteChunks.resize(numChunks);
-    
+
     // Prepare result sequence
     shards::arrayResize(_cachedResult, numChunks);
-    
+
     for (uint32_t chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
-      const auto startIdx = chunkIdx * _size;
-      const auto endIdx = std::min(startIdx + _size, inputLen);
+      const auto startIdx = chunkIdx * size;
+      const auto endIdx = std::min(uint32_t(startIdx + size), inputLen);
       const auto chunkSize = endIdx - startIdx;
-      
+
       // Resize byte chunk with space for null terminator
       _cachedByteChunks[chunkIdx].resize(chunkSize + 1);
-      
+
       // Copy string characters to chunk
       for (uint32_t i = 0; i < chunkSize; i++) {
         _cachedByteChunks[chunkIdx][i] = input.payload.stringValue[startIdx + i];
       }
       _cachedByteChunks[chunkIdx][chunkSize] = '\0'; // Null terminate
-      
+
       // Set chunk as element in result
-      _cachedResult.elements[chunkIdx] = shards::Var((const char*)_cachedByteChunks[chunkIdx].data(), chunkSize);
+      _cachedResult.elements[chunkIdx] = shards::Var((const char *)_cachedByteChunks[chunkIdx].data(), chunkSize);
     }
-    
+
     return shards::Var(_cachedResult);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { 
-    throw ActivationError("Split: unreachable code path"); 
-  }
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Split: unreachable code path"); }
 };
 
 struct RLimit {
@@ -4625,7 +4602,6 @@ RUNTIME_CORE_SHARD_TYPE(Swap);
 RUNTIME_CORE_SHARD_TYPE(Take);
 RUNTIME_CORE_SHARD_TYPE(RTake);
 RUNTIME_CORE_SHARD_TYPE(Slice);
-RUNTIME_CORE_SHARD_TYPE(Split);
 RUNTIME_CORE_SHARD_TYPE(Limit);
 RUNTIME_CORE_SHARD_TYPE(RLimit);
 RUNTIME_CORE_SHARD_TYPE(Push);

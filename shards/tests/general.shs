@@ -657,6 +657,9 @@
   3.0 | Push(meanTest)
   Get(meanTest) | Math.Mean(Kind: Mean::Arithmetic) | Log
   Assert.Is(1.5 true)
+
+  meanTest | Split(Size: 2) | Log
+  Assert.Is([[1.0 2.0] [0.0 3.0]] true)
   
   1.0 | Push(meanTest2)
   2.0 | Push(meanTest2)
@@ -664,6 +667,11 @@
   Get(meanTest2) | Math.Mean(Kind: Mean::Geometric) | Log
   ToString
   Assert.Is("1.81712" true)
+
+  meanTest2 | Split(Size: 2) | Log
+  Assert.Is([[1.0 2.0] [3.0]] true)
+  Take(0) | Add(1.0) | Log
+  Assert.Is([2.0 3.0] true)
   
   Get(meanTest2) | Math.Mean(Kind: Mean::Harmonic) | Log
   ToString
