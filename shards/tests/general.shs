@@ -657,7 +657,7 @@
   3.0 | Push(meanTest)
   Get(meanTest) | Math.Mean(Kind: Mean::Arithmetic) | Log
   Assert.Is(1.5 true)
-
+  
   meanTest | Split(Size: 2) | Log
   Assert.Is([[1.0 2.0] [0.0 3.0]] true)
   
@@ -667,7 +667,7 @@
   Get(meanTest2) | Math.Mean(Kind: Mean::Geometric) | Log
   ToString
   Assert.Is("1.81712" true)
-
+  
   meanTest2 | Split(Size: 2) | Log
   Assert.Is([[1.0 2.0] [3.0]] true)
   Take(0) | Add(1.0) | Log
@@ -764,6 +764,17 @@
   Get(ref1)
   Assert.Is("Hello reference" true)
   
+  ref1 | Split(Size: 2) = ref1-splits
+  Count | Assert.Is(8 true)
+  ref1-splits:0 | Assert.Is("He" true)
+  ref1-splits:1 | Assert.Is("ll" true)
+  ref1-splits:2 | Assert.Is("o " true)
+  ref1-splits:3 | Assert.Is("re" true)
+  ref1-splits:4 | Assert.Is("fe" true)
+  ref1-splits:5 | Assert.Is("re" true)
+  ref1-splits:6 | Assert.Is("nc" true)
+  ref1-splits:7 | Assert.Is("e" true)
+  
   Const([1 2 3 4 5])
   Set(pretest)
   Assert.Is([1 2 3 4 5] true)
@@ -819,6 +830,9 @@
   "0x0BAD" | HexToBytes | PrependTo(hexbytes-mut)
   hexbytes-mut | ToHex | Assert.Is("0x0badf00dc0ffee" true)
   StringToBytes | BytesToString | Assert.Is("0x0badf00dc0ffee" true)
+
+  "0xF00D" | HexToBytes | Split(Size: 1) | Log
+  Assert.Is(([("0xF0" | HexToBytes) ("0x0D" | HexToBytes)]) true)
   
   "4e2" | HexToBytes | Log
   
