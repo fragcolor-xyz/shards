@@ -4,6 +4,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/module.hpp>
 #include <shards/core/hash.inl>
+#include <shards/core/compose.hpp>
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
 #include "core.hpp"
@@ -141,8 +142,6 @@ struct Sort : public JointOp {
 
   std::vector<SHVar> _multiSortKeys;
 
-  Sort() { _desc = Var(false); }
-
   void setup() { shardsKeyFn._bu = this; }
 
   static SHOptionalString help() {
@@ -155,13 +154,13 @@ struct Sort : public JointOp {
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
 
   void warmup(SHContext *ctx) {
-    PARAM_WARMUP(ctx);
     JointOp::warmup(ctx);
+    PARAM_WARMUP(ctx);
   }
 
   void cleanup(SHContext *ctx) {
-    JointOp::cleanup(ctx);
     PARAM_CLEANUP(ctx);
+    JointOp::cleanup(ctx);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -190,7 +189,7 @@ struct Sort : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    _key.compose(data);
+    key.compose(data);
     return inputType;
   }
 
@@ -212,7 +211,7 @@ struct Sort : public JointOp {
     SHVar _o;
 
     const SHVar &operator()(const SHVar &a) {
-      _bu->_key.activate(_ctx, a, _o);
+      _bu->key.activate(_ctx, a, _o);
       return _o;
     }
   } shardsKeyFn;
@@ -263,15 +262,15 @@ struct Sort : public JointOp {
     // Sort in place
     auto &inputSeq = from.get();
     int64_t len = int64_t(inputSeq.payload.seqValue.len);
-    if (_key) {
+    if (key) {
       shardsKeyFn._ctx = context;
-      if (!*_desc) {
+      if (!desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, shardsKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, shardsKeyFn);
       }
     } else {
-      if (!*_desc) {
+      if (!desc) {
         insertSort(inputSeq.payload.seqValue.elements, len, sortAsc, noopKeyFn);
       } else {
         insertSort(inputSeq.payload.seqValue.elements, len, sortDesc, noopKeyFn);
@@ -298,11 +297,9 @@ struct Remove : public JointOp {
 
   static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
-  Remove() { _fast = Var(false); }
-
   void warmup(SHContext *ctx) {
-    PARAM_WARMUP(ctx);
     JointOp::warmup(ctx);
+    PARAM_WARMUP(ctx);
   }
 
   void cleanup(SHContext *ctx) {
@@ -362,7 +359,7 @@ struct Remove : public JointOp {
         else
           arrayDel(inputSeq.payload.seqValue, i - 1);
         // remove from joined
-        for (auto &seqVar : _multiSortColumns) {
+        for (const auto &seqVar : _multiSortColumns) {
           auto &seq = seqVar.get().payload.seqValue;
           if (seq.elements == inputSeq.payload.seqValue.elements) // avoid removing from same seq as input!
             continue;
@@ -381,10 +378,10 @@ struct Remove : public JointOp {
 };
 
 struct Profile {
-  PARAM(ShardsVar, _action, "Action", "The action shards to profile.", {CoreInfo::Shards})
-  PARAM_VAR(_label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
+  PARAM(ShardsVar, action, "Action", "The action shards to profile.", {CoreInfo::Shards})
+  PARAM(std::string, label, "Label", "The label to print when outputting time data.", {CoreInfo::StringType})
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_label))
+  PARAM_IMPL(PARAM_IMPL_FOR(action), PARAM_IMPL_FOR(label))
 
   SHExposedTypesInfo _exposed{};
   SHExposedTypesInfo _required{};
@@ -412,7 +409,7 @@ struct Profile {
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    auto res = _action.compose(data);
+    auto res = action.compose(data);
     _exposed = res.exposedInfo;
     _required = res.requiredInfo;
     return res.outputType;
@@ -435,10 +432,10 @@ struct Profile {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
     const auto start = std::chrono::high_resolution_clock::now();
-    _action.activate(context, input, output);
+    action.activate(context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    SHLOG_INFO("{} took {}", _label, formatDuration(dur));
+    SHLOG_INFO("{} took {}", label, formatDuration(dur));
     return output;
   }
 };
@@ -787,7 +784,7 @@ struct ForEachShard {
 
     _shards.compose(dataCopy);
 
-    if (data.inputType.basicType == SHType::Table) {
+    if (_isTable) {
       OVERRIDE_ACTIVATE1(data, activateTable);
     } else {
       OVERRIDE_ACTIVATE1(data, activateSeq);
@@ -798,7 +795,8 @@ struct ForEachShard {
 
   void warmup(SHContext *ctx) {
     _tmp0 = referenceVariable(ctx, "$0");
-    _tmp1 = referenceVariable(ctx, "$1");
+    if (_isTable)
+      _tmp1 = referenceVariable(ctx, "$1");
     _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
     _shards.warmup(ctx);
   }
@@ -807,30 +805,18 @@ struct ForEachShard {
     _shards.cleanup(context);
     if (_tmp0) {
       // _tmp0 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp0->refcount;
-      const auto flags = _tmp0->flags;
-      memset(_tmp0, 0x0, sizeof(SHVar));
-      _tmp0->refcount = rc;
-      _tmp0->flags = flags;
+      assignVariableValue(*_tmp0, Var::Empty);
       releaseVariable(_tmp0);
       _tmp0 = nullptr;
     }
     if (_tmp1) {
       // _tmp1 is a reference, so we need to cleaning up like we do in Ref
-      const auto rc = _tmp1->refcount;
-      const auto flags = _tmp1->flags;
-      memset(_tmp1, 0x0, sizeof(SHVar));
-      _tmp1->refcount = rc;
-      _tmp1->flags = flags;
+      assignVariableValue(*_tmp1, Var::Empty);
       releaseVariable(_tmp1);
       _tmp1 = nullptr;
     }
     if (_tmpIndex) {
-      const auto rc = _tmpIndex->refcount;
-      const auto flags = _tmpIndex->flags;
-      memset(_tmpIndex, 0x0, sizeof(SHVar));
-      _tmpIndex->refcount = rc;
-      _tmpIndex->flags = flags;
+      assignVariableValue(*_tmpIndex, Var::Empty);
       releaseVariable(_tmpIndex);
       _tmpIndex = nullptr;
     }
@@ -878,6 +864,7 @@ private:
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
   SHVar *_tmpIndex = nullptr; // New member for index reference
+  bool _isTable{};
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
   SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
@@ -1124,8 +1111,6 @@ struct Fold {
     }
     _outputSingleType = {};
     if (_initial.isVariable()) {
-      shassert(data.privateContext && "Private context should be valid");
-      auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
       const SHExposedTypeInfo *existingExposedType = findExposedVariablePtr(data, _initial.variableNameView());
       _outputSingleType = existingExposedType->exposedType;
       _ownedTypeInfo = false;
@@ -1267,7 +1252,6 @@ struct Erase : SeqUser {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SeqUser::composeV2(data);
 
-    shassert(data.privateContext && "Private context should be valid");
     auto info = findExposedVariablePtr(data, _name);
 
     // info is valid because we run base compose first
@@ -2246,6 +2230,33 @@ struct Last {
   }
 };
 
+SHTypeInfo And::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreAnd;
+  CompositionContext::get(data).annotateRebaseFlow();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Or::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreOr;
+  CompositionContext::get(data).annotateRebaseFlow();
+  return CompositionContext::get(data).currentScope().originalInputType;
+}
+
+SHTypeInfo Not::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreNot;
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNone::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreIsNone;
+  return outputTypes().elements[0];
+}
+
+SHTypeInfo IsNotNone::composeV2(const SHInstanceData &data) {
+  data.shard->inlineShardId = InlineShard::CoreIsNotNone;
+  return outputTypes().elements[0];
+}
+
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
 RUNTIME_SHARD_help(And);
@@ -2254,6 +2265,7 @@ RUNTIME_SHARD_inputHelp(And);
 RUNTIME_SHARD_outputTypes(And);
 RUNTIME_SHARD_outputHelp(And);
 RUNTIME_SHARD_activate(And);
+RUNTIME_SHARD_composeV2(And);
 RUNTIME_SHARD_END(And);
 
 // Register Or
@@ -2264,6 +2276,7 @@ RUNTIME_SHARD_inputHelp(Or);
 RUNTIME_SHARD_outputTypes(Or);
 RUNTIME_SHARD_outputHelp(Or);
 RUNTIME_SHARD_activate(Or);
+RUNTIME_SHARD_composeV2(Or);
 RUNTIME_SHARD_END(Or);
 
 // Register Not
@@ -2274,6 +2287,7 @@ RUNTIME_SHARD_inputHelp(Not);
 RUNTIME_SHARD_outputTypes(Not);
 RUNTIME_SHARD_outputHelp(Not);
 RUNTIME_SHARD_activate(Not);
+RUNTIME_SHARD_composeV2(Not);
 RUNTIME_SHARD_END(Not);
 
 // Register IsNan
@@ -2571,6 +2585,39 @@ RUNTIME_SHARD_setParam(RLimit);
 RUNTIME_SHARD_getParam(RLimit);
 RUNTIME_SHARD_activate(RLimit);
 RUNTIME_SHARD_END(RLimit);
+
+// Register Sort
+RUNTIME_CORE_SHARD(Sort);
+RUNTIME_SHARD_setup(Sort);
+RUNTIME_SHARD_help(Sort);
+RUNTIME_SHARD_inputTypes(Sort);
+RUNTIME_SHARD_inputHelp(Sort);
+RUNTIME_SHARD_outputTypes(Sort);
+RUNTIME_SHARD_outputHelp(Sort);
+RUNTIME_SHARD_compose(Sort);
+RUNTIME_SHARD_activate(Sort);
+RUNTIME_SHARD_parameters(Sort);
+RUNTIME_SHARD_setParam(Sort);
+RUNTIME_SHARD_getParam(Sort);
+RUNTIME_SHARD_cleanup(Sort);
+RUNTIME_SHARD_warmup(Sort);
+RUNTIME_SHARD_END(Sort);
+
+// Register Remove
+RUNTIME_CORE_SHARD(Remove);
+RUNTIME_SHARD_help(Remove);
+RUNTIME_SHARD_inputTypes(Remove);
+RUNTIME_SHARD_inputHelp(Remove);
+RUNTIME_SHARD_outputTypes(Remove);
+RUNTIME_SHARD_outputHelp(Remove);
+RUNTIME_SHARD_parameters(Remove);
+RUNTIME_SHARD_setParam(Remove);
+RUNTIME_SHARD_getParam(Remove);
+RUNTIME_SHARD_activate(Remove);
+RUNTIME_SHARD_cleanup(Remove);
+RUNTIME_SHARD_warmup(Remove);
+RUNTIME_SHARD_compose(Remove);
+RUNTIME_SHARD_END(Remove);
 
 LOGIC_OP_DESC(IsAny);
 LOGIC_OP_DESC(IsAll);
@@ -2924,6 +2971,11 @@ struct Once {
     self = data.shard;
     _validation = _blks.compose(data);
 
+    auto &ctx = CompositionContext::get(data);
+
+    // Don't allow references to escape the Once block
+    ctx.invalidateExposedReferences(_blks.composeResult().exposedInfo);
+
     collectRequiredVariables(data, _requiredInfo, _repeat);
 
     return data.inputType;
@@ -3120,6 +3172,10 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(Update);
   REGISTER_CORE_SHARD(Push);
   REGISTER_CORE_SHARD(Sequence);
+  REGISTER_SHARD("Table", TableDecl);
+
+  REGISTER_CORE_SHARD(Take);
+  REGISTER_CORE_SHARD(RTake);
   REGISTER_CORE_SHARD(Clear);
   REGISTER_CORE_SHARD(Pop);
   REGISTER_CORE_SHARD(PopFront);
@@ -3132,15 +3188,12 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Or", Or);
   REGISTER_SHARD("Not", Not);
   REGISTER_CORE_SHARD(IsValidNumber);
-  REGISTER_CORE_SHARD(Take);
-  REGISTER_CORE_SHARD(RTake);
-  REGISTER_SHARD("Split", Split);
-  REGISTER_SHARD("Slice", Slice);
+  REGISTER_CORE_SHARD(Slice);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
   REGISTER_SHARD("Repeat", Repeat);
-  REGISTER_SHARD("Sort", Sort);
-  REGISTER_SHARD("Remove", Remove);
+  REGISTER_CORE_SHARD(Sort);
+  REGISTER_CORE_SHARD(Remove);
 
   REGISTER_SHARD("Is", Is);
   REGISTER_SHARD("IsAlmost", IsAlmost);
@@ -3175,7 +3228,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Erase", Erase);
   REGISTER_SHARD("Once", Once);
   REGISTER_SHARD("GlobalOnce", GlobalOnce);
-  REGISTER_SHARD("Table", TableDecl);
 
   REGISTER_SHARD("Pause", Pause);
   REGISTER_SHARD("PauseMs", PauseMs);
