@@ -967,7 +967,7 @@ struct NaNTo0 {
 };
 
 struct VariableBase {
-  SHVar *_target{nullptr};
+  SHVar **_target{nullptr};
   SHVar *_cell{nullptr};
   std::string _name;
   ParamVar _key{};
@@ -999,7 +999,7 @@ struct VariableBase {
 
   void cleanup(SHContext *context) {
     if (_target) {
-      releaseVariable(_target);
+      releaseVariableSlot(_target);
     }
     _key.cleanup();
     _target = nullptr;
@@ -1039,11 +1039,12 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
-    if (table && (_tableId != table->id || _tableVersion != _target->version)) {
+    auto &v = **_target;
+    SHMap *table = static_cast<SHMap *>(v.payload.tableValue.opaque);
+    if (table && (_tableId != table->id || _tableVersion != v.version)) {
       _tableId = table->id;
       _cell = nullptr;
-      _tableVersion = _target->version;
+      _tableVersion = v.version;
     }
   }
 };
@@ -1183,10 +1184,7 @@ struct SetBase : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 };
@@ -1205,20 +1203,21 @@ struct SetUpdateBase : public SetBase {
       return *_cell;
     }
 
+    auto &v = **_target;
     SHMap *table = nullptr;
-    if (_target->valueType != SHType::Table) {
-      if (_target->valueType != SHType::None)
+    if (v.valueType != SHType::Table) {
+      if (v.valueType != SHType::None)
         destroyVar(*_target);
 
       // Not initialized yet
-      _target->valueType = SHType::Table;
-      _target->payload.tableValue.api = &GetGlobals().TableInterface;
-      table = _target->payload.tableValue.opaque = new SHMap();
+      v.valueType = SHType::Table;
+      v.payload.tableValue.api = &GetGlobals().TableInterface;
+      table = v.payload.tableValue.opaque = new SHMap();
     } else {
-      table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+      table = static_cast<SHMap *>(v.payload.tableValue.opaque);
     }
 
-    if (input.valueType == SHType::Table && input.payload.tableValue.opaque == _target->payload.tableValue.opaque) {
+    if (input.valueType == SHType::Table && input.payload.tableValue.opaque == v.payload.tableValue.opaque) {
       context->cancelFlow("Set/Update, attempted to set a variable to itself");
       return input;
     }
@@ -1353,7 +1352,7 @@ struct Set : public SetUpdateBase {
     shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_tracked) {
-      _target->flags |= SHVAR_FLAGS_TRACKED;
+      (**_target).flags |= SHVAR_FLAGS_TRACKED;
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -1367,10 +1366,10 @@ struct Set : public SetUpdateBase {
       _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {
-        if (_target->flags & SHVAR_FLAGS_TRACKED) {
+        if ((**_target).flags & SHVAR_FLAGS_TRACKED) {
           // something changed, we are no longer tracked
           // fixup activations and variable flags
-          _target->flags &= ~SHVAR_FLAGS_TRACKED;
+          (**_target).flags &= ~SHVAR_FLAGS_TRACKED;
         }
       }
 
@@ -1388,7 +1387,7 @@ struct Set : public SetUpdateBase {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
         throw WarmupError("Cannot add metadata to global variable because mesh is not available");
       } else {
-        mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+        mesh->setMetadata((*_target), SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
       }
     }
   }
@@ -1417,7 +1416,7 @@ struct Set : public SetUpdateBase {
 
     assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _global, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, _key, (**_target)., _global, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
@@ -1500,29 +1499,14 @@ struct Ref : public SetBase {
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void cleanup(SHContext *context) {
-    if (_target) {
-      // this is a special case
-      // Ref will reference previous shard result..
-      // Let's cleanup our storage so that release, if calls destroy
-      // won't mangle the shard's variable memory
-      const auto rc = _target->refcount;
-      const auto flags = _target->flags;
-      memset(_target, 0x0, sizeof(SHVar));
-      _target->refcount = rc;
-      _target->flags = flags;
-      releaseVariable(_target);
-    }
+    releaseVariableSlot(_target);
     _target = nullptr;
-
     _cell = nullptr;
     _key.cleanup();
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1537,15 +1521,16 @@ struct Ref : public SetBase {
       memcpy(_cell, &input, sizeof(SHVar));
       return input;
     } else {
-      if (_target->valueType != SHType::Table) {
+      auto& v = **_target;
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       auto &kv = _key.get();
-      SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+      SHVar *vptr = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
       // Notice, NO Cloning!
       memcpy(vptr, &input, sizeof(SHVar));
@@ -1560,7 +1545,7 @@ struct Ref : public SetBase {
 
   ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
     // must keep flags!
-    assignVariableValue(*_target, input);
+    assignVariableValue(**_target, input);
     return input;
   }
 };
@@ -1703,7 +1688,7 @@ struct Update : public SetUpdateBase {
     shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_isExposed) {
-      if (!(_target->flags & SHVAR_FLAGS_TRACKED)) {
+      if (!((**_target).flags & SHVAR_FLAGS_TRACKED)) {
         throw WarmupError(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
 
@@ -1711,7 +1696,7 @@ struct Update : public SetUpdateBase {
 
       setupDispatcher(context, _isGlobal);
     } else {
-      if (_target->flags & SHVAR_FLAGS_TRACKED) {
+      if ((**_target).flags & SHVAR_FLAGS_TRACKED) {
         throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
       }
 
@@ -1736,7 +1721,7 @@ struct Update : public SetUpdateBase {
       _dispatcherPtr->trigger(ev);
     } else {
       output = activateRegular(context, input);
-      OnTrackedVarSet ev{context->main->id, _name, _key, *_target, _isGlobal, context->currentWire()};
+      OnTrackedVarSet ev{context->main->id, _name, _key, (**_target), _isGlobal, context->currentWire()};
       _dispatcherPtr->trigger(ev);
     }
 
@@ -1933,11 +1918,7 @@ struct Get : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
-
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1959,10 +1940,11 @@ struct Get : public VariableBase {
       // This is used in the table case still
       return *_cell;
     } else {
+      auto& v = **_target;
       if (_isTable) {
-        if (_target->valueType == SHType::Table) {
+        if (v.valueType == SHType::Table) {
           auto &kv = _key.get();
-          SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+          SHMap *table = static_cast<SHMap *>(v.payload.tableValue.opaque);
           const auto &optr = *static_cast<const shards::OwnedVar *>(&kv);
           auto maybeValue = table->find(optr);
           if (maybeValue != table->end()) {
@@ -1994,15 +1976,14 @@ struct Get : public VariableBase {
           }
         }
       } else {
-        auto &value = *_target;
-        if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(value))) {
+        if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(v))) {
           return _defaultValue;
         } else {
           // Pin fast cell
-          _cell = _target;
+          _cell = &v;
           // override shard internal id
           _shard->inlineShardId = InlineShard::CoreGet;
-          return value;
+          return v;
         }
       }
     }

@@ -49,9 +49,9 @@ struct WireRuntimeVariableInfo {
 
   // Pointers to variables
   // for local variables, this will point into variableStorage
-  // for refs/externals/inherited, these will be initialized to point to the correct references
-  // SAME STRICT ORDERING AS variables, but does not contain the global variables
-  // locals -> refs -> inherited -> external
+  // for refs/externals/inherited/global, these will be initialized to point to the correct references during warmup
+  // SAME STRICT ORDERING AS variables
+  // locals -> refs -> inherited -> external -> global
   std::vector<SHVar *> variableSlots;
 
   // Local variable storage
@@ -111,7 +111,7 @@ struct WireRuntimeVariableInfo {
   void cleanupStorage() {}
 
   void initStorage() {
-    variableSlots.resize(globalOffset());
+    variableSlots.resize(variables.size());
     variableStorage.resize(numLocalVariables);
     for (auto &v : variableStorage) {
       // Make them ref-counted
@@ -127,7 +127,6 @@ struct WireRuntimeVariableInfo {
   }
 
   WireVariableSlot variableFromId(size_t vid) {
-    shassert((vid & IdFlagsGlobal) == 0 && "Global variables are not stored in wire storage");
     vid = vid & IdValueMask;
     shassert(vid < variables.size() && "Invalid local variable id");
     return &variableSlots[vid];

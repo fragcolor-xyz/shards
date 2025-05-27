@@ -47,7 +47,7 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
   return &v;
 }
 
-SHVar *findVariable(SHContext *ctx, std::string_view name) {
+static SHVar *findVariableInternal(SHContext *ctx, std::string_view name, bool allowReferences = false) {
   // try find a wire variable
   // from top to bottom of wire stack
 
@@ -137,6 +137,10 @@ SHVar *findVariable(SHContext *ctx, std::string_view name) {
   return nullptr;
 }
 
+SHVar *findVariable(SHContext *ctx, std::string_view name) {
+  return findVariableInternal(ctx, name);
+}
+
 #define SH_DEBUG_UNFOUND_VARIABLES 1
 
 SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
@@ -166,24 +170,9 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
   // return &cv;
 }
 
-static ALWAYS_INLINE void releaseVariableNoCheck(SHVar *variable) {
-  if ((variable->flags & SHVAR_FLAGS_EXTERNAL) != 0) {
-    return;
-  }
-
-  shassert((variable->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED && "Variable is not ref counted");
-  shassert(variable->refcount > 0 && "Variable ref count is 0");
-
-  variable->refcount--;
-  if (variable->refcount == 0) {
-    SHLOG_TRACE("Destroying a variable (0 ref count), type: {}", type2Name(variable->valueType));
-    destroyVar(*variable);
-  }
-}
-
 void releaseVariableRef(SHVar *&variable) {
   if (variable) {
-    releaseVariableNoCheck(variable);
+    variableReleaseReference(variable);
     variable = nullptr;
   }
 }
@@ -191,6 +180,44 @@ void releaseVariableRef(SHVar *&variable) {
 void releaseVariable(SHVar *variable) {
   if (!variable)
     return;
-  releaseVariableNoCheck(variable);
+  variableReleaseReference(variable);
 }
+
+SHVar **referenceVariableSlot(SHContext *ctx, std::string_view name) {
+  auto wire = ctx->wireStack.back();
+  shassert(wire->runtimeVariableInfo);
+  auto v = wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name);
+  if (!v)
+    throw std::logic_error(fmt::format("Variable slot not found: {}, on shard {} (line: {}, col: {})", name,
+                                       ctx->internal.currentShard->name(ctx->internal.currentShard),
+                                       ctx->internal.currentShard->line, ctx->internal.currentShard->column));
+
+  return v.ptr;
+}
+
+void releaseVariableSlot(SHVar **slot) {
+  if (slot) {
+    releaseVariable(*slot);
+  }
+}
+
+void variableAddReference(SHVar *v) {
+  shassert(v);
+  if (v->flags & SHVAR_FLAGS_REF_COUNTED)
+    v->refcount++;
+}
+
+void variableReleaseReference(SHVar *v) {
+  shassert(v);
+  if ((v->flags & SHVAR_FLAGS_REF_COUNTED) != 0) {
+    shassert((v->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED && "Variable is not ref counted");
+    shassert(v->refcount > 0 && "Variable ref count is 0");
+    v->refcount--;
+    if (v->refcount == 0) {
+      SHLOG_TRACE("Destroying a variable (0 ref count), type: {}", type2Name(v->valueType));
+      destroyVar(*v);
+    }
+  }
+}
+
 } // namespace shards

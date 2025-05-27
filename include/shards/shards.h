@@ -708,7 +708,7 @@ struct SHInstanceData {
   struct SHTypesInfo outputTypes;
 
   // Internally used
-  void * _unused;
+  void *_unused;
   struct SHPrivateContext *privateContext;
 };
 
@@ -892,6 +892,12 @@ typedef void(__cdecl *SHUnregisterExitCallback)(SHString eventName);
 typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, struct SHStringWithLen name);
 typedef struct SHVar *(__cdecl *SHFindVariable)(struct SHContext *context, struct SHStringWithLen name);
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
+
+typedef struct SHVar **(__cdecl *SHReferenceVariableSlot)(struct SHContext *context, struct SHStringWithLen name);
+typedef void(__cdecl *SHReleaseVariableSlot)(struct SHVar **slot);
+
+typedef void(__cdecl *SHVariableAddReference)(struct SHVar *value);
+typedef void(__cdecl *SHVariableReleaseReference)(struct SHVar *value);
 
 typedef struct SHExternalVariable {
   struct SHVar *var;
@@ -1306,6 +1312,18 @@ typedef struct _SHCore {
   SHReferenceVariable referenceGlobalVariable;
 
   SHFindVariable findVariable;
+
+  // Used to reference wire runtime variables
+  // The result is of type SHVar** to support reference values:
+  //  Since regular variables store SHVar directly
+  //  And reference variables will store SHVar* instead
+  // Therefore this allows both
+  SHReferenceVariableSlot referenceVariableSlot;
+  SHReleaseVariableSlot releaseVariableSlot;
+
+  // Add/release reference from ref counted variables
+  SHVariableAddReference variableAddReference;
+  SHVariableReleaseReference variableReleaseReference;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

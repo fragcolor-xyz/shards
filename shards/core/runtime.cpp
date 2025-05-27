@@ -2034,6 +2034,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->releaseVariable = [](SHVar *variable) noexcept { return shards::releaseVariable(variable); };
 
+  result->referenceVariableSlot = [](SHContext *context, SHStringWithLen name) noexcept {
+    std::string_view nameView{name.string, size_t(name.len)};
+    return shards::referenceVariableSlot(context, nameView);
+  };
+
+  result->releaseVariableSlot = [](SHVar **slot) noexcept { return shards::releaseVariableSlot(slot); };  
+
   result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHExternalVariable *extVar) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     auto vName = shards::OwnedVar::Foreign(name);

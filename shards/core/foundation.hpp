@@ -109,6 +109,11 @@ SHVar getSharedVariable(std::string_view name);
 SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker = false);
 entt::id_type findId(SHContext *ctx) noexcept;
 
+SHVar **referenceVariableSlot(SHContext *ctx, std::string_view name);
+void releaseVariableSlot(SHVar **slot);
+void variableAddReference(SHVar *v);
+void variableReleaseReference(SHVar *v);
+
 Shard *createShard(std::string_view name);
 void registerShards();
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName = std::string_view());
@@ -1325,7 +1330,9 @@ struct InternalCore {
   static void stringGrow(SHStringPayload *str, uint32_t size) { shards::stringGrow(str, size); }
   static void stringFree(SHStringPayload *str) { shards::stringFree(str); }
 
-  static SHVar *findVariable(SHContext *context, SHStringWithLen name) { return shards::findVariable(context, toStringView(name)); }
+  static SHVar *findVariable(SHContext *context, SHStringWithLen name) {
+    return shards::findVariable(context, toStringView(name));
+  }
 
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
@@ -1365,6 +1372,16 @@ struct InternalCore {
   }
 
   static SHWireState suspend(SHContext *ctx, double seconds) { return shards::suspend(ctx, seconds); }
+
+  static SHVar **referenceVariableSlot(SHContext *ctx, SHStringWithLen name) {
+    return shards::referenceVariableSlot(ctx, toStringView(name));
+  }
+
+  static void releaseVariableSlot(SHVar **slot) { shards::releaseVariableSlot(slot); }
+
+  static void variableAddReference(SHVar *v) { shards::variableAddReference(v); }
+
+  static void variableReleaseReference(SHVar *v) { shards::variableReleaseReference(v); }
 };
 
 typedef TParamVar<InternalCore> ParamVar;
@@ -1721,16 +1738,10 @@ inline void swlFree(SHStringWithLen &in) {
 
 }; // namespace shards
 
-inline auto format_as(SHWire::State state) {
-  return magic_enum::enum_name(state);
-}
+inline auto format_as(SHWire::State state) { return magic_enum::enum_name(state); }
 
-inline auto format_as(const shards::SeqVar& v) {
-  return (SHVar&)v;
-}
+inline auto format_as(const shards::SeqVar &v) { return (SHVar &)v; }
 
-inline auto format_as(const shards::TableVar& v) {
-  return (SHVar&)v;
-}
+inline auto format_as(const shards::TableVar &v) { return (SHVar &)v; }
 
 #endif // SH_CORE_FOUNDATION
