@@ -2542,23 +2542,6 @@ RUNTIME_SHARD_warmup(RTake);
 RUNTIME_SHARD_activate(RTake);
 RUNTIME_SHARD_END(RTake);
 
-// Register Slice
-RUNTIME_CORE_SHARD_FACTORY(Slice);
-RUNTIME_SHARD_destroy(Slice);
-RUNTIME_SHARD_cleanup(Slice);
-RUNTIME_SHARD_requiredVariables(Slice);
-RUNTIME_SHARD_help(Slice);
-RUNTIME_SHARD_inputTypes(Slice);
-RUNTIME_SHARD_inputHelp(Slice);
-RUNTIME_SHARD_outputTypes(Slice);
-RUNTIME_SHARD_outputHelp(Slice);
-RUNTIME_SHARD_parameters(Slice);
-RUNTIME_SHARD_compose(Slice);
-RUNTIME_SHARD_setParam(Slice);
-RUNTIME_SHARD_getParam(Slice);
-RUNTIME_SHARD_activate(Slice);
-RUNTIME_SHARD_END(Slice);
-
 // Register Limit
 RUNTIME_CORE_SHARD_FACTORY(Limit);
 RUNTIME_SHARD_destroy(Limit);
@@ -3151,8 +3134,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(IsValidNumber);
   REGISTER_CORE_SHARD(Take);
   REGISTER_CORE_SHARD(RTake);
-  REGISTER_CORE_SHARD(Slice);
   REGISTER_SHARD("Split", Split);
+  REGISTER_SHARD("Slice", Slice);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
   REGISTER_SHARD("Repeat", Repeat);

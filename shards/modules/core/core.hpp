@@ -3574,49 +3574,45 @@ struct RTake : public Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("From",
-                        SHCCSTR("The position/index of the first character or element that is to be extracted (including). "
-                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
-                        CoreInfo::IntsVar),
-      ParamsInfo::Param("To",
-                        SHCCSTR("The position/index of the last character or element that is to be extracted (excluding). "
-                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
-                        CoreInfo::IntsVarOrNone),
-      ParamsInfo::Param("Step",
-                        SHCCSTR("The increment between each position/index. Chooses every nth sample to extract, where n is the "
-                                "increment. Value has to be greater than zero."),
-                        CoreInfo::IntType));
+  struct OutOfRangeEx : public ActivationError {
+    OutOfRangeEx(int64_t len, int64_t from, int64_t to)
+        : ActivationError(fmt::format("Out of range! len: {} from: {} to: {}", len, from, to)) {}
+  };
+
   static SHOptionalString help() {
     return SHCCSTR("Extracts characters from a string or elements from a sequence based on the start and end positions/indices "
                    "and an increment parameter. Operation is non-destructive; the target string/sequence is not modified.");
   }
 
+  PARAM_PARAMVAR(_from, "From",
+                 "The position/index of the first character or element that is to be extracted (including). "
+                 "Negative position/indices simply loop over the target string/sequence counting backwards.",
+                 {CoreInfo::IntsVar})
+
+  PARAM_PARAMVAR(_to, "To",
+                 "The position/index of the last character or element that is to be extracted (excluding). "
+                 "Negative position/indices simply loop over the target string/sequence counting backwards.",
+                 {CoreInfo::IntsVarOrNone})
+
+  PARAM_VAR(_step, "Step",
+            "The increment between each position/index. Chooses every nth sample to extract, where n is the "
+            "increment. Value has to be greater than zero.",
+            {CoreInfo::IntType})
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_from), PARAM_IMPL_FOR(_to), PARAM_IMPL_FOR(_step))
+
+  PARAM_REQUIRED_VARIABLES();
+
   SHSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
-  SHVar _from{shards::Var(0)};
-  SHVar *_fromVar = nullptr;
-  SHVar _to{};
-  SHVar *_toVar = nullptr;
-  ExposedInfo _exposedInfo{};
-  int64_t _step = 1;
 
-  void destroy() {
-    destroyVar(_from);
-    destroyVar(_to);
-  }
+  Slice() { _step = Var(1); }
 
   void cleanup(SHContext *context) {
-    if (_fromVar) {
-      releaseVariable(_fromVar);
-      _fromVar = nullptr;
-    }
-    if (_toVar) {
-      releaseVariable(_toVar);
-      _toVar = nullptr;
-    }
+    PARAM_CLEANUP(context);
+
     if (_cachedSeq.elements) {
-      if (_step > 1) {
+      if (_step->payload.intValue > 1) {
         // we cloned in this case
         for (auto i = _cachedSeq.len; i > 0; i--) {
           destroyVar(_cachedSeq.elements[i - 1]);
@@ -3636,38 +3632,8 @@ struct Slice {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The extracted characters/elements."); }
 
-  static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    bool valid = false;
-
-    if (_from.valueType == SHType::Int) {
-      valid = true;
-    } else { // SHType::ContextVar
-      for (auto &info : data.shared) {
-        if (info.name == SHSTRVIEW(_from)) {
-          valid = true;
-          break;
-        }
-      }
-    }
-
-    if (!valid)
-      throw SHException("Slice, invalid From variable.");
-
-    if (_to.valueType == SHType::Int || _to.valueType == SHType::None) {
-      valid = true;
-    } else { // SHType::ContextVar
-      for (auto &info : data.shared) {
-        if (info.name == SHSTRVIEW(_to)) {
-          valid = true;
-          break;
-        }
-      }
-    }
-
-    if (!valid)
-      throw SHException("Slice, invalid To variable.");
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -3680,76 +3646,15 @@ struct Slice {
     return data.inputType;
   }
 
-  SHExposedTypesInfo requiredVariables() {
-    // stringValue should be null terminated cos from and to are cloned!
-    if (_from.valueType == SHType::ContextVar && _to.valueType == SHType::ContextVar) {
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType),
-                      ExposedInfo::Variable(_to.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
-      return SHExposedTypesInfo(_exposedInfo);
-    } else if (_from.valueType == SHType::ContextVar) {
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
-      return SHExposedTypesInfo(_exposedInfo);
-    } else if (_to.valueType == SHType::ContextVar) {
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_to.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
-      return SHExposedTypesInfo(_exposedInfo);
-    } else {
-      return {};
-    }
-  }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      cloneVar(_from, value);
-      cleanup(nullptr);
-      break;
-    case 1:
-      cloneVar(_to, value);
-      cleanup(nullptr);
-      break;
-    case 2:
-      _step = value.payload.intValue;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _from;
-    case 1:
-      return _to;
-    case 2:
-      return shards::Var(_step);
-    default:
-      break;
-    }
-    return shards::Var::Empty;
-  }
-
-  struct OutOfRangeEx : public ActivationError {
-    OutOfRangeEx(int64_t len, int64_t from, int64_t to) : ActivationError("Slice out of range!") {
-      SHLOG_ERROR("Out of range! from: {} to: {} len: {}", from, to, len);
-    }
-  };
+  void warmup(SHContext *ctx) { PARAM_WARMUP(ctx); }
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
-    if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
-    }
-    if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, SHSTRVIEW(_to));
-    }
-
     const auto inputLen = input.payload.bytesSize;
-    const auto &vfrom = _fromVar ? *_fromVar : _from;
-    const auto &vto = _toVar ? *_toVar : _to;
+    const auto &vfrom = _from.get();
+    const auto &vto = _to.get();
     SHInt from = vfrom.payload.intValue;
     SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
+    SHInt step = _step->payload.intValue;
 
     // Convert negative indices to positive
     from = from < 0 ? SHInt(inputLen) + from : from;
@@ -3766,15 +3671,15 @@ struct Slice {
     }
 
     uint32_t len = uint32_t(to - from);
-    if (_step <= 0) {
+    if (step <= 0) {
       throw ActivationError("Slice's Step must be greater than 0");
     }
 
-    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
-    _cachedBytes.resize(actualLen); // Allocate sufficient space
+    uint32_t actualLen = len / step + (len % step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen);
 
     uint32_t idx = 0;
-    for (int i = from; i < to && idx < actualLen; i += _step) {
+    for (int i = from; i < to && idx < actualLen; i += step) {
       if (uint32_t(i) >= inputLen) {
         throw OutOfRangeEx(inputLen, i, i);
       }
@@ -3784,23 +3689,17 @@ struct Slice {
   }
 
   SHVar activateString(SHContext *context, const SHVar &input) {
-    if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
-    }
-    if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, SHSTRVIEW(_to));
-    }
-
     if (input.payload.stringValue == nullptr) {
       throw ActivationError("Input string is null.");
     }
 
     uint32_t inputLen = input.payload.stringLen > 0 ? input.payload.stringLen : uint32_t(strlen(input.payload.stringValue));
 
-    const auto &vfrom = _fromVar ? *_fromVar : _from;
-    const auto &vto = _toVar ? *_toVar : _to;
+    const auto &vfrom = _from.get();
+    const auto &vto = _to.get();
     SHInt from = vfrom.payload.intValue;
     SHInt to = vto.valueType == SHType::None ? int(inputLen) : vto.payload.intValue;
+    SHInt step = _step->payload.intValue;
 
     // Convert negative indices to positive
     from = from < 0 ? SHInt(inputLen) + from : from;
@@ -3817,37 +3716,31 @@ struct Slice {
     }
 
     uint32_t len = uint32_t(to - from);
-    if (_step <= 0) {
+    if (step <= 0) {
       throw ActivationError("Slice's Step must be greater than 0");
     }
 
-    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
-    _cachedBytes.resize(actualLen + 1); // +1 for the null terminator
+    uint32_t actualLen = len / step + (len % step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen + 1);
 
     uint32_t idx = 0;
-    for (int i = from; i < to && idx < actualLen; i += _step) {
+    for (int i = from; i < to && idx < actualLen; i += step) {
       if (uint32_t(i) >= inputLen) {
         throw OutOfRangeEx(inputLen, i, i);
       }
       _cachedBytes[idx++] = input.payload.stringValue[i];
     }
-    _cachedBytes[idx] = '\0'; // Ensure null termination
+    _cachedBytes[idx] = '\0';
     return shards::Var((const char *)_cachedBytes.data(), actualLen);
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
-    if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
-    }
-    if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, SHSTRVIEW(_to));
-    }
-
     const auto inputLen = input.payload.seqValue.len;
-    const auto &vfrom = _fromVar ? *_fromVar : _from;
-    const auto &vto = _toVar ? *_toVar : _to;
+    const auto &vfrom = _from.get();
+    const auto &vto = _to.get();
     SHInt from = vfrom.payload.intValue;
     SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
+    SHInt step = _step->payload.intValue;
 
     // Convert negative indices to positive
     from = from < 0 ? SHInt(inputLen) + from : from;
@@ -3864,11 +3757,11 @@ struct Slice {
     }
 
     const auto len = to - from;
-    if (_step <= 0) {
+    if (step <= 0) {
       throw ActivationError("Slice's Step must be greater than 0");
     }
 
-    if (_step == 1) {
+    if (step == 1) {
       // Optimization for step of 1
       SHVar output{};
       output.valueType = SHType::Seq;
@@ -3877,10 +3770,10 @@ struct Slice {
       return output;
     } else {
       // General case for step greater than 1
-      const auto actualLen = len / _step + (len % _step != 0 ? 1 : 0);
+      const auto actualLen = len / step + (len % step != 0 ? 1 : 0);
       shards::arrayResize(_cachedSeq, uint32_t(actualLen));
       auto idx = 0;
-      for (int i = from; i < to && idx < actualLen; i += _step) {
+      for (int i = from; i < to && idx < actualLen; i += step) {
         if (uint32_t(i) >= inputLen) {
           throw OutOfRangeEx(inputLen, i, i);
         }
@@ -4601,7 +4494,6 @@ RUNTIME_CORE_SHARD_TYPE(Get);
 RUNTIME_CORE_SHARD_TYPE(Swap);
 RUNTIME_CORE_SHARD_TYPE(Take);
 RUNTIME_CORE_SHARD_TYPE(RTake);
-RUNTIME_CORE_SHARD_TYPE(Slice);
 RUNTIME_CORE_SHARD_TYPE(Limit);
 RUNTIME_CORE_SHARD_TYPE(RLimit);
 RUNTIME_CORE_SHARD_TYPE(Push);
