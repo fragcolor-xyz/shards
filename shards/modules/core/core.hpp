@@ -3606,7 +3606,10 @@ struct Slice {
   SHSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
 
-  Slice() { _step = Var(1); }
+  Slice() {
+    _step = Var(1);
+    _from = Var(0);
+  }
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
