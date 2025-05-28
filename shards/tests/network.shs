@@ -73,8 +73,13 @@
   test/client-received-random1 | Log("client-received-random1") | Assert.Is(true)
 } Priority: -2)
 
+@wire(network-test-stun {
+  Network.STUN | Log
+})
+
 @mesh(main)
 @schedule(main test-assert)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
+@schedule(main network-test-stun)
 @run(main @tick-dur @tick-count) | Assert.Is(true)
