@@ -83,7 +83,7 @@ void SHWire::warmup(SHContext *context) {
       for (size_t i = 0; i < inherited.size(); i++) {
         auto &v = inherited[i];
         auto linkedVar = parentWire->runtimeVariableInfo->findReference(ownedShard, v.name);
-        if (!linkedVar) {
+        if (!linkedVar.isAssigned()) {
           throw WarmupError(fmt::format("Failed to find required variable: {} in wire: {}, shard: {}", v.name, parentWire->name,
                                         ownedShard->name(ownedShard)));
         }

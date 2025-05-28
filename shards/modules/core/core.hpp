@@ -1544,8 +1544,7 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
-    // must keep flags!
-    assignVariableValue(**_target, input);
+    *_target = const_cast<SHVar *>(&input);
     return input;
   }
 };

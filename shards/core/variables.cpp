@@ -54,7 +54,10 @@ static SHVar *findVariableInternal(SHContext *ctx, std::string_view name, bool a
   auto wire = ctx->wireStack.back();
   shassert(wire->runtimeVariableInfo);
   auto v = wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name);
-  if (v) {
+  if (v.isValid()) {
+    if (!v.isAssigned()) {
+      throw std::logic_error(fmt::format("Variable slot {} is not assigned", wire->runtimeVariableInfo->slotDebugName(v.ptr)));
+    }
     if (v->flags & SHVAR_FLAGS_REF_COUNTED)
       v->refcount++;
     else {
@@ -137,9 +140,7 @@ static SHVar *findVariableInternal(SHContext *ctx, std::string_view name, bool a
   return nullptr;
 }
 
-SHVar *findVariable(SHContext *ctx, std::string_view name) {
-  return findVariableInternal(ctx, name);
-}
+SHVar *findVariable(SHContext *ctx, std::string_view name) { return findVariableInternal(ctx, name); }
 
 #define SH_DEBUG_UNFOUND_VARIABLES 1
 
@@ -187,18 +188,17 @@ SHVar **referenceVariableSlot(SHContext *ctx, std::string_view name) {
   auto wire = ctx->wireStack.back();
   shassert(wire->runtimeVariableInfo);
   auto v = wire->runtimeVariableInfo->findReferenceStrict(ctx->internal.currentShard, name);
-  if (!v)
+  if (!v.isValid())
     throw std::logic_error(fmt::format("Variable slot not found: {}, on shard {} (line: {}, col: {})", name,
                                        ctx->internal.currentShard->name(ctx->internal.currentShard),
                                        ctx->internal.currentShard->line, ctx->internal.currentShard->column));
-
   return v.ptr;
 }
 
 void releaseVariableSlot(SHVar **slot) {
-  if (slot) {
-    releaseVariable(*slot);
-  }
+  // if (slot) {
+  //   releaseVariable(*slot);
+  // }
 }
 
 void variableAddReference(SHVar *v) {

@@ -17,8 +17,12 @@
 @wire(main {
   1 >= v
   
+  v | Log("v")
+  
   Do(a) = ref0 ; Ref to copy of wire output
+  Log("r0")
   Do(a) = ref1 ; Invalidates ref0
+  Log("r1")
   
   Step(s) = ref3 ; Invalidates ref2
   Step(s) = ref2 ; Transient output (from non owned)
