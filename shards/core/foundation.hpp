@@ -1760,11 +1760,11 @@ inline auto format_as(SHWire::State state) {
   return magic_enum::enum_name(state);
 }
 
-inline auto format_as(const shards::SeqVar& v) {
+inline const SHVar& format_as(const shards::SeqVar& v) {
   return (SHVar&)v;
 }
 
-inline auto format_as(const shards::TableVar& v) {
+inline const SHVar& format_as(const shards::TableVar& v) {
   return (SHVar&)v;
 }
 
