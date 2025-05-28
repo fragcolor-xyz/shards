@@ -164,9 +164,9 @@ private:
     static thread_local std::random_device rd;
     static thread_local std::mt19937 gen(rd());
     std::array<uint8_t, 12> id;
-    std::uniform_int_distribution<uint8_t> dis(0, 255);
+    std::uniform_int_distribution<unsigned int> dis(0, 255);
     for (auto &byte : id) {
-      byte = dis(gen);
+      byte = static_cast<uint8_t>(dis(gen));
     }
     return id;
   }
