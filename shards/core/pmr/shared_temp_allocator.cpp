@@ -28,9 +28,9 @@ struct SharedTempAllocatorImpl {
 
   void incRef() {
     if (refCount == 0) {
+      allocator.reset();
       STA_TRACE("[{}] Temp allocator reset ({} bytes)", std::this_thread::get_id(), allocator.preallocatedBlock.size());
       TracyPlot(debugName, (int64_t)allocator.preallocatedBlock.size());
-      allocator.reset();
     }
     ++refCount;
   }
