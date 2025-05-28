@@ -1207,7 +1207,7 @@ struct SetUpdateBase : public SetBase {
     SHMap *table = nullptr;
     if (v.valueType != SHType::Table) {
       if (v.valueType != SHType::None)
-        destroyVar(*_target);
+        destroyVar(**_target);
 
       // Not initialized yet
       v.valueType = SHType::Table;
@@ -1237,8 +1237,8 @@ struct SetUpdateBase : public SetBase {
 
   ALWAYS_INLINE const SHVar &activateRegular(SHContext *context, const SHVar &input) noexcept {
     // Clone will try to recycle memory and such
-    cloneVar(*_target, input);
-    return *_target;
+    cloneVar(**_target, input);
+    return **_target;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { SHLOG_FATAL("Invalid code path, this should never be called"); }
@@ -1337,7 +1337,7 @@ struct Set : public SetUpdateBase {
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void onStart(const SHWire::OnStartEvent &e) {
-    if (_target->valueType != SHType::None) {
+    if ((**_target).valueType != SHType::None) {
       // Ok so, at this point if we are exposed we might be also be Set!
       // if that is true we can disable this Shard completely from the graph !
       SHLOG_TRACE("Variable {} is exposed and already initialized, disabling shard", _name);
@@ -1406,7 +1406,7 @@ struct Set : public SetUpdateBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_tracked && "This shard should not be activated if variable not exposed");
+    shassert(_tracked && "This shard should not be activated if variable not exposed");
 
     SHVar output;
     if (_isTable)
@@ -1414,9 +1414,9 @@ struct Set : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    assert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
+    shassert(_dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
-    OnTrackedVarSet ev{context->main->id, _name, _key, (**_target)., _global, context->currentWire()};
+    OnTrackedVarSet ev{context->main->id, _name, _key, (**_target), _global, context->currentWire()};
     _dispatcherPtr->trigger(ev);
 
     return output;
@@ -1521,7 +1521,7 @@ struct Ref : public SetBase {
       memcpy(_cell, &input, sizeof(SHVar));
       return input;
     } else {
-      auto& v = **_target;
+      auto &v = **_target;
       if (v.valueType != SHType::Table) {
         // Not initialized yet
         v.valueType = SHType::Table;
@@ -1936,11 +1936,11 @@ struct Get : public VariableBase {
     }
 
     if (unlikely(_cell != nullptr)) {
-      assert(_isTable);
+      shassert(_isTable);
       // This is used in the table case still
       return *_cell;
     } else {
-      auto& v = **_target;
+      auto &v = **_target;
       if (_isTable) {
         if (v.valueType == SHType::Table) {
           auto &kv = _key.get();
@@ -2069,13 +2069,14 @@ struct SeqBase : public VariableBase {
   void initSeq() {
     if (_isTable) {
       SHMap *table = nullptr;
-      if (_target->valueType != SHType::Table) {
+      auto &v = **_target;
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        table = _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        table = v.payload.tableValue.opaque = new SHMap();
       } else {
-        table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+        table = static_cast<SHMap *>(v.payload.tableValue.opaque);
       }
 
       if (!_key.isVariable()) {
@@ -2092,19 +2093,20 @@ struct SeqBase : public VariableBase {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != SHType::Seq) {
-        _target->valueType = SHType::Seq;
-        _target->payload.seqValue = {};
+      auto &v = **_target;
+      if (v.valueType != SHType::Seq) {
+        v.valueType = SHType::Seq;
+        v.payload.seqValue = {};
       }
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillVariableCell() {
-    assert(_target->valueType == SHType::Table && "Expected a table");
-    SHMap *table = static_cast<SHMap *>(_target->payload.tableValue.opaque);
+    shassert((**_target).valueType == SHType::Table && "Expected a table");
+    SHMap *table = static_cast<SHMap *>((**_target).payload.tableValue.opaque);
     auto &kv = _key.get();
     auto fk = shards::OwnedVar::Foreign(kv);
     _cell = &(*table)[fk];
@@ -2117,10 +2119,7 @@ struct SeqBase : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initSeq();
   }
@@ -2412,7 +2411,7 @@ struct Sequence : public SeqBase {
     if (_typeDesc.valueType == SHType::None) {
       _weakType = CoreInfo::AnySeqType;
     } else {
-      assert(_typeDesc.valueType == SHType::Type);
+      shassert(_typeDesc.valueType == SHType::Type);
       auto typeDesc = _typeDesc.payload.typeValue;
       _weakType = *typeDesc;
     }
@@ -2458,17 +2457,18 @@ struct TableDecl : public VariableBase {
   SHTypeInfo _tableInfo{};
 
   void initTable() {
+    auto &v = **_target;
     if (_isTable) {
-      if (_target->valueType != SHType::Table) {
+      if (v.valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       if (!_key.isVariable()) {
         auto &kv = _key.get();
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+        _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
         auto table = _cell;
         if (table->valueType != SHType::Table) {
@@ -2481,20 +2481,21 @@ struct TableDecl : public VariableBase {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != SHType::Table) {
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+      if (v.valueType != SHType::Table) {
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillTableCell() {
+    auto &v = **_target;
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+    _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
 
     auto table = _cell;
     if (table->valueType != SHType::Table) {
@@ -2506,10 +2507,7 @@ struct TableDecl : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initTable();
   }
@@ -2609,7 +2607,7 @@ struct TableDecl : public VariableBase {
     if (_typeDesc.valueType == SHType::None) {
       _weakType = CoreInfo::AnyTableType;
     } else {
-      assert(_typeDesc.valueType == SHType::Type);
+      shassert(_typeDesc.valueType == SHType::Type);
       auto typeDesc = _typeDesc.payload.typeValue;
       _weakType = *typeDesc;
     }
@@ -2657,30 +2655,32 @@ struct SeqUser : VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void initSeq() {
+    auto &v = **_target;
     if (_isTable) {
-      if (_target->valueType != SHType::Table) {
+      if (v.valueType != SHType::Table) {
         // We need to init this in order to fetch cell addr
         // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
+        v.valueType = SHType::Table;
+        v.payload.tableValue.api = &GetGlobals().TableInterface;
+        v.payload.tableValue.opaque = new SHMap();
       }
 
       if (!_key.isVariable()) {
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, *_key);
+        _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, *_key);
       } else {
         return; // checked during activate
       }
     } else {
-      _cell = _target;
+      _cell = &v;
     }
 
-    assert(_cell);
+    shassert(_cell);
   }
 
   void fillVariableCell() {
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+    auto &v = **_target;
+    _cell = v.payload.tableValue.api->tableAt(v.payload.tableValue, kv);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
@@ -2698,10 +2698,7 @@ struct SeqUser : VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
     initSeq();
   }
@@ -3601,7 +3598,10 @@ struct Slice {
   SHSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
 
-  Slice() { _step = Var(1); }
+  Slice() {
+    _step = Var(1);
+    _from = Var(0);
+  }
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);

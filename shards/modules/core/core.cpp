@@ -1406,10 +1406,7 @@ struct Assoc : public VariableBase {
   }
 
   void warmup(SHContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
+    _target = referenceVariableSlot(context, _name.c_str());
     _key.warmup(context);
   }
 
@@ -1453,11 +1450,11 @@ struct Assoc : public VariableBase {
       return input;
     } else {
       if (_isTable) {
-        if (_target->valueType == SHType::Table) {
+        if ((**_target).valueType == SHType::Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv)) {
+          if ((**_target).payload.tableValue.api->tableContains((**_target).payload.tableValue, kv)) {
             // Has it
-            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+            SHVar *vptr = (**_target).payload.tableValue.api->tableAt((**_target).payload.tableValue, kv);
             // Pin fast cell
             _cell = vptr;
           } else {
@@ -1467,9 +1464,9 @@ struct Assoc : public VariableBase {
           throw ActivationError("Table is empty or does not exist yet.");
         }
       } else {
-        if (_target->valueType == SHType::Seq || _target->valueType == SHType::Table) {
+        if ((**_target).valueType == SHType::Seq || (**_target).valueType == SHType::Table) {
           // Pin fast cell
-          _cell = _target;
+          _cell = *_target;
         } else {
           throw ActivationError("Variable is empty or does not exist yet.");
         }
