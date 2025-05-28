@@ -318,6 +318,13 @@ void coroSuspended(SHContext *context);
 void coroExtResume(SHWire *wire);
 void coroExtSuspend(SHWire *wire);
 
+#if SHARDS_INLINE_EVERYTHING
+#define SHARDS_INLINE ALWAYS_INLINE
+#include "coro_annotations.inl"
+#else
+#define SHARDS_INLINE
+#endif
+
 inline void prepare(SHWire *wire) {
   shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
 
