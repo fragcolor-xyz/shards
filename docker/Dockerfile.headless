@@ -26,7 +26,29 @@ RUN git clone --depth 1 --shallow-submodules https://github.com/fragcolor-xyz/sh
   && mkdir -p build \
   && cd build \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
-  -DENABLED_MODULES=langffi;assert;brotli;channels;core;crypto;debug;fs;http;json;network;os;random;snappy;sqlite;tracy;markdown;struct;reflection;bigint;csv;run \
+  -DSHARDS_WITH_EVERYTHING=OFF \
+  -DSHARDS_WITH_LANGFFI=ON \
+  -DSHARDS_WITH_ASSERT=ON \
+  -DSHARDS_WITH_BROTLI=ON \
+  -DSHARDS_WITH_CHANNELS=ON \
+  -DSHARDS_WITH_CORE=ON \
+  -DSHARDS_WITH_CRYPTO=ON \
+  -DSHARDS_WITH_DEBUG=ON \
+  -DSHARDS_WITH_FS=ON \
+  -DSHARDS_WITH_HTTP=ON \
+  -DSHARDS_WITH_JSON=ON \
+  -DSHARDS_WITH_NETWORK=ON \
+  -DSHARDS_WITH_OS=ON \
+  -DSHARDS_WITH_RANDOM=ON \
+  -DSHARDS_WITH_SNAPPY=ON \
+  -DSHARDS_WITH_SQLITE=ON \
+  -DSHARDS_WITH_TRACY=ON \
+  -DSHARDS_WITH_MARKDOWN=ON \
+  -DSHARDS_WITH_STRUCT=ON \
+  -DSHARDS_WITH_REFLECTION=ON \
+  -DSHARDS_WITH_BIGINT=ON \
+  -DSHARDS_WITH_CSV=ON \
+  -DSHARDS_WITH_RUN=ON \
   .. \
   && ninja -j$(nproc) shards
 
