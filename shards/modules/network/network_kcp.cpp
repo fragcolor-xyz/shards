@@ -296,6 +296,8 @@ struct KCPPeer final : public Peer {
 
     // set "turbo" mode
     ikcp_nodelay(kcp, 1, 10, 2, 1);
+    ikcp_setmtu(kcp, 1300); // very common nowadays to have this kind of scenario
+                            // https://fly.io/docs/networking/udp-and-tcp/#you-might-need-to-be-mindful-of-mtus
 
     _start = SHClock::now();
     _lastContact = SHClock::now();
