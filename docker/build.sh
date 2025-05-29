@@ -8,6 +8,7 @@ docker buildx create --name multiarch --use
 # Build and push headless
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f Dockerfile.headless \
+  --build-arg GIT_COMMIT=$GIT_COMMIT \
   -t fragcolor/shards-headless:latest \
   -t fragcolor/shards-headless:$GIT_COMMIT \
   --push .
@@ -15,6 +16,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 # Build and push full
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f Dockerfile.shards \
+  --build-arg GIT_COMMIT=$GIT_COMMIT \
   -t fragcolor/shards:latest \
   -t fragcolor/shards:$GIT_COMMIT \
   --push .

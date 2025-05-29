@@ -19,6 +19,13 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
   && rustup target add wasm32-unknown-unknown \
   && rustup component add rust-src
 
+# Build argument for cache invalidation
+ARG GIT_COMMIT=unknown
+LABEL git_commit=${GIT_COMMIT}
+
+# Cache buster - this will invalidate cache when commit changes
+RUN echo "Building with commit: ${GIT_COMMIT}"
+
 # Build Shards
 RUN git clone --depth 1 --shallow-submodules https://github.com/fragcolor-xyz/shards.git /shards \
   && cd /shards \
@@ -26,7 +33,9 @@ RUN git clone --depth 1 --shallow-submodules https://github.com/fragcolor-xyz/sh
   && ./bootstrap \
   && mkdir -p build \
   && cd build \
-  && cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. \
+  && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
+  -DRUST_BUILD_TYPE=Small \
+  .. \
   && ninja -j$(nproc) shards
 
 # Runtime stage
