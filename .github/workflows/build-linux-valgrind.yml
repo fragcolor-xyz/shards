@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+          cmake -G Ninja -DUSE_VALGRIND=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
           ninja shards
           ninja test-runtime
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/hello.shs

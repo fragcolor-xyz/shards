@@ -1,0 +1,38 @@
+FROM fedora:42 AS base
+
+# Install build dependencies
+RUN dnf install -y \
+  bash git curl gcc gcc-c++ clang ninja-build cmake \
+  openssl-devel clang-devel protobuf-devel \
+  libX11-devel libXcursor-devel libXrandr-devel \
+  libXinerama-devel libXi-devel dbus-devel \
+  && dnf clean all
+
+# Setup Rust
+ENV RUSTUP_HOME=/usr/local/rustup \
+  CARGO_HOME=/usr/local/cargo \
+  PATH=/usr/local/cargo/bin:$PATH
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path \
+  && rustup default nightly \
+  && rustup target add wasm32-unknown-unknown \
+  && rustup component add rust-src
+
+# Build Shards
+RUN git clone --depth 1 --shallow-submodules https://github.com/fragcolor-xyz/shards.git /shards \
+  && cd /shards \
+  && sh update.sh \
+  && ./bootstrap \
+  && mkdir -p build \
+  && cd build \
+  && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
+  -DENABLED_MODULES=langffi;assert;brotli;channels;core;crypto;debug;fs;http;json;network;os;random;snappy;sqlite;tracy;markdown;struct;reflection;bigint;csv;run \
+  .. \
+  && ninja -j$(nproc) shards
+
+# Runtime stage
+FROM fedora:42
+RUN dnf install -y bash curl ca-certificates sqlite && dnf clean all
+COPY --from=base /shards/build/shards /usr/local/bin/shards
+WORKDIR /app
+ENTRYPOINT ["shards"]
