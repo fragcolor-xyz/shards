@@ -13,10 +13,10 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   -t fragcolor/shards-headless:$GIT_COMMIT \
   --push .
 
-# Build and push full
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -f Dockerfile.shards \
-  --build-arg GIT_COMMIT=$GIT_COMMIT \
-  -t fragcolor/shards:latest \
-  -t fragcolor/shards:$GIT_COMMIT \
-  --push .
+# # Build and push full
+# docker buildx build --platform linux/amd64,linux/arm64 \
+#   -f Dockerfile.shards \
+#   --build-arg GIT_COMMIT=$GIT_COMMIT \
+#   -t fragcolor/shards:latest \
+#   -t fragcolor/shards:$GIT_COMMIT \
+#   --push .

@@ -14,9 +14,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
   PATH=/usr/local/cargo/bin:$PATH
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path \
-  && rustup default nightly \
-  && rustup target add wasm32-unknown-unknown \
-  && rustup component add rust-src
+  && rustup default nightly
 
 # Build argument for cache invalidation
 ARG GIT_COMMIT=unknown
@@ -25,10 +23,12 @@ LABEL git_commit=${GIT_COMMIT}
 # Cache buster - this will invalidate cache when commit changes
 RUN echo "Building with commit: ${GIT_COMMIT}"
 
+# Copy local repository sources (excluding build artifacts via .dockerignore)
+COPY . /shards
+WORKDIR /shards
+
 # Build Shards
-RUN git clone --depth 1 --shallow-submodules https://github.com/fragcolor-xyz/shards.git /shards \
-  && cd /shards \
-  && sh update.sh \
+RUN sh update.sh \
   && ./bootstrap \
   && mkdir -p build \
   && cd build \

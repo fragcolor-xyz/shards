@@ -1,0 +1,41 @@
+# Development tools and caches
+.lsp
+.cache
+.clj-kondo
+.vscode
+.aider*
+.DS_Store
+
+# Build directories and artifacts
+build
+build*
+external*
+target/
+*/target/
+rlib/target/
+library/cache/
+library/target/
+shards/tools/build
+
+# Logs and temporary files
+*.log
+*.key
+*.db*
+*.dylib
+*.sho
+profile.json
+
+# Test and release scripts
+make_release
+run_relay.sh
+externals*
+
+# Environment files
+.env
+
+# Generated inventory
+fbl-things*
+mainframe/inventory
+
+# Git directory (not needed in container)
+.git
