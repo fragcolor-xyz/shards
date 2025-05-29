@@ -1,5 +1,6 @@
 option(SHARDS_WITH_EVERYTHING "Enables all modules, disabling this will only build common modules and exclude experimental ones" ON)
 option(SHARDS_NO_RUST_UNION "Disables rust union build" OFF)
+option(SHARDS_WITH_DEFAULT "Default SHARDS_WITH_<name> state of modules" OFF)
 
 # NOTES ABOUT MODULE UNIONS
 # Modules are built as OBJECT libraries, and then linked together at the end into a single static lib
@@ -74,10 +75,10 @@ function(add_shards_module MODULE_NAME)
   # Store rust target
   set_property(TARGET ${MODULE_TARGET} PROPERTY SHARDS_RUST_TARGETS ${MODULE_RUST_TARGETS})
 
-  set(MODULE_ENABLED TRUE)
+  set(MODULE_ENABLED ${SHARDS_WITH_DEFAULT})
 
   if(${MODULE_EXPERIMENTAL})
-    set(MODULE_ENABLED FALSE)
+    set(MODULE_ENABLED OFF)
   endif()
 
   string(TOUPPER "${MODULE_ID}" MODULE_ID_UPPER)
