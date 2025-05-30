@@ -713,9 +713,6 @@ struct ServerShard : public NetworkBase {
                                       std::scoped_lock pLock(currentPeer->mutex);
 
                                       auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
-                                      // SPDLOG_LOGGER_TRACE(logger, "ikcp_input: {}, peer: {} port: {}, size: {}", err,
-                                      // _sender.address().to_string(), _sender.port(),
-                                      //             bytes_recvd);
                                       if (err < 0) {
                                         SPDLOG_LOGGER_ERROR(logger, "Error ikcp_input: {}, peer: {} port: {}", err,
                                                             _sender.address().to_string(), _sender.port());
@@ -1028,7 +1025,7 @@ struct ClientShard : public NetworkBase {
 
                                       auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
                                       if (err < 0) {
-                                        SPDLOG_LOGGER_ERROR(logger, "Error ikcp_input: {}");
+                                        SPDLOG_LOGGER_ERROR(logger, "Error ikcp_input: {}", err);
                                       }
                                     }
                                     // keep receiving
