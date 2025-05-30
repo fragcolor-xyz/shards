@@ -1,14 +1,6 @@
 @wire(a {
-  ; Test indirect requirements, since Once doesn't forward requirements from it's shards block
-  Once({
-    v = input-ref
-  })
-  ; Without this line, the below would fail
-  Debug.Noop("Pre assign ref")
   v = input-ref
-  Debug.WireVariables("after assign refs")
   Inc(input-ref)
-  Debug.WireVariables("after increment")
   input-ref
 })
 
@@ -21,6 +13,96 @@
   Debug.WireVariables("early")
   1 >= v
   Debug.WireVariables("after assign v")
+  
+  ; Test indirect requirements, since Once doesn't forward requirements from it's shards block
+  Assert.NoCompose({
+    Once({
+      v = r0
+    })
+    ; This is not allowed since once is conditional
+    1 > r0
+  } "Once Ref")
+  ; Same but with Memoize
+  Assert.NoCompose({
+    v | Memoize({
+      v = r0
+    })
+    1 > r0
+  } "Memoize Ref")
+  ; Same but with GlobalOnce
+  Assert.NoCompose({
+    v | GlobalOnce({
+      v = r0
+    })
+    1 > r0
+  } "GlobalOnce Ref")
+  
+  ; Test direct assignment of reference
+  Assert.Compose({
+    v = r0
+    1 > r0
+  } "Direct Ref")
+  
+  ; Should break after state change
+  Assert.NoCompose({
+    v = r0
+    Debug.Noop
+    2 > v
+    ; Ref no longer valid at this point
+    1 > r0
+  } "Direct Ref, reassign original")
+  Assert.NoCompose({
+    v = r0
+    Pause(0.0) ; This invalidates refs
+    ; Ref no longer valid at this point
+    1 > r0
+  } "Direct Ref, Suspension point")
+  
+  Assert.NoCompose({
+    v = r0
+    [] | ForEach({
+      2 > v
+    })
+    ; Ref no longer valid at this point
+    1 > r0
+  } "Direct Ref, Conditional reassignment")
+  
+  
+  Assert.NoCompose({
+    v = r0
+    r0 = r1
+    r1 = r2
+    1 > r0
+  } "Ref Chain, reassign original")
+  
+  ; This should be safe, since there are no suspension points, no risk of this ever running in parallel
+  Assert.Compose({
+    none | ToAny >= any
+    Maybe({
+      ExpectTable = as-tbl
+      2 | Set(as-tbl "v")
+    })
+    Maybe({
+      ExpectInt = as-int
+      Math.Inc(as-int)
+    })
+  })
+  
+  Assert.NoCompose({
+    {} | ToAny >= any
+    any | ExpectTable = tbl
+    2 | Set(tbl "v") ; This updates the table
+    4 > any ; This changes the type of the variable, invalidating the reference
+    3 | Set(tbl "q")
+  } "Any var, referene types")
+  
+  Assert.NoCompose({
+    {} >= tbl
+    tbl | ToAny = any
+    ; This changes the type of the variable tbl, invalidating the reference, this should not be allowed
+    ; Solution?: Make ToAny output an immutable reference
+    4 > any 
+  } "Any var, reference types")
   
   v | Log("v")
   

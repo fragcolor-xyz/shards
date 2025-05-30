@@ -744,6 +744,16 @@ void CompositionContext::invalidateExposedReferences(const SHExposedTypesInfo &e
   }
 }
 
+VariableAccessorChain CompositionContext::getPathToVariable(const VariableRef &variable) {
+  shassert(variable && "Variable must be valid");
+  auto &c = currentScope();
+  auto v = variable.variable;
+  if (v->referenceTarget) {
+    return *v->referenceTarget;
+  }
+  return VariableAccessorChain{getAllocator(), VariableAccessor::var(v->id, v->exposed.name)};
+}
+
 void CompositionContext::flowAnnotateNextShard(Shard *shard) {
   auto &c = currentScope();
   c.shardName = shard->name(shard);

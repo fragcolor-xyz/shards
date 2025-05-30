@@ -27,6 +27,12 @@ struct Memoize {
     SHComposeResult res = _evaluate.compose(data);
     if (res.failed)
       throw std::runtime_error("Failed to compose Memoize evaluate expression");
+
+    auto &ctx = CompositionContext::get(data);
+
+    // Don't allow references to escape the Once block
+    ctx.invalidateExposedReferences(_evaluate.composeResult().exposedInfo);
+
     return res.outputType;
   }
 

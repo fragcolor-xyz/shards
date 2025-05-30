@@ -259,7 +259,10 @@ struct CompositionContext {
   };
 
   void invalidateReferencePath(const VariableAccessorChain &va, InvalidationSource is = InvalidationSource::CurrentShard);
+  // void invalidateVariable(const VariableRef &variable);
   void invalidateExposedReferences(const SHExposedTypesInfo &eti);
+
+  VariableAccessorChain getPathToVariable(const VariableRef &variable);
 
   // Checks if a reference variable is valid at this point in time
   void checkReferenceIsValid(VariableAccessorChain chain, size_t version);

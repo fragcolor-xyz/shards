@@ -3066,6 +3066,11 @@ struct GlobalOnce {
 
     _validation = _blks.compose(data);
 
+    auto &ctx = CompositionContext::get(data);
+
+    // Don't allow references to escape the Once block
+    ctx.invalidateExposedReferences(_blks.composeResult().exposedInfo);
+
     return data.inputType;
   }
 

@@ -1572,8 +1572,15 @@ struct Update : public SetUpdateBase {
   SHTypeInfo composeV2(const SHInstanceData &data) {
     _self = data.shard;
 
+    auto &ctx = CompositionContext::get(data);
+
     _exposedInfo.clear();
     auto existingVariable = setBaseCompose(data, false, false, false);
+    if (!existingVariable) {
+      throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
+    }
+
+    auto invalidationPath = ctx.getPathToVariable(existingVariable);
 
     SHTypeInfo *originalTableType{};
 
@@ -1584,89 +1591,76 @@ struct Update : public SetUpdateBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      if (existingVariable) {
-        auto &exposed = existingVariable->exposed;
-        if (exposed.exposedType.basicType == SHType::Table) {
-          originalTableType = const_cast<SHTypeInfo *>(&exposed.exposedType);
+      auto &exposed = existingVariable->exposed;
+      if (exposed.exposedType.basicType == SHType::Table) {
+        originalTableType = const_cast<SHTypeInfo *>(&exposed.exposedType);
 
-          auto &tableKeys = exposed.exposedType.table.keys;
-          auto &tableTypes = exposed.exposedType.table.types;
-          if (_key.isVariable()) {
+        auto &tableKeys = exposed.exposedType.table.keys;
+        auto &tableTypes = exposed.exposedType.table.types;
+        if (_key.isVariable()) {
+          tableInnerValueTypes = findTableNoneEntry(originalTableType);
+        } else {
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            // if keys are populated they are not variables
+            auto &key = tableKeys.elements[y];
+            if (key == *_key) {
+              tableInnerValueTypes.elements = &tableTypes.elements[y];
+              tableInnerValueTypes.len = 1;
+            }
+          }
+          // Fallback to none type
+          if (tableInnerValueTypes.len == 0) {
             tableInnerValueTypes = findTableNoneEntry(originalTableType);
-          } else {
-            for (uint32_t y = 0; y < tableKeys.len; y++) {
-              // if keys are populated they are not variables
-              auto &key = tableKeys.elements[y];
-              if (key == *_key) {
-                tableInnerValueTypes.elements = &tableTypes.elements[y];
-                tableInnerValueTypes.len = 1;
-              }
-            }
-            // Fallback to none type
-            if (tableInnerValueTypes.len == 0) {
-              tableInnerValueTypes = findTableNoneEntry(originalTableType);
-            }
           }
-          _isGlobal = exposed.global;
-        }
-
-        if (!originalTableType) {
-          throw ComposeError("Update: error, original table type not found.");
-        }
-
-        if (tableInnerValueTypes.len == 0) {
-          if (_key.isVariable()) {
-            throw ComposeError(fmt::format(
-                "Update: can not update table with variable key \"{}\" because it has no \"none\" type field information ({}).",
-                *_key, *originalTableType));
-          } else {
-            throw ComposeError(fmt::format(
-                "Update: can not update table with variable key \"{}\" because it is not present in the table type({}).", *_key,
-                *originalTableType));
-          }
-        }
-
-        bool matched = false;
-        for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
-          if (matchTypes(data.inputType, tableInnerValueTypes.elements[i], true, true, true, true)) {
-            matched = true;
-            break;
-          }
-        }
-
-        if (!matched) {
-          std::string possibleTypes;
-          for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
-            if (i > 0) {
-              possibleTypes += ", ";
-            }
-            possibleTypes += fmt::format("{}", tableInnerValueTypes.elements[i]);
-          }
-          throw ComposeError(fmt::format("Update: error, update is changing table field for key {} from {} => {}", *_key,
-                                         possibleTypes, data.inputType));
-        }
-
-        const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
-
-        // we are a table!
-        _tableTypeInfo = *originalTableType;
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
-      } else {
-        if (!existingVariable) {
-          throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
-        }
-
-        auto &exposed = existingVariable->exposed;
-        if (!matchTypes(data.inputType, exposed.exposedType, true, true, true)) {
-          throw ComposeError("Update: error, update is changing the variable type.");
         }
         _isGlobal = exposed.global;
-
-        const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
-
-        // just a variable, keep unchanged!
-        _exposedInfo.push_back(existingVariable->exposed);
       }
+
+      if (!originalTableType) {
+        throw ComposeError("Update: error, original table type not found.");
+      }
+
+      if (tableInnerValueTypes.len == 0) {
+        if (_key.isVariable()) {
+          throw ComposeError(fmt::format(
+              "Update: can not update table with variable key \"{}\" because it has no \"none\" type field information ({}).",
+              *_key, *originalTableType));
+        } else {
+          throw ComposeError(fmt::format(
+              "Update: can not update table with variable key \"{}\" because it is not present in the table type({}).", *_key,
+              *originalTableType));
+        }
+      }
+
+      bool matched = false;
+      for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
+        if (matchTypes(data.inputType, tableInnerValueTypes.elements[i], true, true, true, true)) {
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        std::string possibleTypes;
+        for (uint32_t i = 0; i < tableInnerValueTypes.len; i++) {
+          if (i > 0) {
+            possibleTypes += ", ";
+          }
+          possibleTypes += fmt::format("{}", tableInnerValueTypes.elements[i]);
+        }
+        throw ComposeError(fmt::format("Update: error, update is changing table field for key {} from {} => {}", *_key,
+                                       possibleTypes, data.inputType));
+      }
+
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
+
+      // we are a table!
+      _tableTypeInfo = *originalTableType;
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
+
+      if (!_key.isVariable()) {
+        invalidationPath.append(compose::VariableAccessor::key(_key));
+      } // Otherwise invalidate the entire table
     } else {
       _exposedInfo.push_back(existingVariable->exposed);
     }
@@ -1675,6 +1669,9 @@ struct Update : public SetUpdateBase {
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
     _exposedInfo._innerInfo.elements[0].declared = false;
     _exposedInfo._innerInfo.elements[0].internalId = existingVariable->id;
+
+    // Invalidate the target reference
+    ctx.invalidateReferencePath(invalidationPath);
 
     return data.inputType;
   }
@@ -1929,7 +1926,7 @@ struct Get : public VariableBase {
     VariableBase::cleanup(context);
   }
 
-  SHVar& activate(SHContext *context, const SHVar &input) {
+  SHVar &activate(SHContext *context, const SHVar &input) {
     if (_isTable) {
       checkIfTableChanged();
     }
