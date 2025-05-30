@@ -64,11 +64,11 @@ RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/root/.cargo/regis
   -DSHARDS_WITH_RUN=ON \
   .. \
   && ninja -j$(nproc) shards \
-  && cp shards /shards/shards
+  && cp shards /usr/local/bin/shards
 
 # Runtime stage
 FROM fedora:42
 RUN dnf install -y bash curl ca-certificates sqlite && dnf clean all
-COPY --from=base /shards/shards /usr/local/bin/shards
+COPY --from=base /usr/local/bin/shards /usr/local/bin/shards
 WORKDIR /app
 ENTRYPOINT ["shards"]
