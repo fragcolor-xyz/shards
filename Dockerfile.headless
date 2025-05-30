@@ -18,23 +18,25 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
 
 # Build argument for cache invalidation
 ARG GIT_COMMIT=unknown
+ARG TARGETARCH
 LABEL git_commit=${GIT_COMMIT}
 
 # Cache buster - this will invalidate cache when commit changes
-RUN echo "Building with commit: ${GIT_COMMIT}"
+RUN echo "Building with commit: ${GIT_COMMIT} for architecture: ${TARGETARCH}"
 
 # Copy local repository sources (excluding build artifacts via .dockerignore)
 COPY . /shards
 WORKDIR /shards
 
-# Build Shards
-RUN --mount=type=cache,id=cargo-registry,target=/root/.cargo/registry \
-  --mount=type=cache,id=cargo-git,target=/root/.cargo/git \
-  --mount=type=cache,id=shards-build,target=/shards/build \
-  sh update.sh \
+RUN sh update.sh \
   && ./bootstrap \
-  && mkdir -p build \
-  && cd build \
+  && mkdir -p build
+
+# Build Shards
+RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/root/.cargo/registry \
+  --mount=type=cache,id=cargo-git,target=/root/.cargo/git \
+  --mount=type=cache,id=shards-build-headless-${TARGETARCH},target=/shards/build \
+  cd build \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DRUST_BUILD_TYPE=Small \
   -DSHARDS_WITH_EVERYTHING=OFF \
@@ -61,11 +63,12 @@ RUN --mount=type=cache,id=cargo-registry,target=/root/.cargo/registry \
   -DSHARDS_WITH_CSV=ON \
   -DSHARDS_WITH_RUN=ON \
   .. \
-  && ninja -j$(nproc) shards
+  && ninja -j$(nproc) shards \
+  && cp shards /shards/shards
 
 # Runtime stage
 FROM fedora:42
 RUN dnf install -y bash curl ca-certificates sqlite && dnf clean all
-COPY --from=base /shards/build/shards /usr/local/bin/shards
+COPY --from=base /shards/shards /usr/local/bin/shards
 WORKDIR /app
 ENTRYPOINT ["shards"]
