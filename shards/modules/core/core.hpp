@@ -1929,7 +1929,7 @@ struct Get : public VariableBase {
     VariableBase::cleanup(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar& activate(SHContext *context, const SHVar &input) {
     if (_isTable) {
       checkIfTableChanged();
     }

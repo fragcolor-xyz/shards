@@ -4,8 +4,11 @@
     v = input-ref
   })
   ; Without this line, the below would fail
+  Debug.Noop("Pre assign ref")
   v = input-ref
+  Debug.WireVariables("after assign refs")
   Inc(input-ref)
+  Debug.WireVariables("after increment")
   input-ref
 })
 
@@ -15,11 +18,16 @@
 } Looped: true)
 
 @wire(main {
+  Debug.WireVariables("early")
   1 >= v
+  Debug.WireVariables("after assign v")
   
   v | Log("v")
   
   Do(a) = ref0 ; Ref to copy of wire output
+  
+  Debug.WireVariables("after a and assign ref0")
+  
   Log("r0")
   Do(a) = ref1 ; Invalidates ref0
   Log("r1")
