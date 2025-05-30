@@ -59,6 +59,13 @@
   } "Direct Ref, Suspension point")
   
   Assert.NoCompose({
+    [1 2 3] | ForEach({
+      v = r0 ; Reference created in first iteration
+    })
+    1 > r0 ; Used outside loop - invalid scope
+  } "Loop-Spanning Ref")
+  
+  Assert.NoCompose({
     v = r0
     [] | ForEach({
       2 > v
@@ -67,13 +74,20 @@
     1 > r0
   } "Direct Ref, Conditional reassignment")
   
-  
   Assert.NoCompose({
     v = r0
     r0 = r1
     r1 = r2
     1 > r0
   } "Ref Chain, reassign original")
+  
+  ; References to sequence elements that get modified
+  Assert.NoCompose({
+    [1 2 3] >= seq
+    seq | Take(0) = elem-ref
+    4 >> seq ; Sequence modification might invalidate element ref
+    1 > elem-ref
+  } "Sequence Element Ref")
   
   ; This should be safe, since there are no suspension points, no risk of this ever running in parallel
   Assert.Compose({
@@ -101,7 +115,7 @@
     tbl | ToAny = any
     ; This changes the type of the variable tbl, invalidating the reference, this should not be allowed
     ; Solution?: Make ToAny output an immutable reference
-    4 > any 
+    4 > any
   } "Any var, reference types")
   
   v | Log("v")
