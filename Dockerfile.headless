@@ -28,7 +28,10 @@ COPY . /shards
 WORKDIR /shards
 
 # Build Shards
-RUN sh update.sh \
+RUN --mount=type=cache,id=cargo-registry,target=/root/.cargo/registry \
+  --mount=type=cache,id=cargo-git,target=/root/.cargo/git \
+  --mount=type=cache,id=shards-build,target=/shards/build \
+  sh update.sh \
   && ./bootstrap \
   && mkdir -p build \
   && cd build \
