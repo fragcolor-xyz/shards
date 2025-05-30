@@ -1765,4 +1765,8 @@ inline const SHVar& format_as(const shards::TableVar& v) {
   return (SHVar&)v;
 }
 
+inline const SHVar& format_as(const shards::Var& v) {
+  return (SHVar&)v;
+}
+
 #endif // SH_CORE_FOUNDATION
