@@ -784,7 +784,15 @@ struct ServerShard : public NetworkBase {
       _socket->set_option(boost::asio::ip::udp::socket::reuse_address(true));
       _socket->set_option(boost::asio::socket_base::send_buffer_size(65536));
       _socket->set_option(boost::asio::socket_base::receive_buffer_size(65536));
-      _socket->bind(udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      boost::asio::io_context tmp_io_context;
+      udp::resolver resolver(tmp_io_context);
+      auto sport = std::to_string(_port.get().payload.intValue);
+      auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
+      auto r = resolver.resolve(udp::v4(), hostname, sport);
+      if (r.size() == 0)
+        throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
+      auto bindEndpoint = r.begin()->endpoint();
+      _socket->bind(bindEndpoint);
 
       // start receiving
       boost::asio::post(io_context, [this]() {
