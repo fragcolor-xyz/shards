@@ -483,12 +483,12 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(const TTableVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
-  TTableVar(const SHVar &other) : SHVar() {
+  explicit TTableVar(const SHVar &other) : SHVar() {
     assert(other.valueType == SHType::Table);
     SH_CORE::cloneVar(*this, other);
   }
 
-  TTableVar(SHVar &&other) : SHVar() {
+  explicit TTableVar(SHVar &&other) : SHVar() {
     assert(other.valueType == SHType::Table);
     std::swap<SHVar>(*this, *reinterpret_cast<TTableVar *>(&other));
   }
@@ -710,7 +710,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   TSeqVar(TSeqVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
-  TSeqVar(SHVar &&other) : SHVar() {
+  explicit TSeqVar(SHVar &&other) : SHVar() {
     assert(other.valueType == SHType::Seq);
     std::swap<SHVar>(*this, other);
   }
@@ -893,5 +893,7 @@ template <typename T> struct hash<shards::TOwnedVar<T>> {
   size_t operator()(const shards::TOwnedVar<T> &v) const { return std::hash<SHVar>()(v); }
 };
 } // namespace std
+
+template <typename SH_CORE> auto format_as(const shards::TOwnedVar<SH_CORE> &ov) { return (SHVar &)ov; }
 
 #endif
