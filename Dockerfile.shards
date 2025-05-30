@@ -47,7 +47,7 @@ RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/root/.cargo/regis
 # Runtime stage
 FROM fedora:42
 RUN dnf install -y \
-  bash curl ca-certificates sqlite python3 \
+  bash curl ca-certificates sqlite \
   libX11 libXcursor libXrandr libXinerama libXi dbus-libs \
   && dnf clean all
 COPY --from=base /usr/local/bin/shards /usr/local/bin/shards
