@@ -424,6 +424,18 @@ struct ServerShard : public NetworkBase {
   ExposedInfo _sharedCopy;
 
   std::shared_ptr<SHMesh> _mesh;
+  bool _isDualStack = false; // Track if we're using dual-stack
+
+  // Helper to ensure endpoint compatibility with socket
+  udp::endpoint makeCompatibleEndpoint(const udp::endpoint& ep) {
+    if (_isDualStack && ep.address().is_v4()) {
+      // Convert IPv4 to IPv4-mapped IPv6 for dual-stack socket
+      auto v4_addr = ep.address().to_v4();
+      auto v6_addr = boost::asio::ip::make_address_v6(boost::asio::ip::v4_mapped, v4_addr);
+      return udp::endpoint(v6_addr, ep.port());
+    }
+    return ep;
+  }
 
   static inline Parameters params{
       {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
@@ -456,6 +468,7 @@ struct ServerShard : public NetworkBase {
       break;
     case 4:
       _disconnectionHandler = value;
+      break;
     default:
       break;
     }
@@ -660,8 +673,9 @@ struct ServerShard : public NetworkBase {
                                     return;
                                   } else if (!ec && bytes_recvd > 0) {
                                     KCPPeer *currentPeer = nullptr;
+                                    auto compatibleSender = makeCompatibleEndpoint(_sender);
                                     std::shared_lock<std::shared_mutex> lock(peersMutex);
-                                    auto it = _server._end2Peer.find(_sender);
+                                    auto it = _server._end2Peer.find(compatibleSender);
                                     if (it == _server._end2Peer.end()) {
                                       SPDLOG_LOGGER_TRACE(logger, "Received packet from unknown peer: {} port: {}",
                                                           _sender.address().to_string(), _sender.port());
@@ -676,8 +690,8 @@ struct ServerShard : public NetworkBase {
                                       try {
                                         auto peer = _pool->acquire(_composer, (void *)0);
                                         peer->reset();
-                                        _server._end2Peer[_sender] = peer;
-                                        peer->endpoint = _sender;
+                                        _server._end2Peer[compatibleSender] = peer;
+                                        peer->endpoint = compatibleSender;
                                         peer->user = this;
                                         peer->kcp->user = peer;
                                         peer->kcp->output = &ServerShard::udp_output;
@@ -736,8 +750,9 @@ struct ServerShard : public NetworkBase {
                                     SPDLOG_LOGGER_DEBUG(logger, "Error receiving: {}, peer: {} port: {}", ec.message(),
                                                         _sender.address().to_string(), _sender.port());
 
+                                    auto compatibleSender = makeCompatibleEndpoint(_sender);
                                     std::shared_lock<std::shared_mutex> lock(peersMutex);
-                                    auto it = _server._end2Peer.find(_sender);
+                                    auto it = _server._end2Peer.find(compatibleSender);
                                     if (it != _server._end2Peer.end()) {
                                       SPDLOG_LOGGER_TRACE(logger, "Removing peer: {} port: {}", _sender.address().to_string(),
                                                           _sender.port());
@@ -777,15 +792,33 @@ struct ServerShard : public NetworkBase {
     if (!_socket) {
       // first activation, let's init
       _socket.emplace(io_context);
-      _socket->open(udp::v4());
+      
+      // Try dual-stack (IPv6 with IPv4 mapped addresses) first
+      _isDualStack = true;
+      try {
+        _socket->open(udp::v6());
+        _socket->set_option(boost::asio::ip::v6_only(false)); // Enable dual-stack
+      } catch (const boost::system::system_error& e) {
+        SPDLOG_LOGGER_DEBUG(logger, "IPv6 dual-stack not available, falling back to IPv4: {}", e.what());
+        _isDualStack = false;
+        _socket->close();
+        _socket->open(udp::v4());
+      }
+      
       _socket->set_option(boost::asio::ip::udp::socket::reuse_address(true));
       _socket->set_option(boost::asio::socket_base::send_buffer_size(65536));
       _socket->set_option(boost::asio::socket_base::receive_buffer_size(65536));
+      
       boost::asio::io_context tmp_io_context;
       udp::resolver resolver(tmp_io_context);
       auto sport = std::to_string(_port.get().payload.intValue);
       auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
-      auto r = resolver.resolve(udp::v4(), hostname, sport);
+      
+      // Resolve for the appropriate protocol
+      auto r = _isDualStack ? 
+        resolver.resolve(udp::v6(), hostname, sport) :
+        resolver.resolve(udp::v4(), hostname, sport);
+        
       if (r.size() == 0)
         throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
       auto bindEndpoint = r.begin()->endpoint();
@@ -1080,21 +1113,30 @@ struct ClientShard : public NetworkBase {
       setup(); // reset the peer
 
       // first activation, let's init
-      _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
-      boost::asio::socket_base::send_buffer_size option_send(65536);
-      boost::asio::socket_base::receive_buffer_size option_recv(65536);
-      _socket->set_option(option_send);
-      _socket->set_option(option_recv);
-
       boost::asio::io_context tmp_io_context;
       udp::resolver resolver(tmp_io_context);
       auto sport = std::to_string(_port.get().payload.intValue);
       auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
-      auto r = resolver.resolve(udp::v4(), hostname, sport);
+      
+      // Resolve the target address to determine if we need IPv4 or IPv6
+      auto r = resolver.resolve(hostname, sport);
       if (r.size() == 0)
         throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
+      
       _server = r.begin()->endpoint();
       _peer.endpoint = _server;
+      
+      // Create socket with appropriate protocol family
+      if (_server.address().is_v6()) {
+        _socket.emplace(io_context, udp::endpoint(udp::v6(), 0));
+      } else {
+        _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
+      }
+      
+      boost::asio::socket_base::send_buffer_size option_send(65536);
+      boost::asio::socket_base::receive_buffer_size option_recv(65536);
+      _socket->set_option(option_send);
+      _socket->set_option(option_recv);
 
       // start receiving
       boost::asio::post(io_context, [this]() {
