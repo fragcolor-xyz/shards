@@ -426,7 +426,37 @@ struct ServerShard : public NetworkBase {
   std::shared_ptr<SHMesh> _mesh;
   bool _isDualStack = false; // Track if we're using dual-stack
 
-  // Helper to ensure endpoint compatibility with socket
+  // Helper to normalize bind addresses for dual-stack
+  std::string normalizeBindAddress(const std::string& hostname, bool isDualStack) {
+    if (!isDualStack) {
+      return hostname; // No changes for IPv4-only
+    }
+    
+    // Convert IPv4 bind-all addresses to IPv6 bind-all for dual-stack
+    if (hostname == "0.0.0.0" || 
+        hostname.empty() ||
+        hostname == "*") {
+      return "::";
+    }
+    
+    // Convert localhost variants to IPv6 bind-all for dual-stack
+    // This allows both IPv4 and IPv6 localhost connections
+    if (hostname == "localhost" ||
+        hostname == "127.0.0.1" ||
+        hostname == "::1") {
+      return "::";
+    }
+    
+    // IPv6 bind-all variants - normalize to standard form
+    if (hostname == "0:0:0:0:0:0:0:0") {
+      return "::";
+    }
+    
+    // Return as-is for other addresses (like fly-global-services)
+    return hostname;
+  }
+
+  // Helper to ensuint compatibility with socket
   udp::endpoint makeCompatibleEndpoint(const udp::endpoint& ep) {
     if (_isDualStack && ep.address().is_v4()) {
       // Convert IPv4 to IPv4-mapped IPv6 for dual-stack socket
@@ -814,10 +844,25 @@ struct ServerShard : public NetworkBase {
       auto sport = std::to_string(_port.get().payload.intValue);
       auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
       
-      // Resolve for the appropriate protocol
-      auto r = _isDualStack ? 
-        resolver.resolve(udp::v6(), hostname, sport) :
-        resolver.resolve(udp::v4(), hostname, sport);
+      // Normalize hostname for dual-stack binding
+      auto normalizedHostname = normalizeBindAddress(hostname, _isDualStack);
+      
+      // Try to resolve for the appropriate protocol, with fallback
+      udp::resolver::results_type r;
+      if (_isDualStack) {
+        try {
+          r = resolver.resolve(udp::v6(), normalizedHostname, sport);
+        } catch (const boost::system::system_error& e) {
+          SPDLOG_LOGGER_DEBUG(logger, "IPv6 resolution failed for {}, falling back to IPv4: {}", normalizedHostname, e.what());
+          _isDualStack = false;
+          _socket->close();
+          _socket->open(udp::v4());
+          // Use original hostname for IPv4 fallback
+          r = resolver.resolve(udp::v4(), hostname, sport);
+        }
+      } else {
+        r = resolver.resolve(udp::v4(), hostname, sport);
+      }
         
       if (r.size() == 0)
         throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
