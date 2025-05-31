@@ -34,9 +34,10 @@ RUN sh update.sh \
   && mkdir -p build
 
 # Build Shards
-RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/root/.cargo/registry \
-  --mount=type=cache,id=cargo-git,target=/root/.cargo/git \
+RUN --mount=type=cache,id=cargo-${TARGETARCH},target=/root/.cargo \
+  --mount=type=cache,id=rustup-${TARGETARCH},target=/root/.rustup \
   --mount=type=cache,id=shards-build-shards-${TARGETARCH},target=/shards/build \
+  --mount=type=cache,id=shards-tools-${TARGETARCH},target=/shards/tools/build \
   cd build \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DRUST_BUILD_TYPE=Small \
