@@ -8,6 +8,7 @@ if(NOT EMSCRIPTEN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/clip.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/mtmd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/mtmd-audio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/whisper.cpp/src/whisper.cpp
   )
 
