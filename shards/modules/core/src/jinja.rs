@@ -1,10 +1,10 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+use serde_json;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::{common_type, TableVar, ANY_TABLE_TYPES, STRING_TYPES};
 use shards::types::{ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
-use serde_json;
 
 #[derive(shards::shard)]
 #[shard_info("Jinja.Apply", "Apply a Jinja template to an input")]
@@ -24,24 +24,24 @@ struct JinjaShard {
 impl JinjaShard {
   fn initialize_environment(env: &mut minijinja::Environment<'static>) {
     // Add raise_exception function to allow users to raise custom errors from templates
-    env.add_function("raise_exception", |msg: String| -> Result<(), minijinja::Error> {
-      Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, msg))
-    });
-    
-    // Add tojson function to serialize an object to JSON and mark it safe for HTML
-    env.add_filter("tojson", |value: minijinja::Value| -> minijinja::Value {
-      let json = serde_json::to_string(&value).unwrap_or_else(|_| "null".to_string());
-      minijinja::Value::from_safe_string(json)
-    });
+    env.add_function(
+      "raise_exception",
+      |msg: String| -> Result<(), minijinja::Error> {
+        Err(minijinja::Error::new(
+          minijinja::ErrorKind::InvalidOperation,
+          msg,
+        ))
+      },
+    );
   }
 }
 
 impl Default for JinjaShard {
   fn default() -> Self {
     let mut env = minijinja::Environment::new();
-    
+
     JinjaShard::initialize_environment(&mut env);
-    
+
     Self {
       required: ExposedTypes::new(),
       template: ParamVar::default(),
