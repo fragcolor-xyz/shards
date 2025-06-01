@@ -35,6 +35,10 @@ impl JinjaShard {
     );
 
     minijinja_contrib::add_to_environment(env);
+
+    env.set_unknown_method_callback(|state, value, method, args| {
+      minijinja_contrib::pycompat::unknown_method_callback(state, value, method, args)
+    });
   }
 }
 
