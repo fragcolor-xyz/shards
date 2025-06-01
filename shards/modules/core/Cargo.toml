@@ -26,6 +26,7 @@ serde = "1.0"
 serde_yml = "0.0.12"
 serde_json = "1.0.102"
 minijinja = { version = "2.10.2", features = ["loader", "builtins", "json"] }
+minijinja-contrib = { version = "2.10.2", features = ["pycompat"] }
 
 [features]
 default = []

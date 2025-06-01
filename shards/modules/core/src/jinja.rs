@@ -33,6 +33,8 @@ impl JinjaShard {
         ))
       },
     );
+
+    minijinja_contrib::add_to_environment(env);
   }
 }
 
