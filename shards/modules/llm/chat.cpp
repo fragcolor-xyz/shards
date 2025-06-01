@@ -1,6 +1,5 @@
 #include "shared.hpp"
 
-#include "../../../deps/llama.cpp/tools/mtmd/clip-impl.h"
 #include "../../../deps/llama.cpp/tools/mtmd/mtmd.h"
 #include "../../../deps/llama.cpp/common/sampling.h"
 
@@ -30,8 +29,8 @@ struct ChatData {
     batch = llama_batch_init(params.n_batch, 0, 1);
   }
 
-  // CLIP model components
-  struct clip_ctx *clip_ctx = nullptr;
+  // MTMD model components
+  mtmd_context *mtmd_ctx = nullptr;
   std::string mmproj_path;
   int n_threads = 1;
 
@@ -41,9 +40,9 @@ struct ChatData {
   ~ChatData() {
     SHLOG_DEBUG("ChatData destructor called");
 
-    if (clip_ctx) {
-      clip_free(clip_ctx);
-      clip_ctx = nullptr;
+    if (mtmd_ctx) {
+      mtmd_free(mtmd_ctx);
+      mtmd_ctx = nullptr;
     }
     llama_batch_free(batch);
   }
@@ -221,9 +220,19 @@ struct Chat {
       auto mmproj_path = SHSTRING_PREFER_SHSTRVIEW(mmproj);
       if (!mmproj_path.empty()) {
         _data->mmproj_path = mmproj_path;
-        _data->clip_ctx = clip_model_load(mmproj_path.c_str(), 0);
-        if (!_data->clip_ctx) {
-          throw ActivationError("Failed to load CLIP model");
+        
+        // Create MTMD context parameters
+        mtmd_context_params ctx_params = mtmd_context_params_default();
+        ctx_params.use_gpu = true;
+        ctx_params.print_timings = false;
+        ctx_params.n_threads = _data->n_threads;
+        ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
+        ctx_params.image_marker = MTMD_DEFAULT_IMAGE_MARKER;
+        
+        // Initialize MTMD context
+        _data->mtmd_ctx = mtmd_init_from_file(mmproj_path.c_str(), model, ctx_params);
+        if (!_data->mtmd_ctx) {
+          throw ActivationError("Failed to load MTMD model");
         }
       }
     }
@@ -432,9 +441,9 @@ struct ChatAddImage {
 
     auto &chatData = varAsObjectChecked<ChatData>(_chat.get(), Chat::Type);
 
-    // Check if we have the CLIP model loaded
-    if (!chatData.clip_ctx) {
-      throw ActivationError("Chat has no CLIP model loaded - can't process images");
+    // Check if we have the MTMD model loaded
+    if (!chatData.mtmd_ctx) {
+      throw ActivationError("Chat has no MTMD model loaded - can't process images");
     }
 
     std::lock_guard<std::mutex> lock(*chatData._mutex);
@@ -454,21 +463,6 @@ struct ChatAddImage {
     }
     DEFER({ mtmd_bitmap_free(bitmap); });
 
-    // Create a mtmd_context from the CLIP model
-    mtmd_context_params ctx_params{};
-    ctx_params.use_gpu = true; // Use GPU if available
-    ctx_params.print_timings = false;
-    ctx_params.n_threads = chatData.n_threads;
-    ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
-    ctx_params.image_marker = MTMD_DEFAULT_IMAGE_MARKER;
-
-    // Create a temporary mtmd_context for this operation
-    mtmd_context *ctx_vision = mtmd_init_from_file(chatData.mmproj_path.c_str(), model, ctx_params);
-    if (!ctx_vision) {
-      throw ActivationError("Failed to initialize vision context");
-    }
-    DEFER({ mtmd_free(ctx_vision); });
-
     // Create input text and chunks for tokenization
     mtmd_input_text text;
     text.text = MTMD_DEFAULT_IMAGE_MARKER;
@@ -484,7 +478,7 @@ struct ChatAddImage {
 
     // Tokenize the input with the image
     const mtmd_bitmap* bitmap_ptr = bitmap;
-    if (mtmd_tokenize(ctx_vision, chunks, &text, &bitmap_ptr, 1) != 0) {
+    if (mtmd_tokenize(chatData.mtmd_ctx, chunks, &text, &bitmap_ptr, 1) != 0) {
       throw ActivationError("Failed to tokenize image input");
     }
 
@@ -524,17 +518,17 @@ struct ChatAddImage {
     }
 
     // Encode the image
-    if (mtmd_encode(ctx_vision, mtmd_input_chunk_get_tokens_image(image_chunk)) != 0) {
+    if (mtmd_encode(chatData.mtmd_ctx, mtmd_input_chunk_get_tokens_image(image_chunk)) != 0) {
       throw ActivationError("Failed to encode image");
     }
 
     // Get the embeddings
-    float *image_embd = mtmd_get_output_embd(ctx_vision);
+    float *image_embd = mtmd_get_output_embd(chatData.mtmd_ctx);
 
     // Process the image embeddings
     {
       // Check if we need to use non-causal attention for this model
-      bool use_non_causal = mtmd_decode_use_non_causal(ctx_vision);
+      bool use_non_causal = mtmd_decode_use_non_causal(chatData.mtmd_ctx);
       if (use_non_causal) {
         llama_set_causal_attn(chatData.ctx.get(), false);
       }
@@ -545,9 +539,11 @@ struct ChatAddImage {
       });
 
       // Determine if we need to use M-RoPE positions
-      bool use_mrope = mtmd_decode_use_mrope(ctx_vision);
+      bool use_mrope = mtmd_decode_use_mrope(chatData.mtmd_ctx);
       int n_pos_per_embd = use_mrope ? 4 : 1;
-      int n_mmproj_embd = clip_n_mmproj_embd(chatData.clip_ctx);
+      
+      // Get the embedding dimension from the model
+      int n_mmproj_embd = llama_model_n_embd(model);
 
       // Create embedding batch with proper positioning
       decode_embd_batch batch_img(image_embd, actual_n_tokens, n_pos_per_embd, n_mmproj_embd);
