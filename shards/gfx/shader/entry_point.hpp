@@ -2,8 +2,8 @@
 #define GFX_SHADER_ENTRY_POINT
 
 #include "../fwd.hpp"
+#include "../enums.hpp"
 #include "block.hpp"
-#include <gfx/enums.hpp>
 #include <string>
 #include <vector>
 
