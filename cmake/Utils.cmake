@@ -1,6 +1,6 @@
 # Get all propreties that cmake supports
 if(NOT CMAKE_PROPERTIES_TO_DUPLICATE)
-  execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTIES_TO_DUPLICATE)
+  execute_process(COMMAND ${CMAKE_COMMAND} --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTIES_TO_DUPLICATE)
 
   # Convert command output into a CMake list
   string(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTIES_TO_DUPLICATE "${CMAKE_PROPERTIES_TO_DUPLICATE}")
@@ -12,17 +12,21 @@ if(NOT CMAKE_PROPERTIES_TO_DUPLICATE)
     "INTERFACE_CXX_MODULE_HEADER_UNIT_SETS" "CXX_MODULE_HEADER_UNIT_SETS"
     "INTERFACE_CXX_MODULE_SETS" "CXX_MODULE_SETS"
     "BINARY_DIR" "IMPORTED" "SOURCE_DIR"
+    "MANUALLY_ADDED_DEPENDENCIES"
   )
 
   foreach(IGNORED_PROPERTY ${IGNORED_PROPERTIES})
     list(REMOVE_ITEM CMAKE_PROPERTIES_TO_DUPLICATE ${IGNORED_PROPERTY})
   endforeach()
+
+  message(VERBOSE "CMAKE_PROPERTIES_TO_DUPLICATE: ${CMAKE_PROPERTIES_TO_DUPLICATE}")
 endif()
 
 # Helper function that duplicates a library target into a new type
 # This allows defining a static library and duplicating it into a shared library target (with different defines, etc.)
 function(duplicate_library_target TARGET TYPE NEW_TARGET)
   add_library(${NEW_TARGET} ${TYPE})
+  message(VERBOSE "Duplicating library target ${TARGET} into ${NEW_TARGET} of type ${TYPE}")
 
   foreach(PROPERTY ${CMAKE_PROPERTIES_TO_DUPLICATE})
     string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" PROPERTY ${PROPERTY})
@@ -37,6 +41,7 @@ function(duplicate_library_target TARGET TYPE NEW_TARGET)
     if(IS_PROPERTY_SET)
       get_target_property(VALUE ${TARGET} ${PROPERTY})
       set_target_properties(${NEW_TARGET} PROPERTIES ${PROPERTY} "${VALUE}")
+      # message(VERBOSE "Setting ${PROPERTY} to ${VALUE}")
     endif()
   endforeach()
 
