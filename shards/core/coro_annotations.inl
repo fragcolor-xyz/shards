@@ -1,5 +1,5 @@
 
-SHARDS_INLINE void coroResumed(SHContext *context) {
+SHARDS_INLINE inline void coroResumed(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
     return;
@@ -30,7 +30,7 @@ SHARDS_INLINE void coroResumed(SHContext *context) {
   }
 }
 
-SHARDS_INLINE void coroSuspended(SHContext *context) {
+SHARDS_INLINE inline void coroSuspended(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
     return;
@@ -56,7 +56,7 @@ SHARDS_INLINE void coroSuspended(SHContext *context) {
   std::swap(context->prevLogContext, logTs.current);
 }
 
-SHARDS_INLINE void coroExtResume(SHWire *wire) {
+SHARDS_INLINE inline void coroExtResume(SHWire *wire) {
   if (!wire)
     return;
 
@@ -71,7 +71,7 @@ SHARDS_INLINE void coroExtResume(SHWire *wire) {
 #endif
 }
 
-SHARDS_INLINE void coroExtSuspend(SHWire *wire) {
+SHARDS_INLINE inline void coroExtSuspend(SHWire *wire) {
   if (!wire)
     return;
 
