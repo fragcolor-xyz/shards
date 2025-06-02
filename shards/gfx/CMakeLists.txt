@@ -3,7 +3,6 @@ option(SH_DEBUG "Enable context debug mode by default" OFF)
 set(GFX_SOURCES
   culling.cpp
   context.cpp
-  loop.cpp
   view.cpp
   gfx_wgpu.cpp
   renderer.cpp
@@ -43,7 +42,7 @@ set(GFX_SOURCES
   unique_id.cpp
   text/font.cpp
   text/stb_fonts.cpp
-  text/text_placer.cpp  
+  text/text_placer.cpp
   text/mesh_buffer.cpp
 )
 
@@ -183,10 +182,7 @@ if(HAS_WGPU_NATIVE)
   add_dependencies(gfx-core-obj cargo-gfx-rust)
 
   # Get include paths from gfx-rust and append them to the core library
-  get_target_property(GFX_RUST_INCLUDES gfx-rust INTERFACE_INCLUDE_DIRECTORIES)
-  message(STATUS "gfx-rust includes: ${GFX_RUST_INCLUDES}")
-  target_include_directories(gfx-core-obj PUBLIC ${GFX_RUST_INCLUDES})
-  target_compile_definitions(gfx-core-obj PUBLIC WEBGPU_NATIVE=1)
+  target_link_libraries(gfx-core-obj wgpu-headers)
 else()
   target_link_libraries(gfx INTERFACE gfx-core)
 endif()
