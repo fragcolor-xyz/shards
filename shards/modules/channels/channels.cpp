@@ -283,7 +283,7 @@ struct Consume : public Consumers {
         SH_SUSPEND(context, 0);
       }
 
-      // keep for recycling
+      // add to buffer
       _storage.add(std::move(output));
     }
 
@@ -360,7 +360,7 @@ struct Listen : public Consumers {
         SH_SUSPEND(context, 0);
       }
 
-      // keep for recycling
+      // add to buffer
       _storage.add(std::move(output));
     }
 
