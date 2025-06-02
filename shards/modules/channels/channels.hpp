@@ -75,16 +75,16 @@ public:
 
   virtual ~BroadcastChannel() {}
 
-  MPMCChannel &subscribe() {
+  std::shared_ptr<MPMCChannel> subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
     std::unique_lock<std::mutex> lock(subMutex);
-    return subscribers.emplace_back();
+    return subscribers.emplace_back(std::make_shared<MPMCChannel>());
   }
 
   virtual void clear() override {
     std::unique_lock<std::mutex> lock(subMutex);
     for (auto &sub : subscribers) {
-      sub.clear();
+      sub->clear();
     }
     subscribers.clear();
   }
@@ -92,7 +92,7 @@ public:
 protected:
   friend struct Broadcast;
   std::mutex subMutex;
-  std::list<MPMCChannel> subscribers;
+  std::list<std::shared_ptr<MPMCChannel>> subscribers;
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;

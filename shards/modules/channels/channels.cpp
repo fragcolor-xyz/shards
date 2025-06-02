@@ -133,10 +133,10 @@ struct Broadcast : public Base {
 
     // we locked it!
     for (auto it = _bChannel->subscribers.begin(); it != _bChannel->subscribers.end();) {
-      if (it->closed) {
+      if ((*it)->closed) {
         it = _bChannel->subscribers.erase(it);
       } else {
-        it->push_clone(input);
+        (*it)->push_clone(input);
 
         ++it;
       }
@@ -301,7 +301,7 @@ struct Consume : public Consumers {
 
 struct Listen : public Consumers {
   BroadcastChannel *_bChannel;
-  MPMCChannel *_subscriptionChannel;
+  std::shared_ptr<MPMCChannel> _subscriptionChannel;
 
   void cleanup(SHContext *context) {
     Consumers::cleanup(context);
@@ -309,7 +309,7 @@ struct Listen : public Consumers {
     // cleanup storage
     if (_subscriptionChannel) {
       _subscriptionChannel->closed = true;
-      _storage.recycle(_subscriptionChannel);
+      _storage.recycle(_subscriptionChannel.get());
     }
   }
 
@@ -321,7 +321,7 @@ struct Listen : public Consumers {
 
     _channel = get(_name);
     _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, *outTypePtr, _name.c_str());
-    _subscriptionChannel = &_bChannel->subscribe();
+    _subscriptionChannel = _bChannel->subscribe();
 
     if (_bufferSize == 1) {
       return *outTypePtr;
@@ -338,7 +338,7 @@ struct Listen : public Consumers {
     assert(_subscriptionChannel);
 
     // send previous values to recycle
-    _storage.recycle(_subscriptionChannel);
+    _storage.recycle(_subscriptionChannel.get());
 
     // reset buffer
     _current = _bufferSize;
