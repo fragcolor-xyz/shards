@@ -5,7 +5,7 @@
 #include <magic_enum.hpp>
 #include <functional>
 #include <shards/core/assert.hpp>
-#include <gfx/drawables/mesh_tree_drawable.hpp>
+#include <shards/gfx/drawables/mesh_tree_drawable.hpp>
 #include <optional>
 #include <unordered_map>
 #include <stdexcept>
