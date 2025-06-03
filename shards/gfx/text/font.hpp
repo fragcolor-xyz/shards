@@ -3,8 +3,8 @@
 
 #include <shards/gfx/fwd.hpp>
 #include <stb_truetype.h>
-#include <gfx/linalg.hpp>
-#include <gfx/gfx_wgpu.hpp>
+#include <shards/gfx/linalg.hpp>
+#include <shards/gfx/gfx_wgpu.hpp>
 #include <optional>
 #include <map>
 

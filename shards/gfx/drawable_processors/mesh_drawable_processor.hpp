@@ -391,7 +391,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     ZoneScoped;
 
     auto &storage = context.storage;
-    auto &allocator = context.storage.workerMemory;
+    auto &allocator = storage.workerMemory;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
 
     // NOTE: Memory is thrown away at end of frame, deconstructed by renderer

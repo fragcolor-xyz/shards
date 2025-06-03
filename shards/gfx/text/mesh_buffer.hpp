@@ -1,9 +1,9 @@
 #ifndef AAADCC4F_0596_4543_90E8_8B30232C111D
 #define AAADCC4F_0596_4543_90E8_8B30232C111D
 
-#include <gfx/mesh.hpp>
-#include <gfx/feature.hpp>
-#include <gfx/enums.hpp>
+#include <shards/gfx/mesh.hpp>
+#include <shards/gfx/feature.hpp>
+#include <shards/gfx/enums.hpp>
 #include <shards/core/pool.hpp>
 #include <vector>
 #include <unordered_map>

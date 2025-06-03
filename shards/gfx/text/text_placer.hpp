@@ -1,7 +1,7 @@
 #ifndef TEXT_PLACER_HPP
 #define TEXT_PLACER_HPP
 
-#include <gfx/linalg.hpp>
+#include <shards/gfx/linalg.hpp>
 #include <vector>
 #include <optional>
 #include "font.hpp"

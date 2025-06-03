@@ -5,9 +5,9 @@
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/gizmos/context.hpp>
 #include <shards/linalg_shim.hpp>
-#include <gfx/gizmos/shapes.hpp>
-#include <gfx/drawables/mesh_drawable.hpp>
-#include <gfx/mesh.hpp>
+#include <shards/gfx/gizmos/shapes.hpp>
+#include <shards/gfx/drawables/mesh_drawable.hpp>
+#include <shards/gfx/mesh.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
 #include "core.hpp"

@@ -11,8 +11,8 @@
 #include "struct_layout.hpp"
 #include "temp_variable.hpp"
 #include "fwd.hpp"
-#include <gfx/mesh.hpp>
-#include <gfx/params.hpp>
+#include <shards/gfx/mesh.hpp>
+#include <shards/gfx/params.hpp>
 #include <map>
 #include <memory>
 #include <optional>

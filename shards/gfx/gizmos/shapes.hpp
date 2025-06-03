@@ -7,7 +7,7 @@
 #include "../mesh.hpp"
 #include "../shader/blocks.hpp"
 #include "../../core/pool.hpp"
-#include <gfx/text/mesh_buffer.hpp>
+#include <shards/gfx/text/mesh_buffer.hpp>
 
 namespace gfx {
 
