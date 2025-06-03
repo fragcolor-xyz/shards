@@ -11,13 +11,10 @@ add_shards_module(physics
   SOURCES ${physics_SOURCES}
   REGISTER_SHARDS physics shapes debug body soft_body constraints)
 
-target_link_libraries(shards-module-physics
-  Jolt 
-  # Because of some gfx includes
-  shards-fast-string
-)
+target_link_libraries(shards-module-physics Jolt shards-fast-string)
+
 if(TARGET wgpu-headers)
-  target_link_libraries(shards-module-physics wgpu-headers)
+  target_link_libraries(shards-module-physics wgpu-headers shards-fast-string)
 endif()
 
 target_include_directories(shards-module-physics
