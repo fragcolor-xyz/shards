@@ -45,6 +45,9 @@ endif()
 # Headers only to wgpu-native
 add_library(wgpu-headers INTERFACE)
 
+# Add dependency for rust build script
+add_dependencies(wgpu-headers cargo-gfx-rust)
+
 if(HAS_WGPU_NATIVE)
   target_compile_definitions(wgpu-headers INTERFACE WEBGPU_NATIVE=1)
   target_include_directories(wgpu-headers INTERFACE
