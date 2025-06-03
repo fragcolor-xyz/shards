@@ -338,7 +338,7 @@ function(shards_generate_union UNION_TARGET_NAME)
     list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
 
     set(DUP_TARGET_NAME "${UNION_TARGET_NAME}_${TARGET_NAME}")
-    duplicate_library_target(${TARGET_NAME} STATIC ${DUP_TARGET_NAME})
+    duplicate_library_target(${TARGET_NAME} OBJECT ${DUP_TARGET_NAME})
     message(DEBUG "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (as: ${DUP_TARGET_NAME}, id: ${MODULE_ID})")
     target_link_libraries(${UNION_TARGET_NAME} ${DUP_TARGET_NAME})
 
