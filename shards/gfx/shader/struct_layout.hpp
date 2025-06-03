@@ -8,7 +8,7 @@
 #include "types.hpp"
 #include <linalg/linalg.h>
 #include <boost/container/flat_map.hpp>
-#include <fast_string/fmt.hpp>
+#include <shards/fast_string/fmt.hpp>
 #include <cassert>
 #include <map>
 #include <vector>

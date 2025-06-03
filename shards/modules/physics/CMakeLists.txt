@@ -12,7 +12,10 @@ add_shards_module(physics
   REGISTER_SHARDS physics shapes debug body soft_body constraints)
 
 target_link_libraries(shards-module-physics
-  Jolt
+  Jolt 
+  # Because of some gfx includes
+  wgpu-headers 
+  shards-fast-string
 )
 
 target_include_directories(shards-module-physics
