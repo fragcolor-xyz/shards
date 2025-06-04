@@ -171,7 +171,6 @@ jobs:
           lcov \
             --capture \
             --directory build/src \
-            --directory build/modules \
             --output-file coverage/coverage.info \
             --ignore-errors inconsistent,gcov,range,format
           # remove external dependencies
