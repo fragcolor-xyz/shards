@@ -3904,7 +3904,14 @@ impl TryFrom<&Var> for &str {
           var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
         )
       })
-      .map_err(|_| "Expected valid UTF-8 string, but casting failed.")
+      .map_err(|e| {
+        shlog_error!(
+          "Expected valid UTF-8 string, but casting failed: {:?}, string len: {}",
+          e,
+          unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen }
+        );
+        "Expected valid UTF-8 string, but casting failed."
+      })
     }
   }
 }

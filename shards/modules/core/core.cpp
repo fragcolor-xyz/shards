@@ -1561,6 +1561,10 @@ struct Assoc : public VariableBase {
       // recurse in, now that we have cell
       assert(_cell);
       return activate(context, input);
+      // reset cell, if _key is a variable
+      if (_key.isVariable()) {
+        _cell = nullptr;
+      }
     }
   }
 };
