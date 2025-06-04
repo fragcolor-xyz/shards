@@ -12,6 +12,7 @@
 
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
+#include <stdarg.h>
 
 namespace shards::Physics {
 std::atomic_uint64_t BodyNode::UidCounter = 0;
