@@ -883,20 +883,6 @@ template <class SH_CORE> struct TVarOrReference {
   operator SHVar &() { return const_cast<SHVar &>(*ptr); }
 };
 
-template <class SH_CORE> struct TReferencedVar : public TVarOrReference<SH_CORE> {
-  SHVar *ptr = nullptr;
-  TReferencedVar(SHContext *context, const SHVar &v) : TVarOrReference<SH_CORE>(context, v) {
-    ptr = SH_CORE::referenceVariable(context, SHSTRVIEW(v));
-    shassert(ptr && "Invalid variable");
-  }
-  TReferencedVar(SHContext *context, const char *varName) : TVarOrReference<SH_CORE>(context, varName) {
-    ptr = SH_CORE::findVariable(context, varName);
-    if (!ptr) {
-      throw std::runtime_error(fmt::format("Variable {} not found", varName));
-    }
-  }
-};
-
 }; // namespace shards
 
 // specialize hash for TOwnedVar
