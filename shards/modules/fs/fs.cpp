@@ -138,6 +138,31 @@ struct Extension {
   }
 };
 
+struct ReplaceExtension {
+  std::string _output;  
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  PARAM_PARAMVAR(_newExtension, "NewExtension", "The new extension to replace the existing extension with", {CoreInfo::StringOrStringVar});
+  PARAM_IMPL(PARAM_IMPL_FOR(_newExtension));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    p = p.replace_extension(SHSTRING_PREFER_SHSTRVIEW(_newExtension.get()));
+    _output.assign(p.string());
+    return Var(_output);
+  }
+};
 struct IsFile {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -757,33 +782,34 @@ struct IsNotAny {
   }
 };
 
-}; // namespace FS
-
 SHARDS_REGISTER_FN(fs) {
-  REGISTER_ENUM(FS::Copy::IfExistsEnumInfo);
+  REGISTER_ENUM(Copy::IfExistsEnumInfo);
 
-  REGISTER_SHARD("FS.Join", FS::Join);
-  REGISTER_SHARD("FS.Iterate", FS::Iterate);
-  REGISTER_SHARD("FS.Extension", FS::Extension);
-  REGISTER_SHARD("FS.Filename", FS::Filename);
-  REGISTER_SHARD("FS.RelativeTo", FS::RelativeTo);
-  REGISTER_SHARD("FS.Parent", FS::Parent);
-  REGISTER_SHARD("FS.Read", FS::Read);
-  REGISTER_SHARD("FS.Write", FS::Write);
-  REGISTER_SHARD("FS.IsFile", FS::IsFile);
-  REGISTER_SHARD("FS.IsDirectory", FS::IsDirectory);
-  REGISTER_SHARD("FS.Copy", FS::Copy);
-  REGISTER_SHARD("FS.Remove", FS::Remove);
-  REGISTER_SHARD("FS.RemoveAll", FS::RemoveAll);
-  REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
-  REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
-  REGISTER_SHARD("FS.CreateDirectories", FS::CreateDirectories);
-  REGISTER_SHARD("FS.Absolute", FS::Absolute);
-  REGISTER_SHARD("FS.IsAbsolute", FS::IsAbsolute);
-  REGISTER_SHARD("FS.Normalize", FS::Normalize);
-  REGISTER_SHARD("FS.Rename", FS::Rename);
-  REGISTER_SHARD("FS.Is", FS::Is);
-  REGISTER_SHARD("FS.IsAny", FS::IsAny);
-  REGISTER_SHARD("FS.IsNotAny", FS::IsNotAny);
+  REGISTER_SHARD("FS.Join", Join);
+  REGISTER_SHARD("FS.Iterate", Iterate);
+  REGISTER_SHARD("FS.Extension", Extension);
+  REGISTER_SHARD("FS.ReplaceExtension", ReplaceExtension);
+  REGISTER_SHARD("FS.Filename", Filename);
+  REGISTER_SHARD("FS.RelativeTo", RelativeTo);
+  REGISTER_SHARD("FS.Parent", Parent);
+  REGISTER_SHARD("FS.Read", Read);
+  REGISTER_SHARD("FS.Write", Write);
+  REGISTER_SHARD("FS.IsFile", IsFile);
+  REGISTER_SHARD("FS.IsDirectory", IsDirectory);
+  REGISTER_SHARD("FS.Copy", Copy);
+  REGISTER_SHARD("FS.Remove", Remove);
+  REGISTER_SHARD("FS.RemoveAll", RemoveAll);
+  REGISTER_SHARD("FS.LastWriteTime", LastWriteTime);
+  REGISTER_SHARD("FS.SetWriteTime", SetWriteTime);
+  REGISTER_SHARD("FS.CreateDirectories", CreateDirectories);
+  REGISTER_SHARD("FS.Absolute", Absolute);
+  REGISTER_SHARD("FS.IsAbsolute", IsAbsolute);
+  REGISTER_SHARD("FS.Normalize", Normalize);
+  REGISTER_SHARD("FS.Rename", Rename);
+  REGISTER_SHARD("FS.Is", Is);
+  REGISTER_SHARD("FS.IsAny", IsAny);
+  REGISTER_SHARD("FS.IsNotAny", IsNotAny);
 }
+
+}; // namespace FS
 }; // namespace shards
