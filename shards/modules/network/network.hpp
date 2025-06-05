@@ -88,6 +88,7 @@ struct Peer {
   virtual void send(boost::span<const uint8_t> data) = 0;
   virtual void send_text(std::string_view data) = 0;
   virtual bool disconnected() const = 0;
+  virtual void disconnect() = 0;
   int64_t getId() { return id; }
   void sendVar(const SHVar &input) { send(getSendWriter().varToSendBuffer(input)); }
 
