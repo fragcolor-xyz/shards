@@ -851,6 +851,8 @@ template <class SH_CORE> struct TVarOrReference {
       if (auto var = SH_CORE::findVariable(context, toSWL(SHSTRVIEW(v)))) {
         ptr = var;
         owned = var;
+      } else {
+        throw std::runtime_error(fmt::format("Variable {} not found", SHSTRVIEW(v)));
       }
     }
   }
