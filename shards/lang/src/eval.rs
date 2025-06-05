@@ -2048,7 +2048,9 @@ impl<'e> VariableResolver<'e> {
           ("namespace", true) => {
             let namespace = self.e.full_namespace.clone();
             let namespace = namespace.as_str();
-            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar::from(Var::ephemeral_string(namespace)))))
+            Ok(ResolvedVar::new_const(SVar::Cloned(ClonedVar::from(
+              Var::ephemeral_string(namespace),
+            ))))
           }
           _ => {
             if let Some(defined_value) = find_defined(&func.name, self.e).map(|x| x.clone()) {
@@ -3304,6 +3306,38 @@ fn process_template(
   }
 }
 
+fn eval_cond_value(
+  v: &Value,
+  e: &mut EvalEnv,
+  line_info: LineInfo,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), ShardsError> {
+  match v {
+    Value::Shards(shards) => {
+      for stmt in &shards.statements {
+        eval_statement(stmt, e, cancellation_token.clone())?;
+      }
+    }
+    Value::Shard(shard) => {
+      add_shard(shard, line_info, e)?;
+    }
+    Value::None(_) => {}
+    _ => {
+      return Err(
+        (
+          format!(
+            "if built-in function requires a Shards parameter, got {:?}",
+            v
+          ),
+          line_info,
+        )
+          .into(),
+      )
+    }
+  }
+  return Ok(());
+}
+
 fn eval_pipeline(
   pipeline: &Pipeline,
   e: &mut EvalEnv,
@@ -3800,6 +3834,65 @@ fn eval_pipeline(
               Err(
                 (
                   "run built-in function requires a parameter",
+                  get_block_line_info(e, block),
+                )
+                  .into(),
+              )
+            }
+          }
+          ("if", true) => {
+            if let Some(ref params) = func.params {
+              let param_helper = ParamHelper::new(params);
+              let v = param_helper.get_param_by_name_or_index("Value", 0).ok_or(
+                (
+                  "if built-in function requires a Value parameter",
+                  get_block_line_info(e, block),
+                )
+                  .into(),
+              )?;
+              let then_ = param_helper.get_param_by_name_or_index("Then", 1);
+              let else_ = param_helper.get_param_by_name_or_index("Else", 2);
+
+              let v = resolve_var(&v.value, get_block_line_info(e, block), None, e)?.into_var();
+              let vr = match &v {
+                SVar::Cloned(var) => &var.0,
+                SVar::NotCloned(var) => var,
+              };
+
+              if !vr.is_bool() {
+                return Err(
+                  (
+                    "if built-in function requires a boolean parameter",
+                    get_block_line_info(e, block),
+                  )
+                    .into(),
+                );
+              }
+
+              if unsafe { vr.payload.__bindgen_anon_1.boolValue } {
+                if let Some(then_) = then_ {
+                  eval_cond_value(
+                    &then_.value,
+                    e,
+                    get_block_line_info(e, block),
+                    cancellation_token.clone(),
+                  )?;
+                }
+              } else {
+                if let Some(else_) = else_ {
+                  eval_cond_value(
+                    &else_.value,
+                    e,
+                    get_block_line_info(e, block),
+                    cancellation_token.clone(),
+                  )?;
+                }
+              }
+              Ok(())
+            } else {
+              Err(
+                (
+                  "if built-in function requires a parameter",
                   get_block_line_info(e, block),
                 )
                   .into(),
