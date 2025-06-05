@@ -1,19 +1,35 @@
-@macro(if-root [cond yes no] {
-  @template(filter-ast [] {
-    If({ExpectTable | Take("shs") | IsSeq} {
-        ExpectTable | Take("shs")
-      } {
-        = in
-        [in]
-      }
-    )
-  })
-  
-  Sequence(pipelines)
-  cond | If(IsAny([true "true" 1]) {
-      @ast(yes) | FromJson | @filter-ast()
+@template(if-filter-ast [] {
+  If({ExpectTable | Take("shs") | IsSeq} {
+      ExpectTable | Take("shs")
     } {
-      @ast(no) | FromJson | @filter-ast()
+      = in
+      [in]
+    }
+  )
+})
+@macro(if-root [cond yes no] {
+  cond | If(IsAny([true "true" 1]) {
+      @ast(yes) | FromJson | @if-filter-ast()
+    } {
+      @ast(no) | FromJson | @if-filter-ast()
+    }
+  ) | ToJson
+})
+
+@macro(when [cond yes] {
+  cond | If(IsAny([true "true" 1]) {
+      @ast(yes) | FromJson | @if-filter-ast()
+    } {
+      [[]]
+    }
+  ) | ToJson
+})
+
+@macro(when-not [cond no] {
+  cond | If(IsAny([true "true" 1]) {
+      [[]]
+    } {
+      @ast(no) | FromJson | @if-filter-ast()
     }
   ) | ToJson
 })

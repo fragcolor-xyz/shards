@@ -49,6 +49,7 @@ void SHWire::destroy() {
 #if SH_CORO_NEED_STACK_MEM
   if (stackMem) {
     ::operator delete[](stackMem, std::align_val_t{16});
+    stackMem = nullptr;
   }
 #endif
 }
