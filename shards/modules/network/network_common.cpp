@@ -249,6 +249,29 @@ struct PeerShard {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return _peer.get(); }
 };
+
+struct Disconnect {
+  static SHTypesInfo inputTypes() { return Types::Peer; }
+  static SHTypesInfo outputTypes() { return Types::Peer; }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard disconnects the peer passed as input. "
+                   "Works with both KCP and WebSocket peers.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The peer to disconnect."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The same peer object."); }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    return data.inputType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &peer = varAsObjectChecked<Peer>(input, Types::Peer);
+    peer.disconnect();
+    return input;
+  }
+};
 }; // namespace Network
 }; // namespace shards
 
@@ -259,4 +282,5 @@ SHARDS_REGISTER_FN(network_common) {
   REGISTER_SHARD("Network.Send", Send);
   REGISTER_SHARD("Network.PeerID", PeerID);
   REGISTER_SHARD("Network.Peer", PeerShard);
+  REGISTER_SHARD("Network.Disconnect", Disconnect);
 }

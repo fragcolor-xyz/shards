@@ -8,9 +8,13 @@
 @wire(handler {
   Log("Server's Peer Received")
   When(Is("The End") {
-    Log("Disconnecting client after receiving end sequence")
+    Log("Received end sequence")
     true > test/server-received-end
-    "" | Stop
+  })
+  When(Is("Disconnect Me") {
+    Log("Server disconnecting peer on request")
+    Network.Peer | Network.Disconnect
+    true > test/server-disconnected-peer
   })
   "Ok" | Network.Send
 } Looped: true)
@@ -48,6 +52,7 @@
       
       When({test/client-received-smaller | And | test/client-received-random1} {
         "The End" | Network.Send | Log("Sent end")
+        "Disconnect Me" | Network.Send | Log("Requesting disconnect after end")
       })
     }) = peer
     Once(Do(client-init))
@@ -63,6 +68,7 @@
   false | Set(test/client-received-smaller Global: true) | Log("Client received smaller Set")
   false | Set(test/client-received-random1 Global: true) | Log("Client received random1 Set")
   false | Set(test/server-received-end Global: true) | Log("Server received end Set")
+  false | Set(test/server-disconnected-peer Global: true) | Log("Server disconnected peer Set")
   ForRange(1 @tick-count-1 {
     Pause(0.0)
   })
@@ -71,6 +77,7 @@
   test/server-received-end | Log("server-received-end") | Assert.Is(true)
   test/client-received-smaller | Log("client-received-smaller") | Assert.Is(true)
   test/client-received-random1 | Log("client-received-random1") | Assert.Is(true)
+  test/server-disconnected-peer | Log("server-disconnected-peer") | Assert.Is(true)
 } Priority: -2)
 
 @wire(network-test-stun {

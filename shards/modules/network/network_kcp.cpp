@@ -247,6 +247,11 @@ struct KCPPeer final : public Peer {
 
   bool disconnected() const override { return disconnected_; }
 
+  void disconnect() override {
+    std::scoped_lock lock(mutex);
+    disconnected_ = true;
+  }
+
   void send_text(std::string_view data) override {
     send(boost::span<const uint8_t>(reinterpret_cast<const uint8_t *>(data.data()), data.size()));
   }
@@ -890,6 +895,13 @@ struct ServerShard : public NetworkBase {
       for (auto &[end, peer] : _server._end2Peer) {
         if (now > (peer->_lastContact.load() + SHDuration(_timeoutSecs))) {
           SPDLOG_LOGGER_DEBUG(logger, "Peer {}:{} timed out", peer->endpoint->address().to_string(), peer->endpoint->port());
+          _stopWireQueue.push(peer->wire.get());
+          continue;
+        }
+        
+        // Check if peer was manually disconnected
+        if (peer->disconnected()) {
+          SPDLOG_LOGGER_DEBUG(logger, "Peer {}:{} manually disconnected", peer->endpoint->address().to_string(), peer->endpoint->port());
           _stopWireQueue.push(peer->wire.get());
           continue;
         }

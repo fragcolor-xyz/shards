@@ -73,6 +73,10 @@ struct WSPeer : public Peer {
   void send(boost::span<const uint8_t> data) override { pollnet_send_binary(ctx, socket, data.data(), data.size()); }
   void send_text(std::string_view data) override { pollnet_send(ctx, socket, toSWL(data)); }
   bool disconnected() const override { return disconnected_; }
+  
+  void disconnect() override {
+    close();
+  }
 };
 struct WSHandler : public WSPeer {
   entt::connection onStopConnection;
@@ -657,6 +661,10 @@ struct WSPeer : public Peer {
   }
 
   bool disconnected() const override { return disconnected_; }
+  
+  void disconnect() override {
+    close();
+  }
 };
 
 struct WSClient {
