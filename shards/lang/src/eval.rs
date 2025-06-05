@@ -3318,10 +3318,14 @@ fn eval_cond_value(
         eval_statement(stmt, e, cancellation_token.clone())?;
       }
     }
+    Value::None(_) => {}
     _ => {
       return Err(
         (
-          "cond-eval built-in function requires a Shards parameter",
+          format!(
+            "if built-in function requires a Shards parameter, got {:?}",
+            v
+          ),
           line_info,
         )
           .into(),
@@ -3833,12 +3837,12 @@ fn eval_pipeline(
               )
             }
           }
-          ("cond-eval", true) => {
+          ("if", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
               let v = param_helper.get_param_by_name_or_index("Value", 0).ok_or(
                 (
-                  "cond-eval built-in function requires a Value parameter",
+                  "if built-in function requires a Value parameter",
                   get_block_line_info(e, block),
                 )
                   .into(),
@@ -3855,7 +3859,7 @@ fn eval_pipeline(
               if !vr.is_bool() {
                 return Err(
                   (
-                    "cond-eval built-in function requires a boolean parameter",
+                    "if built-in function requires a boolean parameter",
                     get_block_line_info(e, block),
                   )
                     .into(),
@@ -3864,18 +3868,28 @@ fn eval_pipeline(
 
               if unsafe { vr.payload.__bindgen_anon_1.boolValue } {
                 if let Some(then_) = then_ {
-                  eval_cond_value(&then_.value, e, get_block_line_info(e, block), cancellation_token.clone())?;
+                  eval_cond_value(
+                    &then_.value,
+                    e,
+                    get_block_line_info(e, block),
+                    cancellation_token.clone(),
+                  )?;
                 }
               } else {
                 if let Some(else_) = else_ {
-                  eval_cond_value(&else_.value, e, get_block_line_info(e, block), cancellation_token.clone())?;
+                  eval_cond_value(
+                    &else_.value,
+                    e,
+                    get_block_line_info(e, block),
+                    cancellation_token.clone(),
+                  )?;
                 }
               }
               Ok(())
             } else {
               Err(
                 (
-                  "cond-eval built-in function requires a parameter",
+                  "if built-in function requires a parameter",
                   get_block_line_info(e, block),
                 )
                   .into(),

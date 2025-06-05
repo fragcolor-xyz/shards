@@ -147,7 +147,7 @@
 })
 
 @inline-template(maybe-hot-reload [script-path wires] {
-  @cond-eval(@script-hot-reload {
+  @if(@script-hot-reload {
       @hot-reload(@script-dir @include-dirs @namespace script-path wires)
     } {
       @include(script-path)

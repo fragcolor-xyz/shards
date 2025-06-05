@@ -1,21 +1,3 @@
-@macro(if [cond yes no] {
-  @template(filter-ast [] {
-    If({ExpectTable | Take("shs") | IsSeq} {
-        ExpectTable | Take("shs")
-      } {
-        = in
-        [[in]]
-      }
-    )
-  })
-  cond | If(IsAny([true "true" 1]) {
-      @ast(yes) | FromJson | @filter-ast() 
-    } {
-      @ast(no) | FromJson | @filter-ast() 
-    }
-  ) | ToJson
-})
-
 @macro(tmp-path [path] {
   Sequence(pipelines)
   @platform | If(Is("emscripten") {
