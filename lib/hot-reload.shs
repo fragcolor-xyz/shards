@@ -1,4 +1,3 @@
-@include("std/if.shs" Once: true)
 @define(script-hot-reload false IgnoreRedefined: true)
 
 ; Builds wrapper wires around imported hot-reloadable wires
@@ -148,8 +147,7 @@
 })
 
 @inline-template(maybe-hot-reload [script-path wires] {
-  @if-root(@script-hot-reload {
-      ; #(Log("Running hot reload macro"))
+  @cond-eval(@script-hot-reload {
       @hot-reload(@script-dir @include-dirs @namespace script-path wires)
     } {
       @include(script-path)
