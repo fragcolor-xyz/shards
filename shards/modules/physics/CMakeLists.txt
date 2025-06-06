@@ -14,9 +14,11 @@ add_shards_module(physics
 target_link_libraries(shards-module-physics
   Jolt 
   # Because of some gfx includes
-  wgpu-headers 
   shards-fast-string
 )
+if(TARGET wgpu-headers)
+  target_link_libraries(shards-module-physics wgpu-headers)
+endif()
 
 target_include_directories(shards-module-physics
   PUBLIC ${SHARDS_DIR}/deps/JoltPhysics/TestFramework
