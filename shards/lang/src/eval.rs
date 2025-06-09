@@ -3318,6 +3318,9 @@ fn eval_cond_value(
         eval_statement(stmt, e, cancellation_token.clone())?;
       }
     }
+    Value::Shard(shard) => {
+      add_shard(shard, line_info, e)?;
+    }
     Value::None(_) => {}
     _ => {
       return Err(
