@@ -3112,7 +3112,7 @@ macro_rules! ref_counted_object_type_impl {
           let rc = arg1 as *mut shards::types::RefCounted<$type>;
           (*rc).inc_ref();
         }
-
+ 
         unsafe extern "C" fn release(arg1: *mut std::os::raw::c_void) {
           let rc = arg1 as *mut shards::types::RefCounted<$type>;
           (*rc).dec_ref();
