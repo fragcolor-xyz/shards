@@ -87,6 +87,9 @@ struct Produce : public Base {
     _channel = get(_name);
     auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
     _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, receiverType, _name.c_str());
+
+    SPDLOG_TRACE("Produce {} => {}", _name, (void*)_channel.get());
+
     return data.inputType;
   }
 
@@ -165,10 +168,10 @@ struct BufferedConsumer {
 
   bool empty() { return buffer.empty(); }
 
-  operator SHVar() {
+  SHVar &get(bool asSeq) {
     auto len = buffer.size();
     assert(len > 0);
-    if (len > 1) {
+    if (asSeq) {
       SHVar res{};
       res.valueType = SHType::Seq;
       res.payload.seqValue.elements = &buffer[0];
@@ -245,6 +248,7 @@ struct Consume : public Consumers {
     }
 
     _channel = get(_name);
+    SPDLOG_TRACE("Consume {} => {}", _name, (void*)_channel.get());
     _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, *outTypePtr, _name.c_str());
 
     if (_bufferSize == 1) {
@@ -274,7 +278,7 @@ struct Consume : public Consumers {
         // check also for channel completion
         if (_mpChannel->closed) {
           if (!_storage.empty()) {
-            return _storage;
+            return _storage.get(_bufferSize > 1);
           } else {
             context->stopFlow(Var::Empty);
             return Var::Empty;
@@ -287,7 +291,7 @@ struct Consume : public Consumers {
       _storage.add(std::move(output));
     }
 
-    return _storage;
+    return _storage.get(_bufferSize > 1);
   }
 
   void cleanup(SHContext *context) {
@@ -351,7 +355,7 @@ struct Listen : public Consumers {
         // check also for channel completion
         if (_bChannel->closed) {
           if (!_storage.empty()) {
-            return _storage;
+            return _storage.get(_bufferSize > 1);
           } else {
             context->stopFlow(Var::Empty);
             return Var::Empty;
@@ -364,7 +368,7 @@ struct Listen : public Consumers {
       _storage.add(std::move(output));
     }
 
-    return _storage;
+    return _storage.get(_bufferSize > 1);
   }
 };
 
@@ -437,6 +441,7 @@ std::shared_ptr<Channel> get(const std::string &name) {
     _l.unlock();
     std::scoped_lock<decltype(mutex)> _l1(mutex);
     auto sp = std::make_shared<Channel>();
+    SPDLOG_TRACE("Created new channel: {}", name);
     channels[name] = sp;
     return sp;
   } else {
@@ -445,6 +450,7 @@ std::shared_ptr<Channel> get(const std::string &name) {
       _l.unlock();
       std::scoped_lock<decltype(mutex)> _l1(mutex);
       sp = std::make_shared<Channel>();
+      SPDLOG_TRACE("Created new channel: {}", name);
       channels[name] = sp;
     }
     return sp;
