@@ -6,10 +6,11 @@ version = "${CARGO_CRATE_VERSION}"
 edition = "2021"
 
 [features]
-tracy = []
+tracy = ["tracy-client"]
 
 [dependencies]
 ${CARGO_CRATE_DEPS} 
+tracy-client = { version = "0.17.4", optional = true }
 
 [patch.crates-io]
 chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }
@@ -26,6 +27,8 @@ onig_sys = { git = "https://github.com/shards-lang/rust-onig.git", version = "=6
 # Graphics patches
 objc = { git = "https://github.com/shards-lang/rust-objc.git", version = "=0.2.7", branch = "shards-0.2.7" }
 metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.0", branch = "shards-0.29.0" }
+
+tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 
 [profile.dev.package]
 tiny-skia = { opt-level = 3 } 
