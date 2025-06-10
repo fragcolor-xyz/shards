@@ -168,7 +168,7 @@ struct BufferedConsumer {
 
   bool empty() { return buffer.empty(); }
 
-  SHVar &get(bool asSeq) {
+  SHVar get(bool asSeq) {
     auto len = buffer.size();
     assert(len > 0);
     if (asSeq) {
