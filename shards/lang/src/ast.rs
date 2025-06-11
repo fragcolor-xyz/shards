@@ -9,6 +9,9 @@ use shards::{
 };
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
 
+// String table trait implementations
+use crate::{CollectStrings, StringTableContext, SerializeWithStringTable, DeserializeWithStringTable, StringTable};
+
 #[derive(Parser)]
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
@@ -111,6 +114,14 @@ pub enum Number {
   Hexadecimal(RcStrWrapper),
 }
 
+impl CollectStrings for Number {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    if let Number::Hexadecimal(s) = self {
+      s.collect_strings(ctx);
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename = "Iden")]
 pub struct Identifier {
@@ -170,6 +181,15 @@ impl Identifier {
   }
 }
 
+impl CollectStrings for Identifier {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.name.collect_strings(ctx);
+    for ns in &self.namespaces {
+      ns.collect_strings(ctx);
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Value {
   #[serde(rename = "none")]
@@ -222,6 +242,44 @@ pub enum Value {
   Func(Function),
 }
 
+impl CollectStrings for Value {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    match self {
+      Value::Identifier(id) => id.collect_strings(ctx),
+      Value::Enum(e1, e2) => {
+        e1.collect_strings(ctx);
+        e2.collect_strings(ctx);
+      }
+      Value::Number(n) => n.collect_strings(ctx),
+      Value::String(s) => s.collect_strings(ctx),
+      Value::Seq(seq) => {
+        for v in seq {
+          v.collect_strings(ctx);
+        }
+      }
+      Value::Table(table) => {
+        for (k, v) in table {
+          k.collect_strings(ctx);
+          v.collect_strings(ctx);
+        }
+      }
+      Value::Shard(f) => f.collect_strings(ctx),
+      Value::Shards(s) => s.collect_strings(ctx),
+      Value::EvalExpr(s) => s.collect_strings(ctx),
+      Value::Expr(s) => s.collect_strings(ctx),
+      Value::TakeTable(id, vec) => {
+        id.collect_strings(ctx);
+        for s in vec {
+          s.collect_strings(ctx);
+        }
+      }
+      Value::TakeSeq(id, _) => id.collect_strings(ctx),
+      Value::Func(f) => f.collect_strings(ctx),
+      _ => {} // Primitive types don't contain strings
+    }
+  }
+}
+
 impl TryFrom<Var> for Value {
   type Error = &'static str;
 
@@ -267,6 +325,15 @@ pub struct Param {
   pub custom_state: CustomStateContainer,
 }
 
+impl CollectStrings for Param {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    if let Some(name) = &self.name {
+      name.collect_strings(ctx);
+    }
+    self.value.collect_strings(ctx);
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Function {
   #[serde(flatten)]
@@ -276,6 +343,17 @@ pub struct Function {
 
   #[serde(skip)]
   pub custom_state: CustomStateContainer,
+}
+
+impl CollectStrings for Function {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.name.collect_strings(ctx);
+    if let Some(params) = &self.params {
+      for param in params {
+        param.collect_strings(ctx);
+      }
+    }
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -302,6 +380,28 @@ pub enum BlockContent {
   Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
+impl CollectStrings for BlockContent {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    match self {
+      BlockContent::Shard(f) => f.collect_strings(ctx),
+      BlockContent::Shards(s) => s.collect_strings(ctx),
+      BlockContent::Const(v) => v.collect_strings(ctx),
+      BlockContent::TakeTable(id, vec) => {
+        id.collect_strings(ctx);
+        for s in vec {
+          s.collect_strings(ctx);
+        }
+      }
+      BlockContent::TakeSeq(id, _) => id.collect_strings(ctx),
+      BlockContent::EvalExpr(s) => s.collect_strings(ctx),
+      BlockContent::Expr(s) => s.collect_strings(ctx),
+      BlockContent::Func(f) => f.collect_strings(ctx),
+      BlockContent::Program(p) => p.collect_strings(ctx),
+      BlockContent::Empty => {}
+    }
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
   pub content: BlockContent,
@@ -310,9 +410,23 @@ pub struct Block {
   pub custom_state: CustomStateContainer,
 }
 
+impl CollectStrings for Block {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.content.collect_strings(ctx);
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pipeline {
   pub blocks: Vec<Block>,
+}
+
+impl CollectStrings for Pipeline {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    for block in &self.blocks {
+      block.collect_strings(ctx);
+    }
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -334,10 +448,25 @@ pub struct Assignment {
   pub line_info: Option<LineInfo>,
 }
 
+impl CollectStrings for Assignment {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.identifier.collect_strings(ctx);
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
   Assignment(Assignment),
   Pipeline(Pipeline),
+}
+
+impl CollectStrings for Statement {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    match self {
+      Statement::Assignment(a) => a.collect_strings(ctx),
+      Statement::Pipeline(p) => p.collect_strings(ctx),
+    }
+  }
 }
 
 impl Statement {
@@ -369,6 +498,12 @@ pub struct Metadata {
   pub debug_info: RefCell<DebugInfo>,
 }
 
+impl CollectStrings for Metadata {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.name.collect_strings(ctx);
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
@@ -376,10 +511,25 @@ pub struct Sequence {
   pub custom_state: CustomStateContainer,
 }
 
+impl CollectStrings for Sequence {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    for stmt in &self.statements {
+      stmt.collect_strings(ctx);
+    }
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
   pub sequence: Sequence,
   pub metadata: Metadata,
+}
+
+impl CollectStrings for Program {
+  fn collect_strings(&self, ctx: &mut StringTableContext) {
+    self.metadata.collect_strings(ctx);
+    self.sequence.collect_strings(ctx);
+  }
 }
 
 pub trait RewriteFunction {
