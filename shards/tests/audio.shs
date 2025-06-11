@@ -3,7 +3,7 @@
 
 @include("defs.shs") ; if macro
 
-@define(test-device true IgnoreRedefined: true)
+@define(test-device "true" IgnoreRedefined: true)
 
 @mesh(main)
 
@@ -58,28 +58,28 @@
 ; @schedule(main play-file-dwt)
 ; @run(main) | Assert.Is(true)
 
-@if(@test-device {
+@if(#(@test-device | Is("true")) {
   @wire(device-test-1 {
     Audio.Device(InputChannels: 2)
     Audio.Channel(Shards: {Input})
   } Looped: true)
-
+  
   @schedule(main device-test-1)
   @run(main 0.1 25) | Assert.Is(true)
-
+  
   @wire(device-test-2 {
     Audio.Device
     Audio.Channel(Shards: {
       Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 2 From: 4.0 To: 6.0)
     })
   } Looped: true)
-
+  
   @schedule(main device-test-2)
   @run(main) | Assert.Is(true)
-
+  
   @wire(device-test-2-bytes {
     Audio.Device
-
+    
     Once({
       "./data/Ode_to_Joy.ogg" | FS.Read(Bytes: true) = audio-bytes
     })
@@ -87,49 +87,49 @@
       Audio.ReadFile(Source: audio-bytes Channels: 2 From: 4.0 To: 6.0)
     })
   } Looped: true)
-
+  
   @schedule(main device-test-2-bytes)
   @run(main) | Assert.Is(true)
-
+  
   @wire(device-test-3 {
     Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator
     })
   } Looped: true)
-
+  
   @schedule(main device-test-3)
   @run(main 0.1 25) | Assert.Is(true)
-
+  
   @wire(device-test-4 {
     Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Triangle)
     })
   } Looped: true)
-
+  
   @schedule(main device-test-4)
   @run(main 0.1 25) | Assert.Is(true)
-
+  
   @wire(device-test-5 {
     Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Square)
     })
   } Looped: true)
-
+  
   @schedule(main device-test-5)
   @run(main 0.1 25) | Assert.Is(true)
-
+  
   @wire(device-test-6 {
     Audio.Device
     Audio.Channel(Shards: {
       440.0 | Audio.Oscillator(Waveform::Sawtooth)
     })
   } Looped: true)
-
+  
   @schedule(main device-test-6)
   @run(main 0.1 25) | Assert.Is(true)
-
+  
   none
 } Pass)
