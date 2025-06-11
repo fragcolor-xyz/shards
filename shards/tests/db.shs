@@ -2,7 +2,7 @@
 
 @mesh(root)
 
-@define(with-sqlite-vec true IgnoreRedefined: true)
+@define(with-sqlite-vec "true" IgnoreRedefined: true)
 
 @wire(extra-queries {
   Log("AAAAA")
@@ -96,7 +96,7 @@
   Msg("Test 5 passed")
   
   ; Test sqlite-vec - BEHIND cmake flag WITH_SQLITE_VEC
-  @if(@with-sqlite-vec {
+  @if(#(@with-sqlite-vec | Is("true")) {
     DB.LoadExtension("sqlite-vec" @db-file)
     """
   create virtual table vec_examples using vec0(
