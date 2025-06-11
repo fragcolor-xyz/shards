@@ -10,9 +10,11 @@ file(GLOB_RECURSE EXTRA_SOURCES
 if(TRACY_ENABLE)
   message(STATUS "Building gfx crate with tracy profiling enabled")
   list(APPEND FEATURES tracy)
+
   if(TRACY_ON_DEMAND)
     list(APPEND FEATURES tracy-on-demand)
   endif()
+
   list(APPEND RUST_ENV
     TRACY_CLIENT_LIB=TracyClient # The lib file is called libTracyClient.a but this needs to be and -l compatible arg
     TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>
@@ -40,8 +42,17 @@ if(WIN32)
   target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
 endif()
 
+# Headers only to wgpu-native
+add_library(wgpu-headers INTERFACE)
+
 if(HAS_WGPU_NATIVE)
-  target_compile_definitions(gfx-rust INTERFACE WEBGPU_NATIVE=1)
-  target_include_directories(gfx-rust INTERFACE ${WGPU_NATIVE_PATH}/ffi)
-  target_include_directories(gfx-rust INTERFACE ${WGPU_NATIVE_PATH}/ffi/webgpu-headers)
+  target_compile_definitions(wgpu-headers INTERFACE WEBGPU_NATIVE=1)
+  target_include_directories(wgpu-headers INTERFACE
+    ${WGPU_NATIVE_PATH}/ffi
+    ${WGPU_NATIVE_PATH}/ffi/webgpu-headers)
+
+  target_link_libraries(gfx-rust INTERFACE wgpu-headers)
+
+  # Add dependency for rust build script
+  add_dependencies(wgpu-headers cargo-gfx-rust)
 endif()

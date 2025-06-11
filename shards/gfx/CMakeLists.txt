@@ -3,7 +3,6 @@ option(SH_DEBUG "Enable context debug mode by default" OFF)
 set(GFX_SOURCES
   culling.cpp
   context.cpp
-  loop.cpp
   view.cpp
   gfx_wgpu.cpp
   renderer.cpp
@@ -43,7 +42,7 @@ set(GFX_SOURCES
   unique_id.cpp
   text/font.cpp
   text/stb_fonts.cpp
-  text/text_placer.cpp  
+  text/text_placer.cpp
   text/mesh_buffer.cpp
 )
 
@@ -55,6 +54,9 @@ else()
 endif()
 
 add_library(gfx-core-obj OBJECT ${GFX_SOURCES})
+
+# Headers only
+add_library(gfx-headers INTERFACE)
 
 target_bundle_files(gfx-core-obj
   PREFIX bundled
@@ -78,14 +80,17 @@ target_compile_features(gfx-core-obj PUBLIC cxx_std_20)
 set(GFX_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/gfx-generated)
 file(MAKE_DIRECTORY ${GFX_GENERATED_DIR})
 
-target_include_directories(gfx-core-obj
-  PUBLIC
+set(HEADERS_ARG
   ${SHARDS_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_SOURCE_DIR}/../..
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-  PRIVATE ${GFX_GENERATED_DIR}
 )
+target_include_directories(gfx-core-obj
+  PUBLIC ${HEADERS_ARG}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${GFX_GENERATED_DIR})
+target_include_directories(gfx-headers INTERFACE ${HEADERS_ARG})
+
 target_link_libraries(gfx-core-obj
   tinygltf draco-wrapper
   magic_enum nameof linalg
@@ -141,6 +146,7 @@ if(EMSCRIPTEN)
   em_link_js_library(gfx-core-obj gfx_events.js)
 
   target_include_directories(gfx-core-obj PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
+  target_include_directories(gfx-headers INTERFACE ${SHARDS_DIR}/deps/SDL3/include)
 else()
   target_link_libraries(gfx-core-obj SDL3-static)
 
@@ -179,14 +185,9 @@ if(HAS_WGPU_NATIVE)
 
   add_subdirectory(rust)
 
-  # Loose dependency for bindings header
-  add_dependencies(gfx-core-obj cargo-gfx-rust)
-
   # Get include paths from gfx-rust and append them to the core library
-  get_target_property(GFX_RUST_INCLUDES gfx-rust INTERFACE_INCLUDE_DIRECTORIES)
-  message(STATUS "gfx-rust includes: ${GFX_RUST_INCLUDES}")
-  target_include_directories(gfx-core-obj PUBLIC ${GFX_RUST_INCLUDES})
-  target_compile_definitions(gfx-core-obj PUBLIC WEBGPU_NATIVE=1)
+  target_link_libraries(gfx-core-obj wgpu-headers)
+  target_link_libraries(gfx-headers INTERFACE wgpu-headers)
 else()
   target_link_libraries(gfx INTERFACE gfx-core)
 endif()
