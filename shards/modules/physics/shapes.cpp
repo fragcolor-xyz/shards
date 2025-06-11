@@ -1,11 +1,14 @@
-#include "../gfx/shards_types.hpp"
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
+#include <shards/registry.hpp>
 #include "physics.hpp"
 
-#include <gfx/worker_memory.hpp>
-#include <gfx/transform_updater.hpp>
+#if SHARDS_WITH_GFX
+#include "../gfx/shards_types.hpp"
+#include <shards/gfx/worker_memory.hpp>
+#include <shards/gfx/transform_updater.hpp>
+#endif
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
@@ -22,7 +25,9 @@ static auto logger = getLogger();
 struct BoxShapeShard {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static SHTypesInfo outputTypes() { return SHShape::Type; }
-  static SHOptionalString help() { return SHCCSTR("This shard creates a box collision shape from the input half extents provided."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a box collision shape from the input half extents provided.");
+  }
   static SHOptionalString inputHelp() { return SHCCSTR("The x,y and z half extents of the box collision shape to create."); }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the created box collision shape."); }
 
@@ -96,7 +101,9 @@ struct CapsuleShapeShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return SHShape::Type; }
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a capsule physics collision shape, using the height and radius provided in the HalfHeight and Radius parameters respectively. The capsule will be centered around the origin with one sphere cap at (0, -HalfHeight, 0) and the "
+    return SHCCSTR("This shard creates a capsule physics collision shape, using the height and radius provided in the HalfHeight "
+                   "and Radius parameters respectively. The capsule will be centered around the origin with one sphere cap at "
+                   "(0, -HalfHeight, 0) and the "
                    "other at (0, HalfHeight, 0).");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
@@ -134,6 +141,7 @@ struct CapsuleShapeShard {
   }
 };
 
+#if SHARDS_WITH_GFX
 struct MeshSrcTypes {
   static inline shards::Types Types{gfx::ShardsTypes::Mesh, gfx::ShardsTypes::Drawable};
 };
@@ -241,7 +249,9 @@ struct MeshHullShapeShard {
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the created physics collisionshape."); }
 
   // See "Convex Radius" in https://jrouwe.github.io/JoltPhysics/index.html
-  PARAM_PARAMVAR(_maxConvexRadius, "MaxConvexRadius", "The convex radius given to the collision shape. A larger convex radius results in better performance but a less accurate simulation. A convex radius of 0 is allowed",
+  PARAM_PARAMVAR(_maxConvexRadius, "MaxConvexRadius",
+                 "The convex radius given to the collision shape. A larger convex radius results in better performance but a "
+                 "less accurate simulation. A convex radius of 0 is allowed",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_maxConvexRadius));
 
@@ -277,6 +287,7 @@ struct MeshHullShapeShard {
     return (_output = std::move(var));
   }
 };
+#endif
 
 } // namespace shards::Physics
 
@@ -286,5 +297,7 @@ SHARDS_REGISTER_FN(shapes) {
   REGISTER_SHARD("Physics.BoxShape", BoxShapeShard);
   REGISTER_SHARD("Physics.SphereShape", SphereShapeShard);
   REGISTER_SHARD("Physics.CapsuleShape", CapsuleShapeShard);
+#if SHARDS_WITH_GFX
   REGISTER_SHARD("Physics.HullShape", MeshHullShapeShard);
+#endif
 }

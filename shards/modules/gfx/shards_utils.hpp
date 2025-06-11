@@ -2,6 +2,7 @@
 #define AD2CA4AE_4D00_49A0_8DD6_323B82813690
 
 #include <shards/core/foundation.hpp>
+#include <shards/core/check_utils.hpp>
 #include <shards/utility.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/linalg.hpp>
@@ -13,6 +14,8 @@
 #include "shards_types.hpp"
 
 namespace gfx {
+using shards::checkType;
+using shards::checkEnumType;
 
 struct ReferencedVar {
   const SHVar *ptr;
@@ -61,22 +64,6 @@ inline bool getFromTable(SHContext *shContext, const SHTable &table, const SHVar
     return true;
   }
   return false;
-}
-
-inline void checkType(const SHType &type, SHType expectedType, const char *name) {
-  if (type != expectedType)
-    throw formatException("{} type should be {}, was {}", name, magic_enum::enum_name(expectedType), magic_enum::enum_name(type));
-}
-
-inline void checkEnumType(const SHVar &var, const shards::Type &expectedType, const char *name) {
-  checkType(var.valueType, SHType::Enum, name);
-  shards::Type actualType = shards::Type::Enum(var.payload.enumVendorId, var.payload.enumTypeId);
-  if (expectedType != actualType) {
-    SHTypeInfo typeInfoA = expectedType;
-    SHTypeInfo typeInfoB = actualType;
-    throw formatException("{} enum type should be {}/{}, was {}/{}", name, typeInfoA.enumeration.vendorId,
-                          typeInfoA.enumeration.typeId, typeInfoB.enumeration.vendorId, typeInfoB.enumeration.typeId);
-  }
 }
 
 inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatures, const SHVar &input) {

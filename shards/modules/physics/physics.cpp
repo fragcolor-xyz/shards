@@ -5,14 +5,14 @@
 #include <shards/common_types.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/gfx/types.hpp>
-#include <gfx/hasherxxh3.hpp>
-#include <gfx/drawable.hpp>
+#include <shards/gfx/hasherxxh3.hpp>
 #include <tracy/Wrapper.hpp>
 #include "physics.hpp"
 #include "core.hpp"
 
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
+#include <stdarg.h>
 
 namespace shards::Physics {
 std::atomic_uint64_t BodyNode::UidCounter = 0;

@@ -5,7 +5,7 @@
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
 #include <shards/linalg_shim.hpp>
-#include <gfx/linalg.hpp>
+#include <shards/gfx/linalg.hpp>
 
 namespace gfx {
 

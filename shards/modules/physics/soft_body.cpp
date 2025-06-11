@@ -2,9 +2,12 @@
 #include <shards/core/params.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/common_types.hpp>
-#include <gfx/worker_memory.hpp>
-#include <gfx/transform_updater.hpp>
+#include <shards/registry.hpp>
+#if SHARDS_WITH_GFX
+#include <shards/gfx/worker_memory.hpp>
+#include <shards/gfx/transform_updater.hpp>
 #include "../gfx/shards_types.hpp"
+#endif
 #include "physics.hpp"
 #include "core.hpp"
 
@@ -268,6 +271,7 @@ struct SoftBodyShard {
   }
 };
 
+#if SHARDS_WITH_GFX
 struct SoftBodyBuilder {
   JPH::Ref<JPH::SoftBodySharedSettings> settings;
 
@@ -436,10 +440,13 @@ struct SoftBodyShape {
     return (_output = std::move(var));
   }
 };
+#endif
 } // namespace shards::Physics
 
 SHARDS_REGISTER_FN(soft_body) {
   using namespace shards::Physics;
   REGISTER_SHARD("Physics.SoftBody", SoftBodyShard);
+#if SHARDS_WITH_GFX
   REGISTER_SHARD("Physics.SoftBodyShape", SoftBodyShape);
+#endif
 }
