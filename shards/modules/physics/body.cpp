@@ -5,8 +5,7 @@
 #include <shards/common_types.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/gfx/types.hpp>
-#include <gfx/hasherxxh3.hpp>
-#include <gfx/drawable.hpp>
+#include <shards/gfx/hasherxxh3.hpp>
 #include <tracy/Wrapper.hpp>
 #include "physics.hpp"
 #include "core.hpp"

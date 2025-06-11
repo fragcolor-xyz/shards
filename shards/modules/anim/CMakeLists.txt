@@ -4,4 +4,4 @@ set(SOURCES
 
 add_shards_module(anim SOURCES ${SOURCES}
   REGISTER_SHARDS anim)
-target_link_libraries(shards-module-anim gfx-core)
+target_include_directories(shards-module-anim PRIVATE ${SHARDS_DIR}/anim gfx-headers)
