@@ -115,6 +115,7 @@ struct DockArea {
   headers: Vec<ParamVar>,
   shards: Vec<ShardsVar>,
   tabs: egui_dock::DockState<TabData>,
+  default_tab: i64,
 }
 
 #[derive(shards::shards_enum)]
