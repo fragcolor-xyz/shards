@@ -7,7 +7,7 @@
 
 @mesh(main)
 
-@if({@test-device Is("true")} {
+@if(#(@test-device Is("true")) {
   @wire(main-audio {
     Audio.Engine
 
