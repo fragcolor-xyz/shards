@@ -257,7 +257,8 @@ function(shards_generate_rust_union TARGET_NAME)
     file(COPY_FILE ${CARGO_TOML}.tmp ${CARGO_TOML} ONLY_IF_DIFFERENT)
 
     unset(ENABLED_FEATURES)
-    if(TRACY_ENABLE)
+    option(TRACY_RUST_ALLOC "Enable tracy memory allocation tracking (rust side, very slow)" OFF)
+    if(TRACY_RUST_ALLOC)
       list(APPEND ENABLED_FEATURES tracy)
     endif()
 
