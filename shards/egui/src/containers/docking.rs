@@ -267,7 +267,7 @@ impl LegacyShard for DockArea {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard always outputs None."))
+    OptionalString(shccstr!("This shard outputs the input unmodified."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
