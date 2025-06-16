@@ -5,6 +5,7 @@ use super::EXPERIMENTAL_TRUE;
 use crate::util;
 
 use crate::CONTEXTS_NAME;
+use crate::HELP_OUTPUT_EQUAL_INPUT;
 
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
@@ -28,7 +29,7 @@ use shards::types::ANY_TYPES;
 
 use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::types::STRING_TYPES;
-use shards::types::INT_OR_NONE_TYPES_SLICE;
+use shards::types::INT_TYPES;
 
 use std::convert::TryInto;
 
@@ -58,7 +59,7 @@ lazy_static! {
   (
     cstr!("DefaultTab"),
     cstr!("The index of the tab to open by default. 0 being the right most tab."),
-    &INT_OR_NONE_TYPES_SLICE[..],
+    &INT_TYPES[..],
   ).into(),
   ];
 }
@@ -267,7 +268,7 @@ impl LegacyShard for DockArea {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("This shard outputs the input unmodified."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
