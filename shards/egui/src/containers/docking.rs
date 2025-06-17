@@ -5,6 +5,7 @@ use super::EXPERIMENTAL_TRUE;
 use crate::util;
 
 use crate::CONTEXTS_NAME;
+use crate::HELP_OUTPUT_EQUAL_INPUT;
 
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
@@ -28,6 +29,9 @@ use shards::types::ANY_TYPES;
 
 use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::types::STRING_TYPES;
+use shards::types::INT_TYPES;
+
+use std::convert::TryInto;
 
 const TAB_NAME: &'static str = "UI.Tab";
 
@@ -51,7 +55,13 @@ lazy_static! {
     cstr!("The UI contents containing tabs."),
     &SHARDS_OR_NONE_TYPES[..],
   )
-    .into(),];
+    .into(),
+  (
+    cstr!("DefaultTab"),
+    cstr!("The index of the tab to open by default. 0 being the right most tab."),
+    &INT_TYPES[..],
+  ).into(),
+  ];
 }
 
 impl Default for Tab {
@@ -217,6 +227,7 @@ impl Default for DockArea {
       headers: Vec::new(),
       shards: Vec::new(),
       tabs: egui_dock::DockState::new(Vec::new()),
+      default_tab: 0,
     }
   }
 }
@@ -241,7 +252,7 @@ impl LegacyShard for DockArea {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO."))
+    OptionalString(shccstr!("Serves as a container for the UI.Tab shard."))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -249,7 +260,7 @@ impl LegacyShard for DockArea {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO."))
+    OptionalString(shccstr!("The input of this shard is ignored."))
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -257,7 +268,7 @@ impl LegacyShard for DockArea {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -311,6 +322,12 @@ impl LegacyShard for DockArea {
 
         self.contents.set_param(value)
       }
+      1 => {
+        if let Ok(int_value) = value.try_into() {
+          self.default_tab = int_value;
+        }
+        Ok(())
+      }
       _ => Err("Invalid parameter index"),
     }
   }
@@ -318,6 +335,7 @@ impl LegacyShard for DockArea {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.contents.get_param(),
+      1 => Var::from(self.default_tab),
       _ => Var::default(),
     }
   }
@@ -375,9 +393,10 @@ impl LegacyShard for DockArea {
       self.tabs.push_to_first_leaf(td);
     }
 
-    // Focus on first tab
-    if !self.tabs.surfaces_count() == 0 {
-      self.tabs.set_active_tab((0.into(), 0.into(), 0.into()));
+    // Focus on specified default tab
+    if self.tabs.surfaces_count() > 0 {
+      let tab_index = self.default_tab.clamp(0, self.tabs.surfaces_count() as i64 - 1);
+      self.tabs.set_active_tab((0.into(), 0.into(), (tab_index as usize).into()));
     }
 
     Ok(())
