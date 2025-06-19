@@ -34,7 +34,7 @@
   Log("depth")
   Math.Add(1)
   Cond(
-  [{IsLess(5)} {Do(recur)}])
+  [{IsLess(5)} {Restart}])
   Log("res")
 })
 
@@ -105,12 +105,12 @@
   Wait(loop)
   Assert.Is(5 true)
   Log
-
+  
   ; test logic
   ; ensure a sub inline wire
   ; using Return mechanics
   ; is handled by If
-
+  
   -10
   If(
     Predicate: Do(dologic)
@@ -118,7 +118,7 @@
     Else: {false}
   )
   Assert.Is(true true)
-
+  
   -10
   If(
     Predicate: Do(dologic)
@@ -126,7 +126,7 @@
     Else: {false}
   )
   Assert.IsNot(false true)
-
+  
   11
   If(
     Predicate: Do(dologic)
@@ -134,7 +134,7 @@
     Else: {false}
   )
   Assert.Is(true true)
-
+  
   11
   If(
     Predicate: Do(dologic)
@@ -142,7 +142,7 @@
     Else: {false}
   )
   Assert.IsNot(false true)
-
+  
   0
   If(
     Predicate: Do(dologic)
@@ -150,7 +150,7 @@
     Else: {false}
   )
   Assert.Is(false true)
-
+  
   0
   If(
     Predicate: Do(dologic)
@@ -158,31 +158,31 @@
     Else: {false}
   )
   Assert.IsNot(true true)
-
+  
   "Hello world" = hello-var
-
+  
   @wire(print-ok {
     Log | hello-var | Assert.Is("Hello world" true) | Log | "Ok"
   })
   Const(["A" "B" "C"])
   TryMany(print-ok)
   Assert.Is(["Ok" "Ok" "Ok"] true)
-
+  
   @wire(print-a {
     Log | hello-var | Assert.Is("Hello world" true) | Log | "A"
   })
   Const(["A" "B" "C"])
   TryMany(print-a Policy: WaitUntil::FirstSuccess)
   Assert.Is("A" true)
-
+  
   Const(["A" "B" "C"])
   TryMany(print-ok Threads: 3)
   Assert.Is(["Ok" "Ok" "Ok"] true)
-
+  
   Const(["A" "B" "C"])
   TryMany(print-a Threads: 3 Policy: WaitUntil::FirstSuccess)
   Assert.Is("A" true)
-
+  
   @wire(keep-state3 {
     Once({
       Input >= starting
@@ -193,11 +193,11 @@
   Repeat({
     my-result
     DoMany(keep-state3) > my-result
-
+    
   } Times: 3)
   my-result
   Assert.Is([10 31 342] true)
-
+  
   @wire(wide-test-1 {
     Math.Add(1)
   })
@@ -207,7 +207,7 @@
     Assert.Is([11 11 11 11 11 11 11 11 11 11] true)
     Log
   } Times: 10)
-
+  
   @wire(wide-test-2 {
     RandomBytes(8)
     ToHex
@@ -217,16 +217,16 @@
     Expand(10 wide-test-2 Threads: 10)
     Log
   } Times: 10)
-
+  
   10
   Expand(10 wide-test-1)
   Assert.Is([11 11 11 11 11 11 11 11 11 11] true)
   Log = expanded
-
+  
   WhenDone({
     expanded | Log("Expanded after stop!")
   })
-
+  
   -10
   If(
     Predicate: {Do(spawner) >= ccc | Wait(ccc) | ExpectBool}
@@ -234,7 +234,7 @@
     Else: {false}
   )
   Assert.IsNot(false true)
-
+  
   11
   If(
     Predicate: {Do(spawner) >= ccc | Wait(ccc) | ExpectBool}
@@ -242,7 +242,7 @@
     Else: {false}
   )
   Assert.Is(true true)
-
+  
   Msg("Done")
 })
 
@@ -433,10 +433,10 @@
 
 @wire(peek-test {
   Detach(more-perfect-starter)
-
+  
   Peek(more-perfect-starter) | Assert.Is(none)
   IsRunning(more-perfect-starter) | Assert.Is(true)
-
+  
   Wait(more-perfect-starter) | Assert.Is(true)
   Peek(more-perfect-starter) | Assert.Is(true)
   IsRunning(more-perfect-starter) | Assert.Is(false)
@@ -479,7 +479,7 @@
   4 | Expand(Wire: {
     Math.Multiply(2)
   } Size: 8) | Log("Expanded")
-
+  
   [1 2 3 4] | TryMany(Wire: {
     = i
     ToFloat = f | Math.Multiply(0.25) = pause-duration
@@ -487,7 +487,7 @@
     Pause(pause-duration)
     f-2
   } Threads: 8 Policy: WaitUntil::AllSuccess) | Log("TryMany'd")
-
+  
   ["John" "Fred" "Eddie"] | DoMany({
     >= str
     "Hello, " | PrependTo(str)

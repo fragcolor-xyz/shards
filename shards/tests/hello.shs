@@ -281,7 +281,7 @@ Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log
       value
     } {
       Msg("Less than 10")
-      value | Do(tail-call-restart) | ExpectInt
+      value | Restart
     }
   )
 })
