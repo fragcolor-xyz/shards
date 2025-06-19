@@ -1837,11 +1837,6 @@ void run(SHWire *wire, shards::Coroutine *coro) {
       // as it's likely coming from flowStorage of context!
       wire->previousOutput = runRes.output;
       break;
-    } else if (unlikely(runRes.state == SHRunWireOutputState::Restarted)) {
-      // must clone over currentInput!
-      // restart overwrites currentInput on purpose
-      wire->currentInput = context.getFlowStorage();
-      running = true; // keep in this case!
     }
 
     if (!wire->unsafe && running) {

@@ -479,12 +479,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       context->stopFlow(_outputClone);
       return _outputClone;
     } else {
-      if (runRes.state == SHRunWireOutputState::Restarted) {
-        inputPtr = &context->getFlowStorage();
-        context->continueFlow();
-        SH_SUSPEND(context, 0.0);
-        goto run_wire_loop;
-      } else if (context->shouldContinue()) {
+      if (context->shouldContinue()) {
         SH_SUSPEND(context, 0.0);
         goto run_wire_loop;
       } else {
