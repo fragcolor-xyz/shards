@@ -1,6 +1,6 @@
 #include "debug_ui.hpp"
-#include "input/events.hpp"
-#include "inputs.hpp"
+#include <shards/input/events.hpp>
+#include <shards/modules/inputs/inputs.hpp>
 #include <optional>
 #include <shards/input/debug.hpp>
 #include <shards/input/master.hpp>
@@ -182,5 +182,6 @@ struct DebugUI {
 
 SHARDS_REGISTER_FN(debug) {
   using namespace shards::input;
-  REGISTER_SHARD("Inputs.DebugUI", DebugUI);
-}
+  REGISTER_SHARD("Inputs.DebugUI", DebugUI); 
+} 
+ 
