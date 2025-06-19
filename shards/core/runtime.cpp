@@ -1699,13 +1699,16 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
+run_wire_logic:
   try {
     auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wireInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Returned};
     case SHWireState::Restart:
-      return {context->getFlowStorage(), SHRunWireOutputState::Restarted};
+      wire->currentInput = context->getFlowStorage();
+      context->continueFlow();
+      goto run_wire_logic;
     case SHWireState::Error:
       // shardsActivation handles error logging and such
       shassert(context->failed());

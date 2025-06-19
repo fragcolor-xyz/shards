@@ -272,3 +272,18 @@ IntRange(1 10) | Log | Assert.Is([1 2 3 4 5 6 7 8 9 10])
 
 @mesh(foo)
 Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log
+
+@wire(tail-call-restart {
+  Once(Set(value)) ; set it only once!
+  Inc(value)
+  value | If(IsMore(10) {
+      Msg("More than 10")
+      value
+    } {
+      Msg("Less than 10")
+      value | Do(tail-call-restart) | ExpectInt
+    }
+  )
+})
+
+1 | Do(tail-call-restart) | Log

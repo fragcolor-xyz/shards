@@ -246,10 +246,20 @@ struct BaseRunner : public WireBase {
     }
   }
 
+  bool _recursion{false};
   void doWarmup(SHContext *context) {
-    if (mode == RunWireMode::Inline && wire && wire->wireUsers.count(this) == 0) {
-      wire->wireUsers.emplace(this);
-      wire->warmup(context);
+    _recursion = false;
+    if (mode == RunWireMode::Inline) {
+      if (wire && wire->wireUsers.count(this) == 0) {
+        wire->wireUsers.emplace(this);
+        wire->warmup(context);
+      }
+
+      // detect if we are recursing also
+      auto parent = context->currentWire();
+      if (parent == wire.get()) {
+        _recursion = true;
+      }
     }
   }
 
@@ -454,6 +464,19 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   OwnedVar _outputClone;
 
   SHVar activateLoop(SHContext *context, const SHVar &input) {
+    if (unlikely(_recursion)) {
+      // Simply use the Restart flag to restart the wire
+      context->restartFlow(input);
+      return input;
+    }
+
+    if (unlikely(!wire->warmedUp)) {
+      // ok this can happen if Stop was called on the wire
+      // and we are running it again
+      // Stop is a legit way to clear the wire state
+      wire->warmup(context);
+    }
+
     auto *inputPtr = &input;
   run_wire_loop:
     auto runRes = runSubWire(wire.get(), context, *inputPtr);
@@ -500,7 +523,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         return wire->previousOutput;
       }
     } else if constexpr (WIRE_MODE == RunWireMode::Inline) {
-      if (!wire->warmedUp) {
+      if (unlikely(_recursion)) {
+        // Simply use the Restart flag to restart the wire
+        context->restartFlow(input);
+        return input;
+      }
+
+      if (unlikely(!wire->warmedUp)) {
         // ok this can happen if Stop was called on the wire
         // and we are running it again
         // Stop is a legit way to clear the wire state
