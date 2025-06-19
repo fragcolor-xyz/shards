@@ -289,10 +289,10 @@ void EguiRenderer::render(const egui::RenderOutput &output, const float4x4 &root
                           bool clipGeometry) {
   impl->render(output, rootTransform, drawQueue, clipGeometry);
 }
-
+  
 void EguiRenderer::renderNoTransform(const egui::RenderOutput &output, const gfx::DrawQueuePtr &drawQueue) {
   render(output, linalg::identity, drawQueue);
-}
+}  
 
 EguiRenderer *EguiRenderer::create() { return new EguiRenderer(); }
 

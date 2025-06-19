@@ -17,7 +17,7 @@
 #include <input/input_stack.hpp>
 #include <input/log.hpp>
 #include "inputs.hpp"
-#include "debug_ui.hpp"
+#include <shards/modules/egui/debug_ui.hpp>
 #include "shards/shards.h"
 #include "spdlog/spdlog.h"
 #include <boost/lockfree/spsc_queue.hpp>
