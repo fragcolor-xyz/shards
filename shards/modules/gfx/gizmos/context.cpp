@@ -41,7 +41,7 @@ struct GizmosContextShard {
   input::OptionalInputContext _inputContext;
   gfx::OptionalGraphicsRendererContext _gfxContext;
 
-  GizmoContext _gizmoContext{};
+  std::optional<GizmoContext> _gizmoContext{};
   SHVar *_contextVarRef{};
 
   int2 _cursorPosition{};
@@ -55,6 +55,7 @@ struct GizmosContextShard {
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
   void warmup(SHContext *context) {
+    _gizmoContext.emplace();
     _inputContext.warmup(context);
     _gfxContext.warmup(context);
 
@@ -119,12 +120,12 @@ struct GizmosContextShard {
     ViewPtr view = static_cast<SHView *>(viewVar.payload.objectValue)->view;
 
     assert(queueVar.payload.objectValue);
-    _gizmoContext.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
-    assert(_gizmoContext.queue);
+    _gizmoContext->queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
+    assert(_gizmoContext->queue);
 
-    _gizmoContext.wireframeRenderer.reset(frameCounter);
+    _gizmoContext->wireframeRenderer.reset(frameCounter);
 
-    gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
+    gfx::gizmos::Context &gfxGizmoContext = _gizmoContext->gfxGizmoContext;
     gfxGizmoContext.renderer.scalingFactor = !scalingVar.isNone() ? float(scalingVar) : 1.0f;
 
     gfx::gizmos::InputState gizmoInput;
@@ -172,7 +173,7 @@ struct GizmosContextShard {
     withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] {
       gfxGizmoContext.begin(gizmoInput, view);
       _content.activate(shContext, Var(gfxGizmoContext.input.held != nullptr), _shardsOutput);
-      gfxGizmoContext.end(_gizmoContext.queue);
+      gfxGizmoContext.end(_gizmoContext->queue);
     });
 
     // Consume inputs

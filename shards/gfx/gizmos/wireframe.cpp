@@ -59,8 +59,10 @@ MeshPtr WireframeMeshGenerator::generate() {
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) {
   wireframeFeature = features::Wireframe::create(showBackfaces);
-  allocator = std::make_shared<detail::WorkerMemory>();
+  allocator = std::make_shared<detail::WorkerMemory>(detail::MonotonicGrowableAllocator::Megabyte * 1);
 }
+
+WireframeRenderer::~WireframeRenderer() {}
 
 MeshDrawable::Ptr WireFrameDrawablePoolTraits::newItem() { return std::make_shared<MeshDrawable>(); }
 

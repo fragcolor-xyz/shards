@@ -23,21 +23,29 @@ struct SharedTempAllocatorImpl {
 
   SharedTempAllocatorImpl() {
     STA_TRACE("[{}] Temp allocator created", std::this_thread::get_id());
-    fmt::format_to_n((char*)debugName, std::size(debugName), "STA_{}", std::this_thread::get_id());
+    fmt::format_to_n((char *)debugName, std::size(debugName), "STA_{}", std::this_thread::get_id());
   }
 
-  void incRef() {
-    if (refCount == 0) {
-      allocator.reset();
-      STA_TRACE("[{}] Temp allocator reset ({} bytes)", std::this_thread::get_id(), allocator.preallocatedBlock.size());
-      TracyPlot(debugName, (int64_t)allocator.preallocatedBlock.size());
-    }
-    ++refCount;
-  }
+  void incRef() { ++refCount; }
 
   void decRef() {
     shassert(refCount >= 0);
     --refCount;
+    if (refCount == 0) {
+      TracyPlot(debugName, (int64_t)allocator.totalRequestedBytes);
+
+      // Limit the allocator size per thread, so that when it's reused it doesn't grow too large
+      // but we still get the benefits of one large preallocated block for lots of small tasks
+      constexpr size_t LimitSize = (TempAllocator::Megabyte * 4);
+      if (allocator.totalRequestedBytes > LimitSize) {
+        STA_TRACE("[{}] Temp allocator used up {} bytes, limited to {}", std::this_thread::get_id(),
+                  allocator.totalRequestedBytes, LimitSize);
+        allocator.totalRequestedBytes = LimitSize;
+      }
+
+      allocator.reset();
+      STA_TRACE("[{}] Temp allocator reset ({} bytes)", std::this_thread::get_id(), allocator.preallocatedBlock.size());
+    }
   }
 };
 
