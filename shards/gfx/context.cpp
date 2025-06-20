@@ -3,8 +3,9 @@
 #include "enums.hpp"
 #include "error_utils.hpp"
 #include <boost/container/small_vector.hpp>
-#include "../core/platform.hpp"
-#include "../core/assert.hpp"
+#include <shards/core/platform.hpp>
+#include <shards/core/assert.hpp>
+#include <shards/defer.hpp>
 #include "linalg.h"
 #include "platform_surface.hpp"
 #include "window.hpp"
@@ -16,6 +17,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+
 #if SHARDS_GFX_SDL
 #include <SDL3/SDL_stdinc.h>
 #endif
@@ -368,7 +370,7 @@ void Context::init(Window &window, const ContextCreationOptions &inOptions) {
 
 void Context::init(const ContextCreationOptions &inOptions) {
   options = inOptions;
-  if (inOptions.overrideNativeWindowHandle) { 
+  if (inOptions.overrideNativeWindowHandle) {
     mainOutput = std::make_shared<ContextMainOutput>(inOptions.overrideNativeWindowHandle, onFlushTextureReferences);
   }
 
@@ -761,6 +763,7 @@ void Context::requestAdapter() {
     auto &adapter = adapters[i];
     WGPUAdapterInfo props;
     wgpuAdapterGetInfo(adapter, &props);
+    DEFER(wgpuAdapterInfoFreeMembers(props));
 
     SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
     SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{

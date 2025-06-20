@@ -23,7 +23,7 @@ namespace gfx::detail {
 //  with the addition that it updates the preallocated memory block based on previous peak usage
 struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
-  static constexpr size_t MinPreallocatedSize = Megabyte * 8;
+  static constexpr size_t DefaultMinPreallocatedSize = Megabyte * 8;
 
   MovingAverage<size_t> maxUsage{32};
   size_t totalRequestedBytes{};
@@ -32,13 +32,15 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   std::optional<shards::pmr::monotonic_buffer_resource> baseAllocator;
   shards::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
 
+  size_t minPreallocatedSize;
+
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
   std::optional<std::thread::id> boundThread;
   bool autoBindToThread = false;
 #endif
 
-  MonotonicGrowableAllocator() { reset(); }
-  MonotonicGrowableAllocator(MonotonicGrowableAllocator &&) {}
+  MonotonicGrowableAllocator(size_t minPreallocatedSize = DefaultMinPreallocatedSize) : minPreallocatedSize(minPreallocatedSize) { reset(); }
+  MonotonicGrowableAllocator(MonotonicGrowableAllocator && other) : minPreallocatedSize(other.minPreallocatedSize) {}
 
   void reset() {
     maxUsage.add(totalRequestedBytes);
@@ -47,7 +49,7 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   }
 
   void updatePreallocatedMemoryBlock() {
-    size_t peakUsage = std::max(MinPreallocatedSize, maxUsage.getMax());
+    size_t peakUsage = std::max(minPreallocatedSize, maxUsage.getMax());
     // Add +1MB headroom and align
     size_t targetSize = alignTo<Megabyte>(peakUsage + Megabyte * 1);
     if (targetSize > preallocatedBlock.size()) {
@@ -98,8 +100,12 @@ private:
   Allocator allocator;
 
 public:
-  WorkerMemory() : allocator(&memoryResource) { initCommon(); }
-  WorkerMemory(WorkerMemory &&) : allocator(&memoryResource) { initCommon(); }
+  WorkerMemory(size_t minPreallocatedSize = MonotonicGrowableAllocator::DefaultMinPreallocatedSize) : memoryResource(minPreallocatedSize), allocator(&memoryResource) {
+    initCommon();
+  }
+  WorkerMemory(WorkerMemory && other) : memoryResource(other.memoryResource.minPreallocatedSize), allocator(&memoryResource) {
+    initCommon();
+  }
 
   void reset() { memoryResource.reset(); }
 
