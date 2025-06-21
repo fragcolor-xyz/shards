@@ -1699,13 +1699,17 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
+  auto *input = &wireInput;
+run_wire_logic:
   try {
-    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, wireInput, wire->previousOutput);
+    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, *input, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Returned};
     case SHWireState::Restart:
-      return {context->getFlowStorage(), SHRunWireOutputState::Restarted};
+      input = &context->getFlowStorage();
+      context->continueFlow();
+      goto run_wire_logic;
     case SHWireState::Error:
       // shardsActivation handles error logging and such
       shassert(context->failed());
@@ -1833,11 +1837,6 @@ void run(SHWire *wire, shards::Coroutine *coro) {
       // as it's likely coming from flowStorage of context!
       wire->previousOutput = runRes.output;
       break;
-    } else if (unlikely(runRes.state == SHRunWireOutputState::Restarted)) {
-      // must clone over currentInput!
-      // restart overwrites currentInput on purpose
-      wire->currentInput = context.getFlowStorage();
-      running = true; // keep in this case!
     }
 
     if (!wire->unsafe && running) {

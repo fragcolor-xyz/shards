@@ -127,6 +127,12 @@ struct BaseRunner : public WireBase {
     if (!wire) {
       throw std::runtime_error("wire should be set at this point");
     }
+
+    if (data.wire == wire.get()) {
+      // Forbid this and suggest to use Restart shard instead
+      throw ComposeError(fmt::format("Detected recursion in wire {}, please use Restart shard instead", wire->name));
+    }
+
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
@@ -247,9 +253,11 @@ struct BaseRunner : public WireBase {
   }
 
   void doWarmup(SHContext *context) {
-    if (mode == RunWireMode::Inline && wire && wire->wireUsers.count(this) == 0) {
-      wire->wireUsers.emplace(this);
-      wire->warmup(context);
+    if (mode == RunWireMode::Inline) {
+      if (wire && wire->wireUsers.count(this) == 0) {
+        wire->wireUsers.emplace(this);
+        wire->warmup(context);
+      }
     }
   }
 
@@ -454,6 +462,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   OwnedVar _outputClone;
 
   SHVar activateLoop(SHContext *context, const SHVar &input) {
+    if (unlikely(!wire->warmedUp)) {
+      // ok this can happen if Stop was called on the wire
+      // and we are running it again
+      // Stop is a legit way to clear the wire state
+      wire->warmup(context);
+    }
+
     auto *inputPtr = &input;
   run_wire_loop:
     auto runRes = runSubWire(wire.get(), context, *inputPtr);
@@ -464,12 +479,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       context->stopFlow(_outputClone);
       return _outputClone;
     } else {
-      if (runRes.state == SHRunWireOutputState::Restarted) {
-        inputPtr = &context->getFlowStorage();
-        context->continueFlow();
-        SH_SUSPEND(context, 0.0);
-        goto run_wire_loop;
-      } else if (context->shouldContinue()) {
+      if (context->shouldContinue()) {
         SH_SUSPEND(context, 0.0);
         goto run_wire_loop;
       } else {
@@ -500,7 +510,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         return wire->previousOutput;
       }
     } else if constexpr (WIRE_MODE == RunWireMode::Inline) {
-      if (!wire->warmedUp) {
+      if (unlikely(!wire->warmedUp)) {
         // ok this can happen if Stop was called on the wire
         // and we are running it again
         // Stop is a legit way to clear the wire state
