@@ -116,7 +116,7 @@ jobs:
       - name: Set up dev dependencies
         shell: bash
         run: |
-          choco install -y --force --version=18.1.6 llvm
+          choco install -y --force --version=20.1.7 llvm
           choco install -y ninja
       - name: Build
         env:
