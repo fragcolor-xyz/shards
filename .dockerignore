@@ -5,6 +5,10 @@
 .vscode
 .aider*
 .DS_Store
+.flatpak-builder
+.gitignore
+
+repo
 
 # Build directories and artifacts
 build
@@ -39,3 +43,7 @@ mainframe/inventory
 
 # Git directory (not needed in container)
 .git
+build-flatpack.sh
+README.md
+LICENSE
+FLATPAK_BUILD.md

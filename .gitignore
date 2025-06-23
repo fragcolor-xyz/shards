@@ -95,3 +95,5 @@ shards/tests/data/whisper-config.json
 shards/tests/data/whisper-tokenizer.json
 .edgetalk.coding.md
 ai/data-gen/shards-reference.md
+
+.flatpak-builder
