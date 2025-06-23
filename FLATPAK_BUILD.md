@@ -9,9 +9,6 @@
    
    # Fedora
    sudo dnf install flatpak flatpak-builder
-   
-   # macOS (via Homebrew)
-   brew install flatpak
    ```
 
 2. **Add Flathub repository:**
@@ -21,8 +18,8 @@
 
 3. **Install required runtime and SDK:**
    ```bash
-   flatpak install flathub org.freedesktop.Platform//23.08
-   flatpak install flathub org.freedesktop.Sdk//23.08
+   flatpak install flathub org.freedesktop.Platform//24.08
+   flatpak install flathub org.freedesktop.Sdk//24.08
    ```
 
 4. **Ensure Docker is running:**
