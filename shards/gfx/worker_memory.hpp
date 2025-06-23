@@ -5,9 +5,14 @@
 #include "moving_average.hpp"
 #include "math.hpp"
 
+#ifdef SH_USE_ASAN
+#include <sanitizer/asan_interface.h>
+#endif
+
 #include <thread>
 #include <optional>
 #include <mutex>
+#include <stdint.h>
 
 // Enable to check for allocation from wrong thread
 #ifdef NDEBUG
@@ -39,8 +44,10 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   bool autoBindToThread = false;
 #endif
 
-  MonotonicGrowableAllocator(size_t minPreallocatedSize = DefaultMinPreallocatedSize) : minPreallocatedSize(minPreallocatedSize) { reset(); }
-  MonotonicGrowableAllocator(MonotonicGrowableAllocator && other) : minPreallocatedSize(other.minPreallocatedSize) {}
+  MonotonicGrowableAllocator(size_t minPreallocatedSize = DefaultMinPreallocatedSize) : minPreallocatedSize(minPreallocatedSize) {
+    reset();
+  }
+  MonotonicGrowableAllocator(MonotonicGrowableAllocator &&other) : minPreallocatedSize(other.minPreallocatedSize) {}
 
   void reset() {
     maxUsage.add(totalRequestedBytes);
@@ -58,6 +65,10 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
 
     baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), shards::pmr::new_delete_resource());
     baseAllocatorPtr = &baseAllocator.value();
+
+#ifdef SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+#endif
   }
 
   void bindToCurrentThread() {
@@ -81,10 +92,20 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
 #endif
 
     totalRequestedBytes += _Bytes;
+#if SH_USE_ASAN
+    _Align = std::max<size_t>(8, _Align);
+    void *ptr = baseAllocatorPtr->allocate(_Bytes, _Align);
+    ASAN_UNPOISON_MEMORY_REGION(ptr, _Bytes);
+    return ptr;
+#else
     return baseAllocatorPtr->allocate(_Bytes, _Align);
+#endif
   }
 
   __attribute__((always_inline)) void do_deallocate(void *_Ptr, size_t _Bytes, size_t _Align) override {
+#if SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(_Ptr, _Bytes);
+#endif
     // Using monotonic_buffer_resource, so safe to no-op
   }
 
@@ -100,10 +121,11 @@ private:
   Allocator allocator;
 
 public:
-  WorkerMemory(size_t minPreallocatedSize = MonotonicGrowableAllocator::DefaultMinPreallocatedSize) : memoryResource(minPreallocatedSize), allocator(&memoryResource) {
+  WorkerMemory(size_t minPreallocatedSize = MonotonicGrowableAllocator::DefaultMinPreallocatedSize)
+      : memoryResource(minPreallocatedSize), allocator(&memoryResource) {
     initCommon();
   }
-  WorkerMemory(WorkerMemory && other) : memoryResource(other.memoryResource.minPreallocatedSize), allocator(&memoryResource) {
+  WorkerMemory(WorkerMemory &&other) : memoryResource(other.memoryResource.minPreallocatedSize), allocator(&memoryResource) {
     initCommon();
   }
 

@@ -117,9 +117,12 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     shards::pmr::vector<PreparedBuffer> globalBuffers;
     shards::pmr::vector<BufferData> viewBufferBindings;
 
-    WgpuHandle<WGPUBindGroup> viewBindGroup;
+    using DrawableDataVec = boost::container::stable_vector<DrawableData, shards::pmr::polymorphic_allocator<DrawableData>>;
 
-    PrepareData(allocator_type allocator) : drawableData(allocator), globalBuffers(allocator), viewBufferBindings(allocator) {}
+    WgpuHandle<WGPUBindGroup> viewBindGroup;
+    DrawableDataVec dataContainer;
+
+    PrepareData(allocator_type allocator) : drawableData(allocator), globalBuffers(allocator), viewBufferBindings(allocator), dataContainer(allocator) {}
   };
 
   SharedBufferPool uniformBufferPool;
@@ -428,10 +431,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
     }
 
-    using DrawableDataVec = boost::container::stable_vector<DrawableData, shards::pmr::polymorphic_allocator<DrawableData>>;
-    auto *drawableDatas = allocator->new_object<DrawableDataVec>();
-    DEFER({ allocator->destroy(drawableDatas); });
-
     // Does the following:
     // - Build mesh data
     // - Collect parameters & texture bindings
@@ -441,7 +440,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       ZoneScopedN("generateDrawableData");
       for (size_t index = 0; index < context.drawables.size(); ++index) {
         const IDrawable *drawable = context.drawables[index];
-        auto &drawableData = drawableDatas->emplace_back();
+        auto &drawableData = prepareData->dataContainer.emplace_back();
 
         ParameterStorage *baseDrawData{};
         if (context.generatorData.drawParameters) {
@@ -462,7 +461,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Collect results from generate task
       size_t insertIndex{};
-      for (auto &data : *drawableDatas) {
+      for (auto &data : prepareData->dataContainer) {
         prepareData->drawableData[insertIndex++] = &data;
       }
       shassert(insertIndex == context.drawables.size());
