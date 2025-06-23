@@ -38,47 +38,47 @@ add_rust_library(NAME shards-core
 
 add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS
-    core casting flow linalg math seqs
-    strings wires logging serialization time
-    rust memoize exposed trait
+  core casting flow linalg math seqs
+  strings wires logging serialization time
+  rust memoize exposed trait
   RUST_TARGETS shards-core-rust
   INLINE_SOURCES core.cpp math.cpp inlined.cpp
   INLINE_SHARDS
-    NotInline
-    NoopShard
-    CoreConst
-    CoreInput
-    CoreRepeat
-    CoreGet
-    CoreRefRegular
-    CoreRefTable
-    CoreSetUpdateRegular
-    CoreSetUpdateTable
-    CoreSwap
-    CorePush
-    CoreIs
-    CoreIsNot
-    CoreIsTrue
-    CoreIsFalse
-    CoreIsNone
-    CoreIsNotNone
-    CoreAnd
-    CoreOr
-    CoreNot
-    CoreIsMore
-    CoreIsLess
-    CoreIsMoreEqual
-    CoreIsLessEqual
-    MathAdd
-    MathSubtract
-    MathMultiply
-    MathDivide
-    MathXor
-    MathAnd
-    MathOr
-    MathMod
-    MathLShift
-    MathRShift
+  NotInline
+  NoopShard
+  CoreConst
+  CoreInput
+  CoreRepeat
+  CoreGet
+  CoreRefRegular
+  CoreRefTable
+  CoreSetUpdateRegular
+  CoreSetUpdateTable
+  CoreSwap
+  CorePush
+  CoreIs
+  CoreIsNot
+  CoreIsTrue
+  CoreIsFalse
+  CoreIsNone
+  CoreIsNotNone
+  CoreAnd
+  CoreOr
+  CoreNot
+  CoreIsMore
+  CoreIsLess
+  CoreIsMoreEqual
+  CoreIsLessEqual
+  MathAdd
+  MathSubtract
+  MathMultiply
+  MathDivide
+  MathXor
+  MathAnd
+  MathOr
+  MathMod
+  MathLShift
+  MathRShift
 )
 
 if(EMSCRIPTEN)
@@ -91,9 +91,7 @@ endif()
 
 if(APPLE)
   # Build swift sources
-  add_library(shards-core-swift core.swift ${SHARDS_DIR}/include/shards/shards.swift)
-  target_include_directories(shards-core-swift PRIVATE ${SHARDS_DIR}/include)
-  set_target_properties(shards-core-swift PROPERTIES Swift_MODULE_NAME shards_core_swift)
-  target_link_libraries(shards-module-core $<TARGET_FILE:shards-core-swift>)
-  add_dependencies(shards-module-core shards-core-swift)
+  add_library(shards-core-swift-impl core.swift ${SHARDS_DIR}/include/shards/shards.swift)
+  target_include_directories(shards-core-swift-impl PRIVATE ${SHARDS_DIR}/include)
+  target_link_libraries(shards-module-core shards-core-swift-impl)
 endif()
