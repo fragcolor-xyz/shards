@@ -90,6 +90,13 @@ void Window::init(const WindowCreationOptions &options) {
   SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
   SDL_SetStringProperty(props, "title", options.title.c_str());
   SDL_SetNumberProperty(props, "flags", flags);
+#if SH_LINUX
+  const char *videoDriver = SDL_GetCurrentVideoDriver();
+  if (videoDriver && strcmp(videoDriver, "wayland") == 0) {
+    SPDLOG_LOGGER_INFO(getLogger(), "Creating Wayland window");
+    useWayland = true;
+  }
+#endif
   window = SDL_CreateWindowWithProperties(props);
   SDL_DestroyProperties(props);
 

@@ -50,6 +50,10 @@ struct Window {
   std::optional<MetalViewContainer> metalView;
 #endif
 
+#if SH_LINUX
+  bool useWayland = false;
+#endif
+
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
 

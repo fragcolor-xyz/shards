@@ -17,7 +17,7 @@
 
 #if SH_APPLE
 extern "C" {
-  void gfx_metal_get_surface_size(void *surface, uint32_t *width, uint32_t *height);
+void gfx_metal_get_surface_size(void *surface, uint32_t *width, uint32_t *height);
 }
 #endif
 
@@ -39,9 +39,14 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
 
   WGPUPlatformSurfaceDescriptor(gfx::Window *window, void *nativeSurfaceHandle) {
 #if !SH_EMSCRIPTEN
-    SDL_Window *sdlWindow =window ? window->window : nullptr;
-    if (!nativeSurfaceHandle)
-      nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow);
+    SDL_Window *sdlWindow = window ? window->window : nullptr;
+    if (!nativeSurfaceHandle) {
+#if SH_LINUX
+      nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow, window->useWayland);
+#else
+      nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow, false);
+#endif
+    }
 #endif
 
     memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
@@ -51,9 +56,18 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     platformDesc.win.hinstance = GetModuleHandle(nullptr);
     platformDesc.win.hwnd = (HWND)nativeSurfaceHandle;
 #elif SH_LINUX
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlibWindow;
-    platformDesc.x11.window = uint32_t(size_t(nativeSurfaceHandle));
-    platformDesc.x11.display = SDL_GetNativeDisplayPtr(sdlWindow);
+    if (window->useWayland) {
+      platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWaylandSurface;
+      platformDesc.wayland.surface = nativeSurfaceHandle;
+      auto waylandWindow =
+          SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+      platformDesc.wayland.display = waylandWindow;
+    } else {
+      platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlibWindow;
+      platformDesc.x11.window = uint64_t(nativeSurfaceHandle);
+      auto x11Window = SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+      platformDesc.x11.display = x11Window;
+    }
 #elif SH_ANDROID
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromAndroidNativeWindow;
     platformDesc.android.window = nativeSurfaceHandle;
