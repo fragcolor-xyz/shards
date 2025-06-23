@@ -10,6 +10,7 @@ RUN dnf install -y \
   libwayland-client libwayland-server libwayland-cursor libwayland-egl \
   mesa-libEGL-devel libXext-devel libxkbcommon-devel \
   python3 python3-pip \
+  libstdc++-static glibc-static \
   && dnf clean all
 
 # Setup Rust
@@ -44,6 +45,7 @@ RUN --mount=type=cache,id=cargo-${TARGETARCH},target=/root/.cargo \
   cd build \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DRUST_BUILD_TYPE=Small \
+  -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
   .. \
   && ninja -j$(nproc) shards \
   && cp shards /usr/local/bin/shards

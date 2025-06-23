@@ -26,7 +26,7 @@ echo "=== Creating minimal Flatpak manifest ==="
 cat > com.fragcolor.Shards.yml << 'EOF'
 app-id: com.fragcolor.Shards
 runtime: org.freedesktop.Platform
-runtime-version: '23.08'
+runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
 command: shards
 finish-args:
@@ -108,9 +108,17 @@ echo "=== Building Flatpak ==="
 flatpak-builder --force-clean --repo=repo build-dir com.fragcolor.Shards.yml
 
 echo "=== Installing locally ==="
-flatpak --user remote-add --no-gpg-verify shards-repo repo
+flatpak --user remote-add --if-not-exists --no-gpg-verify shards-repo repo
 flatpak --user install shards-repo com.fragcolor.Shards
 
 echo "=== Done! ==="
 echo "Run with: flatpak run com.fragcolor.Shards"
 echo "Or it should appear in your application menu as 'Shards'"
+
+rm -f shards-binary
+rm -f com.fragcolor.Shards.yml
+rm -f com.fragcolor.Shards.desktop
+rm -f shards-icon.png
+rm -rf build-dir
+rm -rf repo
+rm -f generate-flatpak.sh
