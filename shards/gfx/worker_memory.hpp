@@ -56,6 +56,12 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   }
 
   void updatePreallocatedMemoryBlock() {
+#if SH_USE_ASAN
+    if (!preallocatedBlock.empty()) {
+      ASAN_UNPOISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+    }
+#endif
+
     size_t peakUsage = std::max(minPreallocatedSize, maxUsage.getMax());
     // Add +1MB headroom and align
     size_t targetSize = alignTo<Megabyte>(peakUsage + Megabyte * 1);
