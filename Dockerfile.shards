@@ -6,6 +6,9 @@ RUN dnf install -y \
   openssl-devel clang-devel protobuf-devel \
   libX11-devel libXcursor-devel libXrandr-devel \
   libXinerama-devel libXi-devel dbus-devel \
+  wayland-devel wayland-protocols-devel \
+  libwayland-client libwayland-server libwayland-cursor libwayland-egl \
+  mesa-libEGL-devel libXext-devel libxkbcommon-devel \
   python3 python3-pip \
   && dnf clean all
 
@@ -50,6 +53,8 @@ FROM fedora:42
 RUN dnf install -y \
   bash curl ca-certificates sqlite \
   libX11 libXcursor libXrandr libXinerama libXi dbus-libs \
+  libwayland-client libwayland-server libwayland-cursor libwayland-egl \
+  mesa-libEGL libXext libxkbcommon \
   && dnf clean all
 COPY --from=base /usr/local/bin/shards /usr/local/bin/shards
 WORKDIR /app
