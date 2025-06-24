@@ -96,8 +96,10 @@ struct DebugRenderer : public JPH::DebugRenderer {
                     JPH::ColorArg inModelColor, const GeometryRef &inGeometry, ECullMode inCullMode = ECullMode::CullBackFace,
                     ECastShadow inCastShadow = ECastShadow::On, EDrawMode inDrawMode = EDrawMode::Solid) override {
     float scale = gizmoRenderer->getConstantScreenSize(toLinalg(inWorldSpaceBounds.GetCenter()), 50.0f);
-    float flod = std::clamp(1.0f - scale / float(inGeometry->mLODs.size() + 1), 0.0f, 1.0f);
+    float flod = 1.0f - scale / float(inGeometry->mLODs.size() + 1);
     int lodIdx = std::floor(flod * (inGeometry->mLODs.size() - 1));
+    lodIdx = std::clamp<int>(lodIdx, 0, (inGeometry->mLODs.size() - 1));
+    shassert(lodIdx >= 0 && lodIdx < inGeometry->mLODs.size() && "Invalid LOD index");
 
     auto lod = inGeometry->mLODs[lodIdx].mTriangleBatch;
     GFXBatch *gfxBatch = dynamic_cast<GFXBatch *>(lod.GetPtr());
