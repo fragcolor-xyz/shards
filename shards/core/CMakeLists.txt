@@ -38,6 +38,8 @@ endif()
 
 if(SHARDS_INLINE_EVERYTHING)
   target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=1)
+else()
+  target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=0)
 endif()
 
 # we are building with boost containers since we build shards, we can support this
