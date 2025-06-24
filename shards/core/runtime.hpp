@@ -319,10 +319,10 @@ void coroExtResume(SHWire *wire);
 void coroExtSuspend(SHWire *wire);
 
 #if SHARDS_INLINE_EVERYTHING
-#define SHARDS_INLINE ALWAYS_INLINE
+#define SHARDS_COND_INLINE ALWAYS_INLINE inline
 #include "coro_annotations.inl"
 #else
-#define SHARDS_INLINE
+#define SHARDS_COND_INLINE
 #endif
 
 inline void prepare(SHWire *wire) {
