@@ -2571,6 +2571,7 @@ struct TableDecl : public VariableBase {
       if (!_key.isVariable()) {
         shards::arrayPush(_tableInfo.table.keys, *_key);
       }
+
       if (_global) {
         _exposedInfo =
             ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
@@ -2614,6 +2615,25 @@ struct TableDecl : public VariableBase {
     }
 
     if (!_isTable) {
+      // Check if we have all keys as fixed values in the type description, if so we can mark the table as a fixed struct table
+      // Btw this can work only in this case, not for nested tables, reason being KISS principle
+      // anyway you can declare nested tables within this table itself!
+      // Type: @type({"x": {"y": another-type}})
+      if (!_typeDesc->isNone()) {
+        bool hasNone = false;
+        for (uint32_t i = 0; i < _tableInfo.table.keys.len; i++) {
+          auto &key = _tableInfo.table.keys.elements[i];
+          if (key.valueType == SHType::None) {
+            hasNone = true;
+            break;
+          }
+        }
+        if (!hasNone) {
+          // Ok we can mark the table as a fixed struct table
+          _weakType.fixedStructTable = true;
+        }
+      }
+
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _weakType, true));
       } else {

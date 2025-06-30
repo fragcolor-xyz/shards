@@ -1278,6 +1278,7 @@ pub mod common_type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 
@@ -1313,6 +1314,7 @@ pub mod common_type {
         fixedSize: 0,
         innerType: SHType_None,
         recursiveSelf: false,
+        fixedStructTable: false,
       };
 
       pub static $name_table: SHTypeInfo = SHTypeInfo {
@@ -1334,6 +1336,7 @@ pub mod common_type {
         fixedSize: 0,
         innerType: SHType_None,
         recursiveSelf: false,
+        fixedStructTable: false,
       };
 
       pub static $name_var: SHTypeInfo = SHTypeInfo {
@@ -1348,6 +1351,7 @@ pub mod common_type {
         fixedSize: 0,
         innerType: SHType_None,
         recursiveSelf: false,
+        fixedStructTable: false,
       };
 
       pub static $names_var: SHTypeInfo = SHTypeInfo {
@@ -1362,6 +1366,7 @@ pub mod common_type {
         fixedSize: 0,
         innerType: SHType_None,
         recursiveSelf: false,
+        fixedStructTable: false,
       };
 
       pub static $name_table_var: SHTypeInfo = SHTypeInfo {
@@ -1376,6 +1381,7 @@ pub mod common_type {
         fixedSize: 0,
         innerType: SHType_None,
         recursiveSelf: false,
+        fixedStructTable: false,
       };
     };
   }
@@ -1616,6 +1622,7 @@ impl Type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 
@@ -1628,6 +1635,7 @@ impl Type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 
@@ -1645,6 +1653,7 @@ impl Type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 
@@ -1668,6 +1677,7 @@ impl Type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 
@@ -1684,6 +1694,7 @@ impl Type {
       fixedSize: 0,
       innerType: SHType_None,
       recursiveSelf: false,
+      fixedStructTable: false,
     }
   }
 }

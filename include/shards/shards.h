@@ -392,6 +392,8 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
+  // Fixed struct table, this is used to mark a table as a fixed struct table, this allows a lot of optimizations, basically turning a table into a struct
+  SHBool fixedStructTable;
 };
 
 typedef struct SHTraitVariable {
@@ -625,9 +627,10 @@ struct SHVarPayload {
 #define SHVAR_FLAGS_ABORT (1 << 5) // 6
 // this marks a weak object reference
 #define SHVAR_FLAGS_WEAK_OBJECT (1 << 6) // 7
+// this marks a variable as a fixed struct table, this allows a lot of optimizations, basically turning a table into a struct
+#define SHVAR_FLAGS_FIXED_STRUCT_TABLE (1 << 7) // 8
 
 // Additional flags available
-// #define SHVAR_FLAGS_RESERVED_0 (1 << 7) // 8
 // #define SHVAR_FLAGS_RESERVED_1 (1 << 8) // 9
 // #define SHVAR_FLAGS_RESERVED_2 (1 << 9) // 10
 // #define SHVAR_FLAGS_RESERVED_3 (1 << 10) // 11
