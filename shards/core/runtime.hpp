@@ -313,10 +313,6 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
-void coroResumed(SHContext *context);
-void coroSuspended(SHContext *context);
-void coroExtResume(SHWire *wire);
-void coroExtSuspend(SHWire *wire);
 
 #if SHARDS_INLINE_EVERYTHING
 #define SHARDS_COND_INLINE ALWAYS_INLINE inline
@@ -324,6 +320,11 @@ void coroExtSuspend(SHWire *wire);
 #else
 #define SHARDS_COND_INLINE
 #endif
+
+SHARDS_COND_INLINE void coroResumed(SHContext *context);
+SHARDS_COND_INLINE void coroSuspended(SHContext *context);
+SHARDS_COND_INLINE void coroExtResume(SHWire *wire);
+SHARDS_COND_INLINE void coroExtSuspend(SHWire *wire);
 
 inline void prepare(SHWire *wire) {
   shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
