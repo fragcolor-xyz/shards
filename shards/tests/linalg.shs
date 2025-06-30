@@ -155,6 +155,20 @@
   -1 | Clamp(0 10) | Assert.Is(0 true) | Log("Clamped value")
   22 | Clamp(0 10) | Assert.Is(10 true) | Log("Clamped value")
 
+  ; test euler to quat - identity rotation
+  @f3(0.0 0.0 0.0) | Math.EulerToQuat | Assert.Is(@f4(0.0 0.0 0.0 1.0) true) | Log("Euler identity to quat")
+  
+  ; test 90 degree rotations around each axis
+  @f3(1.5707963267948966 0.0 0.0) | Math.EulerToQuat | Log("90deg yaw to quat")
+  @f3(0.0 1.5707963267948966 0.0) | Math.EulerToQuat | Log("90deg pitch to quat") 
+  @f3(0.0 0.0 1.5707963267948966) | Math.EulerToQuat | Log("90deg roll to quat")
+  
+  ; test 180 degree rotation around Y axis (pitch)
+  @f3(0.0 3.141592653589793 0.0) | Math.EulerToQuat | Log("180deg pitch to quat")
+  
+  ; test combined rotations
+  @f3(0.7853981633974483 0.7853981633974483 0.0) | Math.EulerToQuat | Log("45deg yaw+pitch to quat")
+
   Msg("Done!")
 })
 

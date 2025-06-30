@@ -1,3 +1,5 @@
+set fallback
+
 # pull and update in one go
 pull:
   git pull

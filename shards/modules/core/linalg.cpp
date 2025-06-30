@@ -748,6 +748,7 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.AxisAngleX", AxisAngleX);
   REGISTER_SHARD("Math.AxisAngleY", AxisAngleY);
   REGISTER_SHARD("Math.AxisAngleZ", AxisAngleZ);
+  REGISTER_SHARD("Math.EulerToQuat", EulerToQuat);
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD_ALIAS("DegreesToRadians", "Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);

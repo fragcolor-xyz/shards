@@ -658,6 +658,51 @@ using AxisAngleX = AxisAngle<AxisX>;
 using AxisAngleY = AxisAngle<AxisY>;
 using AxisAngleZ = AxisAngle<AxisZ>;
 
+struct EulerToQuat {
+  Vec4 _output{};
+
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts Euler angles (yaw, pitch, roll) to a quaternion. "
+                   "Takes a float3 vector where x=yaw, y=pitch, z=roll (in radians) and outputs "
+                   "a float4 quaternion. Uses ZYX rotation order (yaw-pitch-roll).");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString inputHelp() { 
+    return SHCCSTR("Takes a float3 vector representing Euler angles in radians (x=yaw, y=pitch, z=roll)."); 
+  }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString outputHelp() { 
+    return SHCCSTR("Outputs a float4 vector representing the rotation quaternion."); 
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    using namespace linalg::aliases;
+    float3 euler = toFloat3(input);
+    float yaw = euler.x;
+    float pitch = euler.y; 
+    float roll = euler.z;
+    
+    // Convert to quaternion using ZYX order (yaw-pitch-roll)
+    float cy = cos(yaw * 0.5f);
+    float sy = sin(yaw * 0.5f);
+    float cp = cos(pitch * 0.5f);
+    float sp = sin(pitch * 0.5f);
+    float cr = cos(roll * 0.5f);
+    float sr = sin(roll * 0.5f);
+
+    float4 quat;
+    quat.w = cr * cp * cy + sr * sp * sy;
+    quat.x = sr * cp * cy - cr * sp * sy;
+    quat.y = cr * sp * cy + sr * cp * sy;
+    quat.z = cr * cp * sy - sr * sp * cy;
+    
+    _output = quat;
+    return _output;
+  }
+};
+
 struct Deg2Rad {
   const double PI = 3.141592653589793238463;
 
