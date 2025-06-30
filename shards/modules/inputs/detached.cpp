@@ -1,3 +1,4 @@
+#include <mutex>
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/window.hpp>
 #include <shards/core/params.hpp>
@@ -146,6 +147,9 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   CapturingBrancher::CloningContext brancherCloningContext;
 
+  std::mutex disposeLock;
+  bool disposed{};
+
   bool warmedUp{};
 
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
@@ -191,8 +195,18 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   bool isCursorWithinRegion{};
 
+  void dispose() {
+    std::lock_guard<std::mutex> lock(disposeLock);
+    disposed = true;
+  }
+
   // Runs on input thread callback
   void handle(InputMaster &master) override {
+    std::lock_guard<std::mutex> lock(disposeLock);
+    if (disposed) {
+      return;
+    }
+
     // Update captured variable references
     applyCapturedVariables();
 
@@ -347,12 +361,11 @@ struct Detached {
   auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
 
   void cleanup(SHContext *context) {
-    if (_inputContext) {
-      auto &master = _inputContext->getMaster();
-      master.removeHandler(_handler);
-    }
-
     PARAM_CLEANUP(context);
+    if (_handler) {
+      _handler->dispose();
+      _handler.reset();
+    }
     _inputContext.cleanup(context);
     cleanupCaptures();
   }
