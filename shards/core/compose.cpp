@@ -120,7 +120,18 @@ void CompositionContext::step() {
   flowAnnotateNextShard(scope->bottom);
 
   bool hasCompose = false;
-  if (scope->bottom->compose) {
+  if (scope->bottom->composeV2) { // Prefer over v1
+    SHInstanceData data{};
+    copyComposeShared(data);
+    auto composeResult = scope->bottom->composeV2(scope->bottom, &data);
+    if (composeResult.error.code != SH_ERROR_NONE) {
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
+      SHLOG_ERROR("Error composing shard: {}, wire: {}, shard: {}", msg, scope->wireName(), shardContextStr());
+      throw ComposeError(msg);
+    }
+    scope->previousOutputType = composeResult.result;
+    hasCompose = true;
+  } else if (scope->bottom->compose) {
     SHInstanceData data{};
     {
       pmr::vector<SHExposedTypeInfo> sharedStorage{getAllocator()};
@@ -146,17 +157,6 @@ void CompositionContext::step() {
     }
 
     auto composeResult = scope->bottom->compose(scope->bottom, &data);
-    if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}, shard: {}", msg, scope->wireName(), shardContextStr());
-      throw ComposeError(msg);
-    }
-    scope->previousOutputType = composeResult.result;
-    hasCompose = true;
-  } else if (scope->bottom->composeV2) {
-    SHInstanceData data{};
-    copyComposeShared(data);
-    auto composeResult = scope->bottom->composeV2(scope->bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
       SHLOG_ERROR("Error composing shard: {}, wire: {}, shard: {}", msg, scope->wireName(), shardContextStr());
@@ -631,9 +631,8 @@ void CompositionContext::annotateSubPath(const SHVar &key) {
   auto newChain = currentChain;
   newChain.append(va);
 
-  c.currentAccess.emplace(getAllocator(), std::move(newChain), c.currentAccess->version);
-
   SPDLOG_LOGGER_DEBUG(logger, "Annotating sub-path: {}", key);
+  (void)annotateReferenceTo(newChain);
   flowTagAnnotated();
 }
 
