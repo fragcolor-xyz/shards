@@ -95,6 +95,8 @@ SH_ARRAY_DECL(SHPayloadArray, struct SHVarPayload);
 struct SHVar;
 SH_ARRAY_DECL(SHSeq, struct SHVar);
 
+SH_ARRAY_DECL(SHTableIndices, uint32_t);
+
 struct SHTableImpl;
 
 struct SHTableInterface;
@@ -314,6 +316,11 @@ typedef struct SHTableTypeInfo {
   // > 0 it is assumed that tableTypes contains a sequence with the possible
   // types in the table
   SHTypesInfo types;
+  // Fixed struct table, this is used to mark a table as a fixed struct table, this allows a lot of optimizations, basically
+  // turning a table into a struct
+  SHBool fixedStructTable;
+  // These are the indices of the keys in the table, this is used to optimize the table access
+  SHTableIndices indices;
 } SHTableTypeInfo;
 
 typedef struct SHExtendedObjectTypeInfo SHExtendedObjectTypeInfo;
@@ -392,8 +399,6 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
-  // Fixed struct table, this is used to mark a table as a fixed struct table, this allows a lot of optimizations, basically turning a table into a struct
-  SHBool fixedStructTable;
 };
 
 typedef struct SHTraitVariable {

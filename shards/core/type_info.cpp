@@ -32,6 +32,8 @@ void freeTypeInfo(SHTypeInfo info) {
     }
     shards::arrayFree(info.table.types);
     shards::arrayFree(info.table.keys);
+    shards::arrayFree(info.table.indices);
+    info.table.fixedStructTable = false;
   } break;
   default:
     break;
@@ -73,6 +75,9 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
       auto idx = varType.table.keys.len;
       shards::arrayResize(varType.table.keys, idx + 1);
       cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
+    }
+    for (uint32_t i = 0; i < other.table.indices.len; i++) {
+      shards::arrayPush(varType.table.indices, other.table.indices.elements[i]);
     }
     break;
   }

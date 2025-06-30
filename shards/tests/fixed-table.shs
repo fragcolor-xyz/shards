@@ -1,0 +1,3 @@
+@define(my-type @type({first: Type::Int second: {third: Type::Int}}))
+Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
+my-struct | Log
