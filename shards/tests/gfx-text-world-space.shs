@@ -1,3 +1,4 @@
+@include("../../lib/std/fbl-utils.shs")
 @include("../../lib/gfx/fbl-shared.shs")
 @define(free-camera "false" IgnoreRedefined: true)
 
