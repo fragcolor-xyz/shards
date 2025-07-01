@@ -280,9 +280,15 @@ struct ContextMainOutput {
     }
 
 #if WEBGPU_NATIVE
+#if SH_APPLE
+    auto alphaMode = window->transparent ? WGPUCompositeAlphaMode_Unpremultiplied : WGPUCompositeAlphaMode_Auto;
+#else
+    auto alphaMode = window->transparent ? WGPUCompositeAlphaMode_Premultiplied : WGPUCompositeAlphaMode_Auto;
+#endif
+
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
-    surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
+    surfaceConf.alphaMode = alphaMode;
     surfaceConf.device = device;
     surfaceConf.viewFormats = viewFormats;
     surfaceConf.viewFormatCount = viewFormatCount;
@@ -368,7 +374,7 @@ void Context::init(Window &window, const ContextCreationOptions &inOptions) {
 
 void Context::init(const ContextCreationOptions &inOptions) {
   options = inOptions;
-  if (inOptions.overrideNativeWindowHandle) { 
+  if (inOptions.overrideNativeWindowHandle) {
     mainOutput = std::make_shared<ContextMainOutput>(inOptions.overrideNativeWindowHandle, onFlushTextureReferences);
   }
 

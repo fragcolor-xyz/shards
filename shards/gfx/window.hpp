@@ -32,6 +32,11 @@ struct WindowCreationOptions {
   int height = 720;
   bool fullscreen = false;
   std::string title;
+
+  bool transparent = false;
+  bool notFocusable = false;
+  bool alwaysOnTop = false;
+  bool borderless = false;
 };
 } // namespace gfx
 
@@ -45,6 +50,7 @@ namespace gfx {
 struct Window {
   SDL_Window *window = nullptr;
   static float4 viewInset;
+  bool transparent = false;
 
 #if SH_APPLE
   std::optional<MetalViewContainer> metalView;
@@ -65,7 +71,7 @@ struct Window {
       callback(event);
     }
   }
-    
+
   void update();
 
   void pollEvents(std::vector<SDL_Event> &events);

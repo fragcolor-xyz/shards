@@ -66,12 +66,18 @@ struct MainWindow final {
   PARAM_VAR(
       _handleCloseEvent, "HandleCloseEvent",
       "When set to false; the close event will not be handled and abort the wire the window is running in. True by default.",
-      {CoreInfo::NoneType, CoreInfo::BoolType});
+      {CoreInfo::BoolType});
   PARAM_VAR(_useDisplayScaling, "UseDisplayScaling",
             "When enabled, the window size will be scaled using the OS's provided scaling value. True by default.",
-            {CoreInfo::NoneType, CoreInfo::BoolType});
+            {CoreInfo::BoolType});
+  PARAM_VAR(_transparent, "Transparent", "When enabled, the window will be transparent.", {CoreInfo::BoolType});
+  PARAM_VAR(_notFocusable, "NotFocusable", "When enabled, the window will not be focusable.", {CoreInfo::BoolType});
+  PARAM_VAR(_alwaysOnTop, "AlwaysOnTop", "When enabled, the window will be always on top.", {CoreInfo::BoolType});
+  PARAM_VAR(_borderless, "Borderless", "When enabled, the window will have no border.", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents),
-             PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent), PARAM_IMPL_FOR(_useDisplayScaling));
+             PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent), PARAM_IMPL_FOR(_useDisplayScaling),
+             PARAM_IMPL_FOR(_transparent), PARAM_IMPL_FOR(_notFocusable), PARAM_IMPL_FOR(_alwaysOnTop),
+             PARAM_IMPL_FOR(_borderless));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -85,6 +91,10 @@ struct MainWindow final {
     _detachRenderer = Var(false);
     _handleCloseEvent = Var(true);
     _useDisplayScaling = Var(true);
+    _transparent = Var(false);
+    _notFocusable = Var(false);
+    _alwaysOnTop = Var(false);
+    _borderless = Var(false);
   }
 
   Window _window;
@@ -163,6 +173,10 @@ struct MainWindow final {
     windowOptions.width = (int)*_width;
     windowOptions.height = (int)*_height;
     windowOptions.title = SHSTRVIEW(*_title);
+    windowOptions.transparent = (bool)*_transparent;
+    windowOptions.notFocusable = (bool)*_notFocusable;
+    windowOptions.alwaysOnTop = (bool)*_alwaysOnTop;
+    windowOptions.borderless = (bool)*_borderless;
     _windowContext->window = std::make_shared<Window>();
     _windowContext->window->init(windowOptions);
     _windowContext->windowMesh = shContext->main->mesh;

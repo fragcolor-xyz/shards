@@ -37,7 +37,7 @@
     GFX.View(View: view-transform) = view
   })
   
-  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Contents: {
+  GFX.MainWindow(Title: "Shards Window" Width: 1280 Height: 720 Borderless: true Transparent: true Contents: {
     Animation.Timer = time ; | Log
     
     time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
