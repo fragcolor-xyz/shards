@@ -130,8 +130,8 @@ inline float4x4 rotationFromZDirection(const float3 &direction) {
   return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
 }
 
-inline float4x4 safeLookat(const float3 &eye, const float3 &center) {
-  float3 up = float3(0.0, 1.0, 0.0);
+inline float4x4 safeLookat(const float3 &eye, const float3 &center, const float3 &up_) {
+  float3 up = up_;
   float3 delta = linalg::normalize(eye - center);
   float adot = std::abs(linalg::dot(up, delta));
   const float threshold = 0.01f;
