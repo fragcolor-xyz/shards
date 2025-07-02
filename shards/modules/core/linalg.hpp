@@ -273,9 +273,9 @@ struct MatMul : public BinaryBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::MatrixOrVector; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
-                   "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a "
-                   "matrix with the same dimensions as the input matrix.");
+    return SHCCSTR(
+        "Outputs the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
+        "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a matrix with the same dimensions as the input matrix.");
   }
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq && rhs == SHType::Seq) {
@@ -553,11 +553,6 @@ struct Rotation {
 };
 
 struct LookAt {
-  PARAM_VAR(_up, "Up", "The up vector of the camera. Default is @f3(0 1 0).", {CoreInfo::NoneType, CoreInfo::Float3Type});
-  PARAM_IMPL(PARAM_IMPL_FOR(_up));
-
-  LookAt() { _up = Var(0.0, 1.0, 0.0); }
-
   static inline shards::Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
   static inline std::array<SHVar, 2> InputTableKeys{Var("Position"), Var("Target")};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
@@ -613,8 +608,7 @@ struct LookAt {
     using namespace linalg::aliases;
     auto eye_ = reinterpret_cast<const padded::Float3 *>(&position);
     auto target_ = reinterpret_cast<const padded::Float3 *>(&target);
-    auto up_ = reinterpret_cast<const padded::Float3 *>(&_up);
-    _output = gfx::safeLookat(*eye_, *target_, *up_);
+    _output = gfx::safeLookat(*eye_, *target_);
     return _output;
   }
 
@@ -695,20 +689,22 @@ struct EulerToQuat {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("Takes a float3 vector representing Euler angles in radians (x=yaw, y=pitch, z=roll).");
+  static SHOptionalString inputHelp() { 
+    return SHCCSTR("Takes a float3 vector representing Euler angles in radians (x=yaw, y=pitch, z=roll)."); 
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float4 vector representing the rotation quaternion."); }
+  static SHOptionalString outputHelp() { 
+    return SHCCSTR("Outputs a float4 vector representing the rotation quaternion."); 
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace linalg::aliases;
     float3 euler = toFloat3(input);
     float yaw = euler.x;
-    float pitch = euler.y;
+    float pitch = euler.y; 
     float roll = euler.z;
-
+    
     // Convert to quaternion using ZYX order (yaw-pitch-roll)
     float cy = cos(yaw * 0.5f);
     float sy = sin(yaw * 0.5f);
@@ -722,7 +718,7 @@ struct EulerToQuat {
     quat.x = sr * cp * cy - cr * sp * sy;
     quat.y = cr * sp * cy + sr * cp * sy;
     quat.z = cr * cp * sy - sr * sp * cy;
-
+    
     _output = quat;
     return _output;
   }
