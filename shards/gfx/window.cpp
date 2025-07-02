@@ -57,6 +57,8 @@ void Window::init(const WindowCreationOptions &options) {
 
   flags |= SDL_WINDOW_RESIZABLE;
 
+  flags |= SDL_WINDOW_TRANSPARENT;
+
   int width{options.width}, height{options.height};
 
 // Base OS flags

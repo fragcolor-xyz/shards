@@ -30,7 +30,11 @@
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue = queue
-    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+    GFX.DrawablePass(Features: features Queue: queue
+      Outputs: [
+        {Name: "color" Clear: @f4(0 0 0 0)}
+        {Name: "depth" Clear: true}]
+    ) >> render-steps
     
     ; Create view
     {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
@@ -51,4 +55,4 @@
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 60 Iterations: 100) | Assert.Is(true)
+@run(root FPS: 60) | Assert.Is(true)

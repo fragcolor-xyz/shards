@@ -39,6 +39,7 @@ static WGPUBackendType getDefaultWgpuBackendType() {
   // https://github.com/gfx-rs/wgpu/issues/2719 - Make DX12 the Default API on Windows
   // https://github.com/gfx-rs/wgpu/issues/2720 - Suballocate Buffers in DX12
   return WGPUBackendType_Vulkan;
+  // return WGPUBackendType_D3D12;
 #elif SH_APPLE
   return WGPUBackendType_Metal;
 #elif SH_LINUX || SH_ANDROID
@@ -284,10 +285,11 @@ struct ContextMainOutput {
 #if WEBGPU_NATIVE
     WGPUSurfaceConfiguration surfaceConf = {};
     surfaceConf.format = swapchainFormat;
-    surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
+    // surfaceConf.alphaMode = WGPUCompositeAlphaMode_Auto;
     surfaceConf.device = device;
     surfaceConf.viewFormats = viewFormats;
     surfaceConf.viewFormatCount = viewFormatCount;
+    surfaceConf.alphaMode = WGPUCompositeAlphaMode_Premultiplied;
 
     // Canvas size should't be set when configuring, instead resize the element
     // https://github.com/emscripten-core/emscripten/issues/17416
