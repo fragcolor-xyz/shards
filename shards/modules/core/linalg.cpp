@@ -740,6 +740,7 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.MatMul", MatMul);
   REGISTER_SHARD("Math.Transpose", Transpose);
   REGISTER_SHARD("Math.Inverse", Inverse);
+  REGISTER_SHARD("Math.Conjugate", Conjugate);
   REGISTER_SHARD("Math.Orthographic", Orthographic);
   REGISTER_SHARD("Math.Translation", Translation);
   REGISTER_SHARD("Math.Scaling", Scaling);
