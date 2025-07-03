@@ -370,6 +370,27 @@ struct Inverse : public UnaryBase {
   SHVar activate(SHContext *context, const SHVar &input);
 };
 
+struct Conjugate {
+  Vec4 _output{};
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "This shard takes a quaternion as input and outputs its conjugate. A quaternion is a vector with 4 float elements.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Takes a float4 vector (a vector with 4 float elements) as input."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the conjugate of the input quaternion."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto v4 = reinterpret_cast<const Vec4 *>(&input);
+    _output = linalg::qconj(**v4);
+    return _output;
+  }
+};
+
 struct Orthographic {
   double _width = 1280;
   double _height = 720;

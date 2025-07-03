@@ -71,6 +71,20 @@ void Window::init(const WindowCreationOptions &options) {
 
   flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
+  if (options.transparent) {
+    flags |= SDL_WINDOW_TRANSPARENT;
+    transparent = true;
+  }
+  if (options.notFocusable) {
+    flags |= SDL_WINDOW_NOT_FOCUSABLE;
+  }
+  if (options.alwaysOnTop) {
+    flags |= SDL_WINDOW_ALWAYS_ON_TOP;
+  }
+  if (options.borderless) {
+    flags |= SDL_WINDOW_BORDERLESS;
+  }
+
 #if SH_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif

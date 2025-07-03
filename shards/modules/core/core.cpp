@@ -1150,7 +1150,7 @@ struct Fold {
   static SHOptionalString help() {
     return SHCCSTR("Folds a sequence into a single value by applying an operation (specified in the Apply parameter) to each "
                    "item of the sequence. The operation can transform the type. Note that this shard is able to use the $0 "
-                   "internal variable for the accumulated value, $1 for the current item, and $i for the current index.");
+                   "internal variable for the accumulated value and $i for the current index.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence to fold."); }
