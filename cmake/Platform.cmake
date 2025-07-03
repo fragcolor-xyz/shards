@@ -326,13 +326,14 @@ option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
   add_compile_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_USE_ASAN>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=address>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-optimize-sibling-calls>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize-address-use-after-scope>
     $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     $<$<COMPILE_LANGUAGE:CXX,C>:-g>
   )
+
+  add_compile_definitions(BOOST_USE_ASAN=1 SH_USE_ASAN=1)
 
   if(CMAKE_GENERATOR STREQUAL "Xcode")
     add_link_options(

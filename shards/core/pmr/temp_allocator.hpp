@@ -7,6 +7,10 @@
 #include "../../gfx/moving_average.hpp"
 #include "../../gfx/math.hpp"
 
+#ifdef SH_USE_ASAN
+#include <sanitizer/asan_interface.h>
+#endif
+
 #include <thread>
 #include <optional>
 #include <mutex>
@@ -63,6 +67,12 @@ public:
   }
 
   void updatePreallocatedMemoryBlock() {
+#if SH_USE_ASAN
+    if (!preallocatedBlock.empty()) {
+      ASAN_UNPOISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+    }
+#endif
+
     size_t peakUsage = maxUsage.getMax();
     size_t targetSize = gfx::alignTo<Alignment>(peakUsage + Headroom);
     if (targetSize > preallocatedBlock.size()) {
@@ -70,6 +80,10 @@ public:
     }
 
     baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), shards::pmr::new_delete_resource());
+
+#ifdef SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+#endif
   }
 
   void bindToCurrentThread() {
@@ -92,28 +106,41 @@ public:
     }
 #endif
 
+#if SH_USE_ASAN
+    _Align = std::max<size_t>(8, _Align);
+#endif
+
+    void *alignedPtr;
     if (_Align > boost::container::pmr::memory_resource::max_align) {
       // When we need a higher alignment than default, we need to allocate extra
       // to ensure we can align the pointer without overflowing
       size_t extraSpace = _Align - 1;
       size_t sizeAllocated = _Bytes + extraSpace;
-      totalRequestedBytes +=  sizeAllocated;
-      char* p = static_cast<char*>(baseAllocator->allocate( sizeAllocated, boost::container::pmr::memory_resource::max_align));
-      
+      totalRequestedBytes += sizeAllocated;
+      char *p = static_cast<char *>(baseAllocator->allocate(sizeAllocated, boost::container::pmr::memory_resource::max_align));
+
       // Calculate aligned pointer within our allocated block
-      void* alignedPtr = reinterpret_cast<void*>(gfx::alignTo(reinterpret_cast<size_t>(p), _Align));
-      
+      alignedPtr = reinterpret_cast<void *>(gfx::alignTo(reinterpret_cast<size_t>(p), _Align));
+
       // Ensure we didn't overflow our allocation
-      shassert(static_cast<char*>(alignedPtr) + _Bytes <= p +  sizeAllocated);
-      
-      return alignedPtr;
+      shassert(static_cast<char *>(alignedPtr) + _Bytes <= p + sizeAllocated);
+
     } else {
       totalRequestedBytes += _Bytes;
-      return baseAllocator->allocate(_Bytes, _Align);
+      alignedPtr = baseAllocator->allocate(_Bytes, _Align);
     }
+
+#if SH_USE_ASAN
+    ASAN_UNPOISON_MEMORY_REGION(alignedPtr, _Bytes);
+    __asan_update_allocation_context(alignedPtr);
+#endif
+    return alignedPtr;
   }
 
   __attribute__((always_inline)) void do_deallocate(void *_Ptr, size_t _Bytes, size_t _Align) override {
+#if SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(_Ptr, _Bytes);
+#endif
     // Using monotonic_buffer_resource, so safe to no-op
   }
 

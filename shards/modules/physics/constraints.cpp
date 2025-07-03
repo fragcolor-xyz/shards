@@ -7,7 +7,7 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
-#include <gfx/linalg.hpp>
+#include <shards/gfx/linalg.hpp>
 
 namespace shards::Physics {
 

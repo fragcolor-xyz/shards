@@ -562,6 +562,11 @@ public:
   BodyAssociatedData *findBodyAssociatedData(const JPH::Body *body) const { return bodyMirror.findAssociatedData(body); }
 
   void simulate(double dt, int numIterations) {
+    // Reset events on all nodes
+    for (auto &node : bodyMirror.active) {
+      node->events.reset();
+    }
+
     eventCollector.clear();
     physicsSystem.SetContactListener(&contactListener);
     physicsSystem.Update(dt, numIterations, &tempAllocator, &jobSystem);

@@ -1,3 +1,6 @@
+#include <shards/core/shared.hpp>
+#include <shards/registry.hpp>
+#if SHARDS_WITH_GFX
 #include <shards/modules/gfx/shards_types.hpp>
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/gizmos/context.hpp>
@@ -5,7 +8,6 @@
 #include <gfx/gizmos/shapes.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/mesh.hpp>
-#include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
 #include "core.hpp"
@@ -94,8 +96,10 @@ struct DebugRenderer : public JPH::DebugRenderer {
                     JPH::ColorArg inModelColor, const GeometryRef &inGeometry, ECullMode inCullMode = ECullMode::CullBackFace,
                     ECastShadow inCastShadow = ECastShadow::On, EDrawMode inDrawMode = EDrawMode::Solid) override {
     float scale = gizmoRenderer->getConstantScreenSize(toLinalg(inWorldSpaceBounds.GetCenter()), 50.0f);
-    float flod = std::clamp(1.0f - scale / float(inGeometry->mLODs.size() + 1), 0.0f, 1.0f);
+    float flod = 1.0f - scale / float(inGeometry->mLODs.size() + 1);
     int lodIdx = std::floor(flod * (inGeometry->mLODs.size() - 1));
+    lodIdx = std::clamp<int>(lodIdx, 0, (inGeometry->mLODs.size() - 1));
+    shassert(lodIdx >= 0 && lodIdx < inGeometry->mLODs.size() && "Invalid LOD index");
 
     auto lod = inGeometry->mLODs[lodIdx].mTriangleBatch;
     GFXBatch *gfxBatch = dynamic_cast<GFXBatch *>(lod.GetPtr());
@@ -116,8 +120,14 @@ struct DebugRenderer : public JPH::DebugRenderer {
   }
 };
 
-DECL_ENUM_INFO(JPH::BodyManager::EShapeColor, PhysicsDebugShapeColor, "Specifies colors for debug rendering of physics shapes. Used to visually distinguish different types of physics objects during debugging.", 'phDc');
-DECL_ENUM_INFO(JPH::ESoftBodyConstraintColor, PhysicsDebugSoftBodyConstraintColor, "Defines colors for debug rendering of soft body constraints. Helps visualize the internal structure and behavior of soft bodies in physics simulations.", 'phSd');
+DECL_ENUM_INFO(JPH::BodyManager::EShapeColor, PhysicsDebugShapeColor,
+               "Specifies colors for debug rendering of physics shapes. Used to visually distinguish different types of physics "
+               "objects during debugging.",
+               'phDc');
+DECL_ENUM_INFO(JPH::ESoftBodyConstraintColor, PhysicsDebugSoftBodyConstraintColor,
+               "Defines colors for debug rendering of soft body constraints. Helps visualize the internal structure and behavior "
+               "of soft bodies in physics simulations.",
+               'phSd');
 
 struct DebugDrawShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
@@ -149,7 +159,8 @@ struct DebugDrawShard {
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_ds_shapeColor, "DrawBodyShapeColor", "Coloring scheme to use for shapes",
                  {PhysicsDebugShapeColorEnumInfo::Type, Type::VariableOf(PhysicsDebugShapeColorEnumInfo::Type)});
-  PARAM_PARAMVAR(_ds_boundingBox, "DrawBodyBoundingBox", "Draw a bounding box per body", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_ds_boundingBox, "DrawBodyBoundingBox", "Draw a bounding box per body",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_ds_centerOfMassTransform, "DrawBodyCenterOfMassTransform", "Draw the center of mass for each body",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_ds_worldTransform, "DrawBodyWorldTransform",
@@ -296,10 +307,13 @@ struct DebugDrawShard {
 };
 
 } // namespace shards::Physics
+#endif
 
 SHARDS_REGISTER_FN(debug) {
+#if SHARDS_WITH_GFX
   using namespace shards::Physics;
   REGISTER_ENUM(PhysicsDebugShapeColorEnumInfo);
   REGISTER_ENUM(PhysicsDebugSoftBodyConstraintColorEnumInfo);
   REGISTER_SHARD("Physics.DebugDraw", DebugDrawShard);
+#endif
 }

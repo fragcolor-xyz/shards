@@ -3,11 +3,11 @@
 
 @include("defs.shs") ; if macro
 
-@define(test-device true IgnoreRedefined: true)
+@define(test-device "true" IgnoreRedefined: true)
 
 @mesh(main)
 
-@if(@test-device {
+@if(#(@test-device Is("true")) {
   @wire(main-audio {
     Audio.Engine
 

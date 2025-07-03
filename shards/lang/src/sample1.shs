@@ -63,7 +63,7 @@ a | Math.Add(#(a | Math.Subtract(c))) ; run at eval time and write result
 Do(w1)
 Do(w2)
 
-@macro(if [cond yes no] {
+@macro(if-1 [cond yes no] {
   Sequence(pipelines)
   cond | If(IsAny([true "true" 1]) {
       {
@@ -84,6 +84,6 @@ Do(w2)
   [pipelines] | ToJson
 })
 
-@if(true none none)
+@if-1(true none none)
 
 ; comment

@@ -13,10 +13,11 @@ add_shards_module(physics
 
 target_link_libraries(shards-module-physics
   Jolt
-  gfx-core # For glTF interface
+  gfx-headers
 )
 
 target_include_directories(shards-module-physics
   PUBLIC ${SHARDS_DIR}/deps/JoltPhysics/TestFramework
   PUBLIC ${SHARDS_DIR}/deps/JoltPhysics/Samples
+  PRIVATE ${SHARDS_DIR}/deps/JoltPhysics/Samples
 )

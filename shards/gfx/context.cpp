@@ -3,8 +3,9 @@
 #include "enums.hpp"
 #include "error_utils.hpp"
 #include <boost/container/small_vector.hpp>
-#include "../core/platform.hpp"
-#include "../core/assert.hpp"
+#include <shards/core/platform.hpp>
+#include <shards/core/assert.hpp>
+#include <shards/defer.hpp>
 #include "linalg.h"
 #include "platform_surface.hpp"
 #include "window.hpp"
@@ -16,6 +17,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+
 #if SHARDS_GFX_SDL
 #include <SDL3/SDL_stdinc.h>
 #endif
@@ -760,13 +762,14 @@ void Context::requestAdapter() {
   SPDLOG_LOGGER_DEBUG(logger, "Enumerating {} adapters", adapters.size());
 
   bool useAnyAdapter = {};
-  if (const char *v = SDL_getenv("GFX_ANY_ADAPTER")) {
+  if (SDL_getenv("GFX_ANY_ADAPTER")) {
     useAnyAdapter = true;
   }
   for (size_t i = 0; i < adapters.size(); i++) {
     auto &adapter = adapters[i];
     WGPUAdapterInfo props;
     wgpuAdapterGetInfo(adapter, &props);
+    DEFER(wgpuAdapterInfoFreeMembers(props));
 
     SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
     SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{

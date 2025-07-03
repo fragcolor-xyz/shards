@@ -313,10 +313,18 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
-void coroResumed(SHContext *context);
-void coroSuspended(SHContext *context);
-void coroExtResume(SHWire *wire);
-void coroExtSuspend(SHWire *wire);
+
+#if SHARDS_INLINE_EVERYTHING
+#define SHARDS_COND_INLINE ALWAYS_INLINE inline
+#include "coro_annotations.inl"
+#else
+#define SHARDS_COND_INLINE
+#endif
+
+SHARDS_COND_INLINE void coroResumed(SHContext *context);
+SHARDS_COND_INLINE void coroSuspended(SHContext *context);
+SHARDS_COND_INLINE void coroExtResume(SHWire *wire);
+SHARDS_COND_INLINE void coroExtSuspend(SHWire *wire);
 
 inline void prepare(SHWire *wire) {
   shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
@@ -403,25 +411,28 @@ inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::Iterati
 
 inline bool isCanceled(SHContext *context) { return context->shouldStop(); }
 
-inline void sleep(double seconds = -1.0) {
+inline void sleep(std::chrono::nanoseconds duration) {
   // negative = no sleep
-  if (seconds > 0.0) {
+  if (duration.count() > 0) {
 #ifdef _WIN32
     HANDLE timer;
     LARGE_INTEGER ft;
-    ft.QuadPart = -(int64_t(seconds * 10000000));
+    // Windows FILETIME uses 100-nanosecond intervals, so divide by 100
+    ft.QuadPart = -(duration.count() / 100);
     timer = CreateWaitableTimer(NULL, TRUE, NULL);
     SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
 #elif __EMSCRIPTEN__
-    unsigned int ms = floor(seconds * 1000.0);
+    // Convert nanoseconds to milliseconds
+    unsigned int ms = duration.count() / 1000000;
     emscripten_sleep(ms);
 #else
     struct timespec delay;
-    seconds += 0.5e-9; // add half epsilon
-    delay.tv_sec = (decltype(delay.tv_sec))seconds;
-    delay.tv_nsec = (seconds - delay.tv_sec) * 1000000000L;
+    // Convert nanoseconds to seconds and remaining nanoseconds
+    auto total_ns = duration.count();
+    delay.tv_sec = total_ns / 1000000000L;
+    delay.tv_nsec = total_ns % 1000000000L;
     while (nanosleep(&delay, &delay))
       (void)0;
 #endif
@@ -429,6 +440,12 @@ inline void sleep(double seconds = -1.0) {
     // just yield to kernel
     std::this_thread::yield();
   }
+}
+
+inline void sleep(double seconds = -1.0) {
+  // Convert seconds to nanoseconds and call the nanoseconds version
+  auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(seconds));
+  sleep(duration);
 }
 
 struct RuntimeCallbacks {

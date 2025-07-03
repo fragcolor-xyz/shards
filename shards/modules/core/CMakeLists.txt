@@ -38,47 +38,47 @@ add_rust_library(NAME shards-core
 
 add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS
-    core casting flow linalg math seqs
-    strings wires logging serialization time
-    rust memoize exposed trait
+  core casting flow linalg math seqs
+  strings wires logging serialization time
+  rust memoize exposed trait
   RUST_TARGETS shards-core-rust
   INLINE_SOURCES core.cpp math.cpp inlined.cpp
   INLINE_SHARDS
-    NotInline
-    NoopShard
-    CoreConst
-    CoreInput
-    CoreRepeat
-    CoreGet
-    CoreRefRegular
-    CoreRefTable
-    CoreSetUpdateRegular
-    CoreSetUpdateTable
-    CoreSwap
-    CorePush
-    CoreIs
-    CoreIsNot
-    CoreIsTrue
-    CoreIsFalse
-    CoreIsNone
-    CoreIsNotNone
-    CoreAnd
-    CoreOr
-    CoreNot
-    CoreIsMore
-    CoreIsLess
-    CoreIsMoreEqual
-    CoreIsLessEqual
-    MathAdd
-    MathSubtract
-    MathMultiply
-    MathDivide
-    MathXor
-    MathAnd
-    MathOr
-    MathMod
-    MathLShift
-    MathRShift
+  NotInline
+  NoopShard
+  CoreConst
+  CoreInput
+  CoreRepeat
+  CoreGet
+  CoreRefRegular
+  CoreRefTable
+  CoreSetUpdateRegular
+  CoreSetUpdateTable
+  CoreSwap
+  CorePush
+  CoreIs
+  CoreIsNot
+  CoreIsTrue
+  CoreIsFalse
+  CoreIsNone
+  CoreIsNotNone
+  CoreAnd
+  CoreOr
+  CoreNot
+  CoreIsMore
+  CoreIsLess
+  CoreIsMoreEqual
+  CoreIsLessEqual
+  MathAdd
+  MathSubtract
+  MathMultiply
+  MathDivide
+  MathXor
+  MathAnd
+  MathOr
+  MathMod
+  MathLShift
+  MathRShift
 )
 
 if(EMSCRIPTEN)
@@ -90,10 +90,14 @@ if(ENABLE_FFI AND WIN32)
 endif()
 
 if(APPLE)
-  # Build swift sources
-  add_library(shards-core-swift core.swift ${SHARDS_DIR}/include/shards/shards.swift)
-  target_include_directories(shards-core-swift PRIVATE ${SHARDS_DIR}/include)
-  set_target_properties(shards-core-swift PROPERTIES Swift_MODULE_NAME shards_core_swift)
-  target_link_libraries(shards-module-core $<TARGET_FILE:shards-core-swift>)
-  add_dependencies(shards-module-core shards-core-swift)
+  add_library(shards-core-swift-impl core.swift ${SHARDS_DIR}/include/shards/shards.swift)
+  target_include_directories(shards-core-swift-impl PRIVATE ${SHARDS_DIR}/include)
+  set_target_properties(shards-core-swift-impl PROPERTIES Swift_MODULE_NAME shards_core_swift)
+
+  # Intermediate target some workaround for the xcode generator propagating some non-existent swift modules in combination with target duplication not working
+  add_library(shards-core-swift INTERFACE)
+  target_link_libraries(shards-core-swift INTERFACE $<TARGET_FILE:shards-core-swift-impl>)
+  add_dependencies(shards-core-swift shards-core-swift-impl)
+
+  target_link_libraries(shards-module-core shards-core-swift)
 endif()

@@ -5,9 +5,14 @@
 #include "moving_average.hpp"
 #include "math.hpp"
 
+#ifdef SH_USE_ASAN
+#include <sanitizer/asan_interface.h>
+#endif
+
 #include <thread>
 #include <optional>
 #include <mutex>
+#include <stdint.h>
 
 // Enable to check for allocation from wrong thread
 #ifdef NDEBUG
@@ -23,7 +28,7 @@ namespace gfx::detail {
 //  with the addition that it updates the preallocated memory block based on previous peak usage
 struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
-  static constexpr size_t MinPreallocatedSize = Megabyte * 8;
+  static constexpr size_t DefaultMinPreallocatedSize = Megabyte * 8;
 
   MovingAverage<size_t> maxUsage{32};
   size_t totalRequestedBytes{};
@@ -32,13 +37,17 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   std::optional<shards::pmr::monotonic_buffer_resource> baseAllocator;
   shards::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
 
+  size_t minPreallocatedSize;
+
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
   std::optional<std::thread::id> boundThread;
   bool autoBindToThread = false;
 #endif
 
-  MonotonicGrowableAllocator() { reset(); }
-  MonotonicGrowableAllocator(MonotonicGrowableAllocator &&) {}
+  MonotonicGrowableAllocator(size_t minPreallocatedSize = DefaultMinPreallocatedSize) : minPreallocatedSize(minPreallocatedSize) {
+    reset();
+  }
+  MonotonicGrowableAllocator(MonotonicGrowableAllocator &&other) : minPreallocatedSize(other.minPreallocatedSize) {}
 
   void reset() {
     maxUsage.add(totalRequestedBytes);
@@ -47,7 +56,13 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
   }
 
   void updatePreallocatedMemoryBlock() {
-    size_t peakUsage = std::max(MinPreallocatedSize, maxUsage.getMax());
+#if SH_USE_ASAN
+    if (!preallocatedBlock.empty()) {
+      ASAN_UNPOISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+    }
+#endif
+
+    size_t peakUsage = std::max(minPreallocatedSize, maxUsage.getMax());
     // Add +1MB headroom and align
     size_t targetSize = alignTo<Megabyte>(peakUsage + Megabyte * 1);
     if (targetSize > preallocatedBlock.size()) {
@@ -56,6 +71,10 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
 
     baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), shards::pmr::new_delete_resource());
     baseAllocatorPtr = &baseAllocator.value();
+
+#ifdef SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(preallocatedBlock.data(), preallocatedBlock.size());
+#endif
   }
 
   void bindToCurrentThread() {
@@ -79,10 +98,20 @@ struct MonotonicGrowableAllocator final : public shards::pmr::memory_resource {
 #endif
 
     totalRequestedBytes += _Bytes;
+#if SH_USE_ASAN
+    _Align = std::max<size_t>(8, _Align);
+    void *ptr = baseAllocatorPtr->allocate(_Bytes, _Align);
+    ASAN_UNPOISON_MEMORY_REGION(ptr, _Bytes);
+    return ptr;
+#else
     return baseAllocatorPtr->allocate(_Bytes, _Align);
+#endif
   }
 
   __attribute__((always_inline)) void do_deallocate(void *_Ptr, size_t _Bytes, size_t _Align) override {
+#if SH_USE_ASAN
+    ASAN_POISON_MEMORY_REGION(_Ptr, _Bytes);
+#endif
     // Using monotonic_buffer_resource, so safe to no-op
   }
 
@@ -98,8 +127,13 @@ private:
   Allocator allocator;
 
 public:
-  WorkerMemory() : allocator(&memoryResource) { initCommon(); }
-  WorkerMemory(WorkerMemory &&) : allocator(&memoryResource) { initCommon(); }
+  WorkerMemory(size_t minPreallocatedSize = MonotonicGrowableAllocator::DefaultMinPreallocatedSize)
+      : memoryResource(minPreallocatedSize), allocator(&memoryResource) {
+    initCommon();
+  }
+  WorkerMemory(WorkerMemory &&other) : memoryResource(other.memoryResource.minPreallocatedSize), allocator(&memoryResource) {
+    initCommon();
+  }
 
   void reset() { memoryResource.reset(); }
 

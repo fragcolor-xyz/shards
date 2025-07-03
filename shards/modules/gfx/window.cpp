@@ -597,6 +597,60 @@ struct WindowFocused {
   SHVar activate(SHContext *shContext, const SHVar &input) { return Var(_requiredWindowContext->window->isFocused()); }
 };
 
+#if !SH_EMSCRIPTEN
+struct DisplayRefreshRate {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Outputs the refresh rate of the display as determined by the operating system.");
+  }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the refresh rate of the display as a float."); }
+
+  PARAM_PARAMVAR(_window, "Window", "The window to get the refresh rate of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
+
+  OptionalWindowContext _optionalWindowContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _optionalWindowContext.compose(data, _requiredVariables, &_window);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _optionalWindowContext.warmup(context, &_window);
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _optionalWindowContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SDL_DisplayID display;
+    if (_optionalWindowContext) {
+      display = SDL_GetDisplayForWindow(_optionalWindowContext->window->window);
+    } else {
+      int displayCount{};
+      auto displays = SDL_GetDisplays(&displayCount);
+      if (displayCount == 0) {
+        return Var(0.0f);
+      }
+      display = displays[0];
+    }
+
+    auto displayMode = SDL_GetCurrentDisplayMode(display);
+    return Var(displayMode->refresh_rate);
+  }
+};
+void registerSDLWindowShards() { REGISTER_SHARD("GFX.DisplayRefreshRate", DisplayRefreshRate); }
+#endif
+
 void registerMainWindowShards() {
   REGISTER_SHARD("GFX.MainWindow", MainWindow);
   REGISTER_SHARD("GFX.WindowSize", WindowSize);
@@ -606,6 +660,9 @@ void registerMainWindowShards() {
   REGISTER_SHARD("GFX.MoveWindow", MoveWindow);
   REGISTER_SHARD("GFX.WindowInsets", WindowInsets);
   REGISTER_SHARD("GFX.WindowFocused", WindowFocused);
+#if !SH_EMSCRIPTEN
+  registerSDLWindowShards();
+#endif
 }
 
 } // namespace gfx
