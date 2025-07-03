@@ -12,6 +12,7 @@ endif()
 set(CMAKE_POLICY_DEFAULT_CMP0144 NEW)
 
 get_filename_component(SHARDS_DIR ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+set(SHARDS_ROOT ${SHARDS_DIR})
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
 
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
